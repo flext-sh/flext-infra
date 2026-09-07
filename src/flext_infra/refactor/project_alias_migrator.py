@@ -12,10 +12,10 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 import libcst as cst
 
+from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
+from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
 from flext_infra.constants import c
 from flext_infra.models import m
-
-from .._utilities.transformer_base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -308,7 +308,9 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
         self.changes.clear()
         if self._file_path is not None and (
             self._is_private_facade_implementation(self._file_path)
-            or u.Infra.looks_like_facade_file(file_path=self._file_path, source=source)
+            or FlextInfraUtilitiesRopeSource.looks_like_facade_file(
+                file_path=self._file_path, source=source
+            )
         ):
             return source, []
         context = self._resolve_context(
