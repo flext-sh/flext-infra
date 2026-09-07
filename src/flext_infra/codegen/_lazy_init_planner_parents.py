@@ -118,6 +118,8 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
             if canonical_package != current_pkg:
                 return canonical_package
         for package_name in candidate_packages:
+            if package_name == current_pkg:
+                continue
             if alias_name in self._export_names_for_package(package_name):
                 return f"{package_name}"
         for package_name in candidate_packages:

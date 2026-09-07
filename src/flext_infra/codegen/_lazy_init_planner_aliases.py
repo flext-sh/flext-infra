@@ -152,6 +152,30 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         for alias_name, target in local_import_alias_targets.items():
             if target[0] != current_pkg:
                 lazy_map.setdefault(alias_name, target)
+        letter_module = {
+            letter: filename.removesuffix(".py")
+            for filename, letter in c.Infra.NAMESPACE_LAYER_BY_FILE.items()
+            if letter in c.Infra.ALIAS_NAMES
+        }
+        for alias_name in c.Infra.ALIAS_NAMES:
+            existing = lazy_map.get(alias_name)
+            owner_module = existing[0] if existing is not None else ""
+            if owner_module and owner_module != current_pkg:
+                continue
+            local_stem = letter_module.get(alias_name)
+            if local_stem is not None and (pkg_dir / f"{local_stem}.py").is_file():
+                lazy_map[alias_name] = (f"{current_pkg}.{local_stem}", alias_name)
+                continue
+            package_name = self._resolve_inherited_alias_source(
+                inherited_packages,
+                alias_name,
+                current_pkg=current_pkg,
+                use_test_runtime_aliases=is_test_runtime_alias_surface,
+            )
+            if package_name and package_name != current_pkg:
+                lazy_map[alias_name] = (package_name, alias_name)
+            elif owner_module == current_pkg:
+                del lazy_map[alias_name]
 
     def _declared_parent_aliases(self, package_name: str) -> t.StrSequence:
         package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
