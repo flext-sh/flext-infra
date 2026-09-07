@@ -30,33 +30,18 @@ class FlextInfraExtraPathsSyncMixin:
         self, direct_names: t.StrSequence
     ) -> t.StrSequence:
         """Return the transitive workspace path-dependency closure of direct_names."""
-        return self._resolve_transitive_deps(direct_names)
 
-    def _resolve_transitive_deps(
-        self, direct_names: t.StrSequence, *, visited: t.Infra.StrSet | None = None
-    ) -> t.StrSequence:
-        """Recursively resolve transitive workspace path dependencies."""
-        resolved_visited: set[str] = visited if visited is not None else set()
-        all_paths: set[str] = set(direct_names)
-        for name in direct_names:
-            if name in resolved_visited:
-                continue
-            resolved_visited.add(name)
+        def dependencies(name: str) -> t.StrSequence:
             dep_pyproject = self.root / name / c.Infra.PYPROJECT_FILENAME
             if not dep_pyproject.exists():
-                continue
+                return ()
             dep_payload = u.Infra.pyproject_payload(dep_pyproject)
-            transitive = u.Infra.local_dependency_names_from_payload(
+            return u.Infra.local_dependency_names_from_payload(
                 dep_payload,
                 workspace_project_names=tuple(self._workspace_project_names),
             )
-            if not transitive:
-                continue
-            all_paths.update(transitive)
-            all_paths.update(
-                self._resolve_transitive_deps(transitive, visited=resolved_visited)
-            )
-        return sorted(all_paths)
+
+        return u.Infra.dependency_order(direct_names, dependencies=dependencies)
 
     def sync_doc(
         self, doc: t.Cli.TomlDocument, *, project_dir: Path, is_root: bool
@@ -109,13 +94,13 @@ class FlextInfraExtraPathsSyncMixin:
     ) -> t.StrSequence:
         """Apply computed extra paths to one normalized TOML payload."""
         expected = self.pyright_extra_paths(project_dir=project_dir, is_root=is_root)
-        tool_table = u.Cli.toml_mapping_child(payload, c.Infra.TOOL)
+        tool_table = u.Cli.toml_mapping_path(payload, (c.Infra.TOOL,))
         if tool_table is None:
             return list[str]()
-        pyright_table = u.Cli.toml_mapping_child(tool_table, c.Infra.PYRIGHT)
+        pyright_table = u.Cli.toml_mapping_path(tool_table, (c.Infra.PYRIGHT,))
         if pyright_table is None:
             return list[str]()
-        mypy_table = u.Cli.toml_mapping_child(tool_table, c.Infra.MYPY)
+        mypy_table = u.Cli.toml_mapping_path(tool_table, (c.Infra.MYPY,))
         changes: t.MutableSequenceOf[str] = []
         if u.Cli.toml_mapping_sync_string_list(
             u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.PYRIGHT)),
@@ -146,16 +131,14 @@ class FlextInfraExtraPathsSyncMixin:
             return r[bool].fail(f"pyproject not found: {pyproject_path}")
         doc_result = u.Cli.toml_read_document(pyproject_path)
         if doc_result.failure:
-            return r[bool].fail(doc_result.error or f"failed to read {pyproject_path}")
+            return r[bool].from_failure(doc_result)
         changes = self.sync_doc(
             doc_result.value, project_dir=pyproject_path.parent, is_root=is_root
         )
         if changes and (not dry_run):
             write_result = u.Cli.toml_write_document(pyproject_path, doc_result.value)
             if write_result.failure:
-                return r[bool].fail(
-                    write_result.error or f"failed to write {pyproject_path}"
-                )
+                return r[bool].from_failure(write_result)
         return r[bool].ok(bool(changes))
 
     def sync_extra_paths(
@@ -176,14 +159,12 @@ class FlextInfraExtraPathsSyncMixin:
                     pyproject, dry_run=dry_run, is_root=project_dir == self.root
                 )
                 if sync_result.failure:
-                    return r[int].fail(
-                        sync_result.error or f"sync failed for {pyproject}"
-                    )
+                    return r[int].from_failure(sync_result)
                 if sync_result.value and (not dry_run):
                     updated_selected += 1
                     u.Cli.info(f"Updated {pyproject}")
             return r[int].ok(updated_selected)
-        # WHAT=all is the canonical default: an unselected run owns the root AND
+        # The selector-free operation owns the root AND
         # every managed member. Syncing only the root left each member's
         # mypy_path/extraPaths frozen at whatever was last written by hand, so
         # sibling path dependencies never reached the member analyzers and every
@@ -203,7 +184,7 @@ class FlextInfraExtraPathsSyncMixin:
                 pyproject, dry_run=dry_run, is_root=target == self.root
             )
             if sync_result.failure:
-                return r[int].fail(sync_result.error or f"sync failed for {pyproject}")
+                return r[int].from_failure(sync_result)
             if sync_result.value and (not dry_run):
                 updated += 1
                 u.Cli.info(f"Updated {pyproject}")

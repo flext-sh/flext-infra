@@ -35,9 +35,7 @@ class FlextInfraCodegenConsolidatorStepsMixin:
             return r[t.StrMapping].ok({})
         read = u.Cli.files_read_text(constants_file)
         if read.failure:
-            return r[t.StrMapping].fail(
-                read.error or f"unreadable constants file: {constants_file}"
-            )
+            return r[t.StrMapping].from_failure(read)
         value_map: t.MutableStrMapping = {}
         for name, _, raw, class_path, _ in u.Infra.parse_final_constant_definitions(
             read.value.splitlines()

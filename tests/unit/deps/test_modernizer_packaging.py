@@ -1,65 +1,128 @@
-"""Packaging phase tests for deps modernizer."""
+"""Public conformance contract for declared Python distribution roots."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import tomllib
+from typing import TYPE_CHECKING, Literal
 
-from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
+import pytest
+
+from flext_infra import c, config, main as infra_main
 from flext_tests import tm
-from tests import c, t, u
+from tests import t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m
+
+def _declared_roots() -> tuple[t.NonEmptyStr, t.NonEmptyStr]:
+    """Derive arbitrary valid roots from the typed project fixture owner."""
+    package_name = u.Tests.project_spec(config.Infra.name).package_name
+    return f"{package_name}_entry", f"{package_name}_client"
 
 
-class TestsFlextInfraDepsModernizerPackaging:
-    """Wheel targets appear exactly when hatchling default selection cannot work."""
-
-    def test_standalone_root_with_divergent_package_gets_wheel_targets(
-        self, tool_config_document: m.Infra.ToolConfigDocument, tmp_path: Path
-    ) -> None:
-        """Standalone root shipping src/dcdoc as cosmos-docgen gets bounded targets."""
-        package_dir = tmp_path / c.Infra.DEFAULT_SRC_DIR / "dcdoc"
-        package_dir.mkdir(parents=True)
-        (package_dir / c.Infra.INIT_PY).write_text("", encoding="utf-8")
-        docs: t.JsonDict = {"package_name": "dcdoc"}
-        flext: t.JsonDict = {"docs": docs}
-        tool: t.JsonDict = {"flext": flext}
-        project: t.JsonDict = {"name": "cosmos-docgen"}
-        payload: t.MutableJsonMapping = {"project": project, "tool": tool}
-
-        changes = FlextInfraEnsurePackagingPhase(tool_config_document).apply_payload(
-            payload, path=tmp_path / c.Infra.PYPROJECT_FILENAME, is_root=True
-        )
-
-        wheel = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
-            u.Cli.toml_mapping_path(
-                payload, (c.Infra.TOOL, "hatch", "build", "targets", "wheel")
+def _prepare_project(
+    root: Path, *, materialize_module: bool, materialize_package: bool
+) -> tuple[t.NonEmptyStr, t.NonEmptyStr]:
+    """Materialize one provider-governed project through shared typed fixtures."""
+    _ = u.Tests.standalone_workspace(root, config.Infra.name)
+    root_module, root_package = _declared_roots()
+    source_root = root / c.Infra.DEFAULT_SRC_DIR
+    if materialize_module:
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                source_root / f"{root_module}.py", "VALUE = 1\n"
             )
         )
-        tm.that(len(changes) > 0, eq=True)
-        tm.that(wheel["packages"], eq=["src/dcdoc"])
-
-    def test_workspace_root_with_matching_package_keeps_default_selection(
-        self, tool_config_document: m.Infra.ToolConfigDocument, tmp_path: Path
-    ) -> None:
-        """Monorepo root whose name matches src/<name> keeps hatchling defaults."""
-        package_dir = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext"
-        package_dir.mkdir(parents=True)
-        (package_dir / c.Infra.INIT_PY).write_text("", encoding="utf-8")
-        docs: t.JsonDict = {"package_name": "flext"}
-        flext: t.JsonDict = {"docs": docs}
-        tool: t.JsonDict = {"flext": flext}
-        project: t.JsonDict = {"name": "flext"}
-        payload: t.MutableJsonMapping = {"project": project, "tool": tool}
-
-        changes = FlextInfraEnsurePackagingPhase(tool_config_document).apply_payload(
-            payload, path=tmp_path / c.Infra.PYPROJECT_FILENAME, is_root=True
+    if materialize_package:
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                source_root / root_package / c.Infra.INIT_PY, "VALUE = 1\n"
+            )
         )
+    _ = u.Tests.write_standalone_workspace_manifest(
+        root,
+        config.Infra.name,
+        root_modules=(root_module,),
+        root_packages=(root_package,),
+    )
+    u.Tests.copy_tracked_mise_seeds(root)
+    return root_module, root_package
 
-        tm.that(changes, eq=())
+
+@pytest.mark.slow
+def _conform_self(infra_git_repo: Path) -> int:
+    """Run codegen conform self-apply through the public CLI entrypoint."""
+    return infra_main([
+        c.Infra.CLI_GROUP_CODEGEN,
+        "conform",
+        "--root",
+        str(infra_git_repo),
+        "--scope",
+        c.Infra.CodegenConformScope.SELF.value,
+        "--mode",
+        c.Infra.CodegenConformMode.APPLY.value,
+    ])
+
+
+def test_conform_packages_every_declared_python_root(infra_git_repo: Path) -> None:
+    """The public generator emits matching bounded wheel and sdist targets."""
+    root_module, root_package = _prepare_project(
+        infra_git_repo, materialize_module=True, materialize_package=True
+    )
+
+    applied = _conform_self(infra_git_repo)
+
+    tm.that(applied, eq=0)
+    payload = tomllib.loads(
+        (infra_git_repo / c.Infra.PYPROJECT_FILENAME).read_text(encoding="utf-8")
+    )
+    targets = payload[c.Infra.TOOL]["hatch"]["build"]["targets"]
+    primary_package = u.Tests.project_spec(config.Infra.name).package_name
+    package_paths = {
+        f"{c.Infra.DEFAULT_SRC_DIR}/{primary_package}",
+        f"{c.Infra.DEFAULT_SRC_DIR}/{root_package}",
+    }
+    module_path = f"{c.Infra.DEFAULT_SRC_DIR}/{root_module}.py"
+    tm.that(set(targets["wheel"]["packages"]), eq=package_paths)
+    tm.that(targets["wheel"]["force-include"][module_path], eq=f"{root_module}.py")
+    tm.that(package_paths <= set(targets["sdist"]["only-include"]), eq=True)
+    tm.that(module_path in targets["sdist"]["only-include"], eq=True)
+
+    fixed_point = infra_main([
+        c.Infra.CLI_GROUP_CODEGEN,
+        "conform",
+        "--root",
+        str(infra_git_repo),
+        "--scope",
+        c.Infra.CodegenConformScope.SELF.value,
+        "--mode",
+        c.Infra.CodegenConformMode.CHECK.value,
+    ])
+    tm.that(fixed_point, eq=0)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("missing_kind", ["module", "package"])
+def test_conform_rejects_missing_declared_python_root(
+    infra_git_repo: Path,
+    missing_kind: Literal["module", "package"],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A declaration never produces a phantom wheel or sdist path."""
+    _ = _prepare_project(
+        infra_git_repo,
+        materialize_module=missing_kind != "module",
+        materialize_package=missing_kind != "package",
+    )
+    before = (infra_git_repo / c.Infra.PYPROJECT_FILENAME).read_bytes()
+
+    exit_code = _conform_self(infra_git_repo)
+
+    output = capsys.readouterr()
+    tm.that(exit_code, ne=0)
+    tm.that(output.out + output.err, has=f"root {missing_kind}")
+    tm.that((infra_git_repo / c.Infra.PYPROJECT_FILENAME).read_bytes(), eq=before)
 
 
 __all__: t.StrSequence = []

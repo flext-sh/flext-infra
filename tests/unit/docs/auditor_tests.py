@@ -12,7 +12,7 @@ import pytest
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_tests import tm
-from tests import m, u
+from tests import c, m, u
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -145,7 +145,6 @@ class TestAuditorNormalize:
     @pytest.mark.parametrize(
         ("text", "target", "expected"),
         [
-            ("[link](http://example.com)", "http://example.com", False),
             ("[link](https://example.com)", "https://example.com", False),
             ("[a, b]", "a", True),
             ("[a b]", "a", True),
@@ -163,20 +162,33 @@ class TestAuditorNormalize:
     ) -> None:
         tm.that(should_skip_target(text, target), eq=expected)
 
+    @pytest.mark.parametrize("scheme", sorted(c.Infra.DOCS_EXTERNAL_SCHEMES))
+    def test_permitted_external_schemes_are_preserved(
+        self, *, is_external: Callable[[str], bool], scheme: str
+    ) -> None:
+        target = (
+            f"{scheme}://example.invalid"
+            if scheme == c.Infra.DOCS_SECURE_WEB_SCHEME
+            else f"{scheme}:payload"
+        )
+
+        tm.that(is_external(target), eq=True)
+
     @pytest.mark.parametrize(
-        ("value", "expected"),
+        "target",
         [
-            ("http://example.com", True),
-            ("https://example.com", True),
-            ("mailto:test@example.com", True),
-            ("tel:+1234567890", True),
-            ("data:text/plain;base64,SGVsbG8=", True),
-            ("path/to/file.md", False),
-            ("<http://example.com>", True),
-            ("HTTPS://EXAMPLE.COM", True),
+            f"{c.Infra.DOCS_INSECURE_WEB_SCHEME}://example.invalid",
+            f"<{c.Infra.DOCS_INSECURE_WEB_SCHEME}://example.invalid>",
+            f"{c.Infra.DOCS_INSECURE_WEB_SCHEME.upper()}://example.invalid",
         ],
     )
-    def test_is_external(
-        self, *, is_external: Callable[[str], bool], value: str, expected: bool
+    def test_insecure_documentation_urls_fail_fast(
+        self, *, is_external: Callable[[str], bool], target: str
     ) -> None:
-        tm.that(is_external(value), eq=expected)
+        with pytest.raises(ValueError, match="use HTTPS"):
+            is_external(target)
+
+    def test_repository_paths_are_not_external(
+        self, *, is_external: Callable[[str], bool]
+    ) -> None:
+        tm.that(is_external("path/to/file.md"), eq=False)

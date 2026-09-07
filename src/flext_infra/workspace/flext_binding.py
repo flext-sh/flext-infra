@@ -21,12 +21,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, u
+from flext_infra import c, t, u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
@@ -46,20 +45,13 @@ class FlextInfraFlextBindingService:
             return r[tuple[str, ...]].fail(
                 f"consumer has no {c.Infra.PYPROJECT_FILENAME}: {consumer_root}"
             )
-        payload = tomllib.loads(manifest.read_text(encoding="utf-8"))
-        project = payload.get("project")
-        declared = project.get("dependencies", []) if isinstance(project, dict) else []
-        names: list[str] = []
-        for entry in declared:
-            # A requirement is "<name>" or "<name> @ <url>" or "<name>>=<spec>";
-            # the distribution name is whatever precedes the first delimiter.
-            text = str(entry).strip()
-            name = text.split("@", 1)[0].split(";", 1)[0]
-            for delimiter in ("[", ">", "<", "=", "!", "~", " "):
-                name = name.split(delimiter, 1)[0]
-            if name:
-                names.append(name.strip())
-        return r[tuple[str, ...]].ok(tuple(names))
+        payload_result = u.Cli.toml_read_json(manifest)
+        payload: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+            payload_result.unwrap()
+        )
+        return r[tuple[str, ...]].ok(
+            tuple(u.Infra.project_dependency_names_from_payload(payload))
+        )
 
     @classmethod
     def plan_targets(
@@ -77,15 +69,13 @@ class FlextInfraFlextBindingService:
                 f"{workspace.error or 'manifest unreadable'}"
             )
         available = {
-            subproject.distribution: subproject
-            for subproject in workspace.value.subprojects
-            if subproject.package
+            declared_repository.distribution: declared_repository
+            for declared_repository in workspace.value.subprojects
+            if declared_repository.package
         }
         declared = cls._declared_distributions(consumer_root)
         if declared.failure:
-            return r[tuple[str, ...]].fail(
-                declared.error or "cannot read consumer dependencies"
-            )
+            return r[tuple[str, ...]].from_failure(declared)
         return r[tuple[str, ...]].ok(
             tuple(sorted(name for name in declared.value if name in available))
         )
@@ -97,18 +87,20 @@ class FlextInfraFlextBindingService:
         """Rebind the consumer environment onto the worktree for this session."""
         planned = cls.plan_targets(consumer_root=consumer_root, flext_root=flext_root)
         if planned.failure:
-            return r[int].fail(planned.error or "failed to plan the flext binding")
+            return r[int].from_failure(planned)
         targets = planned.value
         if not targets:
             u.Cli.info("flext binding: consumer declares no flext packages")
             return r[int].ok(0)
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(flext_root)
         if workspace.failure:
-            return r[int].fail(workspace.error or "workspace topology unreadable")
+            return r[int].from_failure(workspace)
         paths = {
-            subproject.distribution: (flext_root / subproject.path).resolve()
-            for subproject in workspace.value.subprojects
-            if subproject.package
+            declared_repository.distribution: (
+                flext_root / declared_repository.path
+            ).resolve()
+            for declared_repository in workspace.value.subprojects
+            if declared_repository.package
         }
         editables: list[str] = []
         for name in targets:
@@ -118,7 +110,7 @@ class FlextInfraFlextBindingService:
             cwd=consumer_root,
         )
         if installed.failure:
-            return r[int].fail(installed.error or "failed to bind the flext worktree")
+            return r[int].from_failure(installed)
         u.Cli.info(
             f"flext binding: {len(targets)} package(s) bound to {flext_root} "
             f"({', '.join(targets)})"

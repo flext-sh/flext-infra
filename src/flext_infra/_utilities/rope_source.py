@@ -9,12 +9,13 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.silent_failure_ast import collect_silent_failure_fixes
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+from .._utilities.discovery import FlextInfraUtilitiesDiscovery
+from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from .._utilities.silent_failure_ast import FlextInfraUtilitiesSilentFailureAst
 
 
 class FlextInfraUtilitiesRopeSource:
@@ -54,47 +55,40 @@ class FlextInfraUtilitiesRopeSource:
     def find_import_insert_position(
         lines: t.StrSequence, *, past_existing: bool = True
     ) -> int:
-        """Find a line index for inserting imports, never inside a docstring.
+        """Return the module-level line index where an import may be inserted.
 
-        Skips leading comments, the module docstring (single- **or** multi-line),
-        and ``from __future__`` imports. With ``past_existing`` the position also
-        skips over existing top-level imports so new imports append after them;
-        otherwise it lands immediately after ``__future__`` and before the first
-        regular import. A multi-line module docstring is tracked to its closing
-        quote so an import can never be injected into the docstring body.
+        The position is derived from parsed statements rather than scanned
+        lines. A line scan cannot see that a match belongs to a continuation or
+        to an indented suite, so it returned positions inside a parenthesized
+        import list and inside ``if TYPE_CHECKING:``; inserting a column-zero
+        statement at either point produced a file that no longer parses.
+
+        Only top-level imports move the position. ``past_existing`` places it
+        after the last of them; otherwise it lands after the module docstring
+        and the ``__future__`` imports, before the first regular import.
         """
-        idx = 0
-        in_docstring = False
-        quote = ""
-        docstring_seen = False
-        for index, line in enumerate(lines):
-            stripped = line.strip()
-            if in_docstring:
-                idx = index + 1
-                if quote in stripped:
-                    in_docstring = False
+        source = "".join(lines)
+        module = ast.parse(source)
+        position = 0
+        for statement in module.body:
+            if isinstance(statement, ast.Expr) and isinstance(
+                statement.value, ast.Constant
+            ):
+                if isinstance(statement.value.value, str) and position == 0:
+                    position = statement.end_lineno or position
+                    continue
+                break
+            if (
+                isinstance(statement, ast.ImportFrom)
+                and statement.module == "__future__"
+            ):
+                position = statement.end_lineno or position
                 continue
-            if not stripped or stripped.startswith("#"):
-                idx = index + 1
-                continue
-            if not docstring_seen and stripped.startswith(('"""', "'''")):
-                docstring_seen = True
-                quote = stripped[:3]
-                idx = index + 1
-                if (
-                    stripped.count(quote)
-                    < FlextInfraUtilitiesRopeSource._SINGLE_LINE_DOCSTRING_QUOTE_COUNT
-                ):
-                    in_docstring = True
-                continue
-            if c.Infra.FUTURE_IMPORT_RE.match(stripped):
-                idx = index + 1
-                continue
-            if past_existing and c.Infra.IMPORT_LINE_RE.match(line):
-                idx = index + 1
+            if past_existing and isinstance(statement, ast.Import | ast.ImportFrom):
+                position = statement.end_lineno or position
                 continue
             break
-        return idx
+        return position
 
     @staticmethod
     def index_after_docstring_and_future_imports(lines: t.StrSequence) -> int:
@@ -194,14 +188,11 @@ class FlextInfraUtilitiesRopeSource:
             }
             for item in raw_items
         ]
-        try:
-            typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(normalized)
-            return [
-                m.Infra.ImportModernizerRuleConfig.model_validate(item)
-                for item in typed_items
-            ]
-        except c.ValidationError:
-            return []
+        typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(normalized)
+        return [
+            m.Infra.ImportModernizerRuleConfig.model_validate(item)
+            for item in typed_items
+        ]
 
     @staticmethod
     def collect_blocked_aliases(
@@ -386,7 +377,9 @@ class FlextInfraUtilitiesRopeSource:
                 f"silent failure sentinel AST collection returned {type(tree).__name__}"
             )
             raise TypeError(msg)
-        changes = collect_silent_failure_fixes(tree, source, kinds=kinds)
+        changes = FlextInfraUtilitiesSilentFailureAst.collect_silent_failure_fixes(
+            tree, source, kinds=kinds
+        )
         if not changes:
             return source, []
         updated = cls.rewrite_source_at_offsets(
@@ -399,17 +392,17 @@ class FlextInfraUtilitiesRopeSource:
         cls, source: str, file_path: Path, transformer_fn: t.Infra.RopeTransformFn
     ) -> t.StrSequencePair:
         """Run a rope transformer against source text via a temporary context."""
-        workspace_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
-        if workspace_root is None:
+        repository_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
+        if repository_root is None:
             return (source, [])
         file_path = file_path.resolve()
-        if not file_path.is_relative_to(workspace_root.resolve()):
+        if not file_path.is_relative_to(repository_root.resolve()):
             msg = f"refusing Rope rewrite outside project: {file_path}"
             raise ValueError(msg)
         original_disk_source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         try:
             with FlextInfraUtilitiesRopeCore.open_project(
-                workspace_root
+                repository_root
             ) as rope_project:
                 resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                     rope_project, file_path

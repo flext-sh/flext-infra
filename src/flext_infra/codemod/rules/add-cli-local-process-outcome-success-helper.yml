@@ -1,0 +1,35 @@
+id: add-cli-local-process-outcome-success-helper
+language: Python
+severity: error
+files:
+  - "src/flext_cli/_utilities/_runtime_process_outcome.py"
+rule:
+  all:
+    - pattern:
+        context: |
+          class FlextCliUtilitiesRuntimeProcessOutcomeMixin:
+              """Map one completed lifecycle to its public result contract."""
+              $$$BODY
+        selector: class_definition
+    - not:
+        has:
+          kind: function_definition
+          has:
+            field: name
+            regex: "^process_succeeded$"
+          stopBy: end
+fix: |
+  class FlextCliUtilitiesRuntimeProcessOutcomeMixin:
+      """Map one completed lifecycle to its public result contract."""
+
+      @staticmethod
+      def process_succeeded(outcome: p.Cli.ProcessOutcome) -> bool:
+          """Return whether every causal completion field describes success."""
+          return (
+              outcome.raw_return_code == c.Cli.EXIT_CODE_SUCCESS
+              and not outcome.timed_out
+              and outcome.forwarded_signal is None
+          )
+
+      $$$BODY
+message: Add the sole causal success predicate exposed through u.Cli.

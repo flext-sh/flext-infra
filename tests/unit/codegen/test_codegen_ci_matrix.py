@@ -9,10 +9,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from flext_infra import c, config, t, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
+
+from ._support import CodegenTestSupport
 
 pytestmark = pytest.mark.slow
 
@@ -22,7 +25,7 @@ class TestCodegenCiMatrix:
 
     @staticmethod
     def _render_project(root: Path) -> Path:
-        """Render a fresh EXTERNAL project into root and return the root."""
+        """Render one fresh internal_flext project into root and return it."""
         beads = tm.ok(
             FlextInfraWorkspaceDetector.load_beads_spec(
                 Path(__file__).resolve().parents[3]
@@ -30,7 +33,7 @@ class TestCodegenCiMatrix:
         )
         service = FlextInfraCodegenProjectNew(
             name="flext-demo",
-            kind=c.Infra.ProjectKind.EXTERNAL,
+            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
             provider="flext-sh",
             beads_workspace=beads.workspace,
@@ -46,6 +49,21 @@ class TestCodegenCiMatrix:
         result = service.execute()
         tm.ok(result)
         return root
+
+    @staticmethod
+    def _assert_dispatch_only(triggers: str) -> None:
+        """Assert a workflow trigger section selects only manual dispatch."""
+        tm.that(triggers, has="workflow_dispatch: {}")
+        for forbidden in (
+            "branches: [main]",
+            "pull_request:",
+            "ready_for_review",
+            "repository_branch",
+            "0.12.0-dev",
+            "develop",
+            "branches: [dev]",
+        ):
+            tm.that(triggers, lacks=forbidden)
 
     def test_ci_matrix_profiles_are_topology_complete(self) -> None:
         """Matrix and distro Dockerfiles cover both repository-local profiles."""
@@ -70,101 +88,40 @@ class TestCodegenCiMatrix:
         root = self._render_project(tmp_path / "external")
         tm.that((root / ".github" / "workflows" / "ci-matrix.yml").is_file(), eq=True)
 
-    def test_gate_attestation_is_generated_as_transparent_checkpoint(
+    def test_latest_mise_is_owned_only_by_make_setup(self, tmp_path: Path) -> None:
+        """Generated workflows never install Mise or uv beside make setup."""
+        root = self._render_project(tmp_path / "external")
+        workflows = root / ".github" / "workflows"
+
+        for workflow in workflows.glob("*.yml"):
+            content = workflow.read_text(encoding="utf-8")
+            tm.that(content, lacks="jdx/mise-action")
+            tm.that(content, lacks="astral-sh/setup-uv")
+            tm.that(content, lacks="Install direnv")
+
+    def test_external_attestation_orchestration_is_not_generated_by_flext(
         self, tmp_path: Path
     ) -> None:
-        """Managed projects emit one automatic local-to-GitHub proof pipeline."""
+        """FLEXT exposes primitives without selecting AI Hub's GitHub capability."""
         root = self._render_project(tmp_path / "attested")
         makefile = (root / "Makefile").read_text(encoding="utf-8")
-        script = (root / ".github/scripts/gate-attestation.sh").read_text(
-            encoding="utf-8"
-        )
-        workflow = (root / ".github/workflows/gate-attestation.yml").read_text(
-            encoding="utf-8"
-        )
-
-        tm.that(makefile, has="_builtin_checkpoint_wip:")
-        tm.that(makefile, has="_builtin_checkpoint_merge:")
-        tm.that(makefile, has="_builtin_checkpoint_review:")
-        tm.that(makefile, has="_builtin_checkpoint_verify:")
-        tm.that(script, has='git commit -m "[WIP] $MESSAGE ($BEAD)"')
-        tm.that(script, lacks="[skip ci]")
-        tm.that(
-            (root / ".github/scripts/gate-attestation.sh").stat().st_mode & 0o111,
-            eq=0o111,
-        )
-        wip_case = script.split("  wip)", maxsplit=1)[1].split("  merge)", maxsplit=1)[0]
-        merge_case = script.split("  merge)", maxsplit=1)[1].split("  review)", maxsplit=1)[0]
-        review_case = script.split("  review)", maxsplit=1)[1].split("  verify)", maxsplit=1)[0]
-        tm.that(wip_case, lacks="run_local_gates")
-        tm.that(wip_case, lacks="publish_receipt")
-        tm.that(wip_case, has="validation and attestation NOT SELECTED")
-        tm.that(merge_case, has="aggregate_pull_requests")
-        tm.that(merge_case, has="close_transferred_drafts")
-        tm.that(script, has='gh pr close "$source_pr"')
-        tm.that(script, has="Transferred automatically to maintained PR #$PR")
-        tm.that(script, has="for source_pr in $SOURCE_PRS")
-        tm.that(script, has='jq -c \'.[]\' "$canonical_manifest" >>"$manifest_lines"')
-        tm.that(script, has='select(.pr == $pr)')
-        tm.that(script, has='jq -c \'.\' "$transferred_lines"')
-        tm.that(script, lacks="MAX_DRAFT")
-        tm.that(review_case, has="publish_receipt")
-        tm.that(review_case, has="require_review_pr_contract")
-        tm.that(review_case, has="complete_transactional_promotion")
-        tm.that(script, has='gh pr ready "$PR"')
-        tm.that(script, has='gh pr checks "$PR" --watch --fail-fast')
-        tm.that(
-            script.index('gh pr ready "$PR"')
-            < script.index('gh pr checks "$PR" --watch --fail-fast'),
-            eq=True,
-        )
-        tm.that(script, has='gh pr ready "$PR" --undo')
-        tm.that(
-            review_case.index("require_review_pr_contract")
-            < review_case.index("publish_receipt")
-            < review_case.index("complete_transactional_promotion"),
-            eq=True,
-        )
-        tm.that(
-            review_case.index("require_review_pr_contract")
-            < review_case.index("git commit --allow-empty")
-            < review_case.index("publish_receipt"),
-            eq=True,
-        )
-        tm.that(script, has="git merge --no-ff")
-        tm.that(script, lacks="run_local_gates")
-        tm.that(script, lacks="git tag -s")
-        tm.that(script, has="github attest-gates")
-        tm.that(script, has="github verify-gates")
-        tm.that(script, has='gc --city "$city" bd update "$BEAD" --rig "$rig"')
-        tm.that(script, has='bd -C "$city" update "$shared_child"')
-        tm.that(script, has="git rev-parse --path-format=absolute --git-common-dir")
-        tm.that(workflow, has="id-token: write")
-        tm.that(workflow, has="attestations: write")
-        action = config.Infra.codegen.github_actions["attest"]
-        tm.that(workflow, has=f"uses: {action.repository}@{action.sha}")
-        tm.that(workflow, has=".github/scripts/gate-attestation.sh verify")
-        tm.that(workflow, has="run: make setup")
-        tm.that(workflow, lacks="make check")
-        tm.that(workflow, lacks="make test")
+        tm.that(makefile, lacks="_builtin_checkpoint_")
+        tm.that((root / ".github/scripts/gate-attestation.sh").exists(), eq=False)
+        tm.that((root / ".github/workflows/gate-attestation.yml").exists(), eq=False)
+        tm.that((root / ".github/attestations/allowed_signers").exists(), eq=False)
 
     def test_github_apps_are_not_selected_for_draft_prs(self, tmp_path: Path) -> None:
         """Versioned app policy reserves external review for non-Draft PRs."""
         root = self._render_project(tmp_path / "apps-review-only")
-        cubic = (root / "cubic.yaml").read_text(encoding="utf-8")
-        tm.that(cubic, has="check_drafts: false")
-        tm.that(cubic, has="- WIP")
-        tm.that(cubic, has="generate: false")
-        coderabbit = (root / ".coderabbit.yaml").read_text(encoding="utf-8")
-        tm.that(coderabbit, has="drafts: false")
-        tm.that(coderabbit, has='- "!WIP"')
+        tm.that((root / "cubic.yaml").exists(), eq=False)
+        tm.that((root / ".coderabbit.yaml").exists(), eq=False)
 
     def test_ci_workflow_uses_immutable_action_catalog(self, tmp_path: Path) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
         root = self._render_project(tmp_path / "external")
         workflows = "\n".join(
             (root / ".github" / "workflows" / filename).read_text(encoding="utf-8")
-            for filename in ("ci.yml", "ci-matrix.yml", "gate-attestation.yml")
+            for filename in ("ci.yml", "ci-matrix.yml")
         )
         catalog = {
             f"{action.repository}@{action.sha}": action.version
@@ -195,56 +152,52 @@ class TestCodegenCiMatrix:
             encoding="utf-8"
         )
 
-        tm.that(workflow, has="run: CI=Y make setup")
-        tm.that(workflow, has="github verify-gates")
-        tm.that(
-            workflow,
-            has="ref: ${{ github.event.pull_request.head.sha || github.sha }}",
+        ci_step_runs = tuple(
+            (f"run: CI=Y make {step.verb}" + (" APPLY=Y" if step.apply else ""))
+            for step in config.Infra.codegen.make.workflow
+            if "ci" in step.contexts
         )
+        for run_line in ci_step_runs:
+            tm.that(workflow, has=run_line)
+        tm.that(ci_step_runs, has="run: CI=Y make setup")
+        tm.that(workflow, has="run: CI=Y make conform APPLY=Y")
+        tm.that(workflow, has="run: CI=Y make audit")
+        tm.that(workflow, lacks="attest/gates/v1")
+        tm.that(workflow, lacks="github verify-gates")
+        tm.that(workflow, lacks="WHAT=")
+        step_indices = tuple(workflow.index(run_line) for run_line in ci_step_runs)
+        tm.that(step_indices, eq=tuple(sorted(step_indices)))
+        setup_index = workflow.index("run: CI=Y make setup")
+        conform_index = workflow.index("run: CI=Y make conform APPLY=Y")
+        audit_index = workflow.index("run: CI=Y make audit")
+        check_index = workflow.index("run: CI=Y make check APPLY=Y")
+        test_index = workflow.index("run: CI=Y make test APPLY=Y")
         tm.that(
-            workflow,
-            has='git fetch --force origin "refs/tags/attest/gates/v1/$GATE_COMMIT_SHA:',
-        )
-        tm.that(workflow, lacks="run: CI=Y make gen WHAT=check")
-        tm.that(workflow, lacks="run: CI=Y make check")
-        tm.that(workflow, lacks="run: CI=Y make test")
-        tm.that(workflow, lacks="run: make test")
-        tm.that(workflow, lacks="WHAT=apply")
-        tm.that(workflow, lacks="APPLY=Y")
-        tm.that(
-            workflow.index("run: CI=Y make setup")
-            < workflow.index("git fetch --force origin")
-            < workflow.index("github verify-gates"),
+            setup_index < conform_index < audit_index < check_index < test_index,
             eq=True,
         )
         header, jobs = workflow.split("\njobs:\n", maxsplit=1)
         tm.that(header, lacks="permissions:")
         ci_job = jobs.split("\n  merge-guard:", maxsplit=1)[0]
         tm.that(ci_job, has="permissions:\n      contents: read")
+        tm.that(jobs, has="merge-guard:")
+        tm.that(jobs, has="Block WIP heads from protected integration branches")
 
-    def test_blocking_ci_configures_git_auth_through_gh(self, tmp_path: Path) -> None:
-        """Provider baseline fetches use the runner token through the gh owner."""
+    def test_blocking_ci_does_not_configure_github_cli_auth(
+        self, tmp_path: Path
+    ) -> None:
+        """FLEXT codegen never selects GitHub CLI authentication."""
         root = self._render_project(tmp_path / "external")
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
 
-        tm.that(workflow, has="- name: Configure GitHub authentication")
-        tm.that(workflow, has="GH_TOKEN: ${{ github.token }}")
-        # The gh credential helper reads GH_TOKEN from the environment of the
-        # step that runs git, so the token must be declared on the job, before
-        # any step, not only on the setup-git step.
-        tm.that(
-            workflow.index("GH_TOKEN: ${{ github.token }}")
-            < workflow.index("    steps:"),
-            eq=True,
-        )
-        tm.that(workflow, has="run: gh auth setup-git")
-        tm.that(
-            workflow.index("run: gh auth setup-git")
-            < workflow.index("github verify-gates"),
-            eq=True,
-        )
+        tm.that(workflow, lacks="- name: Configure GitHub authentication")
+        tm.that(workflow, lacks="GH_TOKEN: ${{ github.token }}")
+        tm.that(workflow, lacks="run: gh auth setup-git")
+        steps_index = workflow.index("    steps:")
+        setup_index = workflow.index("run: CI=Y make setup")
+        tm.that(steps_index < setup_index, eq=True)
 
     def test_rendered_pre_commit_uses_typed_hook_contexts(self, tmp_path: Path) -> None:
         """The generated staged hooks render the configured workflow partitions."""
@@ -299,17 +252,21 @@ class TestCodegenCiMatrix:
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
+        # The empty include sits between the checkout and the credential-source
+        # step: no blank line may appear there, and exactly one separates the
+        # last step before the setup commentary from that commentary.
+        tm.that(
+            workflow, has="fetch-depth: 0\n      # Mise resolves GitHub credentials"
+        )
         marker = (
-            "fetch-depth: 0\n"
-            "          ref: ${{ github.event.pull_request.head.sha || github.sha }}\n\n"
-            "      # Codegen refreshes the declared provider baseline"
+            '>> "$GITHUB_ENV"\n\n      # make setup is the only toolchain installer.'
         )
         tm.that(workflow, has=marker)
         tm.that(
             workflow,
             lacks=(
-                "ref: ${{ github.event.pull_request.head.sha || github.sha }}\n\n\n"
-                "      # Codegen refreshes the declared provider baseline"
+                '>> "$GITHUB_ENV"\n\n\n'
+                "      # make setup is the only toolchain installer."
             ),
         )
         root2 = self._render_project(tmp_path / "member-again")
@@ -320,9 +277,6 @@ class TestCodegenCiMatrix:
 
     def test_docs_workflow_inits_private_submodules_when_configured(self) -> None:
         """Docs jobs that run make setup must use the same deploy-key init as CI."""
-        from flext_infra import config, m
-        from flext_cli import u as cli_u
-
         codegen = config.Infra.codegen
         private = codegen.ci_private_submodules.get("cosmos-main")
         tm.that(private is not None, eq=True)
@@ -331,23 +285,16 @@ class TestCodegenCiMatrix:
             Path(__file__).resolve().parents[3]
             / "src/flext_infra/templates/project/base/.github/workflows/docs.yml.j2"
         )
-        spec = m.Infra.GithubWorkflowRenderSpec(
+        spec = CodegenTestSupport.Ci.workflow_spec(
             dist="cosmos-main",
             make_profile=c.Infra.MakeProfile.WORKSPACE,
             repository_branch="develop",
-            ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
-            python_version=codegen.toolchain.python_version,
-            mise_version=codegen.toolchain.mise_version,
-            uv_version=codegen.toolchain.uv_version,
-            dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
-            github_actions=codegen.github_actions,
-            gate_attestation=codegen.gate_attestation,
-            make=codegen.make,
-            workspace_repositories=(),
-            checkout_submodules=codegen.checkout_submodules,
-            private_submodules=private,
-        )
-        rendered = cli_u.Cli.template_render(tpl, spec)
+            ci_trigger_branches=(
+                *config.Infra.codegen.branch_policy.ci_trigger_branches,
+                "develop",
+            ),
+        ).model_copy(update={"private_submodules": private})
+        rendered = u.Cli.template_render(tpl, spec)
         tm.ok(rendered)
         rendered_text: str = rendered.value
         tm.that(rendered_text, has="Init private workspace projects")
@@ -368,10 +315,9 @@ class TestCodegenCiMatrix:
                     has=f"{action.repository}@{action.sha}  # {action.version}",
                 )
 
-    def test_dependabot_uses_uv_dependency_cooldown(self, tmp_path: Path) -> None:
-        """Dependabot never raises floors newer than uv will resolve."""
+    def test_dependabot_does_not_delay_available_updates(self, tmp_path: Path) -> None:
+        """Every declared ecosystem can select its newest available release."""
         root = self._render_project(tmp_path / "external")
-        cooldown = config.Infra.codegen.toolchain.dependency_cooldown_days
 
         document = u.Cli.yaml_load_mapping(root / ".github" / "dependabot.yml")
         updates = t.Cli.JSON_LIST_ADAPTER.validate_python(document["updates"])
@@ -382,11 +328,7 @@ class TestCodegenCiMatrix:
         tm.that(ecosystems, eq={"github-actions", "pip"})
         for item in updates:
             update = t.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
-            cooldown_config = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                update["cooldown"]
-            )
-            tm.that(cooldown_config["default-days"], eq=cooldown)
-        tm.that(config.Infra.codegen.toolchain.uv_exclude_newer, eq=f"{cooldown} days")
+            tm.that(update, lacks="cooldown")
 
     def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
         """Generated project carries one Dockerfile per supported distro."""
@@ -421,7 +363,7 @@ class TestCodegenCiMatrix:
                 tm.that(content, has="bash")
                 tm.that(content, has="build-base")
             tm.that(content, has="USER runner")
-            tm.that(content, has="./bin/mise install --locked --yes")
+            tm.that(content, lacks="./bin/mise install --locked --yes")
             tm.that(content, has="RUN --mount=type=bind,source=.,target=/source,ro")
             tm.that(content, has="cp -R /source/. /workspace/")
             tm.that(content, lacks="COPY")
@@ -501,7 +443,7 @@ class TestCodegenCiMatrix:
         matrix = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
             encoding="utf-8"
         )
-        integrations = ("dev", "develop", "0.12.0-dev", "main")
+        integrations = tuple(config.Infra.codegen.branch_policy.ci_trigger_branches)
         tm.that(integrations, has=branch)
         for integration in integrations:
             tm.that(blocking, has=f"      - {integration}")
@@ -510,14 +452,7 @@ class TestCodegenCiMatrix:
         triggers = matrix.split('"on":', maxsplit=1)[1].split(
             "# End SECTION: triggers", maxsplit=1
         )[0]
-        tm.that(triggers, has="workflow_dispatch: {}")
-        tm.that(triggers, lacks="branches: [main]")
-        tm.that(triggers, lacks="pull_request:")
-        tm.that(triggers, lacks="ready_for_review")
-        tm.that(triggers, lacks="repository_branch")
-        tm.that(triggers, lacks="0.12.0-dev")
-        tm.that(triggers, lacks="develop")
-        tm.that(triggers, lacks="branches: [dev]")
+        self._assert_dispatch_only(triggers)
 
     def test_draft_wip_selects_no_jobs_and_review_blocks_wip_head(
         self, tmp_path: Path
@@ -531,6 +466,7 @@ class TestCodegenCiMatrix:
         ci_job, merge_guard = jobs.split("\n  merge-guard:", maxsplit=1)
 
         tm.that(ci_job, has="github.event.pull_request.draft == false")
+        tm.that(ci_job, has="make test")
         tm.that(merge_guard, has="github.event.pull_request.draft == false")
         tm.that(merge_guard, has="subject=$(git log -1 --format=%s)")
         tm.that(merge_guard, has='[[ "$subject" == \\[WIP\\]* ]]')
@@ -554,13 +490,7 @@ class TestCodegenCiMatrix:
         triggers = content.split('"on":', maxsplit=1)[1].split(
             "# End SECTION: triggers", maxsplit=1
         )[0]
-        tm.that(triggers, has="workflow_dispatch: {}")
-        tm.that(triggers, lacks="branches: [main]")
-        tm.that(triggers, lacks="pull_request:")
-        tm.that(triggers, lacks="repository_branch")
-        tm.that(triggers, lacks="0.12.0-dev")
-        tm.that(triggers, lacks="develop")
-        tm.that(triggers, lacks="branches: [dev]")
+        self._assert_dispatch_only(triggers)
         tm.that(content, lacks="{% if make_profile")
 
     def test_docs_workflow_covers_every_blocking_ci_branch(
@@ -634,7 +564,6 @@ class TestCodegenCiMatrix:
             "!bin/mise",
             "!bin/mise.cmd",
             "!.python-version",
-            "!.default-python-packages",
             "!config/",
             "!scripts/dispatch.py",
             "!tests/fixtures/ci/docker/",
