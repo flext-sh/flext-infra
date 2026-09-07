@@ -26,7 +26,6 @@ from flext_infra.transformers.import_modernizer import (
 from flext_infra.transformers.mro_remover import FlextInfraRefactorMroRemover
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
 from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransformer
-from .._utilities.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
 from flext_infra.transformers.typing_dict_attr import FlextInfraRefactorTypingDictAttr
 from flext_infra.transformers.typing_dict_import import (
     FlextInfraRefactorTypingDictImport,
@@ -142,12 +141,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                     )
                 )
         return self._build_project_fix_result(
-            project_dir,
-            fixed,
-            previewed,
-            skipped,
-            failed,
-            files_modified,
+            project_dir, fixed, previewed, skipped, failed, files_modified
         )
 
     @staticmethod
