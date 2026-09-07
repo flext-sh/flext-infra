@@ -94,9 +94,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 for requirement in u.Cli.toml_as_string_list(
                     u.Cli.toml_value(build_system, "requires")
                 )
-                if (
-                    name := FlextInfraUtilitiesDependencies.dep_name(requirement)
-                )
+                if (name := FlextInfraUtilitiesDependencies.dep_name(requirement))
                 is not None
             )
         declared_tool_distributions = declared_distributions.intersection(
