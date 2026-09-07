@@ -90,10 +90,10 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
         bundle: m.Infra.DocsGenerationBundle,
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Snapshot targets from the canonical rendered artifact inventory."""
-        workspace_root = bundle.scopes[0].scope.path
+        repository_root = bundle.scopes[0].scope.path
         scope_roots = tuple(scoped.scope.path for scoped in bundle.scopes)
         stable = FlextInfraUtilitiesDocsGeneratePlanMixin.docs_verify_sources(
-            workspace_root, bundle.source_states, extra_roots=scope_roots
+            repository_root, bundle.source_states, extra_roots=scope_roots
         )
         if stable.failure:
             return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(stable)
@@ -111,7 +111,7 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
                     return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(planned)
                 plans.append(planned.value)
         stable = FlextInfraUtilitiesDocsGeneratePlanMixin.docs_verify_sources(
-            workspace_root, bundle.source_states, extra_roots=scope_roots
+            repository_root, bundle.source_states, extra_roots=scope_roots
         )
         if stable.failure:
             return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(stable)

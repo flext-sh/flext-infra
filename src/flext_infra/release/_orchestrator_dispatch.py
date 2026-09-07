@@ -379,7 +379,11 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             return changelog
         # Why: README, docs/index and the API overview render the version, and
         # the docs generator owns them; the stamp regenerates its projections
+<<<<<<< HEAD
+        # so selector-free `make gen` stays a fixed point on the release lane.
+=======
         # so `make gen APPLY=Y` stays a fixed point on the release lane.
+>>>>>>> origin/0.12.0-dev
         return FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
                 root=root,
@@ -482,14 +486,14 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             [c.Infra.GIT, "push", c.Infra.GIT_ORIGIN, ctx.tag], cwd=root
         )
 
-    def _create_tag(self, workspace_root: Path, tag: str) -> p.Result[bool]:
+    def _create_tag(self, repository_root: Path, tag: str) -> p.Result[bool]:
         """Create the annotated tag at HEAD, or accept it when it already points there."""
         existing = u.Cli.capture(
-            [c.Infra.GIT, "rev-list", "-n", "1", tag], cwd=workspace_root
+            [c.Infra.GIT, "rev-list", "-n", "1", tag], cwd=repository_root
         )
         if existing.success and existing.value.strip():
             head = u.Cli.capture(
-                [c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=workspace_root
+                [c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=repository_root
             )
             if head.failure:
                 return r[bool].from_failure(head)
@@ -497,7 +501,8 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
                 return r[bool].fail(f"release tag {tag} already points elsewhere")
             return r[bool].ok(True)
         return u.Cli.run_checked(
-            [c.Infra.GIT, "tag", "-a", tag, "-m", f"release: {tag}"], cwd=workspace_root
+            [c.Infra.GIT, "tag", "-a", tag, "-m", f"release: {tag}"],
+            cwd=repository_root,
         )
 
     # --------------------------------------------------------------- helpers

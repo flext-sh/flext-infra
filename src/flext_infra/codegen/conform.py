@@ -6,37 +6,30 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import os
-import re
 import time
-from collections.abc import Mapping
+import re
 from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Annotated, override
 
 from flext_core import r
-from flext_infra import config, p, u
+from flext_infra import config, p
 from flext_infra.base import s
-from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.constants import c
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-from flext_infra.docs.generator import FlextInfraDocGenerator
+from flext_infra._utilities.project_managed_artifacts import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 from flext_infra.models import m
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.typings import t
+from flext_infra.utilities import u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
-
-    @staticmethod
-    def _mise_bootstrap_environment() -> m.Infra.MiseBootstrapEnvironmentSpec:
-        """Project the single generated Mise isolation contract into templates."""
-        return u.Infra.mise_bootstrap_environment()
 
     @staticmethod
     def _link_mode(
@@ -48,21 +41,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             msg = "resolved uv link mode must be a string"
             raise TypeError(msg)
         return link_mode
-
-    @staticmethod
-    def _dependency_cooldown_policy(
-        repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
-    ) -> tuple[tuple[str, ...], dict[str, str]]:
-        """Compose fleet defaults with the repository's narrower policy."""
-        exclusions = dict.fromkeys(toolchain.dependency_cooldown_exclusions)
-        overrides = dict(toolchain.dependency_cooldown_overrides)
-        for package in repository.dependency_cooldown_exclusions:
-            overrides.pop(package, None)
-            exclusions[package] = None
-        for package, cutoff in repository.dependency_cooldown_overrides.items():
-            exclusions.pop(package, None)
-            overrides[package] = cutoff
-        return tuple(exclusions), overrides
 
     @classmethod
     def _surface_contract(
@@ -112,14 +90,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             description="Validated scaffold specification included in the atomic plan",
         ),
     ] = None
-    scaffolded_repository: Annotated[
-        bool,
-        m.Field(
-            default=False,
-            exclude=True,
-            description="Whether this invocation initialized an unpublished Git root",
-        ),
-    ] = False
 
     @classmethod
     def execute_request(
@@ -128,95 +98,30 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         initial_workspace: m.Infra.WorkspaceSpec | None = None,
     ) -> p.Result[m.Infra.CodegenResult]:
         """Execute one already validated public CLI request."""
-        root = request.root.expanduser().resolve()
-        bootstrap: tuple[m.Cli.AtomicDirectoryState, ...] = ()
-        initialized_git = False
-        if initial_workspace is not None and not root.is_dir():
-            planned = u.Cli.atomic_plan_directory_chain(root)
-            if planned.failure:
-                return r[m.Infra.CodegenResult].from_failure(planned)
-            created = u.Cli.atomic_create_directory_chain_guarded(
-                planned.value, permission_mode=0o755
-            )
-            if created.failure:
-                return r[m.Infra.CodegenResult].from_failure(created)
-            bootstrap = tuple(created.value)
-        if initial_workspace is not None and not (root / c.Infra.GIT_DIR).exists():
-            provider = cls._repository_provider(
-                initial_workspace.repository, config.Infra.codegen
-            )
-            if provider.failure:
-                return r[m.Infra.CodegenResult].from_failure(provider)
-            initialized = u.Cli.run_checked([
-                c.Infra.GIT,
-                "init",
-                "--initial-branch",
-                provider.value.branch,
-                str(root),
-            ])
-            if initialized.failure:
-                return r[m.Infra.CodegenResult].from_failure(initialized)
-            remote = u.Cli.run_checked([
-                c.Infra.GIT,
-                "-C",
-                str(root),
-                "remote",
-                "add",
-                c.Infra.GIT_DEFAULT_REMOTE,
-                initial_workspace.repository.url,
-            ])
-            if remote.failure:
-                return r[m.Infra.CodegenResult].from_failure(remote)
-            committed = u.Cli.run_checked([
-                c.Infra.GIT,
-                "-C",
-                str(root),
-                "commit",
-                "--allow-empty",
-                "-m",
-                "chore: initialize generated project",
-            ])
-            if committed.failure:
-                return r[m.Infra.CodegenResult].from_failure(committed)
-            initialized_git = True
         service = cls(
-            repository_root=root, request=request, initial_workspace=initial_workspace
+            workspace_root=request.root.expanduser().resolve(),
+            request=request,
+            initial_workspace=initial_workspace,
         )
-        result = service.execute()
-        if result.success:
-            return result
-        if initialized_git:
-            inventory = u.Cli.atomic_inventory_physical_tree(root / c.Infra.GIT_DIR)
-            if inventory.failure:
-                return r[m.Infra.CodegenResult].fail(
-                    f"{result.error or 'generation failed'}; "
-                    f"scaffold Git rollback inventory failed: {inventory.error}"
-                )
-            cleaned = u.Cli.atomic_cleanup_physical_tree_guarded(inventory.value)
-            if cleaned.failure:
-                return r[m.Infra.CodegenResult].fail(
-                    f"{result.error or 'generation failed'}; "
-                    f"scaffold Git rollback failed: {cleaned.error}"
-                )
-        rollback = cls._rollback_scaffold_directories(bootstrap)
-        if rollback.failure:
-            return r[m.Infra.CodegenResult].fail(
-                f"{result.error or 'generation failed'}; "
-                f"scaffold root rollback failed: {rollback.error}"
-            )
-        return result
+        return service.execute()
 
     @override
     def execute(self) -> p.Result[m.Infra.CodegenResult]:
         """Run check or apply and require a verified fixed point."""
         request = self.request or m.Infra.CodegenConformRequest(
-            root=self.repository_root
+            root=self.workspace_root
         )
-        if (
-            c.Infra.CodegenConformSurface(request.what)
-            is c.Infra.CodegenConformSurface.ALL
-        ):
+        surface = c.Infra.CodegenConformSurface(request.what)
+        if surface is c.Infra.CodegenConformSurface.ALL:
             return self._execute_managed(request)
+        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY:
+            mise_owner = FlextInfraCodegenMiseArtifacts(
+                repository_root=request.root, apply_changes=True, check_only=False
+            )
+            transaction = FlextInfraCodegenTransaction(mise_owner)
+            return transaction.run_locked(
+                prepare=False, operation=lambda _scope_root: self._execute_plan(request)
+            )
         return self._execute_plan(request)
 
     def _execute_plan(
@@ -230,98 +135,25 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         planned = self.plan(request)
         if planned.failure:
-            return r[m.Infra.CodegenResult].from_failure(planned)
+            return r[m.Infra.CodegenResult].fail(
+                planned.error or "codegen conform planning failed"
+            )
         plan = planned.value
         mode = c.Infra.CodegenConformMode(request.mode)
-        ancestry = self._validate_ancestry(plan)
-        if ancestry.failure:
-            return r[m.Infra.CodegenResult].from_failure(ancestry)
-        changed = tuple(
-            file for file in plan.files if u.Infra.codegen_file_requires_effect(file)
+        ancestry_violations = tuple(
+            (ancestry, reference)
+            for ancestry in plan.branch_ancestry
+            for reference in ancestry.references
+            if reference.ancestor is False
         )
-        if mode is c.Infra.CodegenConformMode.CHECK:
-            if changed:
-                paths = ", ".join(str(file.path) for file in changed)
-                return r[m.Infra.CodegenResult].fail(f"codegen drift detected: {paths}")
-            return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
-        surface = c.Infra.CodegenConformSurface(request.what)
-        if surface is not c.Infra.CodegenConformSurface.MAKEFILE:
-            return r[m.Infra.CodegenResult].fail(
-                "partial codegen apply is prohibited; use the complete all surface"
-            )
-        expected_path = request.root.expanduser().resolve() / c.Infra.MAKEFILE_FILENAME
-        if (
-            any(file.path != expected_path for file in plan.files)
-            or len(plan.files) != 1
-        ):
-            return r[m.Infra.CodegenResult].fail(
-                "Makefile bootstrap plan must own exactly the root dispatcher"
-            )
-        written: tuple[Path, ...] = ()
-        if changed:
-            (file,) = changed
-            before = u.Infra.codegen_file_before_state(file)
-            if before.failure:
-                return r[m.Infra.CodegenResult].from_failure(before)
-            if file.desired_content is None or file.desired_mode is None:
-                return r[m.Infra.CodegenResult].fail(
-                    "Makefile bootstrap cannot delete its dispatcher"
+        if ancestry_violations:
+            details = "; ".join(
+                (
+                    f"{reference.reference}@{reference.sha} does not descend from "
+                    f"{ancestry.baseline_reference}@{ancestry.baseline_sha}"
                 )
-            published = u.Cli.atomic_write_binary_file_guarded(
-                before.value, file.desired_content, permission_mode=file.desired_mode
+                for ancestry, reference in ancestry_violations
             )
-            if published.failure:
-                return r[m.Infra.CodegenResult].from_failure(published)
-            written = (file.path,)
-        verified = self.plan(request)
-        if verified.failure:
-            return r[m.Infra.CodegenResult].from_failure(verified)
-        residual = tuple(
-            file
-            for file in verified.value.files
-            if u.Infra.codegen_file_requires_effect(file)
-        )
-        if residual:
-            return r[m.Infra.CodegenResult].fail(
-                f"Makefile bootstrap did not reach a fixed point: {residual[0].path}"
-            )
-        return r[m.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(plan=verified.value, written_files=written)
-        )
-
-    def _execute_managed(
-        self, request: m.Infra.CodegenConformRequest
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Run complete conformance inside the sole generation lock."""
-        mode = c.Infra.CodegenConformMode(request.mode)
-        mise_owner = FlextInfraCodegenMiseArtifacts(
-            repository_root=request.root,
-            apply_changes=mode is c.Infra.CodegenConformMode.APPLY,
-            check_only=mode is c.Infra.CodegenConformMode.CHECK,
-        )
-        transaction = FlextInfraCodegenTransaction(mise_owner)
-        return transaction.run_locked(
-            prepare=mode is c.Infra.CodegenConformMode.APPLY,
-            operation=lambda scope_root: self._execute_managed_locked(
-                request, scope_root, transaction
-            ),
-        )
-
-    def _execute_managed_locked(
-        self,
-        request: m.Infra.CodegenConformRequest,
-        scope_root: Path,
-        transaction: FlextInfraCodegenTransaction,
-    ) -> p.Result[m.Infra.CodegenResult]:
-        """Materialize scaffold parents, then run one locked generation cycle."""
-        prepared = self._prepare_scaffold_directories(request)
-        if prepared.failure:
-            return r[m.Infra.CodegenResult].from_failure(prepared)
-        result = self._execute_managed_locked_prepared(request, scope_root, transaction)
-        if result.success:
-            return result
-        rollback = self._rollback_scaffold_directories(prepared.value)
-        if rollback.failure:
             return r[m.Infra.CodegenResult].fail(
                 f"{result.error or 'generation failed'}; "
                 f"scaffold directory rollback failed: {rollback.error}"
@@ -363,7 +195,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[tuple[m.Cli.AtomicDirectoryState, ...]].ok(())
         profile = workspace.repository.role
         root = request.root.expanduser().resolve()
-        directories = {root}
+        directories = {root, root / c.Infra.MISE_LAUNCHER_DIRECTORY}
         for entry in config.Infra.codegen.templates.entries:
             if profile not in entry.profiles:
                 continue
@@ -377,7 +209,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             directories.add((root / relative).parent)
         created: list[m.Cli.AtomicDirectoryState] = []
-        for directory in sorted(directories, key=self._directory_depth):
+        for directory in sorted(directories, key=u.Infra.path_depth):
             planned = u.Cli.atomic_plan_directory_chain(directory)
             if planned.failure:
                 rollback = self._rollback_scaffold_directories(tuple(created))
@@ -402,11 +234,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             created.extend(materialized.value)
         return r[tuple[m.Cli.AtomicDirectoryState, ...]].ok(tuple(created))
-
-    @staticmethod
-    def _directory_depth(path: Path) -> int:
-        """Return a stable shallow-first directory-chain ordering key."""
-        return len(path.parts)
 
     @staticmethod
     def _rollback_scaffold_directories(
@@ -446,48 +273,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         mode = c.Infra.CodegenConformMode(request.mode)
         if mode is c.Infra.CodegenConformMode.CHECK:
-            routes = self._conform_workspace_beads_routes(request)
-            if routes.failure:
-                return r[m.Infra.CodegenResult].from_failure(routes)
-            reality = transaction.validate_locked(scope_root, config_plans.value)
-            if reality.failure:
-                return r[m.Infra.CodegenResult].from_failure(reality)
             if changed:
                 paths = ", ".join(str(file.path) for file in changed)
                 return r[m.Infra.CodegenResult].fail(f"codegen drift detected: {paths}")
-            lazy_analysis = FlextInfraCodegenLazyInit(
-                repository_root=request.root
-            ).plan_files()
-            if lazy_analysis.failure:
-                return r[m.Infra.CodegenResult].from_failure(lazy_analysis)
-            lazy_changed = tuple(
-                file
-                for file in lazy_analysis.value.files
-                if u.Infra.codegen_file_requires_effect(file)
-            )
-            if lazy_changed:
-                paths = ", ".join(str(file.path) for file in lazy_changed)
-                return r[m.Infra.CodegenResult].fail(
-                    f"lazy-init drift detected: {paths}"
-                )
-            docs_generator = FlextInfraDocGenerator(
-                repository_root=request.root,
-                projects=tuple(repository.name for repository in plan.repositories),
-            )
-            docs_bundle = docs_generator.prepare_bundle()
-            if docs_bundle.failure:
-                return r[m.Infra.CodegenResult].from_failure(docs_bundle)
-            docs_plans = docs_generator.plan_files(docs_bundle.value)
-            if docs_plans.failure:
-                return r[m.Infra.CodegenResult].from_failure(docs_plans)
-            docs_changed = tuple(
-                file
-                for file in docs_plans.value
-                if u.Infra.codegen_file_requires_effect(file)
-            )
-            if docs_changed:
-                paths = ", ".join(str(file.path) for file in docs_changed)
-                return r[m.Infra.CodegenResult].fail(f"docs drift detected: {paths}")
             return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
         session = transaction.begin_locked(scope_root, config_plans.value, plan.files)
         if session.failure:
@@ -533,6 +321,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 with_directories.value, docs_plans.error or "docs planning failed"
             )
             return r[m.Infra.CodegenResult].from_failure(aborted)
+        docs_analysis = m.Infra.CodegenPhaseAnalysis(
+            phase="docs", files=docs_plans.value, inputs=docs_bundle.value.source_states
+        )
         with_docs = transaction.append_phase_locked(
             with_directories.value, "docs", docs_plans.value
         )
@@ -540,18 +331,26 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].from_failure(with_docs)
         published = transaction.commit_locked(
             with_docs.value,
-            lambda: self._validate_managed_fixed_point(request, with_docs.value),
+            lambda: self._validate_managed_fixed_point(
+                request,
+                with_docs.value,
+                transaction,
+                lazy_analysis.value,
+                docs_analysis,
+            ),
         )
         if published.failure:
             return r[m.Infra.CodegenResult].from_failure(published)
         routes = self._conform_workspace_beads_routes(request)
         if routes.failure:
             return r[m.Infra.CodegenResult].from_failure(routes)
-        verified = self.plan(request)
-        if verified.failure:
-            return r[m.Infra.CodegenResult].from_failure(verified)
+        verified = r[m.Infra.CodegenPlan].ok(published.value[1])
+        if routes.value:
+            verified = self.plan(request)
+            if verified.failure:
+                return r[m.Infra.CodegenResult].from_failure(verified)
         return r[m.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(plan=verified.value, written_files=published.value)
+            m.Infra.CodegenResult(plan=verified.value, written_files=published.value[0])
         )
 
     def _conform_workspace_beads_routes(
@@ -573,18 +372,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if workspace_result.failure:
             return r[bool].from_failure(workspace_result)
         workspace = workspace_result.value
-        if c.Infra.CodegenConformScope(request.scope) is (
-            c.Infra.CodegenConformScope.SELF
-        ):
-            return FlextInfraCodegenConform._beads_route_state(root)
         if not workspace.subprojects:
-            return r[bool].ok(True)
+            return r[bool].ok(False)
         owner = root / c.Infra.BEADS_DIRNAME
         if not owner.is_dir() or owner.is_symlink():
             return r[bool].fail(
                 f"workspace Beads ledger owner is not physical: {owner}"
             )
-        for repository in workspace.subprojects:
+        for repository in workspace.declared_repositories:
             state = FlextInfraCodegenConform._beads_route_state(
                 (root / repository.path).resolve()
             )
@@ -610,8 +405,35 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             Path(c.Infra.BEADS_METADATA_RELPATH).name,
             c.Infra.BEADS_LOCAL_VERSION_FILENAME,
         })
-        route = root / c.Infra.BEADS_DIRNAME
-        if route.is_symlink():
+        pending: list[Path] = []
+        for repository in workspace.subprojects:
+            member = (root / repository.path).resolve()
+            route = member / c.Infra.BEADS_DIRNAME
+            if route.is_symlink():
+                if route.resolve() != owner.resolve():
+                    return r[bool].fail(
+                        f"workspace Beads ledger route has another owner: {route}"
+                    )
+                continue
+            if route.exists():
+                if not route.is_dir():
+                    return r[bool].fail(
+                        f"workspace Beads ledger route is not a directory: {route}"
+                    )
+                unexpected = sorted(
+                    entry.name
+                    for entry in route.iterdir()
+                    if entry.name not in allowed_entries
+                )
+                if unexpected:
+                    return r[bool].fail(
+                        f"workspace member has unmerged Beads state at {route}: "
+                        + ", ".join(unexpected)
+                    )
+            pending.append(route)
+        if not pending:
+            return r[bool].ok(False)
+        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return r[bool].fail(
                 "composed project reaches the workspace ledger through a "
                 f"cross-project symbolic link: {route}"
@@ -637,15 +459,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         self,
         request: m.Infra.CodegenConformRequest,
         session: m.Infra.CodegenTransactionSession,
-    ) -> p.Result[bool]:
+        transaction: FlextInfraCodegenTransaction,
+        lazy_analysis: m.Infra.CodegenPhaseAnalysis,
+        docs_analysis: m.Infra.CodegenPhaseAnalysis,
+    ) -> p.Result[m.Infra.CodegenPlan]:
         """Replan conform against live bytes before the journal can commit."""
         u.Cli.info("stage=verify-fixed-point")
         verified = self.plan(request)
         if verified.failure:
-            return r[bool].from_failure(verified)
+            return r[m.Infra.CodegenPlan].fail(
+                verified.error or "post-publication conform planning failed"
+            )
         ancestry = self._validate_ancestry(verified.value)
         if ancestry.failure:
-            return ancestry
+            return r[m.Infra.CodegenPlan].from_failure(ancestry)
         residual = tuple(
             file
             for file in verified.value.files
@@ -653,54 +480,25 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if residual:
             paths = ", ".join(str(file.path) for file in residual)
-            return r[bool].fail(
+            return r[m.Infra.CodegenPlan].fail(
                 f"codegen publication did not reach a fixed point: {paths}"
             )
-        lazy_analysis = FlextInfraCodegenLazyInit(
-            repository_root=request.root
-        ).plan_files()
-        if lazy_analysis.failure:
-            return r[bool].from_failure(lazy_analysis)
-        lazy_residual = tuple(
-            file
-            for file in lazy_analysis.value.files
-            if u.Infra.codegen_file_requires_effect(file)
-        )
-        if lazy_residual:
-            paths = ", ".join(str(file.path) for file in lazy_residual)
-            return r[bool].fail(
-                f"lazy-init publication did not reach a fixed point: {paths}"
-            )
-        docs_generator = FlextInfraDocGenerator(
-            repository_root=request.root,
-            projects=tuple(
-                repository.name for repository in verified.value.repositories
-            ),
-        )
-        docs_bundle = docs_generator.prepare_bundle()
-        if docs_bundle.failure:
-            return r[bool].from_failure(docs_bundle)
-        docs_plans = docs_generator.plan_files(docs_bundle.value)
-        if docs_plans.failure:
-            return r[bool].from_failure(docs_plans)
-        docs_residual = tuple(
-            file
-            for file in docs_plans.value
-            if u.Infra.codegen_file_requires_effect(file)
-        )
-        if docs_residual:
-            paths = ", ".join(str(file.path) for file in docs_residual)
-            return r[bool].fail(
-                f"docs publication did not reach a fixed point: {paths}"
-            )
+        u.Cli.info("stage=verify-lazy-init-receipt")
+        lazy_fixed_point = transaction.validate_phase_analysis_locked(lazy_analysis)
+        if lazy_fixed_point.failure:
+            return r[m.Infra.CodegenPlan].from_failure(lazy_fixed_point)
+        u.Cli.info("stage=verify-docs-receipt")
+        docs_fixed_point = transaction.validate_phase_analysis_locked(docs_analysis)
+        if docs_fixed_point.failure:
+            return r[m.Infra.CodegenPlan].from_failure(docs_fixed_point)
         mise = FlextInfraCodegenMiseArtifacts(
             repository_root=request.root, apply_changes=False, check_only=True
         )
         for project in session.plan.projects:
             validated = mise.validate_artifacts(project.layout.root)
             if validated.failure:
-                return r[bool].from_failure(validated)
-        return r[bool].ok(True)
+                return r[m.Infra.CodegenPlan].from_failure(validated)
+        return r[m.Infra.CodegenPlan].ok(verified.value)
 
     @staticmethod
     def _mise_config_plans(
@@ -740,9 +538,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"{reference.reference}@{reference.sha} does not descend from "
                 f"{ancestry.baseline_reference}@{ancestry.baseline_sha}"
             )
-            for ancestry, reference in violations
+        return r[m.Infra.CodegenResult].ok(
+            m.Infra.CodegenResult(plan=verified_plan, written_files=tuple(written))
         )
-        return r[bool].fail(f"governed branch ancestry violations: {details}")
 
     def plan(
         self, request: m.Infra.CodegenConformRequest
@@ -750,14 +548,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Build and validate the complete selection without writing."""
         config_spec = config.Infra.codegen
         root = request.root.expanduser().resolve()
-        workspace_root = root
+        repository_root = root
         workspace = self.initial_workspace
         if workspace is None:
             workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
-                workspace_root
+                repository_root
             )
             if workspace_result.failure:
-                return r[m.Infra.CodegenPlan].from_failure(workspace_result)
+                return r[m.Infra.CodegenPlan].fail(
+                    workspace_result.error or "workspace topology load failed"
+                )
             workspace = workspace_result.value
         current_repository = workspace.repository
         if self.initial_workspace is None:
@@ -765,7 +565,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 root, workspace
             )
             if current_target_result.failure:
-                return r[m.Infra.CodegenPlan].from_failure(current_target_result)
+                return r[m.Infra.CodegenPlan].fail(
+                    current_target_result.error
+                    or "repository conformance target resolution failed"
+                )
             current_target = current_target_result.value
             current_repository = current_target.repository
         else:
@@ -780,27 +583,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"{current_repository.provider}"
                 )
             (provider,) = providers
-            # The provider default is the fallback, never the answer: this
-            # repository's own published integration branch decides.
-            baseline_result = u.Infra.repository_baseline_branch(
-                root,
-                fallback=provider.branch,
-                preference=config_spec.branch_policy.integration_branch_preference,
+            baseline = u.Infra.repository_baseline_branch(
+                root, fallback=provider.branch
             )
-            if baseline_result.failure:
-                return r[m.Infra.CodegenPlan].from_failure(baseline_result)
+            if baseline.failure:
+                return r[m.Infra.CodegenPlan].fail(
+                    baseline.error
+                    or "repository integration baseline resolution failed"
+                )
             current_target = m.Infra.RepositoryConformTarget(
                 repository=current_repository,
                 root=root,
-                make_profile=current_repository.role,
-                beads=workspace.beads,
+                make_profile=current_make_profile,
                 canonical_project_name=current_repository.distribution,
-                baseline_branch=baseline_result.value,
-                baseline_reference=(
-                    f"refs/heads/{baseline_result.value}"
-                    if self.scaffolded_repository
-                    else f"refs/remotes/origin/{baseline_result.value}"
-                ),
+                baseline_branch=baseline.value,
                 ci_enabled=True,
                 external_dependency_paths=workspace.external_dependency_paths,
                 technical_branch_patterns=(
@@ -814,7 +610,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             request, workspace, current_repository
         )
         if selected_result.failure:
-            return r[m.Infra.CodegenPlan].from_failure(selected_result)
+            return r[m.Infra.CodegenPlan].fail(
+                selected_result.error or "repository selection failed"
+            )
         selected = selected_result.value
         contract = self._surface_contract(c.Infra.CodegenConformSurface(request.what))
         files: list[m.Infra.CodegenFilePlan] = []
@@ -827,16 +625,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             u.Cli.progress(
                 repository_index, total_repositories, repository.name, "conform"
             )
-            u.Cli.info(
-                f"  stage=topology repository={repository.name} "
-                f"role={repository.role.value} kind={repository.kind.value}"
-            )
-            if repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT:
-                u.Cli.info(
-                    f"  stage=skip repository={repository.name} "
-                    f"kind={repository.kind.value} is not rewritten by generation"
-                )
-                continue
             is_current_repository = repository.name == current_target.repository.name
             if is_current_repository:
                 repository_root = current_target.root
@@ -847,10 +635,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
             else:
                 repository_root_result = self._repository_root(
-                    workspace_root, workspace, repository
+                    repository_root, workspace, repository
                 )
                 if repository_root_result.failure:
-                    return r[m.Infra.CodegenPlan].from_failure(repository_root_result)
+                    return r[m.Infra.CodegenPlan].fail(
+                        repository_root_result.error
+                        or f"invalid repository root: {repository.name}"
+                    )
                 repository_root = repository_root_result.value
             if repository_root.exists() and not repository_root.is_dir():
                 return r[m.Infra.CodegenPlan].fail(
@@ -864,30 +655,24 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 target = current_target
                 local_workspace = workspace
             else:
-                if repository.path != Path():
-                    local_repository = repository.model_copy(update={"path": Path()})
-                    local_workspace = m.Infra.WorkspaceSpec(
-                        name=repository.name,
-                        beads=workspace.beads,
-                        repository=local_repository,
+                local_workspace_result = (
+                    FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)
+                )
+                if local_workspace_result.failure:
+                    return r[m.Infra.CodegenPlan].fail(
+                        local_workspace_result.error
+                        or f"repository topology load failed: {repository_root}"
                     )
-                else:
-                    local_workspace_result = (
-                        FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)
-                    )
-                    if local_workspace_result.failure:
-                        return r[m.Infra.CodegenPlan].from_failure(
-                            local_workspace_result
-                        )
-                    local_workspace = local_workspace_result.value
+                local_workspace = local_workspace_result.value
                 target_result = FlextInfraWorkspaceDetector.conform_target(
                     repository_root, local_workspace
                 )
                 if target_result.failure:
-                    return r[m.Infra.CodegenPlan].from_failure(target_result)
+                    return r[m.Infra.CodegenPlan].fail(
+                        target_result.error
+                        or f"repository target resolution failed: {repository_root}"
+                    )
                 target = target_result.value
-                if repository.path != Path():
-                    target = target.model_copy(update={"repository": repository})
             if (
                 self.initial_workspace is not None
                 and repository.name == workspace.repository.name
@@ -903,7 +688,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             else:
                 repository_plan = self._plan_existing_repository(
                     root=repository_root,
-                    workspace_root=workspace_root,
+                    repository_root=repository_root,
                     repository=target.repository,
                     target=target,
                     workspace=local_workspace,
@@ -911,7 +696,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     contract=contract,
                 )
             if repository_plan.failure:
-                return r[m.Infra.CodegenPlan].from_failure(repository_plan)
+                return r[m.Infra.CodegenPlan].fail(
+                    repository_plan.error
+                    or (
+                        f"stage=plan position={repository_index}/"
+                        f"{total_repositories} repository={repository.name}: "
+                        f"repository planning failed: {repository_root}"
+                    )
+                )
             governed = self._complete_governed_plans(
                 repository_root,
                 repository_plan.value,
@@ -921,22 +713,33 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 workspace=local_workspace,
             )
             if governed.failure:
-                return r[m.Infra.CodegenPlan].from_failure(governed)
+                return r[m.Infra.CodegenPlan].fail(
+                    governed.error
+                    or (
+                        f"stage=plan position={repository_index}/"
+                        f"{total_repositories} repository={repository.name}: "
+                        f"artifact ownership planning failed: {repository_root}"
+                    )
+                )
             files.extend(governed.value)
             if contract.complete_governed:
                 retired = self.retired_projection_plans(
                     repository_root, target.make_profile
                 )
                 if retired.failure:
-                    return r[m.Infra.CodegenPlan].from_failure(retired)
-                governed_paths = {item.path for item in governed.value}
-                files.extend(
-                    item for item in retired.value if item.path not in governed_paths
-                )
+                    return r[m.Infra.CodegenPlan].fail(
+                        retired.error
+                        or (
+                            f"stage=plan position={repository_index}/"
+                            f"{total_repositories} repository={repository.name}: "
+                            "retired projection planning failed"
+                        )
+                    )
+                files.extend(retired.value)
             environments.append(
                 self._uv_environment_plan(
                     root=repository_root,
-                    workspace_root=workspace_root,
+                    repository_root=repository_root,
                     target=target,
                     workspace=local_workspace,
                     config=config_spec,
@@ -945,7 +748,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if self.initial_workspace is None or (repository_root / ".git").exists():
                 ancestry_result = self._branch_ancestry_plan(target)
                 if ancestry_result.failure:
-                    return r[m.Infra.CodegenPlan].from_failure(ancestry_result)
+                    return r[m.Infra.CodegenPlan].fail(
+                        ancestry_result.error
+                        or (
+                            f"stage=plan position={repository_index}/"
+                            f"{total_repositories} repository={repository.name}: "
+                            f"branch ancestry inventory failed: {repository_root}"
+                        )
+                    )
                 ancestry_plans.append(ancestry_result.value)
             u.Cli.status(
                 "conform",
@@ -984,7 +794,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         governed_by_path = {item.path: item for item in codegen.managed_files}
         completed: list[m.Infra.CodegenFilePlan] = []
         represented: set[Path] = set()
-        represented_indexes: dict[Path, int] = {}
         for file in planned:
             relative = file.path.relative_to(root)
             governed = governed_by_path.get(relative)
@@ -992,26 +801,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 completed.append(file)
                 continue
             represented.add(relative)
-            governed_file = file.model_copy(
-                update={
-                    "owner": governed.owner,
-                    "policy": governed.policy,
-                    "desired_mode": (
-                        governed.mode if file.desired_content is not None else None
-                    ),
-                }
+            completed.append(
+                file.model_copy(
+                    update={"owner": governed.owner, "policy": governed.policy}
+                )
             )
-            if relative in represented_indexes:
-                completed[represented_indexes[relative]] = governed_file
-            else:
-                represented_indexes[relative] = len(completed)
-                completed.append(governed_file)
         if not contract.complete_governed:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(completed))
         for relative, governed in governed_by_path.items():
             if relative in represented:
                 continue
             path = root / relative
+            if path.is_symlink():
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"template destination must be a physical file: {path}"
+                )
             if path.exists() and not path.is_file():
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"governed artifact is not a regular file: {path}"
@@ -1024,15 +828,40 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if entry_profiles:
                 allowed = {item for profiles in entry_profiles for item in profiles}
                 if profile not in allowed:
+                    # Why: profile-excluded managed workflows must not survive as
+                    # "keep current" ghosts (ci-matrix on standalone).
+                    if (
+                        relative.parts[:2] == (".github", "workflows")
+                        and path.is_file()
+                    ):
+                        orphan_read = u.Cli.files_read_text(path)
+                        if orphan_read.failure:
+                            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                                orphan_read.error
+                                or f"orphan workflow read failed: {path}"
+                            )
+                        completed.append(
+                            m.Infra.CodegenFilePlan(
+                                path=path,
+                                owner=governed.owner,
+                                policy=governed.policy,
+                                rendered="",
+                                expected_sha256=u.Cli.sha256_content(""),
+                                current_sha256=u.Cli.sha256_content(orphan_read.value),
+                                changed=True,
+                                absent=True,
+                            )
+                        )
                     continue
-            if not path.exists():
-                continue
             current = ""
             if path.is_file():
                 read = u.Cli.files_read_text(path)
                 if read.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(read)
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                        read.error or f"governed artifact read failed: {path}"
+                    )
                 current = read.value
+            digest = u.Cli.sha256_content(current) if path.is_file() else ""
             if (
                 governed.policy == "merge"
                 and governed.owner == c.Infra.CODEGEN_OWNER_VSCODE
@@ -1041,18 +870,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 # (vscode settings today) produce their rendered content here.
                 merged = FlextInfraCodegen.render_vscode_settings(root)
                 if merged.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(merged)
-                if merged.value != current:
-                    merged_plan = FlextInfraCodegenConform._file_plan(
-                        root, relative.as_posix(), merged.value, mode=governed.mode
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                        merged.error or f"vscode settings merge failed: {path}"
                     )
-                    if merged_plan.failure:
-                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                            merged_plan
-                        )
+                if merged.value != current:
                     completed.append(
-                        merged_plan.value.model_copy(
-                            update={"owner": governed.owner, "policy": governed.policy}
+                        m.Infra.CodegenFilePlan(
+                            path=path,
+                            owner=governed.owner,
+                            policy=governed.policy,
+                            rendered=merged.value,
+                            expected_sha256=u.Cli.sha256_content(merged.value),
+                            current_sha256=digest,
+                            changed=True,
                         )
                     )
                     continue
@@ -1067,39 +897,35 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     profile=profile,
                     project_name=root.name,
                     workspace=workspace,
-                    project_dir=root,
                 )
                 if rendered_gitignore.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                        rendered_gitignore
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                        rendered_gitignore.error or f"gitignore render failed: {path}"
                     )
                 if rendered_gitignore.value != current:
-                    gitignore_plan = FlextInfraCodegenConform._file_plan(
-                        root,
-                        relative.as_posix(),
-                        rendered_gitignore.value,
-                        mode=governed.mode,
-                    )
-                    if gitignore_plan.failure:
-                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                            gitignore_plan
-                        )
                     completed.append(
-                        gitignore_plan.value.model_copy(
-                            update={"owner": governed.owner, "policy": governed.policy}
+                        m.Infra.CodegenFilePlan(
+                            path=path,
+                            owner=governed.owner,
+                            policy=governed.policy,
+                            rendered=rendered_gitignore.value,
+                            expected_sha256=u.Cli.sha256_content(
+                                rendered_gitignore.value
+                            ),
+                            current_sha256=digest,
+                            changed=True,
                         )
                     )
                     continue
-            current_plan = FlextInfraCodegenConform._file_plan(
-                root, relative.as_posix(), current, mode=governed.mode
-            )
-            if current_plan.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                    current_plan
-                )
             completed.append(
-                current_plan.value.model_copy(
-                    update={"owner": governed.owner, "policy": governed.policy}
+                m.Infra.CodegenFilePlan(
+                    path=path,
+                    owner=governed.owner,
+                    policy=governed.policy,
+                    rendered=current,
+                    expected_sha256=digest or u.Cli.sha256_content(current),
+                    current_sha256=digest,
+                    changed=False,
                 )
             )
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(completed))
@@ -1116,22 +942,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         profile: c.Infra.MakeProfile,
         project_name: str,
         workspace: m.Infra.WorkspaceSpec | None = None,
-        project_dir: Path | None = None,
     ) -> p.Result[str]:
         """Render the canonical ``.gitignore`` for one named project.
 
         Public seam consumed by the layout engine: per-project
-        layout ``gitignore_additions`` from the layout SSOT and the
-        repository-owned ``ManagedArtifacts.Gitignore.patterns`` read from
-        ``project_dir`` are appended as trailing derived sections so conform
-        and layout never diverge.
+        layout ``gitignore_additions`` from the layout SSOT are appended as
+        one trailing derived section so conform and layout never diverge.
         """
         return FlextInfraCodegenConform._render_gitignore(
-            codegen,
-            profile=profile,
-            project_name=project_name,
-            workspace=workspace,
-            project_dir=project_dir,
+            codegen, profile=profile, project_name=project_name, workspace=workspace
         )
 
     @staticmethod
@@ -1141,7 +960,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         profile: c.Infra.MakeProfile,
         project_name: str | None = None,
         workspace: m.Infra.WorkspaceSpec | None = None,
-        project_dir: Path | None = None,
     ) -> p.Result[str]:
         """Render the canonical ``.gitignore`` body via the single template.
 
@@ -1180,8 +998,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # descends far enough to reach the subproject itself.
         member_patterns: list[str] = []
         if workspace is not None:
-            for subproject in workspace.subprojects:
-                parts = subproject.path.as_posix().strip("/").split("/")
+            for declared_repository in workspace.declared_repositories:
+                parts = declared_repository.path.as_posix().strip("/").split("/")
                 # Every ancestor is unignored so git can descend into the
                 # subproject, then its contents are unignored with the `/**` form.
                 prefixes = [
@@ -1208,21 +1026,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         patterns=override.gitignore_additions,
                     )
                 )
-        if project_dir is not None:
-            # The repository owns the ignore patterns the fleet scaffold cannot
-            # know (local caches, generated runtime state); they are declared in
-            # its own config/*.yaml and appended as one derived section.
-            resolved = u.Infra.load_project_managed_artifacts(project_dir)
-            if resolved.failure:
-                return r[str].from_failure(resolved)
-            project_patterns = resolved.value.artifacts.Gitignore.patterns
-            if project_patterns:
-                sections.append(
-                    m.Infra.ScaffoldGitignoreSectionSpec(
-                        name=c.Infra.GITIGNORE_PROJECT_SECTION_NAME,
-                        patterns=project_patterns,
-                    )
-                )
         context = m.Infra.GitignoreRenderSpec(gitignore_sections=tuple(sections))
         return u.Cli.template_render(templates_root / entry.source, context)
 
@@ -1236,14 +1039,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         scope = c.Infra.CodegenConformScope(request.scope)
         if scope is c.Infra.CodegenConformScope.SELF:
             selected = (current_repository,)
-        elif scope is c.Infra.CodegenConformScope.SUBPROJECTS:
-            if not workspace.subprojects:
+        elif scope is c.Infra.CodegenConformScope.DECLARED:
+            if not workspace.declared_repositories:
                 return r[tuple[m.Infra.RepositoryRef, ...]].fail(
                     "subprojects scope requires local .gitmodules entries"
                 )
-            selected = tuple(workspace.subprojects)
+            selected = tuple(workspace.declared_repositories)
         else:
-            selected = (workspace.repository, *workspace.subprojects)
+            selected = (workspace.repository, *workspace.declared_repositories)
         mutable = tuple(
             repository
             for repository in selected
@@ -1310,23 +1113,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         profile = target.make_profile
         pyproject = root / c.Infra.PYPROJECT_FILENAME
-        managed_artifacts = u.Infra.empty_snapshot()
         # New and existing repositories share the exact same
         # root-scoped modernizer pipeline, so first generation is a fixed point.
         # A declared subproject consumes the workspace root
         # tooling profile even before the atomic scaffold creates files on disk.
         tooling_root = target.root
         modernizer = FlextInfraPyprojectModernizer(
-            repository_root=tooling_root,
-            skip_check=True,
-            managed_artifacts=managed_artifacts.resolution,
-        )
-        analysis_exclusions = tuple(
-            path.as_posix()
-            for path in (
-                *target.external_dependency_paths,
-                *workspace.external_dependency_paths,
-            )
+            workspace_root=tooling_root, skip_check=True
         )
         declared_python_dirs = self._scaffold_python_dirs(
             codegen.templates.entries, profile
@@ -1341,10 +1134,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
-            analysis_exclusions=analysis_exclusions,
         )
         if tooling_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(tooling_result)
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                tooling_result.error or f"tooling render failed: {pyproject}"
+            )
         context_result = self._project_render_context(
             repository,
             target,
@@ -1352,10 +1146,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             codegen,
             tooling_runtime=tooling_result.value,
             repository_root=pyproject.parent,
-            managed_artifacts=managed_artifacts.resolution,
         )
         if context_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(context_result)
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                context_result.error or "project render context is invalid"
+            )
         context = context_result.value
         # Workspace root owns resolution for attached subprojects (uv reads
         # exclude-dependencies only from the workspace root). Subprojects still
@@ -1400,6 +1195,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             seen_destinations.add(destination)
             path = root / relative
+            if path.is_symlink():
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"template destination must be a physical file: {path}"
+                )
             if path.exists() and not path.is_file():
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"template destination is not a regular file: {path}"
@@ -1429,16 +1228,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             if destination == c.Infra.PYPROJECT_FILENAME:
                 continue
-            if (
-                destination == c.Infra.BEADS_METADATA_RELPATH
-                and not (root / destination).is_file()
-            ):
-                # Why (flext-l2296 family): the ledger metadata is minted by
-                # Beads at first use, so a fresh clone legitimately lacks it.
-                # Planning the absent runtime artifact failed the gen check
-                # gate on every clean checkout. When present, the render below
-                # stays identity-preserving.
-                continue
             artifact_context = self._artifact_render_context(
                 dist=context.dist,
                 repository=repository,
@@ -1449,36 +1238,37 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=destination,
                 tooling_runtime=tooling_result.value,
                 project_context=context,
-                managed_artifacts=managed_artifacts.resolution,
             )
             if artifact_context.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                    artifact_context
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    artifact_context.error
+                    or f"artifact render context failed: {destination}"
                 )
             rendered = u.Cli.template_render(
                 templates_root / entry.source, artifact_context.value
             )
             if rendered.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    f"stage=templates repository={repository.name} "
-                    f"template={entry.source}: "
-                    f"{rendered.error or 'template render failed'}"
+                    rendered.error
+                    or (
+                        f"stage=templates repository={repository.name} "
+                        f"template={entry.source}: template render failed"
+                    )
                 )
             rendered_content = self._compose_project_artifact(
-                root, destination, rendered.value, managed_artifacts=managed_artifacts
+                root, destination, rendered.value
             )
             if rendered_content.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                    rendered_content
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    rendered_content.error
+                    or f"managed artifact composition failed: {destination}"
                 )
-            file_plan = self._file_plan(
-                root,
-                destination,
-                rendered_content.value.rendered,
-                source_states=rendered_content.value.source_states,
-            )
+            file_plan = self._file_plan(root, destination, rendered_content.value)
             if file_plan.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(file_plan)
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    file_plan.error
+                    or f"managed file planning failed: {entry.destination}"
+                )
             planned.append(file_plan.value)
         if not contract.pyproject:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
@@ -1500,8 +1290,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             templates_root / pyproject_entry.source, context
         )
         if pyproject_render.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                pyproject_render
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                pyproject_render.error or "pyproject template render failed"
             )
         initial_tooling = modernizer.conform_source(
             pyproject_render.value,
@@ -1509,45 +1299,42 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             format_source=False,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
-            analysis_exclusions=analysis_exclusions,
         )
         if initial_tooling.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                initial_tooling
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                initial_tooling.error or f"initial tooling conform failed: {pyproject}"
             )
-        cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
-            repository, codegen.toolchain
-        )
         prepared_result = u.Infra.pyproject_conform(
             initial_tooling.value,
-            providers=codegen.providers,
+            codegen=codegen,
             workspace=workspace,
             workspace_mode=c.Infra.MakeProfile.STANDALONE,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
             uv_link_mode=repository.uv_link_mode,
-            dependency_cooldown_exclusions=cooldown_exclusions,
-            dependency_cooldown_overrides=cooldown_overrides,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                prepared_result
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                prepared_result.error or f"pyproject prepare failed: {pyproject}"
             )
         final_tooling = modernizer.conform_source(
             prepared_result.value,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
-            analysis_exclusions=analysis_exclusions,
         )
         if final_tooling.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(final_tooling)
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                final_tooling.error or f"final tooling conform failed: {pyproject}"
+            )
         pyproject_plan = self._file_plan(
             root, c.Infra.PYPROJECT_FILENAME, final_tooling.value
         )
         if pyproject_plan.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(pyproject_plan)
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                pyproject_plan.error or f"pyproject planning failed: {pyproject}"
+            )
         planned.append(pyproject_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
@@ -1555,7 +1342,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         self,
         *,
         root: Path,
-        workspace_root: Path,
+        repository_root: Path,
         repository: m.Infra.RepositoryRef,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
@@ -1563,7 +1350,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         contract: m.Infra.CodegenConformSurfaceContract,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Conform every declared managed surface in an existing repository."""
-        stage_started = time.monotonic()
         u.Cli.info(f"  stage=pyproject repository={repository.name}")
         pyproject = root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
@@ -1573,26 +1359,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         metadata = u.read_project_metadata(root)
         if metadata.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(metadata)
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                metadata.error or f"project metadata load failed: {root}"
+            )
         dist = metadata.value.project.name
         if dist != repository.distribution:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 "PEP 621 project name does not match catalog distribution: "
                 f"{dist} != {repository.distribution}"
             )
-        managed_artifacts = u.Infra.snapshot_project_managed_artifacts(root)
-        if managed_artifacts.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                managed_artifacts
-            )
-        u.Cli.info(
-            f"  stage=managed-artifacts repository={repository.name} "
-            f"elapsed={time.monotonic() - stage_started:.2f}s"
-        )
-        stage_started = time.monotonic()
         pyproject_read = u.Cli.files_read_text(pyproject)
         if pyproject_read.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(pyproject_read)
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                pyproject_read.error or f"pyproject read failed: {pyproject}"
+            )
         # Workspace root owns resolution for attached subprojects (uv reads
         # exclude-dependencies only from the workspace root). Subprojects still
         # receive their own routed excludes for standalone CI clones.
@@ -1607,24 +1387,26 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if contract.dependencies_only:
             dependency_result = u.Infra.pyproject_dependencies_conform(
                 pyproject_read.value,
-                providers=codegen.providers,
+                codegen=codegen,
                 workspace=workspace,
                 workspace_mode=target.make_profile,
             )
             if dependency_result.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                    dependency_result
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    dependency_result.error
+                    or f"pyproject dependency conform failed: {pyproject}"
                 )
             dependency_plan = self._file_plan(
                 root, c.Infra.PYPROJECT_FILENAME, dependency_result.value
             )
             if dependency_plan.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                    dependency_plan
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    dependency_plan.error
+                    or f"pyproject dependency planning failed: {pyproject}"
                 )
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((dependency_plan.value,))
         modernizer = FlextInfraPyprojectModernizer(
-            repository_root=workspace_root,
+            repository_root=repository_root,
             skip_check=True,
             managed_artifacts=managed_artifacts.value.resolution,
         )
@@ -1638,18 +1420,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             project_name=repository.distribution,
             package_name=metadata.value.package_name,
             path=pyproject,
-            declared_python_dirs=generated_python_roots,
-            analysis_exclusions=analysis_exclusions,
+            declared_python_dirs=(
+                config.Infra.tooling.tools.pyright.path_rules.source_dir,
+            ),
         )
         if tooling_context.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                tooling_context
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                tooling_context.error or f"tooling render failed: {pyproject}"
             )
-        u.Cli.info(
-            f"  stage=tooling-context repository={repository.name} "
-            f"elapsed={time.monotonic() - stage_started:.2f}s"
-        )
-        stage_started = time.monotonic()
         if not contract.pyproject:
             return self._plan_existing_templates(
                 root=root,
@@ -1659,32 +1437,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 codegen=codegen,
                 tooling_runtime=tooling_context.value,
                 contract=contract,
-                managed_artifacts=managed_artifacts.value,
             )
-        cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
-            repository, codegen.toolchain
-        )
         prepared_result = u.Infra.pyproject_conform(
             pyproject_read.value,
-            providers=codegen.providers,
+            codegen=codegen,
             workspace=workspace,
             workspace_mode=target.make_profile,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
             uv_link_mode=repository.uv_link_mode,
-            dependency_cooldown_exclusions=cooldown_exclusions,
-            dependency_cooldown_overrides=cooldown_overrides,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                prepared_result
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                prepared_result.error or f"pyproject preparation failed: {pyproject}"
             )
-        u.Cli.info(
-            f"  stage=pyproject-conform repository={repository.name} "
-            f"elapsed={time.monotonic() - stage_started:.2f}s"
-        )
-        stage_started = time.monotonic()
         # Dependency topology is conformed before tooling so the modernizer is
         # the final owner of TOML ordering, comments, and type-checker settings.
         # It preserves the already canonical dependency source declarations.
@@ -1693,20 +1460,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         tooling_result = modernizer.conform_source(
             prepared_result.value,
             path=pyproject,
-            generated_python_roots=generated_python_roots,
-            analysis_exclusions=analysis_exclusions,
+            generated_python_roots=self._scaffold_python_dirs(
+                codegen.templates.entries, target.make_profile
+            ),
         )
         if tooling_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(tooling_result)
-        u.Cli.info(
-            f"  stage=tooling-conform repository={repository.name} "
-            f"elapsed={time.monotonic() - stage_started:.2f}s"
-        )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                tooling_result.error or f"tooling conform failed: {pyproject}"
+            )
         pyproject_plan = self._file_plan(
             root, c.Infra.PYPROJECT_FILENAME, tooling_result.value
         )
         if pyproject_plan.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(pyproject_plan)
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                pyproject_plan.error or f"pyproject planning failed: {pyproject}"
+            )
         planned = [pyproject_plan.value]
         if not contract.templates:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
@@ -1720,18 +1488,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             codegen=codegen,
             tooling_runtime=tooling_context.value,
             contract=contract,
-            managed_artifacts=managed_artifacts.value,
         )
         if managed_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(managed_result)
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                managed_result.error or f"managed template planning failed: {root}"
+            )
         planned.extend(managed_result.value)
         if contract.custom:
             custom_result = self._plan_existing_custom(
                 root, codegen, profile=target.make_profile.value
             )
             if custom_result.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                    custom_result
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    custom_result.error or f"custom Make validation failed: {root}"
                 )
             planned.extend(custom_result.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
@@ -1746,7 +1515,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         codegen: m.Infra.CodegenConfigSpec,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         contract: m.Infra.CodegenConformSurfaceContract,
-        managed_artifacts: m.Infra.ProjectManagedArtifactsSnapshot,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Render configured overwrite-owned templates for an existing tree."""
         u.Cli.info(f"  stage=templates repository={repository.name}")
@@ -1792,16 +1560,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"managed destination escapes repository root: {entry.destination}"
                 )
             path = (root / relative).resolve()
-            if (
-                entry.destination == c.Infra.BEADS_METADATA_RELPATH
-                and not path.is_file()
-            ):
-                # Why (flext-l2296 family): the ledger metadata is minted by
-                # Beads at first use, so a fresh clone legitimately lacks it.
-                # Planning an absent runtime artifact made the gen check gate
-                # fail on every clean checkout. When the file exists, the
-                # identity-preserving refresh below still applies.
-                continue
             try:
                 path.relative_to(root.resolve())
             except ValueError:
@@ -1818,32 +1576,33 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     # Keep the typed read result distinct from its string payload.
                     orphan_read = u.Cli.files_read_text(path)
                     if orphan_read.failure:
-                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                            orphan_read
-                        )
-                    absent_plan = self._absent_file_plan(root, path)
-                    if absent_plan.failure:
-                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                            absent_plan
+                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                            orphan_read.error or f"orphan workflow read failed: {path}"
                         )
                     planned.append(
-                        absent_plan.value.model_copy(
-                            update={"owner": managed.owner, "policy": managed.policy}
+                        m.Infra.CodegenFilePlan(
+                            path=path,
+                            owner=managed.owner,
+                            policy=managed.policy,
+                            rendered="",
+                            expected_sha256=u.Cli.sha256_content(""),
+                            current_sha256=u.Cli.sha256_content(orphan_read.value),
+                            changed=True,
+                            absent=True,
                         )
                     )
                 continue
             if managed.policy == "create-only" and path.is_file():
                 current = u.Cli.files_read_text(path)
                 if current.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                        current
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                        current.error or f"managed file read failed: {path}"
                     )
-                file_plan = self._file_plan(
-                    root, entry.destination, current.value, mode=managed.mode
-                )
+                file_plan = self._file_plan(root, entry.destination, current.value)
                 if file_plan.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                        file_plan
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                        file_plan.error
+                        or f"managed file planning failed: {entry.destination}"
                     )
                 planned.append(file_plan.value)
                 continue
@@ -1863,30 +1622,29 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=entry.destination,
                 tooling_runtime=tooling_runtime,
                 project_context=None,
-                managed_artifacts=managed_artifacts.resolution,
             )
             if artifact_context.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                    artifact_context
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    artifact_context.error
+                    or f"managed artifact context failed: {entry.destination}"
                 )
             rendered = u.Cli.template_render(
                 templates_root / entry.source, artifact_context.value
             )
             if rendered.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    f"template={entry.source}: "
-                    f"{rendered.error or 'template render failed'}"
+                    rendered.error or f"template render failed: {entry.source}"
                 )
             rendered_content = rendered.value
             composed = self._compose_project_artifact(
-                root,
-                entry.destination,
-                rendered_content,
-                managed_artifacts=managed_artifacts,
+                root, entry.destination, rendered_content
             )
             if composed.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(composed)
-            rendered_content = composed.value.rendered
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    composed.error
+                    or f"managed artifact composition failed: {entry.destination}"
+                )
+            rendered_content = composed.value
             conflict_marker = next(
                 (
                     line
@@ -1901,46 +1659,24 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"source={entry.source}; target={path}; root={root}; "
                     f"marker={conflict_marker}"
                 )
-            file_plan = self._file_plan(
-                root,
-                entry.destination,
-                rendered_content,
-                mode=managed.mode,
-                source_states=composed.value.source_states,
-            )
+            file_plan = self._file_plan(root, entry.destination, rendered_content)
             if file_plan.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(file_plan)
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    file_plan.error
+                    or f"managed file planning failed: {entry.destination}"
+                )
             planned.append(file_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
     @staticmethod
     def _compose_project_artifact(
-        repository_root: Path,
-        destination: str,
-        rendered: str,
-        *,
-        managed_artifacts: m.Infra.ProjectManagedArtifactsSnapshot | None = None,
-    ) -> p.Result[m.Infra.CodegenArtifactComposition]:
+        repository_root: Path, destination: str, rendered: str
+    ) -> p.Result[str]:
         """Apply typed project overlays after canonical template rendering."""
         if destination != c.Infra.MISE_TOML_FILENAME:
-            return r[m.Infra.CodegenArtifactComposition].ok(
-                m.Infra.CodegenArtifactComposition(rendered=rendered)
-            )
-        resolved_artifacts = managed_artifacts
-        if resolved_artifacts is None:
-            snapshot = u.Infra.snapshot_project_managed_artifacts(repository_root)
-            if snapshot.failure:
-                return r[m.Infra.CodegenArtifactComposition].from_failure(snapshot)
-            resolved_artifacts = snapshot.value
-        composed = u.Infra.compose_mise_toml_from_snapshot(
-            resolved_artifacts.sources, rendered
-        )
-        if composed.failure:
-            return r[m.Infra.CodegenArtifactComposition].from_failure(composed)
-        return r[m.Infra.CodegenArtifactComposition].ok(
-            m.Infra.CodegenArtifactComposition(
-                rendered=composed.value, source_states=resolved_artifacts.sources
-            )
+            return r[str].ok(rendered)
+        return FlextInfraUtilitiesProjectManagedArtifacts.compose_mise_toml(
+            repository_root, rendered
         )
 
     @staticmethod
@@ -1957,12 +1693,42 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return source.read_text(encoding=c.DEFAULT_ENCODING).rstrip("\n")
 
     @staticmethod
-    def _workspace_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:
+    def _repository_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:
         """Return the environment root owned by the inferred target."""
         if workspace.project is not None:
-            project_root_rel: str = workspace.project.workspace_root_rel
+            project_root_rel: str = workspace.project.repository_root_rel
             return project_root_rel
         return "."
+
+    @staticmethod
+    def _infra_repository(
+        workspace: m.Infra.WorkspaceSpec, codegen: m.Infra.CodegenConfigSpec
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Resolve the repository that owns the infrastructure CLI.
+
+        The owner is read from the live workspace topology when that topology
+        declares it. A standalone consumer legitimately declares no
+        infrastructure subproject, so the reference is then derived from the
+        typed source and provider contracts. Either way nothing is read from a
+        generated pyproject or looked up in a project catalog.
+        """
+        source = codegen.infra_repository
+        matches = tuple(
+            item
+            for item in (workspace.repository, *workspace.subprojects)
+            if item.distribution == source.distribution
+        )
+        if len(matches) > 1:
+            return r[m.Infra.RepositoryRef].fail(
+                "workspace topology declares more than one "
+                f"{source.distribution} checkout"
+            )
+        if matches:
+            return r[m.Infra.RepositoryRef].ok(matches[0])
+        resolved: p.Result[m.Infra.RepositoryRef] = u.Infra.configured_repository_ref(
+            source.distribution, codegen=codegen
+        )
+        return resolved
 
     @staticmethod
     def _repository_provider(
@@ -1980,10 +1746,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[tuple[m.Infra.ManagedGitlinkSpec, ...]]:
         """Resolve provider baselines only for mutable governed subprojects."""
         resolved: list[m.Infra.ManagedGitlinkSpec] = []
-        for repository in workspace.subprojects:
+        for repository in workspace.declared_repositories:
             provider = cls._repository_provider(repository, codegen)
             if provider.failure:
-                return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].from_failure(provider)
+                return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].fail(
+                    provider.error
+                    or f"subproject provider is invalid: {repository.name}"
+                )
             resolved.append(
                 m.Infra.ManagedGitlinkSpec(
                     repository=repository,
@@ -1995,29 +1764,35 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].ok(tuple(resolved))
 
     @staticmethod
-    def _beads_project_id(repository_root: Path) -> str | None:
-        """Return the checkout's own ledger identity, or None if unminted.
-
-        `.beads/identity.toml` is the canonical owner (`[project] id`); the
-        generated marker is its projection. An absent file is not a failure —
-        it means Beads has not minted an identity for this checkout yet.
-        """
-        identity = repository_root / ".beads" / "identity.toml"
-        if not identity.is_file():
+    def _infra_source_root_rel(
+        target: m.Infra.RepositoryConformTarget,
+        workspace: m.Infra.WorkspaceSpec,
+        infra_repository: m.Infra.RepositoryRef,
+    ) -> str | None:
+        """Return a local engine source path only when the workspace declares it."""
+        workspace_repositories: tuple[m.Infra.RepositoryRef, ...] = (
+            workspace.repository,
+            *workspace.subprojects,
+        )
+        local: m.Infra.RepositoryRef | None = next(
+            (
+                item
+                for item in workspace_repositories
+                if item.distribution == infra_repository.distribution
+                and item.url == infra_repository.url
+                and item.provider == infra_repository.provider
+            ),
+            None,
+        )
+        if local is None:
             return None
-        source = u.Cli.files_read_text(identity)
-        if source.failure:
-            msg = f"failed to read beads identity at {identity}: {source.error}"
-            raise RuntimeError(msg)
-        payload = u.Cli.toml_mapping_from_text(source.value)
-        if payload is None:
-            msg = f"beads identity at {identity} is not valid TOML"
-            raise ValueError(msg)
-        project = payload.get("project")
-        if not isinstance(project, Mapping):
+        workspace_root_rel = FlextInfraCodegenConform._workspace_root_rel(workspace)
+        if local == workspace.repository:
+            return workspace_root_rel
+        if target.make_profile is not c.Infra.MakeProfile.WORKSPACE:
             return None
-        value = project.get("id")
-        return value.strip() if isinstance(value, str) and value.strip() else None
+        local_path: Path = local.path
+        return (Path(workspace_root_rel) / local_path).as_posix()
 
     def _artifact_render_context(
         self,
@@ -2031,114 +1806,61 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         destination: str,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         project_context: m.Infra.ProjectRenderContext | None,
-        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
         if destination == c.Infra.GITIGNORE:
             profile = target.make_profile
-            sections = [
+            sections = tuple(
                 section
                 for section in codegen.gitignore_sections
                 if not section.profiles or profile in section.profiles
-            ]
-            if managed_artifacts is not None:
-                project_patterns = managed_artifacts.artifacts.Gitignore.patterns
-                if project_patterns:
-                    sections.append(
-                        m.Infra.ScaffoldGitignoreSectionSpec(
-                            name=c.Infra.GITIGNORE_PROJECT_SECTION_NAME,
-                            patterns=project_patterns,
-                        )
-                    )
-            return r[p.Model].ok(
-                m.Infra.GitignoreRenderSpec(gitignore_sections=tuple(sections))
             )
+            return r[p.Model].ok(
+                m.Infra.GitignoreRenderSpec(gitignore_sections=sections)
+            )
+        if destination == "sgconfig.yml":
+            # Why (ai-hub-qwoc): the ast-grep contract is identical for every
+            # governed repository, so it renders straight from the codegen SSOT.
+            return r[p.Model].ok(codegen.sgconfig)
+        if destination == ".shellcheckrc":
+            return r[p.Model].ok(m.Infra.StaticTextRenderSpec())
         if destination == ".pre-commit-config.yaml":
             return r[p.Model].ok(
                 m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
             )
-        if destination in {
-            ".markdownlint.json",
-            ".markdownlintignore",
-            ".qlty/qlty.toml",
-        }:
-            return r[p.Model].ok(
-                m.Infra.MarkdownLintRenderSpec(tooling=config.Infra.tooling)
-            )
-        if destination == ".envrc":
-            return r[p.Model].ok(
-                m.Infra.EnvrcRenderSpec(
-                    state_directory_name=codegen.toolchain.state_directory_name,
-                    scratch_namespace=codegen.toolchain.scratch_namespace,
-                    pycache_namespace=codegen.toolchain.pycache_namespace,
-                    environment_path_prepends=(
-                        codegen.toolchain.environment_path_prepends
-                    ),
-                    mise_bootstrap=(
-                        FlextInfraCodegenConform._mise_bootstrap_environment()
-                    ),
-                )
-            )
-        if destination in {".mise.toml", ".python-version"}:
+        if destination in {".envrc", ".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
-
-        if destination == c.Infra.BEADS_CONFIG_RELPATH:
-            project_types = target.beads.custom_issue_types
-            required_types = codegen.toolchain.beads.required_custom_types
-            return r[p.Model].ok(
-                m.Infra.BeadsConfigRenderSpec(
-                    issue_prefix=target.beads.issue_prefix,
-                    endpoint_origin=codegen.toolchain.beads.endpoint_origin,
-                    endpoint_status=codegen.toolchain.beads.endpoint_status,
-                    custom_issue_types=tuple(
-                        dict.fromkeys((*project_types, *required_types))
-                    ),
-                )
-            )
-        if destination == c.Infra.BEADS_METADATA_RELPATH:
-            # Why: this marker is regenerated on every `make gen`, but the
-            # ledger identity inside it is owned by the checkout, not by the
-            # fleet SSOT. Rendering without it stripped the key, and Beads then
-            # minted a NEW identity on next access — rig gmn lost
-            # 2b1a0582-… that way (commit 3e7ba1e). Read it back so a
-            # regeneration is identity-preserving.
-            return r[p.Model].ok(
-                m.Infra.BeadsMetadataRenderSpec(
-                    database=target.beads.database,
-                    project_id=self._beads_project_id(repository_root),
-                )
-            )
         if destination.startswith(".github/"):
             provider = self._repository_provider(repository, codegen)
             if provider.failure:
-                return r[p.Model].from_failure(provider)
+                return r[p.Model].fail(
+                    provider.error or "workflow provider resolution failed"
+                )
             workspace_repositories = (
-                tuple(workspace.subprojects)
+                tuple(workspace.declared_repositories)
                 if target.make_profile is c.Infra.MakeProfile.WORKSPACE
                 else ()
             )
-            # Why: ci.yml.j2 iterates this to build its push/pull_request branch
-            # filters, so an unsupplied value fails the render outright. The
-            # repository's own integration branch is the only branch this layer
-            # can name from resolved data; a fleet-wide list hardcoded here would
-            # make every repository trigger on branches it does not have.
-            branch = u.Infra.resolve_integration_branch(workspace, provider.value)
+            # CI and docs share the merge-lock branch authority. Keeping the
+            # provider-resolved baseline in the same deduplicated sequence also
+            # covers custom integration lanes without allowing their workflows
+            # to drift apart.
+            branch = target.baseline_branch
+            ci_trigger_branches = tuple(
+                dict.fromkeys((
+                    *codegen.make.work_in_progress.merge_lock_target_branches,
+                    branch,
+                    "main",
+                ))
+            )
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
                     dist=dist,
                     make_profile=target.make_profile,
                     repository_branch=branch,
-                    ci_trigger_branches=tuple(
-                        dict.fromkeys((
-                            *codegen.branch_policy.ci_trigger_branches,
-                            branch,
-                        ))
-                    ),
+                    ci_trigger_branches=ci_trigger_branches,
                     python_version=codegen.toolchain.python_version,
-                    state_directory_name=codegen.toolchain.state_directory_name,
-                    dependency_cooldown_days=(
-                        codegen.toolchain.dependency_cooldown_days
-                    ),
+                    mise_version=codegen.toolchain.mise_version,
                     github_actions=codegen.github_actions,
                     make=codegen.make,
                     workspace_repositories=workspace_repositories,
@@ -2153,11 +1875,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     checkout_submodules=codegen.checkout_submodules_overrides.get(
                         dist, codegen.checkout_submodules
                     ),
-                    custom_steps=FlextInfraCodegenConform._custom_ci_steps(
-                        repository_root
-                    ),
                     private_submodules=codegen.ci_private_submodules.get(dist),
-                    system_packages=tuple(codegen.ci_system_packages.get(dist, ())),
                 )
             )
         destination_path = Path(destination)
@@ -2170,63 +1888,75 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     package_name=dist.replace("-", "_"),
                     python_version=codegen.toolchain.python_version,
                     make=codegen.make,
-                    mise_bootstrap=self._mise_bootstrap_environment(),
-                )
-            )
-        if destination in {
-            c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
-            c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
-        }:
-            # Why (flext-to3n7): the release build phase snapshots these two
-            # policies from the repository; they are fleet policy owned by
-            # config/infra.yaml, never scaffold-only project metadata.
-            return r[p.Model].ok(
-                m.Infra.ReleasePolicyRenderSpec(
-                    build_constraints=config.Infra.release.build_constraints
                 )
             )
         if destination == c.Infra.MAKEFILE_FILENAME:
             profile = target.make_profile
-            subprojects = (
-                tuple(workspace.subprojects)
+            declared_repositories = (
+                tuple(workspace.declared_repositories)
                 if profile is c.Infra.MakeProfile.WORKSPACE
                 else ()
             )
+            infra_repository = self._infra_repository(workspace, codegen)
+            if infra_repository.failure:
+                return r[p.Model].fail(
+                    infra_repository.error
+                    or "infrastructure CLI repository resolution failed"
+                )
+            infra_provider = self._repository_provider(infra_repository.value, codegen)
+            if infra_provider.failure:
+                return r[p.Model].fail(
+                    infra_provider.error or "infrastructure provider resolution failed"
+                )
             gitlinks = self._managed_gitlinks(workspace, codegen)
             if gitlinks.failure:
-                return r[p.Model].from_failure(gitlinks)
-            cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
-                repository, codegen.toolchain
-            )
+                return r[p.Model].fail(
+                    gitlinks.error or "managed Gitlink resolution failed"
+                )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     pytest=config.Infra.tooling.tools.pytest,
-                    mise_bootstrap=self._mise_bootstrap_environment(),
                     dist=dist,
-                    state_directory_name=codegen.toolchain.state_directory_name,
-                    scratch_namespace=codegen.toolchain.scratch_namespace,
                     infra_cli=config.Infra.name,
+                    infra_repository=infra_repository.value,
+                    infra_repository_branch=infra_provider.value.branch,
+                    infra_source_root_rel=self._infra_source_root_rel(
+                        target, workspace, infra_repository.value
+                    ),
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                    workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
+                    repository_root_rel=FlextInfraCodegenConform._repository_root_rel(
                         workspace
                     ),
-                    workspace_subprojects=tuple(
-                        item.path.as_posix() for item in workspace.subprojects
+                    workspace_declared_repositories=tuple(
+                        item.path.as_posix() for item in workspace.declared_repositories
                     ),
-                    workspace_repositories=subprojects,
+                    workspace_repositories=declared_repositories,
                     workspace_gitlinks=gitlinks.value,
                     uv_link_mode=FlextInfraCodegenConform._link_mode(
                         repository, codegen.toolchain
                     ),
                     uv_version=codegen.toolchain.uv_version,
+                    mise_version=codegen.toolchain.mise_version,
+                    mise_lock_platforms=codegen.toolchain.mise_lock_platforms,
+                    suspended_mise_selector_patterns=(
+                        codegen.toolchain.suspended_mise_selector_patterns
+                    ),
                     uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
-                    dependency_cooldown_exclusions=cooldown_exclusions,
-                    dependency_cooldown_overrides=cooldown_overrides,
+                    dependency_cooldown_exclusions=(
+                        codegen.toolchain.dependency_cooldown_exclusions
+                    ),
+                    dependency_cooldown_overrides=(
+                        codegen.toolchain.dependency_cooldown_overrides
+                    ),
                     make=codegen.make,
                     extra_verbs=repository.extra_verbs,
                     script_dispatch=repository.script_dispatch,
+                    orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                     workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
+                    project_selection_conflict_error=(
+                        c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
+                    ),
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                     mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
                     mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
@@ -2240,23 +1970,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     ),
                 )
             )
-        if destination == c.Infra.CUSTOM_MAKE_FILENAME:
-            # Existing repositories project custom routes from the same typed
-            # Make contract as Makefile; they do not require scaffold-only
-            # project metadata.
-            make_context = FlextInfraCodegenConform.make_render_context(
-                repository, target, workspace, codegen, tooling_runtime=tooling_runtime
-            )
-            if make_context.failure:
-                return r[p.Model].from_failure(make_context)
-            return r[p.Model].ok(make_context.value)
-        if destination in {
-            c.Infra.MARKDOWNLINT_CONFIG_FILENAME,
-            c.Infra.MARKDOWNLINT_IGNORE_FILENAME,
-        }:
-            return r[p.Model].ok(
-                m.Infra.ToolingRenderSpec(tooling=config.Infra.tooling)
-            )
         if project_context is not None:
             return r[p.Model].ok(project_context)
         context_result = self._project_render_context(
@@ -2266,10 +1979,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             codegen,
             tooling_runtime=tooling_runtime,
             repository_root=repository_root,
-            managed_artifacts=managed_artifacts,
         )
         if context_result.failure:
-            return r[p.Model].from_failure(context_result)
+            return r[p.Model].fail(
+                context_result.error
+                or f"managed artifact context failed: {destination}"
+            )
         return r[p.Model].ok(context_result.value)
 
     @staticmethod
@@ -2283,23 +1998,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[m.Infra.MakeRenderContext]:
         """Build the typed context consumed by the generated Makefile."""
         profile = target.make_profile
-        subprojects = (
-            tuple(workspace.subprojects)
+        declared_repositories = (
+            tuple(workspace.declared_repositories)
             if profile is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
         gitlinks = FlextInfraCodegenConform._managed_gitlinks(workspace, codegen)
         if gitlinks.failure:
-            return r[m.Infra.MakeRenderContext].from_failure(gitlinks)
-        cooldown_exclusions, cooldown_overrides = (
-            FlextInfraCodegenConform._dependency_cooldown_policy(
-                repository, codegen.toolchain
+            return r[m.Infra.MakeRenderContext].fail(
+                gitlinks.error or "managed Gitlink resolution failed"
             )
-        )
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=config.Infra.tooling.tools.pytest,
-                mise_bootstrap=(FlextInfraCodegenConform._mise_bootstrap_environment()),
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
@@ -2312,27 +2023,37 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,
+                infra_repository=infra_repository.value,
+                infra_repository_branch=infra_provider.value.branch,
+                infra_source_root_rel=FlextInfraCodegenConform._infra_source_root_rel(
+                    target, workspace, infra_repository.value
+                ),
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=FlextInfraCodegenConform._link_mode(
                     repository, codegen.toolchain
                 ),
                 uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
-                dependency_cooldown_exclusions=cooldown_exclusions,
-                dependency_cooldown_overrides=cooldown_overrides,
+                dependency_cooldown_exclusions=(
+                    codegen.toolchain.dependency_cooldown_exclusions
+                ),
+                dependency_cooldown_overrides=(
+                    codegen.toolchain.dependency_cooldown_overrides
+                ),
                 # ProjectRenderContext replaces this with the composed map.
                 # Pass the neutral value explicitly so Pydantic never deep-copies
                 # the MappingProxyType model default while building the base.
                 ruff_per_file_ignores={},
                 make_profile=profile,
+                orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
-                workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
+                repository_root_rel=FlextInfraCodegenConform._repository_root_rel(
                     workspace
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                workspace_subprojects=tuple(
-                    item.path.as_posix() for item in workspace.subprojects
+                workspace_declared_repositories=tuple(
+                    item.path.as_posix() for item in workspace.declared_repositories
                 ),
-                workspace_repositories=subprojects,
+                workspace_repositories=declared_repositories,
                 workspace_gitlinks=gitlinks.value,
                 extra_verbs=repository.extra_verbs,
                 script_dispatch=repository.script_dispatch,
@@ -2348,7 +2069,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         *,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         repository_root: Path,
-        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed context consumed by project templates."""
         if workspace.project is None:
@@ -2379,12 +2099,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             repository, target, workspace, codegen, tooling_runtime=tooling_runtime
         )
         if make_context.failure:
-            return r[m.Infra.ProjectRenderContext].from_failure(make_context)
+            return r[m.Infra.ProjectRenderContext].fail(
+                make_context.error or "Make render context resolution failed"
+            )
         repository_provider = FlextInfraCodegenConform._repository_provider(
             repository, codegen
         )
         if repository_provider.failure:
-            return r[m.Infra.ProjectRenderContext].from_failure(repository_provider)
+            return r[m.Infra.ProjectRenderContext].fail(
+                repository_provider.error or "repository provider resolution failed"
+            )
         flext_provider = repository_provider.value
         packaged_data_dirs = (
             tuple(
@@ -2402,43 +2126,22 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         # Emit only the .gitignore sections that apply to this profile: a
         # section with no declared profiles is universal; a workspace-only
-        # section (subproject-directory allowlist and submodule/Beads
-        # Beads coordination) never reaches a subproject or standalone .gitignore.
-        profile_gitignore_sections = [
+        # section (subproject-directory allowlist and root coordination) never
+        # reaches a subproject or standalone .gitignore.
+        profile_gitignore_sections = tuple(
             section
             for section in codegen.gitignore_sections
             if not section.profiles or profile in section.profiles
-        ]
-        if managed_artifacts is not None:
-            project_patterns = managed_artifacts.artifacts.Gitignore.patterns
-            if project_patterns:
-                profile_gitignore_sections.append(
-                    m.Infra.ScaffoldGitignoreSectionSpec(
-                        name=c.Infra.GITIGNORE_PROJECT_SECTION_NAME,
-                        patterns=project_patterns,
-                    )
-                )
-        # The repository's own pyproject.toml is the version SSOT; the release
-        # protocol is its only writer, so conform reads it and never syncs it.
-        # A tree that has no pyproject yet is being created: it starts at the
-        # typed initial version and the protocol owns every change after that.
-        version_result = (
-            u.Infra.current_workspace_version(repository_root)
-            if (repository_root / c.Infra.PYPROJECT_FILENAME).is_file()
-            else r[str].ok(config.Infra.initial_project_version)
         )
-        if version_result.failure:
-            return r[m.Infra.ProjectRenderContext].from_failure(version_result)
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 **make_context.value.model_dump(
                     by_alias=True,
-                    exclude={"mise_bootstrap", "ruff_per_file_ignores"},
+                    exclude={"ruff_per_file_ignores"},
                     exclude_computed_fields=True,
                 ),
-                mise_bootstrap=FlextInfraCodegenConform._mise_bootstrap_environment(),
                 scaffold=codegen.scaffold,
-                gitignore_sections=tuple(profile_gitignore_sections),
+                gitignore_sections=profile_gitignore_sections,
                 dependency_profile=dependency_profile,
                 tooling=config.Infra.tooling,
                 # Why: the fleet policy alone is not the effective Ruff contract.
@@ -2452,18 +2155,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 # produce the same effective map.
                 ruff_per_file_ignores=(
                     FlextInfraEnsureRuffConfigPhase.compose_per_file_ignores(
-                        repository_root, managed_artifacts=managed_artifacts
+                        repository_root
                     )
                 ),
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),
-                beads_tool_selector=codegen.toolchain.beads.selector,
-                beads_tool_version=codegen.toolchain.beads.version,
-                # prerelease is load-bearing: every fork release of bd carries a
-                # suffixed tag (-fdN) and mise refuses to resolve one unless
-                # told the release is a prerelease. Omitting it silently pinned
-                # every rig to upstream, which lacks the bd list cycle guard.
-                beads_tool_prerelease=codegen.toolchain.beads.prerelease,
-                beads=workspace.beads,
                 canonical_project_name=target.canonical_project_name,
                 const_name=project.constant_name,
                 package_name=project.package_name,
@@ -2475,27 +2170,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 env_prefix=project.environment_prefix,
                 upstream=project.upstream,
                 inherited_facets=project.inherited_facets,
-                root_packages=project.root_packages,
-                root_modules=project.root_modules,
-                runtime_dependency_overlay=project.runtime_dependency_overlay,
                 description=project.description,
-                version=version_result.value,
+                version=project.version,
                 license=project.license,
                 python_required_version=codegen.toolchain.python_required_version,
-                mise_lock_platforms=codegen.toolchain.mise_lock_platforms,
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,
-                direnv_version=codegen.toolchain.direnv_version,
                 uv_version=codegen.toolchain.uv_version,
+                mise_version=codegen.toolchain.mise_version,
+                mise_lock_platforms=codegen.toolchain.mise_lock_platforms,
                 qlty_version=codegen.toolchain.qlty_version,
-                node_version=codegen.toolchain.node_version,
-                jscpd_version=codegen.toolchain.jscpd_version,
-                waza_version=codegen.toolchain.waza_version,
                 taplo_version=codegen.toolchain.taplo_version,
                 ast_grep_version=codegen.toolchain.ast_grep_version,
                 gitleaks_version=codegen.toolchain.gitleaks_version,
-                scc_version=codegen.toolchain.scc_version,
+                tokei_version=codegen.toolchain.tokei_version,
                 kubeconform_version=codegen.toolchain.kubeconform_version,
                 go_version=codegen.toolchain.go_version,
                 author_name=project.author_name,
@@ -2507,9 +2196,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 flext_git_branch=flext_provider.branch,
                 repository_provider=repository.provider,
                 repository_git_url=repository.url,
-                repository_branch=u.Infra.resolve_integration_branch(
-                    workspace, repository_provider.value
-                ),
+                repository_branch=target.baseline_branch,
                 year=project.year,
             )
         )
@@ -2530,30 +2217,28 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 f"custom Make destination is not a regular file: {path}"
             )
-        plans: list[m.Infra.CodegenFilePlan] = []
-        if path.is_file():
-            read = u.Cli.files_read_text(path)
-            if read.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(read)
-            validation = self.validate_custom_make(read.value, policy)
-            if validation.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(validation)
-            planned = self._file_plan(root, policy.filename, read.value)
-            if planned.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
-            plans.append(planned.value)
-        layout = u.Infra.layout(root)
-        if layout is not None and layout.class_stem:
-            rendered = u.Infra.render_utility_facade(layout.package_dir)
-            if rendered is not None:
-                relative = (layout.package_dir / c.Infra.UTILITIES_PY).relative_to(root)
-                utility_plan = self._file_plan(root, relative.as_posix(), rendered)
-                if utility_plan.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                        utility_plan
-                    )
-                plans.append(utility_plan.value)
-        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(plans))
+        if not path.is_file():
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
+        read = u.Cli.files_read_text(path)
+        if read.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                read.error or f"custom Make read failed: {path}"
+            )
+        validation = self.validate_custom_make(read.value, policy)
+        if validation.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                validation.error or f"invalid custom Make handlers: {path}"
+            )
+        digest = u.Cli.sha256_content(read.value)
+        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((
+            m.Infra.CodegenFilePlan(
+                path=path,
+                rendered=read.value,
+                expected_sha256=digest,
+                current_sha256=digest,
+                changed=False,
+            ),
+        ))
 
     @staticmethod
     def validate_custom_make(
@@ -2646,37 +2331,35 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         return r[bool].ok(True)
 
-    @staticmethod
     def _file_plan(
-        root: Path,
-        relative_path: str,
-        rendered: str,
-        *,
-        mode: int = 0o644,
-        source_states: tuple[m.Cli.AtomicFileState, ...] = (),
+        self, root: Path, relative_path: str, rendered: str
     ) -> p.Result[m.Infra.CodegenFilePlan]:
-        """Snapshot one target and bind it to exact desired bytes and mode."""
-        project = root.expanduser().absolute()
-        path = (project / relative_path).absolute()
-        # Generation owns the destination directory of every artifact it
-        # declares. Reading the before-state of a declared file whose parent
-        # does not exist yet fails on the missing parent rather than reporting
-        # an absent file, so a repository that has never rendered a nested
-        # artifact — `.beads/config.yaml` on a fresh clone — could not even be
-        # planned. Materializing the empty destination is idempotent and is the
-        # generator's own responsibility.
-        path.parent.mkdir(parents=True, exist_ok=True)
-        before = u.Cli.atomic_read_binary_file_state(path, required=False)
-        if before.failure:
-            return r[m.Infra.CodegenFilePlan].from_failure(before)
+        """Compare one expected output and mark whether it changed."""
+        path = root / relative_path
+        if path.exists() and not path.is_file():
+            return r[m.Infra.CodegenFilePlan].fail(
+                f"managed destination is not a regular file: {path}"
+            )
+        current = ""
+        if path.is_file():
+            read = u.Cli.files_read_text(path)
+            if read.failure:
+                return r[m.Infra.CodegenFilePlan].fail(
+                    read.error or f"managed file read failed: {path}"
+                )
+            current = read.value
+        expected_sha = u.Cli.sha256_content(rendered)
+        current_sha = u.Cli.sha256_content(current) if path.is_file() else ""
+        changed = current != rendered
         return r[m.Infra.CodegenFilePlan].ok(
             m.Infra.CodegenFilePlan(
-                project=project,
                 path=path,
-                before=before.value,
-                desired_content=rendered.encode(c.Cli.ENCODING_DEFAULT),
-                desired_mode=mode,
-                source_states=source_states,
+                rendered=rendered,
+                expected_sha256=expected_sha,
+                current_sha256=current_sha,
+                changed=changed,
+                blocked=False,
+                reason="",
             )
         )
 
@@ -2697,9 +2380,97 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _branch_ancestry_plan(
         cls, target: m.Infra.RepositoryConformTarget
     ) -> p.Result[m.Infra.BranchAncestryPlan]:
-        """Inventory local governed refs and prove descent from the baseline."""
+        """Inventory governed refs and prove descent from the provider baseline."""
         root = target.root
-        baseline_reference = target.baseline_reference
+        # Refresh the provider baseline when origin is configured. A checkout
+        # without remotes may validate an explicitly materialized tracking ref,
+        # but a configured remote must be readable and fetchable.
+        remotes_command = (c.Infra.GIT, "remote")
+        remotes_result = u.Cli.run_raw(remotes_command, cwd=root)
+        if remotes_result.failure:
+            return r[m.Infra.BranchAncestryPlan].fail(
+                "cannot enumerate Git remotes: "
+                f"command={' '.join(remotes_command)}; error={remotes_result.error}"
+            )
+        if remotes_result.value.exit_code != 0:
+            return r[m.Infra.BranchAncestryPlan].fail(
+                "cannot enumerate Git remotes: "
+                f"command={' '.join(remotes_command)}; "
+                f"exit={remotes_result.value.exit_code}; "
+                f"stderr={remotes_result.value.stderr.strip() or '<empty>'}"
+            )
+        if "origin" in remotes_result.value.stdout.splitlines():
+            remote_command = (c.Infra.GIT, "remote", "get-url", "origin")
+            remote_result = u.Cli.run_raw(remote_command, cwd=root)
+            if remote_result.failure:
+                return r[m.Infra.BranchAncestryPlan].fail(
+                    "cannot resolve origin URL: "
+                    f"command={' '.join(remote_command)}; error={remote_result.error}"
+                )
+            if (
+                remote_result.value.exit_code != 0
+                or not remote_result.value.stdout.strip()
+            ):
+                return r[m.Infra.BranchAncestryPlan].fail(
+                    "cannot resolve origin URL: "
+                    f"command={' '.join(remote_command)}; "
+                    f"exit={remote_result.value.exit_code}; "
+                    f"stderr={remote_result.value.stderr.strip() or '<empty>'}"
+                )
+            skip_fetch_command = (
+                c.Infra.GIT,
+                "config",
+                "--type=bool",
+                "--get",
+                "remote.origin.skipDefaultUpdate",
+            )
+            skip_fetch_result = u.Cli.run_raw(skip_fetch_command, cwd=root)
+            if skip_fetch_result.failure:
+                return r[m.Infra.BranchAncestryPlan].fail(
+                    "cannot resolve origin update policy: "
+                    f"command={' '.join(skip_fetch_command)}; "
+                    f"error={skip_fetch_result.error}"
+                )
+            if skip_fetch_result.value.exit_code not in {0, 1}:
+                return r[m.Infra.BranchAncestryPlan].fail(
+                    "cannot resolve origin update policy: "
+                    f"command={' '.join(skip_fetch_command)}; "
+                    f"exit={skip_fetch_result.value.exit_code}; "
+                    f"stderr={skip_fetch_result.value.stderr.strip() or '<empty>'}"
+                )
+            skip_fetch = (
+                skip_fetch_result.value.exit_code == 0
+                and skip_fetch_result.value.stdout.strip() == "true"
+            )
+            if not skip_fetch:
+                fetch_command = (
+                    c.Infra.GIT,
+                    "fetch",
+                    "--no-tags",
+                    "--prune",
+                    "origin",
+                    (
+                        f"+refs/heads/{target.baseline_branch}:"
+                        f"refs/remotes/origin/{target.baseline_branch}"
+                    ),
+                )
+                fetch_result = u.Cli.run_raw(
+                    fetch_command, cwd=root, timeout=c.Infra.TIMEOUT_SHORT
+                )
+                if fetch_result.failure:
+                    return r[m.Infra.BranchAncestryPlan].fail(
+                        "provider baseline fetch failed: "
+                        f"command={' '.join(fetch_command)}; "
+                        f"error={fetch_result.error}"
+                    )
+                if fetch_result.value.exit_code != 0:
+                    return r[m.Infra.BranchAncestryPlan].fail(
+                        "provider baseline fetch failed: "
+                        f"command={' '.join(fetch_command)}; "
+                        f"exit={fetch_result.value.exit_code}; "
+                        f"stderr={fetch_result.value.stderr.strip() or '<empty>'}"
+                    )
+        baseline_reference = f"refs/remotes/origin/{target.baseline_branch}"
         baseline_command = (c.Infra.GIT, "rev-parse", "--verify", baseline_reference)
         baseline_result = u.Cli.run_raw(baseline_command, cwd=root)
         if baseline_result.failure:
@@ -2707,64 +2478,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 "provider baseline command failed: "
                 f"command={' '.join(baseline_command)}; error={baseline_result.error}"
             )
-        if baseline_result.value.outcome.raw_return_code != 0:
+        if baseline_result.value.exit_code != 0:
             return r[m.Infra.BranchAncestryPlan].fail(
                 "provider baseline ref is missing: "
                 f"{baseline_reference}; command={' '.join(baseline_command)}; "
-                f"exit={baseline_result.value.outcome.raw_return_code}; "
+                f"exit={baseline_result.value.exit_code}; "
                 f"stderr={baseline_result.value.stderr.strip() or '<empty>'}"
             )
         baseline_sha = baseline_result.value.stdout.strip()
-        # flext-9ehwb: `refs/remotes/origin/<lane>` is the remote's LIVE tip.
-        # `actions/checkout` fetches at job start, so that tip advances whenever
-        # another actor publishes to the same lane while this run waits in the
-        # queue. Gating against it asks "has this commit already absorbed work
-        # published after it was written?" -- unanswerable by construction, and
-        # a perfectly linear commit fails with "does not descend from"
-        # (run 31218338222). The question the gate actually owns is "was this
-        # commit written on top of the lane?", so the baseline is pinned to the
-        # merge base between the live tip and the commit that triggered the run.
-        # That point is immutable for a given commit: concurrent publishers move
-        # the tip, never the merge base. Outside CI GITHUB_SHA is unset and the
-        # live tip remains the baseline, which is correct for a local checkout.
-        triggering_sha = os.environ.get(c.Infra.ENV_VAR_GITHUB_SHA, "").strip()
-        if triggering_sha:
-            # GITHUB_SHA is the superproject's triggering commit (the PR
-            # merge commit actions/checkout synthesizes). Inside a submodule
-            # repo that SHA does not exist, so `git merge-base` fails with
-            # exit 128 ("Not a valid commit name") and breaks `gen check` in
-            # CI. Verify membership before anchoring the baseline through it:
-            # only pin to the merge base when triggering_sha actually resolves
-            # in the current repository (the workspace root). In a submodule
-            # context the gitlink position is the immutable reference and the
-            # live baseline tip remains the correct anchor.
-            verify_command = (c.Infra.GIT, "cat-file", "-t", triggering_sha)
-            verify_result = u.Cli.run_raw(verify_command, cwd=root)
-            if verify_result.success and u.Cli.process_succeeded(
-                verify_result.value.outcome
-            ):
-                merge_base_command = (
-                    c.Infra.GIT,
-                    "merge-base",
-                    baseline_sha,
-                    triggering_sha,
-                )
-                merge_base_result = u.Cli.run_raw(merge_base_command, cwd=root)
-                if merge_base_result.failure:
-                    return r[m.Infra.BranchAncestryPlan].fail(
-                        "cannot anchor ancestry baseline to the triggering commit: "
-                        f"command={' '.join(merge_base_command)}; "
-                        f"error={merge_base_result.error}"
-                    )
-                if merge_base_result.value.outcome.raw_return_code != 0:
-                    return r[m.Infra.BranchAncestryPlan].fail(
-                        "triggering commit shares no history with the baseline: "
-                        f"{c.Infra.ENV_VAR_GITHUB_SHA}={triggering_sha}; "
-                        f"command={' '.join(merge_base_command)}; "
-                        f"exit={merge_base_result.value.outcome.raw_return_code}; "
-                        f"stderr={merge_base_result.value.stderr.strip() or '<empty>'}"
-                    )
-                baseline_sha = merge_base_result.value.stdout.strip()
         pending_merge_result = u.Cli.run_raw(
             (
                 c.Infra.GIT,
@@ -2776,16 +2497,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             cwd=root,
         )
         pending_merge_includes_baseline = (
-            pending_merge_result.success
-            and u.Cli.process_succeeded(pending_merge_result.value.outcome)
+            pending_merge_result.success and pending_merge_result.value.exit_code == 0
         )
         current_branch_result = u.Cli.run_raw(
             (c.Infra.GIT, "rev-parse", "--abbrev-ref", "HEAD"), cwd=root
         )
         current_branch_ref = ""
-        if current_branch_result.success and u.Cli.process_succeeded(
-            current_branch_result.value.outcome
-        ):
+        if current_branch_result.success and current_branch_result.value.exit_code == 0:
             current_branch = current_branch_result.value.stdout.strip()
             if current_branch != "HEAD":
                 current_branch_ref = f"refs/heads/{current_branch}"
@@ -2802,11 +2520,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 "cannot enumerate governed refs: "
                 f"command={' '.join(refs_command)}; error={refs_result.error}"
             )
-        if refs_result.value.outcome.raw_return_code != 0:
+        if refs_result.value.exit_code != 0:
             return r[m.Infra.BranchAncestryPlan].fail(
                 "cannot enumerate governed refs: "
                 f"command={' '.join(refs_command)}; "
-                f"exit={refs_result.value.outcome.raw_return_code}; "
+                f"exit={refs_result.value.exit_code}; "
                 f"stderr={refs_result.value.stderr.strip() or '<empty>'}"
             )
         observations: list[tuple[str, str]] = []
@@ -2827,11 +2545,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"command={' '.join(worktrees_command)}; "
                 f"error={worktrees_result.error}"
             )
-        if worktrees_result.value.outcome.raw_return_code != 0:
+        if worktrees_result.value.exit_code != 0:
             return r[m.Infra.BranchAncestryPlan].fail(
                 "cannot enumerate registered worktrees: "
                 f"command={' '.join(worktrees_command)}; "
-                f"exit={worktrees_result.value.outcome.raw_return_code}; "
+                f"exit={worktrees_result.value.exit_code}; "
                 f"stderr={worktrees_result.value.stderr.strip() or '<empty>'}"
             )
         worktree_path = ""
@@ -2922,14 +2640,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         f"{reference}; command={' '.join(ancestry_command)}; "
                         f"error={ancestry_result.error}"
                     )
-                if ancestry_result.value.outcome.raw_return_code not in {0, 1}:
+                if ancestry_result.value.exit_code not in {0, 1}:
                     return r[m.Infra.BranchAncestryPlan].fail(
                         "Git ancestry validation failed: "
                         f"{reference}; command={' '.join(ancestry_command)}; "
-                        f"exit={ancestry_result.value.outcome.raw_return_code}; "
+                        f"exit={ancestry_result.value.exit_code}; "
                         f"stderr={ancestry_result.value.stderr.strip() or '<empty>'}"
                     )
-                ancestor = u.Cli.process_succeeded(ancestry_result.value.outcome)
+                ancestor = ancestry_result.value.exit_code == 0
                 if not ancestor and policy_reference == current_branch_ref:
                     ancestor = pending_merge_includes_baseline
             references.append(
@@ -2950,13 +2668,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _uv_environment_plan(
         *,
         root: Path,
-        workspace_root: Path,
+        repository_root: Path,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
         config: m.Infra.CodegenConfigSpec,
     ) -> m.Infra.UvEnvironmentPlan:
         """Describe the exact setup overlay without executing uv."""
-        del workspace_root
+        del repository_root
         workspace_environment = target.make_profile is c.Infra.MakeProfile.WORKSPACE
         environment_root = target.root
         groups: tuple[str, ...] = ("dev", "codegen")
@@ -2965,7 +2683,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             groups = (*groups, "workspace")
             editable_repositories = tuple(
                 item
-                for item in (workspace.repository, *workspace.subprojects)
+                for item in (workspace.repository, *workspace.declared_repositories)
                 if item.package and item.editable and not item.read_only
             )
         return m.Infra.UvEnvironmentPlan(
@@ -2978,30 +2696,57 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
 
     @staticmethod
-    def _absent_file_plan(root: Path, path: Path) -> p.Result[m.Infra.CodegenFilePlan]:
+    def _absent_file_plan(path: Path, current: str) -> m.Infra.CodegenFilePlan:
         """Plan the removal of one retired projection."""
-        project = root.expanduser().absolute()
-        target = path.expanduser().absolute()
-        before = u.Cli.atomic_read_binary_file_state(target, required=True)
-        if before.failure:
-            return r[m.Infra.CodegenFilePlan].from_failure(before)
-        return r[m.Infra.CodegenFilePlan].ok(
-            m.Infra.CodegenFilePlan(
-                project=project,
-                path=target,
-                before=before.value,
-                desired_content=None,
-                desired_mode=None,
-            )
+        return m.Infra.CodegenFilePlan(
+            path=path,
+            rendered="",
+            expected_sha256=u.Cli.sha256_content(""),
+            current_sha256=u.Cli.sha256_content(current),
+            changed=True,
+            absent=True,
         )
 
     @classmethod
     def retired_projection_plans(
         cls, root: Path, profile: c.Infra.MakeProfile
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Plan removal of generated projections excluded from this profile."""
+        r"""Plan removal of generated files this profile must not carry.
+
+        Git hooks belong to the workspace root only, and
+        the template already encodes that by excluding standalone from its
+        profiles. But a non-matching profile was merely SKIPPED, never retired,
+        so 31 subprojects kept an orphan .pre-commit-config.yaml that ``make gen``
+        neither owned nor removed -- each carrying a stale entry shape that
+        failed with \"Executable `CI=Y` not found\".
+
+        A projection excluded from a profile is retired for that profile. Only
+        files still carrying the generator banner are removed, so a hand-written
+        file that happens to share the name is never touched.
+        """
         codegen = config.Infra.codegen
         planned: list[m.Infra.CodegenFilePlan] = []
+        for retired in codegen.retired_projections:
+            path = root / retired.path
+            if not path.exists() and not path.is_symlink():
+                continue
+            if not path.is_file() or path.is_symlink():
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"retired projection is not a regular file: {retired.path}"
+                )
+            current = u.Cli.files_read_text(path)
+            if current.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    current.error or f"retired projection read failed: {retired.path}"
+                )
+            missing_markers = tuple(
+                marker for marker in retired.markers if marker not in current.value
+            )
+            if missing_markers:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"retired projection identity mismatch: {retired.path}"
+                )
+            planned.append(cls._absent_file_plan(path, current.value))
         for entry in codegen.templates.entries:
             if profile in entry.profiles or "{" in entry.destination:
                 continue
@@ -3010,17 +2755,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             current = u.Cli.files_read_text(path)
             if current.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(current)
-            if not any(
-                marker in current.value for marker in c.Infra.TEMPLATE_GENERATED_MARKERS
-            ):
-                continue
-            absent_plan = cls._absent_file_plan(root, path)
-            if absent_plan.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                    absent_plan
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    current.error or f"retired projection read failed: {path}"
                 )
-            planned.append(absent_plan.value)
+            if c.Infra.TEMPLATE_GENERATED_MARKER not in current.value:
+                continue
+            planned.append(cls._absent_file_plan(path, current.value))
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
 

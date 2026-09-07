@@ -44,13 +44,13 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
         return state.value.content is not None
 
     @staticmethod
-    def docs_workspace_roots(
-        workspace_root: Path, extra_roots: t.SequenceOf[Path] = ()
+    def docs_repository_roots(
+        repository_root: Path, extra_roots: t.SequenceOf[Path] = ()
     ) -> p.Result[tuple[Path, ...]]:
         """Return existing physical roots from one stable workspace topology."""
         try:
-            return FlextInfraUtilitiesDocsScopePathsMixin._docs_workspace_roots(
-                workspace_root, extra_roots
+            return FlextInfraUtilitiesDocsScopePathsMixin._docs_repository_roots(
+                repository_root, extra_roots
             )
         except (OSError, TypeError, ValueError) as exc:
             return r[tuple[Path, ...]].fail(
@@ -58,11 +58,11 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
             )
 
     @staticmethod
-    def _docs_workspace_roots(
-        workspace_root: Path, extra_roots: t.SequenceOf[Path]
+    def _docs_repository_roots(
+        repository_root: Path, extra_roots: t.SequenceOf[Path]
     ) -> p.Result[tuple[Path, ...]]:
         """Discover roots while the public boundary owns exception conversion."""
-        root = FlextInfraUtilitiesDocsScopePathsMixin.absolute_lexical(workspace_root)
+        root = FlextInfraUtilitiesDocsScopePathsMixin.absolute_lexical(repository_root)
         if not FlextInfraUtilitiesDocsScopePathsMixin.physical_directory_exists(root):
             return r[tuple[Path, ...]].fail(f"docs workspace root is missing: {root}")
         manifest_path = root / c.Infra.GITMODULES

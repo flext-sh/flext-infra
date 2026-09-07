@@ -4,9 +4,63 @@ from __future__ import annotations
 
 from pathlib import Path
 
+<<<<<<< HEAD
+from flext_infra import m, r
+from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
+from flext_tests import tm
+from tests import TestsFlextInfraUtilities as u, p, t
+
+
+class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
+    def __init__(self, project: Path, raw_count: int, pip_exit: int) -> None:
+        self._project = project
+        self._raw_count = raw_count
+        self._pip_exit = pip_exit
+
+    @override
+    def discover_project_paths(
+        self, repository_root: Path, projects_filter: t.StrSequence | None = None
+    ) -> p.Result[Sequence[Path]]:
+        _ = repository_root
+        _ = projects_filter
+        return r[Sequence[Path]].ok([self._project])
+
+    @override
+    def run_deptry(
+        self,
+        project_path: Path,
+        venv_bin: Path,
+        *,
+        config_path: Path | None = None,
+        json_output_path: Path | None = None,
+        extend_exclude: t.StrSequence | None = None,
+    ) -> p.Result[t.Pair[Sequence[t.JsonMapping], int]]:
+        _ = project_path
+        _ = venv_bin
+        return r[t.Pair[Sequence[t.JsonMapping], int]].ok(([], 0))
+
+    @override
+    def build_project_report(
+        self, project_name: str, deptry_issues: t.SequenceOf[t.JsonMapping]
+    ) -> m.Infra.ProjectDependencyReport:
+        _ = project_name
+        _ = deptry_issues
+        return m.Infra.ProjectDependencyReport(
+            project="fixture", deptry=m.Infra.DeptryReport(raw_count=self._raw_count)
+        )
+
+    @override
+    def run_pip_check(
+        self, workspace_root: Path, venv_bin: Path
+    ) -> p.Result[tuple[t.StrSequence, int]]:
+        _ = workspace_root
+        _ = venv_bin
+        return r[tuple[t.StrSequence, int]].ok(([], self._pip_exit))
+=======
 from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
 from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u, m, p, t
+>>>>>>> origin/0.12.0-dev
 
 
 class _DetectorStub:

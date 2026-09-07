@@ -3,33 +3,32 @@
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
+
+from types import MappingProxyType
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from . import _utilities as _utilities
+    from . import check as check
+    from . import codegen as codegen
+    from . import codemod as codemod
+    from . import container as container
+    from . import deps as deps
+    from . import detectors as detectors
+    from . import discovery as discovery
+    from . import docs as docs
+    from . import github as github
+    from . import io as io
+    from . import maintenance as maintenance
+    from . import refactor as refactor
+    from . import release as release
+    from . import transformers as transformers
+    from . import validate as validate
+    from . import workspace as workspace
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
-    from . import (
-        _utilities as _utilities,
-        check as check,
-        codegen as codegen,
-        codemod as codemod,
-        container as container,
-        deps as deps,
-        detectors as detectors,
-        discovery as discovery,
-        docs as docs,
-        github as github,
-        io as io,
-        maintenance as maintenance,
-        refactor as refactor,
-        release as release,
-        transformers as transformers,
-        validate as validate,
-        workspace as workspace,
-    )
     from .fixtures import (
         cached_runner_project,
         deptry_report_payload,

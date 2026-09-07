@@ -270,7 +270,11 @@ class TestsCodegenSetupSubmodules:
 
         result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
 
+<<<<<<< HEAD
+        tm.that(result.outcome.raw_return_code, eq=0)
+=======
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+>>>>>>> origin/0.12.0-dev
         tm.that(result.stderr, lacks="conflicting branch")
         tm.that(
             self._git(project / "vendor/source", "branch", "--show-current"),
@@ -321,7 +325,11 @@ class TestsCodegenSetupSubmodules:
 
         result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
 
+<<<<<<< HEAD
+        tm.that(result.outcome.raw_return_code, eq=0)
+=======
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+>>>>>>> origin/0.12.0-dev
         tm.that(result.stderr, lacks="fetch origin")
         tm.that(self._git(checkout, "branch", "--show-current"), eq="feature/lane")
         tm.that(self._git(checkout, "rev-parse", "HEAD"), eq=head)
@@ -372,7 +380,11 @@ class TestsCodegenSetupSubmodules:
 
         result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
 
+<<<<<<< HEAD
+        tm.that(result.outcome.raw_return_code, eq=0)
+=======
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+>>>>>>> origin/0.12.0-dev
         tm.that(marker.read_text(encoding="utf-8"), eq="local change")
         tm.that((project / "uv.log").is_file(), eq=True)
 
@@ -471,7 +483,11 @@ class TestsCodegenSetupSubmodules:
 
         result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
 
+<<<<<<< HEAD
+        tm.that(result.outcome.raw_return_code, eq=0)
+=======
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
+>>>>>>> origin/0.12.0-dev
         tm.that(dirty.read_text(encoding="utf-8"), eq="preserve me")
         tm.that(self._git(checkout, "branch", "--show-current"), eq="declared-dev")
 
@@ -485,9 +501,6 @@ def generated_project_template(tmp_path_factory: pytest.TempPathFactory) -> Path
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
             provider="flext-sh",
-            beads_workspace="flext-demo",
-            beads_database="flext_demo",
-            beads_issue_prefix="flext-demo",
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",

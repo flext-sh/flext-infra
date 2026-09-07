@@ -184,9 +184,7 @@ class FlextInfraRefactorTypingUnifier(
                 source, end_lineno, end_col
             )
         ]
-        return any(
-            prefix in text for prefix in ("dict[", "Dict[", "list[", "List[")
-        )
+        return any(prefix in text for prefix in ("dict[", "Dict[", "list[", "List["))
 
     @staticmethod
     def _mutated_names(module: ast.Module) -> frozenset[str]:
@@ -218,9 +216,7 @@ class FlextInfraRefactorTypingUnifier(
                             FlextInfraRefactorTypingUnifier._mutated_root(target.value)
                         )
             elif isinstance(node, ast.AugAssign):
-                names.update(
-                    FlextInfraRefactorTypingUnifier._mutated_root(node.target)
-                )
+                names.update(FlextInfraRefactorTypingUnifier._mutated_root(node.target))
             elif isinstance(node, ast.Delete):
                 for target in node.targets:
                     if isinstance(target, ast.Subscript):

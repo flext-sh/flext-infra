@@ -289,13 +289,17 @@ def phase_analysis_live(analysis: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool
 
 
 def sources(plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
-    """Prove every Mise config source still equals its full snapshot."""
+    """Prove every snapshotted Mise config source is byte-identical."""
     for project in plan.projects:
+<<<<<<< HEAD
+        current = states_current(project.config.sources)
+=======
         current = u.Infra.snapshot_config_sources(project.layout.root)
+>>>>>>> origin/0.12.0-dev
         if current.failure:
-            return r[bool].from_failure(current)
-        if current.value != project.config.sources:
-            return r[bool].fail(f"Mise sources changed: {project.layout.selector}")
+            return r[bool].fail(
+                current.error or f"Mise sources changed: {project.layout.selector}"
+            )
     return r[bool].ok(True)
 
 
@@ -589,7 +593,7 @@ def _manifest_root_matches_created(
 
 def _artifact_snapshot(
     plan: m.Infra.MiseToolchainWorkspacePlan,
-    replacements: dict[Path, tuple[bytes, int | None]],
+    replacements: dict[Path, tuple[bytes | None, int | None]],
 ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
     root_launchers: tuple[bytes, bytes] | None = None
     states: list[m.Cli.AtomicFileState] = []
