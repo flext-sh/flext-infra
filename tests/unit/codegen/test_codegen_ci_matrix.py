@@ -12,7 +12,6 @@ import pytest
 
 from flext_infra import c, config, t, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
 from ._support import CodegenTestSupport
@@ -36,9 +35,6 @@ class TestCodegenCiMatrix:
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
             provider="flext-sh",
-            beads_workspace=beads.workspace,
-            beads_database=beads.database,
-            beads_issue_prefix=beads.issue_prefix,
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",

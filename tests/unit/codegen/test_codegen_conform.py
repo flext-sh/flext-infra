@@ -36,7 +36,6 @@ def _conform_target(
         repository=repository,
         root=root,
         make_profile=make_profile,
-        beads=u.Tests.beads_project(repository.name),
         canonical_project_name=repository.distribution,
         baseline_branch=provider.branch,
         baseline_reference=f"refs/remotes/origin/{provider.branch}",
@@ -565,7 +564,6 @@ class TestCodegenConform:
         )
         workspace = m.Infra.WorkspaceSpec(
             name=repository.name,
-            beads=u.Tests.beads_project(repository.name),
             repository=repository,
             project=u.Tests.project_spec(repository.name),
         )
@@ -612,9 +610,6 @@ class TestCodegenConform:
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
             provider="flext-sh",
-            beads_workspace=name,
-            beads_database=name.replace("-", "_"),
-            beads_issue_prefix=name,
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
@@ -644,7 +639,7 @@ class TestCodegenConform:
         )
         tm.that(first_result.plan.request.root, eq=root.resolve())
         tm.that((root / "config" / "workspace.yaml").exists(), eq=False)
-        tm.that((root / "config" / "beads.yaml").is_file(), eq=True)
+        tm.that((root / "config" / "beads.yaml").exists(), eq=False)
         tm.that((root / "pyproject.toml").is_file(), eq=True)
         tm.that((root / ".env.example").is_file(), eq=True)
         package_name = name.replace("-", "_")
@@ -663,15 +658,15 @@ class TestCodegenConform:
         tm.that(process.value, eq="✅ pong")
 
     @pytest.mark.slow
-    def test_generated_make_uses_unpinned_environment_uv(
+    def test_generated_make_dispatches_through_project_toolchain(
         self, infra_git_repo: Path
     ) -> None:
-        """Generated Make delegates uv selection to the caller environment."""
+        """Public gates select native tools through the project Mise owner."""
         root = infra_git_repo
         workspace = _standalone_workspace(root)
         _apply_conform_surface(root, workspace, c.Infra.CodegenConformSurface.MAKEFILE)
         selected = u.Cli.run_raw(
-            ["make", "-C", str(root), "--dry-run", "_builtin_status_diagnostics"],
+            ["make", "-C", str(root), "--dry-run", "status", "WHAT=diagnostics"],
             remove_env_keys=("MAKEFLAGS",),
         )
 
@@ -682,10 +677,18 @@ class TestCodegenConform:
         tm.that(selected_output, lacks="uv@")
         tm.that(selected_output, lacks="UV_VERSION")
         makefile = (root / "Makefile").read_text(encoding="utf-8")
-        tm.that(makefile, has="UV ?= uv")
+        tm.that(makefile, has="UV := uv")
+        tm.that(makefile, has="UV is project-owned by Mise and cannot be overridden")
         tm.that(makefile, lacks="UV_VERSION")
         tm.that(makefile, lacks="uv@")
-        tm.that(makefile, lacks="mise exec")
+        tm.that(
+            makefile,
+            has=(
+                '$(MISE_PROJECT_CONFIG_ENV) "$(SETUP_MISE)" '
+                '-C "$(PROJECT_ROOT)" exec --'
+            ),
+        )
+        tm.that(makefile, has='$(SELF_MAKE) "_mise_dispatch_$@"')
 
     @pytest.mark.slow
     def test_existing_manifest_converges_to_identical_tree(
@@ -697,9 +700,6 @@ class TestCodegenConform:
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=existing_root,
             provider="flext-sh",
-            beads_workspace="flext-demo",
-            beads_database="flext_demo",
-            beads_issue_prefix="flext-demo",
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
@@ -882,7 +882,6 @@ class TestCodegenConform:
         member = u.Tests.repository_ref("flext-core", path=Path("flext-core"))
         workspace = m.Infra.WorkspaceSpec(
             name="flext",
-            beads=u.Tests.beads_project("flext"),
             repository=root_repository,
             project=u.Tests.project_spec("flext"),
             subprojects=(member,),
@@ -925,7 +924,6 @@ class TestCodegenConform:
         )
         workspace = m.Infra.WorkspaceSpec(
             name="arbitrary-root",
-            beads=u.Tests.beads_project("arbitrary-root"),
             repository=repository,
             project=u.Tests.project_spec("arbitrary-root"),
         )
@@ -978,7 +976,6 @@ class TestCodegenConform:
         )
         workspace = m.Infra.WorkspaceSpec(
             name="consumer",
-            beads=u.Tests.beads_project("consumer"),
             repository=repository,
             project=project,
         )
@@ -1028,7 +1025,6 @@ class TestCodegenConform:
         repository = u.Tests.repository_ref("consumer")
         workspace = m.Infra.WorkspaceSpec(
             name="consumer",
-            beads=u.Tests.beads_project("consumer"),
             repository=repository,
         )
         target = _conform_target(
@@ -1357,7 +1353,6 @@ class TestScriptDispatchMakefile:
         )
         workspace = m.Infra.WorkspaceSpec(
             name="demo-root",
-            beads=u.Tests.beads_project("demo-root"),
             repository=root_repository,
             project=u.Tests.project_spec("demo-root"),
             subprojects=(),

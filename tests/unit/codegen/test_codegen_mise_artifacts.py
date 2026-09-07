@@ -330,6 +330,50 @@ class TestsCodegenMiseArtifacts:
 
         tm.ok(result, eq=True)
 
+    def test_config_preflight_rejects_suspended_selector_before_lock_access(
+        self, tmp_path: Path
+    ) -> None:
+        """A dormant capability cannot reach lock, download, or publication."""
+        root = tmp_path / "project"
+        root.mkdir()
+        (root / ".mise.toml").write_text(
+            "[settings]\n"
+            "lockfile = true\n"
+            "[tool_config]\n"
+            "locked = true\n"
+            "[tools]\n"
+            'beads = "1.2.2"\n',
+            encoding="utf-8",
+        )
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "workspace_root": root,
+            "config_only": True,
+        }).execute()
+
+        tm.fail(result, has=["suspended toolchain", "beads"])
+        tm.that((root / "mise.lock").exists(), eq=False)
+
+    def test_apply_prunes_unconfigured_lock_tools_through_the_lock_owner(
+        self, tmp_path: Path
+    ) -> None:
+        """Retire stale generated lock entries without invoking Mise."""
+        stale_selector = "github:example/stale"
+        root = self._project(
+            tmp_path / "project", extra_lock_selector=stale_selector
+        )
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "workspace_root": root,
+            "apply_changes": True,
+        }).execute()
+
+        tm.ok(result, eq=True)
+        tm.that(
+            (root / "mise.lock").read_text(encoding="utf-8"),
+            lacks=stale_selector,
+        )
+
     def test_missing_platform_checksum_is_rejected(self, tmp_path: Path) -> None:
         root = self._project(tmp_path / "project", include_checksum=False)
 

@@ -1,4 +1,4 @@
-"""Repository-local topology and Beads identity contracts."""
+"""Repository-local topology contracts."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from tests.unit.workspace import WorktreeFixture
 
 
 class TestsRepositoryLocalTopology:
-    """Prove each repository owns its topology and typed Beads identity."""
+    """Prove each repository owns topology through PEP 621 and local Git facts."""
 
     def test_selected_workspace_manifest_owns_repository_policy(
         self, tmp_path: Path
@@ -125,7 +125,7 @@ class TestsRepositoryLocalTopology:
     def test_loads_typed_beads_identity_from_the_repository_itself(
         self, tmp_path: Path
     ) -> None:
-        """Parse required identity and project extensions into one typed model."""
+        """Missing or malformed dormant data cannot select an auxiliary capability."""
         root = tmp_path / "project"
         WorktreeFixture.initialize_governed_project(
             root,
@@ -133,92 +133,20 @@ class TestsRepositoryLocalTopology:
             workspace="fixture-workspace",
             database="fixture-database",
             issue_prefix="fixture-prefix",
-            custom_issue_types=("incident",),
         )
+        dormant_path = root / "config" / "beads.yaml"
+        if dormant_content is None:
+            dormant_path.unlink()
+        else:
+            dormant_path.write_text(dormant_content, encoding="utf-8")
+        before = dormant_path.read_bytes() if dormant_path.is_file() else None
 
-        beads = tm.ok(FlextInfraWorkspaceDetector.load_beads_spec(root))
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
-        tm.that(type(beads), eq=m.Infra.BeadsProjectSpec)
-        tm.that(
-            beads.model_dump(mode="json"),
-            eq={
-                "version": 1,
-                "workspace": "fixture-workspace",
-                "database": "fixture-database",
-                "issue_prefix": "fixture-prefix",
-                "custom_issue_types": ["incident"],
-            },
-        )
-        tm.that(workspace.beads, eq=beads)
-
-    @pytest.mark.parametrize(
-        "missing_field", ["version", "workspace", "database", "issue_prefix"]
-    )
-    def test_beads_identity_requires_every_declared_field(
-        self, tmp_path: Path, missing_field: str
-    ) -> None:
-        """Reject partial identity instead of inferring a value elsewhere."""
-        root = tmp_path / missing_field
-        WorktreeFixture.initialize_governed_project(
-            root,
-            f"fixture-{missing_field}",
-            workspace="fixture-workspace",
-            database="fixture-database",
-            issue_prefix="fixture-prefix",
-        )
-        payload: dict[str, t.JsonValue] = {
-            "version": 1,
-            "workspace": "fixture-workspace",
-            "database": "fixture-database",
-            "issue_prefix": "fixture-prefix",
-        }
-        del payload[missing_field]
-        tm.ok(u.Cli.yaml_dump(root / "config" / "beads.yaml", payload))
-
-        result = FlextInfraWorkspaceDetector.load_beads_spec(root)
-
-        tm.fail(result, has=missing_field)
-
-    @pytest.mark.parametrize(
-        ("field", "invalid_value"),
-        [
-            pytest.param("version", 2, id="unknown-version"),
-            pytest.param("workspace", "", id="empty-workspace"),
-            pytest.param("database", ["not", "a", "scalar"], id="database-list"),
-            pytest.param("issue_prefix", None, id="null-prefix"),
-            pytest.param(
-                "custom_issue_types",
-                ["incident", "incident"],
-                id="duplicate-custom-type",
-            ),
-        ],
-    )
-    def test_beads_identity_rejects_malformed_values(
-        self, tmp_path: Path, field: str, invalid_value: t.JsonValue
-    ) -> None:
-        """Fail closed on values outside the typed local contract."""
-        root = tmp_path / field
-        WorktreeFixture.initialize_governed_project(
-            root,
-            f"fixture-{field}",
-            workspace="fixture-workspace",
-            database="fixture-database",
-            issue_prefix="fixture-prefix",
-        )
-        payload: dict[str, t.JsonValue] = {
-            "version": 1,
-            "workspace": "fixture-workspace",
-            "database": "fixture-database",
-            "issue_prefix": "fixture-prefix",
-            "custom_issue_types": [],
-        }
-        payload[field] = invalid_value
-        tm.ok(u.Cli.yaml_dump(root / "config" / "beads.yaml", payload))
-
-        result = FlextInfraWorkspaceDetector.load_beads_spec(root)
-
-        tm.fail(result, has=field)
+        tm.that(workspace.name, eq="fixture-project")
+        tm.that(workspace.beads, none=True)
+        after = dormant_path.read_bytes() if dormant_path.is_file() else None
+        tm.that(after, eq=before)
 
     def test_gitmodules_without_governed_members_remains_standalone(
         self, tmp_path: Path
@@ -505,6 +433,35 @@ class TestsRepositoryLocalTopology:
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
         tm.fail(result, has="No item found with id origin")
+
+    def test_pep621_distribution_must_match_git_repository_identity(
+        self, tmp_path: Path
+    ) -> None:
+        """PEP 621 is the owner; Git validates it and never supplies a fallback."""
+        root = tmp_path / "identity-conflict"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-project",
+            workspace="ignored-workspace",
+            database="ignored-database",
+            issue_prefix="ignored-prefix",
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    "git",
+                    "remote",
+                    "set-url",
+                    "origin",
+                    WorktreeFixture.governed_repository_url("different-project"),
+                ],
+                cwd=root,
+            )
+        )
+
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+
+        tm.fail(result, has="repository identity does not match distribution")
 
     @pytest.mark.parametrize(
         ("missing_key", "expected_error"),

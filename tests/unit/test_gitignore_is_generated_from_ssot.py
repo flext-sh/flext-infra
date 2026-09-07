@@ -91,7 +91,6 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         """
         projects = ("probe-project", "nested/probe-project")
         workspace = m.Infra.WorkspaceSpec(
-            beads=test_u.Tests.beads_project("flext"),
             name="probe-root",
             repository=test_u.Tests.repository_ref("probe-root"),
             subprojects=tuple(

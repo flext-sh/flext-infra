@@ -20,7 +20,7 @@ from tests.unit.workspace import WorktreeFixture
 class TestCodegenLinkedWorktreeTopology:
     """Keep topology inputs and writes owned by the repository being conformed."""
 
-    def test_linked_lane_reads_its_local_beads_identity_and_only_writes_lane(
+    def test_linked_lane_uses_local_pep621_git_identity_and_only_writes_lane(
         self, tmp_path: Path
     ) -> None:
         """Use dirty lane-local policy without reading or mutating the primary."""
@@ -86,22 +86,16 @@ class TestCodegenLinkedWorktreeTopology:
         tm.that(WorktreeFixture.repository_snapshot(primary), eq=primary_snapshot)
 
     @pytest.mark.parametrize(
-        ("beads_content", "expected_error"),
+        "dormant_content",
         [
-            pytest.param(
-                None,
-                "missing required repository-local Beads configuration",
-                id="missing",
-            ),
-            pytest.param(
-                "version: [\nworkspace: invalid\n", "YAML parse error", id="malformed"
-            ),
+            pytest.param(None, id="missing"),
+            pytest.param("version: [\nworkspace: invalid\n", id="malformed"),
         ],
     )
-    def test_invalid_local_beads_identity_fails_before_any_write(
-        self, tmp_path: Path, beads_content: str | None, expected_error: str
+    def test_dormant_auxiliary_identity_does_not_participate_in_conform(
+        self, tmp_path: Path, dormant_content: str | None
     ) -> None:
-        """Fail planning atomically when the required local input is invalid."""
+        """Preserve dormant data while PEP 621 and Git own conformance."""
         root = tmp_path / "project"
         WorktreeFixture.initialize_governed_project(
             root,
@@ -111,22 +105,24 @@ class TestCodegenLinkedWorktreeTopology:
             issue_prefix="fixture-prefix",
         )
         beads_path = root / "config" / "beads.yaml"
-        if beads_content is None:
+        if dormant_content is None:
             beads_path.unlink()
         else:
-            beads_path.write_text(beads_content, encoding="utf-8")
-        before = WorktreeFixture.repository_snapshot(root)
+            beads_path.write_text(dormant_content, encoding="utf-8")
+        before = beads_path.read_bytes() if beads_path.is_file() else None
 
         result = FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
                 root=root,
+                what=c.Infra.CodegenConformSurface.MAKEFILE,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.APPLY,
             )
         )
 
-        tm.fail(result, has=expected_error)
-        tm.that(WorktreeFixture.repository_snapshot(root), eq=before)
+        tm.ok(result)
+        after = beads_path.read_bytes() if beads_path.is_file() else None
+        tm.that(after, eq=before)
 
     def test_workspace_members_inherit_identity_and_topology_inputs_are_never_rewritten(
         self, tmp_path: Path

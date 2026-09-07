@@ -32,12 +32,6 @@ def _repository(
 
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
-        beads=m.Infra.BeadsProjectSpec(
-            version=c.Infra.BEADS_CONFIG_VERSION,
-            workspace="flext",
-            database="flext",
-            issue_prefix="flext",
-        ),
         name="workspace",
         repository=_repository(
             "workspace", role=c.Infra.MakeProfile.WORKSPACE, path="."
@@ -233,7 +227,12 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that(uv_table["exclude-newer"], eq=toolchain.uv_exclude_newer)
         expected_exclude_newer_package: dict[str, bool | str] = {
             package: False
-            for package in toolchain.dependency_cooldown_exclusions
+            for package in {
+                *toolchain.dependency_cooldown_exclusions,
+                *declared_dev_names.intersection(
+                    config.Infra.codegen.python_tool_distributions
+                ),
+            }
             if package not in toolchain.dependency_cooldown_overrides
         }
         expected_exclude_newer_package.update(toolchain.dependency_cooldown_overrides)
@@ -241,6 +240,7 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that("required-version" not in uv_table, eq=True)
         tm.that("python-interpreter-path" not in pyrefly_table, eq=True)
         tm.that("custom-tool>=1" in dev_group, eq=True)
+        tm.that("custom-tool" not in uv_table["exclude-newer-package"], eq=True)
         # Why (CodeRabbit 3742335224): assert the exact requirement the typed
         # SSOT declares, not merely the package name. A name-only assertion
         # stays green even if the generated floor drifts away from the owner.
