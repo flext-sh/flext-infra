@@ -9,7 +9,7 @@ import pytest
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u, u as test_u
+from tests import u
 from tests.unit.workspace import WorktreeFixture
 
 

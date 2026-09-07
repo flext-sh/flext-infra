@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config
+
 from ._git.scope import FlextInfraUtilitiesGitScopeMixin
 
 if TYPE_CHECKING:

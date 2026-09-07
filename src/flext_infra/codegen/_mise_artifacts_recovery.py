@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
 from flext_infra import m
+
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 from ._mise_artifacts_journal import FlextInfraMiseArtifactsJournal as journal_io
 from ._mise_artifacts_process import FlextInfraMiseArtifactsProcess as process
