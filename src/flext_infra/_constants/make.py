@@ -66,7 +66,23 @@ class FlextInfraConstantsMake:
         for gate in FlextInfraConstantsCheck.SARIF_TOOL_INFO
         if gate not in FlextInfraConstantsCheck.MUTATING_GATES
     )
-    CANONICAL_DEFAULT_GATE_IDS: Final[tuple[str, ...]] = CANONICAL_GATE_IDS
+    # Operator instruction 2026-09-07: the default check scope is the
+    # last-authorized nine-gate set (green baseline 147f03888). The gates
+    # introduced by the 2026-09-06 conformance wave stay registered and
+    # reachable through an explicit `make check WHAT=<gate>` selection, but
+    # they are not part of the default pipeline and their adoption debt is
+    # not authorized for payment.
+    CANONICAL_DEFAULT_GATE_IDS: Final[tuple[str, ...]] = (
+        "lint",
+        "pyrefly",
+        "mypy",
+        "pyright",
+        "security",
+        "markdown",
+        "smells",
+        "direnv",
+        "duplication",
+    )
     CANONICAL_FIXABLE_GATE_IDS: Final[tuple[str, ...]] = (
         "lint",
         "markdown",

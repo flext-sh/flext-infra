@@ -187,15 +187,17 @@ class FlextInfraConstantsCheck:
         r"\bFlextCli[A-Z]\w*"
     )
 
-    # --- 200-LOC module law gate SSOT ---
-    # The current operator contract supersedes the former 1000-LOC allowance.
-    # Consumers read this constant so decomposition converges on one value.
-    LOC_CAP_MAX: Final[int] = 200
+    # --- 1000-LOC module allowance gate SSOT ---
+    # Operator instruction 2026-09-07: the 200-LOC consolidation debt is not
+    # authorized for payment; the former 1000-LOC allowance stands and the
+    # consolidation wave's output is adopted as-is. Consumers read this
+    # constant so decomposition converges on one value.
+    LOC_CAP_MAX: Final[int] = 1000
     "Per-module logical-LOC ceiling."
     SCC_BINARY: Final[str] = "scc"
     CLI_DIRENV: Final[str] = "direnv"
     SCC_PYTHON_LANG: Final[str] = "Python"
-    "scc language key the 200-LOC cap enforces; "
+    "scc language key the module-LOC cap enforces; "
     "templates (.j2/.mk), schemas (.json), and config (.yml/.toml) are not modules."
 
     # --- qlty smells gate (code-smell architecture violations) SSOT ---
