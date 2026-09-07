@@ -13,14 +13,16 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from flext_infra import t
-
-from .._constants.codegen_project import FlextInfraConstantsCodegenProject
-from .._constants.make import FlextInfraConstantsMake
-from .._constants.release import FlextInfraConstantsRelease
-from .._constants.validate import FlextInfraConstantsSharedInfra
-from .._models._defaults import immutable_empty_mapping
-from .._models.deps_tool_config import FlextInfraModelsDepsToolSettings
-from .._models.layout import FlextInfraModelsLayout
+from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
+from flext_infra._constants.make import FlextInfraConstantsMake
+from flext_infra._constants.release import FlextInfraConstantsRelease
+from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
+from flext_infra._models._defaults import (
+    ImmutableEmptyMapping,
+    immutable_empty_mapping,
+)
+from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
+from flext_infra._models.layout import FlextInfraModelsLayout
 
 __all__: list[str] = ["FlextInfraConfigModels"]
 
@@ -53,6 +55,15 @@ class FlextInfraConfigModels:
     # These models replace the former model-less workspace/make dictionaries.
     # YAML is accepted only at the flext-cli loading boundary and is immediately
     # model-validated here.
+
+    class _ConfigContract(m.ContractModel):
+        """Private declarative base for schema-loaded codegen records."""
+
+        # Rendered file payloads are
+        # byte contracts; Pydantic must never trim their final newline.
+        model_config = m.ConfigDict(
+            strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
+        )
 
     class MiseToolSpec(_ConfigContract):
         """One mise backend resolved to the newest published release."""
@@ -2086,6 +2097,114 @@ class FlextInfraConfigModels:
             ),
         ]
 
+    class StaticTextRenderSpec(_ConfigContract):
+        """Empty typed context for a variable-free governed text template."""
+
+    class ReleaseAutomationOverrideSpec(_ConfigContract):
+        """One distribution's deviation from the shared release contract."""
+
+        release_branch: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(default=None, description="Branch that produces releases"),
+        ] = None
+        build_command: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(default=None, description="Command that produces the artifacts"),
+        ] = None
+        version_variables: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Extra file:variable version anchors"),
+        ] = ()
+
+    class ReleaseAutomationSpec(_ConfigContract):
+        """Automated semantic versioning, owned by the market tool.
+
+        Why: bump_version/parse_semver and the release orchestrator already
+        existed, but nothing DERIVED the bump -- a human passed
+        ``bump=minor`` by hand, which is exactly the judgement the commit
+        history already encodes and the one a human gets wrong. Conventional
+        Commits plus python-semantic-release replace that judgement with a
+        rule, and replace local implementation with a maintained dependency.
+
+        Declared once here so every generated pyproject carries the same
+        contract. A project that genuinely differs is expressed in
+        ``overrides``, never by editing its own pyproject.
+        """
+
+        tool: Annotated[
+            t.NonEmptyStr, m.Field(description="Release automation distribution")
+        ]
+        runner: Annotated[
+            t.NonEmptyStr, m.Field(description="Command runner that invokes the tool")
+        ]
+        commit_parser: Annotated[
+            t.NonEmptyStr, m.Field(description="Commit convention driving the bump")
+        ]
+        release_branch: Annotated[
+            t.NonEmptyStr, m.Field(description="Branch that produces releases")
+        ]
+        version_variables: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="file:variable anchors the tool rewrites"),
+        ]
+        version_toml: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="file:tomlpath anchors the tool rewrites"),
+        ]
+        build_command: Annotated[
+            t.NonEmptyStr, m.Field(description="Command that produces the artifacts")
+        ]
+        tag_format: Annotated[
+            t.NonEmptyStr, m.Field(description="Tag shape, shared with the workflow")
+        ]
+        changelog_file: Annotated[
+            t.NonEmptyStr, m.Field(description="Generated changelog destination")
+        ]
+        overrides: Annotated[
+            Mapping[
+                t.NonEmptyStr, FlextInfraConfigModels.ReleaseAutomationOverrideSpec
+            ],
+            m.Field(
+                default_factory=ImmutableEmptyMapping,
+                description="Per-distribution deviations from the shared contract",
+            ),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_anchors(self) -> Self:
+            """Every anchor must name a target, or the tool rewrites nothing."""
+            for anchor in (*self.version_variables, *self.version_toml):
+                if ":" not in anchor:
+                    msg = f"release version anchor must be '<file>:<target>': {anchor}"
+                    raise ValueError(msg)
+            return self
+
+    class SgconfigRenderSpec(_ConfigContract):
+        """Typed input for the generated ast-grep project config.
+
+        Why (ai-hub-qwoc): a provider manifest can declare ``sgconfig.yml`` as a
+        required surface, but no generator owned it, so the file was authored by
+        hand in one repository and simply absent in another -- provider discovery
+        then failed closed with ``missing declared file: sgconfig.yml``. The rule
+        and fixture directories are declared here so every repository renders the
+        same contract from the SSOT instead of a hand-written copy.
+        """
+
+        rule_dirs: Annotated[
+            tuple[str, ...],
+            m.Field(
+                min_length=1,
+                description="Directories holding this project's ast-grep rules",
+            ),
+        ]
+        test_dirs: Annotated[
+            tuple[str, ...],
+            m.Field(
+                default=(),
+                description="Directories holding rule fixtures and snapshots",
+            ),
+        ]
+
     # Project creation metadata remains a typed manifest input.
     class ProjectSpec(_ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
@@ -2755,10 +2874,28 @@ class FlextInfraConfigModels:
             m.Field(description="VS Code map keys union-merged over project settings"),
         ]
 
+    class CodegenLocCapSpec(_ConfigContract):
+        """Per-module logical-LOC ceiling policy (scc code lines)."""
+
+        max_lines: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                description=(
+                    "Per-module code-LOC ceiling. Operator instruction "
+                    "2026-09-07: the former 1000-LOC allowance stands."
+                ),
+            ),
+        ] = 1000
+
     class CodegenConfigSpec(_ConfigContract):
         """Fully modeled content of ``config/codegen.yaml``."""
 
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
+        loc_cap: Annotated[
+            FlextInfraConfigModels.CodegenLocCapSpec,
+            m.Field(description="Per-module code-LOC ceiling policy"),
+        ]
         toolchain: Annotated[
             FlextInfraConfigModels.ToolchainSpec,
             m.Field(description="Exact generated toolchain"),

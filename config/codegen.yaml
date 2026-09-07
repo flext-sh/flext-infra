@@ -3,6 +3,11 @@ Infra:
     # NOTE(mro-wkii.17.5, agent implement_manifest): declarative SSOT for deterministic project conformance.
     version: 1
 
+    # Per-module scc code-LOC ceiling. Operator instruction 2026-09-07:
+    # the former 1000-LOC allowance stands (supersedes the 200 constant).
+    loc_cap:
+      max_lines: 1000
+
     toolchain:
       # Single-source Python minor line. The environment resolves the newest
       # compatible 3.13 patch; no patch is pinned in generated repositories.
@@ -152,6 +157,7 @@ Infra:
         repository: actions/deploy-pages
         version: v5.0.0
         sha: cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
+
     uv_exclude_dependencies:
       # Standalone CI installs the project editable while sibling flext packages
       # declare the same package via git+https@integration. uv rejects that as
@@ -1065,8 +1071,8 @@ Infra:
           - pyright>=1.1.411
           - pytest>=9.1.1
           - pytest-testmon>=2.2.0
-          - ruff>=0.16.0
-          - rumdl>=0.2.45
+          - ruff>=0.16.5
+          - rumdl>=0.2.62
           - vulture>=2.16
           - yamlfix>=1.19.1
         dependency_profiles:

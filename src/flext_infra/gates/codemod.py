@@ -41,6 +41,10 @@ class FlextInfraCodemodGate(FlextInfraGate):
         started = time.monotonic()
         planned = u.Infra.codemod_rule_plan(project_dir)
         if planned.failure:
+            failure = planned.error
+            if not failure:
+                msg = "codemod rule planning failed without a diagnostic"
+                raise RuntimeError(msg)
             return self._build_check_gate_execution(
                 project_dir,
                 passed=False,
