@@ -15,8 +15,6 @@ import libcst as cst
 from flext_infra.constants import c
 from flext_infra.models import m
 
-from .._utilities.discovery import FlextInfraUtilitiesDiscovery
-from .._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from .._utilities.transformer_base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:
@@ -365,7 +363,9 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
             )
         if file_path is None:
             return m.Infra.AliasMigrationContext(policy_owner="", import_root="")
-        return FlextInfraUtilitiesDiscovery.alias_migration_context(file_path)
+        from flext_infra import u
+
+        return u.Infra.alias_migration_context(file_path)
 
     @staticmethod
     def _is_private_facade_implementation(file_path: Path) -> bool:
