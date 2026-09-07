@@ -183,7 +183,7 @@ class TestCodegenLinkedWorktreeTopology:
             FlextInfraCodegenConform.execute_request(
                 m.Infra.CodegenConformRequest(
                     root=root,
-                    scope=c.Infra.CodegenConformScope.SUBPROJECTS,
+                    scope=c.Infra.CodegenConformScope.DECLARED,
                     mode=c.Infra.CodegenConformMode.APPLY,
                 )
             )
@@ -229,7 +229,7 @@ class TestCodegenLinkedWorktreeTopology:
             m.Infra.CodegenConformRequest(
                 root=root,
                 what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SUBPROJECTS,
+                scope=c.Infra.CodegenConformScope.DECLARED,
                 mode=c.Infra.CodegenConformMode.CHECK,
             )
         )

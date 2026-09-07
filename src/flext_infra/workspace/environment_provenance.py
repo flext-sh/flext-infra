@@ -25,7 +25,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         cls, request: p.Infra.WorkspaceEnvironmentRequest
     ) -> p.Result[int]:
         """Validate one CLI request without mutating the environment."""
-        return cls.validate(request.repository_root)
+        return cls.validate(request.workspace_root)
 
     @classmethod
     def validate(

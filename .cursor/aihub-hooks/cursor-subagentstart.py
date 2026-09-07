@@ -5,7 +5,7 @@ import sys
 
 payload = json.load(sys.stdin)
 if not isinstance(payload, dict):
-    raise TypeError('hook input must be a JSON object')
+    raise TypeError("hook input must be a JSON object")
 response = json.loads('{"permission":"allow"}')
-json.dump(response, sys.stdout, ensure_ascii=False, separators=(',', ':'))
-sys.stdout.write('\n')
+json.dump(response, sys.stdout, ensure_ascii=False, separators=(",", ":"))
+sys.stdout.write("\n")

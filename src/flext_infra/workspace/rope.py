@@ -78,7 +78,12 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             repository_root
         )
         workspace = cls(
+<<<<<<< HEAD
+            repository_root=repository_root,
+            rope_repository_root_override=resolved_rope_root,
+=======
             workspace=repository_root, rope_repository_root_override=resolved_rope_root
+>>>>>>> origin/0.12.0-dev
         )
         _ = workspace.rope_project
         return workspace

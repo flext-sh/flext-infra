@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import stat
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -309,15 +308,6 @@ class FlextInfraMiseWorkspacePlanner:
         artifact_set = m.Infra.MiseToolchainArtifactSet(
             unix_launcher=artifacts[0], windows_launcher=artifacts[1], lock=artifacts[2]
         )
-        native_seed = (
-            artifact_set.windows_launcher
-            if os.name == "nt"
-            else artifact_set.unix_launcher
-        )
-        if layout.selector == "." and native_seed.content is None:
-            return r[m.Infra.MiseToolchainProjectState].fail(
-                f"native committed Mise seed is missing: {native_seed.path}"
-            )
         return r[m.Infra.MiseToolchainProjectState].ok(
             m.Infra.MiseToolchainProjectState(
                 layout=layout,

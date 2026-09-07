@@ -51,9 +51,25 @@ def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
         beads=tu.Tests.beads_project("flext"),
         name="workspace",
+<<<<<<< HEAD
+        repository=_repository(
+            "workspace",
+            role=_ROLE.WORKSPACE,
+            path=".",
+            checkout=c.Infra.CheckoutKind.ROOT,
+        ),
+        subprojects=(
+            _repository(
+                "flext-core",
+                role=_ROLE.STANDALONE,
+                path="flext-core",
+                checkout=c.Infra.CheckoutKind.SUBMODULE,
+            ),
+=======
         repository=_repository("workspace", role=_ROLE.WORKSPACE, path="."),
         subprojects=(
             _repository("flext-core", role=_ROLE.STANDALONE, path="flext-core"),
+>>>>>>> origin/0.12.0-dev
         ),
     )
 
@@ -254,7 +270,11 @@ workspace = true
             )
         )
 
+<<<<<<< HEAD
+        tm.that(lock_result.outcome.raw_return_code, eq=0)
+=======
         tm.that(u.Cli.process_succeeded(lock_result.outcome), eq=True)
+>>>>>>> origin/0.12.0-dev
         lock_content = (root / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8")
         packages = tu.Tests.toml_tables_at(lock_content, "package")
         provider_packages = [

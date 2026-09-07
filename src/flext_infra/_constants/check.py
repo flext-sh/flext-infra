@@ -190,7 +190,6 @@ class FlextInfraConstantsCheck:
     # --- 200-LOC module law gate SSOT ---
     # The current operator contract supersedes the former 1000-LOC allowance.
     # Consumers read this constant so decomposition converges on one value.
-    LOC_CAP_MAX: Final[int] = 200
     "Per-module logical-LOC ceiling."
     SCC_BINARY: Final[str] = "scc"
     CLI_DIRENV: Final[str] = "direnv"

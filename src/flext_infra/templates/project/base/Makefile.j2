@@ -14,6 +14,9 @@
 
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
+ifneq ($(strip $(WHAT)),)
+$(error WHAT selectors are retired; invoke the canonical verb and use APPLY=Y as the sole mutation flag)
+endif
 ifeq ($(filter command line override,$(origin SETUP_BOOTSTRAP_ONLY)),)
 ifneq ($(filter setup,$(MAKECMDGOALS)),)
 SETUP_BOOTSTRAP_ONLY := Y
@@ -178,7 +181,7 @@ ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV_BIN))
 SANITIZED_CALLER_PATH :=
 endif
 endif
-ifneq ($(filter Y,$(GEN_INIT_ONLY) $(SETUP_BOOTSTRAP_ONLY)),)
+ifneq ($(filter Y,$(SETUP_BOOTSTRAP_ONLY)),)
 RESOLVED_UV :=
 else
 RESOLVED_UV := $(shell PATH="$(SANITIZED_CALLER_PATH)" command -v "$(UV_REQUESTED)")
@@ -370,7 +373,7 @@ _builtin_deps_upgrade: _builtin_require_environment
 	if [ -z "$$selected" ]; then selected="."; fi; \
 	set --; \
 	for project in $$selected; do set -- "$$@" --projects "$$project"; done; \
-	$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" \
+	$(PROJECT_FLEXT_INFRA) deps modernize --repository-root "$(PROJECT_ROOT)" \
 		--apply --rewrite-constraints --skip-check "$$@"
 	$(call _run_for_all_projects,)
 
@@ -537,11 +540,6 @@ _builtin_release_publish: _builtin_require_environment
 # lock floors; gen never runs another writer before or after conform's journal.
 _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
-
-_builtin_gen_init:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --apply
-	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --check
 
 _builtin_gen_all:
 	$(call _require_apply)

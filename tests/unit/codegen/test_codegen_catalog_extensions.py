@@ -108,8 +108,11 @@ class TestsCodegenCatalogExtensions:
         bootstrap = template.with_name("tool_bootstrap_recipe.j2").read_text(
             encoding="utf-8"
         )
-        tm.that(bootstrap, lacks="latest_release_url")
-        tm.that(bootstrap, lacks="curl ")
+        # Setup executes the tracked, checksum-verified receipt directly; it
+        # never remints an identical launcher or probes a mutable release.
+        tm.that(bootstrap, lacks="generate install-script")
+        tm.that(bootstrap, lacks="https://github.com/jdx/mise/releases")
+        tm.that(bootstrap, lacks="curl")
         tm.that(bootstrap, lacks="GH_CONFIG_DIR")
         tm.that(bootstrap, lacks="self-update")
         tm.that("mise launcher version mismatch" in bootstrap, eq=False)

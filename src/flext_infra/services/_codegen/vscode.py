@@ -192,10 +192,8 @@ class FlextInfraCodegenVscodeMixin:
                 continue
             settings[key] = canonical
             artifacts_changed = True
-        return r[bool].ok(
-            cls._apply_union_settings(settings, spec.map_union_settings)
-            or artifacts_changed
-            or changed.value
+        extensions_changed = cls._apply_union_settings(
+            settings, spec.map_union_settings
         )
 
     @classmethod

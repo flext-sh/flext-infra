@@ -66,7 +66,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
 
     @staticmethod
     def _optional_path_scope(
-        workspace_root: Path, name: str, output_dir: Path | str
+        repository_root: Path, name: str, output_dir: Path | str
     ) -> m.Infra.DocScope | None:
         """Build a selected path scope when it is a local pyproject project."""
         relative = Path(name)

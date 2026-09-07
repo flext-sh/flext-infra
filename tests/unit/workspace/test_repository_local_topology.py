@@ -258,9 +258,13 @@ class TestsRepositoryLocalTopology:
 
         mode = tm.ok(FlextInfraWorkspaceDetector().detect(child))
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(child))
+<<<<<<< HEAD
+        resolved = u.Infra.resolve_repository_root_or_cwd(child)
+=======
         resolved = tm.ok(
             u.Infra.git_show_toplevel(m.Infra.GitRepoRequest(repo_root=child))
         ).repository_root
+>>>>>>> origin/0.12.0-dev
 
         tm.that(mode, eq=c.Infra.MakeProfile.STANDALONE)
         tm.that(workspace.repository.name, eq="child")
