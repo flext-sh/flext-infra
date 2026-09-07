@@ -573,7 +573,9 @@ Infra:
           allow_toolchain_declarations: true
 
     loc_cap:
-      max_lines: 200
+      # Operator instruction 2026-09-07: the former 1000-LOC allowance stands;
+      # the 200-line cap is not authorized and its debt is not to be paid.
+      max_lines: 1000
     # NOTE (mro-jnm1.1 / mro-jnm1.4): SINGLE SSOT for ephemeral/generated
     # resources. VS Code files.exclude/search.exclude (vscode_exclude),
     # files.watcherExclude (watch_exclude), and source_scan.ignored_resources
