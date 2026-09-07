@@ -71,10 +71,10 @@ override export FLEXT_PYTEST_REPORTS_RAW := $(value PYTEST_REPORTS_DIR)
 # === SECTION: derived paths (managed) ===
 # Source: computed (git rev-parse, MAKEFILE_LIST, abspath)
 # Rule: PROJECT_ROOT is the checkout that OWNS this Makefile, never the caller's
-# CWD. Deriving it from `pwd -P` made a subproject validate whatever tree the
-# caller happened to stand in: `make -f <subproject>/Makefile` invoked from the
+# CWD. Deriving it from `pwd -P` made a member validate whatever tree the
+# caller happened to stand in: `make -f <member>/Makefile` invoked from the
 # superproject resolved RUFF_PATHS to the SUPERPROJECT's src/tests, so the
-# subproject linted files it does not even contain. With many shared worktrees that
+# member linted files it does not even contain. With many shared worktrees that
 # silently validates the wrong tree.
 SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
@@ -442,9 +442,9 @@ CODEGEN_SCOPE := self
 ALLOWED_PROJECTS := .
 endif
 
-# Workspace-root gate verbs fan out across declared subprojects through the generic
+# Workspace-root gate verbs fan out across declared members through the generic
 # `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
-# from the constants SSOT, never hardcoded here). Subprojects and standalone projects
+# from the constants SSOT, never hardcoded here). Members and standalone projects
 # run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
 # Provisioning is declared once and shared by every profile. Creating a missing
 # venv is provisioning; clearing a present one is destruction, so it never happens.
@@ -490,9 +490,9 @@ PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; fi; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # Scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
-# Keyed on the environment's OWNER, not on the caller's profile. A subproject has
+# Keyed on the environment's OWNER, not on the caller's profile. A member has
 # no local venv -- RUNTIME_VENV is RUNTIME_ROOT/.venv -- so every checkout that
-# provisions a shared environment must describe the same contents. A subproject
+# provisions a shared environment must describe the same contents. A member
 # syncing without --all-packages treats the siblings already installed there as
 # surplus and uninstalls them, undoing the root's provisioning and leaving
 # `uv sync --check` permanently divergent. A standalone project owns its venv
@@ -712,25 +712,6 @@ _builtin_setup_submodules:
 	@set -eu; \
 	root="$(PROJECT_ROOT)"; \
 	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
-	git_config_keys() { \
-		repository="$$1"; \
-		pattern="$$2"; \
-		if output=$$(git -C "$$repository" config -f .gitmodules --name-only --get-regexp "$$pattern"); then \
-			printf '%s\n' "$$output"; \
-			return 0; \
-		else \
-			status=$$?; \
-		fi; \
-		if [ "$$status" -eq 1 ]; then return 0; fi; \
-		return "$$status"; \
-	}; \
-	git_predicate() { \
-		expected="$$1"; \
-		shift; \
-		if "$$@"; then return 0; else status=$$?; fi; \
-		if [ "$$status" -eq "$$expected" ]; then return "$$expected"; fi; \
-		exit "$$status"; \
-	}; \
 	profile="$(MAKE_PROFILE)"; \
 	if [ "$$profile" = "workspace" ]; then \
 		managed="$(MANAGED_GITLINKS)"; \
@@ -757,6 +738,7 @@ _builtin_setup_submodules:
 			fi; \
 		done; \
 	fi; \
+	managed=$$(printf '%s' "$$managed" | tr ' ' '\n' | sort -u | tr '\n' ' '); \
 	if [ -z "$$managed" ]; then exit 0; fi; \
 	validate_submodule() { \
 		superproject="$$1"; \
@@ -851,7 +833,7 @@ ifneq ($(MAKECMDGOALS),help)
 endif
 
 # === SECTION: setup environment (managed) ===
-# Source: computed (MAKE_PROFILE routing) + operator contract
+# Source: computed (MAKE_PROFILE routing) + operator contract (mro-e9j0.6 C7)
 # Operator contract: setup PROVISIONS tooling only — mise, venv, dependencies.
 # It never generates, conforms, or mutates project code; `make gen` (APPLY=Y)
 # is the single public conformance/generation surface.
@@ -861,7 +843,11 @@ endif
 ifeq ($(MAKE_PROFILE),workspace)
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(SETUP_ENVIRONMENT_RECIPE)
-
+	@$(UV) pip check --python "$(RUNTIME_VENV)"
+else
+_builtin_setup_environment: _builtin_setup_submodules
+	@$(SETUP_ENVIRONMENT_RECIPE)
+endif
 # End SECTION: setup environment
 
 _builtin_deps_check: _builtin_require_environment
@@ -952,7 +938,7 @@ _builtin_status_diagnostics: _builtin_require_environment
 	@printf 'profile=%s\nproject=%s\nruntime=%s\n' \
 		'$(MAKE_PROFILE)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
 	@$(UV) --version
-	$(call _run_for_selected_projects,--check)
+	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
 		$(UV) pip check --python "$(RUNTIME_VENV)"; \
 	fi
