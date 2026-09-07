@@ -213,6 +213,13 @@ class FlextInfraUtilitiesCodemodRules:
                 canonicalize_name(name) for name in raw_distributions
             }:
                 continue
+            # Data distributions (native ML runtimes, wheels without Python
+            # sources) expose directory names that are not importable modules;
+            # they cannot host codemod provider configs.
+            if not package_name or not all(
+                part.isidentifier() for part in package_name.split(".")
+            ):
+                continue
             spec = find_spec(package_name)
             if spec is None:
                 return r[t.SequenceOf[Path]].fail(
