@@ -50,10 +50,6 @@ version = "0.642.0"
 github_attestations = false
 # Go runtime for the Go projects in this workspace.
 go = "latest"
-[tools."github:marlon-costa-dc/beads"]
-version = "latest"
-prerelease = true
-github_attestations = false
 [tools."github:marlon-costa-dc/gascity"]
 version = "latest"
 prerelease = true

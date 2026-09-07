@@ -83,6 +83,28 @@ class FlextInfraConstantsMake:
         "direnv",
         "duplication",
     )
+    # Operator instruction 2026-09-07: the green-baseline project gate
+    # vocabulary is restored alongside the canonical one — config.py consumers
+    # on the lane reference these names while make.py only carried the
+    # canonical generation, which broke codegen at import time.
+    PROJECT_CHECK_GATES_ALLOWED_VALUES: Final[tuple[str, ...]] = (
+        "lint",
+        "pyrefly",
+        "mypy",
+        "pyright",
+        "security",
+        "markdown",
+        "smells",
+        "direnv",
+        "duplication",
+    )
+    # The gates CI=N owns: the type checkers only. They are the slow,
+    # whole-program analyses, so CI=Y runs the strict complement of this set
+    # and the two contexts can never overlap nor leave a gate unowned.
+    PROJECT_CHECK_GATES_LOCAL_VALUES: Final[tuple[str, ...]] = ("pyrefly", "mypy")
+    PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
+        PROJECT_CHECK_GATES_ALLOWED_VALUES
+    )
     CANONICAL_FIXABLE_GATE_IDS: Final[tuple[str, ...]] = (
         "lint",
         "markdown",

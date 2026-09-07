@@ -3,10 +3,6 @@
 from __future__ import annotations
 
 import stat
-<<<<<<< HEAD
-from hashlib import sha256
-=======
->>>>>>> origin/0.12.0-dev
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 

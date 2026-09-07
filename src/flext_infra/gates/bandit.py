@@ -49,11 +49,7 @@ class FlextInfraBanditGate(FlextInfraGate):
         """Parse check output."""
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
-<<<<<<< HEAD
-        if result.outcome.raw_return_code != 0 and not result.stdout.strip():
-=======
         if not u.Cli.process_succeeded(result.outcome) and not result.stdout.strip():
->>>>>>> origin/0.12.0-dev
             detail = result.stderr.strip() or "no diagnostics"
             issues.append(
                 m.Infra.Issue(
@@ -61,14 +57,10 @@ class FlextInfraBanditGate(FlextInfraGate):
                     line=0,
                     column=0,
                     code="TOOL_ERROR",
-<<<<<<< HEAD
-                    message=f"bandit exited with code {result.outcome.raw_return_code}: {detail}",
-=======
                     message=(
                         "bandit exited with code "
                         f"{result.outcome.raw_return_code}: {detail}"
                     ),
->>>>>>> origin/0.12.0-dev
                     severity="ERROR",
                 )
             )

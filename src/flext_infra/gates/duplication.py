@@ -53,11 +53,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             started=started,
         )
 
-<<<<<<< HEAD
-    def _workspace_scan(self) -> p.Cli.CommandOutput:
-=======
     def _scan_workspace(self) -> p.Cli.CommandOutput:
->>>>>>> origin/0.12.0-dev
         """Create one fresh report; tool, scope, and report failures escape."""
         binary = shutil.which(c.Infra.JSCPD_BINARY)
         if binary is None:
@@ -138,25 +134,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 )
             )
         )
-<<<<<<< HEAD
-
-    def _declared_trees_by_path(self) -> p.Result[Mapping[Path, t.StrSequence]]:
-        """Map declared repositories to their declared duplication scan trees."""
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
-            self._repository_root
-        )
-        if workspace.failure:
-            return r[Mapping[Path, t.StrSequence]].from_failure(workspace)
-        spec = workspace.value
-        declared: dict[Path, t.StrSequence] = {}
-        for repository in (spec.repository, *spec.subprojects):
-            if repository.duplication_trees:
-                declared[(self._repository_root / repository.path).resolve()] = (
-                    repository.duplication_trees
-                )
-        return r[Mapping[Path, t.StrSequence]].ok(declared)
-=======
->>>>>>> origin/0.12.0-dev
 
     def _scope_paths(self) -> t.StrSequence:
         """Resolve canonical source, test, config, and template roots once."""

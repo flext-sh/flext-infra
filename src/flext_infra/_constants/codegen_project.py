@@ -73,6 +73,14 @@ class FlextInfraConstantsCodegenProject:
         EXCLUDED = "excluded"
 
     @unique
+    class CheckoutKind(StrEnum):
+        """Physical checkout topology for one repository."""
+
+        ROOT = "root"
+        SUBMODULE = "submodule"
+        INDEPENDENT = "independent"
+
+    @unique
     class CodegenKind(StrEnum):
         """Code-generation policy applied to one repository."""
 

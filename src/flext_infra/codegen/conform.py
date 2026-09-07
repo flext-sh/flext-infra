@@ -538,9 +538,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"{reference.reference}@{reference.sha} does not descend from "
                 f"{ancestry.baseline_reference}@{ancestry.baseline_sha}"
             )
-        return r[m.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(plan=verified_plan, written_files=tuple(written))
+            for ancestry, reference in violations
         )
+        return r[bool].fail(f"governed branch ancestry violations: {details}")
 
     def plan(
         self, request: m.Infra.CodegenConformRequest

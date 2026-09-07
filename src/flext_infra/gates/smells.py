@@ -144,11 +144,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         return not issues, issues
 
     def _workspace_scan(self) -> p.Cli.CommandOutput:
-<<<<<<< HEAD
-        """Run one fresh workspace scan and preserve its exact process result."""
-=======
         """Scan the workspace once per root and preserve its exact process result."""
->>>>>>> origin/0.12.0-dev
         key = str(self._repository_root)
         cached = self._scan_cache.get(key)
         if cached is not None:
