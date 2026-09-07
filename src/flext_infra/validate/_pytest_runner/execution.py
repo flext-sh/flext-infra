@@ -72,6 +72,7 @@ class FlextInfraPytestRunnerExecution(
         pytest_log = report_dir / "pytest.log"
         u.Cli.ensure_dir(self.testmon_db.parent).unwrap()
         pre_digest = FlextInfraTestmonDbInspector.digest_file(self.testmon_db)
+        cold_cache = pre_digest is None
         cache_restored = False
         if pre_digest is not None:
             pre_state = self._inspect_cache(digest=pre_digest).unwrap()
@@ -80,7 +81,11 @@ class FlextInfraPytestRunnerExecution(
                 msg = f"testmon preflight rejected cache: {pre_state.reason}"
                 raise RuntimeError(msg)
         selection = self._resolve_selection(report_dir)
-        command = self.build_command(report_dir, selection)
+        # A cold cache seeds deterministically only when one process writes it:
+        # parallel workers each resolve testmon against an evolving database and
+        # xdist aborts with "Different tests were collected". Serialize the
+        # seeding run; parallel distribution is a warm-cache path.
+        command = self.build_command(report_dir, selection, serialize=cold_cache)
         u.Cli.atomic_write_text_file(
             report_dir / "command.txt", f"{shlex.join(command)}\n"
         ).unwrap()

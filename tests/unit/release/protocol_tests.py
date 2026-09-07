@@ -349,7 +349,7 @@ class TestsFlextInfraReleaseProtocol:
                 integration = u.Tests.integration_branch(workspace)
                 # flext-core caches the parsed pyproject per process; a warm cache
                 # holding the pre-stamp document must not leak into the projections.
-                tm.ok(u.read_project_metadata(workspace))
+                tm.ok(u.Infra.read_project_metadata_result(workspace))
 
                 result = u.Tests.run_release_main(
                     workspace, "--phase", "version", "--apply"

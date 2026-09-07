@@ -14,6 +14,8 @@ class FlextInfraConstantsDocs:
 
     DEFAULT_DOCS_OUTPUT_DIR: Final[str] = ".reports/docs"
     DOCS_CONFIG_FILENAME: Final[str] = "docs_config.json"
+    DIR_CRG_REPORTS: Final[str] = "architecture/crg-reports"
+    "Subdirectory under docs/ for auto-generated CRG analysis reports."
     DOCS_INSECURE_WEB_SCHEME: Final[str] = "http"
     DOCS_SECURE_WEB_SCHEME: Final[str] = "https"
     # A generated document may point outward, never carry a payload: a `data:`

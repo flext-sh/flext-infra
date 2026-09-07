@@ -43,7 +43,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         )
 
     def build_command(
-        self, report_dir: Path, selected_node_ids: t.StrSequence | None = None
+        self,
+        report_dir: Path,
+        selected_node_ids: t.StrSequence | None = None,
+        *,
+        serialize: bool = False,
     ) -> t.VariadicTuple[str]:
         """Build a whole-suite testmon argv without user selectors.
 
@@ -56,9 +60,13 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         targets: t.StrSequence = (
             tuple(selected_node_ids) if selected_node_ids else (str(self.target),)
         )
-        # Nothing selected means nothing to distribute across workers.
+        # Nothing selected means nothing to distribute across workers; a cold
+        # cache serializes the seeding run so every worker would otherwise see
+        # a different testmon set.
         workers = (
-            "0" if selected_node_ids == () else str(self.parallel_worker_budget(pytest))
+            "0"
+            if serialize or selected_node_ids == ()
+            else str(self.parallel_worker_budget(pytest))
         )
         return (
             sys.executable,

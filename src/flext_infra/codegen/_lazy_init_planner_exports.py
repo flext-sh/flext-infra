@@ -48,9 +48,12 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             return {}
         index: t.MutableLazyAliasMap = {}
         # flext-i6nq.10: Generated support modules are output, never public input.
+        # conftest.py is pytest-private: its hook variables (pytest_plugins) are
+        # never public package ABI and must not enter the lazy export map.
         skip_names = {
             c.Infra.INIT_PY,
             "__main__.py",
+            "conftest.py",
             self._version_module_name,
             *c.Infra.OBSOLETE_GENERATED_INIT_FILES,
         }

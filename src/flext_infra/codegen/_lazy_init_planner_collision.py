@@ -57,6 +57,8 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             score += 15
         if attr == name:
             score += 3
+        if name in c.Infra.ALIAS_NAMES and "." not in module_path:
+            score -= 80
         part_number = module_file.stem.rpartition("_part_")[2]
         if part_number.isdecimal():
             # flext-pulj (codex): the final public facade owns the external

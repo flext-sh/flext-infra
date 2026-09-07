@@ -263,7 +263,7 @@ class FlextInfraWorktreeService(s[str]):
             created_branch_oid = created_oid.value.oid
         pyproject = lane / c.Infra.PYPROJECT_FILENAME
         if pyproject.is_file():
-            metadata = u.read_project_metadata(lane)
+            metadata = u.Infra.read_project_metadata_result(lane)
             if metadata.failure:
                 return self._rollback_new_lane(
                     primary_root,

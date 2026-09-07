@@ -11,6 +11,7 @@ from flext_infra.docs.fixer import FlextInfraDocFixer
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.server import FlextInfraDocServer
 from flext_infra.docs.validator import FlextInfraDocValidator
+from flext_infra.docs.analyzer import FlextInfraDocAnalyzer
 from flext_infra.maintenance.clean import FlextInfraCleanService
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 
@@ -55,6 +56,12 @@ class ValidationRoutes(ValidationCommandRoutes):
                     "Generate project docs",
                     FlextInfraDocGenerator,
                     "Generate completed successfully",
+                ),
+                (
+                    "analyze",
+                    "Generate CRG code analysis and risk reports",
+                    FlextInfraDocAnalyzer,
+                    "Analysis completed successfully",
                 ),
                 (
                     "serve",
