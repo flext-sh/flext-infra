@@ -1,4 +1,5 @@
 @echo off
+rem Canonical packaged bootstrap seed; codegen publishes fresh runtime launchers.
 rem Delayed expansion stays OFF for the whole script. With it on, cmd runs a second expansion pass
 rem over every already-substituted line, so a `!` anywhere in a path -- the project directory this
 rem sits in, MISE_INSTALL_PATH, TEMP -- is silently eaten and the script reads and writes a
@@ -20,7 +21,7 @@ rem delete something it never created.
 set "download_path="
 set "sums="
 
-set "pinned_version=2026.9.1"
+set "pinned_version=2026.9.2"
 set "sum_x64=86690787f22ccd55034039cb85bae27b5cba375aefbba5c09dd994487e0df554"
 set "sum_arm64=3912a0fa43705992179867797f7058092ba560c97aa0c03202e4c66c58fdfb45"
 
