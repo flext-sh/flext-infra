@@ -48,6 +48,7 @@ jobs:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
+{%- include "_fragments/cross_repo_dependency_credential.j2" %}
 {%- if custom_steps %}
 
       # Project-owned steps, the CI counterpart of custom.mk: the generator
@@ -158,6 +159,7 @@ jobs:
           fetch-depth: 0
           submodules: {{ checkout_submodules }}
 {%- include "_fragments/private_submodules_init.j2" %}
+{%- include "_fragments/cross_repo_dependency_credential.j2" %}
 {%- if custom_steps %}
 
       # Project-owned steps, the CI counterpart of custom.mk: the generator
