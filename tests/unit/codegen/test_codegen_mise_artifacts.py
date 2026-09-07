@@ -4,8 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+<<<<<<< HEAD
 import pytest
+
 from flext_infra import config, m, r, u
+=======
+from flext_infra import config, m, u
+>>>>>>> origin/0.12.0-dev
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_tests import tm
 from tests import u as test_u
@@ -76,7 +81,9 @@ class TestsCodegenMiseArtifacts:
         extra_lock_selector: str | None = None,
     ) -> None:
         selected_platforms = (
-            platforms or config.Infra.codegen.toolchain.mise_lock_platforms
+            config.Infra.codegen.toolchain.mise_lock_platforms
+            if platforms is None
+            else platforms
         )
         (root / ".mise.toml").write_text(
             "\n".join((
@@ -154,7 +161,7 @@ class TestsCodegenMiseArtifacts:
         root = self._project(tmp_path / "project")
 
         service = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         })
         tm.that(service.repository_root, eq=root)
@@ -166,30 +173,69 @@ class TestsCodegenMiseArtifacts:
 
         tm.ok(result, eq=True)
 
+    def test_config_preflight_rejects_suspended_selector_before_lock_access(
+        self, tmp_path: Path
+    ) -> None:
+        """A dormant capability cannot reach lock, download, or publication."""
+        root = tmp_path / "project"
+        root.mkdir()
+        (root / ".mise.toml").write_text(
+            "[settings]\n"
+            "lockfile = true\n"
+            "[tool_config]\n"
+            "locked = true\n"
+            "[tools]\n"
+            'beads = "1.2.2"\n',
+            encoding="utf-8",
+        )
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "workspace_root": root,
+            "config_only": True,
+        }).execute()
+
+        tm.fail(result, has=["suspended toolchain", "beads"])
+        tm.that((root / "mise.lock").exists(), eq=False)
+
+    def test_apply_prunes_unconfigured_lock_tools_through_the_lock_owner(
+        self, tmp_path: Path
+    ) -> None:
+        """Retire stale generated lock entries without invoking Mise."""
+        stale_selector = "github:example/stale"
+        root = self._project(
+            tmp_path / "project", extra_lock_selector=stale_selector
+        )
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "workspace_root": root,
+            "apply_changes": True,
+        }).execute()
+
+        tm.ok(result, eq=True)
+        tm.that(
+            (root / "mise.lock").read_text(encoding="utf-8"),
+            lacks=stale_selector,
+        )
+
     def test_missing_platform_checksum_is_rejected(self, tmp_path: Path) -> None:
         root = self._project(tmp_path / "project", include_checksum=False)
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
         tm.fail(result, has="checksum")
 
     def test_explicit_apply_is_rejected_by_validation_service(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
         root = self._project(tmp_path / "project", include_checksum=False)
         lock_path = root / "mise.lock"
         before = lock_path.read_bytes()
 
-        def reject_run_raw(*_args: object, **_kwargs: object) -> r[m.Cli.CommandOutput]:
-            return r[m.Cli.CommandOutput].fail("validation service invoked a writer")
-
-        monkeypatch.setattr(u.Cli, "run_raw", reject_run_raw)
-
         apply_result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "apply_changes": True,
         }).execute()
 
@@ -207,21 +253,23 @@ class TestsCodegenMiseArtifacts:
         )
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
         tm.fail(result, has="not safe")
 
-    def test_missing_declared_platform_is_rejected(self, tmp_path: Path) -> None:
+    def test_tool_support_is_discovered_from_generated_lock(
+        self, tmp_path: Path
+    ) -> None:
         root = self._project(tmp_path / "project", platforms=("linux-x64",))
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
-        tm.fail(result, has="platform metadata mismatch")
+        tm.ok(result, eq=True)
 
     def test_lock_tool_set_must_equal_generated_config(self, tmp_path: Path) -> None:
         root = self._project(
@@ -229,7 +277,7 @@ class TestsCodegenMiseArtifacts:
         )
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -240,27 +288,36 @@ class TestsCodegenMiseArtifacts:
         self._write_launchers(root, windows_version="2000.1.1")
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
         tm.fail(result, has="launcher version drift")
 
-    def test_declared_platform_exclusions_are_exact(self, tmp_path: Path) -> None:
-        excluded = config.Infra.codegen.toolchain.mise_lock_platform_exclusions[
-            "ast-grep"
-        ]
-        platforms = tuple(
-            platform
-            for platform in config.Infra.codegen.toolchain.mise_lock_platforms
-            if platform not in excluded
-        )
-        root = self._project(
-            tmp_path / "project", selector="ast-grep", platforms=platforms
-        )
+    def test_undeclared_platform_metadata_is_rejected_as_residue(
+        self, tmp_path: Path
+    ) -> None:
+        root = self._project(tmp_path / "project")
+        lock_path = root / "mise.lock"
+        with lock_path.open("a", encoding="utf-8") as lock:
+            lock.write(
+                '\n[tools."github:example/tool"."platforms.plan9-x64"]\n'
+                f'checksum = "sha256:{"b" * 64}"\n'
+                'url = "https://example.invalid/plan9-x64/tool"\n'
+            )
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
+            "check_only": True,
+        }).execute()
+
+        tm.fail(result, has="platform metadata mismatch")
+
+    def test_backend_without_platform_artifacts_is_valid(self, tmp_path: Path) -> None:
+        root = self._project(tmp_path / "project", selector="npm:jscpd", platforms=())
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "repository_root": root,
             "check_only": True,
         }).execute()
 

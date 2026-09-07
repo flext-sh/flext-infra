@@ -14,12 +14,13 @@ from git import (
 )
 
 from flext_core import r
-from flext_infra._utilities._git.remote import redact_origin_remote
-from flext_infra._utilities._git.repo import FlextInfraUtilitiesGitRepo
-from flext_infra._utilities._git.semantic_worktree import (
+from flext_infra.models import m
+
+from ..._utilities._git.remote import redact_origin_remote
+from ..._utilities._git.repo import FlextInfraUtilitiesGitRepo
+from ..._utilities._git.semantic_worktree import (
     FlextInfraUtilitiesGitSemanticWorktreeMixin,
 )
-from flext_infra.models import m
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -49,9 +50,7 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
                 )
             primary = cls._git_primary_worktree_root_path(request.repo_root)
             if primary.failure:
-                return r[m.Infra.GitIdentityReport].fail(
-                    primary.error or "failed to resolve primary worktree"
-                )
+                return r[m.Infra.GitIdentityReport].from_failure(primary)
             report = cls._collect_identity_facts(
                 repo, primary_root=primary.value, requested_path=request.repo_root
             )
@@ -80,7 +79,9 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
         try:
             # Why (flext-infra-c3h): same nested-path contract as git_open_repo.
             repo = Repo(resolved, search_parent_directories=True)
-        except (InvalidGitRepositoryError, NoSuchPathError):
+        except InvalidGitRepositoryError:
+            return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
+        except NoSuchPathError:
             return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
         except (GitCommandNotFound, OSError, ValueError) as exc:
             return r[m.Infra.GitBoolReport].fail(

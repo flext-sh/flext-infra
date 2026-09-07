@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import shlex
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-from flext_infra import c, config, m, u
-from flext_infra.validate._pytest_runner.command import FlextInfraPytestRunnerCommand
-from flext_infra.validate._pytest_runner.reports import FlextInfraPytestRunnerReports
+from flext_infra import c, config, m, t, u
 from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
+
+from .command import FlextInfraPytestRunnerCommand
+from .reports import FlextInfraPytestRunnerReports
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -29,6 +31,39 @@ class FlextInfraPytestRunnerExecution(
             repository_root=self.root, db_path=self.testmon_db, pre_run_digest=digest
         ).execute()
 
+    def _resolve_selection(self, report_dir: Path) -> t.StrSequence:
+        """Return the node ids testmon selects, resolved in one process."""
+        pytest = config.Infra.tooling.tools.pytest
+        command = self.build_selection_command()
+        outcome = u.Cli.run_raw(
+            command,
+            cwd=self.root,
+            timeout=pytest.run_timeout_seconds,
+            env=u.Cli.process_env(
+                remove_keys=c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
+                overrides={
+                    c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(
+                        self.root / c.Infra.DEFAULT_SRC_DIR
+                    ),
+                    c.Infra.PYTEST_ENV_TESTMON_DATAFILE: str(self.testmon_db),
+                },
+            ),
+        ).unwrap()
+        # Exit code 5 is pytest's "no tests ran": testmon selected nothing.
+        if outcome.outcome.raw_return_code not in {0, 5}:
+            detail = (outcome.stderr or outcome.stdout).strip()
+            msg = f"testmon selection failed ({outcome.outcome.raw_return_code}): {detail}"
+            raise RuntimeError(msg)
+        node_ids = tuple(
+            line.strip()
+            for line in (outcome.stdout or "").splitlines()
+            if "::" in line and not line.startswith(" ")
+        )
+        u.Cli.atomic_write_text_file(
+            report_dir / "testmon-selection.txt", "\n".join(node_ids) + "\n"
+        ).unwrap()
+        return node_ids
+
     @override
     def execute(self) -> p.Result[int]:
         """Execute one whole-suite cached or full testmon invocation."""
@@ -44,7 +79,8 @@ class FlextInfraPytestRunnerExecution(
             if not cache_restored:
                 msg = f"testmon preflight rejected cache: {pre_state.reason}"
                 raise RuntimeError(msg)
-        command = self.build_command(report_dir)
+        selection = self._resolve_selection(report_dir)
+        command = self.build_command(report_dir, selection)
         u.Cli.atomic_write_text_file(
             report_dir / "command.txt", f"{shlex.join(command)}\n"
         ).unwrap()

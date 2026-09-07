@@ -4,10 +4,9 @@ name: Docs
 "on":
   push:
     branches:
-      - dev
-      - develop
-      - 0.12.0-dev
       - main
+      - 0.12.0-dev
+      - 0.20.0-dev
     paths:
       - "docs/**"
       - "mkdocs.yml"
@@ -37,7 +36,7 @@ jobs:
           fetch-depth: 0
 
       - name: Sync workspace toolchain
-        run: make setup APPLY=Y
+        run: make setup
 
       - name: Generation drift (blocking)
         run: make conform APPLY=Y
@@ -100,7 +99,7 @@ jobs:
           fetch-depth: 0
 
       - name: Sync workspace toolchain
-        run: make setup APPLY=Y
+        run: make setup
 
       - name: Build site
         run: make docs APPLY=Y

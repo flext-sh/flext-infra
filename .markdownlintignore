@@ -6,7 +6,6 @@
 .tmp/**
 .claude/**
 .vscode/**
-.codegraph/**
 .serena/**
 .snapshots/**
 .benchmarks/**

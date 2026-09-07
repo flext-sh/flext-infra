@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from rope.base import codeanalyze, simplify, worder
 
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
+
+from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from .._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeStructure:
@@ -30,6 +31,9 @@ class FlextInfraUtilitiesRopeStructure:
         enclosers: t.MutableSequenceOf[tuple[int, c.Infra.RopeScopeKind, str]] = []
         type_checking_guards: t.MutableSequenceOf[int] = []
         for start, end in finder.generate_regions():
+            # Rope hands lines back without their newline; a multi-line logical
+            # statement must keep its line breaks so a trailing comment on one
+            # line cannot swallow the rest and offsets stay real source offsets.
             text = "\n".join(lines.get_line(n) for n in range(start, end + 1))
             indent = len(text) - len(text.lstrip())
             FlextInfraUtilitiesRopeStructure._pop_exited_enclosers(enclosers, indent)

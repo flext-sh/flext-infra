@@ -11,12 +11,11 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 from flext_core import r
-from flext_infra._utilities.protected_edit_preview import (
-    FlextInfraUtilitiesProtectedEditPreview,
-)
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+from .._utilities.protected_edit_preview import FlextInfraUtilitiesProtectedEditPreview
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
@@ -119,10 +118,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
     @classmethod
     def _file_contains_tests(cls, py_file: Path) -> bool:
         """Return whether *py_file* defines pytest-collectable tests."""
-        try:
-            tree = ast.parse(py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT))
-        except SyntaxError:
-            return False
+        tree = ast.parse(py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT))
         for node in ast.walk(tree):
             if isinstance(
                 node, ast.FunctionDef | ast.AsyncFunctionDef

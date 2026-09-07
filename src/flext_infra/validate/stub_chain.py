@@ -111,9 +111,11 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         _ = self
         root_module = module_name.split(".", maxsplit=1)[0]
         try:
-            return importlib_util.find_spec(root_module) is not None
-        except c.EXC_OS_TYPE_VALUE:
-            return False
+            spec = importlib_util.find_spec(root_module)
+        except ModuleNotFoundError:
+            # A missing parent package means the module cannot resolve here.
+            spec = None
+        return spec is not None
 
     def analyze(
         self, project_dir: Path, repository_root: Path

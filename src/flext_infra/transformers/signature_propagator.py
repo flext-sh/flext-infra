@@ -6,7 +6,8 @@ from operator import itemgetter
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
-from flext_infra._utilities.transformer_base import FlextInfraChangeTrackingTransformer
+
+from .._utilities.transformer_base import FlextInfraChangeTrackingTransformer
 
 if TYPE_CHECKING:
     from flext_infra import m, t
@@ -74,8 +75,6 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
     ) -> str:
         """Rewrite keyword arguments in calls to ``simple_name`` via rope-located ranges."""
         pymodule = u.Infra.parse_string_module(source)
-        if pymodule is None:
-            return source
         line_offsets = self._line_offsets(source)
         edits: list[tuple[int, int, str]] = []
         for node in u.Infra.walk_ast_nodes(pymodule.get_ast()):

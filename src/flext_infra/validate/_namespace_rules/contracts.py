@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c
-from flext_infra.validate._namespace_rules.base import FlextInfraNamespaceRulesBase
+
+from .base import FlextInfraNamespaceRulesBase
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -102,7 +103,18 @@ class FlextInfraNamespaceRulesContracts(FlextInfraNamespaceRulesBase):
         callable_node = getattr(node, "func", None)
         name = cls.name_of(callable_node)
         messages: list[str] = []
-        if name in c.Infra.NAMESPACE_PYDANTIC_V1_MEMBERS:
+        # A retired Pydantic member is reached through a model -- `m.dict()`,
+        # `m.json()`, `Model.parse_obj(...)` -- so only an attribute call can be
+        # one. Matching the bare name too meant every `dict(mapping)` in the
+        # repository was reported as legacy Pydantic: 64 findings, none of them
+        # real, against a tree whose only v1 syntax lives in the modernizer's
+        # own docstring and test fixtures. The two decorators are the
+        # exception, because `@validator(...)` is imported from pydantic and
+        # called by bare name.
+        if name in c.Infra.NAMESPACE_PYDANTIC_V1_MEMBERS and (
+            cls.kind(callable_node) == "Attribute"
+            or name in c.Infra.NAMESPACE_PYDANTIC_V1_DECORATORS
+        ):
             messages.append(
                 f"{filepath}:{cls.line(node)} — legacy Pydantic member {name!r}; "
                 "use Pydantic v2"

@@ -7,8 +7,9 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
-from flext_infra._models.config import FlextInfraConfigModels
-from flext_infra._models.docs_generation import FlextInfraModelsDocsGeneration
+
+from .config import FlextInfraConfigModels
+from .docs_generation import FlextInfraModelsDocsGeneration
 
 
 class _FlextInfraDocsContracts:
@@ -56,7 +57,7 @@ class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContra
         reuse the same validation rules and avoid ad-hoc multi-parameter calls.
         """
 
-        workspace_root: Annotated[
+        repository_root: Annotated[
             Path, m.Field(description="Workspace root for docs generation")
         ]
         projects: Annotated[
@@ -122,7 +123,7 @@ class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContra
     class DocsPublicContract(m.ArbitraryTypesModel):
         """Exact project/config objects plus derived public API analysis."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True, extra="forbid", frozen=True
         )
 

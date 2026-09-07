@@ -7,7 +7,8 @@ from typing import Annotated
 
 from flext_core import m
 from flext_infra import t
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+
+from .._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsRopeMove:

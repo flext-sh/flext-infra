@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
+
+from .._utilities.docs import FlextInfraUtilitiesDocs
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -89,7 +90,7 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
                     elif verb_spec.requires_apply and not has_apply:
                         issue = f"`make {verb}` requires `APPLY=Y`"
                     elif not verb_spec.requires_apply and has_apply:
-                        issue = f"read-only `make {verb}` rejects `APPLY=Y`"
+                        issue = f"`make {verb}` does not accept `APPLY=Y`"
                 if issue:
                     break
             if not issue and c.Infra.DOCS_TEST_DOUBLE_HEADING_RE.match(line):

@@ -82,7 +82,7 @@ jobs:
           # token into .git/config would expose it to every later command.
           persist-credentials: false
       - name: Bootstrap
-        run: {{ make.ci.variable }}={{ make.ci.value }} make setup {{ make.apply_variable }}={{ make.apply_value }}
+        run: {{ make.ci.variable }}={{ make.ci.value }} make setup
       - name: Verb surface
         run: {{ make.ci.variable }}={{ make.ci.value }} make help
       # The canonical gate, not just the verb surface: this matrix exists to
@@ -107,7 +107,7 @@ jobs:
           persist-credentials: false
       - name: Bootstrap
         shell: bash
-        run: {{ make.ci.variable }}={{ make.ci.value }} make setup {{ make.apply_variable }}={{ make.apply_value }}
+        run: {{ make.ci.variable }}={{ make.ci.value }} make setup
       - name: Verb surface
         shell: bash
         run: {{ make.ci.variable }}={{ make.ci.value }} make help

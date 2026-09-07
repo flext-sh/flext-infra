@@ -1,5 +1,13 @@
 # Test doubles hide observable runtime behavior and are forbidden in FLEXT tests.
-
+#
+# A double replaces a real collaborator with a scripted stand-in, so the test
+# stops proving what the code does. Isolating the process environment is the
+# opposite: it makes the real code run against a sandbox the test owns, which
+# the testing law requires ("a unit test opens no network socket and writes
+# nowhere outside its tmp_path fixture"). This rule therefore bans the forms
+# that substitute behavior -- every unittest.mock entry point, the pytest-mock
+# `mocker` fixture, and the four monkeypatch verbs that replace an attribute or
+# item -- and leaves setenv, delenv, chdir and syspath_prepend alone.
 id: ban-test-doubles
 language: Python
 severity: error
@@ -9,10 +17,14 @@ rule:
   any:
     - all:
         - kind: identifier
-        - regex: '^(?:monkeypatch|mocker)$'
+        - regex: '^mocker$'
         - inside:
             kind: parameters
             stopBy: end
+    - pattern: $CTX.setattr($$$ARGS)
+    - pattern: $CTX.setitem($$$ARGS)
+    - pattern: $CTX.delattr($$$ARGS)
+    - pattern: $CTX.delitem($$$ARGS)
     - pattern: import unittest.mock
     - pattern: from unittest.mock import $$$NAMES
     - pattern: Mock($$$ARGS)

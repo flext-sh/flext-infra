@@ -90,9 +90,11 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
             status = c.Infra.ResultStatus.FAIL
             messages.extend(contract_messages)
         message = "; ".join(messages) if messages else "validation passed"
-        wrote_todo = u.Infra.docs_write_todo(scope, apply_mode=apply_mode).unwrap_or(
-            False
-        )
+        todo_result = u.Infra.docs_write_todo(scope, apply_mode=apply_mode)
+        if todo_result.failure:
+            status = c.Infra.ResultStatus.FAIL
+            messages.append(f"failed to write docs todo: {todo_result.error}")
+        wrote_todo = todo_result.unwrap()
         report = m.Infra.DocsPhaseReport(
             phase="validate",
             scope=scope.name,

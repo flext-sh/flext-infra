@@ -8,9 +8,8 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, m, t, u
-from flext_infra.release._release_artifact_execution import (
-    FlextInfraReleaseArtifactExecutionMixin,
-)
+
+from ._release_artifact_execution import FlextInfraReleaseArtifactExecutionMixin
 
 if TYPE_CHECKING:
     from flext_infra import p

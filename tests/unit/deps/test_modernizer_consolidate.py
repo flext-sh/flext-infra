@@ -4,11 +4,25 @@ from __future__ import annotations
 
 from flext_infra.deps.phases.consolidate_groups import FlextInfraConsolidateGroupsPhase
 from flext_tests import tm
-from tests import u
+from tests import t, u
 
 
 class TestsFlextInfraDepsModernizerConsolidate:
     """Tests consolidate groups phase behavior."""
+
+    @staticmethod
+    def _consolidated_changes(
+        doc: t.Cli.TomlDocument, group: t.JsonMapping
+    ) -> t.StrSequence:
+        """Attach one poetry group table and run the consolidation phase."""
+        poetry = u.Cli.toml_table()
+        poetry["group"] = group
+        tool = u.Cli.toml_table()
+        tool["poetry"] = poetry
+        doc["tool"] = tool
+        changes = FlextInfraConsolidateGroupsPhase().apply(doc, [])
+        tm.that(changes, empty=False)
+        return changes
 
     def test_consolidate_groups_creates_dev_group(self) -> None:
         """Verify consolidate groups creates dev group."""
@@ -41,13 +55,7 @@ class TestsFlextInfraDepsModernizerConsolidate:
         group = u.Cli.toml_table()
         group["dev"] = {"dependencies": {"pytest": "^7.0"}}
         group["docs"] = {"dependencies": {"sphinx": "^4.0"}}
-        poetry = u.Cli.toml_table()
-        poetry["group"] = group
-        tool = u.Cli.toml_table()
-        tool["poetry"] = poetry
-        doc["tool"] = tool
-        changes = FlextInfraConsolidateGroupsPhase().apply(doc, [])
-        tm.that(changes, empty=False)
+        _ = TestsFlextInfraDepsModernizerConsolidate._consolidated_changes(doc, group)
 
     def test_consolidate_groups_sets_deptry_config(self) -> None:
         """Verify consolidate groups sets deptry config."""
@@ -92,10 +100,4 @@ class TestsFlextInfraDepsModernizerConsolidate:
         docs_group["dependencies"] = u.Cli.toml_table()
         group = u.Cli.toml_table()
         group["docs"] = docs_group
-        poetry = u.Cli.toml_table()
-        poetry["group"] = group
-        tool = u.Cli.toml_table()
-        tool["poetry"] = poetry
-        doc["tool"] = tool
-        changes = FlextInfraConsolidateGroupsPhase().apply(doc, [])
-        tm.that(changes, empty=False)
+        _ = TestsFlextInfraDepsModernizerConsolidate._consolidated_changes(doc, group)

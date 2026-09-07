@@ -85,11 +85,6 @@ class FlextInfraCodegenLayoutPlanMixin:
                 allowed.update(spec.profile_extra_root_files.get(profile, ()))
         if override is not None:
             allowed.update(override.keep_root_files)
-        allowed.update(
-            Path(relative_path).parts[0]
-            for relative_path in config.Infra.codegen.retired_generated_paths
-            if Path(relative_path).parts
-        )
         declared = u.Infra.git_declared_submodule_paths(project_dir)
         if declared.failure:
             raise ValueError(declared.error or "invalid .gitmodules")

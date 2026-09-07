@@ -9,17 +9,18 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
-from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus as mrc
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
-from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
-from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
-from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+from .._models.refactor_census import FlextInfraModelsRefactorCensus as mrc
+from .._utilities.base import FlextInfraUtilitiesBase
+from .._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
+from .._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from .._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
+from .._utilities.rope_imports import FlextInfraUtilitiesRopeImports
+from .._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
     from collections.abc import Callable as _CensusCallable
@@ -340,23 +341,15 @@ class FlextInfraUtilitiesRefactorCensus:
         resource = rope.resource(file_path)
         if resource is None:
             return ()
-        try:
-            attributes = FlextInfraUtilitiesRopeCore.get_pymodule(
-                rope.rope_project, resource
-            ).get_attributes()
-        except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
-            return ()
-        except (RecursionError, SyntaxError, ValueError, TypeError):
-            return ()
+        attributes = FlextInfraUtilitiesRopeCore.get_pymodule(
+            rope.rope_project, resource
+        ).get_attributes()
         target_pyname = attributes.get(target_name)
         if target_pyname is None or FlextInfraUtilitiesRopeRuntime.is_imported_name(
             target_pyname
         ):
             return ()
-        try:
-            target_object = target_pyname.get_object()
-        except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
-            return ()
+        target_object = target_pyname.get_object()
         alias_names: set[str] = set()
         for name, pyname in attributes.items():
             if name == target_name or FlextInfraUtilitiesRopeRuntime.is_imported_name(
@@ -370,10 +363,7 @@ class FlextInfraUtilitiesRefactorCensus:
                 line, removed_ranges=removed_ranges
             ):
                 continue
-            try:
-                alias_object = pyname.get_object()
-            except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
-                continue
+            alias_object = pyname.get_object()
             if id(alias_object) == id(target_object):
                 alias_names.add(name)
         return tuple(sorted(alias_names))

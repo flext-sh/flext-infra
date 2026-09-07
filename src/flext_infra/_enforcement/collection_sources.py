@@ -6,15 +6,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
-from flext_infra._enforcement.collection_base import (
+
+from .._enforcement.collection_base import (
     FlextInfraEnforcementCollectionBase,
     FlextInfraEnforcementEvaluation,
 )
-from flext_infra._enforcement.collection_tests import (
-    FlextInfraEnforcementTestsCollector,
-)
-from flext_infra._enforcement.metadata import FlextInfraEnforcementMetadata
-from flext_infra._enforcement.selection import FlextInfraEnforcementSelection
+from .._enforcement.collection_tests import FlextInfraEnforcementTestsCollector
+from .._enforcement.metadata import FlextInfraEnforcementMetadata
+from .._enforcement.selection import FlextInfraEnforcementSelection
 
 if TYPE_CHECKING:
     from flext_infra import p, t

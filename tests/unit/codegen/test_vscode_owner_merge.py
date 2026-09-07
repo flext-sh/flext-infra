@@ -7,6 +7,7 @@ from pathlib import Path
 from flext_infra import c, config, t, u
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_tests import tm
+from tests import TestsFlextInfraUtilities as test_utilities
 
 
 class TestsVscodeOwnerMerge:
@@ -34,14 +35,8 @@ class TestsVscodeOwnerMerge:
         search_paths = t.Cli.JSON_LIST_ADAPTER.validate_python(
             doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         )
-        tm.that(
-            search_paths,
-            eq=list(
-                config.Infra.codegen.vscode.list_settings[
-                    c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
-                ]
-            ),
-        )
+        expected = test_utilities.Tests.vscode_declared_search_paths()
+        tm.that(search_paths, eq=expected)
         tm.that("./apps/*/.venv" in search_paths, eq=False)
 
     def test_merge_reaches_fixed_point_after_apply(self, tmp_path: Path) -> None:

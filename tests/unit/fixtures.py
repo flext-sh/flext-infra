@@ -156,8 +156,9 @@ def mod_workspace(tmp_path: Path) -> Path:
             workspace / c.Infra.PYPROJECT_FILENAME,
             (
                 "[project]\n"
-                f'name = "{project.project.name}"\n'
+                f'name = "{workspace.name.replace("_", "-")}"\n'
                 f'version = "{project.project.version}"\n'
+                f"{c.Infra.DEPENDENCIES} = []\n"
             ),
         )
     )
@@ -165,6 +166,14 @@ def mod_workspace(tmp_path: Path) -> Path:
         u.Cli.atomic_write_text_file(
             workspace / "sample.py",
             "u.Infra.serialization_lock_execute(paths, timeout)\n",
+        )
+    )
+    package_dir = workspace / "src" / str(project.project.name).replace("-", "_")
+    tm.ok(u.Cli.ensure_dir(package_dir))
+    tm.ok(
+        u.Cli.atomic_write_text_file(
+            package_dir / c.Infra.INIT_PY,
+            '"""Public refactor-mod fixture package."""\n\nfrom __future__ import annotations\n',
         )
     )
     u.Tests.initialize_git_repo(workspace)

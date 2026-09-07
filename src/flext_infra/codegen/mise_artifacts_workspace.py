@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import os
 import stat
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import u, m
+from flext_infra import m, u
 from flext_infra.codegen import _mise_artifacts_files as files
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
@@ -57,9 +56,7 @@ class FlextInfraMiseWorkspacePlanner:
         """Reject Git parent discovery when the requested path is not its root."""
         identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=requested))
         if identity.failure:
-            return r[m.Infra.GitIdentityReport].fail(
-                identity.error or "cannot resolve Mise workspace Git identity"
-            )
+            return r[m.Infra.GitIdentityReport].from_failure(identity)
         if identity.value.repo_root != requested:
             return r[m.Infra.GitIdentityReport].fail(
                 "Mise workspace request is not the exact Git worktree root: "
@@ -80,19 +77,20 @@ class FlextInfraMiseWorkspacePlanner:
         scope_root = resolved_scope.value
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(scope_root)
         if workspace.failure:
-            return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
-                workspace.error or "cannot load governed Mise workspace"
-            )
+            return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(workspace)
         if requested != scope_root and not any(
             (scope_root / project.path).absolute() == requested
-            for project in workspace.value.subprojects
+            for project in workspace.value.declared_repositories
         ):
             return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
                 f"Git submodule is absent from governed workspace: {requested}"
             )
         selectors = (
             ".",
-            *(project.path.as_posix() for project in workspace.value.subprojects),
+            *(
+                project.path.as_posix()
+                for project in workspace.value.declared_repositories
+            ),
         )
         return self.layout_from_selectors(
             scope_root, selectors, transaction_id=transaction_id
@@ -313,15 +311,6 @@ class FlextInfraMiseWorkspacePlanner:
         artifact_set = m.Infra.MiseToolchainArtifactSet(
             unix_launcher=artifacts[0], windows_launcher=artifacts[1], lock=artifacts[2]
         )
-        native_seed = (
-            artifact_set.windows_launcher
-            if os.name == "nt"
-            else artifact_set.unix_launcher
-        )
-        if layout.selector == "." and native_seed.content is None:
-            return r[m.Infra.MiseToolchainProjectState].fail(
-                f"native committed Mise seed is missing: {native_seed.path}"
-            )
         return r[m.Infra.MiseToolchainProjectState].ok(
             m.Infra.MiseToolchainProjectState(
                 layout=layout,

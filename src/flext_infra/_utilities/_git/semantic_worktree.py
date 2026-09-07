@@ -7,10 +7,9 @@ from typing import TYPE_CHECKING
 from git import GitCommandError, Repo
 
 from flext_core import r
-from flext_infra._utilities._git.semantic_index import (
-    FlextInfraUtilitiesGitSemanticIndexMixin,
-)
 from flext_infra.models import m
+
+from ..._utilities._git.semantic_index import FlextInfraUtilitiesGitSemanticIndexMixin
 
 if TYPE_CHECKING:
     from flext_infra import p

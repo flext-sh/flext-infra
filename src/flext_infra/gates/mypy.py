@@ -20,8 +20,6 @@ class FlextInfraMypyGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.MYPY
     gate_name: ClassVar[str] = "Mypy"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MYPY][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MYPY][1]
 
     @staticmethod
     def _config_exclude(config_path: Path) -> re.Pattern[str] | None:

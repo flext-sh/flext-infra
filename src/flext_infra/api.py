@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, ClassVar, override
 from flext_core import r
 from flext_infra import m, t, u
 from flext_infra.base import s
-from flext_infra.services._workspace.environment_beads import (
+from flext_infra.workspace.environment_beads import (
     FlextInfraWorkspaceBeadsEnvironmentMixin,
 )
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace

@@ -3,16 +3,17 @@
 from __future__ import annotations
 
 import tarfile
-from tempfile import TemporaryDirectory
 from collections.abc import Mapping, Sequence
 from pathlib import Path, PurePosixPath
+from tempfile import TemporaryDirectory
 
 from flext_cli import r, u
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
+
+from .._utilities.dependencies import FlextInfraUtilitiesDependencies
 
 
 class FlextInfraUtilitiesRelease:
@@ -46,7 +47,7 @@ class FlextInfraUtilitiesRelease:
         for member in members:
             path_result = FlextInfraUtilitiesRelease.archive_member_path(member.name)
             if path_result.failure:
-                return r[bool].fail(path_result.error or "unsafe archive member path")
+                return r[bool].from_failure(path_result)
             if member.issym() or member.islnk():
                 return r[bool].fail(
                     f"release archive contains symbolic or hard link: {member.name}"
@@ -310,14 +311,15 @@ class FlextInfraUtilitiesRelease:
                     if dependency in selected and dependency != name
                 )
             )
-        ordered = FlextInfraUtilitiesDependencies.dependency_waves(edges)
-        if ordered.failure:
+        try:
+            waves = FlextInfraUtilitiesDependencies.dependency_waves(edges)
+        except ValueError as exc:
             return r[t.SequenceOf[t.StrSequence]].fail(
-                (ordered.error or "dependency cycle blocks topological order").replace(
-                    "dependency cycle", "release dependency cycle", 1
+                str(exc).replace(
+                    "cyclic dependency graph", "release dependency cycle", 1
                 )
             )
-        return ordered
+        return r[t.SequenceOf[t.StrSequence]].ok(waves)
 
     @staticmethod
     def _release_runtime_dependencies(path: Path) -> p.Result[t.StrSequence]:

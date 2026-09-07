@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
 
 from flext_infra import c, infra, m
@@ -24,7 +23,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         workspace = tmp_path / "workspace"
         _write_pyproject(workspace)
         result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
         tm.ok(result)
         envrc = (workspace / ".envrc").read_text(encoding="utf-8")
@@ -38,7 +37,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         custom = workspace / ".envrc"
         _ = custom.write_text("PATH_add bin\n", encoding="utf-8")
         result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
         tm.ok(result)
         tm.that(custom.read_text(encoding="utf-8"), eq="PATH_add bin\n")
@@ -52,7 +51,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         _ = custom.write_text("PATH_add bin\n", encoding="utf-8")
         result = infra.sync_environment_files(
             m.Infra.WorkspaceEnvironmentSyncRequest(
-                workspace_root=workspace, force=True
+                repository_root=workspace, force=True
             )
         )
         tm.ok(result)
@@ -73,25 +72,91 @@ class TestsFlextInfraFacadeEnvironmentSync:
         custom = '[tools]\nnode = "22"\npython = "3.14"\n'
         _ = mise.write_text(custom, encoding="utf-8")
         result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(
-                repository_root=workspace, force=True
+            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+        )
+
+        tm.ok(result)
+        merged = mise.read_text(encoding="utf-8")
+        tm.that('node = "22"' in merged, eq=True)
+        tm.that('python = "3.13"' in merged, eq=True)
+        tm.that("mypy" in merged, eq=False)
+        tm.that("ruff" in merged, eq=False)
+
+    def test_sync_renders_mise_python_from_pyproject(self, tmp_path: Path) -> None:
+        """The workspace requires-python floor overrides the SSOT python pin."""
+        workspace = tmp_path / "workspace"
+        _write_pyproject(workspace, requires_python=">=3.14")
+
+        result = infra.sync_environment_files(
+            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+        )
+
+        tm.ok(result)
+        rendered = (workspace / ".mise.toml").read_text(encoding="utf-8")
+        tm.that('python = "3.14"' in rendered, eq=True)
+
+    def test_sync_composes_project_mise_tools_from_yaml(self, tmp_path: Path) -> None:
+        """A project extends the generated tool table from its own YAML."""
+        workspace = tmp_path / "workspace"
+        _write_pyproject(workspace)
+        config_dir = workspace / "config"
+        config_dir.mkdir()
+        (config_dir / "tooling.yaml").write_text(
+            "ManagedArtifacts:\n"
+            "  Mise:\n"
+            "    tools:\n"
+            '      node: "26"\n'
+            '      docker-compose: "5.5"\n',
+            encoding="utf-8",
+        )
+
+        result = infra.sync_environment_files(
+            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+        )
+
+        tm.ok(result)
+        tools = tomllib.loads((workspace / ".mise.toml").read_text(encoding="utf-8"))[
+            "tools"
+        ]
+        tm.that(tools["node"], eq="26")
+        tm.that(tools["docker-compose"], eq="5.5")
+
+    def test_sync_ignores_non_owner_yaml_managed_artifact_blocks(
+        self, tmp_path: Path
+    ) -> None:
+        """Only config/tooling.yaml owns ManagedArtifacts."""
+        workspace = tmp_path / "workspace"
+        _write_pyproject(workspace)
+        config_dir = workspace / "config"
+        config_dir.mkdir()
+        for filename, version in (("one.yaml", "20"), ("two.yaml", "22")):
+            (config_dir / filename).write_text(
+                f'ManagedArtifacts:\n  Mise:\n    tools:\n      node: "{version}"\n',
+                encoding="utf-8",
+                workspace_root=workspace, force=True
             )
         )
         tm.ok(result)
         tm.that(mise.read_text(encoding="utf-8"), eq=custom)
 
-    def test_sync_removes_generated_envrc_without_pyproject(
+        tm.ok(result)
+        tools = tomllib.loads((workspace / ".mise.toml").read_text(encoding="utf-8"))[
+            "tools"
+        ]
+        tm.that("node" in tools, eq=False)
+
+    def test_sync_rejects_project_collision_with_fleet_mise_tool(
         self, tmp_path: Path
     ) -> None:
         workspace = tmp_path / "workspace"
         _write_pyproject(workspace)
         setup = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
         tm.ok(setup)
         (workspace / "pyproject.toml").unlink()
         result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
         tm.ok(result)
         tm.that((workspace / ".envrc").exists(), eq=False)

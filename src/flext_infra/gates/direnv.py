@@ -26,8 +26,6 @@ class FlextInfraDirenvGate(FlextInfraGate):
     gate_id: ClassVar[str] = "direnv"
     gate_name: ClassVar[str] = "DIRENV ENVIRONMENT CONTRACT"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["direnv"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["direnv"][1]
 
     @override
     def check(

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from flext_infra import c, config
+from flext_infra import c
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_tests import tm
 from tests import u
@@ -48,14 +48,7 @@ class TestsFlextInfraCodegenVscode:
             eq="${workspaceFolder}/.venv/bin/python",
         )
         search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
-        tm.that(
-            search_paths,
-            eq=list(
-                config.Infra.codegen.vscode.list_settings[
-                    c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
-                ]
-            ),
-        )
+        tm.that(search_paths, eq=u.Tests.vscode_declared_search_paths())
         tm.that("./apps/*/.venv" in search_paths, eq=False)
         tm.that("**/.retired-cache" in doc["files.exclude"], eq=False)
         tm.that(doc["files.exclude"]["**/.mypy_cache"], eq=True)
@@ -79,7 +72,7 @@ class TestsFlextInfraCodegenVscode:
     def test_search_paths_are_independent_from_repository_topology(
         self, tmp_path: Path
     ) -> None:
-        """Keep opened-folder settings canonical for roots and declared_repositories."""
+        """Keep opened-folder settings canonical for roots and subprojects."""
         project_root = tmp_path / "workspace"
         project_root.mkdir()
         provider = u.Tests.provider()
@@ -105,14 +98,7 @@ class TestsFlextInfraCodegenVscode:
         tm.that(result.value.encode(), eq=standalone.value.encode())
         doc = json.loads(result.value)
         search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
-        tm.that(
-            search_paths,
-            eq=list(
-                config.Infra.codegen.vscode.list_settings[
-                    c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
-                ]
-            ),
-        )
+        tm.that(search_paths, eq=u.Tests.vscode_declared_search_paths())
         tm.that("./apps/a/.venv" in search_paths, eq=False)
         tm.that("./libs/b/.venv" in search_paths, eq=False)
 

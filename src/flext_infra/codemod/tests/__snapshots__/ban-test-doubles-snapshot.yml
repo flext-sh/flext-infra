@@ -4,14 +4,10 @@ snapshots:
     def test_internal(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(Service, "run", lambda: True)
   : labels:
-    - source: monkeypatch
+    - source: 'monkeypatch.setattr(Service, "run", lambda: True)'
       style: primary
-      start: 18
-      end: 29
-    - source: '(monkeypatch: pytest.MonkeyPatch)'
-      style: secondary
-      start: 17
-      end: 50
+      start: 64
+      end: 113
   from unittest.mock import MagicMock:
     labels:
     - source: from unittest.mock import MagicMock

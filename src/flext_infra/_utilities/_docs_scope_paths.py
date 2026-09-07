@@ -5,11 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import FlextCliUtilities as u
+from flext_cli import u
 from flext_core.result import FlextResult as r
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra.constants import FlextInfraConstants as c
 from flext_infra.typings import FlextInfraTypes as t
+
+from .._utilities.git import FlextInfraUtilitiesGit
 
 if TYPE_CHECKING:
     from flext_infra import FlextInfraProtocols as p
@@ -43,23 +44,25 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
         return state.value.content is not None
 
     @staticmethod
-    def docs_workspace_roots(
-        workspace_root: Path, extra_roots: t.SequenceOf[Path] = ()
+    def docs_repository_roots(
+        repository_root: Path, extra_roots: t.SequenceOf[Path] = ()
     ) -> p.Result[tuple[Path, ...]]:
         """Return existing physical roots from one stable workspace topology."""
         try:
-            return FlextInfraUtilitiesDocsScopePathsMixin._docs_workspace_roots(
-                workspace_root, extra_roots
+            return FlextInfraUtilitiesDocsScopePathsMixin._docs_repository_roots(
+                repository_root, extra_roots
             )
         except (OSError, TypeError, ValueError) as exc:
-            return r[tuple[Path, ...]].fail_op("docs workspace discovery", exc)
+            return r[tuple[Path, ...]].fail(
+                f"docs workspace discovery failed: {exc}", exception=exc
+            )
 
     @staticmethod
-    def _docs_workspace_roots(
-        workspace_root: Path, extra_roots: t.SequenceOf[Path]
+    def _docs_repository_roots(
+        repository_root: Path, extra_roots: t.SequenceOf[Path]
     ) -> p.Result[tuple[Path, ...]]:
         """Discover roots while the public boundary owns exception conversion."""
-        root = FlextInfraUtilitiesDocsScopePathsMixin.absolute_lexical(workspace_root)
+        root = FlextInfraUtilitiesDocsScopePathsMixin.absolute_lexical(repository_root)
         if not FlextInfraUtilitiesDocsScopePathsMixin.physical_directory_exists(root):
             return r[tuple[Path, ...]].fail(f"docs workspace root is missing: {root}")
         manifest_path = root / c.Infra.GITMODULES
@@ -85,7 +88,7 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
             selector = Path(declared_path)
             if selector.is_absolute() or ".." in selector.parts:
                 return r[tuple[Path, ...]].fail(
-                    f"invalid docs workspace member path: {selector}"
+                    f"invalid docs composed project path: {selector}"
                 )
             candidates.append(root / selector)
         for candidate in extra_roots:

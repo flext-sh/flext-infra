@@ -19,7 +19,7 @@ class TestsDocsCommandContract:
         content = """# Commands
 
 ```bash
-make setup APPLY=Y
+make setup
 make help
 make gen APPLY=Y
 make test APPLY=Y
@@ -62,7 +62,7 @@ make test PROJECT=flext-demo MATCH=unit
         tm.that(issues[0].message, has="invented Make selector")
 
     @staticmethod
-    def test_reads_apply_requirement_from_config_ssot() -> None:
+    def test_reads_setup_contract_from_config_ssot() -> None:
         content = """```bash
 make setup
 ```
@@ -72,8 +72,7 @@ make setup
             content, relative_path="docs/guides/getting-started.md"
         )
 
-        tm.that(len(issues), eq=1)
-        tm.that(issues[0].message, has="requires `APPLY=Y`")
+        tm.that(issues, eq=[])
 
     @staticmethod
     def test_rejects_raw_pytest_execution() -> None:

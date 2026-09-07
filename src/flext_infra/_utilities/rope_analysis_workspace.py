@@ -6,10 +6,11 @@ import operator
 from pathlib import Path
 
 from flext_infra import config
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 
 class FlextInfraUtilitiesRopeAnalysisWorkspace:
@@ -22,13 +23,13 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         return frozenset[str]((*c.Infra.ITERATION_EXCLUDED_PARTS, *ignored))
 
     @staticmethod
-    def _project_root_for_file(workspace_root: Path, file_path: Path) -> Path | None:
+    def _project_root_for_file(repository_root: Path, file_path: Path) -> Path | None:
         """Project root for file."""
         for parent in file_path.parents:
             if (parent / "pyproject.toml").is_file():
                 return parent.resolve()
-            if parent == workspace_root:
-                return workspace_root
+            if parent == repository_root:
+                return repository_root
         return None
 
     @classmethod
@@ -71,12 +72,12 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         )
 
     @staticmethod
-    def _inside_nested_repository(path: Path, workspace_root: Path) -> bool:
+    def _inside_nested_repository(path: Path, repository_root: Path) -> bool:
         """Exclude nested Git repositories and registered worktrees from indexing."""
         return any(
             (parent / ".git").exists() or (parent / ".git").is_symlink()
             for parent in path.parents
-            if parent != workspace_root and parent.is_relative_to(workspace_root)
+            if parent != repository_root and parent.is_relative_to(repository_root)
         )
 
     @classmethod
@@ -194,10 +195,10 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
     @classmethod
     def index_rope_workspace(
-        cls, rope_project: t.Infra.RopeProject, workspace_root: Path
+        cls, rope_project: t.Infra.RopeProject, repository_root: Path
     ) -> m.Infra.RopeWorkspaceIndex:
         """Build a generic Rope workspace index for package-oriented planning."""
-        resolved_root = workspace_root.resolve()
+        resolved_root = repository_root.resolve()
         (
             modules_by_path,
             modules_by_dir,
@@ -272,7 +273,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 descendant_child_dirs=descendant_child_dirs,
             )
         return m.Infra.RopeWorkspaceIndex(
-            workspace_root=resolved_root,
+            repository_root=resolved_root,
             package_dirs=sorted_package_dirs,
             packages_by_dir=packages_by_dir,
             modules_by_path=modules_by_path,

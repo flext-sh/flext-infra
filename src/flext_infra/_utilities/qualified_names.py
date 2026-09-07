@@ -17,7 +17,7 @@ class FlextInfraUtilitiesQualifiedNames:
     class _ResidueCollector(cst.CSTVisitor):
         METADATA_DEPENDENCIES = (QualifiedNameProvider,)
 
-        def __init__(self, candidates: t.Container[str]) -> None:
+        def __init__(self, candidates: t.Infra.Container[str]) -> None:
             self.candidates = candidates
             self.residue: set[str] = set()
 
@@ -32,7 +32,7 @@ class FlextInfraUtilitiesQualifiedNames:
 
     @classmethod
     def qualified_name_residue(
-        cls, source: str, candidates: t.Container[str]
+        cls, source: str, candidates: t.Infra.Container[str]
     ) -> frozenset[str]:
         """Return candidate qualified names referenced by Python source."""
         collector = cls._ResidueCollector(candidates)

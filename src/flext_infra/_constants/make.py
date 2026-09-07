@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Final
 
-from flext_infra._constants.check import FlextInfraConstantsCheck
+from .._constants.check import FlextInfraConstantsCheck
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -55,28 +55,34 @@ class FlextInfraConstantsMake:
     TIMEOUT_COMMAND: Final[str] = "timeout"
     TIMEOUT_KILL_AFTER_SECONDS: Final[int] = 5
 
-    CANONICAL_GATE_IDS: Final[tuple[str, ...]] = (
+    # Every read-only gate this package implements, derived from the gate SSOT
+    # (c.Infra.SARIF_TOOL_INFO) so registering a gate makes it reachable
+    # through `make check` in the same edit and no second list can drift.
+    # Mutating gates (`format`) are excluded: they rewrite files, so they are
+    # owned by `make fmt APPLY=Y` / `make fix APPLY=Y` and a read-only verb
+    # must never invoke them.
+    CANONICAL_GATE_IDS: Final[tuple[str, ...]] = tuple(
+        gate
+        for gate in FlextInfraConstantsCheck.SARIF_TOOL_INFO
+        if gate not in FlextInfraConstantsCheck.MUTATING_GATES
+    )
+    # Operator instruction 2026-09-07: the default check scope is the
+    # last-authorized nine-gate set (green baseline 147f03888). The gates
+    # introduced by the 2026-09-06 conformance wave stay registered and
+    # reachable through an explicit `make check WHAT=<gate>` selection, but
+    # they are not part of the default pipeline and their adoption debt is
+    # not authorized for payment.
+    CANONICAL_DEFAULT_GATE_IDS: Final[tuple[str, ...]] = (
         "lint",
         "pyrefly",
         "mypy",
         "pyright",
-        "silent-failure",
-        "deferred-self-reference",
         "security",
         "markdown",
-        "loc-cap",
-        "boundary",
-        "canonical-alias",
-        "runtime-census",
-        "namespace",
-        "layout",
-        "tier-whitelist",
         "smells",
-        "codemod",
         "direnv",
         "duplication",
     )
-    CANONICAL_DEFAULT_GATE_IDS: Final[tuple[str, ...]] = CANONICAL_GATE_IDS
     CANONICAL_FIXABLE_GATE_IDS: Final[tuple[str, ...]] = (
         "lint",
         "markdown",

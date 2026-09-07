@@ -9,8 +9,10 @@ from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
 from flext_infra import c, m, u
-from flext_infra.codegen import _mise_artifacts_files as files
-from flext_infra.codegen import _mise_artifacts_verification as verify
+from flext_infra.codegen import (
+    _mise_artifacts_files as files,
+    _mise_artifacts_verification as verify,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -23,7 +25,7 @@ def _project_depth(item: m.Infra.MiseToolchainProjectLayout) -> int:
 
 def _directory_cleanup_order(item: m.Infra.CodegenJournalDirectory) -> tuple[int, str]:
     """Order journaled directory cleanup from descendants to ancestors."""
-    return _relative_order(item.path)
+    return u.Infra.path_depth_then_text(Path(item.path))
 
 
 def plan_transaction_directories(
@@ -37,21 +39,25 @@ def plan_transaction_directories(
             return r[tuple[m.Infra.CodegenJournalDirectory, ...]].fail(
                 "Mise mutating layout has no transaction root"
             )
-        try:
-            destination_devices = {
-                artifact.parent.lstat().st_dev
-                for artifact in (
-                    project.artifacts.config,
-                    project.artifacts.unix_launcher,
-                    project.artifacts.windows_launcher,
-                    project.artifacts.lock,
+        destination_devices: set[int] = set()
+        for artifact in (
+            project.artifacts.config,
+            project.artifacts.unix_launcher,
+            project.artifacts.windows_launcher,
+            project.artifacts.lock,
+        ):
+            parent_plan = u.Cli.atomic_plan_directory_chain(artifact.parent)
+            if parent_plan.failure:
+                return r[tuple[m.Infra.CodegenJournalDirectory, ...]].from_failure(
+                    parent_plan
                 )
-            }
-            project_device = project.root.lstat().st_dev
-        except OSError as exc:
-            return r[tuple[m.Infra.CodegenJournalDirectory, ...]].fail_op(
-                "inspect Mise staging filesystem", exc
+            destination_devices.add(parent_plan.value.anchor_device)
+        project_plan = u.Cli.atomic_plan_directory_chain(project.root)
+        if project_plan.failure:
+            return r[tuple[m.Infra.CodegenJournalDirectory, ...]].from_failure(
+                project_plan
             )
+        project_device = project_plan.value.anchor_device
         if destination_devices != {project_device}:
             return r[tuple[m.Infra.CodegenJournalDirectory, ...]].fail(
                 f"Mise state is not on destination filesystem: {project.selector}"
@@ -129,7 +135,9 @@ def plan_directories(
                 )
             if previous is None or (previous.before is None and before is not None):
                 planned[directory] = entry
-    ordered = tuple(planned[path] for path in sorted(planned, key=_path_order))
+    ordered = tuple(
+        planned[path] for path in sorted(planned, key=u.Infra.path_depth_then_text)
+    )
     return result_type.ok(ordered)
 
 
@@ -337,10 +345,7 @@ def cleanup_journaled_directories(
             )
         removed = u.Cli.atomic_delete_empty_directory_guarded(entry.created)
         if removed.failure:
-            return r[bool].fail(
-                removed.error
-                or f"journaled directory is not safely empty: {entry.path}"
-            )
+            return r[bool].from_failure(removed)
     return r[bool].ok(True)
 
 
@@ -366,8 +371,9 @@ def validate_transaction_roots(
         transaction = _validate_transaction_root(transaction_root)
         if transaction.failure:
             return r[bool].from_failure(transaction)
-        if transaction.value is False:
+        if not transaction.value:
             continue
+        transaction_identity = transaction.value[0]
         relative = files.workspace_relative(layout.scope_root, transaction_root)
         if relative.failure:
             return r[bool].from_failure(relative)
@@ -377,7 +383,7 @@ def validate_transaction_roots(
         if (
             recorded is None
             or recorded.created is None
-            or (recorded.created.device, recorded.created.inode) != transaction_identity
+            or (recorded.created.device, recorded.created.inode) != transaction.value
         ):
             return r[bool].fail(
                 f"Mise transaction root identity is not journaled: {relative.value}"
@@ -385,9 +391,9 @@ def validate_transaction_roots(
     return r[bool].ok(True)
 
 
-def _validate_transaction_root(target: Path) -> p.Result[tuple[int, int] | bool]:
+def _validate_transaction_root(target: Path) -> p.Result[tuple[tuple[int, int], ...]]:
     if not target.exists() and not target.is_symlink():
-        return r[tuple[int, int] | bool].ok(False)
+        return r[tuple[tuple[int, int], ...]].ok(())
     identifier = target.name.removeprefix(files.TRANSACTION_DIR_PREFIX)
     if (
         not target.name.startswith(files.TRANSACTION_DIR_PREFIX)
@@ -395,27 +401,20 @@ def _validate_transaction_root(target: Path) -> p.Result[tuple[int, int] | bool]
         or any(character not in "0123456789abcdef" for character in identifier)
         or target.is_symlink()
     ):
-        return r[tuple[int, int] | bool].fail(
+        return r[tuple[tuple[int, int], ...]].fail(
             f"refusing invalid Mise transaction target: {target}"
         )
     try:
         state = target.lstat()
     except OSError as exc:
-        return r[tuple[int, int] | bool].fail_op("inspect Mise transaction target", exc)
+        return r[tuple[tuple[int, int], ...]].fail_op(
+            "inspect Mise transaction target", exc
+        )
     if not stat.S_ISDIR(state.st_mode) or _is_reparse(state):
-        return r[tuple[int, int] | bool].fail(
+        return r[tuple[tuple[int, int], ...]].fail(
             f"Mise transaction target is not physical: {target}"
         )
-    return r[tuple[int, int] | bool].ok((state.st_dev, state.st_ino))
-
-
-def _path_order(path: Path) -> tuple[int, str]:
-    return len(path.parts), path.as_posix()
-
-
-def _relative_order(path: str) -> tuple[int, str]:
-    relative = Path(path)
-    return len(relative.parts), path
+    return r[tuple[tuple[int, int], ...]].ok(((state.st_dev, state.st_ino),))
 
 
 def _is_reparse(state: os.stat_result) -> bool:

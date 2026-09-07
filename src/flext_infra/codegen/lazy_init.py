@@ -17,11 +17,10 @@ from typing import TYPE_CHECKING, override
 from flext_core import r
 from flext_infra import c, config, m, u
 from flext_infra.base import s
-from flext_infra.codegen._lazy_init_generation import (
-    FlextInfraCodegenLazyInitGenerationMixin,
-)
 from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+
+from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -72,8 +71,12 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         self._modified_files.clear()
         self._duplicate_class_names = 0
         if not self.repository_root.is_dir():
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+            return r[m.Infra.CodegenPhaseAnalysis].fail(
+<<<<<<< HEAD
+                f"lazy-init repository is not a directory: {self.repository_root}"
+=======
                 f"lazy-init workspace is not a directory: {self.repository_root}"
+>>>>>>> origin/0.12.0-dev
             )
         started_at = perf_counter()
         u.Cli.info(
@@ -93,13 +96,13 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
             f"Lazy-init plan: {len(changed)} effects "
             f"({perf_counter() - started_at:.2f}s)"
         )
-        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(plans)
+        return r[m.Infra.CodegenPhaseAnalysis].ok(analysis)
 
     def _plan_in_workspace(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Open Rope once and propagate every planner or filesystem failure."""
         try:
             with FlextInfraRopeWorkspace.open_workspace(
-                self.repository_root, rope_workspace_root=self.repository_root
+                self.repository_root, rope_repository_root=self.repository_root
             ) as rope:
                 return self._plan_open_workspace(rope)
         except c.EXC_OS_VALUE as exc:
@@ -110,15 +113,15 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Build immutable plans from one stable Rope workspace snapshot."""
         workspace_index = rope.workspace_index
-        resolved_workspace_root = self.repository_root.resolve()
+        resolved_repository_root = self.repository_root.resolve()
         indexed_package_dirs = tuple(
             sorted(
                 (
                     package_dir.resolve()
                     for package_dir in workspace_index.package_dirs
-                    if package_dir.is_relative_to(resolved_workspace_root)
+                    if package_dir.is_relative_to(resolved_repository_root)
                     and not frozenset(
-                        package_dir.relative_to(resolved_workspace_root).parts
+                        package_dir.relative_to(resolved_repository_root).parts
                     )
                     & c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES
                 ),
@@ -158,7 +161,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         package_dirs = self._package_dirs_for_target(
             indexed_package_dirs,
             target_package_dir=target_package_dir,
-            workspace_root=resolved_workspace_root,
+            repository_root=resolved_repository_root,
         )
         snapshots = self._snapshot_planner_inputs(workspace_index)
         if snapshots.failure:
@@ -207,12 +210,12 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         indexed_package_dirs: t.SequenceOf[Path],
         *,
         target_package_dir: Path | None,
-        workspace_root: Path,
+        repository_root: Path,
     ) -> tuple[Path, ...]:
         """Select the target's source/test scope and its production sibling."""
         if target_package_dir is None:
             return tuple(indexed_package_dirs)
-        target_parts = target_package_dir.relative_to(workspace_root).parts
+        target_parts = target_package_dir.relative_to(repository_root).parts
         boundary_names = frozenset({
             c.Infra.DEFAULT_SRC_DIR,
             *c.Infra.NON_PUBLIC_LAZY_ROOTS,
@@ -231,9 +234,9 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         return tuple(
             package_dir
             for package_dir in indexed_package_dirs
-            if package_dir.relative_to(workspace_root).parts[: len(scope_prefix)]
+            if package_dir.relative_to(repository_root).parts[: len(scope_prefix)]
             == scope_prefix
-            or package_dir.relative_to(workspace_root).parts[: len(production_prefix)]
+            or package_dir.relative_to(repository_root).parts[: len(production_prefix)]
             == production_prefix
         )
 
@@ -264,12 +267,8 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 if is_private_scope and entry.project_root is not None
                 else ""
             )
-            for obj in rope.objects(
-                entry.file_path, include_local_scopes=False, include_references=False
-            ):
-                if obj.kind != "class" or obj.scope_path:
-                    continue
-                name = obj.name
+            for class_info in rope.semantic(entry.file_path).class_infos:
+                name = class_info.name
                 if len(name) < c.Infra.DUPLICATE_CLASS_MIN_LEN or not name[0].isupper():
                     continue
                 scoped_modules[name, scope_key].add(entry.module_name)

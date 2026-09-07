@@ -7,10 +7,11 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import t
-from flext_infra._models._defaults import immutable_empty_mapping
-from flext_infra._models.deps_toml import FlextInfraModelsDepsToml
-from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+
+from .._models._defaults import immutable_empty_mapping
+from .._models.deps_toml import FlextInfraModelsDepsToml
+from .._models.deps_tool_config import FlextInfraModelsDepsToolSettings
+from .._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDepsToml):

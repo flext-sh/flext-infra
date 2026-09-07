@@ -3,36 +3,24 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
+    from .layout_fixture import archive_root, build_loose_project, layout_engine
     from .lazy_init_file_plan_tests import TestsFlextInfraCodegenLazyInitFilePlans
     from .lazy_init_generation_tests import TestsFlextInfraCodegenGeneration
     from .lazy_init_process_tests import TestsFlextInfraLazyInitProcessing
     from .lazy_init_registry_wrapper_tests import TestsFlextInfraLazyInitCleanup
     from .lazy_init_runtime_tests import TestsFlextInfraLazyInitRuntime
     from .lazy_init_service_tests import TestsFlextInfraCodegenLazyInitService
+    from .mise_generation_lock_fixture import lock_identity, lock_owner, lock_repository
     from .test_codegen_hook_conformance import TestGitHookConformance
-    from .test_codegen_linked_worktree_manifest import TestCodegenLinkedWorktreeTopology
-    from .test_codegen_make_environment import TestsCodegenMakeEnvironment
-    from .test_codegen_pipeline_performance import (
-        TestsFlextInfraCodegenPipelinePerformance,
-    )
-    from .test_codegen_pyproject_conform import TestsFlextInfraCodegenPyprojectConform
-    from .test_codegen_uv_exclude_newer_overlay import TestCodegenUvExcludeNewerOverlay
-    from .test_managed_conflicts import TestsFlextInfraCodegenManagedConflicts
-    from .test_managed_maintenance_headers import (
-        TestsFlextInfraManagedMaintenanceHeaders,
-    )
-    from .test_review_mro_vw2w_template_contracts import TestsReviewTemplateContracts
-    from .test_vscode_owner_merge import TestsVscodeOwnerMerge
-    from .test_workspace_root_setup_submodules import TestsWorkspaceRootSetupSubmodules
+    from .test_utility_facade_projection import TestsFlextInfraUtilityFacadeProjection
 __all__: tuple[str, ...] = (
     "TestGitHookConformance",
     "TestsFlextInfraCodegenGeneration",
@@ -41,16 +29,17 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraLazyInitCleanup",
     "TestsFlextInfraLazyInitProcessing",
     "TestsFlextInfraLazyInitRuntime",
-    "TestsFlextInfraLazyInitTransforms",
-    "TestsFlextInfraManagedMaintenanceHeaders",
-    "TestsMakeTestSelector",
-    "TestsReviewTemplateContracts",
-    "TestsVscodeOwnerMerge",
-    "TestsWorkspaceRootSetupSubmodules",
+    "TestsFlextInfraUtilityFacadeProjection",
+    "archive_root",
+    "build_loose_project",
     "c",
     "d",
     "e",
     "h",
+    "layout_engine",
+    "lock_identity",
+    "lock_owner",
+    "lock_repository",
     "m",
     "p",
     "r",
@@ -68,36 +57,21 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
+            ".layout_fixture": ("archive_root", "build_loose_project", "layout_engine"),
             ".lazy_init_file_plan_tests": ("TestsFlextInfraCodegenLazyInitFilePlans",),
             ".lazy_init_generation_tests": ("TestsFlextInfraCodegenGeneration",),
             ".lazy_init_process_tests": ("TestsFlextInfraLazyInitProcessing",),
             ".lazy_init_registry_wrapper_tests": ("TestsFlextInfraLazyInitCleanup",),
             ".lazy_init_runtime_tests": ("TestsFlextInfraLazyInitRuntime",),
             ".lazy_init_service_tests": ("TestsFlextInfraCodegenLazyInitService",),
+            ".mise_generation_lock_fixture": (
+                "lock_identity",
+                "lock_owner",
+                "lock_repository",
+            ),
             ".test_codegen_hook_conformance": ("TestGitHookConformance",),
-            ".test_codegen_linked_worktree_manifest": (
-                "TestCodegenLinkedWorktreeTopology",
-            ),
-            ".test_codegen_make_environment": ("TestsCodegenMakeEnvironment",),
-            ".test_codegen_pipeline_performance": (
-                "TestsFlextInfraCodegenPipelinePerformance",
-            ),
-            ".test_codegen_pyproject_conform": (
-                "TestsFlextInfraCodegenPyprojectConform",
-            ),
-            ".test_codegen_uv_exclude_newer_overlay": (
-                "TestCodegenUvExcludeNewerOverlay",
-            ),
-            ".test_managed_conflicts": ("TestsFlextInfraCodegenManagedConflicts",),
-            ".test_managed_maintenance_headers": (
-                "TestsFlextInfraManagedMaintenanceHeaders",
-            ),
-            ".test_review_mro_vw2w_template_contracts": (
-                "TestsReviewTemplateContracts",
-            ),
-            ".test_vscode_owner_merge": ("TestsVscodeOwnerMerge",),
-            ".test_workspace_root_setup_submodules": (
-                "TestsWorkspaceRootSetupSubmodules",
+            ".test_utility_facade_projection": (
+                "TestsFlextInfraUtilityFacadeProjection",
             ),
             "flext_tests": (
                 "c",

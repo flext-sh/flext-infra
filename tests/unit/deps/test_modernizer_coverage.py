@@ -9,12 +9,7 @@ from flext_infra import config
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
 from flext_tests import tm
-from tests import t, u
-
-
-def _strings(value: t.JsonValue) -> t.StrSequence:
-    result: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(value)
-    return result
+from tests import u
 
 
 class TestsFlextInfraDepsModernizerCoverage:
@@ -38,7 +33,7 @@ class TestsFlextInfraDepsModernizerCoverage:
         tool = u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])
         coverage = u.Tests.toml_mapping(tool["coverage"])
         run = u.Tests.toml_mapping(coverage["run"])
-        tm.that(list(_strings(run["source"])), eq=list(arbitrary_source))
+        tm.that(list(u.Tests.strings(run["source"])), eq=list(arbitrary_source))
 
     def test_apply_sets_report_and_run_state(self) -> None:
         """Verify apply sets report and run state."""
@@ -60,11 +55,12 @@ class TestsFlextInfraDepsModernizerCoverage:
         tm.that(report["skip_covered"], eq=False)
         tm.that(report["precision"], eq=tool_config.tools.coverage.precision)
         tm.that(
-            list(_strings(report["exclude_also"])),
+            list(u.Tests.strings(report["exclude_also"])),
             eq=sorted(set(tool_config.tools.coverage.exclude_also)),
         )
         tm.that(
-            list(_strings(run["omit"])), eq=sorted(set(tool_config.tools.coverage.omit))
+            list(u.Tests.strings(run["omit"])),
+            eq=sorted(set(tool_config.tools.coverage.omit)),
         )
         # Declaration-layer Protocol facades are never runtime coverage targets.
         tm.that("*/protocols.py" in tool_config.tools.coverage.omit, eq=True)

@@ -3,9 +3,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
@@ -21,8 +20,6 @@ if TYPE_CHECKING:
     from .lazy_init import FlextInfraCodegenLazyInit
     from .lazy_init_planner import FlextInfraCodegenLazyInitPlanner
     from .make_bootstrap import FlextInfraCodegenMakeBootstrap
-    from .managed_conflicts import FlextInfraCodegenManagedConflicts
-    from .managed_conflicts_core import ManagedConflictError, recover_managed_toml
     from .mise_artifacts import FlextInfraCodegenMiseArtifacts
     from .mise_artifacts_lock import FlextInfraMiseLock
     from .mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
@@ -41,7 +38,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenLazyInit",
     "FlextInfraCodegenLazyInitPlanner",
     "FlextInfraCodegenMakeBootstrap",
-    "FlextInfraCodegenManagedConflicts",
     "FlextInfraCodegenMiseArtifacts",
     "FlextInfraCodegenPipeline",
     "FlextInfraCodegenProjectNew",
@@ -52,8 +48,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenVersionFile",
     "FlextInfraMiseLock",
     "FlextInfraMiseWorkspacePlanner",
-    "ManagedConflictError",
-    "recover_managed_toml",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -70,8 +64,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".lazy_init": ("FlextInfraCodegenLazyInit",),
             ".lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
             ".make_bootstrap": ("FlextInfraCodegenMakeBootstrap",),
-            ".managed_conflicts": ("FlextInfraCodegenManagedConflicts",),
-            ".managed_conflicts_core": ("ManagedConflictError", "recover_managed_toml"),
             ".mise_artifacts": ("FlextInfraCodegenMiseArtifacts",),
             ".mise_artifacts_lock": ("FlextInfraMiseLock",),
             ".mise_artifacts_workspace": ("FlextInfraMiseWorkspacePlanner",),

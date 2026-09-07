@@ -14,7 +14,8 @@ from typing import Annotated, override
 
 from flext_infra import m, p, r, t, u
 from flext_infra.base import FlextInfraServiceBase
-from flext_infra.deps._toml_phase_ops import FlextInfraTomlPhaseOps
+
+from ._toml_phase_ops import FlextInfraTomlPhaseOps
 
 
 class FlextInfraTomlPhaseService(

@@ -22,8 +22,6 @@ class FlextInfraPyreflyGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.PYREFLY
     gate_name: ClassVar[str] = "Pyrefly"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.PYREFLY][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.PYREFLY][1]
 
     @override
     def _get_check_dirs(

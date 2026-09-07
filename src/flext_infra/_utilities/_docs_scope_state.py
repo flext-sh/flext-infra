@@ -4,15 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import FlextCliUtilities as u
-from flext_infra._models.workspace import FlextInfraModelsWorkspace as mw
-from flext_infra._utilities._docs_scope_paths import (
-    FlextInfraUtilitiesDocsScopePathsMixin,
-)
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
+from flext_cli import u
 from flext_infra.constants import FlextInfraConstants as c
 from flext_infra.typings import FlextInfraTypes as t
+
+from .._models.workspace import FlextInfraModelsWorkspace as mw
+from .._utilities._docs_scope_paths import FlextInfraUtilitiesDocsScopePathsMixin
+from .._utilities.dependencies import FlextInfraUtilitiesDependencies
+from .._utilities.pyproject import FlextInfraUtilitiesPyproject
 
 
 class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMixin):
@@ -48,9 +47,6 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
                 msg = f"docs pyproject TOML is invalid: {pyproject_path}"
                 raise ValueError(msg)
             validated = FlextInfraUtilitiesPyproject.validate_infra_payload(parsed)
-            if validated is None:
-                msg = f"docs pyproject payload is invalid: {pyproject_path}"
-                raise ValueError(msg)
             payload = validated
         docs_meta = FlextInfraUtilitiesDocsScopeStateMixin.docs_meta_from_payload(
             payload

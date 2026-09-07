@@ -100,7 +100,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Boot
-        run: make setup APPLY=Y
+        run: make setup
       - name: Release pull request
         run: make release-version APPLY=Y
 
@@ -127,7 +127,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Boot
-        run: make setup APPLY=Y
+        run: make setup
       - name: Tag
         run: make release-tag APPLY=Y
       - name: Build receipt

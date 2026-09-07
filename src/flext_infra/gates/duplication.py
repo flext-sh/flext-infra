@@ -5,12 +5,14 @@ from __future__ import annotations
 import ast
 import shutil
 import time
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
 from flext_infra import c, m, t, u
 from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -22,8 +24,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     gate_id: ClassVar[str] = "duplication"
     gate_name: ClassVar[str] = "Code Duplication"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["duplication"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["duplication"][1]
 
     # flext-pulj: process results stay structural outside the Pydantic boundary.
     _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
@@ -38,7 +38,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         """Run and validate jscpd, then expose every owned clone as an error."""
         _ = ctx
         started = time.monotonic()
-        scan = self._workspace_scan()
+        scan = self._scan_workspace()
         parsed = self._issues_from_report(scan, project_dir)
         issues = (
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
@@ -53,7 +53,11 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             started=started,
         )
 
-    def _scan_workspace(self) -> m.Infra.JscpdScan:
+<<<<<<< HEAD
+    def _workspace_scan(self) -> p.Cli.CommandOutput:
+=======
+    def _scan_workspace(self) -> p.Cli.CommandOutput:
+>>>>>>> origin/0.12.0-dev
         """Create one fresh report; tool, scope, and report failures escape."""
         binary = shutil.which(c.Infra.JSCPD_BINARY)
         if binary is None:
@@ -121,21 +125,38 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         discovered = u.Infra.resolve_projects(self._repository_root, ())
         if discovered.failure:
             return r[t.StrSequence].from_failure(discovered)
+        declared = self._declared_trees_by_path()
+        if declared.failure:
+            return r[t.StrSequence].from_failure(declared)
+        trees_by_path = declared.value
         return r[t.StrSequence].ok(
             tuple(
-                str(project.path / candidate)
+                str(project.path / tree)
                 for project in discovered.value
-                for candidate in self._existing_check_dirs(project.path)
+                for tree in trees_by_path.get(
+                    project.path.resolve(), self._existing_check_dirs(project.path)
+                )
             )
         )
-        if output.exit_code == 1 and report.statistics.total.clones == 0:
-            raise RuntimeError(raw_output or "jscpd failed without clone evidence")
-        return m.Infra.JscpdScan(
-            exit_code=output.exit_code,
-            report=report,
-            stderr=output.stderr,
-            stdout=output.stdout,
+<<<<<<< HEAD
+
+    def _declared_trees_by_path(self) -> p.Result[Mapping[Path, t.StrSequence]]:
+        """Map declared repositories to their declared duplication scan trees."""
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+            self._repository_root
         )
+        if workspace.failure:
+            return r[Mapping[Path, t.StrSequence]].from_failure(workspace)
+        spec = workspace.value
+        declared: dict[Path, t.StrSequence] = {}
+        for repository in (spec.repository, *spec.subprojects):
+            if repository.duplication_trees:
+                declared[(self._repository_root / repository.path).resolve()] = (
+                    repository.duplication_trees
+                )
+        return r[Mapping[Path, t.StrSequence]].ok(declared)
+=======
+>>>>>>> origin/0.12.0-dev
 
     def _scope_paths(self) -> t.StrSequence:
         """Resolve canonical source, test, config, and template roots once."""
@@ -249,16 +270,17 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             second_name = u.Cli.json_pick_str(second, "name")
             if not cls._is_semantic_clone(duplicate, first, second):
                 continue
+            record = m.Infra.JscpdDuplicate.model_validate(duplicate)
             if first_name.startswith(prefix):
                 issues.append(
-                    cls._issue_from_duplicate(
-                        duplicate, first, first_name, second_name, project_dir
+                    cls._issue(
+                        record, record.first_file, record.second_file, project_dir
                     )
                 )
             elif second_name.startswith(prefix) and second_name != first_name:
                 issues.append(
-                    cls._issue_from_duplicate(
-                        duplicate, second, second_name, first_name, project_dir
+                    cls._issue(
+                        record, record.second_file, record.first_file, project_dir
                     )
                 )
         return r[tuple[m.Infra.Issue, ...]].ok(tuple(issues))
@@ -308,10 +330,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     @staticmethod
     def _python_behavior_ranges(path: Path) -> tuple[tuple[int, int], ...]:
         """Parse one module into ranges for statements with runtime behavior."""
-        try:
-            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        except (OSError, SyntaxError, UnicodeError):
-            return ((1, 2**31 - 1),)
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         parents = {
             child: parent
             for parent in ast.walk(tree)
@@ -381,6 +400,37 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 f"— extend one owner, rewire consumers, delete the duplicate"
             ),
             severity=str(c.Infra.GateSeverity.ERROR.value),
+        )
+
+    @staticmethod
+    def _severity() -> str:
+        """Return the blocking severity required for every clone."""
+        return str(c.Infra.GateSeverity.ERROR.value)
+
+    @classmethod
+    def _issue_from_duplicate(
+        cls,
+        duplicate: t.JsonMapping,
+        own_side: t.JsonMapping,
+        own_name: str,
+        other_name: str,
+        project_dir: Path,
+    ) -> m.Infra.Issue:
+        """Map one clone side to an Issue naming its counterpart file/lines."""
+        lines = u.Cli.json_pick_int(duplicate, "lines")
+        tokens = u.Cli.json_pick_int(duplicate, "tokens")
+        start_line = u.Cli.json_nested_int(own_side, "startLoc", "line", default=1)
+        start_col = u.Cli.json_nested_int(own_side, "startLoc", "column")
+        return m.Infra.Issue(
+            file=own_name.removeprefix(f"{project_dir}/"),
+            line=start_line,
+            column=start_col,
+            code=cls.gate_id,
+            message=(
+                f"{lines}-line ({tokens}-token) clone of {other_name} "
+                f"— extend one owner, rewire consumers, delete the duplicate"
+            ),
+            severity=cls._severity(),
         )
 
 

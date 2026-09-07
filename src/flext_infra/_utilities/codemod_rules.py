@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from importlib.metadata import Distribution, distributions, packages_distributions
 from importlib.util import find_spec
 from pathlib import Path
-import re
 
-from flext_cli import p, r, u
-from flext_infra import c, m, t
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
+
+from flext_infra import c, m, p, r, t
+
+from .._utilities.dependencies import FlextInfraUtilitiesDependencies
 
 
 class FlextInfraUtilitiesCodemodRules:
@@ -73,6 +74,8 @@ class FlextInfraUtilitiesCodemodRules:
 
     @staticmethod
     def _project(root: Path) -> p.Result[t.Pair[str, t.StrSequence]]:
+        from flext_infra import u
+
         pyproject = root / c.Infra.PYPROJECT_FILENAME
         document = u.Cli.toml_read_document(pyproject)
         if document.failure:
@@ -191,10 +194,15 @@ class FlextInfraUtilitiesCodemodRules:
             )
             for name in selected
         }
-        waves = FlextInfraUtilitiesDependencies.dependency_waves(edges)
-        if waves.failure:
-            return r[t.StrSequence].from_failure(waves)
-        return r[t.StrSequence].ok(tuple(name for wave in waves.value for name in wave))
+        try:
+            ordered = FlextInfraUtilitiesDependencies.dependency_order(
+                tuple(selected), dependencies=lambda name: edges.get(name, ())
+            )
+        except ValueError as exc:
+            return r[t.StrSequence].fail(
+                f"codemod provider cycle: {exc}", exception=exc
+            )
+        return r[t.StrSequence].ok(ordered)
 
     @staticmethod
     def _provider_configs(
@@ -242,6 +250,8 @@ class FlextInfraUtilitiesCodemodRules:
 
     @staticmethod
     def _config_scope(config: Path) -> p.Result[str]:
+        from flext_infra import u
+
         parsed = u.Cli.yaml_parse(config.read_text(encoding=c.Cli.ENCODING_DEFAULT))
         if parsed.failure:
             return r[str].from_failure(parsed)
@@ -313,6 +323,8 @@ class FlextInfraUtilitiesCodemodRules:
     def _rules(
         cls, provider: str, config: Path
     ) -> p.Result[t.SequenceOf[m.Infra.CodemodRule]]:
+        from flext_infra import u
+
         parsed_config = u.Cli.yaml_parse(
             config.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         )

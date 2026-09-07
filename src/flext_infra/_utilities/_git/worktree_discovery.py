@@ -10,13 +10,12 @@ from urllib.parse import urlparse
 from git import GitCommandError, GitConfigParser
 
 from flext_core import r
-from flext_infra._utilities._git.worktree_roots import (
-    FlextInfraUtilitiesGitWorktreeRootsMixin,
-)
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+from ..._utilities._git.worktree_roots import FlextInfraUtilitiesGitWorktreeRootsMixin
+from ..._utilities.base import FlextInfraUtilitiesBase
 
 if TYPE_CHECKING:
     from flext_infra import p

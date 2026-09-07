@@ -6,12 +6,9 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, m, t, u
-from flext_infra.refactor._project_classifier_deps import (
-    FlextInfraProjectClassifierDepsMixin,
-)
-from flext_infra.refactor._project_classifier_family import (
-    FlextInfraProjectClassifierFamilyMixin,
-)
+
+from ._project_classifier_deps import FlextInfraProjectClassifierDepsMixin
+from ._project_classifier_family import FlextInfraProjectClassifierFamilyMixin
 
 if TYPE_CHECKING:
     from pathlib import Path

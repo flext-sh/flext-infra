@@ -119,7 +119,11 @@ class TestsFlextInfraLazyInitTransforms:
                 cwd=source_root,
             )
         )
-        tm.that(imported.exit_code, eq=0)
+<<<<<<< HEAD
+        tm.that(imported.outcome.raw_return_code, eq=0)
+=======
+        tm.that(u.Cli.process_succeeded(imported.outcome), eq=True)
+>>>>>>> origin/0.12.0-dev
         tm.that(imported.stdout.strip(), eq="1.0.0|(1, 0, 0)")
         # flext-wkii.17 (Codex): version-only roots publish one static initializer.
         tm.that(content, has="__all__: tuple[str, ...]")

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_core import m
@@ -15,7 +14,7 @@ class FlextInfraModelsCodemod:
     class ModRuleBatch(m.ArbitraryTypesModel):
         """Validated executable ast-grep documents prepared for one circuit."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         inline_rules: Annotated[
             t.NonEmptyStr, m.Field(description="Executable YAML document stream")
@@ -33,7 +32,7 @@ class FlextInfraModelsCodemod:
     class ModGateSnapshot(m.ArbitraryTypesModel):
         """Exact Ruff and Pyrefly measurement with raw diagnostics."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         ruff_errors: Annotated[
             t.NonNegativeInt, m.Field(description="Ruff error count")

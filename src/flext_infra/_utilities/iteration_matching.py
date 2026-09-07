@@ -9,6 +9,8 @@ from __future__ import annotations
 import fnmatch
 from typing import TYPE_CHECKING
 
+from .._utilities._git.scope import FlextInfraUtilitiesGitScopeMixin
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -26,7 +28,7 @@ class FlextInfraUtilitiesIterationMatching:
         if not root.is_dir():
             return []
         root = root.resolve()
-        tracked_files = cls.git_tracked_scope_paths(root)
+        tracked_files = FlextInfraUtilitiesGitScopeMixin.git_tracked_scope_paths(root)
         candidates = (
             tracked_files
             if tracked_files is not None

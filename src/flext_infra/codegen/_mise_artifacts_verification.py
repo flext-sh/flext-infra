@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
-from flext_infra import u, c, m
+from flext_infra import c, m, u
 from flext_infra.codegen import _mise_artifacts_files as files
 
 if TYPE_CHECKING:
@@ -143,7 +143,7 @@ def journal_topology(
             )
     for directory in journal.directories:
         project = by_selector[directory.project]
-        target = next(
+        resolved_target = next(
             path
             for path, candidate in directory_targets.items()
             if candidate == directory
@@ -289,15 +289,17 @@ def phase_analysis_live(analysis: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool
 
 
 def sources(plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
-    """Prove every Mise config source still equals its full snapshot."""
+    """Prove every snapshotted Mise config source is byte-identical."""
     for project in plan.projects:
-        current = u.Infra.snapshot_config_sources(
-            project.layout.root
-        )
+<<<<<<< HEAD
+        current = states_current(project.config.sources)
+=======
+        current = u.Infra.snapshot_config_sources(project.layout.root)
+>>>>>>> origin/0.12.0-dev
         if current.failure:
-            return r[bool].from_failure(current)
-        if current.value != project.config.sources:
-            return r[bool].fail(f"Mise sources changed: {project.layout.selector}")
+            return r[bool].fail(
+                current.error or f"Mise sources changed: {project.layout.selector}"
+            )
     return r[bool].ok(True)
 
 
@@ -361,7 +363,7 @@ def live(
     source_before = sources(plan)
     if source_before.failure:
         return source_before
-    replacements: dict[Path, tuple[bytes | None, int | None]] = {}
+    replacements: dict[Path, tuple[bytes, int | None]] = {}
     for publication in publications or ():
         replacement = publication.replacement
         if replacement is None or replacement.content is None:
@@ -375,10 +377,7 @@ def live(
     for project in plan.projects:
         validated = owner.validate_artifacts(project.layout.root)
         if validated.failure:
-            return r[bool].fail(
-                validated.error
-                or f"published Mise validation failed for {project.layout.selector}"
-            )
+            return r[bool].from_failure(validated)
     artifact_after = _artifact_snapshot(plan, replacements)
     if artifact_after.failure:
         return r[bool].from_failure(artifact_after)
@@ -594,7 +593,7 @@ def _manifest_root_matches_created(
 
 def _artifact_snapshot(
     plan: m.Infra.MiseToolchainWorkspacePlan,
-    replacements: dict[Path, tuple[bytes, int | None]],
+    replacements: dict[Path, tuple[bytes | None, int | None]],
 ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
     root_launchers: tuple[bytes, bytes] | None = None
     states: list[m.Cli.AtomicFileState] = []
@@ -663,19 +662,6 @@ def _file_identity(
         value.file_attributes,
         value.reparse_tag,
     )
-
-
-def _directory_identity(path: Path) -> p.Result[tuple[int, int]]:
-    try:
-        observed = path.lstat()
-    except OSError as exc:
-        return r[tuple[int, int]].fail_op("inspect generation directory", exc)
-    reparse = getattr(observed, "st_file_attributes", 0) & getattr(
-        stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0
-    )
-    if not stat.S_ISDIR(observed.st_mode) or reparse:
-        return r[tuple[int, int]].fail(f"generation directory is not physical: {path}")
-    return r[tuple[int, int]].ok((observed.st_dev, observed.st_ino))
 
 
 __all__: list[str] = [

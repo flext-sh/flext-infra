@@ -39,7 +39,7 @@ jobs:
 {%- include "_fragments/private_submodules_init.j2" %}
 
       - name: Sync workspace toolchain
-        run: make setup {{ make.apply_variable }}={{ make.apply_value }}
+        run: make setup
 
       - name: Generation drift (blocking)
         run: make conform {{ make.apply_variable }}={{ make.apply_value }}
@@ -103,7 +103,7 @@ jobs:
 {%- include "_fragments/private_submodules_init.j2" %}
 
       - name: Sync workspace toolchain
-        run: make setup {{ make.apply_variable }}={{ make.apply_value }}
+        run: make setup
 
       - name: Build site
         run: make docs {{ make.apply_variable }}={{ make.apply_value }}

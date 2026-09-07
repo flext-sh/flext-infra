@@ -7,12 +7,13 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u as cli_u
 from flext_core import r
-from flext_infra._utilities._docs_generate_sources import (
-    FlextInfraUtilitiesDocsGenerateSourcesMixin,
-)
-from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
 from flext_infra.models import m
 from flext_infra.typings import t
+
+from .._utilities._docs_generate_sources import (
+    FlextInfraUtilitiesDocsGenerateSourcesMixin,
+)
+from .._utilities.docs_contract import FlextInfraUtilitiesDocsContract
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
@@ -89,10 +90,10 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
         bundle: m.Infra.DocsGenerationBundle,
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Snapshot targets from the canonical rendered artifact inventory."""
-        workspace_root = bundle.scopes[0].scope.path
+        repository_root = bundle.scopes[0].scope.path
         scope_roots = tuple(scoped.scope.path for scoped in bundle.scopes)
         stable = FlextInfraUtilitiesDocsGeneratePlanMixin.docs_verify_sources(
-            workspace_root, bundle.source_states, extra_roots=scope_roots
+            repository_root, bundle.source_states, extra_roots=scope_roots
         )
         if stable.failure:
             return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(stable)
@@ -110,7 +111,7 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
                     return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(planned)
                 plans.append(planned.value)
         stable = FlextInfraUtilitiesDocsGeneratePlanMixin.docs_verify_sources(
-            workspace_root, bundle.source_states, extra_roots=scope_roots
+            repository_root, bundle.source_states, extra_roots=scope_roots
         )
         if stable.failure:
             return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(stable)

@@ -45,8 +45,12 @@ class FlextInfraLooseTestFunctionDetector:
             return []
         try:
             pymodule = u.Infra.get_pymodule(ctx.rope_project, res)
-        except u.Infra.rope_runtime_errors():
-            return []
+        except u.Infra.rope_runtime_errors() as exc:
+            msg = (
+                f"loose-test-function detector could not analyze {ctx.file_path}: "
+                f"{type(exc).__name__}: {exc!s}"
+            )
+            raise RuntimeError(msg) from exc
         violations: list[m.Infra.LooseTestFunctionViolation] = []
         for definition in u.Infra.scope_definitions(pymodule):
             if definition.kind != c.Infra.RopeScopeKind.FUNCTION:

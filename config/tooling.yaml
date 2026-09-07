@@ -142,6 +142,9 @@ Infra:
             # requiring every test to opt in would let live state leak whenever
             # one consumer omitted the fixture.
             - pytest-fixture-autouse
+            # See the rationale below: this rule and ban-private-import demand
+            # opposite forms for the same import.
+            - relative-imports
             - too-many-arguments
             - too-many-branches
             - too-many-locals
@@ -154,6 +157,15 @@ Infra:
             - typing-only-standard-library-import
             - typing-only-third-party-import
           ignored-rule-rationales:
+            relative-imports: >-
+              The codemod rule ban-private-import requires the opposite form.
+              Same-owner implementation modules use relative sibling imports and
+              every other consumer uses a public facade, because an absolute
+              private import couples a consumer to an owner layout. Selecting
+              both gates makes every internal import fail one of them.
+              Converting the 304 findings produced 301 ban-private-import
+              errors and took the suite from 1717 to 3135, so the architectural
+              rule decides.
             import-outside-top-level:
               Public facade models are imported lazily only at validation and
               construction sites to preserve the c-t-p-m-u graph and prevent runtime cycles.
@@ -521,6 +533,11 @@ Infra:
           # scripts/legado/dispatch.py.
           project-shared-search-paths: []
       pytest:
+        testmon-state-home-variable: XDG_STATE_HOME
+        testmon-datafile-variable: TESTMON_DATAFILE
+        testmon-namespace: flext/testmon
+        testmon-database-filename: .testmondata
+        testmon-lock-filename: cache.lock
         # flext-j47u (codex): scaffold/modernizer consume one complete pytest model.
         # OPERATOR LAW flext-38p39 (2026-08-13), reaffirmed by flext-09686
         # measurement. 10s per case, 60s for an explicitly slow case, 120s for

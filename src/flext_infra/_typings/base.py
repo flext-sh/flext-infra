@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableMapping
+from collections.abc import Callable, Container as _Container, MutableMapping
 from pathlib import Path as _Path
 from typing import Annotated, Literal
 
@@ -14,7 +14,6 @@ from jinja2.environment import (
     Environment as _JinjaEnvironment,
     Template as _JinjaTemplate,
 )
-from pydantic import AfterValidator
 
 from flext_core import m, t
 
@@ -67,6 +66,8 @@ class FlextInfraTypesBase:
     "Result for writing generated __init__.py."
     type StrSet = set[str]
     "Mutable string set (supports .update/.intersection/etc)."
+    type Container[T] = _Container[T]
+    "Structural membership container (supports ``in``) for any item type."
     type CanonicalValue = t.Scalar | t.StrSequence
     "Canonical governance value: scalar payload or string sequence."
 

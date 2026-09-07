@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_infra import FlextInfraWorktreeService, c, m
 from flext_tests import tm
 from tests import u
-from tests import WorktreeFixture
+from tests.unit.workspace import WorktreeFixture
 
 
 class TestsWorktreePaths(WorktreeFixture):
@@ -31,15 +31,7 @@ class TestsWorktreePaths(WorktreeFixture):
         branch = "feature/example"
         lane = tm.ok(FlextInfraWorktreeService.canonical_lane_path(repository, branch))
 
-        added = tm.ok(
-            FlextInfraWorktreeService(
-                repository_root=repository,
-                operation=c.Infra.WorktreeOperation.ADD,
-                branch=branch,
-                base="HEAD",
-                apply_changes=True,
-            ).execute()
-        )
+        added = self.add_worktree(repository, branch)
 
         tm.that(added, eq=str(lane))
         tm.that(lane.is_dir(), where=bool)
@@ -74,15 +66,7 @@ class TestsWorktreePaths(WorktreeFixture):
             '[dependency-groups]\ndescription = "dirty primary WIP"\n', encoding="utf-8"
         )
 
-        added = tm.ok(
-            FlextInfraWorktreeService(
-                repository_root=repository,
-                operation=c.Infra.WorktreeOperation.ADD,
-                branch=branch,
-                base="HEAD",
-                apply_changes=True,
-            ).execute()
-        )
+        added = self.add_worktree(repository, branch)
 
         tm.that(added, eq=str(lane))
         tm.that(
@@ -107,15 +91,7 @@ class TestsWorktreePaths(WorktreeFixture):
         branch = "feature/outer-isolation"
         lane = self._lane(repository, outer_project, branch)
 
-        added = tm.ok(
-            FlextInfraWorktreeService(
-                repository_root=repository,
-                operation=c.Infra.WorktreeOperation.ADD,
-                branch=branch,
-                base="HEAD",
-                apply_changes=True,
-            ).execute()
-        )
+        added = self.add_worktree(repository, branch)
 
         tm.that(added, eq=str(lane))
         tm.that(not lane.is_relative_to(outer_project), where=bool)

@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, m
+from flext_infra import m
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 
@@ -17,8 +17,6 @@ class FlextInfraNamespaceGate(FlextInfraGate):
     gate_id: ClassVar[str] = "namespace"
     gate_name: ClassVar[str] = "Namespace Rules"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["namespace"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["namespace"][1]
 
     @override
     def check(

@@ -8,12 +8,13 @@ from typing import TYPE_CHECKING
 from git import GitCommandError
 
 from flext_core import r
-from flext_infra._utilities._git.worktree_checkpoint import (
-    FlextInfraUtilitiesGitWorktreeCheckpointMixin,
-)
-from flext_infra._utilities._git.worktree_io import git_stdin
 from flext_infra.constants import c
 from flext_infra.models import m
+
+from ..._utilities._git.worktree_checkpoint import (
+    FlextInfraUtilitiesGitWorktreeCheckpointMixin,
+)
+from ..._utilities._git.worktree_io import git_stdin
 
 if TYPE_CHECKING:
     from flext_infra import p

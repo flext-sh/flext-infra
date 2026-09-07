@@ -66,12 +66,15 @@ class FlextInfraWorkspaceCheckReportsMixin:
                 execution = project.gates.get(gate)
                 if execution is None:
                     continue
+                tool_name, tool_url = c.Infra.SARIF_TOOL_INFO[gate]
                 for issue in execution.issues:
                     rule_id = issue.code or gate
                     rules_by_id.setdefault(
                         rule_id,
                         m.Infra.SarifRule(
-                            id=rule_id, short_description=f"{gate} issue"
+                            id=rule_id,
+                            short_description=f"{tool_name} ({gate}) issue",
+                            help_uri=tool_url,
                         ),
                     )
                     sarif_results.append(

@@ -6,17 +6,14 @@ import ast
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities.private_import_cst import (
-    FlextInfraUtilitiesPrivateImportCst,
-)
-from flext_infra._utilities.private_import_facades import (
-    FlextInfraUtilitiesPrivateImportFacades,
-)
-from flext_infra._utilities.private_import_validation import (
-    FlextInfraUtilitiesPrivateImportValidation,
-)
 from flext_infra.constants import c
 from flext_infra.models import m
+
+from .._utilities.private_import_cst import FlextInfraUtilitiesPrivateImportCst
+from .._utilities.private_import_facades import FlextInfraUtilitiesPrivateImportFacades
+from .._utilities.private_import_validation import (
+    FlextInfraUtilitiesPrivateImportValidation,
+)
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
@@ -239,9 +236,8 @@ class FlextInfraUtilitiesPrivateImports:
                                     facade_alias
                                 )
             all_removals = {
-                module: frozenset(
-                    removals.get(module, set()) | obsolete_imports.get(module, set())
-                )
+                module: removals.get(module, set())
+                | obsolete_imports.get(module, set())
                 for module in removals.keys() | obsolete_imports.keys()
             }
             for facade_alias, package in public_imports.items():

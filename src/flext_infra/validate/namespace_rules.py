@@ -4,15 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.validate._namespace_rules.contracts import (
-    FlextInfraNamespaceRulesContracts,
-)
-from flext_infra.validate._namespace_rules.imports import (
-    FlextInfraNamespaceRulesImports,
-)
-from flext_infra.validate._namespace_rules.structure import (
-    FlextInfraNamespaceRulesStructure,
-)
+from ._namespace_rules.contracts import FlextInfraNamespaceRulesContracts
+from ._namespace_rules.imports import FlextInfraNamespaceRulesImports
+from ._namespace_rules.structure import FlextInfraNamespaceRulesStructure
 
 if TYPE_CHECKING:
     from pathlib import Path

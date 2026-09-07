@@ -98,9 +98,11 @@ class FlextInfraUtilitiesGitRepo:
                 "--path", "--get", "core.worktree", with_exceptions=False
             ).strip()
         except GitCommandError as exc:
-            return r[Path].fail(str(exc))
+            return r[Path].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[Path].fail(f"failed to resolve primary worktree: {exc}")
+            return r[Path].fail(
+                f"failed to resolve primary worktree: {exc}", exception=exc
+            )
 
         if configured_output:
             configured = Path(configured_output)
@@ -115,7 +117,7 @@ class FlextInfraUtilitiesGitRepo:
                     repo.git.rev_parse("--path-format=absolute", "--git-dir").strip()
                 ).resolve()
             except GitCommandError as exc:
-                return r[Path].fail(str(exc))
+                return r[Path].fail(str(exc), exception=exc)
             if git_dir == common_dir:
                 primary_root = Path(
                     repo.git.rev_parse("--show-toplevel").strip()

@@ -18,7 +18,8 @@ from typing import Annotated, override
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
+
+from ._extra_paths_sync import FlextInfraExtraPathsSyncMixin
 
 
 class FlextInfraExtraPathsManager(
@@ -72,7 +73,7 @@ class FlextInfraExtraPathsManager(
             dry_run=self.effective_dry_run, project_dirs=self.project_dirs
         )
         if result.failure:
-            return r[bool].fail(result.error or "extra-path synchronization failed")
+            return r[bool].from_failure(result)
         return r[bool].ok(True)
 
     @override

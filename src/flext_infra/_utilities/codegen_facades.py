@@ -68,8 +68,7 @@ class FlextInfraUtilitiesCodegenFacades:
         _, namespace = cls._facade_classes(
             ast.parse(updated, filename=str(facade_path)), facade_path
         )
-        updated = cls._insert_bases(updated, namespace, additions)
-        return updated
+        return cls._insert_bases(updated, namespace, additions)
 
     @staticmethod
     def _required_methods(
