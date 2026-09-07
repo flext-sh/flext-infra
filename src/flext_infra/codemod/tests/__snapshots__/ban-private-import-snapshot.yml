@@ -18,3 +18,9 @@ snapshots:
       style: primary
       start: 0
       end: 48
+  import flext_core._utilities as utilities:
+    labels:
+    - source: from flext_core._protocols import FlextProtocols
+      style: primary
+      start: 0
+      end: 48

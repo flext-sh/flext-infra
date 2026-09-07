@@ -122,7 +122,7 @@ class FlextInfraRefactorCensusObjectsMixin:
     @classmethod
     def _impact_map_results(
         cls, report: m.Infra.Census.WorkspaceReport
-    ) -> tuple[m.Infra.Result, ...]:
+    ) -> t.VariadicTuple[m.Infra.Result]:
         """Impact map results."""
         changes_by_file: dict[Path, list[str]] = defaultdict(list)
         for candidate in report.removal_candidates:
@@ -150,7 +150,9 @@ class FlextInfraRefactorCensusObjectsMixin:
 
     @staticmethod
     def _append_impact_change(
-        changes_by_file: dict[Path, list[str]], file_path: Path, change: str
+        changes_by_file: t.MappingKV[Path, t.SequenceOf[str]],
+        file_path: Path,
+        change: str,
     ) -> None:
         """Append impact change."""
         normalized_path = file_path.resolve()
@@ -160,7 +162,7 @@ class FlextInfraRefactorCensusObjectsMixin:
     @staticmethod
     def _reference_sites(
         candidate: m.Infra.Census.RemovalCandidate,
-    ) -> tuple[m.Infra.Census.ReferenceSite, ...]:
+    ) -> t.VariadicTuple[m.Infra.Census.ReferenceSite]:
         """Return all reference sites for a removal candidate."""
         return (*candidate.runtime_reference_sites, *candidate.script_reference_sites)
 

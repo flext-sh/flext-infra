@@ -135,7 +135,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         if package_dir is None:
             return ("[NS-LAYOUT-001] project package layout was not discovered",)
         messages: list[str] = []
-        required_files: tuple[tuple[str, tuple[str, ...]], ...] = (
+        required_files: t.VariadicTuple[t.Pair[str, t.VariadicTuple[str]]] = (
             ("settings", ("settings.py", "_settings.py")),
             ("config", ("config.py", "_config.py")),
             ("c", ("constants.py",)),

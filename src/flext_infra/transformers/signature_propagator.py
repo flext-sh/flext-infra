@@ -110,7 +110,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         keyword_renames: t.MutableStrMapping,
         remove_keywords: t.Infra.StrSet,
         add_keywords: t.MutableStrMapping,
-    ) -> tuple[str, bool]:
+    ) -> t.Pair[str, bool]:
         """Rewrite keywords inside a single call's source slice (regex per-name)."""
         result = call_text
         changed = False
@@ -155,7 +155,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         return result, changed
 
     @staticmethod
-    def _drop_keyword(text: str, pattern: t.Infra.RegexPattern) -> tuple[str, int]:
+    def _drop_keyword(text: str, pattern: t.Infra.RegexPattern) -> t.Pair[str, int]:
         """Remove ``<name>=<value>[,]?`` occurrences from a call slice."""
         result = text
         drops = 0
@@ -192,7 +192,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         return result, drops
 
     @staticmethod
-    def _line_offsets(source: str) -> tuple[int, ...]:
+    def _line_offsets(source: str) -> t.VariadicTuple[int]:
         """Cumulative byte offsets at each line start."""
         offsets = [0]
         for line in source.splitlines(keepends=True):
@@ -200,7 +200,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         return tuple(offsets)
 
     @staticmethod
-    def _offset(line_offsets: tuple[int, ...], line: int, column: int) -> int:
+    def _offset(line_offsets: t.VariadicTuple[int], line: int, column: int) -> int:
         """Convert ``(line, column)`` to a byte offset."""
         return line_offsets[line - 1] + column
 

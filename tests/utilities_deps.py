@@ -167,7 +167,7 @@ class TestsFlextInfraUtilitiesDepsMixin:
     ) -> m.Infra.DetectCommand:
         """Create a validated dependency-detection command."""
         validated: m.Infra.DetectCommand = m.Infra.DetectCommand.model_validate({
-            "repository_root": str(repository_root),
+            "workspace": str(repository_root),
             **overrides,
         })
         return validated

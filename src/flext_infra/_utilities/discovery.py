@@ -34,7 +34,7 @@ class FlextInfraUtilitiesDiscovery(
     _PARENT_CONSTANTS_FLEXT_CACHE: ClassVar[dict[tuple[str, bool], t.StrSequence]] = {}
 
     @staticmethod
-    def _workspace_project_roots(workspace_root: str) -> tuple[Path, ...]:
+    def _workspace_project_roots(workspace_root: str) -> t.VariadicTuple[Path]:
         """Discover project roots once for a command-scoped workspace."""
         resolved_root = Path(workspace_root).resolve()
         nested_roots: set[Path] = set()
@@ -115,6 +115,16 @@ class FlextInfraUtilitiesDiscovery(
                 child_path: Path = child
                 return child_path.name
         return ""
+
+    @staticmethod
+    def is_pytest_test_module(file_path: Path) -> bool:
+        """Return whether a file is a pytest test module, not a production module."""
+        if c.Infra.DIR_TESTS not in file_path.parts:
+            return False
+        file_name = file_path.name
+        return file_name.startswith(
+            c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX
+        ) or file_name.endswith(tuple(c.Infra.NAMESPACE_PYTEST_MODULE_SUFFIXES))
 
     @staticmethod
     def project_root(file_path: Path) -> Path | None:

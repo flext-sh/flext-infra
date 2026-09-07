@@ -50,7 +50,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
         cli.display_text("mod: preflight complete AST inventory")
         current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-        seen: set[tuple[tuple[str, str, str, str | None], ...]] = set()
+        seen: set[t.VariadicTuple[t.Quad[str, str, str, str | None]]] = set()
         while current.findings:
             fingerprint = tuple(
                 sorted(

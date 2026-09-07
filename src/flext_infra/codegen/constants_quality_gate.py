@@ -181,7 +181,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
     @classmethod
     def _run_static_checks(
         cls, workspace_root: Path, modified_files: t.StrSequence
-    ) -> tuple[
+    ) -> t.Pair[
         t.MappingKV[str, t.Infra.InfraValue], t.MappingKV[str, t.Infra.InfraValue]
     ]:
         """Run pyrefly and ruff checks in parallel over the same file set.
@@ -256,7 +256,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         # Each row maps to a single ``QualityGateCheck`` via Pydantic v2 batch
         # construction. The detail-label key may differ from the metric path
         # (e.g. ``total_violations`` → ``total``).
-        metric_check_rows: tuple[tuple[str, str, str], ...] = (
+        metric_check_rows: t.VariadicTuple[t.Triple[str, str, str]] = (
             (c.Infra.QG_CHECK_NAMESPACE_COMPLIANCE, "total_violations", "total"),
             (c.Infra.QG_CHECK_FLEXT_VALIDITY, "flext_failures", "flext_failures"),
             (

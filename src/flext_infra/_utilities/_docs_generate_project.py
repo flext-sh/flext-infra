@@ -18,6 +18,7 @@ from .._utilities.docs_contract import FlextInfraUtilitiesDocsContract
 from .._utilities.docs_render import FlextInfraUtilitiesDocsRender
 
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra.protocols import p
 
 
@@ -35,7 +36,7 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
     @staticmethod
     def docs_project_artifacts(
         scope: m.Infra.DocScope,
-    ) -> p.Result[tuple[DocsRenderedArtifactTuple, ...]]:
+    ) -> p.Result[t.VariadicTuple[DocsRenderedArtifactTuple]]:
         """Render the complete target inventory for one FLEXT project."""
         analyzed_contract = FlextInfraUtilitiesDocsApi.public_contract(
             scope.path, scope.package_name

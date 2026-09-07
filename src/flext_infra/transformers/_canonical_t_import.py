@@ -13,6 +13,8 @@ from flext_infra import c, u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from flext_infra import t
+
 
 class FlextInfraEnsureCanonicalTImportMixin:
     """Inject ``from <pkg> import t`` only when the alias is actually used."""
@@ -20,7 +22,7 @@ class FlextInfraEnsureCanonicalTImportMixin:
     _DEFAULT_ALIAS_MODULE: ClassVar[str] = c.Infra.PKG_CORE_UNDERSCORE
     _IMPORT_ALIAS_PARTS: ClassVar[int] = 2
 
-    def _ensure_t_import(self, source: str, module_name: str) -> tuple[str, bool]:
+    def _ensure_t_import(self, source: str, module_name: str) -> t.Pair[str, bool]:
         """Inject ``from <module_name> import t`` if needed."""
         target_module = module_name or self._DEFAULT_ALIAS_MODULE
         updated = u.Infra.ensure_alias_import(source, target_module, "t")
@@ -28,7 +30,7 @@ class FlextInfraEnsureCanonicalTImportMixin:
 
     def _ensure_alias_import(
         self, *, source: str, module_name: str, alias: str
-    ) -> tuple[str, bool]:
+    ) -> t.Pair[str, bool]:
         """Inject ``from <module_name> import <alias>`` when the alias is used."""
         target_module = module_name or self._DEFAULT_ALIAS_MODULE
         updated = u.Infra.ensure_alias_import(source, target_module, alias)

@@ -130,7 +130,7 @@ class FlextInfraRefactorCensus(
 
     def _execution_reports(
         self,
-    ) -> tuple[m.Infra.Census.WorkspaceReport, m.Infra.Census.WorkspaceReport | None]:
+    ) -> t.Pair[m.Infra.Census.WorkspaceReport, m.Infra.Census.WorkspaceReport | None]:
         """Collect the final report and the pre-apply impact-map report."""
         started = time.monotonic()
         applied = frozenset[str]()

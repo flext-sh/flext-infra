@@ -30,7 +30,7 @@ class FlextInfraUtilitiesCompatibilityAliases:
         root: Path,
         sources: t.MappingKV[Path, str],
         findings: t.SequenceOf[m.Infra.ModScanFinding],
-    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Plan API alias removals and AST-proven consumer rewrites."""
         specs_by_file: dict[Path, dict[str, str]] = {}
         specs_by_module: dict[str, dict[str, str]] = {}

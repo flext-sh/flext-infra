@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
-import os
 import stat
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.codegen import _mise_artifacts_files as files
+from flext_infra.codegen._mise_artifacts_files import (
+    FlextInfraMiseArtifactsFiles as files,
+)
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 class FlextInfraMiseWorkspacePlanner:
@@ -81,14 +82,17 @@ class FlextInfraMiseWorkspacePlanner:
             return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(workspace)
         if requested != scope_root and not any(
             (scope_root / project.path).absolute() == requested
-            for project in workspace.value.subprojects
+            for project in workspace.value.declared_repositories
         ):
             return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
                 f"Git submodule is absent from governed workspace: {requested}"
             )
         selectors = (
             ".",
-            *(project.path.as_posix() for project in workspace.value.subprojects),
+            *(
+                project.path.as_posix()
+                for project in workspace.value.declared_repositories
+            ),
         )
         return self.layout_from_selectors(
             scope_root, selectors, transaction_id=transaction_id
@@ -152,7 +156,7 @@ class FlextInfraMiseWorkspacePlanner:
     def select_layout(
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        config_plans: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
         """Select only projects owned by this conform request or direct caller."""
         if config_plans:
@@ -198,7 +202,7 @@ class FlextInfraMiseWorkspacePlanner:
     def layout_for_config_plans(
         self,
         scope_root: Path,
-        config_plans: tuple[m.Infra.CodegenFilePlan, ...],
+        config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         *,
         transaction_id: str | None = None,
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
@@ -243,7 +247,7 @@ class FlextInfraMiseWorkspacePlanner:
     def snapshot(
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        config_plans: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.MiseToolchainWorkspacePlan]:
         """Capture one complete byte-and-mode snapshot for a stable layout."""
         planned_configs = {item.path: item for item in config_plans}
@@ -309,15 +313,6 @@ class FlextInfraMiseWorkspacePlanner:
         artifact_set = m.Infra.MiseToolchainArtifactSet(
             unix_launcher=artifacts[0], windows_launcher=artifacts[1], lock=artifacts[2]
         )
-        native_seed = (
-            artifact_set.windows_launcher
-            if os.name == "nt"
-            else artifact_set.unix_launcher
-        )
-        if layout.selector == "." and native_seed.content is None:
-            return r[m.Infra.MiseToolchainProjectState].fail(
-                f"native committed Mise seed is missing: {native_seed.path}"
-            )
         return r[m.Infra.MiseToolchainProjectState].ok(
             m.Infra.MiseToolchainProjectState(
                 layout=layout,

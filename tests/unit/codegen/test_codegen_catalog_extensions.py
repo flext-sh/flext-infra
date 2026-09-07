@@ -272,8 +272,8 @@ class TestsCodegenCatalogExtensions:
         )
         declared_gitmodules = gitmodules.read_bytes()
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
-            m.Infra.CodegenConformRequest(
-                root=workspace_root,
+            test_u.Tests.conform_request(
+                workspace_root,
                 what=c.Infra.CodegenConformSurface.ALL,
                 scope=c.Infra.CodegenConformScope.ALL,
                 mode=c.Infra.CodegenConformMode.CHECK,

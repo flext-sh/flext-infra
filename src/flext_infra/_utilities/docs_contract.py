@@ -11,6 +11,7 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
+from .._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
 from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
@@ -206,19 +207,6 @@ class FlextInfraUtilitiesDocsContract:
         return dict(validated)
 
     @staticmethod
-    def docs_snapshot_sources(
-        paths: t.SequenceOf[Path],
-    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
-        """Capture descriptor-authenticated states for every planner source."""
-        states: list[m.Cli.AtomicFileState] = []
-        for path in sorted(set(paths)):
-            state = u.Cli.atomic_read_binary_file_state(path, required=True)
-            if state.failure:
-                return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(state)
-            states.append(state.value)
-        return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(states))
-
-    @staticmethod
     def docs_file_plan(
         project: Path,
         path: Path,
@@ -242,21 +230,15 @@ class FlextInfraUtilitiesDocsContract:
             return r[m.Infra.CodegenFilePlan].fail(
                 f"docs desired bytes and mode differ: {path}"
             )
-        target = path
-        before = u.Cli.atomic_read_binary_file_state(target, required=False)
-        if before.failure:
-            return r[m.Infra.CodegenFilePlan].from_failure(before)
-        return r[m.Infra.CodegenFilePlan].ok(
-            m.Infra.CodegenFilePlan(
-                project=project,
-                path=target,
-                before=before.value,
-                desired_content=content,
-                desired_mode=desired_mode,
-                source_states=tuple(source_states),
-                owner="docs",
-                policy="full",
-            )
+        return FlextInfraUtilitiesCodegenFilePlan.planned_file(
+            project,
+            path,
+            required=False,
+            desired_content=content,
+            desired_mode=desired_mode,
+            source_states=source_states,
+            owner="docs",
+            policy="full",
         )
 
     @staticmethod

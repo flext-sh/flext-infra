@@ -237,7 +237,7 @@ class FlextInfraModelsRefactor(
             str | None, m.Field(description="Canonical _constants module (apply only)")
         ] = None
         rewrites: Annotated[
-            t.MappingKV[str, t.SequenceOf[tuple[int, int, str]]] | None,
+            t.MappingKV[str, t.SequenceOf[t.Triple[int, int, str]]] | None,
             m.Field(description="Per-file textual edits planned (dry-run only)"),
         ] = None
 

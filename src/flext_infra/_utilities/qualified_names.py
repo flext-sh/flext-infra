@@ -8,6 +8,7 @@ import libcst as cst
 from libcst.metadata import MetadataWrapper, QualifiedNameProvider
 
 if TYPE_CHECKING:
+    from flext_infra.protocols import p
     from flext_infra.typings import t
 
 
@@ -29,6 +30,20 @@ class FlextInfraUtilitiesQualifiedNames:
                 if qualified_name.name in self.candidates
             )
             return True
+
+    @staticmethod
+    def rebinds_name_in_place(parent: p.AttributeProbe, node: cst.CSTNode) -> bool:
+        """Return whether ``parent`` spells ``node`` as a binding, not a reference.
+
+        An import alias, an attribute's own ``attr``, and a keyword argument's
+        name are written by the surrounding syntax, so a rename must leave them
+        exactly as they are.
+        """
+        if isinstance(parent, cst.ImportAlias):
+            return True
+        if isinstance(parent, cst.Attribute) and parent.attr is node:
+            return True
+        return isinstance(parent, cst.Arg) and parent.keyword is node
 
     @classmethod
     def qualified_name_residue(

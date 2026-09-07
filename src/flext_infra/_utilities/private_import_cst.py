@@ -9,6 +9,8 @@ from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor
 from libcst.metadata import MetadataWrapper, ParentNodeProvider, QualifiedNameProvider
 
+from .._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
+
 if TYPE_CHECKING:
     from flext_infra.typings import t
 
@@ -68,11 +70,9 @@ class FlextInfraUtilitiesPrivateImportCst:
                 )
                 raise ValueError(msg)
             parent = self.get_metadata(ParentNodeProvider, original_node)
-            if isinstance(parent, cst.ImportAlias):
-                return updated_node
-            if isinstance(parent, cst.Attribute) and parent.attr is original_node:
-                return updated_node
-            if isinstance(parent, cst.Arg) and parent.keyword is original_node:
+            if FlextInfraUtilitiesQualifiedNames.rebinds_name_in_place(
+                parent, original_node
+            ):
                 return updated_node
             return cst.parse_expression(targets.pop())
 

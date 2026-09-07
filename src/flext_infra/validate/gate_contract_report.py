@@ -96,7 +96,7 @@ class FlextInfraGateContractReportMixin:
     def _violation_rows(
         scripts: t.SequenceOf[m.Infra.GateContractScriptInfo],
     ) -> t.SequenceOf[t.JsonDict]:
-        def violation_key(row: t.JsonDict) -> tuple[str, str]:
+        def violation_key(row: t.JsonDict) -> t.Pair[str, str]:
             return str(row.get("script", "")), str(row.get("check", ""))
 
         rows = [

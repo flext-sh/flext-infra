@@ -9,6 +9,41 @@ from flext_tests import tm
 from tests import u as test_u
 
 
+def _add_submodule(repository: Path, source: Path, name: str) -> None:
+    """Add and commit ``source`` as a file-protocol submodule named ``name``."""
+    _ = test_u.Tests.git_run(
+        repository,
+        "-c",
+        "protocol.file.allow=always",
+        "submodule",
+        "add",
+        str(source),
+        name,
+    )
+    _ = test_u.Tests.git_run(repository, "commit", "-am", name)
+
+
+def _add_lane(tmp_path: Path, repository: Path, branch: str) -> Path:
+    """Create one branch and check it out as a worktree lane under ``tmp_path``."""
+    lane = tmp_path / branch
+    _ = test_u.Tests.git_run(repository, "branch", branch)
+    _ = test_u.Tests.git_run(repository, "worktree", "add", str(lane), branch)
+    return lane
+
+
+def _update_submodules(lane: Path) -> None:
+    """Initialize every declared submodule inside the lane checkout."""
+    _ = test_u.Tests.git_run(
+        lane,
+        "-c",
+        "protocol.file.allow=always",
+        "submodule",
+        "update",
+        "--init",
+        "--recursive",
+    )
+
+
 class TestsFlextInfraGitFacet:
     """Exercise the public Git facade against a real repository worktree."""
 
@@ -16,9 +51,7 @@ class TestsFlextInfraGitFacet:
         self, tmp_path: Path
     ) -> None:
         """Tracked-scope discovery must not retain a stale dirty-file inventory."""
-        repository = tmp_path / "repository"
-        repository.mkdir()
-        test_u.Tests.initialize_git_repo(repository)
+        repository = test_u.Tests.git_repository(tmp_path)
         scope = repository / "src"
         scope.mkdir()
 
@@ -32,9 +65,7 @@ class TestsFlextInfraGitFacet:
         self, tmp_path: Path
     ) -> None:
         """An explicit invalid Git boundary falls back to filesystem discovery."""
-        repository = tmp_path / "repository"
-        repository.mkdir()
-        test_u.Tests.initialize_git_repo(repository)
+        repository = test_u.Tests.git_repository(tmp_path)
         project = repository / "project"
         project.mkdir()
         (project / ".git").mkdir()
@@ -51,9 +82,7 @@ class TestsFlextInfraGitFacet:
         self, tmp_path: Path
     ) -> None:
         """An explicitly selected ignored scope remains excluded by its repository."""
-        repository = tmp_path / "repository"
-        repository.mkdir()
-        test_u.Tests.initialize_git_repo(repository)
+        repository = test_u.Tests.git_repository(tmp_path)
         (repository / ".gitignore").write_text("scratch/\n", encoding="utf-8")
         ignored_scope = repository / "scratch" / "project"
         ignored_scope.mkdir(parents=True)
@@ -66,9 +95,7 @@ class TestsFlextInfraGitFacet:
     def test_merge_no_edit_requires_a_non_fast_forward_merge(
         self, tmp_path: Path
     ) -> None:
-        repository = tmp_path / "repository"
-        repository.mkdir()
-        test_u.Tests.initialize_git_repo(repository)
+        repository = test_u.Tests.git_repository(tmp_path)
         tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "branch", "topic"], cwd=repository))
         tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "switch", "topic"], cwd=repository))
         (repository / "topic.txt").write_text("topic\n", encoding="utf-8")
@@ -157,9 +184,7 @@ class TestsFlextInfraGitFacet:
     def test_status_classifies_registered_nested_worktrees_as_administrative(
         self, tmp_path: Path
     ) -> None:
-        repository = tmp_path / "repository"
-        repository.mkdir()
-        test_u.Tests.initialize_git_repo(repository)
+        repository = test_u.Tests.git_repository(tmp_path)
         container = repository / ".worktrees"
         first = container / "first"
         second = container / "second"
@@ -229,53 +254,11 @@ class TestsFlextInfraGitFacet:
     def test_remove_clean_worktree_preserves_primary_submodule_state(
         self, tmp_path: Path
     ) -> None:
-        repository = tmp_path / "repository"
-        repository.mkdir()
-        test_u.Tests.initialize_git_repo(repository)
-        source = tmp_path / "member-source"
-        source.mkdir()
-        test_u.Tests.initialize_git_repo(source)
-        tm.ok(
-            test_u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "-c",
-                    "protocol.file.allow=always",
-                    "submodule",
-                    "add",
-                    str(source),
-                    "member",
-                ],
-                cwd=repository,
-            )
-        )
-        tm.ok(
-            test_u.Cli.run_checked(
-                [c.Infra.GIT, "commit", "-am", "member"], cwd=repository
-            )
-        )
-        branch = "fixture-lane"
-        lane = tmp_path / branch
-        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "branch", branch], cwd=repository))
-        tm.ok(
-            test_u.Cli.run_checked(
-                [c.Infra.GIT, "worktree", "add", str(lane), branch], cwd=repository
-            )
-        )
-        tm.ok(
-            test_u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "-c",
-                    "protocol.file.allow=always",
-                    "submodule",
-                    "update",
-                    "--init",
-                    "--recursive",
-                ],
-                cwd=lane,
-            )
-        )
+        repository = test_u.Tests.git_repository(tmp_path)
+        source = test_u.Tests.git_repository(tmp_path, "member-source")
+        _add_submodule(repository, source, "member")
+        lane = _add_lane(tmp_path, repository, "fixture-lane")
+        _update_submodules(lane)
         gitmodules = (repository / ".gitmodules").read_text(encoding="utf-8")
         gitlink = tm.ok(
             u.Cli.capture(
@@ -314,75 +297,13 @@ class TestsFlextInfraGitFacet:
     def test_remove_clean_worktree_refuses_dirty_nested_submodule(
         self, tmp_path: Path
     ) -> None:
-        repository = tmp_path / "repository"
-        repository.mkdir()
-        test_u.Tests.initialize_git_repo(repository)
-        nested_source = tmp_path / "nested-source"
-        nested_source.mkdir()
-        test_u.Tests.initialize_git_repo(nested_source)
-        member_source = tmp_path / "member-source"
-        member_source.mkdir()
-        test_u.Tests.initialize_git_repo(member_source)
-        tm.ok(
-            test_u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "-c",
-                    "protocol.file.allow=always",
-                    "submodule",
-                    "add",
-                    str(nested_source),
-                    "nested",
-                ],
-                cwd=member_source,
-            )
-        )
-        tm.ok(
-            test_u.Cli.run_checked(
-                [c.Infra.GIT, "commit", "-am", "nested"], cwd=member_source
-            )
-        )
-        tm.ok(
-            test_u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "-c",
-                    "protocol.file.allow=always",
-                    "submodule",
-                    "add",
-                    str(member_source),
-                    "member",
-                ],
-                cwd=repository,
-            )
-        )
-        tm.ok(
-            test_u.Cli.run_checked(
-                [c.Infra.GIT, "commit", "-am", "member"], cwd=repository
-            )
-        )
-        branch = "dirty-lane"
-        lane = tmp_path / branch
-        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "branch", branch], cwd=repository))
-        tm.ok(
-            test_u.Cli.run_checked(
-                [c.Infra.GIT, "worktree", "add", str(lane), branch], cwd=repository
-            )
-        )
-        tm.ok(
-            test_u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "-c",
-                    "protocol.file.allow=always",
-                    "submodule",
-                    "update",
-                    "--init",
-                    "--recursive",
-                ],
-                cwd=lane,
-            )
-        )
+        repository = test_u.Tests.git_repository(tmp_path)
+        nested_source = test_u.Tests.git_repository(tmp_path, "nested-source")
+        member_source = test_u.Tests.git_repository(tmp_path, "member-source")
+        _add_submodule(member_source, nested_source, "nested")
+        _add_submodule(repository, member_source, "member")
+        lane = _add_lane(tmp_path, repository, "dirty-lane")
+        _update_submodules(lane)
         (lane / "member" / "nested" / "dirty.txt").write_text(
             "dirty\n", encoding="utf-8"
         )
@@ -395,22 +316,9 @@ class TestsFlextInfraGitFacet:
     def test_remove_clean_worktree_refuses_locked_worktree(
         self, tmp_path: Path
     ) -> None:
-        repository = tmp_path / "repository"
-        repository.mkdir()
-        test_u.Tests.initialize_git_repo(repository)
-        branch = "locked-lane"
-        lane = tmp_path / branch
-        tm.ok(test_u.Cli.run_checked([c.Infra.GIT, "branch", branch], cwd=repository))
-        tm.ok(
-            test_u.Cli.run_checked(
-                [c.Infra.GIT, "worktree", "add", str(lane), branch], cwd=repository
-            )
-        )
-        tm.ok(
-            test_u.Cli.run_checked(
-                [c.Infra.GIT, "worktree", "lock", str(lane)], cwd=repository
-            )
-        )
+        repository = test_u.Tests.git_repository(tmp_path)
+        lane = _add_lane(tmp_path, repository, "locked-lane")
+        _ = test_u.Tests.git_run(repository, "worktree", "lock", str(lane))
 
         result = u.Infra.git_remove_clean_worktree(repository, lane)
 
