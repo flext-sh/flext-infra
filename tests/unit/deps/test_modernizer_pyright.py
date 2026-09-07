@@ -79,7 +79,11 @@ class TestsFlextInfraDepsModernizerPyright:
         (excluded / "module.py").write_text("VALUE = 2\n", encoding="utf-8")
 
         discovered = infra_u.Infra.discover_python_dirs(
+<<<<<<< HEAD
+            tmp_path, workspace_excluded_top_dirs=frozenset({excluded.name})
+=======
             tmp_path, workspace_excluded_top_dirs=frozenset((excluded.name,))
+>>>>>>> origin/0.12.0-dev
         )
 
         tm.that(discovered, eq=[included.name])

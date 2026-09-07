@@ -379,7 +379,11 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             return changelog
         # Why: README, docs/index and the API overview render the version, and
         # the docs generator owns them; the stamp regenerates its projections
+<<<<<<< HEAD
+        # so selector-free `make gen` stays a fixed point on the release lane.
+=======
         # so `make gen APPLY=Y` stays a fixed point on the release lane.
+>>>>>>> origin/0.12.0-dev
         return FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
                 root=root,

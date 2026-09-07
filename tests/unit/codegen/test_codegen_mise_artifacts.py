@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+<<<<<<< HEAD
+import pytest
+
+from flext_infra import config, m, r, u
+=======
 from flext_infra import config, m, u
+>>>>>>> origin/0.12.0-dev
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_tests import tm
 from tests import u as test_u

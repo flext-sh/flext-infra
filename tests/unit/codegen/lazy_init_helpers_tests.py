@@ -631,7 +631,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(exports, has='".git": ("FlextDemoGitService",)')
         tm.that(exports, has='".work": ("FlextDemoWorkService",)')
 
-    def test_nested_tests_namespace_exports_local_symbols_only(
+    def test_nested_tests_namespace_uses_public_test_facades(
         self, tmp_path: Path
     ) -> None:
         """Generate nested test namespaces with their local publics."""
@@ -645,6 +645,8 @@ class TestsFlextInfraLazyInitHelpers:
         tests_unit_root.joinpath(c.Infra.INIT_PY).write_text(
             "", encoding=c.Cli.ENCODING_DEFAULT
         )
+<<<<<<< HEAD
+=======
         # `__all__` is the publication contract on EVERY surface — a module
         # that declares nothing publishes nothing, in tests exactly as in src.
         # The fixture declares its publics like every other module here does,
@@ -664,15 +666,14 @@ class TestsFlextInfraLazyInitHelpers:
             '__all__: list[str] = ["TestsFlextDemoUnitModels"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
+>>>>>>> origin/0.12.0-dev
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         init_content = tests_unit_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
-        # Lazy inits cover every python surface: nested test dirs publish
-        # their LOCAL symbols (production publics never leak into tests).
-        tm.that(init_content, has='"TestsFlextDemoUnitConstants"')
-        tm.that(init_content, has='"TestsFlextDemoUnitModels"')
+        for public_name in c.Infra.TEST_RUNTIME_ALIAS_TARGETS:
+            tm.that(init_content, has=f'"{public_name}"')
         tm.that(init_content, lacks="FlextDemoResult")
         tm.that(tests_unit_root.joinpath("__unit__.py").exists(), eq=False)
 

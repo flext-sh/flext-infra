@@ -200,7 +200,12 @@ class TestsFlextInfraInfraRopeService:
 
         with flext_infra.infra.rope_workspace(repository_root) as rope:
             convention = rope.convention(module_path)
-            violations = tm.ok(u.Infra.class_nesting_plan(rope, module_path))
+            violations = u.Infra.class_nesting_plans(
+                repository_root,
+                module_path,
+                rope.rope_project,
+                tm.not_none(rope.resource(module_path)),
+            )
 
         tm.that(len(violations), eq=1)
         violation = violations[0]

@@ -91,7 +91,8 @@ class TestsFlextInfraLazyInitProcessing:
             ],
             cwd=repository_root,
         ).unwrap()
-        u.Cli.run_raw(
+        tm.that(format_result.outcome.raw_return_code, eq=0)
+        lint_result = u.Cli.run_raw(
             [
                 c.Infra.RUFF,
                 c.Infra.CHECK,

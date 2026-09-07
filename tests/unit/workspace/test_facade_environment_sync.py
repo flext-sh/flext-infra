@@ -73,7 +73,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         _ = mise.write_text(custom, encoding="utf-8")
         result = infra.sync_environment_files(
             m.Infra.WorkspaceEnvironmentSyncRequest(
-                repository_root=workspace, force=True
+                workspace_root=workspace, force=True
             )
         )
         tm.ok(result)

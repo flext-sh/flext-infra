@@ -84,7 +84,11 @@ class TestsFlextInfraDepsModernizerMainExtra:
             skip_comments=True,
             skip_check=False,
         )
-        tm.that(modernizer.run(), eq=1)
+        with pytest.raises(
+            ValueError, match="docs pyproject TOML is invalid"
+        ) as raised:
+            modernizer.run()
+        tm.that(str(raised.value), has=str(selected_pyproject))
 
     def test_run_rewrite_constraints_requires_uv_lock(
         self, modernizer_workspace: Path

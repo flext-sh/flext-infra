@@ -488,6 +488,9 @@ def test_generate_report_tracks_written_files() -> None:
     tm.that(len(report.items), eq=2)
 
 
+<<<<<<< HEAD
+def test_docs_url_scheme_rejects_http() -> None:
+=======
 def test_link_sanitizer_preserves_external_schemes_and_fragments() -> None:
     """Keep external and fragment links verbatim while local links become text."""
     guides = import_module("flext_infra._utilities").FlextInfraUtilitiesDocsGuidesMixin
@@ -513,6 +516,7 @@ def test_link_sanitizer_preserves_external_schemes_and_fragments() -> None:
 
 def test_docs_url_scheme_rejects_http() -> None:
     """The docs URL contract rejects insecure web schemes in favor of HTTPS."""
+>>>>>>> origin/0.12.0-dev
     target = f"{c.Infra.DOCS_INSECURE_WEB_SCHEME}://example.invalid"
 
     with pytest.raises(ValueError, match="use HTTPS"):

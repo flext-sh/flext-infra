@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, config
+from flext_infra import c
 from flext_tests import tm
 
 from ._support import CodegenTestSupport
@@ -18,7 +18,7 @@ class TestsCiIntegrationBranchTriggers:
         Path(__file__).resolve().parents[3]
         / "src/flext_infra/templates/project/base/.github/workflows/ci.yml.j2"
     )
-    baseline_branches = tuple(config.Infra.codegen.branch_policy.ci_trigger_branches)
+    baseline_branches = ("dev", "develop", "0.12.0-dev", "main")
 
     @classmethod
     def _render_ci(cls, *, repository_branch: str) -> str:

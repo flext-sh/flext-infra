@@ -65,7 +65,16 @@ def test_validate_workspace_passes_after_generate_apply(tmp_path: Path) -> None:
     """Validation passes once the generated bundle is published."""
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 
+<<<<<<< HEAD
+    prepared = FlextInfraDocGenerator(
+        repository_root=workspace, selected_projects=["flext-a"]
+    ).prepare_bundle()
+    tm.ok(prepared)
+    generated = u.Tests.materialize_docs_bundle(prepared.value)
+    tm.ok(generated)
+=======
     _publish_docs(workspace)
+>>>>>>> origin/0.12.0-dev
     result = FlextInfraDocValidator().validate_workspace(
         m.Infra.DocsGenerateRequest(
             repository_root=workspace, projects=["flext-a"], apply=True
@@ -80,7 +89,15 @@ def test_validate_workspace_apply_writes_project_todo(tmp_path: Path) -> None:
     """Applied validation writes the project TODO ledger."""
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 
+<<<<<<< HEAD
+    prepared = FlextInfraDocGenerator(
+        repository_root=workspace, selected_projects=["flext-a"]
+    ).prepare_bundle()
+    tm.ok(prepared)
+    tm.ok(u.Tests.materialize_docs_bundle(prepared.value))
+=======
     _publish_docs(workspace)
+>>>>>>> origin/0.12.0-dev
     result = FlextInfraDocValidator().validate_workspace(
         m.Infra.DocsGenerateRequest(
             repository_root=workspace, projects=["flext-a"], apply=True
