@@ -222,7 +222,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     @classmethod
     def _issues_from_report(
         cls, scan: p.Cli.CommandOutput, project_dir: Path
-    ) -> p.Result[tuple[m.Infra.Issue, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.Issue]]:
         """Extract one Issue per clone side that falls inside ``project_dir``."""
         if not scan.stdout.strip():
             return r[tuple[m.Infra.Issue, ...]].fail("jscpd returned empty JSON report")
@@ -297,7 +297,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         )
 
     @staticmethod
-    def _python_behavior_ranges(path: Path) -> tuple[tuple[int, int], ...]:
+    def _python_behavior_ranges(path: Path) -> t.VariadicTuple[t.Pair[int, int]]:
         """Parse one module into ranges for statements with runtime behavior."""
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         parents = {

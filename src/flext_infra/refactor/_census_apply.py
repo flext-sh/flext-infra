@@ -104,8 +104,8 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             elif action == "rewrite_manual_typing_alias":
                 if ctx.project_root is None:
                     continue
-                manual_typing_violations: tuple[
-                    m.Infra.ManualTypingAliasViolation, ...
+                manual_typing_violations: t.VariadicTuple[
+                    m.Infra.ManualTypingAliasViolation
                 ] = tuple(
                     violation
                     for violation in FlextInfraManualTypingAliasDetector.detect_file(
@@ -123,8 +123,8 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                 )
                 changed = True
             elif action == "rewrite_compatibility_alias":
-                compatibility_violations: tuple[
-                    m.Infra.CompatibilityAliasViolation, ...
+                compatibility_violations: t.VariadicTuple[
+                    m.Infra.CompatibilityAliasViolation
                 ] = tuple(
                     violation
                     for violation in FlextInfraCompatibilityAliasDetector.detect_file(
@@ -139,8 +139,8 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                 )
                 changed = True
             elif action == "rewrite_private_import_bypass":
-                private_import_violations: tuple[
-                    m.Infra.PrivateImportBypassViolation, ...
+                private_import_violations: t.VariadicTuple[
+                    m.Infra.PrivateImportBypassViolation
                 ] = tuple(
                     violation
                     for violation in FlextInfraPrivateImportBypassDetector.detect_file(
@@ -165,8 +165,8 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                     action=action,
                 )
             elif action == "rewrite_foreign_canonical_alias":
-                foreign_canonical_violations: tuple[
-                    m.Infra.CompatibilityAliasViolation, ...
+                foreign_canonical_violations: t.VariadicTuple[
+                    m.Infra.CompatibilityAliasViolation
                 ] = tuple(
                     violation
                     for violation in FlextInfraCompatibilityAliasDetector.detect_file(
@@ -452,7 +452,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
 
     @staticmethod
     def _remove_line_ranges(
-        lines: list[str], ranges: list[tuple[int, int]]
+        lines: t.SequenceOf[str], ranges: t.SequenceOf[t.Pair[int, int]]
     ) -> list[str]:
         """Remove 1-based inclusive line ranges, returning the updated line list."""
         drop: set[int] = set()

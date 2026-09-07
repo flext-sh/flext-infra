@@ -98,7 +98,7 @@ class FlextInfraDirenvGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
         """Pass only on a zero-exit activation."""
         _ = project_dir, ctx
         if u.Cli.process_succeeded(result.outcome):
@@ -119,4 +119,4 @@ class FlextInfraDirenvGate(FlextInfraGate):
         )
 
 
-__all__: tuple[str, ...] = ("FlextInfraDirenvGate",)
+__all__: t.VariadicTuple[str] = ("FlextInfraDirenvGate",)

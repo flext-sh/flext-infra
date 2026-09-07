@@ -199,7 +199,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Scaffold-only project metadata consumed by initial generation."""
 
         @property
-        def workspace_root_rel(self) -> str:
+        def repository_root_rel(self) -> str:
             """Declared relative path from the project to its workspace root."""
             ...
 

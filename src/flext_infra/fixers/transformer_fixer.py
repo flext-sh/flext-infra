@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
 from flext_infra.fixers.base import FlextInfraFixerAdapter
-from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
 from flext_infra.transformers.compatibility_alias import (
     FlextInfraRefactorCompatibilityAlias,
 )
@@ -26,10 +25,6 @@ from flext_infra.transformers.import_modernizer import (
 from flext_infra.transformers.mro_remover import FlextInfraRefactorMroRemover
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
 from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransformer
-from flext_infra.transformers.typing_dict_attr import FlextInfraRefactorTypingDictAttr
-from flext_infra.transformers.typing_dict_import import (
-    FlextInfraRefactorTypingDictImport,
-)
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 
 from .._utilities.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
@@ -57,7 +52,6 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     _TRANSFORMERS: ClassVar[
         t.MutableMappingKV[str, type[FlextInfraRopeTransformer]]
     ] = {
-        "cast_remover": FlextInfraRefactorCastRemover,
         "compatibility_alias": FlextInfraRefactorCompatibilityAlias,
         "future_import": FlextInfraRefactorFutureImport,
         "hardcoded_version": FlextInfraRefactorHardcodedVersion,
@@ -67,15 +61,57 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         "pattern": FlextInfraRefactorPatternTransformer,
         "project_alias_migrator": FlextInfraRefactorProjectAliasMigrator,
         "rewrite_foreign_canonical_alias": FlextInfraRefactorProjectAliasMigrator,
-        "typing_dict_attr": FlextInfraRefactorTypingDictAttr,
-        "typing_dict_import": FlextInfraRefactorTypingDictImport,
         "typing_unifier": FlextInfraRefactorTypingUnifier,
+    }
+
+    # Why: targets whose rewriting mechanism is deactivated inside flext-infra,
+    # mapped to the reason reported for every project that still violates them.
+    # The upstream flext-core catalog keeps declaring the fix action, and the
+    # orchestrator preflight requires exactly one adapter to own every declared
+    # action, so this adapter must keep claiming the target. Claiming it here —
+    # instead of dropping it from ``_TRANSFORMERS`` alone — keeps
+    # ``fix-enforcement`` working for every other rule while guaranteeing the
+    # deactivated target never reaches a transformer and never rewrites a file.
+    _DEACTIVATED_TARGETS: ClassVar[t.MappingKV[str, str]] = {
+        "cast_remover": (
+            "fix deactivated: the cast remover rewrote sources through the raw "
+            "ast module (whole-file ast.unparse), which is not an approved "
+            "rewriting surface — only ast-grep codemod rules (make mod) and "
+            "rope are. Redundancy of a cast is a type-inference question that "
+            "neither approved surface can answer, and the removed casts were "
+            "load-bearing (untyped third-party module lookups, Literal "
+            "narrowing), so removing them raised the type-error count. The "
+            "violation is still reported; only the automatic rewrite is off."
+        ),
+        "typing_dict_import": (
+            "fix deactivated: the Dict import transformer rewrote sources with a "
+            "raw regex over the whole file (\\bDict\\s*\\[), which is not an "
+            "approved rewriting surface — only ast-grep codemod rules (make mod) "
+            "and rope are. A regex cannot tell a type node from text, so it "
+            "rewrote docstrings documenting the pattern, comments and the string "
+            "literals of this package's own rewrite tables. The rewrite is "
+            "recomposed as the ast-grep rule typing-dict-to-mapping-kv, whose "
+            "import-unsafe cases are reported by typing-dict-missing-t-import. "
+            "The violation is still reported; only the automatic rewrite is off."
+        ),
+        "typing_dict_attr": (
+            "fix deactivated: the typing.Dict transformer rewrote sources with a "
+            "raw regex over the whole file (\\btyping\\s*\\.\\s*Dict\\s*\\[), "
+            "which is not an approved rewriting surface — only ast-grep codemod "
+            "rules (make mod) and rope are. The attribute form is matched "
+            "structurally by the ast-grep rule typing-dict-to-mapping-kv, whose "
+            "import-unsafe cases are reported by typing-dict-missing-t-import. "
+            "The violation is still reported; only the automatic rewrite is off."
+        ),
     }
 
     @override
     def can_fix(self, fix_action: m.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""
-        return fix_action.kind == self.kind and fix_action.target in self._TRANSFORMERS
+        return fix_action.kind == self.kind and (
+            fix_action.target in self._TRANSFORMERS
+            or fix_action.target in self._DEACTIVATED_TARGETS
+        )
 
     @override
     def fix_project(
@@ -93,6 +129,16 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         failed: t.MutableSequenceOf[m.Infra.FailedFix] = []
         files_modified: set[str] = set()
         for target, target_violations in self._group_by_target(violations).items():
+            deactivation = self._DEACTIVATED_TARGETS.get(target)
+            if deactivation is not None:
+                skipped.append(
+                    m.Infra.SkippedViolation(
+                        rule_id=self._rule_id(target_violations),
+                        file_path=str(project_dir),
+                        reason=deactivation,
+                    )
+                )
+                continue
             transformer_cls = self._TRANSFORMERS.get(target)
             if transformer_cls is None:
                 rule_id = self._rule_id(target_violations)
@@ -141,12 +187,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                     )
                 )
         return self._build_project_fix_result(
-            project_dir,
-            fixed,
-            previewed,
-            skipped,
-            failed,
-            files_modified,
+            project_dir, fixed, previewed, skipped, failed, files_modified
         )
 
     @staticmethod
@@ -332,11 +373,6 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             return FlextInfraRefactorTypingUnifier(
                 canonical_map=canonical_map, file_path=file_path
             )
-        if transformer_cls in {
-            FlextInfraRefactorTypingDictImport,
-            FlextInfraRefactorTypingDictAttr,
-        }:
-            return transformer_cls(file_path=file_path)
         if transformer_cls is FlextInfraRefactorProjectAliasMigrator:
             return FlextInfraRefactorProjectAliasMigrator(file_path=file_path)
         if transformer_cls is FlextInfraRefactorImportModernizer:

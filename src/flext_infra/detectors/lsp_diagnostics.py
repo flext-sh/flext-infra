@@ -149,7 +149,7 @@ class FlextInfraLspDiagnosticsDetector:
             source = u.Cli.files_read_text(path)
             if source.failure:
                 return reject(source.error or f"LSP source read failed: {path}")
-            messages: tuple[t.JsonMapping, t.JsonMapping] = (
+            messages: t.Pair[t.JsonMapping, t.JsonMapping] = (
                 {
                     "jsonrpc": c.Infra.JSON_RPC_VERSION,
                     "method": "textDocument/didOpen",

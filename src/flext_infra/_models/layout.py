@@ -43,23 +43,23 @@ class FlextInfraModelsLayout:
         """Per-project layout deltas applied on top of the global rules."""
 
         archive_names: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Extra project-specific archived root entries"),
         ] = ()
         gitignore_additions: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Patterns the project .gitignore must carry"),
         ] = ()
         moves: Annotated[
-            tuple[FlextInfraModelsLayout.LayoutMoveSpec, ...],
+            t.VariadicTuple[FlextInfraModelsLayout.LayoutMoveSpec],
             m.Field(description="Explicit nested source/target moves"),
         ] = ()
         archive_empty_dirs: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Directories archived once emptied by moves"),
         ] = ()
         keep_root_files: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
                     "Extra root files allowed to remain at project root "
@@ -68,7 +68,7 @@ class FlextInfraModelsLayout:
             ),
         ] = ()
         ignore_globs: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
                     "Root entry name globs skipped entirely for this project "
@@ -101,51 +101,51 @@ class FlextInfraModelsLayout:
             bool, m.Field(description="Whether any `.*` root entry is canonical")
         ] = True
         canonical_root_files: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Files allowed at the project root"),
         ]
         canonical_root_dotfiles: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Documented dotfiles allowed at the project root"),
         ]
         canonical_root_dirs: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Directories allowed at the project root"),
         ]
         profile_extra_root_files: Annotated[
-            Mapping[str, tuple[t.NonEmptyStr, ...]],
+            Mapping[str, t.VariadicTuple[t.NonEmptyStr]],
             m.Field(description="Extra canonical root files per project profile"),
         ]
         profile_project_patterns: Annotated[
-            Mapping[str, tuple[t.NonEmptyStr, ...]],
+            Mapping[str, t.VariadicTuple[t.NonEmptyStr]],
             m.Field(description="Project-name globs resolving each profile"),
         ]
         move_docs_dirs: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Root docs directories moved under docs_target"),
         ]
         move_docs_files: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Root Markdown files moved under docs_target"),
         ]
         move_example_files: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Sample data files moved under examples_target"),
         ]
         move_diagram_globs: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Root diagram globs moved under diagrams_target"),
         ]
         archive_names: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Root entries archived into archive_root"),
         ]
         archive_globs: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Root entry globs archived into archive_root"),
         ]
         special_root_dirs: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
                     "Root directories skipped by the layout engine "
@@ -154,7 +154,7 @@ class FlextInfraModelsLayout:
             ),
         ] = ()
         reference_root_dirs: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
                     "External reference corpora allowed at root "
@@ -188,13 +188,13 @@ class FlextInfraModelsLayout:
         """Per-project layout plan or apply outcome."""
 
         findings: Annotated[
-            tuple[FlextInfraModelsLayout.LayoutFinding, ...],
+            t.VariadicTuple[FlextInfraModelsLayout.LayoutFinding],
             m.Field(description="All layout decisions for the project"),
         ] = ()
 
         @m.computed_field
         @property
-        def actionable(self) -> tuple[FlextInfraModelsLayout.LayoutFinding, ...]:
+        def actionable(self) -> t.VariadicTuple[FlextInfraModelsLayout.LayoutFinding]:
             """Findings the engine acts on in apply mode (never review)."""
             return tuple(
                 finding for finding in self.findings if finding.rule != "review"
@@ -210,7 +210,7 @@ class FlextInfraModelsLayout:
         """Batch layout outcome across the selected projects."""
 
         reports: Annotated[
-            tuple[FlextInfraModelsLayout.LayoutProjectReport, ...],
+            t.VariadicTuple[FlextInfraModelsLayout.LayoutProjectReport],
             m.Field(description="Per-project layout outcomes"),
         ] = ()
 

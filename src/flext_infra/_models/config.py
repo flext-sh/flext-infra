@@ -75,7 +75,7 @@ class FlextInfraConfigModels:
         """One fleet-owned mise distribution identity."""
 
         selector_patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 min_length=1,
                 description="Glob patterns identifying equivalent mise distributions",
@@ -124,7 +124,7 @@ class FlextInfraConfigModels:
             m.Field(description="Canonical status for a managed-city inherited rig"),
         ]
         required_custom_types: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 min_length=1,
                 description="Immutable custom bead types required by Gas City",
@@ -186,7 +186,7 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Resolved Mise backend identity")
         ]
         specifiers: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 min_length=1, description="Source selectors resolved by this entry"
             ),
@@ -205,7 +205,9 @@ class FlextInfraConfigModels:
             Literal[1], m.Field(description="Supported Mise lock schema version")
         ]
         tools: Annotated[
-            Mapping[t.NonEmptyStr, tuple[FlextInfraConfigModels.MiseLockToolSpec, ...]],
+            Mapping[
+                t.NonEmptyStr, t.VariadicTuple[FlextInfraConfigModels.MiseLockToolSpec]
+            ],
             m.Field(description="Exactly resolved generated tool set"),
         ]
 
@@ -217,23 +219,23 @@ class FlextInfraConfigModels:
             m.Field(description="Required caller variable naming persistent storage"),
         ]
         fixed_environment: Annotated[
-            tuple[tuple[str, str], ...],
+            t.VariadicTuple[t.Pair[str, str]],
             m.Field(min_length=1, description="Literal fail-closed Mise settings"),
         ]
         transient_environment: Annotated[
-            tuple[tuple[t.NonEmptyStr, t.NonEmptyStr], ...],
+            t.VariadicTuple[t.Pair[t.NonEmptyStr, t.NonEmptyStr]],
             m.Field(min_length=1, description="Scratch-relative environment paths"),
         ]
         persistent_environment: Annotated[
-            tuple[tuple[t.NonEmptyStr, t.NonEmptyStr], ...],
+            t.VariadicTuple[t.Pair[t.NonEmptyStr, t.NonEmptyStr]],
             m.Field(min_length=1, description="Storage-relative environment paths"),
         ]
         empty_files: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Scratch-relative empty policy files"),
         ]
         passthrough_environment: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Explicitly reinjected host variables"),
         ]
 
@@ -309,7 +311,7 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
         ]
         uv_environments: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
                     "Marker expressions limiting the environments uv resolves "
@@ -326,7 +328,7 @@ class FlextInfraConfigModels:
             ),
         ]
         dependency_cooldown_exclusions: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Packages exempted from the fleet cooldown"),
         ] = ()
         dependency_cooldown_overrides: Annotated[
@@ -349,7 +351,7 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, _tool_version_field("Compatible direnv major.minor line")
         ]
         environment_path_prepends: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(
@@ -399,7 +401,7 @@ class FlextInfraConfigModels:
             ),
         ]
         mise_lock_platforms: Annotated[
-            tuple[
+            t.VariadicTuple[
                 Literal[
                     "linux-x64",
                     "linux-arm64",
@@ -408,8 +410,7 @@ class FlextInfraConfigModels:
                     "macos-x64",
                     "macos-arm64",
                     "windows-x64",
-                ],
-                ...,
+                ]
             ],
             m.Field(
                 min_length=1,
@@ -425,7 +426,7 @@ class FlextInfraConfigModels:
             m.Field(description="Gas City CLI (gc) installed through mise"),
         ]
         protected_mise_tools: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 min_length=1,
                 description="Toolchain field names protected from alternate distributions",
@@ -505,13 +506,13 @@ class FlextInfraConfigModels:
     class BranchPolicySpec(_ConfigContract):
         """Global ancestry policy shared by every governed provider."""
 
-        REQUIRED_TECHNICAL_PATTERNS: ClassVar[tuple[str, ...]] = (
+        REQUIRED_TECHNICAL_PATTERNS: ClassVar[t.VariadicTuple[str]] = (
             "__dolt_remote_info__",
             "dolt/*",
             "gh-readonly-queue/*",
         )
         technical_branch_patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
                     "GitHub/Dolt technical branches excluded from ancestry validation"
@@ -519,7 +520,7 @@ class FlextInfraConfigModels:
             ),
         ]
         governed_branch_patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 min_length=1,
                 description=(
@@ -530,7 +531,7 @@ class FlextInfraConfigModels:
             ),
         ]
         ci_trigger_branches: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 min_length=1,
                 description=(
@@ -541,7 +542,7 @@ class FlextInfraConfigModels:
             ),
         ]
         integration_branch_preference: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=FlextInfraConstantsSharedInfra.INTEGRATION_BRANCH_PREFERENCE,
                 min_length=1,
@@ -616,7 +617,7 @@ class FlextInfraConfigModels:
         _KNOWN_HOSTS_FIELD_COUNT: ClassVar[int] = 3
 
         known_hosts: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 min_length=1,
                 description="Pinned official SSH host-key lines used only in runner temp",
@@ -624,13 +625,13 @@ class FlextInfraConfigModels:
         ]
 
         paths: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 min_length=1, description="Submodule paths to init before make setup"
             ),
         ]
         deploy_keys: Annotated[
-            tuple[FlextInfraConfigModels.CiPrivateSubmoduleDeployKeySpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.CiPrivateSubmoduleDeployKeySpec],
             m.Field(min_length=1, description="Ordered deploy-key materializations"),
         ]
 
@@ -707,7 +708,7 @@ class FlextInfraConfigModels:
             m.Field(description="Canonical workflow command contract"),
         ]
         workspace_repositories: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            t.VariadicTuple[FlextInfraConfigModels.RepositoryRef],
             m.Field(
                 default=(),
                 description=(
@@ -717,7 +718,7 @@ class FlextInfraConfigModels:
             ),
         ]
         ci_trigger_branches: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(), description="Ordered, deduplicated blocking CI branches"
             ),
@@ -776,7 +777,7 @@ class FlextInfraConfigModels:
             ),
         ] = None
         system_packages: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(
@@ -835,7 +836,7 @@ class FlextInfraConfigModels:
         ]
 
         environment_path_prepends: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Project-relative executable paths"),
         ]
         mise_bootstrap: Annotated[
@@ -864,7 +865,7 @@ class FlextInfraConfigModels:
             m.Field(description="Package whose transitive edge is scoped"),
         ]
         dependencies: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Excluded transitive dependency names"),
         ]
 
@@ -914,14 +915,14 @@ class FlextInfraConfigModels:
             m.Field(description="Whether the step supplies the configured apply token"),
         ] = False
         contexts: Annotated[
-            tuple[Literal["local", "ci", "pre_commit", "pre_push"], ...],
+            t.VariadicTuple[Literal["local", "ci", "pre_commit", "pre_push"]],
             m.Field(
                 min_length=1,
                 description="Execution contexts consuming this single workflow row",
             ),
         ]
         gates_skip: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(
@@ -967,7 +968,7 @@ class FlextInfraConfigModels:
             ),
         ] = "N"
         local_check_gates: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
                     "Gate ids run by make check under the local CI token: the "
@@ -993,7 +994,7 @@ class FlextInfraConfigModels:
 
         @m.computed_field
         @property
-        def check_gates(self) -> tuple[str, ...]:
+        def check_gates(self) -> t.VariadicTuple[str]:
             """Gates run under the CI token, as the strict complement.
 
             CI=Y is the inverse of CI=N by construction, never a second list: a
@@ -1028,7 +1029,7 @@ class FlextInfraConfigModels:
             ),
         ]
         roots: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 min_length=1,
                 description=(
@@ -1097,19 +1098,19 @@ class FlextInfraConfigModels:
         """
 
         cache_dirs: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Cache directory names removed anywhere in the tree"),
         ]
         root_dirs: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Directories removed at the project root only"),
         ]
         root_files: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Files removed at the project root only"),
         ]
         trace_globs: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Trace/profile globs removed anywhere in the tree"),
         ]
 
@@ -1117,7 +1118,7 @@ class FlextInfraConfigModels:
         """Generated Makefile docs verb lifecycle and audit policy."""
 
         api_modules: Annotated[
-            Mapping[t.NonEmptyStr, tuple[t.NonEmptyStr, ...]],
+            Mapping[t.NonEmptyStr, t.VariadicTuple[t.NonEmptyStr]],
             m.Field(
                 min_length=1,
                 description=(
@@ -1127,7 +1128,7 @@ class FlextInfraConfigModels:
             ),
         ]
         mutable_actions: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Docs actions guarded by APPLY=Y"),
         ]
         reports_dir: Annotated[
@@ -1140,14 +1141,14 @@ class FlextInfraConfigModels:
             ),
         ]
         stale_github_organizations: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=("organization",),
                 description="Placeholder GitHub orgs that must be rewritten",
             ),
         ] = ("organization",)
         github_repos: Annotated[
-            tuple[FlextInfraConfigModels.DocsGithubRepoSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.DocsGithubRepoSpec],
             m.Field(
                 default=(),
                 description="Governed org/repo/branch map for cross-repo doc URLs",
@@ -1230,7 +1231,7 @@ class FlextInfraConfigModels:
             int, m.Field(ge=1, le=100, description="Quota block-save threshold percent")
         ]
         allowed_save_refs: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Refs allowed to save cache generations"),
         ]
         key_prefix: Annotated[
@@ -1263,14 +1264,14 @@ class FlextInfraConfigModels:
             bool, m.Field(description="Treat GitHub draft PRs as work-in-progress")
         ]
         branch_patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 min_length=1,
                 description="Regex patterns that mark a branch as work-in-progress",
             ),
         ]
         merge_lock_target_branches: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 min_length=1,
                 description="Target branches that are blocked for WIP merges",
@@ -1321,7 +1322,7 @@ class FlextInfraConfigModels:
             ),
         ] = False
         workflow: Annotated[
-            tuple[FlextInfraConfigModels.MakeWorkflowStepSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.MakeWorkflowStepSpec],
             m.Field(min_length=1, description="Ordered canonical validation workflow"),
         ]
         ci: Annotated[
@@ -1333,7 +1334,7 @@ class FlextInfraConfigModels:
             m.Field(description="Adaptive testmon Actions cache policy"),
         ]
         verbs: Annotated[
-            tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.MakeVerbSpec],
             m.Field(description="Ordered canonical public verbs"),
         ]
         clean: Annotated[
@@ -1356,7 +1357,7 @@ class FlextInfraConfigModels:
             ),
         ]
         project_check_gates: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(
@@ -1459,7 +1460,7 @@ class FlextInfraConfigModels:
 
         @m.computed_field
         @property
-        def check_gates_allowed(self) -> tuple[str, ...]:
+        def check_gates_allowed(self) -> t.VariadicTuple[str]:
             """Canonical generated Make check-gate vocabulary.
 
             The built-in gates this package implements, plus the gates the
@@ -1475,7 +1476,7 @@ class FlextInfraConfigModels:
 
         @m.computed_field
         @property
-        def check_gates_default(self) -> tuple[str, ...]:
+        def check_gates_default(self) -> t.VariadicTuple[str]:
             """Canonical generated Make default check gates.
 
             A declared project gate runs by default, exactly like a built-in:
@@ -1488,7 +1489,7 @@ class FlextInfraConfigModels:
 
         @m.computed_field
         @property
-        def check_gates_fixable(self) -> tuple[str, ...]:
+        def check_gates_fixable(self) -> t.VariadicTuple[str]:
             """Gates ``make fix APPLY=Y`` can actually repair.
 
             Asking for a gate that cannot fix anything still pays its full cost;
@@ -1553,7 +1554,7 @@ class FlextInfraConfigModels:
             ),
         ] = 0o644
         conflict_sections: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
                     "Dotted sections the owner renders, so a merge conflict in "
@@ -1575,7 +1576,7 @@ class FlextInfraConfigModels:
             m.Field(description="Tokenized repository-relative destination"),
         ]
         profiles: Annotated[
-            tuple[FlextInfraConstantsCodegenProject.MakeProfile, ...],
+            t.VariadicTuple[FlextInfraConstantsCodegenProject.MakeProfile],
             m.Field(description="Profiles that consume the template"),
         ]
         delegate: Annotated[
@@ -1590,7 +1591,7 @@ class FlextInfraConfigModels:
 
         root: Annotated[Path, m.Field(description="Package-relative template root")]
         entries: Annotated[
-            tuple[FlextInfraConfigModels.TemplateEntrySpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.TemplateEntrySpec],
             m.Field(description="Complete ordered template manifest"),
         ]
 
@@ -1599,7 +1600,7 @@ class FlextInfraConfigModels:
 
         backend: Annotated[t.NonEmptyStr, m.Field(description="PEP 517 backend")]
         requirements: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Build-system requirements"),
         ]
 
@@ -1610,11 +1611,11 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Supported upstream facade package")
         ]
         runtime: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Runtime requirements"),
         ]
         codegen: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Code-generation requirements"),
         ] = ()
 
@@ -1623,25 +1624,26 @@ class FlextInfraConfigModels:
 
         readme: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 readme path")]
         supported_licenses: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Licenses with complete templates"),
         ]
         classifiers: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Default PyPI classifiers"),
         ]
         keywords: Annotated[
-            tuple[t.NonEmptyStr, ...], m.Field(description="Default project keywords")
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Default project keywords"),
         ] = ()
         dev: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 min_length=1,
                 description="Canonical development and validation requirements",
             ),
         ]
         dependency_profiles: Annotated[
-            tuple[FlextInfraConfigModels.ScaffoldDependencyProfileSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.ScaffoldDependencyProfileSpec],
             m.Field(min_length=1, description="Upstream dependency profiles"),
         ]
 
@@ -1670,11 +1672,11 @@ class FlextInfraConfigModels:
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Section heading")]
         patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Ignored path patterns"),
         ]
         profiles: Annotated[
-            tuple[FlextInfraConstantsCodegenProject.MakeProfile, ...],
+            t.VariadicTuple[FlextInfraConstantsCodegenProject.MakeProfile],
             m.Field(
                 description=(
                     "Make profiles this section applies to; empty means every "
@@ -1703,7 +1705,7 @@ class FlextInfraConfigModels:
             m.Field(description="Functional scaffold example"),
         ]
         gitignore_sections: Annotated[
-            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec],
             m.Field(min_length=1, description="Generated Git ignore sections"),
         ]
 
@@ -1711,7 +1713,7 @@ class FlextInfraConfigModels:
         """Profile-filtered input consumed by the Git ignore template."""
 
         gitignore_sections: Annotated[
-            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec],
             m.Field(min_length=1, description="Applicable Git ignore sections"),
         ]
 
@@ -1775,7 +1777,7 @@ class FlextInfraConfigModels:
             ),
         ] = None
         dependency_cooldown_exclusions: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
                     "Repository-scoped packages explicitly exempted from the "
@@ -1794,7 +1796,7 @@ class FlextInfraConfigModels:
             ),
         ]
         extra_verbs: Annotated[
-            tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.MakeVerbSpec],
             m.Field(
                 description=(
                     "Additional public Make verbs this repository dispatches "
@@ -1855,7 +1857,7 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Repository-owned issue prefix")
         ]
         custom_issue_types: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description="Repository-owned custom types beyond the Gas City baseline"
             ),
@@ -1906,15 +1908,15 @@ class FlextInfraConfigModels:
             bool, m.Field(description="Whether conform owns the CI projection")
         ]
         external_dependency_paths: Annotated[
-            tuple[Path, ...],
+            t.VariadicTuple[Path],
             m.Field(description="Observed external or fork Git submodule paths"),
         ] = ()
         technical_branch_patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Technical branches excluded from ancestry policy"),
         ] = ()
         governed_branch_patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 min_length=1,
                 description=(
@@ -1969,18 +1971,19 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
-        workspace_root_rel: Annotated[
+        repository_root_rel: Annotated[
             t.NonEmptyStr, m.Field(description="Relative workspace root path")
         ]
         workspace_subprojects: Annotated[
-            tuple[str, ...], m.Field(description="Declared workspace subproject paths")
+            t.VariadicTuple[str],
+            m.Field(description="Declared workspace subproject paths"),
         ] = ()
         workspace_repositories: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            t.VariadicTuple[FlextInfraConfigModels.RepositoryRef],
             m.Field(description="Repositories editable from the selected workspace"),
         ] = ()
         workspace_gitlinks: Annotated[
-            tuple[FlextInfraConfigModels.ManagedGitlinkSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.ManagedGitlinkSpec],
             m.Field(description="Provider-resolved governed Git submodules"),
         ] = ()
         uv_link_mode: Annotated[
@@ -1995,7 +1998,7 @@ class FlextInfraConfigModels:
             m.Field(description="uv exclude-newer cooldown window for [tool.uv]"),
         ]
         dependency_cooldown_exclusions: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Packages exempted from uv dependency cooldown"),
         ] = ()
         dependency_cooldown_overrides: Annotated[
@@ -2010,7 +2013,7 @@ class FlextInfraConfigModels:
             m.Field(description="Generated Make command contract"),
         ]
         extra_verbs: Annotated[
-            tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.MakeVerbSpec],
             m.Field(description="Repository-specific public Make verbs"),
         ] = ()
         script_dispatch: Annotated[
@@ -2070,7 +2073,7 @@ class FlextInfraConfigModels:
             m.Field(description="Gas City inherited endpoint status"),
         ]
         custom_issue_types: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Union of project and required custom bead types"),
         ] = ()
 
@@ -2106,7 +2109,7 @@ class FlextInfraConfigModels:
         """Typed, profile-filtered input for the generated Git ignore file."""
 
         gitignore_sections: Annotated[
-            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec],
             m.Field(
                 min_length=1,
                 description="Canonical ignore sections applicable to one profile",
@@ -2151,7 +2154,7 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Upstream FLEXT facade module")
         ]
         inherited_facets: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(
@@ -2166,7 +2169,7 @@ class FlextInfraConfigModels:
             ),
         ] = ()
         root_packages: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(
@@ -2178,7 +2181,7 @@ class FlextInfraConfigModels:
             ),
         ] = ()
         root_modules: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(
@@ -2189,7 +2192,7 @@ class FlextInfraConfigModels:
             ),
         ] = ()
         runtime_dependency_overlay: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(
@@ -2205,7 +2208,7 @@ class FlextInfraConfigModels:
         documentation: Annotated[
             t.NonEmptyStr, m.Field(description="Project documentation URL")
         ]
-        workspace_root_rel: Annotated[
+        repository_root_rel: Annotated[
             t.NonEmptyStr,
             m.Field(description="Declared relative path to the workspace root"),
         ]
@@ -2265,7 +2268,7 @@ class FlextInfraConfigModels:
             m.Field(description="uv exclude-newer cooldown window for [tool.uv]"),
         ]
         dependency_cooldown_exclusions: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Packages exempted from uv dependency cooldown"),
         ] = ()
         dependency_cooldown_overrides: Annotated[
@@ -2289,7 +2292,7 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Generated Make execution profile"),
         ]
-        workspace_root_rel: Annotated[
+        repository_root_rel: Annotated[
             t.NonEmptyStr,
             m.Field(description="Relative path to the declared workspace root"),
         ]
@@ -2301,18 +2304,19 @@ class FlextInfraConfigModels:
             ),
         ]
         workspace_subprojects: Annotated[
-            tuple[str, ...], m.Field(description="Ordered workspace subproject paths")
+            t.VariadicTuple[str],
+            m.Field(description="Ordered workspace subproject paths"),
         ] = ()
         workspace_repositories: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            t.VariadicTuple[FlextInfraConfigModels.RepositoryRef],
             m.Field(description="Ordered workspace subproject records"),
         ] = ()
         workspace_gitlinks: Annotated[
-            tuple[FlextInfraConfigModels.ManagedGitlinkSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.ManagedGitlinkSpec],
             m.Field(description="Provider-resolved governed Git submodules"),
         ] = ()
         extra_verbs: Annotated[
-            tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.MakeVerbSpec],
             m.Field(description="Repository-specific additional public Make verbs"),
         ] = ()
         script_dispatch: Annotated[
@@ -2342,7 +2346,7 @@ class FlextInfraConfigModels:
             m.Field(description="New-project scaffold policy"),
         ]
         gitignore_sections: Annotated[
-            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec],
             m.Field(
                 min_length=1,
                 description=(
@@ -2359,7 +2363,7 @@ class FlextInfraConfigModels:
             m.Field(description="Canonical validated tooling policy"),
         ]
         environment_path_prepends: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Configured read-only PATH additions for direnv"),
         ] = ()
         beads_tool_selector: Annotated[
@@ -2404,7 +2408,7 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Upstream FLEXT facade module")
         ]
         inherited_facets: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(
@@ -2414,7 +2418,7 @@ class FlextInfraConfigModels:
             ),
         ] = ()
         root_packages: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(
@@ -2424,7 +2428,7 @@ class FlextInfraConfigModels:
             ),
         ] = ()
         root_modules: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(
@@ -2434,7 +2438,7 @@ class FlextInfraConfigModels:
             ),
         ] = ()
         runtime_dependency_overlay: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(
@@ -2453,7 +2457,7 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]
         mise_lock_platforms: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 min_length=1,
                 description="Fleet platforms projected into native Mise lock policy",
@@ -2589,7 +2593,7 @@ class FlextInfraConfigModels:
             bool, m.Field(description="Whether the CI matrix runs automatically")
         ] = False
         extra_ignored_patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Repository-local generated ignore patterns"),
         ] = ()
 
@@ -2632,17 +2636,18 @@ class FlextInfraConfigModels:
             m.Field(description="Optional project creation metadata"),
         ] = None
         members: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            t.VariadicTuple[FlextInfraConfigModels.RepositoryRef],
             m.Field(description="Declared member repository contracts"),
         ] = ()
         external_dependency_paths: Annotated[
-            tuple[Path, ...], m.Field(description="Declared external dependency paths")
+            t.VariadicTuple[Path],
+            m.Field(description="Declared external dependency paths"),
         ] = ()
         content_only: Annotated[
-            tuple[Path, ...], m.Field(description="Content-only Gitlink paths")
+            t.VariadicTuple[Path], m.Field(description="Content-only Gitlink paths")
         ] = ()
         exclusions: Annotated[
-            tuple[FlextInfraConfigModels.WorkspaceExclusionSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.WorkspaceExclusionSpec],
             m.Field(description="Explicit workspace exclusions"),
         ] = ()
         integration: Annotated[
@@ -2650,7 +2655,7 @@ class FlextInfraConfigModels:
             m.Field(description="Optional integration provider overlay"),
         ] = None
         repository_policy_overlays: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryPolicyOverlaySpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.RepositoryPolicyOverlaySpec],
             m.Field(description="Repository-local policy overlays"),
         ] = ()
 
@@ -2708,11 +2713,11 @@ class FlextInfraConfigModels:
             m.Field(description="Metadata required only when materializing a new tree"),
         ] = None
         subprojects: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            t.VariadicTuple[FlextInfraConfigModels.RepositoryRef],
             m.Field(description="Direct governed repositories from local .gitmodules"),
         ] = ()
         external_dependency_paths: Annotated[
-            tuple[Path, ...],
+            t.VariadicTuple[Path],
             m.Field(description="Observed external or fork Git submodule paths"),
         ] = ()
 
@@ -2779,7 +2784,7 @@ class FlextInfraConfigModels:
             m.Field(description="VS Code scalar keys enforced on every project"),
         ]
         list_settings: Annotated[
-            Mapping[str, tuple[str, ...]],
+            Mapping[str, t.VariadicTuple[str]],
             m.Field(description="VS Code list keys enforced on every project"),
         ]
         map_union_settings: Annotated[
@@ -2834,7 +2839,7 @@ class FlextInfraConfigModels:
             ),
         ]
         ci_system_packages: Annotated[
-            Mapping[str, tuple[t.NonEmptyStr, ...]],
+            Mapping[str, t.VariadicTuple[t.NonEmptyStr]],
             m.Field(
                 default_factory=immutable_empty_mapping,
                 description=(
@@ -2844,7 +2849,7 @@ class FlextInfraConfigModels:
             ),
         ]
         uv_exclude_dependencies: Annotated[
-            tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec],
             m.Field(description="Project-scoped official uv dependency exclusions"),
         ] = ()
         infra_repository: Annotated[
@@ -2852,7 +2857,7 @@ class FlextInfraConfigModels:
             m.Field(description="Canonical infrastructure repository identity"),
         ]
         providers: Annotated[
-            tuple[FlextInfraConfigModels.ProviderSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.ProviderSpec],
             m.Field(min_length=1, description="Ordered FLEXT-owned Git providers"),
         ]
         branch_policy: Annotated[
@@ -2860,7 +2865,7 @@ class FlextInfraConfigModels:
             m.Field(description="Global governed branch ancestry policy"),
         ]
         profiles: Annotated[
-            tuple[FlextInfraConfigModels.ProfileSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.ProfileSpec],
             m.Field(description="Ordered Make profiles"),
         ]
         make: Annotated[
@@ -2872,7 +2877,7 @@ class FlextInfraConfigModels:
             m.Field(description="Canonical VS Code settings merge contract"),
         ]
         artifacts: Annotated[
-            tuple[FlextInfraConfigModels.CodegenArtifactSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.CodegenArtifactSpec],
             m.Field(
                 min_length=1,
                 description=(
@@ -2919,7 +2924,7 @@ class FlextInfraConfigModels:
 
         @m.computed_field
         @property
-        def source_scan_ignored(self) -> tuple[str, ...]:
+        def source_scan_ignored(self) -> t.VariadicTuple[str]:
             """Derived ``source_scan.ignored_resources`` names from the SSOT."""
             return tuple(
                 artifact.name
@@ -2937,7 +2942,7 @@ class FlextInfraConfigModels:
         @property
         def gitignore_sections(
             self,
-        ) -> tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...]:
+        ) -> t.VariadicTuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec]:
             """Derived canonical ``.gitignore`` sections (SSOT order, deduplicated).
 
             Ignore files are order-sensitive: a pattern placed before a
@@ -3012,7 +3017,7 @@ class FlextInfraConfigModels:
 
         @m.computed_field
         @property
-        def gitignore_artifact_patterns(self) -> tuple[str, ...]:
+        def gitignore_artifact_patterns(self) -> t.VariadicTuple[str]:
             """Derived ``.gitignore`` artifact patterns from the SSOT (stable order)."""
             return tuple(
                 f"{artifact.name}/" if artifact.is_dir else artifact.name
@@ -3021,7 +3026,7 @@ class FlextInfraConfigModels:
             )
 
         managed_files: Annotated[
-            tuple[FlextInfraConfigModels.ManagedFileSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.ManagedFileSpec],
             m.Field(description="Files owned by conform"),
         ]
         scaffold: Annotated[
@@ -3088,7 +3093,7 @@ class FlextInfraConfigModels:
         """Canonical production roots and recursively ignored directories."""
 
         roots: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Ordered production source directory names"),
         ]
 
@@ -3174,7 +3179,7 @@ class FlextInfraConfigModels:
         """Complete validated static policy evaluated only through Rope facts."""
 
         rules: Annotated[
-            tuple[FlextInfraConfigModels.StaticRuleSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.StaticRuleSpec],
             m.Field(min_length=1, description="Ordered static-analysis rules"),
         ]
 
@@ -3201,7 +3206,7 @@ class FlextInfraConfigModels:
         )
 
         publishable_prefixes: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(
@@ -3229,7 +3234,7 @@ class FlextInfraConfigModels:
             ),
         ]
         build_constraints: Annotated[
-            tuple[FlextInfraConfigModels.BuildConstraintSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.BuildConstraintSpec],
             m.Field(
                 min_length=1,
                 description=(
@@ -3245,7 +3250,7 @@ class FlextInfraConfigModels:
         name: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
         version: Annotated[t.NonEmptyStr, m.Field(description="Exact version")]
         hashes: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Accepted sha256 digests"),
         ]
 
@@ -3253,7 +3258,7 @@ class FlextInfraConfigModels:
         """Typed input consumed by the generated release policy files."""
 
         build_constraints: Annotated[
-            tuple[FlextInfraConfigModels.BuildConstraintSpec, ...],
+            t.VariadicTuple[FlextInfraConfigModels.BuildConstraintSpec],
             m.Field(min_length=1, description="Pins rendered into the constraints"),
         ]
 
@@ -3314,11 +3319,11 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Mise/Python version selector")
         ]
         groups: Annotated[
-            tuple[str, ...],
+            t.VariadicTuple[str],
             m.Field(description="Ordered dependency groups synchronized by setup"),
         ]
         editable_repositories: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            t.VariadicTuple[FlextInfraConfigModels.RepositoryRef],
             m.Field(description="Local repositories overlaid after locked sync"),
         ] = ()
 
@@ -3352,7 +3357,7 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Resolved baseline commit")
         ]
         references: Annotated[
-            tuple[FlextInfraConfigModels.BranchAncestryRef, ...],
+            t.VariadicTuple[FlextInfraConfigModels.BranchAncestryRef],
             m.Field(description="Local, remote, and worktree ancestry inventory"),
         ]
 
@@ -3415,7 +3420,7 @@ class FlextInfraConfigModels:
         """
 
         environment_sources: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Environment files sourced on activation"),
         ] = ("$HOME/.config/environment.d/projects/agent-tools.envrc",)
         identity_var: Annotated[
@@ -3431,7 +3436,7 @@ class FlextInfraConfigModels:
             m.Field(description="Beads metadata path relative to the workspace"),
         ] = ".beads/metadata.json"
         unset_vars: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Inherited orchestration variables cleared on entry"),
         ] = (
             "GT_ROOT",
@@ -3446,7 +3451,7 @@ class FlextInfraConfigModels:
         """Outcome of one workspace environment sync."""
 
         changed_files: Annotated[
-            tuple[Path, ...],
+            t.VariadicTuple[Path],
             m.Field(description="Environment files created, updated, or removed"),
         ] = ()
 
@@ -3507,7 +3512,7 @@ class FlextInfraConfigModels:
             str, m.Field(description="Fully composed managed-file content")
         ]
         source_states: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(description="Ordered immutable sources consumed by composition"),
         ] = ()
 
@@ -3542,7 +3547,7 @@ class FlextInfraConfigModels:
             ),
         ]
         source_states: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(
                 exclude=True,
                 description="Exact source states that produced rendered content",
@@ -3597,7 +3602,7 @@ class FlextInfraConfigModels:
             m.Field(description="Validated public request"),
         ]
         repositories: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            t.VariadicTuple[FlextInfraConfigModels.RepositoryRef],
             m.Field(description="Selected repositories in deterministic order"),
         ]
         workspace: Annotated[
@@ -3609,15 +3614,15 @@ class FlextInfraConfigModels:
             m.Field(description="Canonical Make contract"),
         ]
         uv_environments: Annotated[
-            tuple[FlextInfraConfigModels.UvEnvironmentPlan, ...],
+            t.VariadicTuple[FlextInfraConfigModels.UvEnvironmentPlan],
             m.Field(description="uv plans paired with selected repositories"),
         ]
         branch_ancestry: Annotated[
-            tuple[FlextInfraConfigModels.BranchAncestryPlan, ...],
+            t.VariadicTuple[FlextInfraConfigModels.BranchAncestryPlan],
             m.Field(description="Governed branch ancestry observations"),
         ]
         files: Annotated[
-            tuple[FlextInfraConfigModels.CodegenFilePlan, ...],
+            t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan],
             m.Field(description="All render results validated before application"),
         ]
 
@@ -3629,9 +3634,10 @@ class FlextInfraConfigModels:
             m.Field(description="Plan that governed the operation"),
         ]
         written_files: Annotated[
-            tuple[Path, ...], m.Field(description="Files atomically replaced by apply")
+            t.VariadicTuple[Path],
+            m.Field(description="Files atomically replaced by apply"),
         ] = ()
         errors: Annotated[
-            tuple[str, ...],
+            t.VariadicTuple[str],
             m.Field(description="Fail-closed validation or write errors"),
         ] = ()

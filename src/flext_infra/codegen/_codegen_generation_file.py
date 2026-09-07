@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m
+from flext_infra import c, m, t
 
 from ._codegen_generation_standard import FlextInfraCodegenGenerationStandardMixin
 
@@ -26,7 +26,7 @@ class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMi
         return cls._template_path(cls._init_template_name(plan))
 
     @classmethod
-    def init_template_paths(cls) -> tuple[Path, Path]:
+    def init_template_paths(cls) -> t.Pair[Path, Path]:
         """Return the closed lazy-init template input set."""
         return (
             cls._template_path(c.Infra.TEMPLATE_ROOT_INIT),

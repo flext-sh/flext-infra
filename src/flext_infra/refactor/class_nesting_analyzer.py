@@ -42,7 +42,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
     @staticmethod
     def _group_targets_by_project_root(
         files: t.SequenceOf[Path],
-    ) -> t.MappingKV[Path, tuple[Path, ...]]:
+    ) -> t.MappingKV[Path, t.VariadicTuple[Path]]:
         """Group resolved targets by their canonical project root."""
         grouped: MutableMapping[Path, list[Path]] = {}
         for file_path in files:

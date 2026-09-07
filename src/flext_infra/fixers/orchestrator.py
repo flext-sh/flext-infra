@@ -36,7 +36,7 @@ class FlextInfraEnforcementFixerOrchestrator(
     uses, and routes each violation to the appropriate adapter.
     """
 
-    _ADAPTER_CLASSES: ClassVar[tuple[type[FlextInfraFixerAdapter], ...]] = (
+    _ADAPTER_CLASSES: ClassVar[t.VariadicTuple[type[FlextInfraFixerAdapter]]] = (
         FlextInfraGateFixerAdapter,
         FlextInfraManualFixerAdapter,
         FlextInfraRopeFixerAdapter,
@@ -47,7 +47,7 @@ class FlextInfraEnforcementFixerOrchestrator(
         bool, m.Field(description="Apply fixes instead of dry-run preview")
     ] = False
     rules: Annotated[
-        tuple[str, ...], m.Field(description="Enforcement rule IDs to fix")
+        t.VariadicTuple[str], m.Field(description="Enforcement rule IDs to fix")
     ] = ()
     safe_only: Annotated[
         bool, m.Field(description="Only apply fixes marked safe in the catalog")
@@ -92,7 +92,7 @@ class FlextInfraEnforcementFixerOrchestrator(
 
     def _selected_rules(
         self, catalog: m.EnforcementCatalog | None = None
-    ) -> tuple[m.EnforcementRuleSpec, ...]:
+    ) -> t.VariadicTuple[m.EnforcementRuleSpec]:
         """Return enabled rules with fix actions matching the CLI filter.
 
         Preflight: every enabled rule that declares a fix action must resolve
@@ -268,7 +268,7 @@ class FlextInfraEnforcementFixerOrchestrator(
         return self._engine().collect_declarative(project_dir, rules)
 
     @staticmethod
-    def _stub_file_paths(project_dir: Path) -> tuple[Path, ...]:
+    def _stub_file_paths(project_dir: Path) -> t.VariadicTuple[Path]:
         """Return source stub files while respecting canonical excluded dirs."""
         return FlextInfraEnforcementEngine.stub_file_paths(project_dir)
 

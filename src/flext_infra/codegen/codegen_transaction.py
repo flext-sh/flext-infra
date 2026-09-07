@@ -11,10 +11,16 @@ from flext_core import r
 from flext_infra import m, u
 from flext_infra.codegen import (
     _codegen_staging as generic_staging,
-    _mise_artifacts_journal as journal_io,
     _mise_artifacts_publication as publication,
-    _mise_artifacts_state as state,
-    _mise_artifacts_verification as verify,
+)
+from flext_infra.codegen._mise_artifacts_journal import (
+    FlextInfraMiseArtifactsJournal as journal_io,
+)
+from flext_infra.codegen._mise_artifacts_state import (
+    FlextInfraMiseArtifactsState as state,
+)
+from flext_infra.codegen._mise_artifacts_verification import (
+    FlextInfraMiseArtifactsVerification as verify,
 )
 from flext_infra.codegen.mise_artifacts_lock import FlextInfraMiseLock
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
@@ -23,7 +29,7 @@ from ._mise_artifacts_recovery import FlextInfraMiseRecovery
 from ._mise_artifacts_staging import FlextInfraMiseStaging
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 class FlextInfraCodegenTransaction:
@@ -38,7 +44,7 @@ class FlextInfraCodegenTransaction:
         self._mise_staging = FlextInfraMiseStaging(owner)
 
     def validate(
-        self, config_plans: tuple[m.Infra.CodegenFilePlan, ...] = ()
+        self, config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
     ) -> p.Result[bool]:
         """Validate a coherent committed Mise snapshot under the generation lock."""
         return self.run_locked(
@@ -47,7 +53,9 @@ class FlextInfraCodegenTransaction:
         )
 
     def validate_locked(
-        self, scope_root: Path, config_plans: tuple[m.Infra.CodegenFilePlan, ...] = ()
+        self,
+        scope_root: Path,
+        config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[bool]:
         """Reject pending recovery/residue, then exercise real Mise consumers."""
         layout_result = (
@@ -123,8 +131,8 @@ class FlextInfraCodegenTransaction:
     def begin_locked(
         self,
         scope_root: Path,
-        config_plans: tuple[m.Infra.CodegenFilePlan, ...],
-        file_plans: tuple[m.Infra.CodegenFilePlan, ...],
+        config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+        file_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Publish conform+Mise as the first fully journaled prepared phase."""
         result_type = r[m.Infra.CodegenTransactionSession]
@@ -297,7 +305,7 @@ class FlextInfraCodegenTransaction:
         self,
         session: m.Infra.CodegenTransactionSession,
         phase: str,
-        plans: tuple[m.Infra.CodegenFilePlan, ...],
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Append, durably authorize, then publish one dependent generated phase."""
         result_type = r[m.Infra.CodegenTransactionSession]
@@ -419,7 +427,7 @@ class FlextInfraCodegenTransaction:
         self,
         session: m.Infra.CodegenTransactionSession,
         phase: str,
-        directories: tuple[Path, ...],
+        directories: t.VariadicTuple[Path],
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Authorize missing generated directories durably, then create them."""
         result_type = r[m.Infra.CodegenTransactionSession]
@@ -490,7 +498,7 @@ class FlextInfraCodegenTransaction:
         self,
         session: m.Infra.CodegenTransactionSession,
         validator: Callable[[], p.Result[bool]],
-    ) -> p.Result[tuple[Path, ...]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Validate final reality while recoverable, then commit and clean up."""
         validated = validator()
         if validated.failure or not validated.value:
@@ -545,7 +553,7 @@ class FlextInfraCodegenTransaction:
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
         journal_state: m.Cli.AtomicFileState,
-    ) -> p.Result[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
+    ) -> p.Result[t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
         """Create and durably bind one directory identity at a time."""
         result_type = r[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]
         current_journal = journal
@@ -625,8 +633,8 @@ class FlextInfraCodegenTransaction:
 
     @staticmethod
     def _phase_sources(
-        phase: str, plans: tuple[m.Infra.CodegenFilePlan, ...]
-    ) -> p.Result[tuple[tuple[str, m.Cli.AtomicFileState], ...]]:
+        phase: str, plans: t.VariadicTuple[m.Infra.CodegenFilePlan]
+    ) -> p.Result[t.VariadicTuple[t.Pair[str, m.Cli.AtomicFileState]]]:
         result_type = r[tuple[tuple[str, m.Cli.AtomicFileState], ...]]
         sources: dict[Path, m.Cli.AtomicFileState] = {}
         for plan in plans:
@@ -641,8 +649,8 @@ class FlextInfraCodegenTransaction:
 
     @staticmethod
     def _unique_states(
-        states: tuple[m.Cli.AtomicFileState, ...],
-    ) -> tuple[m.Cli.AtomicFileState, ...]:
+        states: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> t.VariadicTuple[m.Cli.AtomicFileState]:
         by_path: dict[Path, m.Cli.AtomicFileState] = {}
         for file_state in states:
             by_path[file_state.path] = file_state
@@ -652,7 +660,7 @@ class FlextInfraCodegenTransaction:
     def _prepublication_barriers(
         plan: m.Infra.MiseToolchainWorkspacePlan,
         sources: tuple[m.Cli.AtomicFileState, ...],
-        destinations: tuple[m.Cli.AtomicFileState, ...],
+        destinations: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[bool]:
         source_barrier = verify.states_current(
             FlextInfraCodegenTransaction._unique_states(sources)

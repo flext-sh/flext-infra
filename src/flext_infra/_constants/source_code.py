@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class FlextInfraConstantsSourceCode:
     """Source code patterns, exclusion sets, and detection constants."""
 
-    MERGE_CONFLICT_CONTROLS: Final[tuple[tuple[str, str], ...]] = (
+    MERGE_CONFLICT_CONTROLS: Final[t.VariadicTuple[t.Pair[str, str]]] = (
         ("current", "<<<<<<< "),
         ("ancestor", "||||||| "),
         ("separator", "======="),
@@ -540,7 +540,7 @@ class FlextInfraConstantsSourceCode:
     # --- Log parsing constants (was: class LogParser) ---
     LOG_TAIL_LINES: Final[int] = 50
     "Number of tail lines to extract from log output."
-    LOG_ERROR_PATTERNS: Final[tuple[t.RegexPattern, ...]] = (
+    LOG_ERROR_PATTERNS: Final[t.VariadicTuple[t.RegexPattern]] = (
         re.compile(r"^\s*\S+\.py:\d+"),
         re.compile(r"^ERROR:", re.IGNORECASE),
         re.compile(r"^\s+\[B\d+\]"),
@@ -555,7 +555,7 @@ class FlextInfraConstantsSourceCode:
     )
     "GNU make always exits 2 on a failed recipe but reports the recipe's real"
     " exit code in its error line; this pattern recovers the child's code."
-    LOG_NOISE_PATTERNS: Final[tuple[t.RegexPattern, ...]] = (
+    LOG_NOISE_PATTERNS: Final[t.VariadicTuple[t.RegexPattern]] = (
         re.compile(r"^make\["),
         re.compile(r"warning:\s+(overriding|ignoring)"),
         re.compile(r"^(Total|Success|Failed|Skipped):"),

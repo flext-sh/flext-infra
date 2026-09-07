@@ -13,7 +13,7 @@ from .base import FlextInfraPytestRunnerBase
 class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     """Build the single supported pytest command."""
 
-    def build_selection_command(self) -> tuple[str, ...]:
+    def build_selection_command(self) -> t.VariadicTuple[str]:
         """Build the read-only argv that resolves the testmon selection once.
 
         Every xdist worker otherwise resolves the selection itself, and two
@@ -44,7 +44,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
     def build_command(
         self, report_dir: Path, selected_node_ids: t.StrSequence | None = None
-    ) -> tuple[str, ...]:
+    ) -> t.VariadicTuple[str]:
         """Build a whole-suite testmon argv without user selectors.
 
         ``selected_node_ids`` is the selection the controller already resolved:

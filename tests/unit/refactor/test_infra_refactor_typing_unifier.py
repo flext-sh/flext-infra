@@ -460,10 +460,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
         file_path.write_text(source, encoding="utf-8")
         updated, changes = rule.apply(source, _file_path=file_path)
         tm.that(updated, has="from flext_demo import t")
-        tm.that(
-            updated,
-            has="data: t.MappingKV[str, t.SequenceOf[t.JsonValue]]",
-        )
+        tm.that(updated, has="data: t.MappingKV[str, t.SequenceOf[t.JsonValue]]")
         tm.that(updated, has="-> t.Pair[str, int]")
         tm.that(
             "\n".join(changes),
@@ -510,7 +507,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
             "    c,\n"
             "    m,\n"
             ")\n\n"
-            "value: list[object]\n"
+            "def consume(value: list[object]) -> None:\n    pass\n"
         )
         rule = FlextInfraRefactorTypingUnificationRule({
             "id": "unify-typings",
@@ -536,7 +533,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
             "    m,\n"
             "    t,\n"
             ")\n\n"
-            "value: list[object]\n"
+            "def consume(value: list[object]) -> None:\n    pass\n"
         )
         rule = FlextInfraRefactorTypingUnificationRule({
             "id": "unify-typings",

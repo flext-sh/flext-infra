@@ -18,7 +18,7 @@ from flext_infra import c, u
 from flext_infra.base import s
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 logger = u.fetch_logger(__name__)
 
@@ -26,7 +26,7 @@ logger = u.fetch_logger(__name__)
 class FlextInfraCleanService(s[int]):
     """Report or remove broken links below the managed workspace container."""
 
-    def _broken_worktree_links(self) -> tuple[Path, ...]:
+    def _broken_worktree_links(self) -> t.VariadicTuple[Path]:
         """Return broken symlinks left below the managed worktree container."""
         worktrees_root = self.repository_root / c.Infra.WORKTREES_DIRNAME
         if not worktrees_root.is_dir():

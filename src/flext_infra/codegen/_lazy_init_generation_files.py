@@ -22,7 +22,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
 
         def _cleanup_generated_support_file_states(
             self, plan: m.Infra.LazyInitPlan
-        ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]: ...
+        ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]: ...
 
     @staticmethod
     def _snapshot_paths(
@@ -102,7 +102,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         *,
         project: Path,
         init_before: m.Cli.AtomicFileState,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Describe the initializer and every cleanup effect for one package."""
         if plan.action is c.Infra.LazyInitAction.SKIP:
             return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(())
@@ -139,7 +139,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         *,
         index: m.Infra.RopeWorkspaceIndex,
         snapshots: t.MappingKV[Path, m.Cli.AtomicFileState],
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Build, deduplicate, and source-bind every lazy-init file plan."""
         by_path: dict[Path, m.Infra.CodegenFilePlan] = {}
         for plan in plans:

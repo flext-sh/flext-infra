@@ -204,7 +204,7 @@ class FlextInfraCodegenVscodeMixin:
         settings: t.MutableJsonMapping,
         *,
         scalar_settings: Mapping[str, str | bool],
-        list_settings: Mapping[str, tuple[str, ...]],
+        list_settings: Mapping[str, t.VariadicTuple[str]],
         repository_root: Path,
     ) -> p.Result[bool]:
         """Enforce exact scalar and list VS Code keys from the codegen config."""
@@ -277,8 +277,8 @@ class FlextInfraCodegenVscodeMixin:
 
     @staticmethod
     def _resolve_list_setting(
-        key: str, base_entries: tuple[str, ...], *, repository_root: Path
-    ) -> p.Result[tuple[str, ...]]:
+        key: str, base_entries: t.VariadicTuple[str], *, repository_root: Path
+    ) -> p.Result[t.VariadicTuple[str]]:
         """Return one canonical list without consulting repository topology."""
         del key, repository_root
         return r[tuple[str, ...]].ok(base_entries)

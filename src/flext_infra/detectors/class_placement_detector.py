@@ -111,7 +111,7 @@ class FlextInfraClassPlacementDetector:
     @staticmethod
     def _governed_classes_with_family(
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
-    ) -> tuple[tuple[m.Infra.ClassInfo, str], ...]:
+    ) -> t.VariadicTuple[t.Pair[m.Infra.ClassInfo, str]]:
         """Return public governed classes with their family letters."""
         results: list[tuple[m.Infra.ClassInfo, str]] = []
         for ci in u.Infra.get_class_info(rope_project, resource):
@@ -142,7 +142,7 @@ class FlextInfraClassPlacementDetector:
 
     @staticmethod
     def _in_canonical_location(
-        family: str, parts: tuple[str, ...], file_name: str
+        family: str, parts: t.VariadicTuple[str], file_name: str
     ) -> bool:
         """Return True when the file already lives in the canonical family area."""
         dir_sets = {
@@ -297,7 +297,7 @@ class FlextInfraClassPlacementDetector:
     @staticmethod
     def _type_aliases(
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
-    ) -> t.SequenceOf[tuple[str, int]]:
+    ) -> t.SequenceOf[t.Pair[str, int]]:
         """Return module-level type aliases as (name, line) pairs."""
         pymodule = u.Infra.get_pymodule(rope_project, resource)
         tree = pymodule.get_ast()

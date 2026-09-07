@@ -19,7 +19,7 @@ class FlextInfraConstantsCodegenLazy:
     "Maximum length of a public facade alias."
     AUTOGEN_HEADER: Final[str] = "# AUTO-GENERATED FILE — Regenerate with: make gen"
     "Header prepended to every auto-generated ``__init__.py`` file."
-    AUTOGEN_HEADERS: Final[tuple[str, str]] = (
+    AUTOGEN_HEADERS: Final[t.Pair[str, str]] = (
         AUTOGEN_HEADER,
         "# @generated AUTO-GENERATED FILE — Regenerate with: make gen",
     )

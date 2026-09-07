@@ -1,0 +1,74 @@
+# FLEXT typing codemod: the legacy ``typing.Dict`` generic MUST be written as the
+# canonical read-only alias ``t.MappingKV``.
+#
+#   def f(x: Dict[str, int]) -> None: ...          # defect (bare name)
+#   def f(x: typing.Dict[str, int]) -> None: ...   # defect (attribute form)
+#   ALIAS = Dict[str, int]                         # defect (value position)
+#                       ->
+#   def f(x: t.MappingKV[str, int]) -> None: ...   # canonical
+#
+# This rule replaces the two retired regex transformers (typing_dict_import and
+# typing_dict_attr). Those matched the raw text ``\bDict\s*\[`` over the whole
+# file, so they rewrote docstrings that documented the pattern, comments, and the
+# string literals inside this package's own rewrite tables -- corrupting ten
+# files in one run. ast-grep matches tree-sitter nodes, so a ``Dict[`` occurring
+# in a string, docstring, or comment is not a generic_type/subscript node and is
+# structurally unreachable by this rule.
+#
+# Three shapes are needed because tree-sitter-python parses them differently:
+# a bare name in a type position is `generic_type`, while a dotted receiver and
+# a value-position generic are both `subscript`. Each is selected through its
+# own parsing context so the pattern parses in the position it must match.
+#
+# Guards:
+#   - dict-imported-from-typing: `Dict` is a legal identifier, so the bare-name
+#     shapes rewrite only where the module binds `Dict` from `typing` itself.
+#   - t-locally-bound: emitting `t.MappingKV` is F821-safe only where the module
+#     already binds `t`. Modules that do not are reported by the detection-only
+#     companion typing-dict-missing-t-import.
+#
+# Nested generics (`Dict[str, Dict[str, int]]`) rewrite outermost-first; the mod
+# circuit re-scans to a fixed point, so the inner generic is rewritten on the
+# next pass. The now-unused `from typing import Dict` binding is left to Ruff
+# F401, which removes an unused name from any import-list shape; ast-grep cannot
+# delete one name from a list without a rule per list shape.
+id: typing-dict-to-mapping-kv
+language: python
+severity: error
+files:
+  - "src/**/*.py"
+  - "tests/**/*.py"
+rule:
+  any:
+    - all:
+        - pattern:
+            context: "def f(x: Dict[$K, $V]) -> None: ..."
+            selector: generic_type
+        - inside:
+            stopBy: end
+            kind: module
+            has:
+              stopBy: end
+              matches: dict-imported-from-typing
+    - all:
+        - pattern:
+            context: "ALIAS = Dict[$K, $V]"
+            selector: subscript
+        - inside:
+            stopBy: end
+            kind: module
+            has:
+              stopBy: end
+              matches: dict-imported-from-typing
+    - pattern:
+        context: "ALIAS = typing.Dict[$K, $V]"
+        selector: subscript
+  inside:
+    stopBy: end
+    kind: module
+    has:
+      stopBy: end
+      matches: t-locally-bound
+fix: "t.MappingKV[$K, $V]"
+message: >-
+  typing.Dict is retired; the canonical mapping annotation is t.MappingKV[K, V].

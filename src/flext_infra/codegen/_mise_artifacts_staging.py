@@ -7,14 +7,16 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.codegen import (
-    _mise_artifacts_candidates as candidates,
-    _mise_artifacts_files as files,
-    _mise_artifacts_process as process,
+from flext_infra.codegen import _mise_artifacts_candidates as candidates
+from flext_infra.codegen._mise_artifacts_files import (
+    FlextInfraMiseArtifactsFiles as files,
+)
+from flext_infra.codegen._mise_artifacts_process import (
+    FlextInfraMiseArtifactsProcess as process,
 )
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 class FlextInfraMiseStaging:
@@ -25,7 +27,7 @@ class FlextInfraMiseStaging:
 
     def stage(
         self, plan: m.Infra.MiseToolchainWorkspacePlan
-    ) -> p.Result[tuple[m.Infra.CodegenStagedFile, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]:
         """Stage and validate the committed lock selected before publication."""
         stages: list[Path] = []
         for project in plan.projects:

@@ -176,7 +176,7 @@ class FlextInfraLooseObjectDetector:
         _ = rope_project
         statements = u.Infra.logical_statements(resource.read())
         file_str = str(file_path)
-        seen: set[tuple[int, str]] = set()
+        seen: set[t.Pair[int, str]] = set()
         violations: list[m.Infra.LooseObjectViolation] = []
 
         def _add(line: int, name: str, kind: str, suffix: str) -> None:

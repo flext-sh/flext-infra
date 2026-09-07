@@ -1,0 +1,79 @@
+# Recomposition of enforcement rules ENFORCE-091 and ENFORCE-092 onto
+# `make mod`.
+#
+#   def f(x: List[str]) -> None: ...          # defect (bare name)
+#   def f(x: typing.List[str]) -> None: ...   # defect (attribute form)
+#   ALIAS = List[str]                         # defect (value position)
+#                       ->
+#   def f(x: t.SequenceOf[str]) -> None: ...  # canonical
+#
+# These two enforcement rules configured the generic regex `pattern`
+# transformer with `\bList\s*\[` and `\btyping\s*\.\s*List\s*\[`, substituted by
+# `t.SequenceOf[`. A regex cannot tell code from data, and that is not a
+# theoretical objection: this exact configuration rewrote the text inside
+# docstrings that *described* the rewrite, and inside the tuple literal
+# ("List[", "t.SequenceOf") that was another transformer's own rewrite table --
+# turning that table into a no-op and corrupting ten files in one run.
+#
+# ast-grep matches tree-sitter nodes. A `List[` occurring in a string, a
+# docstring, or a comment is not a generic_type or subscript node, so it is
+# structurally unreachable by this rule rather than merely unlikely to match.
+#
+# Three shapes are needed because tree-sitter-python parses them differently: a
+# bare name in a type position is `generic_type`, while a dotted receiver and a
+# value-position generic are both `subscript`. Each is selected through its own
+# parsing context so the pattern parses in the position it must match.
+#
+# Guards:
+#   - list-imported-from-typing: `List` is a legal identifier, so the bare-name
+#     shapes rewrite only where the module binds `List` from `typing` itself.
+#     The regex had no such notion and rewrote any `List[` it found.
+#   - t-locally-bound: emitting `t.SequenceOf` is F821-safe only where the
+#     module already binds `t`. The transformer instead injected the import
+#     itself through `required_alias: t`; a textual ast-grep fix cannot choose a
+#     legal module-level insertion point, so modules with no `t` binding are
+#     reported by the detection-only companion typing-list-missing-t-import.
+#
+# Nested generics (`List[List[str]]`) rewrite outermost-first; the mod circuit
+# re-scans to a fixed point, so the inner generic is rewritten on the next pass.
+# The now-unused `from typing import List` binding is left to Ruff F401.
+id: typing-list-to-sequence-of
+language: python
+severity: error
+files:
+  - "src/**/*.py"
+  - "tests/**/*.py"
+rule:
+  any:
+    - all:
+        - pattern:
+            context: "def f(x: List[$T]) -> None: ..."
+            selector: generic_type
+        - inside:
+            stopBy: end
+            kind: module
+            has:
+              stopBy: end
+              matches: list-imported-from-typing
+    - all:
+        - pattern:
+            context: "ALIAS = List[$T]"
+            selector: subscript
+        - inside:
+            stopBy: end
+            kind: module
+            has:
+              stopBy: end
+              matches: list-imported-from-typing
+    - pattern:
+        context: "ALIAS = typing.List[$T]"
+        selector: subscript
+  inside:
+    stopBy: end
+    kind: module
+    has:
+      stopBy: end
+      matches: t-locally-bound
+fix: "t.SequenceOf[$T]"
+message: >-
+  typing.List is retired; the canonical sequence annotation is t.SequenceOf[T].

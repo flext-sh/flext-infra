@@ -5,6 +5,8 @@ from __future__ import annotations
 import ast
 from typing import ClassVar, NamedTuple
 
+from flext_infra import t
+
 from .._utilities.deferred_self_reference_rewrite import (
     FlextInfraUtilitiesDeferredSelfReferenceRewrite,
 )
@@ -136,7 +138,7 @@ class FlextInfraUtilitiesDeferredSelfReference(
     @classmethod
     def collect_deferred_self_reference_findings(
         cls, tree: ast.Module
-    ) -> tuple[Finding, ...]:
+    ) -> t.VariadicTuple[Finding]:
         """Collect deferred factories and recursive fields in one module."""
         findings: list[FlextInfraUtilitiesDeferredSelfReference.Finding] = []
         stack: list[ast.ClassDef] = []
@@ -145,4 +147,4 @@ class FlextInfraUtilitiesDeferredSelfReference(
         return tuple(findings)
 
 
-__all__: tuple[str, ...] = ("FlextInfraUtilitiesDeferredSelfReference",)
+__all__: t.VariadicTuple[str] = ("FlextInfraUtilitiesDeferredSelfReference",)

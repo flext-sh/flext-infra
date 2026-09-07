@@ -31,7 +31,7 @@ class FlextInfraUtilitiesRopeInventory:
         include_local_scopes: bool,
         include_references: bool = True,
         rope_workspace: p.Infra.RopeWorkspaceDsl | None = None,
-    ) -> tuple[m.Infra.Census.Object, ...]:
+    ) -> t.VariadicTuple[m.Infra.Census.Object]:
         """Return all same-file defined objects for one Rope module."""
         try:
             pymodule = cls.get_pymodule(rope_project, resource)
@@ -100,7 +100,7 @@ class FlextInfraUtilitiesRopeInventory:
         *,
         parent_options: m.Infra.RopeInventoryRecordInput,
         include_references: bool = True,
-    ) -> tuple[m.Infra.Census.Object, ...]:
+    ) -> t.VariadicTuple[m.Infra.Census.Object]:
         """Scope objects."""
         items: t.MutableSequenceOf[m.Infra.Census.Object] = []
         child_scopes = tuple(scope.get_scopes())
@@ -132,7 +132,7 @@ class FlextInfraUtilitiesRopeInventory:
         record_options: m.Infra.RopeInventoryRecordInput,
         include_local_scopes: bool = True,
         include_references: bool = True,
-    ) -> tuple[m.Infra.Census.Object, ...]:
+    ) -> t.VariadicTuple[m.Infra.Census.Object]:
         """Child scope objects."""
         if (
             not include_local_scopes
@@ -166,7 +166,7 @@ class FlextInfraUtilitiesRopeInventory:
     @staticmethod
     def _sorted_module_names(
         pymodule: t.Infra.RopePyModule, resource: t.Infra.RopeResource
-    ) -> tuple[tuple[str, t.Infra.RopePyName], ...]:
+    ) -> t.VariadicTuple[t.Pair[str, t.Infra.RopePyName]]:
         """Sorted module names."""
         return FlextInfraUtilitiesRopeInventory._sorted_names(
             pymodule.get_attributes(), resource
@@ -175,7 +175,7 @@ class FlextInfraUtilitiesRopeInventory:
     @staticmethod
     def _sorted_scope_names(
         scope: p.Infra.RopeScopeDsl, resource: t.Infra.RopeResource
-    ) -> tuple[tuple[str, t.Infra.RopePyName], ...]:
+    ) -> t.VariadicTuple[t.Pair[str, t.Infra.RopePyName]]:
         """Sorted scope names."""
         return FlextInfraUtilitiesRopeInventory._sorted_names(
             scope.get_names(), resource
@@ -184,7 +184,7 @@ class FlextInfraUtilitiesRopeInventory:
     @staticmethod
     def _sorted_names(
         names: t.MappingKV[str, t.Infra.RopePyName], resource: t.Infra.RopeResource
-    ) -> tuple[tuple[str, t.Infra.RopePyName], ...]:
+    ) -> t.VariadicTuple[t.Pair[str, t.Infra.RopePyName]]:
         """Sorted names."""
         candidates: list[tuple[int, str, t.Infra.RopePyName]] = []
         for name, pyname in names.items():
@@ -362,9 +362,9 @@ class FlextInfraUtilitiesRopeInventory:
         line: int,
         rope_workspace: p.Infra.RopeWorkspaceDsl | None = None,
         module_name: str,
-    ) -> tuple[
-        tuple[m.Infra.Census.ReferenceSite, ...],
-        tuple[m.Infra.Census.ReferenceSite, ...],
+    ) -> t.Pair[
+        t.VariadicTuple[m.Infra.Census.ReferenceSite],
+        t.VariadicTuple[m.Infra.Census.ReferenceSite],
     ]:
         """Collect the reference sites for a symbol."""
         lines = source.splitlines(keepends=True)
@@ -376,7 +376,7 @@ class FlextInfraUtilitiesRopeInventory:
         definition_path = FlextInfraUtilitiesRopeCore.resource_file_path(
             rope_project, resource
         )
-        search_resources: tuple[t.Infra.RopeResource, ...] | None = None
+        search_resources: t.VariadicTuple[t.Infra.RopeResource] | None = None
         if rope_workspace is not None and definition_path is not None:
             dependent_import_targets = (
                 (module_name, f"{module_name}.{name}")
@@ -397,7 +397,7 @@ class FlextInfraUtilitiesRopeInventory:
         )
         runtime_reference_sites: list[m.Infra.Census.ReferenceSite] = []
         script_reference_sites: list[m.Infra.Census.ReferenceSite] = []
-        seen_sites: set[tuple[str, int, str]] = set()
+        seen_sites: set[t.Triple[str, int, str]] = set()
         skipped_definition = False
         for hit in hits:
             if (

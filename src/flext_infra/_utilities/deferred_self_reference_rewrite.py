@@ -30,7 +30,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
     @classmethod
     def _base_edits(
         cls, source: str, outer: ast.ClassDef
-    ) -> t.SequenceOf[tuple[int, int, str]]:
+    ) -> t.SequenceOf[t.Triple[int, int, str]]:
         """Make already-defined sibling bases executable inside the owner body."""
         siblings = tuple(node for node in outer.body if isinstance(node, ast.ClassDef))
         sibling_names = frozenset(node.name for node in siblings)
@@ -75,7 +75,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
     @classmethod
     def _annotation_edits(
         cls, source: str, outer: ast.ClassDef
-    ) -> t.SequenceOf[tuple[int, int, str]]:
+    ) -> t.SequenceOf[t.Triple[int, int, str]]:
         """Plan owner-qualified sibling references inside deferred annotations."""
         siblings = tuple(node for node in outer.body if isinstance(node, ast.ClassDef))
         owned_names = frozenset({
@@ -151,7 +151,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         return tuple(annotations)
 
     @staticmethod
-    def _line_offsets(source: str) -> tuple[int, ...]:
+    def _line_offsets(source: str) -> t.VariadicTuple[int]:
         """Return the character offset of each source line."""
         offsets = [0]
         for line in source.splitlines(keepends=True):
@@ -159,7 +159,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         return tuple(offsets)
 
     @staticmethod
-    def _node_span(offsets: tuple[int, ...], node: ast.expr) -> tuple[int, int]:
+    def _node_span(offsets: tuple[int, ...], node: ast.expr) -> t.Pair[int, int]:
         """Return one expression's exact source character span."""
         end_line = node.end_lineno or node.lineno
         end_column = node.end_col_offset or node.col_offset

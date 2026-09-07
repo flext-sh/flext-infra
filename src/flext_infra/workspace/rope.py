@@ -30,7 +30,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     _workspace_index: m.Infra.RopeWorkspaceIndex | None = u.PrivateAttr(
         default_factory=lambda: None
     )
-    _codegen_projects: tuple[p.Infra.ProjectInfo, ...] | None = u.PrivateAttr(
+    _codegen_projects: t.VariadicTuple[p.Infra.ProjectInfo] | None = u.PrivateAttr(
         default_factory=lambda: None
     )
     _project_layout_cache: dict[str, m.Infra.RopeProjectLayout | None] = u.PrivateAttr(
@@ -219,7 +219,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         text: str = self._resource_for(file_path).read()
         return text
 
-    def import_dependents(self, import_target: str) -> tuple[Path, ...]:
+    def import_dependents(self, import_target: str) -> t.VariadicTuple[Path]:
         """Return cached module paths that semantically import ``import_target``."""
         if not import_target:
             return ()
@@ -240,7 +240,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
 
     def name_index(
         self,
-    ) -> t.MappingKV[str, tuple[tuple[Path, str, tuple[int, ...]], ...]]:
+    ) -> t.MappingKV[str, t.VariadicTuple[t.Triple[Path, str, t.VariadicTuple[int]]]]:
         """Return a cached ``{name: ((path, surface, lines), ...)}`` workspace index.
 
         Built once per workspace session via a single regex scan of every

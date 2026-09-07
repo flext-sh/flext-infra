@@ -75,7 +75,7 @@ class FlextInfraUtilitiesDocsApi:
     @classmethod
     def _imported_symbol_binding(
         cls, source: str, *, current_module: str, symbol_name: str, package_module: bool
-    ) -> tuple[str, str]:
+    ) -> t.Pair[str, str]:
         """Return the source module and original name for one imported symbol."""
         return FlextInfraUtilitiesRopeAnalysis.imported_symbol_binding_source(
             source,
@@ -539,7 +539,7 @@ class FlextInfraUtilitiesDocsApi:
     @staticmethod
     def _iter_docstring_checks(
         project_root: Path, contract: t.JsonMapping
-    ) -> t.SequenceOf[tuple[str, str, bool]]:
+    ) -> t.SequenceOf[t.Triple[str, str, bool]]:
         """Evaluate every public docstring target once (SSOT).
 
         Yields ``(rel_file, missing_message, documented)`` for the package
@@ -560,7 +560,7 @@ class FlextInfraUtilitiesDocsApi:
                 contract.get("module_exports", [])
             )
         )
-        results: t.MutableSequenceOf[tuple[str, str, bool]] = []
+        results: t.MutableSequenceOf[t.Triple[str, str, bool]] = []
         module_docstring_checks = [
             (module_name, f"public module `{module_name}` is missing a docstring")
             for module_name in module_list

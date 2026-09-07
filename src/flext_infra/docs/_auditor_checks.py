@@ -59,9 +59,8 @@ class FlextInfraDocAuditorChecksMixin:
         self, scope: m.Infra.DocScope, checks: t.StrSequence
     ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Collect issues for the requested check set in canonical order."""
-        handlers: tuple[
-            tuple[str, Callable[[m.Infra.DocScope], t.SequenceOf[m.Infra.AuditIssue]]],
-            ...,
+        handlers: t.VariadicTuple[
+            t.Pair[str, Callable[[m.Infra.DocScope], t.SequenceOf[m.Infra.AuditIssue]]]
         ] = (
             ("links", u.Infra.docs_broken_link_issues),
             ("forbidden-terms", self.forbidden_term_issues),

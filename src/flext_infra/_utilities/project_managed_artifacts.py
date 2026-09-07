@@ -18,7 +18,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
     @classmethod
     def snapshot_config_sources(
         cls, project_dir: Path
-    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         """Capture one stable, physical, direct ``config/*.yaml`` file set."""
         project_identity = cls._required_directory_identity(
             project_dir, purpose="project root"
@@ -61,7 +61,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
     @classmethod
     def _required_directory_identity(
         cls, path: Path, *, purpose: str
-    ) -> p.Result[tuple[int, ...]]:
+    ) -> p.Result[t.VariadicTuple[int]]:
         try:
             state = path.lstat()
         except OSError as exc:
@@ -75,7 +75,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         return r[tuple[int, ...]].ok(cls._directory_state_key(state))
 
     @classmethod
-    def _config_directory_identity(cls, config_dir: Path) -> p.Result[tuple[int, ...]]:
+    def _config_directory_identity(
+        cls, config_dir: Path
+    ) -> p.Result[t.VariadicTuple[int]]:
         try:
             state = config_dir.lstat()
         except FileNotFoundError:
@@ -102,8 +104,8 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
     @classmethod
     def _config_yaml_paths(
-        cls, config_dir: Path, expected_identity: tuple[int, ...]
-    ) -> p.Result[tuple[Path, ...]]:
+        cls, config_dir: Path, expected_identity: t.VariadicTuple[int]
+    ) -> p.Result[t.VariadicTuple[Path]]:
         try:
             paths = tuple(
                 sorted(path for path in config_dir.iterdir() if path.suffix == ".yaml")
@@ -120,7 +122,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         return r[tuple[Path, ...]].ok(paths)
 
     @staticmethod
-    def _directory_state_key(state: os.stat_result) -> tuple[int, ...]:
+    def _directory_state_key(state: os.stat_result) -> t.VariadicTuple[int]:
         return (
             state.st_dev,
             state.st_ino,
@@ -196,7 +198,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
     @classmethod
     def load_project_managed_artifacts_from_snapshot(
-        cls, source_snapshot: tuple[m.Cli.AtomicFileState, ...]
+        cls, source_snapshot: t.VariadicTuple[m.Cli.AtomicFileState]
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Parse one caller-owned immutable project YAML snapshot."""
         if not source_snapshot:
@@ -274,7 +276,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
     @classmethod
     def compose_mise_toml_from_snapshot(
-        cls, source_snapshot: tuple[m.Cli.AtomicFileState, ...], rendered: str
+        cls, source_snapshot: t.VariadicTuple[m.Cli.AtomicFileState], rendered: str
     ) -> p.Result[str]:
         """Add local tools from one caller-owned immutable YAML snapshot."""
         resolved = cls.load_project_managed_artifacts_from_snapshot(source_snapshot)
@@ -304,4 +306,4 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         return r[str].ok(u.Cli.toml_dumps(doc))
 
 
-__all__: tuple[str, ...] = ("FlextInfraUtilitiesProjectManagedArtifacts",)
+__all__: t.VariadicTuple[str] = ("FlextInfraUtilitiesProjectManagedArtifacts",)

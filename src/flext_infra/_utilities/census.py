@@ -98,7 +98,7 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.Census.RemovalCandidate,
         *,
         source_cache: dict[Path, str] | None = None,
-    ) -> t.MappingKV[Path, tuple[t.IntPair, ...]] | None:
+    ) -> t.MappingKV[Path, t.VariadicTuple[t.IntPair]] | None:
         """Plan safe line-range removals for simple top-level removal candidates."""
         if candidate.scope_path != candidate.object_name:
             return None
@@ -146,8 +146,8 @@ class FlextInfraUtilitiesRefactorCensus:
         source: str,
         candidate: m.Infra.Census.RemovalCandidate,
         *,
-        sites: tuple[m.Infra.Census.ReferenceSite, ...],
-    ) -> tuple[t.IntPair, ...] | None:
+        sites: t.VariadicTuple[m.Infra.Census.ReferenceSite],
+    ) -> t.VariadicTuple[t.IntPair] | None:
         """Plan removable top-level ranges for one support file."""
         planned_ranges: list[t.IntPair] = []
         for site in sites:
@@ -186,7 +186,7 @@ class FlextInfraUtilitiesRefactorCensus:
         source: str,
         *,
         imported_name: str,
-    ) -> tuple[int, ...]:
+    ) -> t.VariadicTuple[int]:
         """Return same-file occurrence lines for local aliases of ``imported_name``."""
         resource = rope.resource(file_path)
         if resource is None:
@@ -456,7 +456,7 @@ class FlextInfraUtilitiesRefactorCensus:
         return updates
 
     @staticmethod
-    def _strip_class_base(source: str, base_name: str) -> tuple[str, bool]:
+    def _strip_class_base(source: str, base_name: str) -> t.Pair[str, bool]:
         """Return (new_source, disqualified) after removing ``base_name`` from bases.
 
         Handles both single-line and multi-line class declarations. When the
@@ -506,7 +506,7 @@ class FlextInfraUtilitiesRefactorCensus:
     @staticmethod
     def _rewrite_class_header_bases(
         header: str, base_name: str
-    ) -> tuple[str, bool, bool]:
+    ) -> t.Triple[str, bool, bool]:
         """Rewrite one class header block after removing ``base_name`` from bases."""
         stripped_header = header.rstrip("\n")
         if "(" not in stripped_header or ")" not in stripped_header:
@@ -787,7 +787,9 @@ class FlextInfraUtilitiesRefactorCensus:
         return resolved_destination
 
     @staticmethod
-    def merge_line_ranges(ranges: t.SequenceOf[t.IntPair]) -> tuple[t.IntPair, ...]:
+    def merge_line_ranges(
+        ranges: t.SequenceOf[t.IntPair],
+    ) -> t.VariadicTuple[t.IntPair]:
         """Merge overlapping or adjacent 1-based inclusive line ranges."""
         if not ranges:
             return ()
@@ -804,9 +806,9 @@ class FlextInfraUtilitiesRefactorCensus:
     @staticmethod
     def _supporting_reference_sites(
         candidate: m.Infra.Census.RemovalCandidate,
-    ) -> tuple[m.Infra.Census.ReferenceSite, ...]:
+    ) -> t.VariadicTuple[m.Infra.Census.ReferenceSite]:
         """Supporting reference sites."""
-        sites: tuple[m.Infra.Census.ReferenceSite, ...] = tuple(
+        sites: t.VariadicTuple[m.Infra.Census.ReferenceSite] = tuple(
             candidate.script_reference_sites
         )
         return sites

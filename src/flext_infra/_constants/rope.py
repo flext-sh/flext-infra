@@ -9,6 +9,8 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import Final
 
+from flext_infra import t
+
 
 class FlextInfraConstantsRope:
     """Rope Project configuration constants — accessed via c.Infra.*."""
@@ -64,7 +66,7 @@ class FlextInfraConstantsRope:
     # tuples live in u.Infra (FlextInfraUtilitiesRopeRuntimeTypes), not in the
     # constants layer, to keep c.Infra declarative and cycle-free.
 
-    ROPE_IGNORED_RESOURCES: Final[tuple[str, ...]] = (
+    ROPE_IGNORED_RESOURCES: Final[t.VariadicTuple[str]] = (
         ".venv",
         "venv",
         "node_modules",

@@ -58,7 +58,7 @@ class FlextInfraUtilitiesRopeMethodOrderMixin:
     @staticmethod
     def build_method_sort_key(
         method: m.Infra.MethodInfo, order_config: t.SequenceOf[m.Infra.MethodOrderRule]
-    ) -> tuple[int, int, str]:
+    ) -> t.Triple[int, int, str]:
         """Build a sort key tuple for method ordering."""
         cls = FlextInfraUtilitiesRopeMethodOrderMixin
         for index, rule in enumerate(order_config):

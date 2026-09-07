@@ -9,11 +9,13 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.codegen import _mise_artifacts_files as files
+from flext_infra.codegen._mise_artifacts_files import (
+    FlextInfraMiseArtifactsFiles as files,
+)
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 class FlextInfraMiseWorkspacePlanner:
@@ -152,7 +154,7 @@ class FlextInfraMiseWorkspacePlanner:
     def select_layout(
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        config_plans: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
         """Select only projects owned by this conform request or direct caller."""
         if config_plans:
@@ -198,7 +200,7 @@ class FlextInfraMiseWorkspacePlanner:
     def layout_for_config_plans(
         self,
         scope_root: Path,
-        config_plans: tuple[m.Infra.CodegenFilePlan, ...],
+        config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         *,
         transaction_id: str | None = None,
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
@@ -243,7 +245,7 @@ class FlextInfraMiseWorkspacePlanner:
     def snapshot(
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        config_plans: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.MiseToolchainWorkspacePlan]:
         """Capture one complete byte-and-mode snapshot for a stable layout."""
         planned_configs = {item.path: item for item in config_plans}

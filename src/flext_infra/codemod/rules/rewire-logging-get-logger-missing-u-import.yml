@@ -1,0 +1,37 @@
+# Detection-only companion of rewire-logging-get-logger-to-fetch-logger.
+#
+# Flags stdlib logger construction in a module that does not bind `u`. The
+# correct call is `u.fetch_logger(...)`, but a blind textual fix would emit an
+# undefined name (Ruff F821 / Pyrefly missing-name), and ast-grep cannot
+# conditionally insert an import in a single textual `fix` — the same constraint
+# that keeps require-future-annotations detection-only. Bind `u` first; the
+# auto-fixing rule then rewrites the call.
+id: rewire-logging-get-logger-missing-u-import
+language: python
+severity: error
+files:
+  - "src/**/*.py"
+  - "tests/**/*.py"
+rule:
+  all:
+    - any:
+        - pattern: logging.getLogger($$$ARGS)
+        - all:
+            - pattern: getLogger($$$ARGS)
+            - inside:
+                kind: module
+                stopBy: end
+                has:
+                  stopBy: end
+                  matches: get-logger-imported-from-logging
+    - inside:
+        kind: module
+        stopBy: end
+        not:
+          has:
+            stopBy: end
+            matches: u-imported-from-flext
+message: >-
+  Stdlib logger construction must become u.fetch_logger(...), but this module
+  does not bind the utilities facade `u`. Add the facade import first; no
+  auto-fix here avoids emitting an undefined name.

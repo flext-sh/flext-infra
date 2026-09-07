@@ -43,7 +43,7 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
             return None
 
         @staticmethod
-        def import_aliases(node: cst.ImportFrom) -> tuple[cst.ImportAlias, ...]:
+        def import_aliases(node: cst.ImportFrom) -> t.VariadicTuple[cst.ImportAlias]:
             """Return plain import aliases, ignoring ``*`` imports."""
             if isinstance(node.names, cst.ImportStar):
                 return ()

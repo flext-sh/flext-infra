@@ -17,10 +17,6 @@ from flext_infra.transformers.hardcoded_version import (
 )
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
 from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransformer
-from flext_infra.transformers.typing_dict_attr import FlextInfraRefactorTypingDictAttr
-from flext_infra.transformers.typing_dict_import import (
-    FlextInfraRefactorTypingDictImport,
-)
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 from flext_tests import tm
 
@@ -36,8 +32,6 @@ def _transform(
     | FlextInfraRefactorHardcodedVersion
     | FlextInfraRefactorOpenEncoding
     | FlextInfraRefactorPatternTransformer
-    | FlextInfraRefactorTypingDictAttr
-    | FlextInfraRefactorTypingDictImport
     | FlextInfraRefactorTypingUnifier,
 ) -> tuple[str, Sequence[str]]:
     """Apply a stateless transformer to source text."""
@@ -182,109 +176,6 @@ class TestsFlextInfraTransformersOpenEncoding:
         """Verify path open write binary mode unchanged."""
         source = 'with Path("x.bin").open("wb") as f:\n    pass\n'
         code, changes = _transform(source, FlextInfraRefactorOpenEncoding())
-        tm.that(code, eq=source)
-        tm.that(changes, eq=[])
-
-
-class TestsFlextInfraTransformersTypingDictImport:
-    """Behavior contract for FlextInfraRefactorTypingDictImport."""
-
-    def test_typing_dict_import_removed_and_rewritten(self, tmp_path: Path) -> None:
-        """Verify typing dict import removed and rewritten."""
-        source = (
-            "from typing import Dict, List\n\n"
-            "def foo(x: Dict[str, int]) -> None:\n    pass\n"
-        )
-        transformer = FlextInfraRefactorTypingDictImport(
-            file_path=tmp_path / "module.py"
-        )
-        code, changes = transformer.apply_to_source(source)
-        tm.that(code, lacks="from typing import Dict")
-        tm.that(code, has="from typing import List")
-        tm.that(code, has="t.MappingKV[str, int]")
-        tm.that(code, has="from flext_core import t")
-        tm.that(changes, empty=False)
-
-    def test_typing_dict_import_only_removed_when_empty(self, tmp_path: Path) -> None:
-        """Verify typing dict import only removed when empty."""
-        source = (
-            "from typing import Dict\n\ndef foo(x: Dict[str, int]) -> None:\n    pass\n"
-        )
-        transformer = FlextInfraRefactorTypingDictImport(
-            file_path=tmp_path / "module.py"
-        )
-        code, changes = transformer.apply_to_source(source)
-        tm.that(code, lacks="from typing import")
-        tm.that(code, has="t.MappingKV[str, int]")
-        tm.that(changes, empty=False)
-
-    def test_t_import_not_duplicated(self, tmp_path: Path) -> None:
-        """Verify t import not duplicated."""
-        source = (
-            "from typing import Dict\n"
-            "from flext_core import t\n\n"
-            "def foo(x: Dict[str, int]) -> None:\n    pass\n"
-        )
-        transformer = FlextInfraRefactorTypingDictImport(
-            file_path=tmp_path / "module.py"
-        )
-        code, changes = transformer.apply_to_source(source)
-        tm.that(code.count("from flext_core import t"), eq=1)
-        tm.that(code, has="t.MappingKV[str, int]")
-        tm.that(changes, empty=False)
-
-    def test_no_dict_does_not_add_t_import(self, tmp_path: Path) -> None:
-        """Verify no dict does not add t import."""
-        source = (
-            "from __future__ import annotations\n\n"
-            "def foo(result):\n"
-            "    assert result.success\n"
-        )
-        transformer = FlextInfraRefactorTypingDictImport(
-            file_path=tmp_path / "module.py"
-        )
-        code, changes = transformer.apply_to_source(source)
-        tm.that(code, eq=source)
-        tm.that(changes, eq=[])
-
-
-class TestsFlextInfraTransformersTypingDictAttr:
-    """Behavior contract for FlextInfraRefactorTypingDictAttr."""
-
-    def test_typing_dict_attr_rewritten(self, tmp_path: Path) -> None:
-        """Verify typing dict attr rewritten."""
-        source = (
-            "import typing\n\ndef foo(x: typing.Dict[str, int]) -> None:\n    pass\n"
-        )
-        transformer = FlextInfraRefactorTypingDictAttr(file_path=tmp_path / "module.py")
-        code, changes = transformer.apply_to_source(source)
-        tm.that(code, lacks="typing.Dict")
-        tm.that(code, has="t.MappingKV[str, int]")
-        tm.that(code, has="from flext_core import t")
-        tm.that(changes, empty=False)
-
-    def test_t_import_not_duplicated(self, tmp_path: Path) -> None:
-        """Verify t import not duplicated."""
-        source = (
-            "import typing\n"
-            "from flext_core import t\n\n"
-            "def foo(x: typing.Dict[str, int]) -> None:\n    pass\n"
-        )
-        transformer = FlextInfraRefactorTypingDictAttr(file_path=tmp_path / "module.py")
-        code, changes = transformer.apply_to_source(source)
-        tm.that(code.count("from flext_core import t"), eq=1)
-        tm.that(code, has="t.MappingKV[str, int]")
-        tm.that(changes, empty=False)
-
-    def test_no_typing_dict_does_not_add_t_import(self, tmp_path: Path) -> None:
-        """Verify no typing dict does not add t import."""
-        source = (
-            "from __future__ import annotations\n\n"
-            "def foo(result):\n"
-            "    assert result.success\n"
-        )
-        transformer = FlextInfraRefactorTypingDictAttr(file_path=tmp_path / "module.py")
-        code, changes = transformer.apply_to_source(source)
         tm.that(code, eq=source)
         tm.that(changes, eq=[])
 

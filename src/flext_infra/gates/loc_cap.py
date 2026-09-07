@@ -37,7 +37,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse scc JSON into one Issue per over-cap module."""
         _ = project_dir, ctx
         if not u.Cli.process_succeeded(result.outcome):
@@ -58,7 +58,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
         return len(issues) == 0, issues
 
     @staticmethod
-    def _file_code_line(file_entry: t.JsonValue) -> tuple[str, int] | None:
+    def _file_code_line(file_entry: t.JsonValue) -> t.Pair[str, int] | None:
         """Return one scc by-file entry's ``(path, code)`` pair, or ``None``."""
         if not isinstance(file_entry, Mapping):
             return None
@@ -69,7 +69,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
     @classmethod
     def _python_language_files(
         cls, language_entry: t.JsonValue
-    ) -> t.SequenceOf[tuple[str, int]]:
+    ) -> t.SequenceOf[t.Pair[str, int]]:
         """Return every ``(path, code)`` pair from one scc language entry.
 
         Yields nothing for a non-Python entry or one carrying no file list.
@@ -87,11 +87,11 @@ class FlextInfraLocCapGate(FlextInfraGate):
     @classmethod
     def _python_file_code_lines(
         cls, data: t.JsonValue
-    ) -> t.SequenceOf[tuple[str, int]]:
+    ) -> t.SequenceOf[t.Pair[str, int]]:
         """Return every Python file's ``(path, code)`` pair across an scc payload."""
         if not isinstance(data, list):
             return ()
-        pairs: t.MutableSequenceOf[tuple[str, int]] = []
+        pairs: t.MutableSequenceOf[t.Pair[str, int]] = []
         for language_entry in data:
             pairs.extend(cls._python_language_files(language_entry))
         return tuple(pairs)
@@ -109,7 +109,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
         )
 
     @classmethod
-    def _files_over_cap(cls, scc_json: str, cap: int) -> tuple[m.Infra.Issue, ...]:
+    def _files_over_cap(cls, scc_json: str, cap: int) -> t.VariadicTuple[m.Infra.Issue]:
         """Extract over-cap modules from an `scc --format json --by-file` payload.
 
         Pure function (no subprocess) so the cap logic is unit-testable against

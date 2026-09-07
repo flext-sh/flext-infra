@@ -252,7 +252,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     @classmethod
     def _resolve_family(
         cls, file_path: Path
-    ) -> tuple[str | None, str | None, str | None, t.StrSequence]:
+    ) -> t.Quad[str | None, str | None, str | None, t.StrSequence]:
         """Return (family_alias, expected_family, expected_alias, family_tokens)."""
         family_alias = next(
             (
@@ -480,7 +480,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     @classmethod
     def parse_namespace_validation(
         cls, validation: p.Result[m.Infra.ValidationReport]
-    ) -> p.Result[tuple[m.Infra.CensusViolation, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.CensusViolation]]:
         """Convert validator output into typed census violations."""
         if validation.failure:
             return r[tuple[m.Infra.CensusViolation, ...]].from_failure(validation)
@@ -632,8 +632,9 @@ class FlextInfraUtilitiesCodegenNamespace:
         project_path: Path,
         initial_violations: t.SequenceOf[m.Infra.CensusViolation],
         remaining_violations: t.SequenceOf[m.Infra.CensusViolation],
-    ) -> tuple[
-        tuple[m.Infra.CensusViolation, ...], tuple[m.Infra.CensusViolation, ...]
+    ) -> t.Pair[
+        t.VariadicTuple[m.Infra.CensusViolation],
+        t.VariadicTuple[m.Infra.CensusViolation],
     ]:
         """Split initial violations into fixed and still-skipped groups."""
         if not initial_violations:

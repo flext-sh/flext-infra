@@ -100,7 +100,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             t.StrSequence, m.Field(min_length=1, description="Exactly covered gates")
         ]
         commands: Annotated[
-            tuple[FlextInfraModelsGates.GateCommandEvidence, ...],
+            t.VariadicTuple[FlextInfraModelsGates.GateCommandEvidence],
             m.Field(min_length=1, description="Successful canonical invocations"),
         ]
 

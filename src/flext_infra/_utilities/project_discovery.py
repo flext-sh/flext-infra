@@ -59,7 +59,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         configured_order = {name: idx for idx, name in enumerate(configured_projects)}
         ordered: list[Path] = []
 
-        def configured_key(candidate: Path) -> tuple[int, str]:
+        def configured_key(candidate: Path) -> t.Pair[int, str]:
             relative = candidate.relative_to(resolved_repository_root).as_posix()
             return configured_order.get(
                 relative, len(configured_projects)

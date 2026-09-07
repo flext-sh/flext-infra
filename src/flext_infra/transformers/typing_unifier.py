@@ -109,28 +109,27 @@ class FlextInfraRefactorTypingUnifier(
             module = ast.parse(source)
         except SyntaxError:
             return source
-        # A function-local annotation is not a contract. Rewriting one to an
-        # abstract container broke every call that hands the value to a
-        # concretely typed parameter, including APIs owned by other packages
-        # that this repository cannot widen. The policy governs the interface:
-        # parameters, return types, and class or module level declarations.
-        local_declarations = {
-            declaration
-            for node in ast.walk(module)
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
-            for statement in node.body
-            for declaration in ast.walk(statement)
-            if isinstance(declaration, ast.AnnAssign)
-        }
+        # What this transformer can prove from one module is a parameter: every
+        # use of a parameter is inside its own function, so a mutation scan
+        # over this module sees all of them. Declarations are excluded below
+        # for the opposite reason, which also retires the separate
+        # function-local exclusion that used to live here -- a local
+        # declaration is a declaration.
         mutated = self._mutated_names(module)
         spans: t.MutableSequenceOf[t.Pair[int, int]] = []
         for node in ast.walk(module):
             annotations: list[ast.expr | None] = []
             if isinstance(node, ast.AnnAssign):
-                target = node.target
-                if node in local_declarations or (
-                    isinstance(target, ast.Name) and target.id in mutated
-                ):
+                # A declaration cannot be proven read-only from one module: its
+                # name is reachable wherever the object is. The lazy-init
+                # planner declares `_module_exports_cache` in a base class and
+                # writes it from a mixin in another file, so a per-module scan
+                # saw a read-only field, widened it to Mapping, and made every
+                # write site in that other module an error. So a declaration
+                # gets only the rewrites that change no capability -- the tuple
+                # aliases and the Any/object replacements, which are exact
+                # synonyms -- and never a container widening.
+                if self._widens_a_container(source, node.annotation):
                     continue
                 annotations.append(node.annotation)
             elif isinstance(node, ast.arg):
@@ -139,7 +138,7 @@ class FlextInfraRefactorTypingUnifier(
                 annotations.append(node.annotation)
             elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 returns = node.returns
-                if returns is not None and self._narrows_a_return(source, returns):
+                if returns is not None and self._widens_a_container(source, returns):
                     continue
                 annotations.append(returns)
             for annotation in annotations:
@@ -162,31 +161,29 @@ class FlextInfraRefactorTypingUnifier(
             rewritten = f"{rewritten[:start]}{replacement}{rewritten[end:]}"
         return rewritten
 
-    def _narrows_a_return(self, source: str, returns: ast.expr) -> bool:
-        """Return whether rewriting this return type would narrow the contract.
+    def _widens_a_container(self, source: str, annotation: ast.expr) -> bool:
+        """Return whether rewriting this annotation would change a capability.
 
-        Widening a parameter is free: a function that accepts Mapping accepts
-        strictly more callers than one that demands dict. A return type is the
-        opposite -- it is what the function promises, and handing back a
-        read-only view takes capability away from every existing caller, which
-        no mechanical fixer is entitled to decide. The tuple aliases are exact
-        synonyms and stay, so a return still gains Pair, Triple and
-        VariadicTuple; a return carrying a mutable container keeps it and its
-        namespace finding, which is the signal that a person should choose the
-        contract.
+        Only a parameter can be widened for free: a function accepting Mapping
+        accepts strictly more callers than one demanding dict. A return type
+        promises what the caller receives, and a declaration names something
+        whose writers may live in another module -- for both, handing back a
+        read-only view takes capability away. The tuple aliases and the
+        Any/object replacements are exact synonyms and are always allowed, so
+        what this refuses is precisely a `dict`/`list` widening; the annotation
+        keeps its namespace finding, which is the signal that a person should
+        choose the contract.
         """
-        end_lineno = returns.end_lineno
-        end_col = returns.end_col_offset
+        end_lineno = annotation.end_lineno
+        end_col = annotation.end_col_offset
         if end_lineno is None or end_col is None:
             return True
         text = source[
-            self._offset(source, returns.lineno, returns.col_offset) : self._offset(
-                source, end_lineno, end_col
-            )
+            self._offset(
+                source, annotation.lineno, annotation.col_offset
+            ) : self._offset(source, end_lineno, end_col)
         ]
-        return any(
-            prefix in text for prefix in ("dict[", "Dict[", "list[", "List[")
-        )
+        return any(prefix in text for prefix in ("dict[", "Dict[", "list[", "List["))
 
     @staticmethod
     def _mutated_names(module: ast.Module) -> frozenset[str]:
@@ -218,9 +215,7 @@ class FlextInfraRefactorTypingUnifier(
                             FlextInfraRefactorTypingUnifier._mutated_root(target.value)
                         )
             elif isinstance(node, ast.AugAssign):
-                names.update(
-                    FlextInfraRefactorTypingUnifier._mutated_root(node.target)
-                )
+                names.update(FlextInfraRefactorTypingUnifier._mutated_root(node.target))
             elif isinstance(node, ast.Delete):
                 for target in node.targets:
                     if isinstance(target, ast.Subscript):

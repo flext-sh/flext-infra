@@ -92,7 +92,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         report_dir: Path, diagnostics: m.Infra.PytestDiagnostics
     ) -> None:
         """Persist each typed diagnostics channel."""
-        outputs: tuple[tuple[str, t.StrSequence, str], ...] = (
+        outputs: t.VariadicTuple[t.Triple[str, t.StrSequence, str]] = (
             ("failed-tests.txt", diagnostics.failed_cases, "\n\n"),
             ("errors.txt", diagnostics.error_traces, "\n\n"),
             ("warnings.txt", diagnostics.warning_lines, "\n"),

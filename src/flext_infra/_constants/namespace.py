@@ -5,6 +5,8 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import Final
 
+from flext_infra import t
+
 
 class FlextInfraConstantsNamespace:
     """Namespace constants shared by bootstrap-sensitive utilities."""
@@ -29,7 +31,7 @@ class FlextInfraConstantsNamespace:
         "cli",
         "main",
     })
-    NAMESPACE_LAYER_ORDER: Final[tuple[str, ...]] = (
+    NAMESPACE_LAYER_ORDER: Final[t.VariadicTuple[str]] = (
         "settings",
         "config",
         "c",
@@ -42,7 +44,14 @@ class FlextInfraConstantsNamespace:
         "api",
         "cli",
     )
-    NAMESPACE_OPERATION_FACADES: Final[tuple[str, ...]] = ("r", "e", "x", "h", "d", "s")
+    NAMESPACE_OPERATION_FACADES: Final[t.VariadicTuple[str]] = (
+        "r",
+        "e",
+        "x",
+        "h",
+        "d",
+        "s",
+    )
     NAMESPACE_LAYER_BY_FILE: Final[MappingProxyType[str, str]] = MappingProxyType({
         "settings.py": "settings",
         "_settings.py": "settings",

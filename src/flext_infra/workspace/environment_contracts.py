@@ -11,6 +11,8 @@ import re
 from pathlib import Path
 from typing import Final
 
+from flext_infra import t
+
 _UNGUARDED_DIRENV_DIR: Final[re.Pattern[str]] = re.compile(
     r"\$\{?DIRENV_DIR(?![\s]*[:\-])"
 )
@@ -40,7 +42,7 @@ def _resolve_env_target(raw: str, root: Path, *, resolve_home: bool) -> Path | N
 
 def envrc_contract_violations(
     content: str, *, root: Path, resolve_home: bool = True
-) -> tuple[str, ...]:
+) -> t.VariadicTuple[str]:
     """Return one message per direnv contract violation in ``content``.
 
     Contracts enforced:
@@ -76,4 +78,4 @@ def envrc_contract_violations(
     return tuple(violations)
 
 
-__all__: tuple[str, ...] = ("envrc_contract_violations",)
+__all__: t.VariadicTuple[str] = ("envrc_contract_violations",)
