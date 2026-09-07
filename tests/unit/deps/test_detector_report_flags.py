@@ -5,10 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-<<<<<<< HEAD
 from flext_infra import m, r
-=======
->>>>>>> origin/0.12.0-dev
 from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u
 
@@ -16,7 +13,6 @@ if TYPE_CHECKING:
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 
 
-<<<<<<< HEAD
 class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
     def __init__(self, project: Path, raw_count: int, pip_exit: int) -> None:
         self._project = project
@@ -65,11 +61,6 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
 
 
 def _setup(tmp_path: Path, deps: _DepsStub) -> FlextInfraRuntimeDevDependencyDetector:
-=======
-def _setup(
-    tmp_path: Path, deps: u.Tests.DepsReportStub
-) -> FlextInfraRuntimeDevDependencyDetector:
->>>>>>> origin/0.12.0-dev
     detector: FlextInfraRuntimeDevDependencyDetector = u.Tests.setup_detector_runtime(
         tmp_path, deps
     )

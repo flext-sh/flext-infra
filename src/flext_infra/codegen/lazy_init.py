@@ -72,11 +72,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         self._duplicate_class_names = 0
         if not self.repository_root.is_dir():
             return r[m.Infra.CodegenPhaseAnalysis].fail(
-<<<<<<< HEAD
                 f"lazy-init repository is not a directory: {self.repository_root}"
-=======
-                f"lazy-init workspace is not a directory: {self.repository_root}"
->>>>>>> origin/0.12.0-dev
             )
         started_at = perf_counter()
         u.Cli.info(
