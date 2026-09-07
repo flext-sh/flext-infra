@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from fnmatch import fnmatchcase
 from hashlib import sha256
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import TYPE_CHECKING, Annotated, ClassVar, TypeIs, override
 from urllib.parse import urlsplit
 
 from flext_core import r
@@ -341,6 +341,26 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             character in "0123456789abcdef" for character in digest
         )
 
+    @staticmethod
+    def _shell_launcher_version(content: str) -> str | None:
+        prefix = 'local mise_version="${MISE_VERSION:-'
+        suffix = '}"'
+        for raw_line in content.splitlines():
+            line = raw_line.strip()
+            if line.startswith(prefix) and line.endswith(suffix):
+                return line.removeprefix(prefix).removesuffix(suffix)
+        return None
+
+    @staticmethod
+    def is_mise_release(value: str | None) -> TypeIs[str]:
+        """Return whether a runtime identity is an exact Mise release."""
+        if value is None:
+            return False
+        parts = value.split(".")
+        return len(parts) == c.Infra.MISE_RELEASE_COMPONENT_COUNT and all(
+            part.isdecimal() for part in parts
+        )
+
     @classmethod
     def launcher_release(cls, root: Path) -> p.Result[str]:
         """Return the one exact release embedded by both generated launchers."""
@@ -396,8 +416,8 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         """Validate one native staged bootstrap seed without executing live bytes."""
         source = u.Cli.files_read_text(path)
         if source.failure:
-            return r[str].from_failure(source)
-        windows = path.name == "mise.cmd"
+            return r[str].fail(source.error or f"missing generated Mise seed: {path}")
+        windows = path.name == c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME
         release = (
             cls._assignment(source.value, "pinned_version")
             if windows
@@ -406,24 +426,50 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         if release is None or not cls.is_mise_release(release):
             return r[str].fail(f"Mise seed has an invalid release: {path}")
         try:
-            shell_mode = shell_path.stat().st_mode
+            mode = path.stat().st_mode
         except OSError as exc:
-            return r[bool].fail(f"cannot inspect generated Mise launcher: {exc}")
-        if not shell_mode & 0o100:
-            return r[bool].fail("generated Unix Mise launcher is not executable")
-        shell_checksums = (
-            "checksum_linux_x86_64",
-            "checksum_linux_x86_64_musl",
-            "checksum_linux_arm64",
-            "checksum_linux_arm64_musl",
-            "checksum_macos_x86_64",
-            "checksum_macos_arm64",
+            return r[str].fail(f"cannot inspect generated Mise seed: {exc}")
+        if not windows and not mode & 0o100:
+            return r[str].fail("generated Unix Mise seed is not executable")
+        checksums = (
+            ("sum_x64", "sum_arm64")
+            if windows
+            else (
+                "checksum_linux_x86_64",
+                "checksum_linux_x86_64_musl",
+                "checksum_linux_arm64",
+                "checksum_linux_arm64_musl",
+                "checksum_linux_armv7",
+                "checksum_linux_armv7_musl",
+                "checksum_macos_x86_64",
+                "checksum_macos_arm64",
+                "checksum_linux_x86_64_zstd",
+                "checksum_linux_x86_64_musl_zstd",
+                "checksum_linux_arm64_zstd",
+                "checksum_linux_arm64_musl_zstd",
+                "checksum_linux_armv7_zstd",
+                "checksum_linux_armv7_musl_zstd",
+                "checksum_macos_x86_64_zstd",
+                "checksum_macos_arm64_zstd",
+            )
         )
-        for checksum_name in shell_checksums:
-            if not cls._is_sha256(cls._assignment(shell_source.value, checksum_name)):
-                return r[bool].fail(f"Mise launcher checksum missing: {checksum_name}")
-        if not cls._is_sha256(cls._assignment(windows_source.value, "sum_x64")):
-            return r[bool].fail("Mise launcher checksum missing: windows-x64")
+        for checksum_name in checksums:
+            assignment = cls._assignment(source.value, checksum_name)
+            digest = (
+                assignment if windows or assignment is None else assignment.split()[0]
+            )
+            if not cls._is_sha256(digest):
+                return r[str].fail(
+                    f"Mise seed checksum missing in {path.name}: {checksum_name}"
+                )
+        return r[str].ok(release)
+
+    @classmethod
+    def validate_launchers(cls, root: Path) -> p.Result[bool]:
+        """Validate both generated launchers and their identical release."""
+        release = cls.launcher_release(root)
+        if release.failure:
+            return r[bool].from_failure(release)
         return r[bool].ok(True)
 
     def validate_artifacts(self, project_root: Path) -> p.Result[bool]:
@@ -432,14 +478,11 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         if config_result.failure:
             return r[bool].from_failure(config_result)
         raw_settings = config_result.value.get("settings")
-        raw_tool_config = config_result.value.get("tool_config")
         if (
             not isinstance(raw_settings, Mapping)
             or raw_settings.get("lockfile") is not True
-            or not isinstance(raw_tool_config, Mapping)
-            or raw_tool_config.get("locked") is not True
         ):
-            return r[bool].fail(".mise.toml must enable lockfile and locked mode")
+            return r[bool].fail(".mise.toml must enable lockfile metadata")
         tools_result = self._tool_specifiers(config_result.value)
         if tools_result.failure:
             return r[bool].from_failure(tools_result)
@@ -481,15 +524,11 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                 return r[bool].fail(f"Mise lock specifier drift for {selector}")
             if selector.startswith("github:") and entry.backend != selector:
                 return r[bool].fail(f"Mise lock backend drift for {selector}")
-            excluded = frozenset(
-                toolchain.mise_lock_platform_exclusions.get(selector, ())
-            )
-            expected_platforms = declared_platforms - excluded
             actual_platforms = frozenset(entry.platforms)
             if not actual_platforms <= declared_platforms:
                 return r[bool].fail(
                     f"Mise lock platform metadata mismatch for {selector}: "
-                    f"expected={sorted(expected_platforms)} "
+                    f"declared={sorted(declared_platforms)} "
                     f"actual={sorted(actual_platforms)}"
                 )
         return r[bool].ok(True)
@@ -507,25 +546,20 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         if suspended.failure:
             return suspended
         raw_settings = config_result.value.get("settings")
-        raw_tool_config = config_result.value.get("tool_config")
         if self.config_only:
             if (
                 not isinstance(raw_settings, Mapping)
                 or raw_settings.get("lockfile") is not True
-                or not isinstance(raw_tool_config, Mapping)
-                or raw_tool_config.get("locked") is not True
             ):
-                return r[bool].fail(".mise.toml must enable lockfile and locked mode")
+                return r[bool].fail(".mise.toml must enable lockfile metadata")
             return r[bool].ok(True)
         if not self.effective_dry_run:
             return self._hydrate_lock_checksums(configured_tools=tools_result.value)
         if (
             not isinstance(raw_settings, Mapping)
             or raw_settings.get("lockfile") is not True
-            or not isinstance(raw_tool_config, Mapping)
-            or raw_tool_config.get("locked") is not True
         ):
-            return r[bool].fail(".mise.toml must enable lockfile and locked mode")
+            return r[bool].fail(".mise.toml must enable lockfile metadata")
         lock_result = self._read_toml(self.workspace_root / "mise.lock")
         if lock_result.failure:
             return r[bool].fail(lock_result.error or "invalid mise.lock")
@@ -536,7 +570,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             lock = m.Infra.MiseLockSpec.model_validate(normalized_lock.value)
         except c.ValidationError as exc:
             return r[bool].fail(f"invalid mise.lock metadata: {exc}")
-        launcher_result = self._validate_launchers(self.workspace_root)
+        launcher_result = self.validate_launchers(self.workspace_root)
         if launcher_result.failure:
             return launcher_result
         return self._validate_lock(lock, configured_tools=tools_result.value)
