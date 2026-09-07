@@ -727,6 +727,13 @@ Infra:
           - "!**/tmp/**"
           - "!**/vendor/**"
           - "**/*.{md,mkd,mdwn,mdown,markdown,markdn,mdtxt,mdtext,workbook}"
+        yaml.disableSchemaDetection:
+          - "**/.github/workflows/*.yml"
+          - "**/.github/workflows/*.yaml"
+          - "**/.gitea/workflows/*.yml"
+          - "**/.gitea/workflows/*.yaml"
+          - "**/.forgejo/workflows/*.yml"
+          - "**/.forgejo/workflows/*.yaml"
       map_union_settings:
         "[python]":
           diffEditor.ignoreTrimWhitespace: true
