@@ -33,7 +33,9 @@ def test_docs_cli_validate_fails_before_generation(tmp_path: Path) -> None:
     tm.that((workspace / "flext-a/.reports/docs/validate-report.md").exists(), eq=True)
 
 
-def test_docs_cli_validate_apply_passes_after_generate_apply(tmp_path: Path) -> None:
+def test_docs_cli_generate_apply_rejects_a_second_publication_owner(
+    tmp_path: Path,
+) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 
     tm.that(
@@ -47,25 +49,7 @@ def test_docs_cli_validate_apply_passes_after_generate_apply(tmp_path: Path) -> 
                 "--projects",
                 "flext-a",
             ])
-            == 0
+            == 1
         ),
         eq=True,
     )
-    tm.that(
-        (
-            infra_main([
-                "docs",
-                "validate",
-                "--workspace",
-                str(workspace),
-                "--apply",
-                "--projects",
-                "flext-a",
-            ])
-            == 0
-        ),
-        eq=True,
-    )
-    tm.that((workspace / ".reports/docs/validate-report.md").exists(), eq=True)
-    tm.that((workspace / "flext-a/.reports/docs/validate-report.md").exists(), eq=True)
-    tm.that((workspace / "flext-a/TODOS.md").exists(), eq=True)

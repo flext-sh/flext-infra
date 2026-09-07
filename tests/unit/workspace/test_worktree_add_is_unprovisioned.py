@@ -24,7 +24,7 @@ def test_worktree_add_does_not_run_setup(tmp_path: Path) -> None:
     lane = Path(
         tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=repository,
+                repository_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch="feature/unprovisioned",
                 base="HEAD",

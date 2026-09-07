@@ -38,22 +38,14 @@ jobs:
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
 
-      - name: Install mise toolchain
-        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
-        with:
-          version: {{ mise_version }}
-
       - name: Sync workspace toolchain
         run: make setup
 
       - name: Generation drift (blocking)
-        run: make gen WHAT=check
+        run: make conform {{ make.apply_variable }}={{ make.apply_value }}
 
-      - name: Docs audit (blocking)
-        run: make docs WHAT=audit
-
-      - name: Docs validate (blocking)
-        run: make docs WHAT=validate
+      - name: Docs lifecycle (blocking)
+        run: make docs {{ make.apply_variable }}={{ make.apply_value }}
 
       # Failure diagnostics execute only after the original Make step has
       # already propagated its exact status to Actions.
@@ -92,7 +84,7 @@ jobs:
             apps/*/.reports/**/audit-report.md
             apps/*/.reports/**/validate-summary.json
             apps/*/.reports/**/validate-report.md
-          if-no-files-found: ignore
+          if-no-files-found: error
           retention-days: 7
 
   build:
@@ -110,16 +102,11 @@ jobs:
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
 
-      - name: Install mise toolchain
-        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
-        with:
-          version: {{ mise_version }}
-
       - name: Sync workspace toolchain
         run: make setup
 
       - name: Build site
-        run: make docs WHAT=build
+        run: make docs {{ make.apply_variable }}={{ make.apply_value }}
 
       - name: Verify byte-identical repository
         run: |

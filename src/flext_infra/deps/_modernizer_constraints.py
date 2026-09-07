@@ -24,7 +24,7 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
         locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence,
         location: str,
-    ) -> tuple[t.JsonValueList | None, t.StrSequence]:
+    ) -> t.Pair[t.JsonValueList | None, t.StrSequence]:
         """Rewrite one sequence of PEP 621 requirement strings in place."""
         if not isinstance(raw_requirements, list):
             return (None, [])

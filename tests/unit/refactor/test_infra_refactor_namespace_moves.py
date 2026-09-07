@@ -49,6 +49,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 "from typing import Protocol\n\n"
                 "class External(Protocol):\n"
                 "    def call(self) -> str:\n"
+                '        """Return the external value."""\n'
                 "        ...\n"
             ),
         )
@@ -119,8 +120,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         source_text = source_file.read_text(encoding="utf-8")
         typings_text = typings_file.read_text(encoding="utf-8")
         tm.that(source_text, lacks="PayloadMap: TypeAlias = t.StrMapping")
-        tm.that(typings_text, has="PayloadMap: TypeAlias = t.StrMapping")
-        tm.that(typings_text, has="from typing import TypeAlias")
+        tm.that(typings_text, has="type PayloadMap = t.StrMapping")
+        tm.that(typings_text, lacks="from typing import TypeAlias")
         tm.that(typings_text, has="from flext_core import t")
         tm.that(source_file.with_suffix(".py.bak").exists(), eq=True)
         tm.that(typings_file.with_suffix(".py.bak").exists(), eq=True)

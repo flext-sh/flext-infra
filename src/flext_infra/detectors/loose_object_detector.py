@@ -27,7 +27,7 @@ class FlextInfraLooseObjectDetector:
             file_path=ctx.file_path, project_root=ctx.project_root
         ):
             return []
-        if cls._is_pytest_test_module(ctx.file_path):
+        if u.Infra.is_pytest_test_module(ctx.file_path):
             return []
         if cls._is_generated_lazy_registry(ctx.file_path):
             return []
@@ -125,30 +125,18 @@ class FlextInfraLooseObjectDetector:
     @classmethod
     def _is_src_file(cls, *, file_path: Path, project_root: Path) -> bool:
         """Return whether the path belongs to the project source tree."""
-        try:
-            relative_path = file_path.resolve().relative_to(project_root.resolve())
-        except ValueError:
+        resolved_path = file_path.resolve()
+        resolved_root = project_root.resolve()
+        if not resolved_path.is_relative_to(resolved_root):
             return False
-        return (
-            bool(relative_path.parts)
-            and relative_path.parts[0] == c.Infra.DEFAULT_SRC_DIR
-        )
+        parts = resolved_path.relative_to(resolved_root).parts
+        return bool(parts) and parts[0] == c.Infra.DEFAULT_SRC_DIR
 
     @classmethod
     def _is_generated_lazy_registry(cls, file_path: Path) -> bool:
         """Return whether the file is generated lazy export registry plumbing."""
         root_exports_filename: str = c.Infra.ROOT_EXPORTS_FILENAME
         return file_path.name == root_exports_filename
-
-    @classmethod
-    def _is_pytest_test_module(cls, file_path: Path) -> bool:
-        """Return whether a file is a pytest module, not a production module."""
-        if c.Infra.DIR_TESTS not in file_path.parts:
-            return False
-        file_name = file_path.name
-        return file_name.startswith(
-            c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX
-        ) or file_name.endswith(tuple(c.Infra.NAMESPACE_PYTEST_MODULE_SUFFIXES))
 
     @classmethod
     def _allows_private_base_module_classes(
@@ -178,7 +166,7 @@ class FlextInfraLooseObjectDetector:
         _ = rope_project
         statements = u.Infra.logical_statements(resource.read())
         file_str = str(file_path)
-        seen: set[tuple[int, str]] = set()
+        seen: set[t.Pair[int, str]] = set()
         violations: list[m.Infra.LooseObjectViolation] = []
 
         def _add(line: int, name: str, kind: str, suffix: str) -> None:

@@ -35,9 +35,7 @@ class FlextInfraCodegenConsolidatorStepsMixin:
             return r[t.StrMapping].ok({})
         read = u.Cli.files_read_text(constants_file)
         if read.failure:
-            return r[t.StrMapping].fail(
-                read.error or f"unreadable constants file: {constants_file}"
-            )
+            return r[t.StrMapping].from_failure(read)
         value_map: t.MutableStrMapping = {}
         for name, _, raw, class_path, _ in u.Infra.parse_final_constant_definitions(
             read.value.splitlines()
@@ -62,8 +60,10 @@ class FlextInfraCodegenConsolidatorStepsMixin:
         python_file: Path,
         value_map: t.StrMapping,
     ) -> (
-        tuple[
-            t.Infra.RopeResource, str, t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]]
+        t.Triple[
+            t.Infra.RopeResource,
+            str,
+            t.SequenceOf[t.Triple[m.Infra.SymbolInfo, str, str]],
         ]
         | None
     ):
@@ -87,9 +87,9 @@ class FlextInfraCodegenConsolidatorStepsMixin:
         # flext-j47u (codex): use the canonical scalar sequence alias directly.
         source_lines: t.StrSequence,
         value_to_ref: t.StrMapping,
-    ) -> t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]]:
+    ) -> t.SequenceOf[t.Triple[m.Infra.SymbolInfo, str, str]]:
         """Match assignments."""
-        matches: t.MutableSequenceOf[tuple[m.Infra.SymbolInfo, str, str]] = []
+        matches: t.MutableSequenceOf[t.Triple[m.Infra.SymbolInfo, str, str]] = []
         for symbol in symbols:
             # flext-j47u (codex): widen the validated constrained int for indexing.
             line_number: int = symbol.line
@@ -125,7 +125,7 @@ class FlextInfraCodegenConsolidatorStepsMixin:
         """Apply and validate."""
         src_lines = backup.splitlines(keepends=True)
         rel = py_file.relative_to(workspace)
-        edits: t.MutableSequenceOf[tuple[int, int, str]] = []
+        edits: t.MutableSequenceOf[t.Triple[int, int, str]] = []
         descs: t.MutableSequenceOf[str] = []
         for symbol, ref, value in matches:
             line_number = symbol.line

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import TypeGuard
 
-from flext_infra._utilities.rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
 from flext_infra.protocols import p
 from flext_infra.typings import t
+
+from .._utilities.rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
 
 
 class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
@@ -124,7 +125,7 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         )
 
     @classmethod
-    def rope_syntax_errors(cls) -> tuple[type[BaseException], ...]:
+    def rope_syntax_errors(cls) -> t.VariadicTuple[type[BaseException]]:
         """Return exceptions that signal unparseable Python source."""
         return (
             SyntaxError,
@@ -132,7 +133,7 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         )
 
     @classmethod
-    def rope_runtime_errors(cls) -> tuple[type[BaseException], ...]:
+    def rope_runtime_errors(cls) -> t.VariadicTuple[type[BaseException]]:
         """Return recoverable exceptions raised by Rope operations."""
         return (
             cls._exception_type("rope.base.exceptions", "RefactoringError"),
@@ -141,12 +142,12 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
         )
 
     @classmethod
-    def rope_error_types(cls) -> tuple[type[BaseException], ...]:
+    def rope_error_types(cls) -> t.VariadicTuple[type[BaseException]]:
         """Return the generic Rope exception boundary."""
         return (cls._exception_type("rope.base.exceptions", "RopeError"),)
 
     @classmethod
-    def rope_module_not_found_error_types(cls) -> tuple[type[BaseException], ...]:
+    def rope_module_not_found_error_types(cls) -> t.VariadicTuple[type[BaseException]]:
         """Return Rope exceptions for unresolved importable modules."""
         return (cls._exception_type("rope.base.exceptions", "ModuleNotFoundError"),)
 

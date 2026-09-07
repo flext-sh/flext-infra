@@ -56,6 +56,9 @@ class TestRealGateRunners:
     ) -> None:
         """Do not recurse into nested consumer repositories or worktrees."""
         project_dir = u.Tests.mk_project(tmp_path, "scoped-project", with_src=True)
+        (project_dir / "src/scoped_project/__init__.py").write_text(
+            '"""Scoped test package."""\n', encoding="utf-8"
+        )
         (project_dir / "tests").mkdir()
         nested = project_dir / ".claude" / "worktrees" / "nested"
         nested.mkdir(parents=True)
@@ -105,7 +108,12 @@ class TestRealGateRunners:
         tm.that(source.read_text(encoding="utf-8"), eq="value = [1, 2, 3]\n")
 
     def test_pyright_reports_real_type_error(self, tmp_path: Path) -> None:
-        project_dir = u.Tests.mk_project(tmp_path, "pyright-project", with_src=True)
+        project_dir = u.Tests.mk_project(
+            tmp_path,
+            "pyright-project",
+            pyproject='[tool.pyright]\ninclude = ["src"]\ntypeCheckingMode = "strict"\n',
+            with_src=True,
+        )
         (project_dir / "src" / "demo.py").write_text(
             "value: str = 1\n", encoding="utf-8"
         )

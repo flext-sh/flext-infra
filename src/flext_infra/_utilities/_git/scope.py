@@ -6,46 +6,46 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities._git.semantic import FlextInfraUtilitiesGitSemanticMixin
 from flext_infra.constants import c
+
+from ..._utilities._git.semantic_index import FlextInfraUtilitiesGitSemanticIndexMixin
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
+class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin):
     """Static helpers for resolving tracked files and directories within Git scopes."""
 
     @classmethod
-    @cache
     def _git_repo_root(cls, scope_root: str) -> str | None:
         """Return the nearest enclosing Git worktree root for ``scope_root``."""
         current = Path(scope_root).resolve()
         while True:
             if (current / ".git").exists():
-                return str(current)
+                repo = cls._repo(current)
+                working_tree_dir = repo.working_tree_dir
+                if working_tree_dir is None:
+                    return None
+                resolved_worktree = Path(working_tree_dir).resolve()
+                return str(current) if resolved_worktree == current else None
             parent = current.parent
             if parent == current:
                 return None
             current = parent
 
     @classmethod
-    @cache
     def _git_tracked_repo_relative_paths(cls, repo_root: str) -> t.StrSequence | None:
-        """Return tracked and dirty paths relative to one Git repo root."""
+        """Return current tracked and dirty paths relative to one Git repo root."""
         resolved_root = Path(repo_root).resolve()
-        try:
-            repo = cls._repo(resolved_root)
-            tracked_output = repo.git.ls_files(with_exceptions=False)
-            status_output = repo.git.status(
-                "--porcelain", "--untracked-files=all", with_exceptions=False
-            )
-        except (OSError, ValueError):
-            return None
+        repo = cls._repo(resolved_root)
+        tracked_output = repo.git.ls_files(with_exceptions=False)
+        status_output = repo.git.status(
+            "--porcelain", "--untracked-files=all", with_exceptions=False
+        )
         scope_paths: set[str] = set()
         for raw_line in tracked_output.splitlines():
             normalized = raw_line.strip()
@@ -64,9 +64,8 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
         return tuple(sorted(scope_paths))
 
     @classmethod
-    @cache
     def _git_tracked_scope_relative_paths(cls, scope_root: str) -> t.StrSequence | None:
-        """Return tracked file paths relative to ``scope_root`` or ``None`` outside Git.
+        """Return current tracked paths relative to ``scope_root`` or ``None`` outside Git.
 
         ``git ls-files <scope_prefix>`` emits paths relative to the **repo root**.
         Callers join the result back onto ``scope_root``, so this function
@@ -81,10 +80,14 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
         if repo_relative_paths is None:
             return None
         repo_root = Path(repo_root_text).resolve()
-        try:
-            scope_prefix = resolved_root.resolve().relative_to(repo_root)
-        except ValueError:
-            return None
+        scope_prefix = resolved_root.resolve().relative_to(repo_root)
+        if scope_prefix.parts:
+            repo = cls._repo(repo_root)
+            ignored_scope = repo.git.check_ignore(
+                "--", scope_prefix.as_posix(), with_exceptions=False
+            )
+            if ignored_scope.strip():
+                return ()
         prefix_parts = scope_prefix.parts
         scope_paths: set[str] = set()
         for repo_relative_text in repo_relative_paths:
@@ -96,6 +99,12 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
             else:
                 scope_relative = repo_relative
             scope_paths.add(scope_relative.as_posix())
+        if not scope_paths and prefix_parts:
+            ignored_scope = cls._repo(repo_root).git.check_ignore(
+                "--", scope_prefix.as_posix(), with_exceptions=False
+            )
+            if ignored_scope.strip():
+                return ()
         return tuple(sorted(scope_paths))
 
     @classmethod
@@ -127,16 +136,16 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
 
     @classmethod
     def project_descriptor_is_tracked(
-        cls, workspace_root: Path, project_root: Path
+        cls, repository_root: Path, project_root: Path
     ) -> bool:
         """Return whether one candidate project has a tracked descriptor file."""
         relative_paths = cls._git_tracked_scope_relative_paths(
-            str(workspace_root.resolve())
+            str(repository_root.resolve())
         )
         if relative_paths is None:
             return True
         tracked_paths = frozenset(relative_paths)
-        resolved_workspace = workspace_root.resolve()
+        resolved_workspace = repository_root.resolve()
         resolved_project = project_root.resolve()
         relative_prefix = ""
         if resolved_project != resolved_workspace:

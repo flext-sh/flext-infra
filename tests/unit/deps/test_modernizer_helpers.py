@@ -7,7 +7,15 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_tests import tm
-from tests import u
+from tests import c, u
+
+_FULL_OPTIONAL_DEPS: dict[str, list[str]] = {
+    "dev": ["pytest"],
+    "docs": ["sphinx"],
+    "security": ["bandit"],
+    "test": ["coverage"],
+    "typings": ["mypy"],
+}
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -160,17 +168,7 @@ class TestsFlextInfraDepsModernizerHelpers:
     @pytest.mark.parametrize(
         ("optional_deps", "expected_dev", "expected_docs"),
         [
-            (
-                {
-                    "dev": ["pytest"],
-                    "docs": ["sphinx"],
-                    "security": ["bandit"],
-                    "test": ["coverage"],
-                    "typings": ["mypy"],
-                },
-                ["pytest"],
-                ["sphinx"],
-            ),
+            (_FULL_OPTIONAL_DEPS, ["pytest"], ["sphinx"]),
             ({"dev": ["pytest"]}, ["pytest"], []),
             ({}, [], []),
         ],
@@ -195,17 +193,7 @@ class TestsFlextInfraDepsModernizerHelpers:
     @pytest.mark.parametrize(
         ("optional_deps", "expected_length", "expect_pytest"),
         [
-            (
-                {
-                    "dev": ["pytest"],
-                    "docs": ["sphinx"],
-                    "security": ["bandit"],
-                    "test": ["coverage"],
-                    "typings": ["mypy"],
-                },
-                5,
-                True,
-            ),
+            (_FULL_OPTIONAL_DEPS, 5, True),
             ({}, 0, False),
             ({"dev": ["pytest>=7.0"], "test": ["pytest>=6.0"]}, 1, True),
         ],
@@ -252,6 +240,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         self, tmp_path: Path
     ) -> None:
         """Verify locked dependency versions skips non registry sources."""
+        locked_version = c.Tests.RELEASE_VERSION_TARGET
         lock_path = tmp_path / "uv.lock"
         lock_path.write_text(
             (
@@ -260,7 +249,7 @@ class TestsFlextInfraDepsModernizerHelpers:
                 'members = ["flext-core"]\n'
                 "[[package]]\n"
                 'name = "requests"\n'
-                'version = "2.32.4"\n'
+                f'version = "{locked_version}"\n'
                 'source = { registry = "https://pypi.org/simple" }\n'
                 "[[package]]\n"
                 'name = "flext-core"\n'
@@ -271,15 +260,17 @@ class TestsFlextInfraDepsModernizerHelpers:
         )
 
         tm.that(
-            u.Infra.locked_dependency_versions(lock_path), eq={"requests": "2.32.4"}
+            u.Infra.locked_dependency_versions(lock_path),
+            eq={"requests": locked_version},
         )
 
     def test_rewrite_requirement_constraint_preserves_extras_and_markers(self) -> None:
         """Verify rewrite requirement constraint preserves extras and markers."""
+        locked_version = c.Tests.RELEASE_VERSION_TARGET
         tm.that(
             u.Infra.rewrite_requirement_constraint(
                 "httpx[socks]>=0.1; python_version < '3.14'",
-                locked_versions={"httpx": "0.28.1"},
+                locked_versions={"httpx": locked_version},
             ),
-            eq="httpx[socks]>=0.28.1; python_version < '3.14'",
+            eq=f"httpx[socks]>={locked_version}; python_version < '3.14'",
         )

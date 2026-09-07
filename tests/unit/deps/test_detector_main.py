@@ -22,27 +22,31 @@ class _DepsStub(
 
     @override
     def discover_project_paths(
-        self, workspace_root: Path, *, projects_filter: t.StrSequence | None = None
+        self, repository_root: Path, projects_filter: t.StrSequence | None = None
     ) -> p.Result[Sequence[Path]]:
-        del workspace_root, projects_filter
+        del repository_root, projects_filter
         return r[Sequence[Path]].ok([self._project])
 
     @override
     def run_deptry(
-        self, project_path: Path, venv_bin: Path
+        self,
+        project_path: Path,
+        venv_bin: Path,
+        *,
+        config_path: Path | None = None,
+        json_output_path: Path | None = None,
+        extend_exclude: t.StrSequence | None = None,
     ) -> p.Result[t.Pair[Sequence[t.JsonMapping], int]]:
-        del project_path, venv_bin
+        del project_path, venv_bin, config_path, json_output_path, extend_exclude
         return r[t.Pair[Sequence[t.JsonMapping], int]].ok(([], 0))
 
     @override
     def build_project_report(
         self, project_name: str, deptry_issues: t.SequenceOf[t.JsonMapping]
-    ) -> m.Infra.ProjectRuntimeReport:
+    ) -> m.Infra.ProjectDependencyReport:
         del project_name, deptry_issues
-        return m.Infra.ProjectRuntimeReport(
-            deptry=m.Infra.DeptryReport(
-                missing=[], unused=[], transitive=[], dev_in_runtime=[], raw_count=0
-            )
+        return m.Infra.ProjectDependencyReport(
+            project="fixture", deptry=m.Infra.DeptryReport(raw_count=0)
         )
 
     @override
@@ -130,6 +134,25 @@ def _setup_typings_detector(
     return runtime, captured_commands
 
 
+def _apply_typings_run(
+    tmp_path: Path, to_add: t.StrSequence
+) -> tuple[FlextInfraDependencyDetectorRuntime, t.SequenceOf[t.StrSequence]]:
+    """Run one applied typings detection against the stub detector."""
+    run_result: p.Result[p.Cli.CommandOutput] = r[p.Cli.CommandOutput].ok(
+        u.Tests.create_command_output(stdout="", stderr="", exit_code=0)
+    )
+    runtime, calls = _setup_typings_detector(tmp_path, to_add, run_result)
+    params = m.Infra.DetectCommand(
+        workspace=str(tmp_path),
+        typings=True,
+        apply_typings=True,
+        apply=True,
+        no_pip_check=True,
+    )
+    tm.ok(runtime.run(params))
+    return runtime, calls
+
+
 class TestsFlextInfraDepsDetectorMain:
     """Test flext infra deps detector main behavior."""
 
@@ -147,7 +170,7 @@ class TestsFlextInfraDepsDetectorMain:
         ) -> p.Result[p.Cli.CommandOutput]:
             del cmd, cwd, timeout, env
             return r[p.Cli.CommandOutput].ok(
-                m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
+                u.Tests.create_command_output(stdout="", stderr="", exit_code=0)
             )
 
         runtime = FlextInfraDependencyDetectorRuntime(
@@ -166,46 +189,20 @@ class TestsFlextInfraDepsDetectorMain:
 
     def test_run_with_apply_typings_success(self, tmp_path: Path) -> None:
         """Verify run with apply typings success."""
-        run_result: p.Result[p.Cli.CommandOutput] = r[p.Cli.CommandOutput].ok(
-            m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
-        )
-        runtime, calls = _setup_typings_detector(
-            tmp_path, ["types-requests"], run_result
-        )
-        params = m.Infra.DetectCommand(
-            workspace=str(tmp_path),
-            typings=True,
-            apply_typings=True,
-            apply=True,
-            no_pip_check=True,
-        )
-        tm.ok(runtime.run(params))
+        _, calls = _apply_typings_run(tmp_path, ["types-requests"])
         tm.that(len(calls), eq=1)
 
     def test_run_with_apply_typings_multiple_packages(self, tmp_path: Path) -> None:
         """Verify run with apply typings multiple packages."""
-        run_result: p.Result[p.Cli.CommandOutput] = r[p.Cli.CommandOutput].ok(
-            m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
+        _, calls = _apply_typings_run(
+            tmp_path, ["types-requests", "types-python-dateutil", "types-pyyaml"]
         )
-        runtime, calls = _setup_typings_detector(
-            tmp_path,
-            ["types-requests", "types-python-dateutil", "types-pyyaml"],
-            run_result,
-        )
-        params = m.Infra.DetectCommand(
-            workspace=str(tmp_path),
-            typings=True,
-            apply_typings=True,
-            apply=True,
-            no_pip_check=True,
-        )
-        tm.ok(runtime.run(params))
         tm.that(len(calls), eq=3)
 
     def test_run_with_apply_typings_poetry_add_failure(self, tmp_path: Path) -> None:
         """Verify run with apply typings poetry add failure."""
         run_result: p.Result[p.Cli.CommandOutput] = r[p.Cli.CommandOutput].ok(
-            m.Cli.CommandOutput(stdout="", stderr="", exit_code=1)
+            u.Tests.create_command_output(stdout="", stderr="", exit_code=1)
         )
         runtime, _ = _setup_typings_detector(tmp_path, ["types-requests"], run_result)
         params = m.Infra.DetectCommand(

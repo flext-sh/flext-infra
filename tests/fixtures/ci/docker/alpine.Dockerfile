@@ -19,6 +19,7 @@ RUN apk add --no-cache \
       bash ca-certificates curl git make libstdc++
 # End SECTION: base packages
 
+<<<<<<< HEAD
 WORKDIR /workspace
 # init-setup.sh is the single declarative bootstrap: it downloads one throwaway
 # mise, projects the managed registry from the typed SSOT (config/tools.yaml),
@@ -39,6 +40,23 @@ COPY . .
 # overrode the version the project declares.
 RUN sh ./init-setup.sh
 ENV PATH="/root/.local/share/mise/shims:${PATH}"
+=======
+# === SECTION: managed tool bootstrap (managed) ===
+# Source: generated bin/mise + .mise.toml + mise.lock
+# The canonical make setup verb below owns the official newest-Mise bootstrap
+# and every locked tool installation as the same unprivileged runtime user.
+ENV HOME=/home/runner \
+    XDG_DATA_HOME=/home/runner/.local/share \
+    XDG_CACHE_HOME=/home/runner/.cache \
+    XDG_STATE_HOME=/home/runner/.local/state \
+    MISE_DATA_DIR=/home/runner/.local/share/mise
+WORKDIR /workspace
+RUN --mount=type=bind,source=.,target=/source,ro \
+    cp -R /source/. /workspace/ \
+    && chown -R runner:runner /workspace
+USER runner
+ENV PATH="/home/runner/.local/share/mise/shims:${PATH}"
+>>>>>>> origin/0.12.0-dev
 # End SECTION: managed tool bootstrap
 
 # === SECTION: bootstrap proof (managed) ===

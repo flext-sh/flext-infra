@@ -12,6 +12,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Source: template (distro-specific seed contract)
 # The seed is the whole host contract: curl fetches mise, git is what uv shells
 # out to for the flext-infra git+https requirement, make invokes the verbs.
+<<<<<<< HEAD
 # libicu-dev is pulled in because tokei (cargo-backed) needs a Rust toolchain,
 # which in turn needs it — init-setup.sh provisions Rust via mise, so the native
 # ICU headers must be present at the system layer.
@@ -41,6 +42,30 @@ COPY . .
 # overrode the version the project declares.
 RUN sh ./init-setup.sh
 ENV PATH="/root/.local/share/mise/shims:${PATH}"
+=======
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       bash ca-certificates curl git make \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /bin/bash runner
+# End SECTION: base packages
+
+# === SECTION: managed tool bootstrap (managed) ===
+# Source: generated bin/mise + .mise.toml + mise.lock
+# The canonical make setup verb below owns the official newest-Mise bootstrap
+# and every locked tool installation as the same unprivileged runtime user.
+ENV HOME=/home/runner \
+    XDG_DATA_HOME=/home/runner/.local/share \
+    XDG_CACHE_HOME=/home/runner/.cache \
+    XDG_STATE_HOME=/home/runner/.local/state \
+    MISE_DATA_DIR=/home/runner/.local/share/mise
+WORKDIR /workspace
+RUN --mount=type=bind,source=.,target=/source,ro \
+    cp -R /source/. /workspace/ \
+    && chown -R runner:runner /workspace
+USER runner
+ENV PATH="/home/runner/.local/share/mise/shims:${PATH}"
+>>>>>>> origin/0.12.0-dev
 # End SECTION: managed tool bootstrap
 
 # === SECTION: bootstrap proof (managed) ===

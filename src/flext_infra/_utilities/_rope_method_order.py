@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, ClassVar
 from flext_infra.constants import c
 
 if TYPE_CHECKING:
-    from flext_infra import m, t
+    from flext_infra.models import m
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRopeMethodOrderMixin:
@@ -57,7 +58,7 @@ class FlextInfraUtilitiesRopeMethodOrderMixin:
     @staticmethod
     def build_method_sort_key(
         method: m.Infra.MethodInfo, order_config: t.SequenceOf[m.Infra.MethodOrderRule]
-    ) -> tuple[int, int, str]:
+    ) -> t.Triple[int, int, str]:
         """Build a sort key tuple for method ordering."""
         cls = FlextInfraUtilitiesRopeMethodOrderMixin
         for index, rule in enumerate(order_config):

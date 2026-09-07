@@ -1,16 +1,17 @@
-"""Public workspace sync contracts for fleet-owned mise distributions."""
+"""Fleet-owned mise distribution policy at its composition owner.
+
+``codegen conform`` exclusively owns ``.mise.toml`` (workspace environment
+sync stopped writing it when the toolchain transaction landed), so the
+distribution policy is proven against ``u.Infra.compose_mise_toml`` — the one
+surface that turns a repository's ``config/*.yaml`` overlay into that file.
+"""
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import config, infra, m
+from flext_infra import config, u
 from flext_tests import tm
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 def _workspace(root: Path) -> Path:
@@ -26,36 +27,32 @@ def _workspace(root: Path) -> Path:
 
 
 def _alternate_selector() -> str:
-    canonical = config.Infra.codegen.toolchain.beads.selector
-    backend, separator, repository = canonical.partition(":")
-    name = repository.rsplit("/", maxsplit=1)[-1]
-    return f"{backend}{separator}alternate-owner/{name}"
+    return "github:alternate-owner/beads"
 
 
-def _sync(root: Path) -> p.Result[m.Infra.WorkspaceEnvironmentSyncResult]:
-    return infra.sync_environment_files(
-        m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=root)
-    )
+def _fleet_render() -> str:
+    """Render the fleet tool table the canonical template produces."""
+    beads = config.Infra.codegen.toolchain.beads
+    return f'[tools]\n"{beads.selector}" = "{beads.version}"\n'
 
 
 class TestsMiseDistributionPolicy:
-    """Reject alternate owners and converge canonical pins through the facade."""
+    """Reject alternate owners and fleet collisions through the composition owner."""
 
-    def test_managed_artifacts_reject_alternate_distribution(
-        self, tmp_path: Path
-    ) -> None:
+    def test_tooling_owner_rejects_suspended_distribution(self, tmp_path: Path) -> None:
         root = _workspace(tmp_path / "project")
         config_dir = root / "config"
         config_dir.mkdir()
         selector = _alternate_selector()
         (config_dir / "tools.yaml").write_text(
-            f'ManagedArtifacts:\n  Mise:\n    tools:\n      "{selector}":\n        version: "1.0.0"\n',
+            "ManagedArtifacts:\n  Mise:\n    tools:\n"
+            f'      "{selector}":\n        version: "1.0.0"\n',
             encoding="utf-8",
         )
 
-        result = _sync(root)
+        result = u.Infra.compose_mise_toml(root, _fleet_render())
 
-        tm.fail(result, has=["alternate distribution", selector, "tools.yaml"])
+        tm.fail(result, has=["suspended toolchain", selector, "tooling.yaml"])
 
     def test_managed_artifacts_reject_short_beads_alias(self, tmp_path: Path) -> None:
         root = _workspace(tmp_path / "project")
@@ -66,11 +63,11 @@ class TestsMiseDistributionPolicy:
             encoding="utf-8",
         )
 
-        result = _sync(root)
+        result = u.Infra.compose_mise_toml(root, _fleet_render())
 
-        tm.fail(result, has=["alternate distribution", "beads", "tools.yaml"])
+        tm.fail(result, has=["suspended toolchain", "beads", "tooling.yaml"])
 
-    def test_managed_artifacts_reject_divergent_canonical_pin(
+    def test_non_tooling_yaml_is_not_loaded_as_managed_artifacts(
         self, tmp_path: Path
     ) -> None:
         root = _workspace(tmp_path / "project")
@@ -82,40 +79,34 @@ class TestsMiseDistributionPolicy:
             f'      "{beads.selector}":\n        version: "{beads.version}.divergent"\n',
             encoding="utf-8",
         )
+        before = dormant.read_bytes()
 
-        result = _sync(root)
-
-        tm.fail(result, has=["collides with fleet tool", beads.selector])
-
-    def test_custom_mise_rejects_alternate_distribution(self, tmp_path: Path) -> None:
-        root = _workspace(tmp_path / "project")
-        selector = _alternate_selector()
-        (root / ".mise.toml").write_text(
-            f'[tools]\n"{selector}" = "1.0.0"\n', encoding="utf-8"
-        )
-
-        result = _sync(root)
-
-        tm.fail(result, has=["alternate distribution", selector, ".mise.toml"])
-
-    def test_custom_mise_converges_canonical_distribution_pin(
-        self, tmp_path: Path
-    ) -> None:
-        root = _workspace(tmp_path / "project")
-        beads = config.Infra.codegen.toolchain.beads
-        (root / ".mise.toml").write_text(
-            f'[tools]\n"{beads.selector}" = "0.0.0"\nnode = "22"\n', encoding="utf-8"
-        )
-
-        result = _sync(root)
+        result = u.Infra.compose_mise_toml(root, _fleet_render())
 
         tm.ok(result)
-        tools = tomllib.loads((root / ".mise.toml").read_text(encoding="utf-8"))[
-            "tools"
-        ]
-        tm.that(tools[beads.selector]["version"], eq=beads.version)
-        tm.that(tools[beads.selector]["prerelease"], eq=False)
-        tm.that(tools["node"], eq="22")
+        tm.that(dormant.read_bytes(), eq=before)
+
+    def test_custom_mise_rejects_alternate_distribution(self, tmp_path: Path) -> None:
+        """A hand-written tool table cannot swap a fleet identity's owner."""
+        root = _workspace(tmp_path / "project")
+        selector = _alternate_selector()
+        custom = root / ".mise.toml"
+        custom.write_text(f'[tools]\n"{selector}" = "1.0.0"\n', encoding="utf-8")
+
+        result = u.Infra.validate_mise_tool_selectors((selector,), source=custom)
+
+        tm.fail(result, has=["suspended toolchain", selector, ".mise.toml"])
+
+    def test_canonical_selector_is_accepted(self, tmp_path: Path) -> None:
+        """An arbitrary non-protected selector passes identity validation."""
+        root = _workspace(tmp_path / "project")
+        selector = tmp_path.name
+
+        result = u.Infra.validate_mise_tool_selectors(
+            (selector,), source=root / ".mise.toml"
+        )
+
+        tm.ok(result)
 
 
 __all__: tuple[str, ...] = ()

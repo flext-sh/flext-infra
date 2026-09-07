@@ -58,6 +58,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
             merged_search = {
                 *expected_search,
                 *pyrefly_rules.path_rules.project_shared_search_paths,
+                pyrefly_rules.path_rules.project_root,
             }
             if not declared_import_roots:
                 merged_search.discard(pyrefly_rules.path_rules.source_dir)
@@ -68,7 +69,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
             expected_includes = tuple(
                 f"{directory}/**/*.py*" for directory in declared_python_dirs
             )
-        error_values: t.SequenceOf[tuple[str, t.JsonValue]] = tuple(
+        error_values: t.SequenceOf[t.Pair[str, t.JsonValue]] = tuple(
             (error_rule, "error")
             for error_rule in self._tool_config.tools.pyrefly.strict_errors
         )

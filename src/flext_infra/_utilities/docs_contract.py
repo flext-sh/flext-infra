@@ -6,13 +6,18 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
+from .._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
+from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesDocsContract:
@@ -123,7 +128,7 @@ class FlextInfraUtilitiesDocsContract:
     def docs_workspace_contract(workspace_root: Path) -> t.JsonMapping:
         """Return the root docs contract using root ``pyproject.toml`` metadata."""
         payload = FlextInfraUtilitiesDocsScope.project_payload(workspace_root)
-        docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(workspace_root)
+        docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
         exclude_docs = FlextInfraUtilitiesDocsScope.docs_meta_list(
             workspace_root, "exclude_docs"
         )
@@ -160,28 +165,112 @@ class FlextInfraUtilitiesDocsContract:
         return result
 
     @staticmethod
+    def docs_current_project_contract(
+        project_root: Path, rendered_contract: t.JsonMapping
+    ) -> t.JsonMapping:
+        """Bind rendered API analysis to the current authenticated pyproject bytes."""
+        payload = FlextInfraUtilitiesDocsScope.project_payload(project_root)
+        project_value = payload.get(c.Infra.PROJECT)
+        if not isinstance(project_value, Mapping):
+            msg = f"docs project metadata is missing: {project_root}"
+            raise TypeError(msg)
+        project = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project_value)
+        urls_value = project.get("urls")
+        urls = (
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(urls_value)
+            if isinstance(urls_value, Mapping)
+            else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
+        )
+        docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
+        project_name = str(project.get("name", "")).strip()
+        classifiers_value = project.get("classifiers")
+        exclude_docs_value = docs_meta.get("exclude_docs")
+        updated = dict(rendered_contract)
+        updated.update({
+            "description": str(project.get("description", "")).strip(),
+            "version": str(project.get(c.Infra.VERSION, "")).strip(),
+            "classifiers": list(classifiers_value)
+            if isinstance(classifiers_value, list)
+            else [],
+            "site_title": str(docs_meta.get("site_title", "")).strip() or project_name,
+            "site_url": str(
+                urls.get("Documentation") or urls.get("Homepage") or ""
+            ).strip(),
+            "repo_url": str(
+                urls.get("Repository") or urls.get("Homepage") or ""
+            ).strip(),
+            "exclude_docs": list(exclude_docs_value)
+            if isinstance(exclude_docs_value, list)
+            else [],
+        })
+        validated = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(updated)
+        return dict(validated)
+
+    @staticmethod
+    def docs_file_plan(
+        project: Path,
+        path: Path,
+        content: bytes | None,
+        *,
+        desired_mode: int | None,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState],
+    ) -> p.Result[m.Infra.CodegenFilePlan]:
+        """Plan one exact docs artifact without publishing it."""
+        if (
+            not project.is_absolute()
+            or not path.is_absolute()
+            or ".." in project.parts
+            or ".." in path.parts
+            or not path.is_relative_to(project)
+        ):
+            return r[m.Infra.CodegenFilePlan].fail(
+                f"unsafe docs publication target: {path}"
+            )
+        if (content is None) != (desired_mode is None):
+            return r[m.Infra.CodegenFilePlan].fail(
+                f"docs desired bytes and mode differ: {path}"
+            )
+        return FlextInfraUtilitiesCodegenFilePlan.planned_file(
+            project,
+            path,
+            required=False,
+            desired_content=content,
+            desired_mode=desired_mode,
+            source_states=source_states,
+            owner="docs",
+            policy="full",
+        )
+
+    @staticmethod
     def docs_write_if_needed(
         path: Path, content: str, *, apply: bool, overwrite: bool = True
     ) -> m.Infra.GeneratedFile:
-        """Write generated content only when needed and allowed."""
-        if path.exists() and not overwrite:
+        """Write generated content only when needed and allowed.
+
+        This imperative helper belongs to non-generation docs fixers. Generated
+        documentation uses :meth:`docs_file_plan` and is published only by the
+        enclosing codegen transaction.
+        """
+        exists = path.exists()
+        if exists and not overwrite:
             return m.Infra.GeneratedFile(
                 path=path.as_posix(), changed=False, written=False
             )
-        current = (
-            path.read_text(encoding=c.Cli.ENCODING_DEFAULT) if path.exists() else ""
-        )
+        current = path.read_text(encoding=c.Cli.ENCODING_DEFAULT) if exists else ""
         normalized = (
             FlextInfraUtilitiesDocsContract.docs_update_toc(content)[0]
             if path.suffix == ".md"
             else content
         )
-        changed = current != normalized
-        if changed and apply:
+        drift = exists and current != normalized
+        created = not exists
+        if apply and (drift or created):
             path.parent.mkdir(parents=True, exist_ok=True)
             _ = path.write_text(normalized, encoding=c.Cli.ENCODING_DEFAULT)
         return m.Infra.GeneratedFile(
-            path=path.as_posix(), changed=changed, written=changed and apply
+            path=path.as_posix(),
+            changed=drift or created,
+            written=apply and (drift or created),
         )
 
 

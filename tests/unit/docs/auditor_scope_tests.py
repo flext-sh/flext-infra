@@ -149,3 +149,46 @@ class TestAuditorScope:
             ),
         )
         tm.that(report.phase, eq="audit")
+
+
+class TestAuditorMachinePaths:
+    """Tests for machine_path_issues (per-user absolute paths frozen into docs)."""
+
+    def test_machine_path_issues_flags_user_home_and_skips_container_identity(
+        self, tmp_path: Path
+    ) -> None:
+        """A /home/<user> or /Users/<user> root is flagged; CI/container homes pass."""
+        auditor = FlextInfraDocAuditor()
+        docs_dir = tmp_path / "docs"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        (docs_dir / "guide.md").write_text(
+            "run it from /home/someone/flext\n"
+            "or on macOS from /Users/someone/flext\n"
+            "the image installs to /home/runner/.local/bin\n"
+            "the tilde form ~/flext is portable\n"
+        )
+        scope = m.Infra.DocScope(
+            name="root", path=tmp_path, report_dir=tmp_path / "reports"
+        )
+        issues = auditor.machine_path_issues(scope)
+        tm.that(len(issues), eq=2)
+        tm.that({issue.issue_type for issue in issues}, eq={"machine-path"})
+        tm.that(issues[0].message, has="line 1")
+        tm.that(issues[0].message, has="/home/someone")
+        tm.that(issues[1].message, has="/Users/someone")
+
+    def test_machine_path_issues_honours_exempt_paths(self, tmp_path: Path) -> None:
+        """Frozen evidence declared in docs_config.json audit policy is skipped whole."""
+        auditor = FlextInfraDocAuditor()
+        plans = tmp_path / "docs" / "plans"
+        plans.mkdir(parents=True, exist_ok=True)
+        (plans / "2026-01-01-run.md").write_text("ran at /home/someone/flext\n")
+        (tmp_path / "docs" / "live.md").write_text("see /home/someone/flext\n")
+        (tmp_path / "docs" / "docs_config.json").write_text(
+            '{"audit": {"machine_path_exempt_paths": ["docs/plans/"]}}'
+        )
+        scope = m.Infra.DocScope(
+            name="root", path=tmp_path, report_dir=tmp_path / "reports"
+        )
+        issues = auditor.machine_path_issues(scope)
+        tm.that([issue.file for issue in issues], eq=["docs/live.md"])

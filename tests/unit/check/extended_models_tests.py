@@ -10,6 +10,20 @@ from flext_tests import tm
 from tests import m
 
 
+def _sample_issues() -> tuple[m.Infra.Issue, m.Infra.Issue, m.Infra.Issue]:
+    """Build three distinct sample gate issues for summary assertions."""
+    issue1 = m.Infra.Issue(
+        file="a.py", line=1, column=1, code="E1", message="m1", severity="error"
+    )
+    issue2 = m.Infra.Issue(
+        file="b.py", line=2, column=1, code="E2", message="m2", severity="error"
+    )
+    issue3 = m.Infra.Issue(
+        file="c.py", line=3, column=1, code="E3", message="m3", severity="error"
+    )
+    return issue1, issue2, issue3
+
+
 class TestCheckIssueFormatted:
     """Test _m.Infra.Issue.formatted property."""
 
@@ -62,15 +76,7 @@ class TestProjectResultProperties:
         gate2 = m.Infra.GateResult(
             gate="format", project="p", passed=True, errors=[], duration=0.0
         )
-        issue1 = m.Infra.Issue(
-            file="a.py", line=1, column=1, code="E1", message="m1", severity="error"
-        )
-        issue2 = m.Infra.Issue(
-            file="b.py", line=2, column=1, code="E2", message="m2", severity="error"
-        )
-        issue3 = m.Infra.Issue(
-            file="c.py", line=3, column=1, code="E3", message="m3", severity="error"
-        )
+        issue1, issue2, issue3 = _sample_issues()
         exec1 = m.Infra.GateExecution(
             result=gate1, issues=(issue1, issue2), raw_output=""
         )
@@ -131,15 +137,7 @@ class TestWorkspaceCheckerErrorSummary:
     """Test error summary reporting."""
 
     def test_error_summary_with_multiple_projects_and_gates(self) -> None:
-        issue1 = m.Infra.Issue(
-            file="a.py", line=1, column=1, code="E1", message="m1", severity="error"
-        )
-        issue2 = m.Infra.Issue(
-            file="b.py", line=2, column=1, code="E2", message="m2", severity="error"
-        )
-        issue3 = m.Infra.Issue(
-            file="c.py", line=3, column=1, code="E3", message="m3", severity="error"
-        )
+        issue1, issue2, issue3 = _sample_issues()
         gate1 = m.Infra.GateResult(
             gate="lint", project="p", passed=True, errors=[], duration=0.0
         )

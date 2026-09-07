@@ -9,10 +9,13 @@ from flext_cli import r, u
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
+
+from .._utilities.dependencies import FlextInfraUtilitiesDependencies
+from .._utilities.repository import FlextInfraUtilitiesRepository
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from flext_infra.protocols import p
 
 
@@ -22,6 +25,76 @@ class FlextInfraUtilitiesPyprojectConform:
     # This pure renderer replaces the mutating dependency path-sync command;
     # codegen is the only public orchestrator.
 
+    @staticmethod
+    def requirement_group_fields(
+        document: t.Cli.TomlDocument, project: t.Cli.TomlTable
+    ) -> Iterator[t.Pair[t.Cli.TomlTable, str]]:
+        """Yield ``(section, group_name)`` for every declared requirement group.
+
+        Optional dependencies hang off ``[project]`` while dependency groups hang
+        off the document root; this is the single owner of that traversal for
+        every requirement rewriter.
+        """
+        for section_name in (c.Infra.OPTIONAL_DEPENDENCIES, c.Infra.DEPENDENCY_GROUPS):
+            parent = (
+                project if section_name == c.Infra.OPTIONAL_DEPENDENCIES else document
+            )
+            section = u.Cli.toml_table_child(parent, section_name)
+            if section is None:
+                continue
+            for group_name in tuple(section):
+                yield section, group_name
+
+    @classmethod
+    def _parsed_pyproject(
+        cls, pyproject_content: str
+    ) -> p.Result[t.Pair[t.Cli.TomlDocument, str]]:
+        """Parse one pyproject source and return it with its declared project name."""
+        source = u.Cli.toml_parse_text(pyproject_content)
+        if source is None:
+            return r[t.Pair[t.Cli.TomlDocument, str]].fail(
+                "pyproject content is not valid TOML"
+            )
+        project = u.Cli.toml_table_child(source, c.Infra.PROJECT)
+        if project is None:
+            return r[t.Pair[t.Cli.TomlDocument, str]].fail(
+                "pyproject content must define [project]"
+            )
+        project_name_raw = u.Cli.toml_value(project, c.Infra.NAME)
+        if not isinstance(project_name_raw, str) or not project_name_raw.strip():
+            return r[t.Pair[t.Cli.TomlDocument, str]].fail(
+                "[project].name must be a non-empty string"
+            )
+        return r[t.Pair[t.Cli.TomlDocument, str]].ok((source, project_name_raw.strip()))
+
+    @classmethod
+    def _rendered_conformed_document(
+        cls,
+        document: t.Cli.TomlDocument,
+        *,
+        project_name: str,
+        workspace: p.Infra.WorkspaceSpec,
+        workspace_mode: c.Infra.MakeProfile,
+        invalid_render_error: str,
+    ) -> p.Result[str]:
+        """Validate dependency provenance, then render canonical TOML.
+
+        ``invalid_render_error`` carries the only difference between the two
+        public conformers: the message each reports for an unparsable render.
+        """
+        provenance_result = cls._validate_dependency_provenance(
+            document,
+            project_name=project_name,
+            workspace=workspace,
+            workspace_mode=workspace_mode,
+        )
+        if provenance_result.failure:
+            return r[str].from_failure(provenance_result)
+        rendered = u.Cli.toml_dumps(document)
+        if u.Cli.toml_parse_text(rendered) is None:
+            return r[str].fail(invalid_render_error)
+        return r[str].ok(rendered)
+
     @classmethod
     def pyproject_conform(
         cls,
@@ -29,34 +102,20 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
         toolchain: p.Infra.ToolchainSpec,
         required_dev_dependencies: t.StrSequence,
         uv_link_mode: str | None = None,
         uv_exclude_newer: str | None = None,
+        dependency_cooldown_exclusions: t.StrSequence | None = None,
+        dependency_cooldown_overrides: t.StrMapping | None = None,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[str]:
-        """Return canonical TOML with autonomous dependencies and root workspace.
-
-        ``uv_exclude_newer`` is the per-project overlay over the fleet cooldown.
-        The fleet default is a ROLLING window, which silently ages past a
-        security floor declared in override-dependencies and makes resolution
-        unsatisfiable; a project carrying such a floor pins the absolute cutoff
-        instead. ``None`` keeps the fleet window.
-        """
-        source = u.Cli.toml_parse_text(pyproject_content)
-        if source is None:
-            return r[str].fail("pyproject content is not valid TOML")
-        project = u.Cli.toml_table_child(source, c.Infra.PROJECT)
-        if project is None:
-            return r[str].fail("pyproject content must define [project]")
-        project_name_raw = u.Cli.toml_value(project, c.Infra.NAME)
-        if not isinstance(project_name_raw, str) or not project_name_raw.strip():
-            return r[str].fail("[project].name must be a non-empty string")
-        project_name = project_name_raw.strip()
-        if workspace.project is not None:
-            u.Cli.toml_sync_value(project, c.Infra.VERSION, workspace.project.version)
-
+        """Return canonical TOML with autonomous dependencies and root workspace."""
+        parsed = cls._parsed_pyproject(pyproject_content)
+        if parsed.failure:
+            return r[str].from_failure(parsed)
+        source, project_name = parsed.value
         cls._sync_dependency_groups(
             source,
             project_name=project_name,
@@ -73,13 +132,11 @@ class FlextInfraUtilitiesPyprojectConform:
             canonicalize_all=True,
         )
         if normalized.failure:
-            return r[str].fail(normalized.error or "dependency normalization failed")
+            return r[str].from_failure(normalized)
         cls._remove_legacy_tooling(source)
         typecheck_paths = cls._sync_typecheck_paths(source)
         if typecheck_paths.failure:
-            return r[str].fail(
-                typecheck_paths.error or "type checker path conformance failed"
-            )
+            return r[str].from_failure(typecheck_paths)
         sources_result = cls._sync_uv_sources(
             source,
             project_name=project_name,
@@ -87,27 +144,30 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace_mode=workspace_mode,
             link_mode=uv_link_mode or toolchain.uv_link_mode,
             exclude_newer=uv_exclude_newer or toolchain.uv_exclude_newer,
-            exclude_newer_packages=toolchain.dependency_cooldown_exclusions,
-            exclude_newer_overrides=toolchain.dependency_cooldown_overrides,
+            exclude_newer_packages=(
+                toolchain.dependency_cooldown_exclusions
+                if dependency_cooldown_exclusions is None
+                else dependency_cooldown_exclusions
+            ),
+            exclude_newer_overrides=(
+                toolchain.dependency_cooldown_overrides
+                if dependency_cooldown_overrides is None
+                else dependency_cooldown_overrides
+            ),
             exclude_dependencies=uv_exclude_dependencies,
+            uv_environments=toolchain.uv_environments,
         )
         if sources_result.failure:
-            return r[str].fail(sources_result.error or "uv source conformance failed")
-        provenance_result = cls._validate_dependency_provenance(
+            return r[str].from_failure(sources_result)
+        return cls._rendered_conformed_document(
             source,
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
+            invalid_render_error=(
+                "canonical pyproject rendering produced invalid TOML"
+            ),
         )
-        if provenance_result.failure:
-            return r[str].fail(
-                provenance_result.error or "dependency provenance validation failed"
-            )
-
-        rendered = u.Cli.toml_dumps(source)
-        if u.Cli.toml_parse_text(rendered) is None:
-            return r[str].fail("canonical pyproject rendering produced invalid TOML")
-        return r[str].ok(rendered)
 
     @classmethod
     def pyproject_dependencies_conform(
@@ -116,19 +176,13 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
     ) -> p.Result[str]:
         """Conform only internal requirements and their root workspace overlay."""
-        source = u.Cli.toml_parse_text(pyproject_content)
-        if source is None:
-            return r[str].fail("pyproject content is not valid TOML")
-        project = u.Cli.toml_table_child(source, c.Infra.PROJECT)
-        if project is None:
-            return r[str].fail("pyproject content must define [project]")
-        project_name_raw = u.Cli.toml_value(project, c.Infra.NAME)
-        if not isinstance(project_name_raw, str) or not project_name_raw.strip():
-            return r[str].fail("[project].name must be a non-empty string")
-        project_name = project_name_raw.strip()
+        parsed = cls._parsed_pyproject(pyproject_content)
+        if parsed.failure:
+            return r[str].from_failure(parsed)
+        source, project_name = parsed.value
         workspace_context_root = cls._is_workspace_context_root(
             project_name=project_name,
             workspace=workspace,
@@ -139,9 +193,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 source, workspace=workspace, providers=providers
             )
             if sources_result.failure:
-                return r[str].fail(
-                    sources_result.error or "uv source conformance failed"
-                )
+                return r[str].from_failure(sources_result)
         normalized = cls._normalize_requirements(
             source,
             project_name=project_name,
@@ -151,7 +203,7 @@ class FlextInfraUtilitiesPyprojectConform:
             canonicalize_all=False,
         )
         if normalized.failure:
-            return r[str].fail(normalized.error or "dependency normalization failed")
+            return r[str].from_failure(normalized)
         cls._sync_workspace_dependency_group(
             source,
             project_name=project_name,
@@ -169,21 +221,14 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         )
         if sources_result.failure:
-            return r[str].fail(sources_result.error or "uv source conformance failed")
-        provenance_result = cls._validate_dependency_provenance(
+            return r[str].from_failure(sources_result)
+        return cls._rendered_conformed_document(
             source,
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
+            invalid_render_error="dependency conformance produced invalid TOML",
         )
-        if provenance_result.failure:
-            return r[str].fail(
-                provenance_result.error or "dependency provenance validation failed"
-            )
-        rendered = u.Cli.toml_dumps(source)
-        if u.Cli.toml_parse_text(rendered) is None:
-            return r[str].fail("dependency conformance produced invalid TOML")
-        return r[str].ok(rendered)
 
     @classmethod
     def _normalize_requirements(
@@ -193,7 +238,7 @@ class FlextInfraUtilitiesPyprojectConform:
         project_name: str,
         providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
         canonicalize_all: bool,
     ) -> p.Result[bool]:
         """Render internal requirements for root workspace or detached operation."""
@@ -222,24 +267,17 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if normalized.failure:
             return normalized
-        for section_name in (c.Infra.OPTIONAL_DEPENDENCIES, c.Infra.DEPENDENCY_GROUPS):
-            parent = (
-                project if section_name == c.Infra.OPTIONAL_DEPENDENCIES else document
+        for section, group_name in cls.requirement_group_fields(document, project):
+            group_result = cls._normalize_requirement_field(
+                section,
+                group_name,
+                repositories=available,
+                providers=providers,
+                canonicalize_all=canonicalize_all,
+                workspace_dependencies=workspace_dependencies,
             )
-            section = u.Cli.toml_table_child(parent, section_name)
-            if section is None:
-                continue
-            for group_name in tuple(section):
-                group_result = cls._normalize_requirement_field(
-                    section,
-                    group_name,
-                    repositories=available,
-                    providers=providers,
-                    canonicalize_all=canonicalize_all,
-                    workspace_dependencies=workspace_dependencies,
-                )
-                if group_result.failure:
-                    return group_result
+            if group_result.failure:
+                return group_result
         return r[bool].ok(True)
 
     @classmethod
@@ -271,14 +309,12 @@ class FlextInfraUtilitiesPyprojectConform:
                 workspace_dependencies=workspace_dependencies,
             )
             if normalized.failure:
-                return r[bool].fail(
-                    normalized.error or f"normalize dependency group {key} failed"
-                )
+                return r[bool].from_failure(normalized)
             normalized_items.append(normalized.value)
         canonical = tuple(dict.fromkeys(normalized_items))
         if canonicalize_all:
 
-            def requirement_key(requirement: str) -> tuple[str, str]:
+            def requirement_key(requirement: str) -> t.Pair[str, str]:
                 name = FlextInfraUtilitiesDependencies.dep_name(requirement) or ""
                 return name, requirement
 
@@ -318,21 +354,16 @@ class FlextInfraUtilitiesPyprojectConform:
             dependency_name, repositories=repositories, providers=providers
         )
         if reference_result.failure:
-            return r[str].fail(
-                reference_result.error
-                or f"repository resolution failed: {dependency_name}"
-            )
+            return r[str].from_failure(reference_result)
         reference = reference_result.value
         provider = FlextInfraUtilitiesRepository.repository_provider(
             reference, providers
         )
         if provider.failure:
-            return r[str].fail(
-                provider.error or "repository provider resolution failed"
-            )
+            return r[str].from_failure(provider)
         git_url = cls._git_requirement_url(reference.url)
         if git_url.failure:
-            return r[str].fail(git_url.error or "repository URL validation failed")
+            return r[str].from_failure(git_url)
         canonical = f"{head} @ {git_url.value}@{provider.value.branch}"
         return r[str].ok(
             f"{canonical}; {marker_text}" if separator and marker_text else canonical
@@ -389,7 +420,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
         required_dev_dependencies: t.StrSequence,
     ) -> None:
         """Migrate optional dev dependencies and normalize declared groups."""
@@ -403,7 +434,7 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         # SSOT required floors win over existing same-name pins: dedupe_specs
         # keeps the first occurrence, so toolchain floors must lead the merge.
-        # Otherwise stale member pins (e.g. rumdl>=0.2.46) block exclude-newer.
+        # Otherwise stale member pins override the declared fleet floor.
         required_dev = tuple(
             requirement
             for requirement in required_dev_dependencies
@@ -451,7 +482,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
     ) -> None:
         """Keep the generated workspace dependency group only at the root."""
         workspace_root = cls._is_workspace_context_root(
@@ -492,11 +523,11 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
     ) -> bool:
         """Identify the root only when the active topology is a workspace."""
         return (
-            workspace_mode is c.Infra.WorkspaceMode.WORKSPACE
+            workspace_mode is c.Infra.MakeProfile.WORKSPACE
             and cls._is_workspace_root(project_name=project_name, workspace=workspace)
         )
 
@@ -565,13 +596,14 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
         link_mode: str | None = None,
         exclude_newer: str | None = None,
         exclude_newer_packages: t.StrSequence | None = None,
         exclude_newer_overrides: t.StrMapping | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] | None = None,
+        uv_environments: t.StrSequence | None = None,
     ) -> p.Result[bool]:
         """Keep managed uv sources only as the root local-workspace overlay."""
         workspace_root = cls._is_workspace_context_root(
@@ -581,24 +613,12 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
-            if (
-                not workspace_root
-                and link_mode is None
-                and exclude_newer is None
-                and not exclude_newer_packages
-                and not exclude_dependencies
-            ):
+            if not workspace_root and link_mode is None and not exclude_dependencies:
                 return r[bool].ok(True)
             tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
         uv = u.Cli.toml_table_child(tool, "uv")
         if uv is None:
-            if (
-                not workspace_root
-                and link_mode is None
-                and exclude_newer is None
-                and not exclude_newer_packages
-                and not exclude_dependencies
-            ):
+            if not workspace_root and link_mode is None and not exclude_dependencies:
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
         u.Cli.toml_remove_key_if_present(uv, "required-version")
@@ -625,13 +645,19 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
         if exclude_newer is not None:
             u.Cli.toml_sync_value(uv, "exclude-newer", exclude_newer)
-        # Two shapes share this uv key. A bare exemption is `false` (waive the
-        # cooldown entirely, for a reviewed security floor). An override is a
-        # timestamp, needed when the shared cutoff predates a floor the project
-        # legitimately requires: uv then reports the requirement unsatisfiable
-        # and names this key as the remedy, so switching the cooldown off is not
-        # enough — the cutoff has to move to a specific instant. Overrides win
-        # on collision, being the more specific declaration of the two.
+        # Environments come from the fleet toolchain SSOT: an empty declaration
+        # removes the key so uv resolves every environment, and a declared
+        # sequence skips the splits the fleet does not support (win32 resolves
+        # meltano's structlog cap against flext-core's floor and is
+        # unsatisfiable).
+        if uv_environments is not None and uv_environments:
+            # Declared as list[JsonValue], not list[str]: `list` is invariant,
+            # so the narrower element type is not assignable to the writer's
+            # parameter even though every element is a valid JsonValue.
+            environments: list[t.JsonValue] = list(uv_environments)
+            u.Cli.toml_sync_value(uv, "environments", environments)
+        elif uv_environments is not None:
+            u.Cli.toml_remove_key_if_present(uv, "environments")
         if exclude_newer_packages is not None or exclude_newer_overrides is not None:
             exclude_newer_payload: t.JsonDict = dict.fromkeys(
                 sorted(exclude_newer_packages or ()), False
@@ -666,9 +692,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
             else:
                 u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
-        member_paths = tuple(
-            member.path.as_posix() for member in workspace.subprojects
-        )
+        member_paths = tuple(member.path.as_posix() for member in workspace.subprojects)
         # A uv workspace with no members is not an empty workspace, it is a
         # declaration: uv reads the table's presence, not its contents, so an
         # empty one makes this project a *nested* workspace and refuses to set
@@ -769,7 +793,7 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace, providers=providers
         )
         if resolved_result.failure:
-            return r[bool].fail(resolved_result.error or "repository resolution failed")
+            return r[bool].from_failure(resolved_result)
         expected_sources = resolved_result.value
         if tuple(sources) != tuple(expected_sources):
             return r[bool].fail("root uv workspace sources differ from workspace SSOT")
@@ -792,7 +816,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
     ) -> p.Result[bool]:
         """Require one internal dependency provenance for the active topology."""
         payload = u.Cli.toml_as_mapping(document)

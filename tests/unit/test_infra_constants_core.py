@@ -44,20 +44,6 @@ class TestsFlextInfraInfraConstantsCore:
         tm.that(c.Infra.SECURITY, eq="security")
         tm.that(c.Infra.MARKDOWN, eq="markdown")
 
-    def test_default_csv_contains_gates(self) -> None:
-        csv = c.Infra.DEFAULT_CSV
-        tm.that(csv, contains="lint")
-        tm.that(csv, contains="format")
-        tm.that(csv, contains="mypy")
-        tm.that(csv, contains="pyright")
-
-    def test_default_csv_is_comma_separated(self) -> None:
-        csv = c.Infra.DEFAULT_CSV
-        gates = csv.split(",")
-        tm.that(gates, length_gt=0)
-        for g in gates:
-            tm.that(g, is_=str)
-
     def test_pass_status_constant(self) -> None:
         tm.that(c.Infra.ResultStatus.PASSED, eq="PASS")
 

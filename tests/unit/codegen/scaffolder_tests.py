@@ -39,7 +39,7 @@ def _project_info(
 class TestScaffoldProjectNoop:
     def test_all_modules_present_creates_nothing(self, tmp_path: Path) -> None:
         project = _create_test_project(tmp_path, with_all_modules=True)
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
         [result] = scaffolder.run(projects=[_project_info(project)])
         tm.that(result.files_created, empty=True)
         tm.that(len(result.files_skipped), eq=5)
@@ -49,7 +49,7 @@ class TestScaffoldProjectNoop:
 class TestScaffoldProjectCreatesSrcModules:
     def test_creates_missing_src_modules(self, tmp_path: Path) -> None:
         project = _create_test_project(tmp_path, with_all_modules=False)
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
         [result] = scaffolder.run(projects=[_project_info(project)])
         tm.that(len(result.files_created), eq=5)
         pkg = project / "src" / "test_project"
@@ -61,7 +61,7 @@ class TestScaffoldProjectCreatesSrcModules:
         pkg = project / "src" / "test_project"
         (pkg / "constants.py").write_text("class TestProjectConstants:\n    pass\n")
         (pkg / "models.py").write_text("class TestProjectModels:\n    pass\n")
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
         [result] = scaffolder.run(projects=[_project_info(project)])
         tm.that(len(result.files_created), eq=3)
         tm.that(len(result.files_skipped), eq=2)
@@ -74,7 +74,7 @@ class TestScaffoldProjectCreatesTestsModules:
         project = _create_test_project(tmp_path, with_all_modules=True)
         tests_dir = project / "tests"
         tests_dir.mkdir()
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
         [result] = scaffolder.run(projects=[_project_info(project)])
         tests_created = [f for f in result.files_created if "tests" in f]
         tm.that(len(tests_created), eq=5)
@@ -83,7 +83,7 @@ class TestScaffoldProjectCreatesTestsModules:
 
     def test_skips_tests_modules_when_no_tests_dir(self, tmp_path: Path) -> None:
         project = _create_test_project(tmp_path, with_all_modules=True)
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
         [result] = scaffolder.run(projects=[_project_info(project)])
         tests_created = [f for f in result.files_created if "tests" in f]
         tm.that(tests_created, empty=True)
@@ -92,12 +92,31 @@ class TestScaffoldProjectCreatesTestsModules:
 class TestScaffoldProjectIdempotency:
     def test_second_run_is_noop(self, tmp_path: Path) -> None:
         project = _create_test_project(tmp_path, with_all_modules=False)
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
         [first_result] = scaffolder.run(projects=[_project_info(project)])
         [second_result] = scaffolder.run(projects=[_project_info(project)])
         tm.that(len(first_result.files_created), eq=5)
         tm.that(second_result.files_created, empty=True)
         tm.that(len(second_result.files_skipped), eq=5)
+
+
+class TestScaffoldProjectFacadeOwnership:
+    def test_examples_and_scripts_inherit_project_facade(self, tmp_path: Path) -> None:
+        project = _create_test_project(tmp_path, with_all_modules=True)
+        (project / "examples").mkdir()
+        (project / "scripts").mkdir()
+        scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
+        [result] = scaffolder.run(projects=[_project_info(project)])
+
+        tm.that(len(result.files_created), eq=10)
+        tm.that(
+            (project / "examples" / "constants.py").read_text(encoding="utf-8"),
+            has="from test_project import FlextConstants",
+        )
+        tm.that(
+            (project / "scripts" / "constants.py").read_text(encoding="utf-8"),
+            has="from test_project import FlextConstants",
+        )
 
 
 __all__: t.StrSequence = []

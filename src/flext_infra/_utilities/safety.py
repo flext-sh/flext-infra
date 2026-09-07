@@ -22,6 +22,18 @@ class FlextInfraUtilitiesSafety:
     """Static safety helpers for copy-on-write file protection."""
 
     @staticmethod
+    def _is_repository_root(repo: Path) -> bool:
+        """Return whether ``repo`` is itself the top level of a Git repository."""
+        repo_check = u.Cli.run_raw(
+            [c.Infra.GIT, "rev-parse", "--show-toplevel"], cwd=repo
+        )
+        return not (
+            repo_check.failure
+            or not u.Cli.process_succeeded(repo_check.value.outcome)
+            or Path(repo_check.value.stdout.strip()).resolve() != repo.resolve()
+        )
+
+    @staticmethod
     def create_checkpoint(repo: Path, *, label: str = "checkpoint") -> p.Result[str]:
         """Validate that a repository is clean before file-scoped protection.
 
@@ -29,16 +41,15 @@ class FlextInfraUtilitiesSafety:
         """
         result: p.Result[str]
         checkpoint_label = label.strip() or "checkpoint"
-        repo_check = u.Cli.run_raw(
-            [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"], cwd=repo
-        )
-        if repo_check.failure or repo_check.value.exit_code != 0:
+        if not FlextInfraUtilitiesSafety._is_repository_root(repo):
             result = r[str].ok("")
         else:
             status_result = u.Cli.run_raw(
                 [c.Infra.GIT, "status", "--porcelain"], cwd=repo
             )
-            if status_result.failure or status_result.value.exit_code != 0:
+            if status_result.failure or not u.Cli.process_succeeded(
+                status_result.value.outcome
+            ):
                 result = r[str].fail(status_result.error or "git status failed")
             elif not status_result.value.stdout.strip():
                 result = r[str].ok("")
@@ -57,10 +68,7 @@ class FlextInfraUtilitiesSafety:
         """
         if not checkpoint:
             return r[bool].ok(True)
-        repo_check = u.Cli.run_raw(
-            [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"], cwd=repo
-        )
-        if repo_check.failure or repo_check.value.exit_code != 0:
+        if not FlextInfraUtilitiesSafety._is_repository_root(repo):
             return r[bool].ok(True)
         return r[bool].fail(
             "repository-wide checkpoint rollback is unsupported; "

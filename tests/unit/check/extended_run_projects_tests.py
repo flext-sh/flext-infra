@@ -90,10 +90,7 @@ class TestRunProjectsPublicBehavior:
                 ["p1"], ["lint"], reports_dir=tmp_path / "reports"
             )
         finally:
-            if original_pythonpath:
-                os.environ["PYTHONPATH"] = original_pythonpath
-            else:
-                os.environ.pop("PYTHONPATH", None)
+            u.Tests.restore_env("PYTHONPATH", original_pythonpath)
 
         tm.ok(result)
         tm.that((tmp_path / "reports" / report_name).exists(), eq=True)
@@ -112,10 +109,7 @@ class TestRunProjectsPublicBehavior:
                 ["p1"], ["lint"], reports_dir=tmp_path / "reports"
             )
         finally:
-            if original_pythonpath:
-                os.environ["PYTHONPATH"] = original_pythonpath
-            else:
-                os.environ.pop("PYTHONPATH", None)
+            u.Tests.restore_env("PYTHONPATH", original_pythonpath)
 
         tm.ok(result)
         tm.that((tmp_path / "reports" / "p1").is_dir(), eq=True)
@@ -143,10 +137,7 @@ class TestRunProjectsPublicBehavior:
                 fail_fast=True,
             )
         finally:
-            if original_pythonpath:
-                os.environ["PYTHONPATH"] = original_pythonpath
-            else:
-                os.environ.pop("PYTHONPATH", None)
+            u.Tests.restore_env("PYTHONPATH", original_pythonpath)
 
         tm.ok(result)
         tm.that(len(result.value), eq=1)
@@ -177,10 +168,7 @@ class TestRunProjectsPublicBehavior:
                 ["p1", "p2"], ["lint"], reports_dir=tmp_path / "reports"
             )
         finally:
-            if original_pythonpath:
-                os.environ["PYTHONPATH"] = original_pythonpath
-            else:
-                os.environ.pop("PYTHONPATH", None)
+            u.Tests.restore_env("PYTHONPATH", original_pythonpath)
 
         tm.ok(result)
         tm.that(len(result.value), eq=2)
@@ -197,10 +185,7 @@ class TestRunProjectsPublicBehavior:
         try:
             result = checker.run_project("p1", ["lint"])
         finally:
-            if original_pythonpath:
-                os.environ["PYTHONPATH"] = original_pythonpath
-            else:
-                os.environ.pop("PYTHONPATH", None)
+            u.Tests.restore_env("PYTHONPATH", original_pythonpath)
 
         tm.ok(result)
         tm.that(len(result.value), eq=1)

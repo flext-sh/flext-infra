@@ -81,7 +81,7 @@ class TestFreshImportValidatorCore:
         package_root = tmp_path / "src" / "demo_external"
         package_root.mkdir(parents=True)
         package_root.joinpath("__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
-        validator = FlextInfraValidateFreshImport(workspace_root=tmp_path)
+        validator = FlextInfraValidateFreshImport(repository_root=tmp_path)
         report: m.Infra.ValidationReport = tm.ok(
             validator.build_report(packages=("demo_external",))
         )

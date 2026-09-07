@@ -8,23 +8,17 @@ from flext_tests import tm
 from tests import t, u
 
 
-def _doc_mapping(doc: t.Cli.TomlDocument) -> t.JsonMapping:
-    return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-        u.normalize_to_json_value(doc.unwrap())
-    )
-
-
-def _mapping(value: t.JsonValue) -> t.JsonMapping:
-    return t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
-
-
-def _strings(value: t.JsonValue) -> t.StrSequence:
-    result: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(value)
-    return result
-
-
 class TestsFlextInfraDepsModernizerPytest:
     """Tests pytest settings phase behavior."""
+
+    @staticmethod
+    def _ini_options(doc: t.Cli.TomlDocument) -> t.JsonMapping:
+        """Unwrap the canonical tool.pytest.ini_options table from one document."""
+        return u.Tests.toml_mapping(
+            u.Tests.toml_mapping(
+                u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["pytest"]
+            )["ini_options"]
+        )
 
     def test_tooling_policy_enforces_configured_case_timeout(self) -> None:
         policy = config.Infra.tooling.tools.pytest
@@ -33,11 +27,9 @@ class TestsFlextInfraDepsModernizerPytest:
 
         _ = phase.apply(doc)
 
-        ini = _mapping(
-            _mapping(_mapping(_doc_mapping(doc)["tool"])["pytest"])["ini_options"]
-        )
+        ini = TestsFlextInfraDepsModernizerPytest._ini_options(doc)
         tm.that(
-            set(_strings(ini["addopts"])),
+            set(u.Tests.strings(ini["addopts"])),
             has=[f"--timeout={policy.case_timeout_seconds}"],
         )
 
@@ -48,24 +40,26 @@ class TestsFlextInfraDepsModernizerPytest:
 
         _ = FlextInfraEnsurePytestConfigPhase(tool_config).apply(doc)
 
-        ini = _mapping(
-            _mapping(_mapping(_doc_mapping(doc)["tool"])["pytest"])["ini_options"]
-        )
+        ini = TestsFlextInfraDepsModernizerPytest._ini_options(doc)
         pytest_policy = tool_config.tools.pytest
         tm.that(ini["minversion"], eq=pytest_policy.min_version)
         tm.that(
-            set(_strings(ini["python_classes"])), eq=set(pytest_policy.python_classes)
+            set(u.Tests.strings(ini["python_classes"])),
+            eq=set(pytest_policy.python_classes),
         )
-        tm.that(set(_strings(ini["python_files"])), eq=set(pytest_policy.python_files))
         tm.that(
-            set(_strings(ini["addopts"])),
+            set(u.Tests.strings(ini["python_files"])),
+            eq=set(pytest_policy.python_files),
+        )
+        tm.that(
+            set(u.Tests.strings(ini["addopts"])),
             eq={
                 *tool_config.tools.pytest.standard_addopts,
                 f"--timeout={tool_config.tools.pytest.case_timeout_seconds}",
             },
         )
         tm.that(
-            set(_strings(ini["markers"])),
+            set(u.Tests.strings(ini["markers"])),
             eq=set(tool_config.tools.pytest.standard_markers),
         )
 
@@ -86,9 +80,7 @@ markers = ["custom: custom marker"]
 
         _ = FlextInfraEnsurePytestConfigPhase(tool_config).apply(doc)
 
-        ini = _mapping(
-            _mapping(_mapping(_doc_mapping(doc)["tool"])["pytest"])["ini_options"]
-        )
+        ini = TestsFlextInfraDepsModernizerPytest._ini_options(doc)
         pytest_policy = tool_config.tools.pytest
         tm.that(ini["minversion"], eq=pytest_policy.min_version)
         tm.that(
@@ -96,22 +88,22 @@ markers = ["custom: custom marker"]
             eq=str(pytest_policy.slow_timeout_seconds),
         )
         tm.that(
-            set(_strings(ini["python_classes"])),
+            set(u.Tests.strings(ini["python_classes"])),
             eq={"Spec*", *pytest_policy.python_classes},
         )
         tm.that(
-            set(_strings(ini["python_files"])),
+            set(u.Tests.strings(ini["python_files"])),
             eq={"spec_*.py", *pytest_policy.python_files},
         )
         tm.that(
-            set(_strings(ini["addopts"])),
+            set(u.Tests.strings(ini["addopts"])),
             eq={
                 *tool_config.tools.pytest.standard_addopts,
                 f"--timeout={tool_config.tools.pytest.case_timeout_seconds}",
             },
         )
         tm.that(
-            set(_strings(ini["markers"])),
+            set(u.Tests.strings(ini["markers"])),
             eq={"custom: custom marker", *tool_config.tools.pytest.standard_markers},
         )
 

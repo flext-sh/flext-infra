@@ -43,12 +43,6 @@ def _render_root_makefile(tmp_path: Path) -> str:
     repository = test_u.Tests.repository_ref("workspace-root-fixture")
     workspace = m.Infra.WorkspaceSpec(
         name=repository.name,
-        beads=m.Infra.BeadsProjectSpec(
-            version=1,
-            workspace=repository.name,
-            database=repository.name,
-            issue_prefix=repository.name,
-        ),
         repository=repository,
         project=test_u.Tests.project_spec(repository.name),
     )
