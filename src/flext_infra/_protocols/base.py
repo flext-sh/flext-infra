@@ -419,21 +419,6 @@ class FlextInfraProtocolsBase(Protocol):
             """Toolchain field names protected from alternate distributions."""
             ...
 
-        @property
-        def uv_exclude_newer(self) -> str:
-            """Shared dependency cooldown rendered in uv duration syntax."""
-            ...
-
-        @property
-        def dependency_cooldown_exclusions(self) -> t.StrSequence:
-            """Packages exempted from the fleet dependency cooldown."""
-            ...
-
-        @property
-        def dependency_cooldown_overrides(self) -> t.StrMapping:
-            """Per-package RFC 3339 cooldown cutoffs."""
-            ...
-
     @runtime_checkable
     class TemplateEntrySpec(Protocol):
         """Template-entry fields consumed by scaffold root selection."""
