@@ -195,7 +195,9 @@ warn_return_any = false
 
         _ = FlextInfraEnsurePydanticMypyConfigPhase(tool_config_document).apply(doc)
 
-        pydantic_mypy_mapping = u.Tests.toml_mapping(u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["pydantic-mypy"])
+        pydantic_mypy_mapping = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["pydantic-mypy"]
+        )
         tm.that(
             pydantic_mypy_mapping["init_forbid_extra"],
             eq=tool_config_document.tools.pydantic_mypy.init_forbid_extra,

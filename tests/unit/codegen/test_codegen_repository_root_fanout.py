@@ -83,10 +83,12 @@ def _render_root_makefile(tmp_path: Path) -> Path:
     # The bootstrap projection refreshes the dispatcher of an existing checkout:
     # the root is present, even when it carries no metadata or topology yet.
     repository_root.mkdir()
-    request = u.Tests.conform_request(repository_root,
-    what=c.Infra.CodegenConformSurface.MAKEFILE,
-    scope=c.Infra.CodegenConformScope.SELF,
-    mode=c.Infra.CodegenConformMode.CHECK,)
+    request = u.Tests.conform_request(
+        repository_root,
+        what=c.Infra.CodegenConformSurface.MAKEFILE,
+        scope=c.Infra.CodegenConformScope.SELF,
+        mode=c.Infra.CodegenConformMode.CHECK,
+    )
     plan: m.Infra.CodegenPlan = tm.ok(
         FlextInfraCodegenConform(
             repository_root=repository_root,
@@ -100,8 +102,7 @@ def _render_root_makefile(tmp_path: Path) -> Path:
     tm.that(makefile_plans, len=1)
     makefile_path = repository_root / c.Infra.MAKEFILE_FILENAME
     makefile_path.write_text(
-        u.Tests.codegen_file_text(makefile_plans[0]),
-        encoding=c.Infra.ENCODING_DEFAULT,
+        u.Tests.codegen_file_text(makefile_plans[0]), encoding=c.Infra.ENCODING_DEFAULT
     )
     return repository_root
 

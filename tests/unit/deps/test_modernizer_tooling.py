@@ -398,7 +398,9 @@ select = ["E501"]
             doc, path=repository_root / "pyproject.toml"
         )
 
-        ruff = u.Tests.toml_mapping(u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["ruff"])
+        ruff = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["ruff"]
+        )
         lint_section = u.Tests.toml_mapping(ruff["lint"])
         isort = u.Tests.toml_mapping(lint_section["isort"])
         known_first_party = list(u.Tests.toml_strings(isort["known-first-party"]))

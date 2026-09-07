@@ -8,9 +8,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m, u
-from ._mise_artifacts_files import (
-    FlextInfraMiseArtifactsFiles as files,
-)
+from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:

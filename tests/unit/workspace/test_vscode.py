@@ -54,7 +54,9 @@ class TestsFlextInfraCodegenVscode:
         excludes = u.Tests.toml_mapping(doc["files.exclude"])
         tm.that("**/.retired-cache" in excludes, eq=False)
         tm.that(excludes["**/.mypy_cache"], eq=True)
-        overrides = u.Tests.toml_mapping(doc["python.analysis.diagnosticSeverityOverrides"])
+        overrides = u.Tests.toml_mapping(
+            doc["python.analysis.diagnosticSeverityOverrides"]
+        )
         tm.that(overrides["reportUnknownMemberType"], eq="none")
         tm.that(overrides["reportUntypedBaseClass"], eq="none")
         tm.that(doc["python.languageServer"], eq="None")

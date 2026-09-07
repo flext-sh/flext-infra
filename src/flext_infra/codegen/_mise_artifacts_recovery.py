@@ -6,21 +6,11 @@ from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
 from flext_infra import m
-from ._mise_artifacts_files import (
-    FlextInfraMiseArtifactsFiles as files,
-)
-from ._mise_artifacts_journal import (
-    FlextInfraMiseArtifactsJournal as journal_io,
-)
-from ._mise_artifacts_process import (
-    FlextInfraMiseArtifactsProcess as process,
-)
-from ._mise_artifacts_state import (
-    FlextInfraMiseArtifactsState as state,
-)
-from ._mise_artifacts_verification import (
-    FlextInfraMiseArtifactsVerification as verify,
-)
+from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
+from ._mise_artifacts_journal import FlextInfraMiseArtifactsJournal as journal_io
+from ._mise_artifacts_process import FlextInfraMiseArtifactsProcess as process
+from ._mise_artifacts_state import FlextInfraMiseArtifactsState as state
+from ._mise_artifacts_verification import FlextInfraMiseArtifactsVerification as verify
 
 if TYPE_CHECKING:
     from flext_infra import p, t

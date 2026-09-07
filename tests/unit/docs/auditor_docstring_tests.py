@@ -105,7 +105,9 @@ class TestsDocstringCoverage:
             summary = u.Tests.json_payload(
                 (report_dir / "audit-summary.json").read_text(encoding="utf-8")
             )
-            metric = u.Tests.toml_mapping(u.Tests.toml_mapping(summary["summary"])["docstring_coverage"])
+            metric = u.Tests.toml_mapping(
+                u.Tests.toml_mapping(summary["summary"])["docstring_coverage"]
+            )
             checked = metric["checked"]
             percent = metric["percent"]
             assert isinstance(checked, int)

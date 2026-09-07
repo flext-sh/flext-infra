@@ -572,9 +572,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if verified.failure:
             return r[m.Infra.CodegenResult].from_failure(verified)
         return r[m.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(
-                plan=verified.value, written_files=published.value
-            )
+            m.Infra.CodegenResult(plan=verified.value, written_files=published.value)
         )
 
     def _conform_workspace_beads_routes(
