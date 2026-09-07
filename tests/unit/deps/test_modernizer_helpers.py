@@ -53,7 +53,7 @@ class TestsFlextInfraDepsModernizerHelpers:
             ("requests>=2.0", "requests"),
             ("requests @ git+https://github.com/psf/requests.git", "requests"),
             ("../flext-core", "flext-core"),
-            ("my_package", "my_package"),
+            ("my_package", "my-package"),
             ("  requests  ", "requests"),
             ("", None),
             ("Django>=3.0,<4.0", "django"),

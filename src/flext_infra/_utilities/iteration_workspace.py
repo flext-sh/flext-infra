@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraUtilitiesIterationWorkspace:
+class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirectory):
     """Static helpers for discovering Python files across workspace projects."""
 
     @classmethod

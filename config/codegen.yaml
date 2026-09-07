@@ -174,6 +174,12 @@ Infra:
         repository: actions/deploy-pages
         version: v5.0.0
         sha: cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
+    # Generated projections already retired: their consumers are rewired, so
+    # conformance removes them and the layout gate still accepts them at the
+    # repository root until that removal lands everywhere.
+    retired_generated_paths:
+      - sgconfig.yml
+
     uv_exclude_dependencies:
       # Standalone CI installs the project editable while sibling flext packages
       # declare the same package via git+https@integration. uv rejects that as
@@ -1198,8 +1204,8 @@ Infra:
           - pyright>=1.1.411
           - pytest>=9.1.1
           - pytest-testmon>=2.2.0
-          - ruff>=0.16.0
-          - rumdl>=0.2.45
+          - ruff>=0.16.5
+          - rumdl>=0.2.62
           - vulture>=2.16
           - yamlfix>=1.19.1
         dependency_profiles:

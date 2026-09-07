@@ -98,9 +98,7 @@ class FlextInfraModelsDepsToml:
                     m.Field(exclude=True, description="Custom handler"),
                 ] = None
 
-                class Builder(
-                    m.Builder.Identity["FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig"]
-                ):
+                class Builder(m.Builder.Identity["Deps.Toml.PhaseConfig"]):
                     """Fluent builder for ``m.Infra.Deps.Toml.PhaseConfig``."""
 
                     def __init__(self, name: str) -> None:

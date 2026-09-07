@@ -25,14 +25,6 @@ if TYPE_CHECKING:
 
 
 class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
-    """Migrate cross-project alias imports to the canonical policy owner.
-
-    Rewrites ``import``/``from`` statements that reach a module through a
-    foreign project alias into imports rooted at the policy owner resolved
-    from the file path (or an explicit ``current_project``), inserting the
-    canonical local imports the rewritten statements require.
-    """
-
     class _CstImportHelpers:
         """Static libcst helpers for reading and building import statements."""
 

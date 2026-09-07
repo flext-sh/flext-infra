@@ -10,10 +10,9 @@ agent: agent
 Reload the current intent and evidence from:
 
 1. [Workspace law](../../AGENTS.md)
-2. [FLEXT context routing](../../.agents/skills/flext-context-routing/SKILL.md)
-3. [Branch-matched FLEXT law](../../.agents/skills/flext-law/SKILL.md)
-4. Nearest scoped `AGENTS.md`
-5. Active Bead
+2. [FLEXT capability owner](../../.agents/skills/flext-development/SKILL.md)
+3. Nearest scoped `AGENTS.md`
+4. Active Bead
 
 Resume at the first red gate. Fix its canonical owner and complete every
 consumer rewire before deleting the old path. Do not introduce aliases,

@@ -37,6 +37,11 @@ checksum = "sha256:8ee6d4ed42a89d9e5f71fe3e06a48d575050d264d48cbf33babbcac0a32d7
 url = "https://github.com/boyter/scc/releases/download/v4.0.0/scc_Darwin_x86_64.tar.gz"
 url_api = "https://api.github.com/repos/boyter/scc/releases/assets/526904409"
 
+[tools."aqua:boyter/scc"."platforms.windows-x64"]
+checksum = "sha256:bfd4f956f6c23917fee3a0ed0d950b80ee914fb4555effe9c6abbe0c30f1ec2f"
+url = "https://github.com/boyter/scc/releases/download/v4.0.0/scc_Windows_x86_64.zip"
+url_api = "https://api.github.com/repos/boyter/scc/releases/assets/526904412"
+
 [[tools.ast-grep]]
 version = "0.45.3"
 backend = "aqua:ast-grep/ast-grep"
@@ -61,6 +66,11 @@ url_api = "https://api.github.com/repos/ast-grep/ast-grep/releases/assets/537332
 checksum = "sha256:b2ffd26f42810340326a9e8a084bdc3647a8795c1a3f21fc06bd7bef3c7c5b2c"
 url = "https://github.com/ast-grep/ast-grep/releases/download/0.45.3/app-x86_64-apple-darwin.zip"
 url_api = "https://api.github.com/repos/ast-grep/ast-grep/releases/assets/537333391"
+
+[tools.ast-grep."platforms.windows-x64"]
+checksum = "sha256:3751b7d6be7fd39a80df1180ffe7e053903dcf92d3190e5a8336ff1746af9059"
+url = "https://github.com/ast-grep/ast-grep/releases/download/0.45.3/app-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/ast-grep/ast-grep/releases/assets/537334241"
 
 [[tools.direnv]]
 version = "2.37.1"
@@ -97,6 +107,11 @@ checksum = "sha256:24fb9ce48b563d7e9fbdd3a4e3e836941654a31ce3e67eba9eaafc3dcd8ae
 url = "https://github.com/direnv/direnv/releases/download/v2.37.1/direnv.darwin-amd64"
 url_api = "https://api.github.com/repos/direnv/direnv/releases/assets/274610540"
 
+[tools.direnv."platforms.windows-x64"]
+checksum = "sha256:d96fc8b7cf020c2d4c1dbbc2ccec5fd1cab05b51c491f02c8527a7fa6c50a1cd"
+url = "https://github.com/direnv/direnv/releases/download/v2.37.1/direnv.windows-amd64"
+url_api = "https://api.github.com/repos/direnv/direnv/releases/assets/274610569"
+
 [[tools."github:marlon-costa-dc/beads"]]
 version = "1.2.2-fd1"
 backend = "github:marlon-costa-dc/beads"
@@ -131,6 +146,11 @@ url_api = "https://api.github.com/repos/marlon-costa-dc/beads/releases/assets/53
 checksum = "sha256:7a4929a7c9cca2a60d9b55a62d96fb0fb2bef18f53de58200c5c10aed35a3227"
 url = "https://github.com/marlon-costa-dc/beads/releases/download/v1.2.2-fd1/beads_1.2.2-fd1_darwin_amd64.tar.gz"
 url_api = "https://api.github.com/repos/marlon-costa-dc/beads/releases/assets/537261434"
+
+[tools."github:marlon-costa-dc/beads"."platforms.windows-x64"]
+checksum = "sha256:dd0090924dceeb77004aa7bac3c8eee0166a467d934f68dbfcfff4ceaac88217"
+url = "https://github.com/marlon-costa-dc/beads/releases/download/v1.2.2-fd1/beads_1.2.2-fd1_windows_amd64.zip"
+url_api = "https://api.github.com/repos/marlon-costa-dc/beads/releases/assets/537256873"
 
 [[tools."github:marlon-costa-dc/gascity"]]
 version = "1.4.1-fc2"
@@ -202,6 +222,11 @@ checksum = "sha256:e282ae6cc2f819125e8e5aaf2351caf8e066c74a853c7cdf1591cd4fb4657
 url = "https://github.com/microsoft/waza/releases/download/v0.38.7/waza-darwin-amd64"
 url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/520984885"
 
+[tools."github:microsoft/waza"."platforms.windows-x64"]
+checksum = "sha256:451d05c510341019e71c8e94d2ff4ed9f809f8f198bcf5fc31ab31038c5076c9"
+url = "https://github.com/microsoft/waza/releases/download/v0.38.7/waza-windows-amd64.exe"
+url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/520984898"
+
 [[tools."github:qltysh/qlty"]]
 version = "0.642.0"
 backend = "github:qltysh/qlty"
@@ -272,6 +297,11 @@ checksum = "sha256:dfe101a4db2255fc85120ac7f3d25e4342c3c20cf749f2c20a18081af1952
 url = "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_darwin_x64.tar.gz"
 url_api = "https://api.github.com/repos/gitleaks/gitleaks/releases/assets/378332053"
 
+[tools.gitleaks."platforms.windows-x64"]
+checksum = "sha256:d29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e"
+url = "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_windows_x64.zip"
+url_api = "https://api.github.com/repos/gitleaks/gitleaks/releases/assets/378333178"
+
 [[tools.go]]
 version = "1.26.8"
 backend = "core:go"
@@ -301,6 +331,10 @@ url = "https://dl.google.com/go/go1.26.8.darwin-arm64.tar.gz"
 checksum = "sha256:186be014105aa6542b767d2c6ed5cca10a0214bdff809ef1724022a8c7894150"
 url = "https://dl.google.com/go/go1.26.8.darwin-amd64.tar.gz"
 
+[tools.go."platforms.windows-x64"]
+checksum = "sha256:b92c3b2adae85a11ba71fe7216daf0d84e82af4c8ab6c5625807f28622043a59"
+url = "https://dl.google.com/go/go1.26.8.windows-amd64.zip"
+
 [[tools.helm]]
 version = "4.2.4"
 backend = "aqua:helm/helm"
@@ -329,6 +363,10 @@ url = "https://get.helm.sh/helm-v4.2.4-darwin-arm64.tar.gz"
 [tools.helm."platforms.macos-x64"]
 checksum = "sha256:6c163d687ca03c3b5c01928e53bbbcf9518278f47ce7a2f249a5a08e8bdaa2bc"
 url = "https://get.helm.sh/helm-v4.2.4-darwin-amd64.tar.gz"
+
+[tools.helm."platforms.windows-x64"]
+checksum = "sha256:38cbdab1c7d4f0412d571c3aeefc700bcdc7b663be481832a11dfed01ee67c36"
+url = "https://get.helm.sh/helm-v4.2.4-windows-amd64.tar.gz"
 
 [[tools.kind]]
 version = "0.33.0"
@@ -364,6 +402,11 @@ url_api = "https://api.github.com/repos/kubernetes-sigs/kind/releases/assets/531
 checksum = "sha256:5a99f26f57246dc9319dd294803313197a0f34d33c525b3ea8b655db5916ece0"
 url = "https://github.com/kubernetes-sigs/kind/releases/download/v0.33.0/kind-darwin-amd64"
 url_api = "https://api.github.com/repos/kubernetes-sigs/kind/releases/assets/531396367"
+
+[tools.kind."platforms.windows-x64"]
+checksum = "sha256:4b22adaa135368c5a465d56bbd8e520cbea87272a06ca00b6078e7b81515c9fc"
+url = "https://github.com/kubernetes-sigs/kind/releases/download/v0.33.0/kind-windows-amd64"
+url_api = "https://api.github.com/repos/kubernetes-sigs/kind/releases/assets/531396499"
 
 [[tools.kubeconform]]
 version = "0.8.0"
@@ -429,6 +472,10 @@ url = "https://dl.k8s.io/v1.37.0/bin/darwin/arm64/kubectl"
 checksum = "sha256:d5276c0f4fde77fc446070290f345944a7f1fda153df6b960e5fde93b7a9bccd"
 url = "https://dl.k8s.io/v1.37.0/bin/darwin/amd64/kubectl"
 
+[tools.kubectl."platforms.windows-x64"]
+checksum = "sha256:4721b614a67bb4932a0369e61f4a323d8c6ca00943d3a2ff14837c124da06f0e"
+url = "https://dl.k8s.io/v1.37.0/bin/windows/amd64/kubectl.exe"
+
 [[tools.node]]
 version = "26.8.1"
 backend = "core:node"
@@ -457,6 +504,10 @@ url = "https://nodejs.org/dist/v26.8.1/node-v26.8.1-darwin-arm64.tar.gz"
 [tools.node."platforms.macos-x64"]
 checksum = "sha256:fe9c6dbf9c8e1b4443803d75e2a20366e420dae650c747dbb116b22975751baf"
 url = "https://nodejs.org/dist/v26.8.1/node-v26.8.1-darwin-x64.tar.gz"
+
+[tools.node."platforms.windows-x64"]
+checksum = "sha256:57693d8e93d1b04e7b7de46aca53ecd63e97564e73de36a68428d7ff08d83587"
+url = "https://nodejs.org/dist/v26.8.1/node-v26.8.1-win-x64.zip"
 
 [[tools."npm:jscpd"]]
 version = "5.1.2"
@@ -498,40 +549,43 @@ checksum = "sha256:f712a9143c8a5d248438ec7921a0b48d548bca4f1337d33c690d28c2d0504
 url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260901/cpython-3.13.15+20260901-x86_64-apple-darwin-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
+[tools.python."platforms.windows-x64"]
+checksum = "sha256:63d263ab0162f34a241a56dc5b283c22d6e131f5516117e6a921350c69ba7d4f"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260901/cpython-3.13.15+20260901-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
+provenance = "github-attestations"
+
 [[tools.taplo]]
 version = "0.10.0"
 backend = "aqua:tamasfe/taplo"
 specifiers = ["latest"]
 
 [tools.taplo."platforms.linux-arm64"]
-checksum = "sha256:033681d01eec8376c3fd38fa3703c79316f5e14bb013d859943b60a07bccdcc3"
 url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-linux-aarch64.gz"
 url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257322597"
 
 [tools.taplo."platforms.linux-arm64-musl"]
-checksum = "sha256:033681d01eec8376c3fd38fa3703c79316f5e14bb013d859943b60a07bccdcc3"
 url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-linux-aarch64.gz"
 url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257322597"
 
 [tools.taplo."platforms.linux-x64"]
-checksum = "sha256:8fe196b894ccf9072f98d4e1013a180306e17d244830b03986ee5e8eabeb6156"
 url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-linux-x86_64.gz"
 url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257322600"
 
 [tools.taplo."platforms.linux-x64-musl"]
-checksum = "sha256:8fe196b894ccf9072f98d4e1013a180306e17d244830b03986ee5e8eabeb6156"
 url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-linux-x86_64.gz"
 url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257322600"
 
 [tools.taplo."platforms.macos-arm64"]
-checksum = "sha256:713734314c3e71894b9e77513c5349835eefbd52908445a0d73b0c7dc469347d"
 url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-darwin-aarch64.gz"
 url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257323110"
 
 [tools.taplo."platforms.macos-x64"]
-checksum = "sha256:898122cde3a0b1cd1cbc2d52d3624f23338218c91b5ddb71518236a4c2c10ef2"
 url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-darwin-x86_64.gz"
 url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257323116"
+
+[tools.taplo."platforms.windows-x64"]
+url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-windows-x86_64.zip"
+url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257323062"
 
 [[tools.uv]]
 version = "0.12.10"
@@ -572,4 +626,10 @@ provenance = "github-attestations"
 checksum = "sha256:5296d5aa2b9143360405eea866f8ef4d5dc8986b164eb0dc35e8f876a9304d30"
 url = "https://github.com/astral-sh/uv/releases/download/0.12.10/uv-x86_64-apple-darwin.tar.gz"
 url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/545034436"
+provenance = "github-attestations"
+
+[tools.uv."platforms.windows-x64"]
+checksum = "sha256:f65744f94072152b1f86ba2aace4d01f1124d9a8ecb235805039e3718c36cac2"
+url = "https://github.com/astral-sh/uv/releases/download/0.12.10/uv-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/545034461"
 provenance = "github-attestations"
