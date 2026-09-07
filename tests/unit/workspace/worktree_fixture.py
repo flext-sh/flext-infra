@@ -183,6 +183,52 @@ class WorktreeFixture:
         return path
 
     @classmethod
+    def attach_submodule(
+        cls, parent: Path, member: Path, *, distribution: str, relative_path: str
+    ) -> None:
+        """Declare and commit ``member`` as a real gitlink submodule of ``parent``."""
+        provider = u.Tests.provider()
+        (parent / c.Infra.GITMODULES).write_text(
+            f'[submodule "{distribution}"]\n'
+            f"\tpath = {relative_path}\n"
+            f"\turl = {cls.governed_repository_url(distribution)}\n"
+            f"\tbranch = {provider.branch}\n",
+            encoding="utf-8",
+        )
+        member_head = u.Tests.git_capture(member, "rev-parse", c.Infra.GIT_HEAD)
+        _ = u.Tests.git_run(parent, "add", c.Infra.GITMODULES)
+        _ = u.Tests.git_run(
+            parent,
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            f"160000,{member_head.strip()},{relative_path}",
+        )
+        _ = u.Tests.git_run(parent, "commit", "--quiet", "-m", "attach member")
+
+    @classmethod
+    def governed_workspace(
+        cls,
+        parent: Path,
+        directory: str,
+        *,
+        distribution: str = "fixture-workspace",
+        workspace: str = "fixture-workspace",
+        database: str = "fixture_workspace",
+        issue_prefix: str = "fixture-workspace",
+    ) -> Path:
+        """Initialize one governed checkout at ``parent/directory`` and return it."""
+        root = parent / directory
+        _ = cls.initialize_governed_project(
+            root,
+            distribution,
+            workspace=workspace,
+            database=database,
+            issue_prefix=issue_prefix,
+        )
+        return root
+
+    @classmethod
     def initialize_governed_project(
         cls,
         root: Path,

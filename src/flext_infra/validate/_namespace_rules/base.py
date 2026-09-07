@@ -72,7 +72,9 @@ class FlextInfraNamespaceRulesBase:
         )
 
     @classmethod
-    def imports_with_context(cls, tree: object) -> t.SequenceOf[tuple[object, bool]]:
+    def imports_with_context(
+        cls, tree: object
+    ) -> t.SequenceOf[t.Pair[t.JsonValue, bool]]:
         """Return every import with its TYPE_CHECKING-only state."""
         guarded = {
             id(child)

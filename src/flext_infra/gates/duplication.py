@@ -23,6 +23,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     gate_id: ClassVar[str] = "duplication"
     gate_name: ClassVar[str] = "Code Duplication"
     can_fix: ClassVar[bool] = False
+    scanner_binary: ClassVar[str] = c.Infra.JSCPD_BINARY
 
     # flext-pulj: process results stay structural outside the Pydantic boundary.
     _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
@@ -193,22 +194,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         )
 
     @staticmethod
-    def _resolve_binary() -> str | None:
-        """Locate the mise-provisioned jscpd on PATH; None when absent."""
-        return shutil.which(c.Infra.JSCPD_BINARY)
-
-    def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> m.Infra.Issue:
-        """Scanner absence/crash must never read as a clean pass."""
-        return m.Infra.Issue(
-            file=c.Infra.PYPROJECT_FILENAME,
-            line=1,
-            column=0,
-            code=self.gate_id,
-            message=scan.stderr or "jscpd execution failed",
-            severity=str(c.Infra.GateSeverity.ERROR.value),
-        )
-
-    @staticmethod
     def _failure_issue(message: str | None) -> m.Infra.Issue:
         """Represent malformed or absent jscpd output as a blocking issue."""
         return m.Infra.Issue(
@@ -223,7 +208,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     @classmethod
     def _issues_from_report(
         cls, scan: p.Cli.CommandOutput, project_dir: Path
-    ) -> p.Result[tuple[m.Infra.Issue, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.Issue]]:
         """Extract one Issue per clone side that falls inside ``project_dir``."""
         if not scan.stdout.strip():
             # jscpd succeeded and reported nothing, which means it was handed a
@@ -328,7 +313,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         )
 
     @staticmethod
-    def _python_behavior_ranges(path: Path) -> tuple[tuple[int, int], ...]:
+    def _python_behavior_ranges(path: Path) -> t.VariadicTuple[t.Pair[int, int]]:
         """Parse one module into ranges for statements with runtime behavior."""
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         parents = {

@@ -52,7 +52,7 @@ class TestsCodegenMakeEnvironment:
         )
         repository_root = project_root
         infra_repositories = (test_u.Tests.repository_ref(config.Infra.name),)
-        local_subprojects = (
+        local_declared_repositories = (
             (infra_repositories[0].model_copy(update={"path": Path("infra-engine")}),)
             if local_infra
             else ()
@@ -62,10 +62,10 @@ class TestsCodegenMakeEnvironment:
             beads=test_u.Tests.beads_project("fixture-project"),
             repository=repository,
             project=test_u.Tests.project_spec("fixture-project"),
-            subprojects=local_subprojects,
+            declared_repositories=local_declared_repositories,
         )
-        request = m.Infra.CodegenConformRequest(
-            root=project_root,
+        request = test_u.Tests.conform_request(
+            project_root,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
@@ -141,8 +141,8 @@ class TestsCodegenMakeEnvironment:
             )
         )
         tm.that(
-            u.Cli.process_succeeded(process.outcome),
-            eq=True,
+            process.outcome.raw_return_code,
+            eq=0,
             msg=process.stderr or process.stdout or "make probe failed without output",
         )
         output = process.stdout.strip().splitlines()
@@ -219,9 +219,7 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(result)
         tm.that(
-            u.Cli.process_succeeded(process.outcome),
-            eq=True,
-            msg=process.stdout + process.stderr,
+            process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr
         )
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv ")
@@ -467,9 +465,7 @@ class TestsCodegenMakeEnvironment:
         )
 
         tm.that(
-            u.Cli.process_succeeded(process.outcome),
-            eq=True,
-            msg=process.stdout + process.stderr,
+            process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr
         )
         tools = tool_log.read_text(encoding="utf-8").splitlines()
         tm.that(
@@ -556,7 +552,7 @@ class TestsCodegenMakeEnvironment:
         typed `check run` owner, so a gate the owner declares cannot be left
         unscheduled by the projection.
         """
-        project_root, _workspace_root = self._render_makefile(tmp_path, profile)
+        project_root, _repository_root = self._render_makefile(tmp_path, profile)
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
         phony_declarations = tuple(
             line.removeprefix(".PHONY:").strip()
@@ -581,11 +577,11 @@ class TestsCodegenMakeEnvironment:
             tm.that(scheduled.split(","), has=gate)
         tm.that(makefile, has='--gates "$$gates" --projects .')
 
-    def test_standalone_check_executes_its_declared_default_gates(
+    def test_standalone_check_executes_the_canonical_gate_set(
         self, tmp_path: Path
     ) -> None:
-        """Standalone check runs exactly the owner-declared default gate set."""
-        project_root, _repository_root = self._render_makefile(
+        """Run the sole canonical check executor with the declared default gates."""
+        project_root, _workspace_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
         invocation_log = tmp_path / "check-invocation.log"
@@ -607,7 +603,11 @@ class TestsCodegenMakeEnvironment:
                     c.Infra.MAKE,
                     "--no-print-directory",
                     "check",
-                    f"{apply_variable}={apply_value}",
+                    (
+                        f"{config.Infra.codegen.make.apply_variable}="
+                        f"{config.Infra.codegen.make.apply_value}"
+                    ),
+                    f"UV={uv}",
                 ],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
@@ -616,14 +616,18 @@ class TestsCodegenMakeEnvironment:
         )
 
         tm.that(
-            u.Cli.process_succeeded(process.outcome),
-            eq=True,
-            msg=process.stdout + process.stderr,
+            process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr
         )
-        gates = ",".join(config.Infra.codegen.make.check_gates_default)
         invocation = invocation_log.read_text(encoding="utf-8")
         tm.that(invocation, has="-m flext_infra check run")
-        tm.that(invocation, has=f"--gates {gates} --projects .")
+        tm.that(
+            invocation,
+            has=(
+                "--gates "
+                f"{','.join(config.Infra.codegen.make.check_gates_default)}"
+                " --projects ."
+            ),
+        )
 
     def test_dependency_upgrade_scopes_to_declared_project_locks(
         self, tmp_path: Path
@@ -643,7 +647,13 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(
             u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "deps", "APPLY=Y"],
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "deps-upgrade",
+                    "DEPENDENCY=flext-cli",
+                    "APPLY=Y",
+                ],
                 cwd=project_root,
                 # PATH takes the DIRECTORY holding the stub, never the stub
                 # itself: pointing it at the executable makes every lookup miss.
@@ -652,6 +662,10 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
+        tm.that(
+            process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr
+        )
+        commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(
             u.Cli.process_succeeded(process.outcome),
             eq=True,
@@ -685,7 +699,13 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(
             u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "deps"],
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "deps",
+                    "DEPENDENCY=flext-cli --all",
+                    "APPLY=Y",
+                ],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
@@ -693,8 +713,6 @@ class TestsCodegenMakeEnvironment:
         )
 
         tm.that(process.outcome.raw_return_code, ne=0)
-        apply_variable = config.Infra.codegen.make.apply_variable
-        apply_value = config.Infra.codegen.make.apply_value
         tm.that(
             process.stdout + process.stderr,
             has=f"this action requires {apply_variable}={apply_value}",

@@ -106,7 +106,7 @@ class FlextInfraUtilitiesRepository:
         cls,
         repository_root: Path,
         fallback: str | None = None,
-        preference: tuple[str, ...] | None = None,
+        preference: t.VariadicTuple[str] | None = None,
     ) -> p.Result[str]:
         """Return the integration baseline the repository actually publishes.
 
@@ -166,4 +166,4 @@ class FlextInfraUtilitiesRepository:
         )
 
 
-__all__: tuple[str, ...] = ("FlextInfraUtilitiesRepository",)
+__all__: t.VariadicTuple[str] = ("FlextInfraUtilitiesRepository",)

@@ -117,7 +117,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         cls,
         module_name: str,
         level: int,
-        names_and_aliases: t.SequenceOf[tuple[str, str | None]],
+        names_and_aliases: t.SequenceOf[t.Pair[str, str | None]],
     ) -> t.Infra.RopeFromImport:
         from_import_factory = cls._runtime_callable(
             "rope.refactor.importutils.importinfo", "FromImport"

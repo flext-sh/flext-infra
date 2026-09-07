@@ -9,9 +9,7 @@ from flext_core import r
 from flext_infra import c, m, u
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
-
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 class FlextInfraCodegenLazyInitGenerationRegistryMixin:
@@ -28,7 +26,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         return u.Cli.atomic_read_binary_file_state(path, required=False)
 
     @staticmethod
-    def _path_flags(path: Path) -> p.Result[tuple[bool, bool, bool, bool]]:
+    def _path_flags(path: Path) -> p.Result[t.Quad[bool, bool, bool, bool]]:
         """Read one path classification while preserving filesystem failures."""
         try:
             flags = (path.is_symlink(), path.is_file(), path.exists(), path.is_dir())
@@ -41,7 +39,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
     @staticmethod
     def _glob_paths(
         directory: Path, pattern: str, *, operation: str
-    ) -> p.Result[tuple[Path, ...]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Return deterministic glob results with their causal I/O failure."""
         try:
             paths = tuple(sorted(directory.glob(pattern)))
@@ -51,7 +49,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
 
     def _cleanup_generated_support_file_states(
         self, plan: m.Infra.LazyInitPlan
-    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         """Return the complete physical file set selected for deletion."""
         states: dict[Path, m.Cli.AtomicFileState] = {}
         for result in (
@@ -75,7 +73,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
 
     def _obsolete_root_support_states(
         self, plan: m.Infra.LazyInitPlan
-    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         """Inventory closed root registries superseded by inline maps."""
         context = plan.context
         if (
@@ -137,11 +135,11 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
                         f"unexpected file in obsolete root support: {child}"
                     )
                 stale_paths.append(child)
-        return self._required_states(stale_paths)
+        return u.Infra.required_file_states(stale_paths)
 
     def _obsolete_generated_file_states(
         self, plan: m.Infra.LazyInitPlan
-    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         """Inventory generated artifacts retired by the inline-root contract."""
         states: list[m.Cli.AtomicFileState] = []
         for filename in c.Infra.OBSOLETE_GENERATED_INIT_FILES:
@@ -155,7 +153,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
 
     def _generated_typing_stub_states(
         self, plan: m.Infra.LazyInitPlan
-    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         """Inventory stale codegen-owned ``__init__.pyi`` files."""
         stub_path = plan.context.pkg_dir / c.Infra.INIT_PYI
         state = self._optional_state(stub_path)
@@ -167,7 +165,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
 
     def _generated_export_sidecar_states(
         self, plan: m.Infra.LazyInitPlan
-    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         """Inventory legacy generated export files outside the canonical owner."""
         search_dirs = {
             plan.context.pkg_dir,
@@ -230,20 +228,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
                     return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(init_state)
                 if self._is_generated(init_state.value.content):
                     stale_paths.add(constants_init)
-        return self._required_states(stale_paths)
-
-    @staticmethod
-    def _required_states(
-        paths: Iterable[Path],
-    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
-        """Snapshot an already-inventoried physical deletion set."""
-        states: list[m.Cli.AtomicFileState] = []
-        for path in sorted(set(paths)):
-            state = u.Cli.atomic_read_binary_file_state(path, required=True)
-            if state.failure:
-                return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(state)
-            states.append(state.value)
-        return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(states))
+        return u.Infra.required_file_states(stale_paths)
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitGenerationRegistryMixin"]

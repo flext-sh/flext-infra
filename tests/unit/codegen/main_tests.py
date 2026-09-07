@@ -161,8 +161,8 @@ class TestMainCommandDispatch:
         result = infra_main(["codegen"])
         tm.that(result, ne=0)
 
-    def test_init_with_custom_root(self, real_git_repo: Path) -> None:
-        """main() init with custom root directory."""
+    def test_init_rejects_nested_non_worktree_root(self, real_git_repo: Path) -> None:
+        """Initialization accepts only the exact Git worktree root."""
         custom_root = real_git_repo / "custom"
         custom_root.mkdir()
         result = infra_main([
@@ -172,7 +172,7 @@ class TestMainCommandDispatch:
             "--repository-root",
             str(_with_pep621_identity(custom_root)),
         ])
-        tm.that(result, eq=0)
+        tm.that(result, ne=0)
 
 
 # Exemplar: every test here spawns a fresh interpreter to prove the real
@@ -210,8 +210,8 @@ class TestMainEntryPoint:
         ])
         tm.ok(result)
         tm.that(
-            u.Cli.process_succeeded(result.value.outcome),
-            eq=True,
+            result.value.outcome.raw_return_code,
+            eq=0,
             msg=result.value.stderr or result.value.stdout,
         )
         tm.that(" ".join(result.value.stdout.split()), contains=route.help_text)
@@ -255,8 +255,8 @@ class TestMainEntryPoint:
         )
         tm.ok(applied)
         tm.that(
-            u.Cli.process_succeeded(applied.value.outcome),
-            eq=True,
+            applied.value.outcome.raw_return_code,
+            eq=0,
             msg=applied.value.stderr or applied.value.stdout,
         )
         rendered = pyproject.read_text(encoding="utf-8")
@@ -275,8 +275,8 @@ class TestMainEntryPoint:
         )
         tm.ok(fixed_point)
         tm.that(
-            u.Cli.process_succeeded(fixed_point.value.outcome),
-            eq=True,
+            fixed_point.value.outcome.raw_return_code,
+            eq=0,
             msg=fixed_point.value.stderr or fixed_point.value.stdout,
         )
         tm.that(pyproject.read_bytes(), eq=published)

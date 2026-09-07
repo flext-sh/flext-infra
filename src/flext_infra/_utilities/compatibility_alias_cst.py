@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, override
 import libcst as cst
 from libcst.metadata import MetadataWrapper, ParentNodeProvider, QualifiedNameProvider
 
+from .._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
+
 if TYPE_CHECKING:
     from flext_infra.typings import t
 
@@ -22,7 +24,7 @@ class FlextInfraUtilitiesCompatibilityAliasCst:
             *,
             local_aliases: t.StrMapping,
             import_aliases: t.MappingKV[str, t.StrMapping],
-            attribute_aliases: t.MappingKV[tuple[str, str], str],
+            attribute_aliases: t.MappingKV[t.Pair[str, str], str],
             qualified_aliases: t.StrMapping,
             target_bindings: frozenset[str],
         ) -> None:
@@ -78,11 +80,9 @@ class FlextInfraUtilitiesCompatibilityAliasCst:
                 msg = f"ambiguous qualified alias {original_node.value}: {sorted(targets)}"
                 raise ValueError(msg)
             parent = self.get_metadata(ParentNodeProvider, original_node)
-            if isinstance(parent, cst.ImportAlias):
-                return updated_node
-            if isinstance(parent, cst.Attribute) and parent.attr is original_node:
-                return updated_node
-            if isinstance(parent, cst.Arg) and parent.keyword is original_node:
+            if FlextInfraUtilitiesQualifiedNames.rebinds_name_in_place(
+                parent, original_node
+            ):
                 return updated_node
             return updated_node.with_changes(value=targets.pop())
 
@@ -170,7 +170,7 @@ class FlextInfraUtilitiesCompatibilityAliasCst:
         *,
         local_aliases: t.StrMapping,
         import_aliases: t.MappingKV[str, t.StrMapping],
-        attribute_aliases: t.MappingKV[tuple[str, str], str],
+        attribute_aliases: t.MappingKV[t.Pair[str, str], str],
         qualified_aliases: t.StrMapping,
         target_bindings: frozenset[str],
     ) -> str:

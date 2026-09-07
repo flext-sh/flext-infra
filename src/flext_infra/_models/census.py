@@ -78,13 +78,13 @@ class FlextInfraModelsCensus:
                 t.NonNegativeInt,
                 m.Field(description="Number of references from script modules"),
             ] = 0
-            runtime_reference_sites: tuple[
-                FlextInfraModelsCensus.Census.ReferenceSite, ...
+            runtime_reference_sites: t.VariadicTuple[
+                FlextInfraModelsCensus.Census.ReferenceSite
             ] = m.Field(
                 default_factory=tuple, description="Runtime/source reference sites"
             )
-            script_reference_sites: tuple[
-                FlextInfraModelsCensus.Census.ReferenceSite, ...
+            script_reference_sites: t.VariadicTuple[
+                FlextInfraModelsCensus.Census.ReferenceSite
             ] = m.Field(default_factory=tuple, description="Script reference sites")
             fingerprint: Annotated[
                 str, m.Field(description="Normalized Rope-derived semantic fingerprint")
@@ -111,14 +111,14 @@ class FlextInfraModelsCensus:
             suggested_action: Annotated[
                 str, m.Field(description="Suggested removal action for this candidate")
             ]
-            runtime_reference_sites: tuple[
-                FlextInfraModelsCensus.Census.ReferenceSite, ...
+            runtime_reference_sites: t.VariadicTuple[
+                FlextInfraModelsCensus.Census.ReferenceSite
             ] = m.Field(
                 default_factory=tuple,
                 description="Runtime/source references blocking full deletion",
             )
-            script_reference_sites: tuple[
-                FlextInfraModelsCensus.Census.ReferenceSite, ...
+            script_reference_sites: t.VariadicTuple[
+                FlextInfraModelsCensus.Census.ReferenceSite
             ] = m.Field(
                 default_factory=tuple,
                 description="Script references supporting this candidate",
@@ -246,7 +246,7 @@ class FlextInfraModelsCensus:
 
             model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
-            objects: tuple[FlextInfraModelsCensus.Census.Object, ...] = m.Field(
+            objects: t.VariadicTuple[FlextInfraModelsCensus.Census.Object] = m.Field(
                 default_factory=tuple, description="Objects discovered for this project"
             )
             objects_total: Annotated[
@@ -255,10 +255,10 @@ class FlextInfraModelsCensus:
             objects_by_kind: Annotated[
                 t.IntMapping, m.Field(description="Object count per kind")
             ] = m.Field(default_factory=ImmutableEmptyMapping)
-            violations: tuple[FlextInfraModelsCensus.Census.Violation, ...] = m.Field(
-                default_factory=tuple, description="Detected violations"
+            violations: t.VariadicTuple[FlextInfraModelsCensus.Census.Violation] = (
+                m.Field(default_factory=tuple, description="Detected violations")
             )
-            fixes: tuple[FlextInfraModelsCensus.Census.Fix, ...] = m.Field(
+            fixes: t.VariadicTuple[FlextInfraModelsCensus.Census.Fix] = m.Field(
                 default_factory=tuple, description="Proposed or applied fixes"
             )
             violations_total: Annotated[
@@ -275,8 +275,8 @@ class FlextInfraModelsCensus:
                 t.NonNegativeInt,
                 m.Field(description="Objects eligible for aggressive removal review"),
             ] = 0
-            removal_candidates: tuple[
-                FlextInfraModelsCensus.Census.RemovalCandidate, ...
+            removal_candidates: t.VariadicTuple[
+                FlextInfraModelsCensus.Census.RemovalCandidate
             ] = m.Field(
                 default_factory=tuple,
                 description="Explicit aggressive-removal candidates for this project",
@@ -285,8 +285,8 @@ class FlextInfraModelsCensus:
         class WorkspaceReport(m.ArbitraryTypesModel):
             """Workspace-wide census summary."""
 
-            projects: tuple[FlextInfraModelsCensus.Census.ProjectReport, ...] = m.Field(
-                default_factory=tuple, description="Per-project reports"
+            projects: t.VariadicTuple[FlextInfraModelsCensus.Census.ProjectReport] = (
+                m.Field(default_factory=tuple, description="Per-project reports")
             )
             total_objects: Annotated[
                 t.NonNegativeInt, m.Field(description="Total objects across workspace")
@@ -301,10 +301,10 @@ class FlextInfraModelsCensus:
             fixes_total: Annotated[
                 t.NonNegativeInt, m.Field(description="Total proposed or applied fixes")
             ] = 0
-            duplicates: tuple[FlextInfraModelsCensus.Census.DuplicateGroup, ...] = (
-                m.Field(
-                    default_factory=tuple, description="Cross-project duplicate groups"
-                )
+            duplicates: t.VariadicTuple[
+                FlextInfraModelsCensus.Census.DuplicateGroup
+            ] = m.Field(
+                default_factory=tuple, description="Cross-project duplicate groups"
             )
             unused_count: Annotated[
                 t.NonNegativeInt, m.Field(description="Total unused objects")
@@ -315,8 +315,8 @@ class FlextInfraModelsCensus:
                     description="Total objects eligible for aggressive removal review"
                 ),
             ] = 0
-            removal_candidates: tuple[
-                FlextInfraModelsCensus.Census.RemovalCandidate, ...
+            removal_candidates: t.VariadicTuple[
+                FlextInfraModelsCensus.Census.RemovalCandidate
             ] = m.Field(
                 default_factory=tuple,
                 description="Explicit aggressive-removal candidates across workspace",

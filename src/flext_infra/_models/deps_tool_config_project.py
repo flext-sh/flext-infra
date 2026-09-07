@@ -71,7 +71,7 @@ class FlextInfraModelsDepsToolConfigProjectGitignore(
         """Repository-owned ignore patterns the fleet scaffold cannot know."""
 
         patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
                     "Ignore patterns appended, in declaration order, as one "
@@ -130,7 +130,7 @@ class FlextInfraModelsDepsToolConfigProjectArtifacts(
         """One immutable YAML snapshot and its single parsed resolution."""
 
         sources: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(description="Ordered exact project configuration sources."),
         ]
         resolution: Annotated[

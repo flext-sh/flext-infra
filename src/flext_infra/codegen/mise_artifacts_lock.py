@@ -12,9 +12,9 @@ from typing import Never
 
 from filelock import lock_descriptor, unlock_descriptor
 
-from flext_infra import m, u
+from flext_infra import m, t, u
 
-_LEASE_FAILURES: tuple[type[BaseException], ...] = (
+_LEASE_FAILURES: t.VariadicTuple[type[BaseException]] = (
     Exception,
     BaseExceptionGroup,
     GeneratorExit,

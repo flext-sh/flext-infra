@@ -215,7 +215,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 py_file.unlink()
 
     _snapshot_cache: ClassVar[
-        MutableMapping[tuple[str, str, t.StrSequence], t.Infra.LintSnapshot]
+        MutableMapping[t.Triple[str, str, t.StrSequence], t.Infra.LintSnapshot]
     ] = {}
 
     @classmethod
@@ -226,7 +226,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     @staticmethod
     def _lint_snapshot_cache_key(
         py_file: Path, gate_key: t.StrSequence
-    ) -> tuple[str, str, t.StrSequence] | None:
+    ) -> t.Triple[str, str, t.StrSequence] | None:
         """Lint snapshot cache key."""
         raw_bytes = py_file.read_bytes()
         return (str(py_file.resolve()), u.Cli.sha256_bytes(raw_bytes), gate_key)
@@ -450,7 +450,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         *,
         updated_source: str,
         gates: t.StrSequence | None = None,
-    ) -> tuple[t.Infra.LintSnapshot, t.Infra.LintSnapshot]:
+    ) -> t.Pair[t.Infra.LintSnapshot, t.Infra.LintSnapshot]:
         """Preview lint output for ``updated_source`` while restoring the file."""
         original_source = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         before = FlextInfraUtilitiesProtectedEditLinting.lint_snapshot(

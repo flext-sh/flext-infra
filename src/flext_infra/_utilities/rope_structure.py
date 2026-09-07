@@ -28,7 +28,7 @@ class FlextInfraUtilitiesRopeStructure:
         lines = codeanalyze.SourceLinesAdapter(source)
         finder = codeanalyze.LogicalLineFinder(lines)
         statements: t.MutableSequenceOf[m.Infra.LogicalStatement] = []
-        enclosers: t.MutableSequenceOf[tuple[int, c.Infra.RopeScopeKind, str]] = []
+        enclosers: t.MutableSequenceOf[t.Triple[int, c.Infra.RopeScopeKind, str]] = []
         type_checking_guards: t.MutableSequenceOf[int] = []
         for start, end in finder.generate_regions():
             # Rope hands lines back without their newline; a multi-line logical
@@ -128,7 +128,7 @@ class FlextInfraUtilitiesRopeStructure:
         regions = cls._ignored_regions(source, lines)
         facts = cls._import_facts(module_imports)
         word_finder = worder.Worder(source, True)
-        violations: tuple[m.Infra.PatternSmellViolation, ...] = ()
+        violations: t.VariadicTuple[m.Infra.PatternSmellViolation] = ()
         for statement in cls.logical_statements(source):
             for rule in rules:
                 if isinstance(rule, m.Infra.StaticCommentRule) or not cls._rule_matches(
@@ -250,11 +250,11 @@ class FlextInfraUtilitiesRopeStructure:
         word_finder: p.Infra.RopeWorder,
         *,
         called: bool = False,
-    ) -> tuple[int, ...]:
+    ) -> t.VariadicTuple[int]:
         """Return Rope-verified primary offsets inside one logical region."""
         start = lines.get_line_start(statement.line)
         end = lines.get_line_end(statement.end_line)
-        offsets: tuple[int, ...] = ()
+        offsets: t.VariadicTuple[int] = ()
         cursor = start
         while (candidate := source.find(primary, cursor, end)) >= 0:
             cursor = candidate + len(primary)
@@ -289,7 +289,7 @@ class FlextInfraUtilitiesRopeStructure:
         module_imports: t.Infra.RopeModuleImports,
     ) -> t.SequenceOf[m.Infra.ImportFact]:
         """Validate Rope NormalImport/FromImport objects into immutable facts."""
-        facts: tuple[m.Infra.ImportFact, ...] = ()
+        facts: t.VariadicTuple[m.Infra.ImportFact] = ()
         for statement in tuple(module_imports.imports):
             line = statement.start_line if statement.start_line > 0 else 1
             info = statement.import_info
@@ -323,7 +323,7 @@ class FlextInfraUtilitiesRopeStructure:
         source: str, lines: codeanalyze.SourceLinesAdapter
     ) -> t.SequenceOf[m.Infra.IgnoredRegion]:
         """Validate Rope string/comment regions into immutable facts."""
-        regions: tuple[m.Infra.IgnoredRegion, ...] = ()
+        regions: t.VariadicTuple[m.Infra.IgnoredRegion] = ()
         for start, end, _metadata in simplify.ignored_regions(source):
             text = source[start:end]
             if text:

@@ -61,36 +61,13 @@ class FlextInfraConstantsMake:
     # Mutating gates (`format`) are excluded: they rewrite files, so they are
     # owned by `make fmt APPLY=Y` / `make fix APPLY=Y` and a read-only verb
     # must never invoke them.
-    CANONICAL_GATE_IDS: Final[tuple[str, ...]] = tuple(
+    CANONICAL_GATE_IDS: Final[t.VariadicTuple[str]] = tuple(
         gate
         for gate in FlextInfraConstantsCheck.SARIF_TOOL_INFO
         if gate not in FlextInfraConstantsCheck.MUTATING_GATES
     )
-    CANONICAL_DEFAULT_GATE_IDS: Final[tuple[str, ...]] = (
-        "lint",
-        "pyrefly",
-        "mypy",
-        "pyright",
-        "deferred-self-reference",
-        "security",
-        "markdown",
-        "boundary",
-        "canonical-alias",
-        "runtime-census",
-        "layout",
-        "tier-whitelist",
-        "smells",
-        "direnv",
-    )
-    (
-        "Gates that run by default. A gate joins this set the moment its own "
-        "debt reaches zero, and every declared gate outside it is a tracked "
-        "activation, never a silent exclusion: `loc-cap`, `namespace`, "
-        "`silent-failure`, `duplication` and `codemod` still carry inherited "
-        "findings and enter "
-        "one at a time, each with its own change that drives its count to zero."
-    )
-    CANONICAL_FIXABLE_GATE_IDS: Final[tuple[str, ...]] = (
+    CANONICAL_DEFAULT_GATE_IDS: Final[t.VariadicTuple[str]] = CANONICAL_GATE_IDS
+    CANONICAL_FIXABLE_GATE_IDS: Final[t.VariadicTuple[str]] = (
         "lint",
         "markdown",
         "canonical-alias",

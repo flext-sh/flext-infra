@@ -32,7 +32,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
         """Run one rope fixer adapter pass over a single reported file."""
         adapter = FlextInfraRopeFixerAdapter(tmp_path)
         ctx = m.Infra.FixEnforcementCommand(
-            repository_root=str(tmp_path), projects=("demo",), apply=apply
+            workspace=str(tmp_path), projects=("demo",), apply=apply
         )
         return adapter.fix_project(
             project_dir, ((rule, SimpleNamespace(file_path=str(file_path))),), ctx
@@ -61,7 +61,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
     @staticmethod
     def reject_inaccessible_config_project(tmp_path: Path) -> None:
         """Run the config fixer on an inaccessible project, proving the failure."""
-        fixer = FlextInfraConfigFixer(repository_root=tmp_path)
+        fixer = FlextInfraConfigFixer(workspace=tmp_path)
         result = fixer.run(["nonexistent"])
 
         tm.fail(result)
@@ -70,7 +70,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
     @staticmethod
     def gate_context(root: Path) -> m.Infra.GateContext:
         """Build the standard check-mode gate context for one root."""
-        return m.Infra.GateContext(repository_root=root, reports_dir=root)
+        return m.Infra.GateContext(workspace=root, reports_dir=root)
 
     @staticmethod
     def check_gate_asserting(
@@ -145,17 +145,17 @@ class TestsFlextInfraUtilitiesGatesMixin:
 
     @staticmethod
     def create_gate_context(
-        workspace_root: Path, *, reports_dir: Path | None = None
+        repository_root: Path, *, reports_dir: Path | None = None
     ) -> m.Infra.GateContext:
         """Provide the typed test helper `create_gate_context`."""
         return m.Infra.GateContext(
-            repository_root=workspace_root, reports_dir=reports_dir or workspace_root
+            workspace=repository_root, reports_dir=reports_dir or repository_root
         )
 
     @staticmethod
     def run_gate_check(
         gate_class: type[FlextInfraGate],
-        workspace_root: Path,
+        repository_root: Path,
         project_dir: Path,
         *,
         ctx: m.Infra.GateContext | None = None,
@@ -163,12 +163,12 @@ class TestsFlextInfraUtilitiesGatesMixin:
         runner: p.Cli.CommandRunner | None = None,
     ) -> m.Infra.GateExecution:
         """Provide the typed test helper `run_gate_check`."""
-        gate = gate_class(workspace_root, runner=runner)
+        gate = gate_class(repository_root, runner=runner)
         return gate.check(
             project_dir,
             ctx
             or TestsFlextInfraUtilitiesGatesMixin.create_gate_context(
-                workspace_root, reports_dir=reports_dir
+                repository_root, reports_dir=reports_dir
             ),
         )
 

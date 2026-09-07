@@ -8,17 +8,37 @@ from flext_cli import u
 from flext_infra import c
 from flext_tests import tm
 
-from ._support import CodegenTestSupport
+
+_CI_TEMPLATE = (
+    Path(__file__).resolve().parents[3]
+    / "src/flext_infra/templates/project/base/.github/workflows/ci.yml.j2"
+)
+_BASELINE_BRANCHES = ("dev", "develop", "0.12.0-dev", "main")
 
 
-class TestsCiIntegrationBranchTriggers:
-    """Keep integration triggers on one typed owner."""
+def _render_ci(*, repository_branch: str) -> str:
+    codegen = config.Infra.codegen
+    spec = m.Infra.GithubWorkflowRenderSpec(
+        dist="mcb",
+        make_profile=c.Infra.MakeProfile.STANDALONE,
+        repository_branch=repository_branch,
+        ci_trigger_branches=tuple(
+            dict.fromkeys((*_BASELINE_BRANCHES[:-1], repository_branch, "main"))
+        ),
+        python_version=codegen.toolchain.python_version,
+        mise_version=codegen.toolchain.mise_version,
+        github_actions=codegen.github_actions,
+        make=codegen.make,
+        workspace_repositories=(),
+        checkout_submodules=codegen.checkout_submodules,
+    )
+    return tm.ok(cli_u.Cli.template_render(_CI_TEMPLATE, spec))
 
     ci_template = (
         Path(__file__).resolve().parents[3]
         / "src/flext_infra/templates/project/base/.github/workflows/ci.yml.j2"
     )
-    baseline_branches = CodegenTestSupport.Ci.CI_TRIGGER_BASELINE_BRANCHES
+    baseline_branches = ("dev", "develop", "0.12.0-dev", "main")
 
     @classmethod
     def _render_ci(cls, *, repository_branch: str) -> str:
@@ -26,8 +46,8 @@ class TestsCiIntegrationBranchTriggers:
             dist="mcb",
             make_profile=c.Infra.MakeProfile.STANDALONE,
             repository_branch=repository_branch,
-            ci_trigger_branches=CodegenTestSupport.Ci.ci_trigger_branches(
-                repository_branch
+            ci_trigger_branches=tuple(
+                dict.fromkeys((*cls.baseline_branches[:-1], repository_branch, "main"))
             ),
         )
         return tm.ok(u.Cli.template_render(cls.ci_template, spec))

@@ -123,9 +123,8 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             ]
             diagnostic_path_overrides: Annotated[
-                tuple[
-                    FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.DiagnosticPathOverride,
-                    ...,
+                t.VariadicTuple[
+                    FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.DiagnosticPathOverride
                 ],
                 m.Field(
                     alias="diagnostic-path-overrides",

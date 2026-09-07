@@ -15,7 +15,7 @@ from ._census_rules_shared import FlextInfraRefactorCensusRulesSharedMixin
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 class FlextInfraRefactorCensusRulesAliasMixin(FlextInfraRefactorCensusRulesSharedMixin):
@@ -30,7 +30,7 @@ class FlextInfraRefactorCensusRulesAliasMixin(FlextInfraRefactorCensusRulesShare
         @staticmethod
         def _runtime_alias_target(
             convention: m.Infra.RopeModuleConvention,
-            objects: tuple[m.Infra.Census.Object, ...] | None,
+            objects: t.VariadicTuple[m.Infra.Census.Object] | None,
         ) -> m.Infra.Census.Object | None: ...
         @staticmethod
         def _runtime_alias_target_name(
@@ -43,10 +43,10 @@ class FlextInfraRefactorCensusRulesAliasMixin(FlextInfraRefactorCensusRulesShare
         file_path: Path,
         *,
         project_name: str,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
+        objects: t.VariadicTuple[m.Infra.Census.Object] | None,
         applied: frozenset[str],
         selected_kinds: frozenset[str],
-        symbol_index: dict[str, tuple[str, int]],
+        symbol_index: t.MappingKV[str, t.Pair[str, int]],
         convention: m.Infra.RopeModuleConvention,
     ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
         """Detect + plan fixes for runtime-alias re-export violations."""
@@ -111,7 +111,7 @@ class FlextInfraRefactorCensusRulesAliasMixin(FlextInfraRefactorCensusRulesShare
         file_path: Path,
         *,
         project_name: str,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
+        objects: t.VariadicTuple[m.Infra.Census.Object] | None,
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         convention: m.Infra.RopeModuleConvention,

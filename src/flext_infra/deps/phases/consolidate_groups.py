@@ -8,15 +8,12 @@ from flext_infra import c, t, u
 class FlextInfraConsolidateGroupsPhase:
     """Consolidate optional-dependencies and Poetry groups into single dev group."""
 
-    def apply(
-        self, doc: t.Cli.TomlDocument, canonical_dev: t.StrSequence
+    @staticmethod
+    def _merged_dev_requirements(
+        existing: t.MappingKV[str, t.StrSequence], canonical_dev: t.StrSequence
     ) -> t.StrSequence:
-        """Merge all legacy optional groups into canonical ``project.optional-dependencies.dev``."""
-        changes: t.MutableSequenceOf[str] = []
-        project = u.Cli.toml_ensure_table(doc, c.Infra.PROJECT)
-        optional = u.Cli.toml_ensure_table(project, c.Infra.OPTIONAL_DEPENDENCIES)
-        existing = u.Infra.project_dev_groups(doc)
-        merged_dev = u.Infra.dedupe_specs([
+        """Merge the canonical dev requirements with every legacy dev group."""
+        return u.Infra.dedupe_specs([
             *canonical_dev,
             *[
                 requirement
@@ -24,6 +21,17 @@ class FlextInfraConsolidateGroupsPhase:
                 for requirement in existing.get(str(group), ())
             ],
         ])
+
+    def apply(
+        self, doc: t.Cli.TomlDocument, canonical_dev: t.StrSequence
+    ) -> t.StrSequence:
+        """Merge all legacy optional groups into canonical ``project.optional-dependencies.dev``."""
+        changes: t.MutableSequenceOf[str] = []
+        project = u.Cli.toml_ensure_table(doc, c.Infra.PROJECT)
+        optional = u.Cli.toml_ensure_table(project, c.Infra.OPTIONAL_DEPENDENCIES)
+        merged_dev = self._merged_dev_requirements(
+            u.Infra.project_dev_groups(doc), canonical_dev
+        )
         current_dev = [
             str(item)
             for item in u.Cli.json_as_sequence(u.Cli.toml_value(optional, c.Infra.DEV))
@@ -81,15 +89,9 @@ class FlextInfraConsolidateGroupsPhase:
         optional = u.Cli.toml_mapping_ensure_table(
             project, c.Infra.OPTIONAL_DEPENDENCIES
         )
-        existing = u.Infra.project_dev_groups_from_payload(payload)
-        merged_dev = u.Infra.dedupe_specs([
-            *canonical_dev,
-            *[
-                requirement
-                for group in c.Infra.CANONICAL_DEV_DEPENDENCY_GROUPS
-                for requirement in existing.get(str(group), ())
-            ],
-        ])
+        merged_dev = self._merged_dev_requirements(
+            u.Infra.project_dev_groups_from_payload(payload), canonical_dev
+        )
         if u.Cli.toml_mapping_sync_string_list(
             optional, c.Infra.DEV, sorted(merged_dev)
         ):
