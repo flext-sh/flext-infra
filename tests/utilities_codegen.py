@@ -42,6 +42,19 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         )
 
     @staticmethod
+    def conform_request(
+        root: Path,
+        *,
+        what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
+        scope: c.Infra.CodegenConformScope = c.Infra.CodegenConformScope.SELF,
+        mode: c.Infra.CodegenConformMode = c.Infra.CodegenConformMode.CHECK,
+    ) -> m.Infra.CodegenConformRequest:
+        """Build one codegen conform request; every default is the model's own."""
+        return m.Infra.CodegenConformRequest(
+            root=root, what=what, scope=scope, mode=mode
+        )
+
+    @staticmethod
     def create_lazy_init_workspace(
         tmp_path: Path,
         *,

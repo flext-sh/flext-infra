@@ -13,7 +13,7 @@ from flext_cli import u
 from flext_core import r
 from flext_infra.models import m
 
-from ..._utilities._git.remote import canonical_origin_remote
+from ..._utilities._git.remote import FlextInfraUtilitiesGitRemote
 from ..._utilities._git.semantic_identity import (
     FlextInfraUtilitiesGitSemanticIdentityMixin,
 )
@@ -52,7 +52,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
             return r[m.Infra.GateAttestationPredicate].from_failure(evidence_result)
         toolchain = cls._toolchain_digest(repo_root)
         predicate = m.Infra.GateAttestationPredicate(
-            repository=canonical_origin_remote(identity.value.origin_remote or ""),
+            repository=FlextInfraUtilitiesGitRemote.canonical_origin_remote(
+                identity.value.origin_remote or ""
+            ),
             commit_sha=identity.value.head_oid,
             tree_sha=repo.head.commit.tree.hexsha,
             signer=request.signer,
@@ -242,7 +244,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
         repo = cls._repo(repo_root)
         commit = repo.commit(commit_sha)
         tree_sha = commit.tree.hexsha
-        actual_repository = canonical_origin_remote(identity.value.origin_remote or "")
+        actual_repository = FlextInfraUtilitiesGitRemote.canonical_origin_remote(
+            identity.value.origin_remote or ""
+        )
         actual_toolchain = cls._toolchain_digest(repo_root, commit_sha)
         mismatches = tuple(
             field

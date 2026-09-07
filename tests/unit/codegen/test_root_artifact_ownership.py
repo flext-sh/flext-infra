@@ -125,8 +125,8 @@ class TestsRootArtifactOwnership:
                 ),
             )
         )
-        request = m.Infra.CodegenConformRequest(
-            root=root,
+        request = u.Tests.conform_request(
+            root,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
             mode=c.Infra.CodegenConformMode.APPLY,
         )

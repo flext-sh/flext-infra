@@ -126,13 +126,8 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         finally:
             rope_project.close()
 
-        return self._build_check_gate_execution(
-            project_dir,
-            passed=len(issues) == 0,
-            issues=issues,
-            raw_output="\n".join(issue.formatted for issue in issues),
-            started=started,
-            ctx=ctx,
+        return self._detected_gate_execution(
+            project_dir, ctx, issues=issues, started=started
         )
 
     @override

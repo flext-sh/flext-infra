@@ -61,8 +61,8 @@ def _apply_conform_surface(
     """Materialize one exact public conform surface for a focused test."""
     tm.ok(
         FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
+            u.Tests.conform_request(
+                root,
                 what=surface,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.APPLY,
@@ -149,8 +149,8 @@ def _self_check_conform_service(
     package = root / "src" / repository.distribution.replace("-", "_")
     package.mkdir(parents=True)
     (package / "__init__.py").write_text("", encoding="utf-8")
-    request = m.Infra.CodegenConformRequest(
-        root=root,
+    request = u.Tests.conform_request(
+        root,
         scope=c.Infra.CodegenConformScope.SELF,
         mode=c.Infra.CodegenConformMode.CHECK,
     )
@@ -192,8 +192,8 @@ class TestCodegenConform:
             ),
         )
         return FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
+            u.Tests.conform_request(
+                root,
                 what=c.Infra.CodegenConformSurface.MAKEFILE,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.APPLY,
@@ -226,8 +226,8 @@ class TestCodegenConform:
         # Withdraw only the declaration that carried the marker. The same real
         # renderer must now produce a clean artifact and apply it.
         u.Tests.write_standalone_workspace_manifest(root, config.Infra.name)
-        request = m.Infra.CodegenConformRequest(
-            root=root,
+        request = u.Tests.conform_request(
+            root,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,
@@ -288,8 +288,8 @@ class TestCodegenConform:
         package_init.write_text("", encoding="utf-8")
 
         applied = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
+            u.Tests.conform_request(
+                root,
                 what=c.Infra.CodegenConformSurface.PYPROJECT,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.APPLY,
@@ -308,34 +308,19 @@ class TestCodegenConform:
 
     @pytest.mark.slow
     def test_branch_ancestry_accepts_active_merge_parent(self, tmp_path: Path) -> None:
-        root = tmp_path / "repository"
-        root.mkdir()
-        u.Tests.initialize_git_repo(root)
-        baseline = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "update-ref", "refs/remotes/origin/0.12.0-dev", baseline],
-                cwd=root,
-            )
+        root = u.Tests.git_repository(tmp_path)
+        baseline = u.Tests.git_capture(root, "rev-parse", "HEAD")
+        _ = u.Tests.git_run(
+            root, "update-ref", "refs/remotes/origin/0.12.0-dev", baseline
         )
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "remote", "set-url", "origin", str(tmp_path / "missing")],
-                cwd=root,
-            )
+        _ = u.Tests.git_run(
+            root, "remote", "set-url", "origin", str(tmp_path / "missing")
         )
-        empty_tree = tm.ok(u.Cli.capture(["git", "mktree"], cwd=root))
-        divergent = tm.ok(
-            u.Cli.capture(
-                ["git", "commit-tree", empty_tree, "-m", "Create divergent local line"],
-                cwd=root,
-            )
+        empty_tree = u.Tests.git_capture(root, "mktree")
+        divergent = u.Tests.git_capture(
+            root, "commit-tree", empty_tree, "-m", "Create divergent local line"
         )
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "checkout", "-B", "0.12.0-dev", divergent], cwd=root
-            )
-        )
+        _ = u.Tests.git_run(root, "checkout", "-B", "0.12.0-dev", divergent)
         divergent_check = tm.ok(
             u.Cli.run_raw(
                 ["git", "merge-base", "--is-ancestor", baseline, divergent], cwd=root
@@ -384,52 +369,31 @@ class TestCodegenConform:
         The repository here reproduces the race exactly: HEAD is linear on top
         of the lane, and the remote tip then advances by one unrelated commit.
         """
-        root = tmp_path / "repository"
-        root.mkdir()
-        u.Tests.initialize_git_repo(root)
-        lane_point = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "checkout", "-B", "0.12.0-dev", lane_point], cwd=root
-            )
-        )
+        root = u.Tests.git_repository(tmp_path)
+        lane_point = u.Tests.git_capture(root, "rev-parse", "HEAD")
+        _ = u.Tests.git_run(root, "checkout", "-B", "0.12.0-dev", lane_point)
         # Our commit: written linearly on top of the lane as it existed.
         (root / "ours.txt").write_text("ours\n", encoding="utf-8")
-        tm.ok(u.Cli.run_checked(["git", "add", "ours.txt"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-m", "Our linear commit on the lane"], cwd=root
-            )
-        )
-        triggering_sha = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=root))
+        _ = u.Tests.git_run(root, "add", "ours.txt")
+        _ = u.Tests.git_run(root, "commit", "-m", "Our linear commit on the lane")
+        triggering_sha = u.Tests.git_capture(root, "rev-parse", "HEAD")
         # A concurrent actor publishes to the same lane while our run queues,
         # so the fetched remote tip moves past the point we branched from.
-        empty_tree = tm.ok(u.Cli.capture(["git", "mktree"], cwd=root))
-        concurrent_tip = tm.ok(
-            u.Cli.capture(
-                [
-                    "git",
-                    "commit-tree",
-                    empty_tree,
-                    "-p",
-                    lane_point,
-                    "-m",
-                    "Concurrent publisher advances the lane",
-                ],
-                cwd=root,
-            )
+        empty_tree = u.Tests.git_capture(root, "mktree")
+        concurrent_tip = u.Tests.git_capture(
+            root,
+            "commit-tree",
+            empty_tree,
+            "-p",
+            lane_point,
+            "-m",
+            "Concurrent publisher advances the lane",
         )
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "update-ref", "refs/remotes/origin/0.12.0-dev", concurrent_tip],
-                cwd=root,
-            )
+        _ = u.Tests.git_run(
+            root, "update-ref", "refs/remotes/origin/0.12.0-dev", concurrent_tip
         )
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "remote", "set-url", "origin", str(tmp_path / "missing")],
-                cwd=root,
-            )
+        _ = u.Tests.git_run(
+            root, "remote", "set-url", "origin", str(tmp_path / "missing")
         )
         # The live tip is genuinely NOT an ancestor of our commit: this is the
         # exact state the old gate rejected.
@@ -468,22 +432,12 @@ class TestCodegenConform:
         merge-base pin and fall back to the live baseline tip, the same
             behavior a local (non-CI) checkout would use.
         """
-        root = tmp_path / "repository"
-        root.mkdir()
-        u.Tests.initialize_git_repo(root)
-        lane_point = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "checkout", "-B", "0.12.0-dev", lane_point], cwd=root
-            )
-        )
+        root = u.Tests.git_repository(tmp_path)
+        lane_point = u.Tests.git_capture(root, "rev-parse", "HEAD")
+        _ = u.Tests.git_run(root, "checkout", "-B", "0.12.0-dev", lane_point)
         (root / "ours.txt").write_text("ours\n", encoding="utf-8")
-        tm.ok(u.Cli.run_checked(["git", "add", "ours.txt"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-m", "Our commit on the lane"], cwd=root
-            )
-        )
+        _ = u.Tests.git_run(root, "add", "ours.txt")
+        _ = u.Tests.git_run(root, "commit", "-m", "Our commit on the lane")
         # GITHUB_SHA is a SHA that does NOT exist in this repo (simulating a
         # superproject merge commit visible only at the workspace root).
         foreign_sha = "9" * 40
@@ -576,8 +530,8 @@ class TestCodegenConform:
         package = checkout / "src" / repository.distribution.replace("-", "_")
         package.mkdir(parents=True)
         (package / "__init__.py").write_text("", encoding="utf-8")
-        request = m.Infra.CodegenConformRequest(
-            root=checkout,
+        request = u.Tests.conform_request(
+            checkout,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
@@ -721,8 +675,8 @@ class TestCodegenConform:
         )
         u.Tests.commit_git_changes(existing_root, "Seed committed drift")
         migrated = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=existing_root,
+            u.Tests.conform_request(
+                existing_root,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.APPLY,
             )
@@ -767,8 +721,8 @@ class TestCodegenConform:
         )
 
         applied = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
+            u.Tests.conform_request(
+                root,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.APPLY,
             )
@@ -776,8 +730,8 @@ class TestCodegenConform:
         tm.ok(applied)
 
         fixed_point = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
+            u.Tests.conform_request(
+                root,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.CHECK,
             )
@@ -794,8 +748,8 @@ class TestCodegenConform:
         (root / "scripts").mkdir()
 
         result = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
+            u.Tests.conform_request(
+                root,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.APPLY,
             )
@@ -833,8 +787,8 @@ class TestCodegenConform:
         tm.that(derived.repository, eq=local_repository)
         tm.that(derived.project, eq=None)
 
-        request = m.Infra.CodegenConformRequest(
-            root=root,
+        request = u.Tests.conform_request(
+            root,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,
         )
@@ -865,8 +819,8 @@ class TestCodegenConform:
         tm.that(root / ".env.example" in applied.value.written_files, eq=False)
 
         fixed_point = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
+            u.Tests.conform_request(
+                root,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.CHECK,
             )
@@ -888,8 +842,8 @@ class TestCodegenConform:
             subprojects=(member,),
         )
         root = tmp_path / "flext"
-        request = m.Infra.CodegenConformRequest(
-            root=root,
+        request = u.Tests.conform_request(
+            root,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
@@ -930,8 +884,8 @@ class TestCodegenConform:
             project=u.Tests.project_spec("arbitrary-root"),
         )
         root = tmp_path / "arbitrary-root"
-        request = m.Infra.CodegenConformRequest(
-            root=root,
+        request = u.Tests.conform_request(
+            root,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
@@ -983,8 +937,8 @@ class TestCodegenConform:
             project=project,
         )
         root = tmp_path / "consumer"
-        request = m.Infra.CodegenConformRequest(
-            root=root,
+        request = u.Tests.conform_request(
+            root,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
@@ -1073,8 +1027,8 @@ class TestCodegenConform:
             for route in CodegenRoutes.codegen_routes[c.Infra.CLI_GROUP_CODEGEN]
             if route.name == "conform"
         )
-        request = m.Infra.CodegenConformRequest(
-            root=root,
+        request = u.Tests.conform_request(
+            root,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=mode,
@@ -1101,8 +1055,8 @@ class TestCodegenConform:
             )
         )
         u.Tests.commit_git_changes(root, "Seed generated project")
-        request = m.Infra.CodegenConformRequest(
-            root=root,
+        request = u.Tests.conform_request(
+            root,
             what=c.Infra.CodegenConformSurface.DEPENDENCIES,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
@@ -1182,8 +1136,8 @@ class TestCodegenConform:
             )
         )
         result = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
+            u.Tests.conform_request(
+                root,
                 what=c.Infra.CodegenConformSurface.MAKEFILE,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.APPLY,
@@ -1293,8 +1247,8 @@ class TestCodegenConform:
             )
         )
         result = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
+            u.Tests.conform_request(
+                root,
                 what=c.Infra.CodegenConformSurface.MAKEFILE,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.APPLY,
@@ -1313,8 +1267,8 @@ class TestCodegenConform:
         tm.ok(u.Cli.files_delete(root / "custom.mk"))
         (root / "custom.mk").mkdir()
         result = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
+            u.Tests.conform_request(
+                root,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.CHECK,
             ),
@@ -1363,8 +1317,8 @@ class TestScriptDispatchMakefile:
             subprojects=(),
         )
         root = tmp_path / "demo-root"
-        request = m.Infra.CodegenConformRequest(
-            root=root,
+        request = u.Tests.conform_request(
+            root,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )

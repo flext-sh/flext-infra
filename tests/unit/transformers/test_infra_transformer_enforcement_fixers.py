@@ -19,6 +19,7 @@ from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncodin
 from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransformer
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 from flext_tests import tm
+from tests import t
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -37,6 +38,32 @@ def _transform(
     """Apply a stateless transformer to source text."""
     result: tuple[str, Sequence[str]] = transformer.apply_to_source(source)
     return result
+
+
+_BARE_EXCEPT_PATTERN: t.MappingKV[str, t.JsonValue] = {
+    "regex": r"^(?P<indent>\s*)except\s*:(?P<trail>.*)$",
+    "replacement": r"\g<indent>except Exception:\g<trail>",
+    "change_message": "Rewrote bare except to except Exception",
+    "flags": ["MULTILINE"],
+}
+
+_PRINT_TO_LOGGER_PATTERN: t.MappingKV[str, t.JsonValue] = {
+    "regex": r"\bprint\s*\(\s*(?P<args>[^)]*)\s*\)",
+    "replacement": r"u.fetch_logger(__name__).info(\g<args>)",
+    "change_message": "Rewrote u.Cli.print() to logger",
+}
+
+_TYPING_LIST_PATTERN: t.MappingKV[str, t.JsonValue] = {
+    "regex": r"\bList\s*\[",
+    "replacement": "t.SequenceOf[",
+    "change_message": "Rewrote List[...] to t.SequenceOf[...]",
+}
+
+_TYPING_LIST_ATTR_PATTERN: t.MappingKV[str, t.JsonValue] = {
+    "regex": r"\btyping\s*\.\s*List\s*\[",
+    "replacement": "t.SequenceOf[",
+    "change_message": "Rewrote typing.List[...] to t.SequenceOf[...]",
+}
 
 
 class TestsFlextInfraTransformersFutureImport:
@@ -225,14 +252,7 @@ class TestsFlextInfraTransformersPattern:
         """Verify bare except pattern."""
         source = "try:\n    pass\nexcept:\n    pass\n"
         transformer = FlextInfraRefactorPatternTransformer(
-            patterns=[
-                {
-                    "regex": r"^(?P<indent>\s*)except\s*:(?P<trail>.*)$",
-                    "replacement": r"\g<indent>except Exception:\g<trail>",
-                    "change_message": "Rewrote bare except to except Exception",
-                    "flags": ["MULTILINE"],
-                }
-            ]
+            patterns=[_BARE_EXCEPT_PATTERN]
         )
         code, changes = transformer.apply_to_source(source)
         tm.that(code, has="except Exception:")
@@ -245,14 +265,7 @@ class TestsFlextInfraTransformersPattern:
             "def foo():\n    try:\n        pass\n    except ValueError:\n        pass\n"
         )
         transformer = FlextInfraRefactorPatternTransformer(
-            patterns=[
-                {
-                    "regex": r"^(?P<indent>\s*)except\s*:(?P<trail>.*)$",
-                    "replacement": r"\g<indent>except Exception:\g<trail>",
-                    "change_message": "Rewrote bare except to except Exception",
-                    "flags": ["MULTILINE"],
-                }
-            ]
+            patterns=[_BARE_EXCEPT_PATTERN]
         )
         code, changes = transformer.apply_to_source(source)
         tm.that(code, eq=source)
@@ -307,13 +320,7 @@ class TestsFlextInfraTransformersPattern:
         """Verify pattern with required alias."""
         source = "def foo(x):\n    return u.Cli.print(x)\n"
         transformer = FlextInfraRefactorPatternTransformer(
-            patterns=[
-                {
-                    "regex": r"\bprint\s*\(\s*(?P<args>[^)]*)\s*\)",
-                    "replacement": r"u.fetch_logger(__name__).info(\g<args>)",
-                    "change_message": "Rewrote u.Cli.print() to logger",
-                }
-            ],
+            patterns=[_PRINT_TO_LOGGER_PATTERN],
             required_alias="u",
             file_path=tmp_path / "module.py",
         )
@@ -326,13 +333,7 @@ class TestsFlextInfraTransformersPattern:
         """Verify pattern required alias not duplicated."""
         source = 'from flext_core import c, u\n\nu.Cli.print("hello")\n'
         transformer = FlextInfraRefactorPatternTransformer(
-            patterns=[
-                {
-                    "regex": r"\bprint\s*\(\s*(?P<args>[^)]*)\s*\)",
-                    "replacement": r"u.fetch_logger(__name__).info(\g<args>)",
-                    "change_message": "Rewrote u.Cli.print() to logger",
-                }
-            ],
+            patterns=[_PRINT_TO_LOGGER_PATTERN],
             required_alias="u",
             file_path=tmp_path / "module.py",
         )
@@ -434,13 +435,7 @@ class TestsFlextInfraTransformersPatternList:
             "x: List[int] = []\n"
         )
         transformer = FlextInfraRefactorPatternTransformer(
-            patterns=[
-                {
-                    "regex": r"\bList\s*\[",
-                    "replacement": "t.SequenceOf[",
-                    "change_message": "Rewrote List[...] to t.SequenceOf[...]",
-                }
-            ],
+            patterns=[_TYPING_LIST_PATTERN],
             required_alias="t",
             file_path=tmp_path / "module.py",
         )
@@ -458,13 +453,7 @@ class TestsFlextInfraTransformersPatternList:
             "x: typing.List[int] = []\n"
         )
         transformer = FlextInfraRefactorPatternTransformer(
-            patterns=[
-                {
-                    "regex": r"\btyping\s*\.\s*List\s*\[",
-                    "replacement": "t.SequenceOf[",
-                    "change_message": "Rewrote typing.List[...] to t.SequenceOf[...]",
-                }
-            ],
+            patterns=[_TYPING_LIST_ATTR_PATTERN],
             required_alias="t",
             file_path=tmp_path / "module.py",
         )

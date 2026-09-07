@@ -72,11 +72,32 @@ class FlextInfraCodegenVscodeMixin:
         return cls._remove_trailing_commas(cls._remove_jsonc_comments(content))
 
     @staticmethod
+    def _copy_string_literal(content: str, index: int, output: list[str]) -> int:
+        """Copy one complete JSON string literal to ``output``.
+
+        ``index`` points at the opening quote; the returned index is the first
+        character after the literal, so structural scanners never re-enter a
+        string and never interpret its contents.
+        """
+        output.append(content[index])
+        index += 1
+        escaped = False
+        while index < len(content):
+            char = content[index]
+            output.append(char)
+            index += 1
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                break
+        return index
+
+    @staticmethod
     def _remove_jsonc_comments(content: str) -> str:
         """Remove JSONC comments while preserving comment markers in strings."""
         output: list[str] = []
-        in_string = False
-        escaped = False
         in_line_comment = False
         in_block_comment = False
         index = 0
@@ -96,20 +117,10 @@ class FlextInfraCodegenVscodeMixin:
                     continue
                 index += 1
                 continue
-            if in_string:
-                output.append(char)
-                if escaped:
-                    escaped = False
-                elif char == "\\":
-                    escaped = True
-                elif char == '"':
-                    in_string = False
-                index += 1
-                continue
             if char == '"':
-                in_string = True
-                output.append(char)
-                index += 1
+                index = FlextInfraCodegenVscodeMixin._copy_string_literal(
+                    content, index, output
+                )
                 continue
             if char == "/" and next_char == "/":
                 in_line_comment = True
@@ -127,25 +138,13 @@ class FlextInfraCodegenVscodeMixin:
     def _remove_trailing_commas(content: str) -> str:
         """Remove commas before object or array closers outside strings."""
         output: list[str] = []
-        in_string = False
-        escaped = False
         index = 0
         while index < len(content):
             char = content[index]
-            if in_string:
-                output.append(char)
-                if escaped:
-                    escaped = False
-                elif char == "\\":
-                    escaped = True
-                elif char == '"':
-                    in_string = False
-                index += 1
-                continue
             if char == '"':
-                in_string = True
-                output.append(char)
-                index += 1
+                index = FlextInfraCodegenVscodeMixin._copy_string_literal(
+                    content, index, output
+                )
                 continue
             if char == ",":
                 next_index = index + 1

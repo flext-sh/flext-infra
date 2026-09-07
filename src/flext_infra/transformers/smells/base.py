@@ -52,32 +52,27 @@ class FlextInfraSmellFixer:
         if self._on_change is not None:
             self._on_change(message)
 
+    @classmethod
+    def register_smell_fixer(
+        cls, fixer_class: type[FlextInfraSmellFixer]
+    ) -> type[FlextInfraSmellFixer]:
+        """Register a smell fixer under its class ``tag``."""
+        _SMELL_FIXERS[fixer_class.tag] = fixer_class
+        return fixer_class
+
+    @classmethod
+    def smell_fixer_for(cls, code: str) -> FlextInfraSmellFixer | None:
+        """Return a fresh fixer instance for ``code``, or None when absent."""
+        fixer_class = _SMELL_FIXERS.get(code)
+        return None if fixer_class is None else fixer_class()
+
+    @classmethod
+    def auto_fixable_smell_tags(cls) -> t.VariadicTuple[str]:
+        """Return tags of all registered smell fixers."""
+        return tuple(_SMELL_FIXERS.keys())
+
 
 _SMELL_FIXERS: Final[dict[str, type[FlextInfraSmellFixer]]] = {}
 
 
-def register_smell_fixer(
-    fixer_class: type[FlextInfraSmellFixer],
-) -> type[FlextInfraSmellFixer]:
-    """Register a smell fixer under its class ``tag``."""
-    _SMELL_FIXERS[fixer_class.tag] = fixer_class
-    return fixer_class
-
-
-def smell_fixer_for(code: str) -> FlextInfraSmellFixer | None:
-    """Return a fresh fixer instance for ``code``, or None when absent."""
-    fixer_class = _SMELL_FIXERS.get(code)
-    return None if fixer_class is None else fixer_class()
-
-
-def auto_fixable_smell_tags() -> t.VariadicTuple[str]:
-    """Return tags of all registered smell fixers."""
-    return tuple(_SMELL_FIXERS.keys())
-
-
-__all__: list[str] = [
-    "FlextInfraSmellFixer",
-    "auto_fixable_smell_tags",
-    "register_smell_fixer",
-    "smell_fixer_for",
-]
+__all__: list[str] = ["FlextInfraSmellFixer"]

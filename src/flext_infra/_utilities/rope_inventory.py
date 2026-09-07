@@ -78,15 +78,10 @@ class FlextInfraUtilitiesRopeInventory:
                 child_scope=cls._child_scope_for(child_scopes, pyname),
                 rope_workspace=rope_workspace,
             )
-            record = cls._record(record_options, include_references=include_references)
-            if record is None:
-                continue
-            items.append(record)
             items.extend(
-                cls._child_scope_objects(
-                    record=record,
+                cls._recorded_objects(
+                    record_options,
                     child_scope=record_options.child_scope,
-                    record_options=record_options,
                     include_local_scopes=include_local_scopes,
                     include_references=include_references,
                 )
@@ -109,19 +104,41 @@ class FlextInfraUtilitiesRopeInventory:
             record_options = parent_options.model_copy(
                 update={"name": name, "pyname": pyname, "child_scope": child_scope}
             )
-            record = cls._record(record_options, include_references=include_references)
-            if record is None:
-                continue
-            items.append(record)
             items.extend(
-                cls._child_scope_objects(
-                    record=record,
+                cls._recorded_objects(
+                    record_options,
                     child_scope=child_scope,
-                    record_options=record_options,
                     include_references=include_references,
                 )
             )
         return tuple(items)
+
+    @classmethod
+    def _recorded_objects(
+        cls,
+        record_options: m.Infra.RopeInventoryRecordInput,
+        *,
+        child_scope: p.Infra.RopeScopeDsl | None,
+        include_local_scopes: bool = True,
+        include_references: bool = True,
+    ) -> t.VariadicTuple[m.Infra.Census.Object]:
+        """Return one recorded object followed by the objects of its child scope.
+
+        An input that produces no record contributes nothing.
+        """
+        record = cls._record(record_options, include_references=include_references)
+        if record is None:
+            return ()
+        return (
+            record,
+            *cls._child_scope_objects(
+                record=record,
+                child_scope=child_scope,
+                record_options=record_options,
+                include_local_scopes=include_local_scopes,
+                include_references=include_references,
+            ),
+        )
 
     @classmethod
     def _child_scope_objects(

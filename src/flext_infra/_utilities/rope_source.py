@@ -153,24 +153,16 @@ class FlextInfraUtilitiesRopeSource:
     ) -> t.Infra.StrSet:
         """Collect bound names imported from a target module."""
         bound_names: t.Infra.StrSet = set()
-        for match in c.Infra.FROM_IMPORT_RE.finditer(source):
-            if match.group(1) != module_name:
-                continue
-            bound_names.update(
-                bound
-                for _, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
-                    match.group(2)
+        for pattern in (c.Infra.FROM_IMPORT_RE, c.Infra.FROM_IMPORT_BLOCK_RE):
+            for match in pattern.finditer(source):
+                if match.group(1) != module_name:
+                    continue
+                bound_names.update(
+                    bound
+                    for _, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
+                        match.group(2)
+                    )
                 )
-            )
-        for match in c.Infra.FROM_IMPORT_BLOCK_RE.finditer(source):
-            if match.group(1) != module_name:
-                continue
-            bound_names.update(
-                bound
-                for _, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
-                    match.group(2)
-                )
-            )
         return bound_names
 
     @staticmethod

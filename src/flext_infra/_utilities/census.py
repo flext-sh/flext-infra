@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 from collections import defaultdict
+from collections.abc import Callable as _CensusCallable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -23,8 +24,6 @@ from .._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from .._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
-    from collections.abc import Callable as _CensusCallable
-
     from flext_infra.protocols import p
 
 _log = u.fetch_logger(__name__)
@@ -356,7 +355,7 @@ class FlextInfraUtilitiesRefactorCensus:
                 pyname
             ):
                 continue
-            line = FlextInfraUtilitiesRefactorCensus._pyname_definition_line(
+            line = FlextInfraUtilitiesRefactorCensus.pyname_definition_line(
                 pyname, resource
             )
             if line is None or not FlextInfraUtilitiesRefactorCensus._line_in_ranges(
@@ -369,10 +368,14 @@ class FlextInfraUtilitiesRefactorCensus:
         return tuple(sorted(alias_names))
 
     @staticmethod
-    def _pyname_definition_line(
+    def pyname_definition_line(
         pyname: t.Infra.RopePyName, resource: t.Infra.RopeResource
     ) -> int | None:
-        """Return the local definition line for one Rope symbol."""
+        """Return the local definition line for one Rope symbol.
+
+        ``None`` when the symbol is defined in another module, so a caller never
+        attributes an imported name to the file under inspection.
+        """
         location = pyname.get_definition_location()
         module, line = location
         origin = module.get_resource() if module is not None else None
@@ -627,6 +630,42 @@ class FlextInfraUtilitiesRefactorCensus:
             raise RuntimeError(msg)
 
     @staticmethod
+    def _planned_simple_removal(
+        rope: p.Infra.RopeWorkspaceDsl,
+        candidate: m.Infra.Census.RemovalCandidate,
+        *,
+        source_cache: dict[Path, str] | None = None,
+    ) -> p.Result[t.Pair[t.MappingKV[Path, str], _CensusCallable[[], None]] | None]:
+        """Plan one simple removal and bind its post-write Rope cleanup.
+
+        ``r.ok(None)`` when the candidate is outside the simple-removal
+        contract, so both the preview and the apply path report the same
+        "unsupported" outcome from one owner.
+        """
+        planned = r[t.Pair[t.MappingKV[Path, str], _CensusCallable[[], None]] | None]
+        if not FlextInfraUtilitiesRefactorCensus._supports_simple_removal_candidate(
+            candidate
+        ):
+            return planned.ok(None)
+        updates_result = (
+            FlextInfraUtilitiesRefactorCensus._simple_removal_sources_result(
+                rope, candidate, source_cache=source_cache
+            )
+        )
+        if updates_result.failure:
+            return planned.from_failure(updates_result)
+        updates = updates_result.unwrap()
+        file_paths = tuple(sorted(updates))
+
+        def _cleanup() -> None:
+            """Post write."""
+            FlextInfraUtilitiesRefactorCensus._cleanup_written_paths(
+                rope, candidate=candidate, file_paths=file_paths
+            )
+
+        return planned.ok((updates, _cleanup))
+
+    @staticmethod
     def preview_simple_removal_candidate(
         rope: p.Infra.RopeWorkspaceDsl,
         workspace: Path,
@@ -642,29 +681,18 @@ class FlextInfraUtilitiesRefactorCensus:
         simple-removal contract. ``r.fail(...)`` when planning or
         ``preview_source_writes`` failed — the message lists the reason.
         """
-        if not FlextInfraUtilitiesRefactorCensus._supports_simple_removal_candidate(
-            candidate
-        ):
-            return r[bool].ok(False)
-        updates_result = (
-            FlextInfraUtilitiesRefactorCensus._simple_removal_sources_result(
-                rope, candidate, source_cache=source_cache
-            )
+        planned = FlextInfraUtilitiesRefactorCensus._planned_simple_removal(
+            rope, candidate, source_cache=source_cache
         )
-        if updates_result.failure:
-            return r[bool].from_failure(updates_result)
-        updates = updates_result.unwrap()
-        file_paths = tuple(sorted(updates))
-
-        def _post_write() -> None:
-            """Post write."""
-            FlextInfraUtilitiesRefactorCensus._cleanup_written_paths(
-                rope, candidate=candidate, file_paths=file_paths
-            )
-
+        if planned.failure:
+            return r[bool].from_failure(planned)
+        plan = planned.unwrap()
+        if plan is None:
+            return r[bool].ok(False)
+        updates, post_write = plan
         try:
             applied, reports = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
-                updates, workspace=workspace, gates=gates, post_write=_post_write
+                updates, workspace=workspace, gates=gates, post_write=post_write
             )
         except RuntimeError as exc:
             _log.warning(
@@ -701,25 +729,19 @@ class FlextInfraUtilitiesRefactorCensus:
         the ``flext_infra.codegen.lazy_init`` import cycle while still
         giving gates a chance to verify post-cascade correctness.
         """
-        if not FlextInfraUtilitiesRefactorCensus._supports_simple_removal_candidate(
-            candidate
-        ):
-            return r[bool].ok(False)
-        updates_result = (
-            FlextInfraUtilitiesRefactorCensus._simple_removal_sources_result(
-                rope, candidate
-            )
+        planned = FlextInfraUtilitiesRefactorCensus._planned_simple_removal(
+            rope, candidate
         )
-        if updates_result.failure:
-            return r[bool].from_failure(updates_result)
-        updates = updates_result.unwrap()
-        file_paths = tuple(sorted(updates))
+        if planned.failure:
+            return r[bool].from_failure(planned)
+        plan = planned.unwrap()
+        if plan is None:
+            return r[bool].ok(False)
+        updates, cleanup = plan
 
         def _post_write() -> None:
             """Post write."""
-            FlextInfraUtilitiesRefactorCensus._cleanup_written_paths(
-                rope, candidate=candidate, file_paths=file_paths
-            )
+            cleanup()
             if post_apply_hook is not None:
                 post_apply_hook(workspace)
 

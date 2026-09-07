@@ -144,28 +144,10 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
             "remove_stub_file": self._fix_remove_stub_file,
         }
 
-    @staticmethod
-    def _package_name_for_dir(package_dir: Path, *, project_root: Path) -> str:
-        """Return the import package for a directory inside a project."""
-        try:
-            relative_parts = package_dir.relative_to(project_root).parts
-        except ValueError:
-            return ""
-        if not relative_parts:
-            return ""
-        root_name = relative_parts[0]
-        if root_name == c.Infra.DEFAULT_SRC_DIR:
-            package_parts = relative_parts[1:]
-        elif root_name in c.Infra.ROOT_WRAPPER_SEGMENTS:
-            package_parts = relative_parts
-        else:
-            package_parts = ()
-        return ".".join(package_parts)
-
     @classmethod
     def _module_name_for_file(cls, file_path: Path, *, project_root: Path) -> str:
         """Return the import module for a Python file inside a project."""
-        package_name = cls._package_name_for_dir(
+        package_name = u.Infra.package_name_for_dir(
             file_path.parent, project_root=project_root
         )
         if file_path.name == c.Infra.INIT_PY:

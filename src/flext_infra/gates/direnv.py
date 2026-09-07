@@ -12,7 +12,9 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
-from flext_infra.workspace.environment_contracts import envrc_contract_violations
+from flext_infra.workspace.environment_contracts import (
+    FlextInfraWorkspaceEnvironmentContracts,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -53,7 +55,9 @@ class FlextInfraDirenvGate(FlextInfraGate):
                 raw_output=issue.message,
                 started=started,
             )
-        violations = envrc_contract_violations(content.value, root=project_dir)
+        violations = FlextInfraWorkspaceEnvironmentContracts.envrc_contract_violations(
+            content.value, root=project_dir
+        )
         if violations:
             issues = tuple(
                 m.Infra.Issue(

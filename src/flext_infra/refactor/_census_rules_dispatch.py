@@ -153,8 +153,10 @@ class FlextInfraRefactorCensusRulesDispatchMixin(
                 rule_name, rule_names=rule_names, selected_rules=selected_rules
             )
 
-        if selected("runtime_alias"):
-            v, f = self._rule_runtime_alias(
+        def run(rule_name: str, rule: p.Infra.CensusModuleRule) -> None:
+            if not selected(rule_name):
+                return
+            rule_violations, rule_fixes = rule(
                 rope,
                 file_path,
                 project_name=project_name,
@@ -164,8 +166,10 @@ class FlextInfraRefactorCensusRulesDispatchMixin(
                 symbol_index=symbol_index,
                 convention=resolved_convention,
             )
-            violations.extend(v)
-            fixes.extend(f)
+            violations.extend(rule_violations)
+            fixes.extend(rule_fixes)
+
+        run("runtime_alias", self._rule_runtime_alias)
         if selected("manual_typing_alias"):
             v, f = self._rule_manual_typing_alias(
                 rope,
@@ -178,71 +182,11 @@ class FlextInfraRefactorCensusRulesDispatchMixin(
             )
             violations.extend(v)
             fixes.extend(f)
-        if selected("class_placement"):
-            v, f = self._rule_class_placement(
-                rope,
-                file_path,
-                project_name=project_name,
-                objects=objects,
-                applied=applied,
-                selected_kinds=resolved_kinds,
-                symbol_index=symbol_index,
-                convention=resolved_convention,
-            )
-            violations.extend(v)
-            fixes.extend(f)
-        if selected("private_import_bypass"):
-            v, f = self._rule_private_import_bypass(
-                rope,
-                file_path,
-                project_name=project_name,
-                objects=objects,
-                applied=applied,
-                selected_kinds=resolved_kinds,
-                symbol_index=symbol_index,
-                convention=resolved_convention,
-            )
-            violations.extend(v)
-            fixes.extend(f)
-        if selected("compatibility_alias"):
-            v, f = self._rule_compatibility_alias(
-                rope,
-                file_path,
-                project_name=project_name,
-                objects=objects,
-                applied=applied,
-                selected_kinds=resolved_kinds,
-                symbol_index=symbol_index,
-                convention=resolved_convention,
-            )
-            violations.extend(v)
-            fixes.extend(f)
-        if selected("inline_import"):
-            v, f = self._rule_inline_import(
-                rope,
-                file_path,
-                project_name=project_name,
-                objects=objects,
-                applied=applied,
-                selected_kinds=resolved_kinds,
-                symbol_index=symbol_index,
-                convention=resolved_convention,
-            )
-            violations.extend(v)
-            fixes.extend(f)
-        if selected("silent_failure"):
-            v, f = self._rule_silent_failure(
-                rope,
-                file_path,
-                project_name=project_name,
-                objects=objects,
-                applied=applied,
-                selected_kinds=resolved_kinds,
-                symbol_index=symbol_index,
-                convention=resolved_convention,
-            )
-            violations.extend(v)
-            fixes.extend(f)
+        run("class_placement", self._rule_class_placement)
+        run("private_import_bypass", self._rule_private_import_bypass)
+        run("compatibility_alias", self._rule_compatibility_alias)
+        run("inline_import", self._rule_inline_import)
+        run("silent_failure", self._rule_silent_failure)
         v, f = self._rule_declarative(
             rope,
             file_path,

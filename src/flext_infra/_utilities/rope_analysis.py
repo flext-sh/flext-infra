@@ -16,6 +16,8 @@ from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from .._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from flext_infra.protocols import p
 
 
@@ -1143,27 +1145,39 @@ class FlextInfraUtilitiesRopeAnalysis:
         return "\n".join(collected)
 
     @staticmethod
-    def _bracket_depth_delta(source: str) -> int:
-        """Return bracket nesting delta for one source line."""
-        depth = 0
+    def _unquoted_characters(source: str, start: int = 0) -> Iterator[t.Pair[int, str]]:
+        """Yield ``(index, character)`` for every character outside a string literal.
+
+        Single owner of the quote/escape state machine every top-level source
+        scanner in this module needs; each caller keeps only its own bracket
+        depth bookkeeping.
+        """
         quote = ""
         escaped = False
-        for char in source:
+        for index in range(start, len(source)):
+            char = source[index]
             if quote:
                 if escaped:
                     escaped = False
-                    continue
-                if char == "\\":
+                elif char == "\\":
                     escaped = True
-                    continue
-                if char == quote:
+                elif char == quote:
                     quote = ""
                 continue
-            if char == "#":
-                break
             if char in {"'", '"'}:
                 quote = char
                 continue
+            yield index, char
+
+    @staticmethod
+    def _bracket_depth_delta(source: str) -> int:
+        """Return bracket nesting delta for one source line."""
+        depth = 0
+        for _index, char in FlextInfraUtilitiesRopeAnalysis._unquoted_characters(
+            source
+        ):
+            if char == "#":
+                break
             if char in "([{":
                 depth += 1
             elif char in ")]}":
@@ -1176,29 +1190,12 @@ class FlextInfraUtilitiesRopeAnalysis:
         parts: list[str] = []
         start = 0
         depth = 0
-        quote = ""
-        escaped = False
-        for index, char in enumerate(source):
-            if quote:
-                if escaped:
-                    escaped = False
-                    continue
-                if char == "\\":
-                    escaped = True
-                    continue
-                if char == quote:
-                    quote = ""
-                continue
-            if char in {"'", '"'}:
-                quote = char
-                continue
+        for index, char in FlextInfraUtilitiesRopeAnalysis._unquoted_characters(source):
             if char in "([{":
                 depth += 1
-                continue
-            if char in ")]}":
+            elif char in ")]}":
                 depth -= 1
-                continue
-            if char == "," and depth == 0:
+            elif char == "," and depth == 0:
                 item = source[start:index].strip()
                 if item:
                     parts.append(item)
@@ -1212,29 +1209,12 @@ class FlextInfraUtilitiesRopeAnalysis:
     def _top_level_partition(source: str, separator: str) -> t.Triple[str, str, str]:
         """Partition one source fragment at a top-level separator."""
         depth = 0
-        quote = ""
-        escaped = False
-        for index, char in enumerate(source):
-            if quote:
-                if escaped:
-                    escaped = False
-                    continue
-                if char == "\\":
-                    escaped = True
-                    continue
-                if char == quote:
-                    quote = ""
-                continue
-            if char in {"'", '"'}:
-                quote = char
-                continue
+        for index, char in FlextInfraUtilitiesRopeAnalysis._unquoted_characters(source):
             if char in "([{":
                 depth += 1
-                continue
-            if char in ")]}":
+            elif char in ")]}":
                 depth -= 1
-                continue
-            if char == separator and depth == 0:
+            elif char == separator and depth == 0:
                 return (source[:index], separator, source[index + 1 :])
         return (source, "", "")
 
@@ -1322,27 +1302,12 @@ class FlextInfraUtilitiesRopeAnalysis:
         open_char = source[open_index]
         close_char = {"(": ")", "[": "]", "{": "}"}[open_char]
         depth = 0
-        quote = ""
-        escaped = False
-        for index in range(open_index, len(source)):
-            char = source[index]
-            if quote:
-                if escaped:
-                    escaped = False
-                    continue
-                if char == "\\":
-                    escaped = True
-                    continue
-                if char == quote:
-                    quote = ""
-                continue
-            if char in {"'", '"'}:
-                quote = char
-                continue
+        for index, char in FlextInfraUtilitiesRopeAnalysis._unquoted_characters(
+            source, open_index
+        ):
             if char == open_char:
                 depth += 1
-                continue
-            if char == close_char:
+            elif char == close_char:
                 depth -= 1
                 if depth == 0:
                     return index
@@ -1637,14 +1602,14 @@ class FlextInfraUtilitiesRopeAnalysis:
         return collected
 
     @staticmethod
-    def ast_parent_map(root: object) -> dict[int, object]:
+    def ast_parent_map(root: p.AttributeProbe) -> dict[int, p.AttributeProbe]:
         """Return a child-id -> parent map for the full AST reachable from ``root``.
 
         Uses only public ``_fields`` access (no ``import ast``); the shared SSOT
         for parent lookups across every rope detector.
         """
-        parent_map: dict[int, object] = {}
-        stack: list[object] = [root]
+        parent_map: dict[int, p.AttributeProbe] = {}
+        stack: list[p.AttributeProbe] = [root]
         while stack:
             parent = stack.pop()
             for field_name in getattr(parent, "_fields", ()):
@@ -1660,7 +1625,9 @@ class FlextInfraUtilitiesRopeAnalysis:
         return parent_map
 
     @classmethod
-    def is_module_level_node(cls, node: object, parent_map: dict[int, object]) -> bool:
+    def is_module_level_node(
+        cls, node: p.AttributeProbe, parent_map: dict[int, p.AttributeProbe]
+    ) -> bool:
         """Return True when ``node`` is a direct child of the module body.
 
         Walks the parent chain; a node nested inside any ClassDef/FunctionDef is

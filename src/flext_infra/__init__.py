@@ -211,12 +211,7 @@ if TYPE_CHECKING:
     from .transformers.pattern import FlextInfraRefactorPatternTransformer
     from .transformers.pydantic_modernizer import FlextInfraRefactorPydanticModernizer
     from .transformers.signature_propagator import FlextInfraRefactorSignaturePropagator
-    from .transformers.smells.base import (
-        FlextInfraSmellFixer,
-        auto_fixable_smell_tags,
-        register_smell_fixer,
-        smell_fixer_for,
-    )
+    from .transformers.smells.base import FlextInfraSmellFixer
     from .transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
     from .transformers.symbol_propagator import FlextInfraRefactorSymbolPropagator
     from .transformers.tier0_import_fixer import FlextInfraTransformerTier0ImportFixer
@@ -258,7 +253,7 @@ if TYPE_CHECKING:
         FlextInfraWorkspaceBeadsEnvironmentMixin,
         FlextInfraWorkspaceEnvironmentSync,
     )
-    from .workspace.environment_contracts import envrc_contract_violations
+    from .workspace.environment_contracts import FlextInfraWorkspaceEnvironmentContracts
     from .workspace.environment_provenance import (
         FlextInfraWorkspaceEnvironmentProvenance,
     )
@@ -443,6 +438,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorkspaceCheckGatesMixin",
     "FlextInfraWorkspaceChecker",
     "FlextInfraWorkspaceDetector",
+    "FlextInfraWorkspaceEnvironmentContracts",
     "FlextInfraWorkspaceEnvironmentMixin",
     "FlextInfraWorkspaceEnvironmentProvenance",
     "FlextInfraWorkspaceEnvironmentSync",
@@ -462,7 +458,6 @@ __all__: tuple[str, ...] = (
     "__url__",
     "__version__",
     "__version_info__",
-    "auto_fixable_smell_tags",
     "c",
     "check",
     "codegen",
@@ -474,7 +469,6 @@ __all__: tuple[str, ...] = (
     "docs",
     "docs_main",
     "e",
-    "envrc_contract_violations",
     "fixers",
     "gates",
     "h",
@@ -485,12 +479,10 @@ __all__: tuple[str, ...] = (
     "p",
     "r",
     "refactor",
-    "register_smell_fixer",
     "release",
     "s",
     "services",
     "settings",
-    "smell_fixer_for",
     "t",
     "transformers",
     "u",
@@ -709,12 +701,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".transformers.signature_propagator": (
                 "FlextInfraRefactorSignaturePropagator",
             ),
-            ".transformers.smells.base": (
-                "FlextInfraSmellFixer",
-                "auto_fixable_smell_tags",
-                "register_smell_fixer",
-                "smell_fixer_for",
-            ),
+            ".transformers.smells.base": ("FlextInfraSmellFixer",),
             ".transformers.smells.boolean_logic": ("FlextInfraBooleanLogicFixer",),
             ".transformers.symbol_propagator": ("FlextInfraRefactorSymbolPropagator",),
             ".transformers.tier0_import_fixer": (
@@ -762,7 +749,9 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraWorkspaceBeadsEnvironmentMixin",
                 "FlextInfraWorkspaceEnvironmentSync",
             ),
-            ".workspace.environment_contracts": ("envrc_contract_violations",),
+            ".workspace.environment_contracts": (
+                "FlextInfraWorkspaceEnvironmentContracts",
+            ),
             ".workspace.environment_provenance": (
                 "FlextInfraWorkspaceEnvironmentProvenance",
             ),

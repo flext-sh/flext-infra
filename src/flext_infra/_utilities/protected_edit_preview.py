@@ -16,6 +16,14 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
     """Preview and revert-report helpers for protected edit workflows."""
 
     @staticmethod
+    def _normalized_source_updates(updates: t.MappingKV[Path, str]) -> dict[Path, str]:
+        """Return one update map keyed by resolved path in deterministic order."""
+        return {
+            path.resolve(): content
+            for path, content in sorted(updates.items(), key=operator.itemgetter(0))
+        }
+
+    @staticmethod
     def _preview_write_baselines(
         updates: t.MappingKV[Path, str],
         workspace: Path,
@@ -128,10 +136,9 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         if not updates:
             return (True, [])
 
-        normalized_updates = {
-            path.resolve(): content
-            for path, content in sorted(updates.items(), key=operator.itemgetter(0))
-        }
+        normalized_updates = (
+            FlextInfraUtilitiesProtectedEditPreview._normalized_source_updates(updates)
+        )
         before_sources, before_lints = (
             FlextInfraUtilitiesProtectedEditPreview._preview_write_baselines(
                 normalized_updates, workspace, gates=gates

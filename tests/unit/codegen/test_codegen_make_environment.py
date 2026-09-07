@@ -71,8 +71,8 @@ class TestsCodegenMakeEnvironment:
             project=test_u.Tests.project_spec("fixture-project"),
             subprojects=local_subprojects,
         )
-        request = m.Infra.CodegenConformRequest(
-            root=project_root,
+        request = test_u.Tests.conform_request(
+            project_root,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )

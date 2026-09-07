@@ -19,6 +19,11 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.FORMAT
     gate_name: ClassVar[str] = "Ruff Format"
     can_fix: ClassVar[bool] = True
+    check_module_command_prefix: ClassVar[t.StrSequence] = (
+        c.Infra.RUFF,
+        c.Infra.FORMAT,
+        "--check",
+    )
 
     @override
     def _get_check_dirs(
@@ -27,16 +32,6 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         """Get check dirs."""
         _ = ctx
         return self._existing_check_dirs(project_dir) or ["."]
-
-    @override
-    def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
-    ) -> t.StrSequence:
-        """Build check command."""
-        _ = project_dir, ctx
-        return self._python_module_command(
-            c.Infra.RUFF, c.Infra.FORMAT, "--check", *check_dirs
-        )
 
     @override
     def _parse_check_output(

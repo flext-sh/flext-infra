@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_tests import tm
 from tests import m, u
 
@@ -98,18 +97,10 @@ def test_generated_non_markdown_preserves_exact_content(tmp_path: Path) -> None:
 
 
 def test_generate_creates_selected_project_reports(tmp_path: Path) -> None:
-    workspace = u.Tests.create_docs_workspace(
-        tmp_path, project_names=("flext-a", "flext-b")
+    workspace, generator = u.Tests.docs_workspace_generator(
+        tmp_path, project_names=("flext-a", "flext-b"), selected_projects=["flext-a"]
     )
-    generator = FlextInfraDocGenerator(
-        repository_root=workspace, selected_projects=["flext-a"]
-    )
-    prepared = generator.prepare_bundle()
-    tm.ok(prepared)
-    required = generator.required_directories(prepared.value)
-    tm.ok(required)
-    for directory in required.value:
-        directory.mkdir(parents=True, exist_ok=True)
+    _ = u.Tests.prepare_docs_bundle(generator)
 
     result = generator.generate(
         m.Infra.DocsGenerateRequest(

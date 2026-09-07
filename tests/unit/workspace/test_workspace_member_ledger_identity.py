@@ -5,10 +5,9 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from flext_infra import c, m
+from flext_infra import m
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_tests import tm
-from tests import u
 from tests.unit.workspace import WorktreeFixture
 
 
@@ -55,34 +54,8 @@ class TestsWorkspaceMemberLedgerIdentity:
             database="root-database",
             issue_prefix="root-prefix",
         )
-        provider = u.Tests.provider()
-        (parent / c.Infra.GITMODULES).write_text(
-            '[submodule "fixture-member"]\n'
-            "\tpath = apps/member\n"
-            f"\turl = {WorktreeFixture.governed_repository_url('fixture-member')}\n"
-            f"\tbranch = {provider.branch}\n",
-            encoding="utf-8",
-        )
-        member_head = tm.ok(
-            u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=member)
-        )
-        tm.ok(u.Cli.run_checked([c.Infra.GIT, "add", c.Infra.GITMODULES], cwd=parent))
-        tm.ok(
-            u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "update-index",
-                    "--add",
-                    "--cacheinfo",
-                    f"160000,{member_head.strip()},apps/member",
-                ],
-                cwd=parent,
-            )
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                [c.Infra.GIT, "commit", "--quiet", "-m", "attach member"], cwd=parent
-            )
+        WorktreeFixture.attach_submodule(
+            parent, member, distribution="fixture-member", relative_path="apps/member"
         )
         return member, parent
 

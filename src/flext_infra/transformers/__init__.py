@@ -27,12 +27,7 @@ if TYPE_CHECKING:
     from .pattern import FlextInfraRefactorPatternTransformer
     from .pydantic_modernizer import FlextInfraRefactorPydanticModernizer
     from .signature_propagator import FlextInfraRefactorSignaturePropagator
-    from .smells.base import (
-        FlextInfraSmellFixer,
-        auto_fixable_smell_tags,
-        register_smell_fixer,
-        smell_fixer_for,
-    )
+    from .smells.base import FlextInfraSmellFixer
     from .smells.boolean_logic import FlextInfraBooleanLogicFixer
     from .symbol_propagator import FlextInfraRefactorSymbolPropagator
     from .tier0_import_fixer import FlextInfraTransformerTier0ImportFixer
@@ -60,9 +55,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraSmellFixer",
     "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraViolationCensusVisitor",
-    "auto_fixable_smell_tags",
-    "register_smell_fixer",
-    "smell_fixer_for",
     "smells",
 )
 
@@ -87,12 +79,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".pydantic_modernizer": ("FlextInfraRefactorPydanticModernizer",),
             ".signature_propagator": ("FlextInfraRefactorSignaturePropagator",),
             ".smells": ("smells",),
-            ".smells.base": (
-                "FlextInfraSmellFixer",
-                "auto_fixable_smell_tags",
-                "register_smell_fixer",
-                "smell_fixer_for",
-            ),
+            ".smells.base": ("FlextInfraSmellFixer",),
             ".smells.boolean_logic": ("FlextInfraBooleanLogicFixer",),
             ".symbol_propagator": ("FlextInfraRefactorSymbolPropagator",),
             ".tier0_import_fixer": ("FlextInfraTransformerTier0ImportFixer",),

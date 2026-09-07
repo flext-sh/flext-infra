@@ -13,7 +13,9 @@ from typing import ClassVar, override
 from flext_infra import c, m, p, r, t, u
 from flext_infra.base import s
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironmentMixin
-from flext_infra.workspace.environment_contracts import envrc_contract_violations
+from flext_infra.workspace.environment_contracts import (
+    FlextInfraWorkspaceEnvironmentContracts,
+)
 
 
 class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMixin):
@@ -62,7 +64,7 @@ class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMix
         )
         if rendered.failure:
             return r[result_type].from_failure(rendered)
-        violations = envrc_contract_violations(
+        violations = FlextInfraWorkspaceEnvironmentContracts.envrc_contract_violations(
             rendered.value, root=request.repository_root, resolve_home=False
         )
         if violations:

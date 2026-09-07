@@ -22,6 +22,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     gate_id: ClassVar[str] = "duplication"
     gate_name: ClassVar[str] = "Code Duplication"
     can_fix: ClassVar[bool] = False
+    scanner_binary: ClassVar[str] = c.Infra.JSCPD_BINARY
 
     # flext-pulj: process results stay structural outside the Pydantic boundary.
     _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
@@ -189,22 +190,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 timed_out=result.outcome.timed_out,
                 forwarded_signal=result.outcome.forwarded_signal,
             ),
-        )
-
-    @staticmethod
-    def _resolve_binary() -> str | None:
-        """Locate the mise-provisioned jscpd on PATH; None when absent."""
-        return shutil.which(c.Infra.JSCPD_BINARY)
-
-    def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> m.Infra.Issue:
-        """Scanner absence/crash must never read as a clean pass."""
-        return m.Infra.Issue(
-            file=c.Infra.PYPROJECT_FILENAME,
-            line=1,
-            column=0,
-            code=self.gate_id,
-            message=scan.stderr or "jscpd execution failed",
-            severity=str(c.Infra.GateSeverity.ERROR.value),
         )
 
     @staticmethod

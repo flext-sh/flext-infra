@@ -687,6 +687,26 @@ class FlextInfraUtilitiesRopeImports:
         return result
 
     @staticmethod
+    def _persisted_import_block(
+        module_imports: t.Infra.RopeModuleImports,
+        resource: t.Infra.RopeResource,
+        *,
+        apply: bool,
+    ) -> str | None:
+        """Normalize, render, and optionally write one module's import block.
+
+        ``None`` when the rendered block already matches the file on disk.
+        """
+        module_imports.remove_duplicates()
+        module_imports.sort_imports()
+        updated: str = module_imports.get_changed_source()
+        if updated == resource.read():
+            return None
+        if apply:
+            resource.write(updated)
+        return updated
+
+    @staticmethod
     def add_import(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
@@ -704,14 +724,9 @@ class FlextInfraUtilitiesRopeImports:
                 from_module, 0, [(name, None) for name in sorted(names)]
             )
         )
-        module_imports.remove_duplicates()
-        module_imports.sort_imports()
-        updated: str = module_imports.get_changed_source()
-        if updated == resource.read():
-            return None
-        if apply:
-            resource.write(updated)
-        return updated
+        return FlextInfraUtilitiesRopeImports._persisted_import_block(
+            module_imports, resource, apply=apply
+        )
 
     @staticmethod
     def remove_import_names(
@@ -754,14 +769,9 @@ class FlextInfraUtilitiesRopeImports:
                 changed = True
         if not changed:
             return None
-        module_imports.remove_duplicates()
-        module_imports.sort_imports()
-        updated: str = module_imports.get_changed_source()
-        if updated == resource.read():
-            return None
-        if apply:
-            resource.write(updated)
-        return updated
+        return FlextInfraUtilitiesRopeImports._persisted_import_block(
+            module_imports, resource, apply=apply
+        )
 
     @staticmethod
     def rewrite_private_import_bypass_violations(

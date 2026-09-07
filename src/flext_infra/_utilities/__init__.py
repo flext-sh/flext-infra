@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from ._docs_scope_selection import FlextInfraUtilitiesDocsScopeSelectionMixin
     from ._docs_scope_state import FlextInfraUtilitiesDocsScopeStateMixin
     from ._git.attestation import FlextInfraUtilitiesGitAttestationMixin
-    from ._git.remote import canonical_origin_remote, redact_origin_remote
+    from ._git.remote import FlextInfraUtilitiesGitRemote
     from ._git.repo import FlextInfraUtilitiesGitRepo
     from ._git.scope import FlextInfraUtilitiesGitScopeMixin
     from ._git.semantic_identity import FlextInfraUtilitiesGitSemanticIdentityMixin
@@ -201,6 +201,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsValidate",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGitAttestationMixin",
+    "FlextInfraUtilitiesGitRemote",
     "FlextInfraUtilitiesGitRepo",
     "FlextInfraUtilitiesGitScopeMixin",
     "FlextInfraUtilitiesGitSemanticIdentityMixin",
@@ -287,9 +288,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorktreeProvisioning",
     "_git",
     "_rope",
-    "canonical_origin_remote",
     "git_stdin",
-    "redact_origin_remote",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -311,7 +310,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._docs_scope_state": ("FlextInfraUtilitiesDocsScopeStateMixin",),
             "._git": ("_git",),
             "._git.attestation": ("FlextInfraUtilitiesGitAttestationMixin",),
-            "._git.remote": ("canonical_origin_remote", "redact_origin_remote"),
+            "._git.remote": ("FlextInfraUtilitiesGitRemote",),
             "._git.repo": ("FlextInfraUtilitiesGitRepo",),
             "._git.scope": ("FlextInfraUtilitiesGitScopeMixin",),
             "._git.semantic_identity": ("FlextInfraUtilitiesGitSemanticIdentityMixin",),

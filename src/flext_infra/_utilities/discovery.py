@@ -117,6 +117,16 @@ class FlextInfraUtilitiesDiscovery(
         return ""
 
     @staticmethod
+    def is_pytest_test_module(file_path: Path) -> bool:
+        """Return whether a file is a pytest test module, not a production module."""
+        if c.Infra.DIR_TESTS not in file_path.parts:
+            return False
+        file_name = file_path.name
+        return file_name.startswith(
+            c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX
+        ) or file_name.endswith(tuple(c.Infra.NAMESPACE_PYTEST_MODULE_SUFFIXES))
+
+    @staticmethod
     def project_root(file_path: Path) -> Path | None:
         """Discover the enclosing project root for one file or directory path."""
         project_root = FlextInfraUtilitiesDiscovery._discover_project_root_from_path(

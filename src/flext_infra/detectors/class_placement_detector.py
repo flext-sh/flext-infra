@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m, u
 
 if TYPE_CHECKING:
-    from flext_infra import t
+    from flext_infra import p, t
 
 
 class FlextInfraClassPlacementDetector:
@@ -249,14 +249,37 @@ class FlextInfraClassPlacementDetector:
         return tuple(constants)
 
     @staticmethod
-    def _annassign_constant(node: object) -> m.Infra.ConstantInfo | None:
-        """Return ConstantInfo for an AnnAssign node, or None if not a violation."""
-        target_name = u.Infra.name_of(getattr(node, "target", None))
+    def _namespace_constant_name(target: p.AttributeProbe) -> str | None:
+        """Return the public namespace-constant name bound by ``target``.
+
+        ``None`` for a private, exempt, or non-constant binding.
+        """
+        target_name = u.Infra.name_of(target)
         if not target_name or target_name.startswith("_"):
             return None
         if target_name in c.Infra.CLASSVAR_EXEMPT_NAMES:
             return None
         if not c.Infra.NAMESPACE_CONSTANT_PATTERN.match(target_name):
+            return None
+        return target_name
+
+    @staticmethod
+    def _constant_info(
+        node: p.AttributeProbe, target_name: str
+    ) -> m.Infra.ConstantInfo:
+        """Return one constant record placed at the node's line, defaulting to 1."""
+        line = getattr(node, "lineno", 1)
+        return m.Infra.ConstantInfo(
+            name=target_name, line=line if isinstance(line, int) and line > 0 else 1
+        )
+
+    @staticmethod
+    def _annassign_constant(node: object) -> m.Infra.ConstantInfo | None:
+        """Return ConstantInfo for an AnnAssign node, or None if not a violation."""
+        target_name = FlextInfraClassPlacementDetector._namespace_constant_name(
+            getattr(node, "target", None)
+        )
+        if target_name is None:
             return None
         annotation = getattr(node, "annotation", None)
         has_classvar = FlextInfraClassPlacementDetector._annotation_contains(
@@ -268,10 +291,7 @@ class FlextInfraClassPlacementDetector:
             and not FlextInfraClassPlacementDetector._classvar_value_permitted(value)
         ):
             return None
-        line = getattr(node, "lineno", 1)
-        return m.Infra.ConstantInfo(
-            name=target_name, line=line if isinstance(line, int) and line > 0 else 1
-        )
+        return FlextInfraClassPlacementDetector._constant_info(node, target_name)
 
     @staticmethod
     def _assign_constant(node: object) -> m.Infra.ConstantInfo | None:
@@ -279,20 +299,15 @@ class FlextInfraClassPlacementDetector:
         targets = getattr(node, "targets", None)
         if not isinstance(targets, (list, tuple)) or len(targets) != 1:
             return None
-        target_name = u.Infra.name_of(targets[0])
-        if not target_name or target_name.startswith("_"):
-            return None
-        if target_name in c.Infra.CLASSVAR_EXEMPT_NAMES:
-            return None
-        if not c.Infra.NAMESPACE_CONSTANT_PATTERN.match(target_name):
+        target_name = FlextInfraClassPlacementDetector._namespace_constant_name(
+            targets[0]
+        )
+        if target_name is None:
             return None
         value = getattr(node, "value", None)
         if not FlextInfraClassPlacementDetector._classvar_value_permitted(value):
             return None
-        line = getattr(node, "lineno", 1)
-        return m.Infra.ConstantInfo(
-            name=target_name, line=line if isinstance(line, int) and line > 0 else 1
-        )
+        return FlextInfraClassPlacementDetector._constant_info(node, target_name)
 
     @staticmethod
     def _type_aliases(
