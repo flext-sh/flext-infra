@@ -383,7 +383,7 @@ class FlextInfraModGateEngine:
             )
             sys.stderr.flush()
             context = m.Infra.GateContext(
-                workspace=owner,
+                repository_root=owner,
                 reports_dir=owner / c.Infra.REPORTS_DIR_NAME,
                 check_only=True,
             )
@@ -423,27 +423,38 @@ class FlextInfraModGateEngine:
             f"providers={len(plan.rulesets)} rules={len(plan.rules)}\n"
         )
         sys.stderr.flush()
-        scan_command = u.Infra.ast_grep_scan_command(
-            rules[0],
-            rule_ids=tuple(sorted(known_rule_ids)),
-            targets=targets,
-            json_stream=True,
-        )
-        run = cls._run_tool(root, scan_command, finding_exit_code=1)
-        if run.failure:
-            return r[m.Infra.ModScanReport].from_failure(run)
-        report = cls._parse_findings(
-            run.value.stdout, root, rule_files_by_id, frozenset(fixable_ids)
-        ).unwrap()
-        if run.value.outcome.raw_return_code != 0:
-            cls._validate_finding_receipt(run.value.stderr, report.findings).unwrap()
-        findings = report.findings
-        actionable_findings = report.actionable
-        detection_only_findings = report.detection_only
-        non_actionable_with_fix_findings = report.non_actionable_with_fix
-        files.update(report.files)
-        entries.extend(report.entries)
-        if fix and report.actionable:
+        for ruleset in plan.rulesets:
+            ruleset_files = {
+                rule_id: rule_files_by_id[rule_id] for rule_id in ruleset.rule_ids
+            }
+            scan_command = u.Infra.ast_grep_scan_command(
+                ruleset.config,
+                rule_ids=ruleset.rule_ids,
+                targets=targets,
+                json_stream=True,
+            )
+            run = cls._run_tool(root, scan_command, finding_exit_code=1)
+            if run.failure:
+                return r[m.Infra.ModScanReport].from_failure(run)
+            report = cls._parse_findings(
+                run.value.stdout,
+                root,
+                ruleset_files,
+                frozenset(ruleset.fixable_rule_ids),
+            ).unwrap()
+            if run.value.outcome.raw_return_code != 0:
+                error_findings = sum(
+                    entry.payload.get("severity") == "error" for entry in report.entries
+                )
+                cls._validate_finding_receipt(run.value.stderr, error_findings).unwrap()
+            findings += report.findings
+            actionable_findings += report.actionable
+            detection_only_findings += report.detection_only
+            non_actionable_with_fix_findings += report.non_actionable_with_fix
+            files.update(report.files)
+            entries.extend(report.entries)
+            if not (fix and report.actionable and ruleset.fixable_rule_ids):
+                continue
             apply_command = u.Infra.ast_grep_scan_command(
                 ruleset.config,
                 rule_ids=ruleset.fixable_rule_ids,

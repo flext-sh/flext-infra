@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from fnmatch import fnmatchcase
 from hashlib import sha256
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import TYPE_CHECKING, Annotated, ClassVar, override
 from urllib.parse import urlsplit
 
 from flext_core import r
@@ -406,25 +406,45 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         if release is None or not cls.is_mise_release(release):
             return r[str].fail(f"Mise seed has an invalid release: {path}")
         try:
-            shell_mode = shell_path.stat().st_mode
+            mode = path.stat().st_mode
         except OSError as exc:
-            return r[bool].fail(f"cannot inspect generated Mise launcher: {exc}")
-        if not shell_mode & 0o100:
-            return r[bool].fail("generated Unix Mise launcher is not executable")
-        shell_checksums = (
-            "checksum_linux_x86_64",
-            "checksum_linux_x86_64_musl",
-            "checksum_linux_arm64",
-            "checksum_linux_arm64_musl",
-            "checksum_macos_x86_64",
-            "checksum_macos_arm64",
+            return r[str].fail(
+                f"cannot inspect generated Mise seed: {exc}", exception=exc
+            )
+        if not windows and not mode & 0o100:
+            return r[str].fail("generated Unix Mise seed is not executable")
+        checksums = (
+            ("sum_x64", "sum_arm64")
+            if windows
+            else (
+                "checksum_linux_x86_64",
+                "checksum_linux_x86_64_musl",
+                "checksum_linux_arm64",
+                "checksum_linux_arm64_musl",
+                "checksum_linux_armv7",
+                "checksum_linux_armv7_musl",
+                "checksum_macos_x86_64",
+                "checksum_macos_arm64",
+                "checksum_linux_x86_64_zstd",
+                "checksum_linux_x86_64_musl_zstd",
+                "checksum_linux_arm64_zstd",
+                "checksum_linux_arm64_musl_zstd",
+                "checksum_linux_armv7_zstd",
+                "checksum_linux_armv7_musl_zstd",
+                "checksum_macos_x86_64_zstd",
+                "checksum_macos_arm64_zstd",
+            )
         )
-        for checksum_name in shell_checksums:
-            if not cls._is_sha256(cls._assignment(shell_source.value, checksum_name)):
-                return r[bool].fail(f"Mise launcher checksum missing: {checksum_name}")
-        if not cls._is_sha256(cls._assignment(windows_source.value, "sum_x64")):
-            return r[bool].fail("Mise launcher checksum missing: windows-x64")
-        return r[bool].ok(True)
+        for checksum_name in checksums:
+            assignment = cls._assignment(source.value, checksum_name)
+            digest = (
+                assignment if windows or assignment is None else assignment.split()[0]
+            )
+            if not cls._is_sha256(digest):
+                return r[str].fail(
+                    f"Mise seed checksum missing in {path.name}: {checksum_name}"
+                )
+        return r[str].ok(release)
 
     def validate_artifacts(self, project_root: Path) -> p.Result[bool]:
         """Validate one project's committed Mise artifacts entirely offline."""

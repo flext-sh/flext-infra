@@ -8,7 +8,7 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_infra import c, m, p, r, t
-from flext_infra.transformers.project_alias_migrator import (
+from flext_infra.refactor.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
 )
 

@@ -27,7 +27,6 @@ class FlextInfraSmellsGate(FlextInfraGate):
     filtered by SARIF URI prefix.
     """
 
-    _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
     gate_id: ClassVar[str] = "smells"
     gate_name: ClassVar[str] = "Code Smells"
     can_fix: ClassVar[bool] = True
