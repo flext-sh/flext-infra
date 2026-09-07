@@ -230,7 +230,7 @@ class FlextInfraWorkspaceDetector(
             distribution=project_name,
             url=effective_url,
             path=path,
-            role=role,
+            workspace_mode=role,
             provider=provider.name,
             checkout=checkout,
             codegen=c.Infra.CodegenKind.CONFORM,
