@@ -1326,7 +1326,7 @@ class TestCodegenConform:
 
 
 class TestScriptDispatchMakefile:
-    """Prove per-repo extra verbs and script-dispatch WHAT normalization."""
+    """Prove per-repo extra verbs and the script-dispatch lint/type paths."""
 
     @staticmethod
     def _render_root_makefile(
@@ -1378,21 +1378,25 @@ class TestScriptDispatchMakefile:
         rendered: str = u.Tests.codegen_file_text(makefile)
         return rendered
 
-    def test_script_dispatch_repo_routes_extra_verbs_and_normalizes_what(
+    def test_script_dispatch_repo_publishes_its_declared_extra_verbs(
         self, tmp_path: Path
     ) -> None:
-        """Extra verbs join PUBLIC_VERBS and WHAT hyphens map to script stems."""
+        """Declared extra verbs join PUBLIC_VERBS and the script-verb roster.
+
+        A verb is the whole operation: the generated Makefile publishes the
+        declared name and nothing selects a sub-operation behind it.
+        """
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(
                 m.Infra.MakeVerbSpec(
                     name="incidente",
-                    description="Dispatch incidente through the declared script dispatcher.",
+                    description="Run the declared incidente script.",
                     requires_apply=True,
                 ),
                 m.Infra.MakeVerbSpec(
                     name="charts",
-                    description="Dispatch charts through the declared script dispatcher.",
+                    description="Run the declared charts script.",
                     requires_apply=True,
                 ),
             ),
@@ -1401,52 +1405,15 @@ class TestScriptDispatchMakefile:
                 roots=("scripts", "apps/demo-app/scripts"),
             ),
         )
-        # Extra verbs are public targets the dispatcher can reach.
-        tm.that("incidente" in rendered, eq=True)
-        tm.that("charts" in rendered, eq=True)
-        # The generated dispatch normalizes hyphenated WHAT to the module stem.
-        tm.that("tr '-' '_'" in rendered, eq=True)
-        # It forwards to the declared dispatcher through uv, not a raw builtin.
-        tm.that("scripts/dispatch.py" in rendered, eq=True)
-        # Existence check spans every declared script root.
-        tm.that("apps/demo-app/scripts" in rendered, eq=True)
-        # REGRESSION (fork-bomb): every line of the single-recipe _dispatch shell
-        # command must continue with a trailing backslash. A blank/unterminated
-        # line splits the recipe, drops $$what/$$builtin, and recurses into the
-        # default goal. Verify continuity across the whole define body.
-        body = rendered.split("define _dispatch", 1)[1].split("endef", 1)[0]
-        recipe = [ln for ln in body.splitlines() if ln.startswith("\t")]
-        broken = [ln for ln in recipe[:-1] if not ln.rstrip().endswith("\\")]
-        tm.that(broken, eq=[])
-
-    def test_dispatch_routes_custom_what_before_allowlist(self, tmp_path: Path) -> None:
-        """Custom ``_custom_<verb>_<what>`` handlers bypass the builtin allowlist.
-
-        ai-hub and other projects extend ``run`` / ``check`` via custom.mk. The
-        continuous Makefile must discover those handlers and dispatch them
-        instead of rejecting unknown WHATs as ``allowed:default``.
-        """
-        rendered = self._render_root_makefile(
-            tmp_path, extra_verbs=(), script_dispatch=None
+        public_line = next(
+            line for line in rendered.splitlines() if line.startswith("PUBLIC_VERBS :=")
         )
-        body = rendered.split("define _dispatch", 1)[1].split("endef", 1)[0]
-        tm.that("_custom_$(1)_$$what" in body, eq=True)
-        tm.that("custom_rc" in body, eq=False)
-        tm.that('$(SELF_MAKE) "$$custom"' in body, eq=True)
-        recipe = [ln for ln in body.splitlines() if ln.startswith("\t")]
-        broken = [ln for ln in recipe[:-1] if not ln.rstrip().endswith("\\")]
-        tm.that(broken, eq=[])
-
-    def test_repo_without_script_dispatch_omits_script_routing(
-        self, tmp_path: Path
-    ) -> None:
-        """A repo with no script dispatch omits every script-routing projection."""
-        rendered = self._render_root_makefile(
-            tmp_path, extra_verbs=(), script_dispatch=None
+        script_line = next(
+            line for line in rendered.splitlines() if line.startswith("SCRIPT_VERBS :=")
         )
-        # No script routing leaks into non-opted-in repositories.
-        tm.that("tr '-' '_'" in rendered, eq=False)
-        tm.that("scripts/dispatch.py" in rendered, eq=False)
+        for verb in ("incidente", "charts"):
+            tm.that(f" {verb}" in public_line, eq=True)
+            tm.that(f" {verb}" in script_line, eq=True)
 
     def test_gen_replaces_codegen_as_the_single_conform_verb(
         self, tmp_path: Path

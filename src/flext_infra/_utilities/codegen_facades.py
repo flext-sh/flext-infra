@@ -151,12 +151,18 @@ class FlextInfraUtilitiesCodegenFacades:
             raise ValueError(message)
         return facades[0], nested[0] if nested else facades[0]
 
-    @staticmethod
-    def _base_name(base: ast.expr) -> str:
+    @classmethod
+    def _base_name(cls, base: ast.expr) -> str:
         if isinstance(base, ast.Name):
             return base.id
         if isinstance(base, ast.Attribute):
             return base.attr
+        # Why: a generic base carries the same owner as its unsubscripted form.
+        # `class X(FlextLdifUtilitiesTransformer[m.Ldif.Entry])` names
+        # FlextLdifUtilitiesTransformer exactly like the bare base does, and the
+        # type argument decides nothing about facade reachability.
+        if isinstance(base, ast.Subscript):
+            return cls._base_name(base.value)
         message = f"unsupported utility facade base: {ast.dump(base)}"
         raise ValueError(message)
 
