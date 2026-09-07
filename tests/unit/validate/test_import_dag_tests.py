@@ -8,7 +8,6 @@ import pytest
 
 from flext_infra.validate.test_import_dag import FlextInfraValidateTestImportDag
 from flext_tests import tm
-
 from tests import m
 
 if TYPE_CHECKING:

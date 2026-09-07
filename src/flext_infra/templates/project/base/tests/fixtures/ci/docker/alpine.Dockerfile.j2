@@ -23,7 +23,7 @@ RUN apk add --no-cache \
     && adduser -S -G runner runner
 # End SECTION: base packages
 
-{{ docker_mise_bootstrap() }}
+{{ docker_mise_bootstrap(mise_bootstrap) }}
 
 # === SECTION: bootstrap proof (managed) ===
 # Source: template (clean-machine bootstrap through the canonical verb)

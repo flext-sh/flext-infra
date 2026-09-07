@@ -14,6 +14,15 @@ class FlextInfraConstantsDocs:
 
     DEFAULT_DOCS_OUTPUT_DIR: Final[str] = ".reports/docs"
     DOCS_CONFIG_FILENAME: Final[str] = "docs_config.json"
+    DOCS_INSECURE_WEB_SCHEME: Final[str] = "http"
+    DOCS_SECURE_WEB_SCHEME: Final[str] = "https"
+    DOCS_EXTERNAL_SCHEMES: Final[frozenset[str]] = frozenset({
+        DOCS_SECURE_WEB_SCHEME,
+        "mailto",
+        "tel",
+        "data",
+    })
+    DOCS_FRAGMENT_PREFIX: Final[str] = "#"
     PYTHON_FENCE_RUFF_EXTEND_IGNORE: Final[t.StrSequence] = (
         "D100",
         "D101",
@@ -34,6 +43,18 @@ class FlextInfraConstantsDocs:
         "PLC0415",
     )
     """Rules ignored for executable docs snippets that are not full modules/tests."""
+    MACHINE_PATH_RE: Final[t.RegexPattern] = re.compile(
+        r"(?<![\w./-])/(?:home|Users)/(?P<user>[A-Za-z0-9_.-]+)(?=/|\b)"
+    )
+    """Regex matching a per-user absolute root (``/home/<user>``, ``/Users/<user>``)."""
+    MACHINE_PATH_CONTAINER_USERS: Final[t.StrSequence] = (
+        "runner",
+        "vscode",
+        "agent",
+        "barman",
+        "scanner",
+    )
+    """Container/CI identities whose home is part of the image contract, not a machine."""
     PYTHON_FENCE_RE: Final[t.RegexPattern] = re.compile(
         r"^```python\s*\n(?P<body>.*?)^```\s*$", re.MULTILINE | re.DOTALL
     )
@@ -79,6 +100,62 @@ class FlextInfraConstantsDocs:
         r"""["']([a-zA-Z0-9_\.]+)["']"""
     )
     """Match quoted string literals, capturing the content."""
+
+    DOCS_MAKE_COMMAND_RE: Final[t.RegexPattern] = re.compile(
+        r"^\s*(?:\$\s*)?make\s+(?P<verb>[a-z][a-z0-9_-]*)(?P<args>.*)$", re.IGNORECASE
+    )
+    """Match an executable Make command and capture its verb and arguments."""
+    DOCS_SHELL_FENCE_LANGUAGES: Final[frozenset[str]] = frozenset({
+        "",
+        "bash",
+        "console",
+        "fish",
+        "sh",
+        "shell",
+        "zsh",
+    })
+    """Markdown fence languages whose lines are executable shell commands."""
+    DOCS_FORBIDDEN_MAKE_SELECTOR_RE: Final[t.RegexPattern] = re.compile(
+        r"\b(?:PROJECTS?|MATCH|WHAT|FILES?|FIX|CHANGED_ONLY|CHECK_GATES|"
+        r"DOCS_PHASE|VALIDATE_SCOPE)\s*=",
+        re.IGNORECASE,
+    )
+    """Match selectors outside the canonical root Make grammar."""
+    DOCS_APPLY_RE: Final[t.RegexPattern] = re.compile(r"\bAPPLY=Y\b")
+    """Match the sole canonical mutation flag in documented commands."""
+    DOCS_COMMAND_CONTRACT_DIRNAMES: Final[frozenset[str]] = frozenset({
+        "guides",
+        "standards",
+    })
+    """Live documentation trees governed by the command contract."""
+    DOCS_RAW_PYTEST_COMMAND_RE: Final[t.RegexPattern] = re.compile(
+        r"^\s*(?:\$\s*)?(?:(?:[A-Za-z_][A-Za-z0-9_]*=\S+)\s+)*"
+        r"(?:(?:uv|poetry|pdm)\s+run\s+|"
+        r"python(?:3(?:\.\d+)?)?\s+-m\s+)?pytest(?:\s|$)",
+        re.IGNORECASE,
+    )
+    """Match direct pytest execution that bypasses the root Testmon verb."""
+    DOCS_RAW_TOOL_COMMAND_RE: Final[t.RegexPattern] = re.compile(
+        r"^\s*(?:\$\s*)?(?:(?:[A-Za-z_][A-Za-z0-9_]*=\S+)\s+)*"
+        r"(?:ruff|pyrefly|mypy|pyright|mkdocs|uv|poetry|pdm|tox|nox|pre-commit|"
+        r"python(?:3(?:\.\d+)?)?(?:\s+-m|\s+[^\s]+\.py\b))",
+        re.IGNORECASE,
+    )
+    """Match tool and script commands that bypass the root Make dispatcher."""
+    DOCS_TEST_DOUBLE_CODE_RE: Final[t.RegexPattern] = re.compile(
+        r"(?:from\s+unittest(?:\.mock)?\s+import|import\s+unittest\.mock|"
+        r"(?:^|\W)(?:MagicMock|Mock|patch)\s*\(|mock\.patch\s*\(|"
+        r"monkeypatch\.[A-Za-z_]|class\s+(?:Fake|Stub)[A-Za-z0-9_]*|"
+        r"(?:^|\W)(?:fake|stub)_[A-Za-z0-9_]+)",
+        re.IGNORECASE,
+    )
+    """Match test-double construction inside executable Python examples."""
+    DOCS_TEST_DOUBLE_HEADING_RE: Final[t.RegexPattern] = re.compile(
+        r"^\s*#{1,6}\s+.*\b(?:mock(?:ing|s)?|fake(?:s)?|stub(?:bing|s)?|"
+        r"patch(?:ing)?)\b",
+        re.IGNORECASE,
+    )
+    """Match headings that introduce test-double guidance."""
 
 
 __all__: list[str] = ["FlextInfraConstantsDocs"]
