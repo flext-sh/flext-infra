@@ -11,7 +11,7 @@ from flext_cli import u
 from flext_core import m
 from flext_infra import c, t
 
-from .._models.duplication import FlextInfraModelsDuplication
+from .duplication import FlextInfraModelsDuplication
 
 
 class FlextInfraModelsGates(FlextInfraModelsDuplication):

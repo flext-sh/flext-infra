@@ -88,7 +88,7 @@ make test PROJECT=flext-demo MATCH=unit
         )
 
         tm.that(len(issues), eq=1)
-        tm.that(issues[0].message, has="rejects `APPLY=Y`")
+        tm.that(issues[0].message, has="does not accept `APPLY=Y`")
 
     @staticmethod
     def test_rejects_raw_pytest_execution() -> None:

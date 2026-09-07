@@ -14,11 +14,11 @@ from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
 
-from .._utilities.discovery import FlextInfraUtilitiesDiscovery
-from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-from .._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from .._utilities.rope_source import FlextInfraUtilitiesRopeSource
+from .discovery import FlextInfraUtilitiesDiscovery
+from .docs_scope import FlextInfraUtilitiesDocsScope
+from .rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from .rope_core import FlextInfraUtilitiesRopeCore
+from .rope_source import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraUtilitiesCodegenNamespace:

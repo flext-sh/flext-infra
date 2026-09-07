@@ -7,8 +7,8 @@ from typing import Annotated
 from flext_core import m
 from flext_infra import t
 
-from .._models._defaults import ImmutableEmptyMapping
-from .._models.deps_tool_config_project import FlextInfraModelsDepsToolConfigProject
+from ._defaults import ImmutableEmptyMapping
+from .deps_tool_config_project import FlextInfraModelsDepsToolConfigProject
 
 
 class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProject):

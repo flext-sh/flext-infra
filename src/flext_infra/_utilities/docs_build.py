@@ -12,7 +12,7 @@ from flext_cli import u
 from flext_infra.constants import c
 from flext_infra.models import m
 
-from .._utilities.docs import FlextInfraUtilitiesDocs
+from .docs import FlextInfraUtilitiesDocs
 
 if TYPE_CHECKING:
     from types import ModuleType

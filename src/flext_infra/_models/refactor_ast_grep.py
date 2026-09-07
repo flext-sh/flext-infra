@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import c, t
 
-from .._models._defaults import ImmutableEmptyMapping
+from ._defaults import ImmutableEmptyMapping
 
 
 class FlextInfraModelsRefactorGrep:

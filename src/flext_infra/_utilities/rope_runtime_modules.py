@@ -7,7 +7,7 @@ from collections.abc import Iterable
 from flext_infra.protocols import p
 from flext_infra.typings import t
 
-from .._utilities.rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
+from .rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
 
 
 class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):

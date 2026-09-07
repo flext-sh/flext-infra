@@ -14,10 +14,10 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities.dependencies import FlextInfraUtilitiesDependencies
-from .._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
-from .._utilities.namespace_common import FlextInfraUtilitiesRefactorNamespaceCommon
-from .._utilities.rope_module_patch import FlextInfraUtilitiesRopeModulePatch
+from .dependencies import FlextInfraUtilitiesDependencies
+from .namespace import FlextInfraUtilitiesCodegenNamespace
+from .namespace_common import FlextInfraUtilitiesRefactorNamespaceCommon
+from .rope_module_patch import FlextInfraUtilitiesRopeModulePatch
 
 # flext-j47u (codex): annotation-only stdlib types are safe runtime imports;
 # TYPE_CHECKING is reserved for real reverse-dependency cycle boundaries.

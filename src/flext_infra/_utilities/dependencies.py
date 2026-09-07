@@ -16,16 +16,22 @@ from typing import TYPE_CHECKING
 
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
+from packaging.version import InvalidVersion, Version
 
 from flext_cli import u
 from flext_core import r
 from flext_infra.constants import c
 
-from .._utilities.pyproject import FlextInfraUtilitiesPyproject
+# Why: dependency_waves subscripts r[t.SequenceOf[t.StrSequence]] at runtime, so
+# the typings facade cannot be TYPE_CHECKING-only here. c -> t is a forward
+# facade import and stays cycle-free.
+from flext_infra.typings import t
+
+from .codegen import FlextInfraUtilitiesCodegen
+from .pyproject import FlextInfraUtilitiesPyproject
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
-    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesDependencies:
@@ -35,16 +41,23 @@ class FlextInfraUtilitiesDependencies:
     def update_mise_lock(
         project_root: Path, *, platforms: t.StrSequence, staging_parent: Path
     ) -> p.Result[bool]:
-        """Generate a fresh native Mise lock and publish it atomically."""
+        """Generate a fresh native Mise lock and publish it atomically.
+
+        The lock is resolved from the rendered declaration -- the config SSOT
+        that ``make gen`` publishes -- never from the on-disk ``.mise.toml``.
+        Locking the stale projection deadlocked every newly declared selector:
+        offline ``gen`` refuses a config whose tool set the lock lacks, and the
+        lock never gained a tool the published config did not already carry.
+        This step is the online owner of the lock, so it resolves the declared
+        set here and ``gen`` stays offline.
+        """
         launcher = project_root / "bin" / ("mise.cmd" if os.name == "nt" else "mise")
         if not launcher.is_file():
             return r[bool].fail(f"generated Mise launcher is absent: {launcher}")
-        config_path = project_root / c.Infra.MISE_TOML_FILENAME
-        config_state = u.Cli.atomic_read_binary_file_state(config_path, required=True)
-        if config_state.failure:
-            return r[bool].from_failure(config_state)
-        if config_state.value.content is None:
-            return r[bool].fail(f"generated Mise config is absent: {config_path}")
+        declaration = FlextInfraUtilitiesCodegen.render_mise_toml(project_root)
+        if declaration.failure:
+            return r[bool].from_failure(declaration)
+        declared_content = declaration.value.encode("utf-8")
         live_lock = u.Cli.atomic_read_binary_file_state(
             project_root / c.Infra.MISE_LOCK_FILENAME, required=False
         )
@@ -65,9 +78,9 @@ class FlextInfraUtilitiesDependencies:
             return r[bool].from_failure(temporary)
         stage_root = temporary.value
         staged_config = u.Cli.atomic_create_binary_file_guarded(
-            stage_root / config_path.name,
-            config_state.value.content,
-            permission_mode=config_state.value.mode or 0o644,
+            stage_root / c.Infra.MISE_TOML_FILENAME,
+            declared_content,
+            permission_mode=0o644,
         )
         generated: p.Result[bytes]
         if staged_config.failure:
@@ -235,13 +248,15 @@ class FlextInfraUtilitiesDependencies:
     @staticmethod
     def dependency_waves(
         edges: Mapping[str, t.StrSequence],
-    ) -> t.SequenceOf[t.StrSequence]:
+    ) -> p.Result[t.SequenceOf[t.StrSequence]]:
         """Split a closed named dependency graph into dependency-first waves.
 
         Wave ``n`` contains only names whose dependencies all live in earlier
         waves, so each wave may proceed in parallel while the sequence between
         waves stays strict. The graph is closed: every referenced name must be
-        a key of ``edges``, and a cycle fails loudly.
+        a key of ``edges``; an unknown reference or a cycle fails the result
+        instead of raising, so callers (release publish ordering, codemod
+        provider ordering) compose it through ``p.Result`` chaining.
         """
         unknown = sorted({
             dependency
@@ -250,24 +265,25 @@ class FlextInfraUtilitiesDependencies:
             if dependency not in edges
         })
         if unknown:
-            msg = "dependency graph references names outside the graph: " + ", ".join(
-                unknown
+            return r[t.SequenceOf[t.StrSequence]].fail(
+                "dependency graph references names outside the graph: "
+                + ", ".join(unknown)
             )
-            raise ValueError(msg)
         pending = {name: set(deps) for name, deps in edges.items()}
         waves: list[t.StrSequence] = []
         while pending:
             ready = frozenset(name for name, deps in pending.items() if not deps)
             if not ready:
-                msg = "cyclic dependency graph: " + ", ".join(sorted(pending))
-                raise ValueError(msg)
+                return r[t.SequenceOf[t.StrSequence]].fail(
+                    "cyclic dependency graph: " + ", ".join(sorted(pending))
+                )
             waves.append(tuple(sorted(ready)))
             pending = {
                 name: deps - ready
                 for name, deps in pending.items()
                 if name not in ready
             }
-        return tuple(waves)
+        return r[t.SequenceOf[t.StrSequence]].ok(tuple(waves))
 
     @classmethod
     def project_dependency_resource_files(
@@ -340,9 +356,23 @@ class FlextInfraUtilitiesDependencies:
         floor built straight from a locally tagged resolution is rejected by
         every build backend. The public release is what a floor means, and the
         local build satisfies it.
+
+        A prerelease resolution is not a floor either: publishing ``>=X.Yb1``
+        forces every downstream consumer onto that beta, which is how the fleet
+        ended up pinned to ``pydantic>=2.14.0b1`` from a single local lock. The
+        empty string means "this resolution cannot serve as a public floor", and
+        every caller keeps the declared constraint instead of rewriting it.
         """
         public_version = version.strip().partition("+")[0]
-        return f">={public_version}" if public_version else ""
+        if not public_version:
+            return ""
+        try:
+            parsed_version = Version(public_version)
+        except InvalidVersion:
+            return ""
+        if parsed_version.is_prerelease:
+            return ""
+        return f">={public_version}"
 
     @classmethod
     def locked_dependency_versions(
@@ -430,6 +460,8 @@ class FlextInfraUtilitiesDependencies:
                                 )
                             )
                             constraint = cls.constraint_specifier(locked_version)
+                            if not constraint:
+                                return None
                             if retained:
                                 constraint = ",".join((constraint, *retained))
                             rewritten = f"{head}{constraint}"
@@ -460,6 +492,8 @@ class FlextInfraUtilitiesDependencies:
             locked_version = locked_versions.get(normalized_name)
             if locked_version is not None:
                 rewritten_specifier = cls.constraint_specifier(locked_version)
+                if not rewritten_specifier:
+                    return None
                 if isinstance(raw_value, str):
                     result = (
                         rewritten_specifier

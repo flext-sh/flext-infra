@@ -10,10 +10,10 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m, u
 from flext_infra import c, p, t
 
-from .._models._defaults import ImmutableEmptyMapping
-from .._models.codegen_render import FlextInfraModelsCodegenRender
-from .._models.config import FlextInfraConfigModels
-from .._models.mixins import FlextInfraModelsMixins as mm
+from ._defaults import ImmutableEmptyMapping
+from .codegen_render import FlextInfraModelsCodegenRender
+from .config import FlextInfraConfigModels
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):

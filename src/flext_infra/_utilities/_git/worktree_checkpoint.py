@@ -12,9 +12,7 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from ..._utilities._git.worktree_materialization import (
-    FlextInfraUtilitiesGitWorktreeMaterializationMixin,
-)
+from .worktree_materialization import FlextInfraUtilitiesGitWorktreeMaterializationMixin
 
 if TYPE_CHECKING:
     from flext_infra import p

@@ -6,7 +6,8 @@ import re
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, t, u
-from flext_infra.gates.base_gate import FlextInfraGate
+
+from .base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -9,11 +9,9 @@ from typing import TYPE_CHECKING
 from flext_infra.constants import c
 from flext_infra.models import m
 
-from .._utilities.private_import_cst import FlextInfraUtilitiesPrivateImportCst
-from .._utilities.private_import_facades import FlextInfraUtilitiesPrivateImportFacades
-from .._utilities.private_import_validation import (
-    FlextInfraUtilitiesPrivateImportValidation,
-)
+from .private_import_cst import FlextInfraUtilitiesPrivateImportCst
+from .private_import_facades import FlextInfraUtilitiesPrivateImportFacades
+from .private_import_validation import FlextInfraUtilitiesPrivateImportValidation
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
@@ -31,10 +29,20 @@ class FlextInfraUtilitiesPrivateImports:
         target_parts = tuple(private_module.split("."))
         candidates: set[str] = set()
         path_parts = file_path.resolve().parts
-        for index, part in enumerate(path_parts):
-            if part != c.Infra.DEFAULT_SRC_DIR:
-                continue
-            source_parts = path_parts[index + 1 :]
+        source_candidates = [
+            path_parts[index + 1 :]
+            for index, part in enumerate(path_parts)
+            if part == c.Infra.DEFAULT_SRC_DIR
+        ]
+        # Repo-rooted trees (tests) import from the checkout root, so the
+        # package path itself anchors the module without a src segment.
+        rooted_parts = path_parts[-(len(package_parts) + 1) :]
+        if (
+            len(rooted_parts) == len(package_parts) + 1
+            and tuple(rooted_parts[:-1]) == package_parts
+        ):
+            source_candidates.append(rooted_parts)
+        for source_parts in source_candidates:
             if (
                 len(source_parts) <= len(package_parts)
                 or tuple(source_parts[: len(package_parts)]) != package_parts

@@ -7,8 +7,9 @@ from typing import Annotated, override
 
 from flext_infra import m, p, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
+
+from .detection import FlextInfraDependencyDetectionService
+from .detector_runtime import FlextInfraDependencyDetectorRuntime
 
 
 class FlextInfraRuntimeDevDependencyDetector(

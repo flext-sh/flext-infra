@@ -13,7 +13,7 @@ from pathlib import Path
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u, u as test_u
+from tests import u
 
 
 class TestsCodegenRepositoryRootFanout:
@@ -34,7 +34,7 @@ class TestsCodegenRepositoryRootFanout:
         repository_root = _render_root_makefile(tmp_path)
         for verb in (c.Infra.VERB_CHECK, c.Infra.VERB_TEST):
             execution = tm.ok(
-                test_u.Cli.run_raw(
+                u.Cli.run_raw(
                     [c.Infra.MAKE, "--dry-run", verb, "APPLY=Y"],
                     cwd=repository_root,
                     remove_env_keys=("MAKEFLAGS",),
@@ -55,7 +55,7 @@ class TestsCodegenRepositoryRootFanout:
         repository_root = _render_root_makefile(tmp_path)
 
         execution = tm.ok(
-            test_u.Cli.run_raw(
+            u.Cli.run_raw(
                 [c.Infra.MAKE, "--dry-run", c.Infra.VERB_DEPS, "APPLY=Y"],
                 cwd=repository_root,
                 remove_env_keys=("MAKEFLAGS",),

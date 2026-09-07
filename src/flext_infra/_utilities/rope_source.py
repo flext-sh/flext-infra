@@ -13,9 +13,9 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities.discovery import FlextInfraUtilitiesDiscovery
-from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from .._utilities.silent_failure_ast import FlextInfraUtilitiesSilentFailureAst
+from .discovery import FlextInfraUtilitiesDiscovery
+from .rope_core import FlextInfraUtilitiesRopeCore
+from .silent_failure_ast import FlextInfraUtilitiesSilentFailureAst
 
 
 class FlextInfraUtilitiesRopeSource:

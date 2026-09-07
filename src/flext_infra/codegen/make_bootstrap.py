@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, override
 from flext_core import r
 from flext_infra import c, m
 from flext_infra.base import s
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+
+from .conform import FlextInfraCodegenConform
 
 if TYPE_CHECKING:
     from flext_infra import p

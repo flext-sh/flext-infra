@@ -26,8 +26,13 @@ class FlextInfraUtilitiesCodegenFacades:
         facade_path = pkg_dir / c.Infra.UTILITIES_PY
         owners_dir = pkg_dir / c.Infra.FAMILY_DIRECTORIES["u"]
         owners_exist, facade_exists = owners_dir.is_dir(), facade_path.is_file()
-        if owners_exist != facade_exists:
-            message = f"incomplete utility facade artifacts in {pkg_dir}"
+        # Why: only owners-without-facade is incomplete -- the owners would have
+        # no public surface at all. A facade with no owners directory is the
+        # legitimate pure re-export shape this same generator emits for a package
+        # that adds no local utilities (src/flext: `class FlextRootUtilities(u)`),
+        # and there is simply nothing to project onto it.
+        if owners_exist and not facade_exists:
+            message = f"utility owners in {pkg_dir} have no public facade"
             raise ValueError(message)
         if not owners_exist:
             return None
@@ -147,12 +152,18 @@ class FlextInfraUtilitiesCodegenFacades:
             raise ValueError(message)
         return facades[0], nested[0] if nested else facades[0]
 
-    @staticmethod
-    def _base_name(base: ast.expr) -> str:
+    @classmethod
+    def _base_name(cls, base: ast.expr) -> str:
         if isinstance(base, ast.Name):
             return base.id
         if isinstance(base, ast.Attribute):
             return base.attr
+        # Why: a generic base carries the same owner as its unsubscripted form.
+        # `class X(FlextLdifUtilitiesTransformer[m.Ldif.Entry])` names
+        # FlextLdifUtilitiesTransformer exactly like the bare base does, and the
+        # type argument decides nothing about facade reachability.
+        if isinstance(base, ast.Subscript):
+            return cls._base_name(base.value)
         message = f"unsupported utility facade base: {ast.dump(base)}"
         raise ValueError(message)
 

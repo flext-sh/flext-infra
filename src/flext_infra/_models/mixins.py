@@ -8,8 +8,6 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import c, t
 
-from .._utilities.base import FlextInfraUtilitiesBase as ub
-
 
 class FlextInfraModelsMixins:
     """Centralized reusable field and helper mixins for models.
@@ -68,7 +66,9 @@ class FlextInfraModelsMixins:
         @property
         def project_names(self) -> t.StrSequence | None:
             """Normalized project names from repeated selectors."""
-            return ub.normalize_sequence_values(self.projects)
+            from flext_infra import u
+
+            return u.Infra.normalize_sequence_values(self.projects)
 
     class ReadMixin(ScopeMixin):
         """Read-only commands — report file + output directory only.
@@ -88,12 +88,16 @@ class FlextInfraModelsMixins:
         @property
         def report_path(self) -> Path | None:
             """Resolved report path when provided."""
-            return ub.normalize_optional_path(self.report)
+            from flext_infra import u
+
+            return u.Infra.normalize_optional_path(self.report)
 
         @property
         def output_dir_path(self) -> Path | None:
             """Resolved output directory when provided."""
-            return ub.normalize_optional_path(self.output_dir)
+            from flext_infra import u
+
+            return u.Infra.normalize_optional_path(self.output_dir)
 
     class WriteMixin(ScopeMixin):
         """Canonical write contract — apply/dry-run + safety gates.

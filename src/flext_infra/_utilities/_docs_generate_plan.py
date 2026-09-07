@@ -10,10 +10,8 @@ from flext_core import r
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities._docs_generate_sources import (
-    FlextInfraUtilitiesDocsGenerateSourcesMixin,
-)
-from .._utilities.docs_contract import FlextInfraUtilitiesDocsContract
+from ._docs_generate_sources import FlextInfraUtilitiesDocsGenerateSourcesMixin
+from .docs_contract import FlextInfraUtilitiesDocsContract
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
