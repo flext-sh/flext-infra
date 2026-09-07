@@ -555,7 +555,7 @@ _builtin_deps_upgrade: _builtin_require_environment
 		--apply --rewrite-constraints --skip-check "$$@"
 	$(call _run_for_all_projects,)
 
-{% if make_profile == "workspace" %}
+{% if make_profile == workspace_profile %}
 _builtin_build_artifacts:
 	@if [ "$(WORKSPACE_ROOT_PACKAGE)" = "Y" ] && [ -n "$(SELECTED_ROOT_PROJECT)" ]; then $(UV) build --project "$(PROJECT_ROOT)"; fi
 	@if [ -n "$(SELECTED_SUBPROJECTS)" ]; then \
