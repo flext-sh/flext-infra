@@ -36,10 +36,10 @@ class FlextInfraWorkspaceDetector(
 
     @classmethod
     def _composed_beads_identity_error(
-        cls, subproject_root: Path, workspace_beads: m.Infra.BeadsProjectSpec
+        cls, declared_repository_root: Path, workspace_beads: m.Infra.BeadsProjectSpec
     ) -> str | None:
         member_identity = (
-            subproject_root / c.CONFIG_DIR_NAME / c.Infra.BEADS_CONFIG_FILENAME
+            declared_repository_root / c.CONFIG_DIR_NAME / c.Infra.BEADS_CONFIG_FILENAME
         )
         # Detection observes the topology; it does not enforce the ledger-route
         # prohibition. Refusing to load a workspace because one composed project
@@ -49,7 +49,7 @@ class FlextInfraWorkspaceDetector(
         # the link there, per repository and within the requested scope.
         if not member_identity.is_file():
             return f"missing required member Beads routing identity: {member_identity}"
-        member_identity_result = cls.load_beads_spec(subproject_root)
+        member_identity_result = cls.load_beads_spec(declared_repository_root)
         if member_identity_result.failure:
             return member_identity_result.error
         member_identity = member_identity_result.value
@@ -271,12 +271,13 @@ class FlextInfraWorkspaceDetector(
 
     @staticmethod
     def _gitmodule_contract(
-        workspace_root: Path, subproject_path: Path
+        repository_root: Path, declared_repository_path: Path
     ) -> p.Result[tuple[str, str]]:
         """Read one exact URL/branch pair from the local ``.gitmodules``."""
         contract = u.Infra.gitmodule_contract(
             m.Infra.GitSubmoduleContractRequest(
-                repo_root=workspace_root, member_path=subproject_path.as_posix()
+                repo_root=repository_root,
+                member_path=declared_repository_path.as_posix(),
             )
         )
         if contract.failure:
@@ -336,7 +337,7 @@ class FlextInfraWorkspaceDetector(
         return r[m.Infra.RepositoryRef].ok(repository)
 
     @classmethod
-    def _load_subprojects(
+    def _load_declared_repositories(
         cls, repository_root: Path, *, workspace_beads: m.Infra.BeadsProjectSpec
     ) -> p.Result[tuple[tuple[m.Infra.RepositoryRef, ...], tuple[Path, ...]]]:
         """Validate every direct governed .gitmodules entry before planning writes."""
@@ -346,7 +347,7 @@ class FlextInfraWorkspaceDetector(
             return result_type.fail(
                 declared.error or "unable to read local .gitmodules"
             )
-        subprojects: list[m.Infra.RepositoryRef] = []
+        declared_repositories: list[m.Infra.RepositoryRef] = []
         external: list[Path] = []
         seen: set[Path] = set()
         baseline = u.Infra.repository_baseline_branch(repository_root)
@@ -357,7 +358,7 @@ class FlextInfraWorkspaceDetector(
                     f"duplicate .gitmodules path: {path.as_posix()}"
                 )
             seen.add(path)
-            loaded = cls._load_subproject(
+            loaded = cls._load_declared_repository(
                 repository_root,
                 path,
                 integration_branch=integration_branch,
@@ -368,11 +369,11 @@ class FlextInfraWorkspaceDetector(
             if isinstance(loaded.value, Path):
                 external.append(loaded.value)
                 continue
-            subprojects.append(loaded.value)
-        return result_type.ok((tuple(subprojects), tuple(external)))
+            declared_repositories.append(loaded.value)
+        return result_type.ok((tuple(declared_repositories), tuple(external)))
 
     @classmethod
-    def _load_subproject(
+    def _load_declared_repository(
         cls,
         repository_root: Path,
         path: Path,
@@ -430,27 +431,29 @@ class FlextInfraWorkspaceDetector(
                 "governed subproject branch differs from provider policy: "
                 f"{path.as_posix()}"
             )
-        subproject_root = (repository_root / path).resolve()
-        if not subproject_root.is_relative_to(repository_root):
+        declared_repository_root = (repository_root / path).resolve()
+        if not declared_repository_root.is_relative_to(repository_root):
             return result_type.fail(
                 f"subproject escapes workspace root: {path.as_posix()}"
             )
-        if not subproject_root.is_dir():
+        if not declared_repository_root.is_dir():
             return result_type.fail(
                 f"governed subproject checkout is missing: {path.as_posix()}"
             )
-        if not (subproject_root / c.Infra.PYPROJECT_FILENAME).is_file():
+        if not (declared_repository_root / c.Infra.PYPROJECT_FILENAME).is_file():
             return result_type.ok(path)
         route_error = (
-            cls._composed_beads_identity_error(subproject_root, workspace_beads)
-            if (subproject_root / c.Infra.BEADS_DIRNAME).is_symlink()
+            cls._composed_beads_identity_error(
+                declared_repository_root, workspace_beads
+            )
+            if (declared_repository_root / c.Infra.BEADS_DIRNAME).is_symlink()
             else None
         )
         if (
             route_error is None
-            and not (subproject_root / c.Infra.BEADS_DIRNAME).is_symlink()
+            and not (declared_repository_root / c.Infra.BEADS_DIRNAME).is_symlink()
         ):
-            beads = cls.load_beads_spec(subproject_root)
+            beads = cls.load_beads_spec(declared_repository_root)
             if beads.failure:
                 return result_type.fail(beads.error)
         if route_error is not None:
@@ -459,7 +462,10 @@ class FlextInfraWorkspaceDetector(
                 f"{route_error}"
             )
         repository = cls._local_repository_ref(
-            subproject_root, path=path, composed=True, declared_url=declared_url
+            declared_repository_root,
+            path=path,
+            composed=True,
+            declared_url=declared_url,
         )
         if repository.failure:
             return result_type.fail(repository.error)
@@ -498,7 +504,7 @@ class FlextInfraWorkspaceDetector(
                     f"Git submodule escapes its superproject: {member_root}"
                 )
             baseline = u.Infra.repository_baseline_branch(superproject_root)
-            loaded_member = cls._load_subproject(
+            loaded_member = cls._load_declared_repository(
                 superproject_root,
                 member_path,
                 integration_branch=baseline.value if baseline.success else None,
@@ -527,15 +533,17 @@ class FlextInfraWorkspaceDetector(
         )
         if repository.failure:
             return r[m.Infra.WorkspaceSpec].fail(repository.error)
-        topology = cls._load_subprojects(resolved_root, workspace_beads=beads.value)
+        topology = cls._load_declared_repositories(
+            resolved_root, workspace_beads=beads.value
+        )
         if topology.failure:
             return r[m.Infra.WorkspaceSpec].fail(topology.error)
-        subprojects, external = topology.value
+        declared_repositories, external = topology.value
         observed_repository = repository.value.model_copy(
             update={
                 "role": (
                     c.Infra.MakeProfile.WORKSPACE
-                    if subprojects
+                    if declared_repositories
                     else c.Infra.MakeProfile.STANDALONE
                 )
             }
@@ -551,7 +559,7 @@ class FlextInfraWorkspaceDetector(
                 name=beads.value.workspace,
                 beads=beads.value,
                 repository=repository_ref,
-                subprojects=subprojects,
+                declared_repositories=declared_repositories,
                 external_dependency_paths=external,
             )
         )
@@ -632,7 +640,7 @@ class FlextInfraWorkspaceDetector(
         )
 
     @staticmethod
-    def resolve_workspace_root(repository_root: Path) -> p.Result[Path]:
+    def resolve_repository_root(repository_root: Path) -> p.Result[Path]:
         """Return the requested checkout; parent and primary trees are irrelevant."""
         resolved_root = repository_root.expanduser().resolve()
         if not resolved_root.is_dir():

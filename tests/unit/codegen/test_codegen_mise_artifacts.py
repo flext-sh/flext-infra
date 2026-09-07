@@ -161,7 +161,7 @@ class TestsCodegenMiseArtifacts:
         root = self._project(tmp_path / "project")
 
         service = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         })
         tm.that(service.repository_root, eq=root)
@@ -177,7 +177,7 @@ class TestsCodegenMiseArtifacts:
         root = self._project(tmp_path / "project", include_checksum=False)
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -191,7 +191,7 @@ class TestsCodegenMiseArtifacts:
         before = lock_path.read_bytes()
 
         apply_result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "apply_changes": True,
         }).execute()
 
@@ -209,7 +209,7 @@ class TestsCodegenMiseArtifacts:
         )
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -221,7 +221,7 @@ class TestsCodegenMiseArtifacts:
         root = self._project(tmp_path / "project", platforms=("linux-x64",))
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -233,7 +233,7 @@ class TestsCodegenMiseArtifacts:
         )
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -244,7 +244,7 @@ class TestsCodegenMiseArtifacts:
         self._write_launchers(root, windows_version="2000.1.1")
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -263,7 +263,7 @@ class TestsCodegenMiseArtifacts:
             )
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -273,7 +273,7 @@ class TestsCodegenMiseArtifacts:
         root = self._project(tmp_path / "project", selector="npm:jscpd", platforms=())
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 

@@ -270,7 +270,7 @@ class TestsRepositoryLocalTopology:
         tm.that(workspace.repository.name, eq="child")
         tm.that(workspace.name, eq="child-workspace")
         tm.that(u.Tests.required_beads(workspace).workspace, eq="child-workspace")
-        tm.that(workspace.subprojects, empty=True)
+        tm.that(workspace.declared_repositories, empty=True)
         tm.that(resolved, eq=child.resolve())
 
     @staticmethod
@@ -423,7 +423,9 @@ class TestsRepositoryLocalTopology:
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
         tm.that(
-            tuple(project.path.as_posix() for project in workspace.subprojects),
+            tuple(
+                project.path.as_posix() for project in workspace.declared_repositories
+            ),
             eq=tuple(identities),
         )
         tm.that(u.Tests.required_beads(workspace).workspace, eq="root-workspace")
@@ -479,7 +481,9 @@ class TestsRepositoryLocalTopology:
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
         tm.that(
-            tuple(project.path.as_posix() for project in workspace.subprojects),
+            tuple(
+                project.path.as_posix() for project in workspace.declared_repositories
+            ),
             eq=(python_project,),
         )
         tm.that(workspace.external_dependency_paths, eq=(Path(service_project),))
@@ -666,7 +670,7 @@ class TestsRepositoryLocalTopology:
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
-        tm.that(workspace.subprojects, empty=True)
+        tm.that(workspace.declared_repositories, empty=True)
         tm.that(workspace.external_dependency_paths, eq=(child_path,))
 
     def test_gitmodule_rejects_provider_branch_divergence(self, tmp_path: Path) -> None:
@@ -717,7 +721,7 @@ class TestsRepositoryLocalTopology:
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
-        tm.that(workspace.subprojects, empty=True)
+        tm.that(workspace.declared_repositories, empty=True)
         tm.that(workspace.external_dependency_paths, eq=(Path("external-fork"),))
 
     def test_gitmodule_accepts_the_published_integration_branch(
@@ -763,7 +767,7 @@ class TestsRepositoryLocalTopology:
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
         tm.that(
-            [item.path.as_posix() for item in workspace.subprojects],
+            [item.path.as_posix() for item in workspace.declared_repositories],
             eq=["fixture-child"],
         )
 

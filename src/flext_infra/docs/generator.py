@@ -43,7 +43,7 @@ class FlextInfraDocGenerator(
                 plan for plan in plans if u.Infra.codegen_file_requires_effect(plan)
             )
             collocated = self._is_collocated_workspace_project(
-                scope, workspace_root=repository_root
+                scope, repository_root=repository_root
             )
             report = m.Infra.DocsPhaseReport(
                 phase="generate",

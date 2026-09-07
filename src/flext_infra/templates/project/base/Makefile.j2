@@ -25,15 +25,15 @@ endif
 endif
 
 # === SECTION: project identity (managed) ===
-# Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
+# Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
 PROJECT_NAME := {{ dist }}
 MAKE_PROFILE := {{ make_profile }}
-WORKSPACE_ROOT_REL := {{ workspace_root_rel }}
-# === SECTION: workspace subprojects (managed) ===
-# Source: config:workspace_subprojects (list), config:workspace_repositories (list)
+REPOSITORY_ROOT_REL := {{ repository_root_rel }}
+# === SECTION: workspace declared_repositories (managed) ===
+# Source: config:workspace_declared_repositories (list), config:workspace_repositories (list)
 # Computed: MANAGED_GITLINKS mirrors the read-only local .gitmodules topology.
-WORKSPACE_SUBPROJECTS :={% for subproject in workspace_subprojects %} {{ subproject }}{% endfor %}
-MANAGED_GITLINKS :={% if make_profile == "workspace" %}$(WORKSPACE_SUBPROJECTS){% endif %}
+DECLARED_REPOSITORIES :={% for declared_repository in workspace_declared_repositories %} {{ declared_repository }}{% endfor %}
+MANAGED_GITLINKS :={% if make_profile == "workspace" %}$(DECLARED_REPOSITORIES){% endif %}
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.{% for repository in workspace_repositories %} {{ repository.distribution }}:{{ repository.path }}{% endfor %}
 UV_LINK_MODE := {{ uv_link_mode }}
 # End SECTION: project identity
@@ -97,18 +97,18 @@ PROJECT_STATE_ROOT := $(abspath $(PROJECT_ROOT)/../{{ state_directory_name }}/$(
 PROJECT_SCRATCH_ROOT := $(PROJECT_STATE_ROOT)/{{ scratch_namespace }}
 TESTMON_DATAFILE := $(PROJECT_STATE_ROOT)/{{ make.testmon_cache.namespace }}/{{ make.testmon_cache.database_filename }}
 export TESTMON_DATAFILE
-# === SECTION: WORKSPACE_ROOT isolation (managed) ===
+# === SECTION: REPOSITORY_ROOT isolation (managed) ===
 # Source: computed (rule: derive from current checkout unless caller overrides)
-# Rule: WORKSPACE_ROOT is always derived from the current checkout unless the
+# Rule: REPOSITORY_ROOT is always derived from the current checkout unless the
 # caller passed it on the command line or via an override origin. An inherited
-# environment WORKSPACE_ROOT (e.g. a leaked .envrc export from a foreign checkout)
+# environment REPOSITORY_ROOT (e.g. a leaked .envrc export from a foreign checkout)
 # must never redirect verbs to another working tree. The git queries therefore
 # run inside MAKEFILE_ROOT: run from a foreign CWD they would report THAT
 # checkout's topology and redirect the verb to the wrong tree.
-ifeq ($(filter command line override,$(origin WORKSPACE_ROOT)),)
-WORKSPACE_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$(MAKEFILE_ROOT)"; fi)
+ifeq ($(filter command line override,$(origin REPOSITORY_ROOT)),)
+REPOSITORY_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$(MAKEFILE_ROOT)"; fi)
 endif
-# End SECTION: WORKSPACE_ROOT isolation
+# End SECTION: REPOSITORY_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary.
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
@@ -201,7 +201,7 @@ export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
-ALLOWED_PROJECTS := . $(WORKSPACE_SUBPROJECTS)
+ALLOWED_PROJECTS := . $(DECLARED_REPOSITORIES)
 else
 CODEGEN_SCOPE := self
 ALLOWED_PROJECTS := .
@@ -241,7 +241,7 @@ BORROW_RUNTIME_VENV_RECIPE = set -eu; \
 	fi
 
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra {{ workspace_cli_group }} orchestrate
-DEFAULT_PROJECTS := $(WORKSPACE_SUBPROJECTS){% if make_profile != "workspace" %} .{% endif %}
+DEFAULT_PROJECTS := $(DECLARED_REPOSITORIES){% if make_profile != "workspace" %} .{% endif %}
 SELECTED_PROJECTS := $(DEFAULT_PROJECTS)
 WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
 DOCS_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
@@ -262,7 +262,7 @@ PROJECT_FLEXT_INFRA := if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: 
 # surplus and uninstalls them, undoing the root's provisioning and leaving
 # `uv sync --check` permanently divergent. A standalone project owns its venv
 # alone and has no workspace packages to include.
-SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(WORKSPACE_SUBPROJECTS)),1,))
+SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(DECLARED_REPOSITORIES)),1,))
 UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups
 
 {{ makefile_custom_include }}

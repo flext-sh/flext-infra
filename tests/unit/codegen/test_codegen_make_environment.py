@@ -59,7 +59,7 @@ class TestsCodegenMakeEnvironment:
         )
         repository_root = project_root
         infra_repositories = (test_u.Tests.repository_ref(config.Infra.name),)
-        local_subprojects = (
+        local_declared_repositories = (
             (infra_repositories[0].model_copy(update={"path": Path("infra-engine")}),)
             if local_infra
             else ()
@@ -69,7 +69,7 @@ class TestsCodegenMakeEnvironment:
             beads=test_u.Tests.beads_project("fixture-project"),
             repository=repository,
             project=test_u.Tests.project_spec("fixture-project"),
-            subprojects=local_subprojects,
+            declared_repositories=local_declared_repositories,
         )
         request = m.Infra.CodegenConformRequest(
             root=project_root,
@@ -424,7 +424,7 @@ class TestsCodegenMakeEnvironment:
         typed `check run` owner, so a gate the owner declares cannot be left
         unscheduled by the projection.
         """
-        project_root, _workspace_root = self._render_makefile(tmp_path, profile)
+        project_root, _repository_root = self._render_makefile(tmp_path, profile)
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
         phony_declarations = tuple(
             line.removeprefix(".PHONY:").strip()

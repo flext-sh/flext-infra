@@ -77,7 +77,7 @@ class TestCodegenLinkedWorktreeTopology:
         tm.that(plan.workspace.beads.issue_prefix, eq="lane-prefix")
         tm.that(all(item.path.is_relative_to(lane) for item in plan.files), eq=True)
         tm.that(
-            tm.ok(FlextInfraWorkspaceDetector.resolve_workspace_root(lane)),
+            tm.ok(FlextInfraWorkspaceDetector.resolve_repository_root(lane)),
             eq=lane.resolve(),
         )
         tm.that(lane_beads.read_bytes(), eq=lane_beads_bytes)
@@ -167,7 +167,9 @@ class TestCodegenLinkedWorktreeTopology:
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         tm.that(
-            tuple(project.path.as_posix() for project in workspace.subprojects),
+            tuple(
+                project.path.as_posix() for project in workspace.declared_repositories
+            ),
             eq=project_names,
         )
         for project_name in project_names:

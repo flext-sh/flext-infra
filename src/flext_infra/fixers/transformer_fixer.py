@@ -147,12 +147,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                     )
                 )
         return self._build_project_fix_result(
-            project_dir,
-            fixed,
-            previewed,
-            skipped,
-            failed,
-            files_modified,
+            project_dir, fixed, previewed, skipped, failed, files_modified
         )
 
     @staticmethod

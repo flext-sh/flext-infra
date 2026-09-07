@@ -72,11 +72,11 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
 
     @staticmethod
     def docs_source_paths(
-        workspace_root: Path, extra_roots: t.SequenceOf[Path] = ()
+        repository_root: Path, extra_roots: t.SequenceOf[Path] = ()
     ) -> p.Result[tuple[Path, ...]]:
         """Discover every physical source consumed by one docs render."""
-        roots = FlextInfraUtilitiesDocsScope.docs_workspace_roots(
-            workspace_root, extra_roots
+        roots = FlextInfraUtilitiesDocsScope.docs_repository_roots(
+            repository_root, extra_roots
         )
         if roots.failure:
             return r[tuple[Path, ...]].from_failure(roots)
@@ -134,14 +134,14 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
 
     @staticmethod
     def docs_verify_sources(
-        workspace_root: Path,
+        repository_root: Path,
         source_states: t.SequenceOf[m.Cli.AtomicFileState],
         *,
         extra_roots: t.SequenceOf[Path] = (),
     ) -> p.Result[bool]:
         """Require exact source topology and physical states to remain unchanged."""
         discovered = FlextInfraUtilitiesDocsGenerateSourcesMixin.docs_source_paths(
-            workspace_root, extra_roots
+            repository_root, extra_roots
         )
         if discovered.failure:
             return r[bool].from_failure(discovered)

@@ -124,12 +124,12 @@ class FlextInfraUtilitiesDocsContract:
         return f"{c.Infra.TOC_START}\n" + "\n".join(items) + f"\n{c.Infra.TOC_END}"
 
     @staticmethod
-    def docs_workspace_contract(workspace_root: Path) -> t.JsonMapping:
+    def docs_workspace_contract(repository_root: Path) -> t.JsonMapping:
         """Return the root docs contract using root ``pyproject.toml`` metadata."""
-        payload = FlextInfraUtilitiesDocsScope.project_payload(workspace_root)
+        payload = FlextInfraUtilitiesDocsScope.project_payload(repository_root)
         docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
         exclude_docs = FlextInfraUtilitiesDocsScope.docs_meta_list(
-            workspace_root, "exclude_docs"
+            repository_root, "exclude_docs"
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
         project_meta: t.JsonMapping = (
