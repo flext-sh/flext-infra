@@ -13,22 +13,16 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from flext_infra import t
-from flext_infra._models._defaults import ImmutableEmptyMapping
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
-from flext_infra._constants.deps import FlextInfraConstantsDeps
 from flext_infra._constants.make import FlextInfraConstantsMake
 from flext_infra._constants.release import FlextInfraConstantsRelease
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
+from flext_infra._models._defaults import (
+    ImmutableEmptyMapping,
+    immutable_empty_mapping,
+)
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
 from flext_infra._models.layout import FlextInfraModelsLayout
-
-from .._constants.codegen_project import FlextInfraConstantsCodegenProject
-from .._constants.make import FlextInfraConstantsMake
-from .._constants.release import FlextInfraConstantsRelease
-from .._constants.validate import FlextInfraConstantsSharedInfra
-from .._models._defaults import immutable_empty_mapping
-from .._models.deps_tool_config import FlextInfraModelsDepsToolSettings
-from .._models.layout import FlextInfraModelsLayout
 
 __all__: list[str] = ["FlextInfraConfigModels"]
 
@@ -2121,73 +2115,6 @@ class FlextInfraConfigModels:
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Extra file:variable version anchors"),
         ] = ()
-
-    class BuildConstraintSpec(_ConfigContract):
-        """One hash-pinned build requirement (``uv build --require-hashes``)."""
-
-        name: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
-        version: Annotated[t.NonEmptyStr, m.Field(description="Exact version")]
-        hashes: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Accepted sha256 digests"),
-        ]
-
-    class ReleasePolicySpec(_ConfigContract):
-        """The release protocol's declared data: who publishes, what bumps, where.
-
-        Why (aihub-ioijy.9): publishable membership is project policy, not a
-        naming convention. ``bump_types`` maps a Conventional Commits type
-        found in a merged pull-request title to the bump it earns; a type
-        absent from the map releases nothing, and ``!`` in the title always
-        earns a major bump. The Conventional Commits defaults are the typed
-        default, so a consumer repository declares only what differs.
-        """
-
-        # The bump map is consumed as enum members by the strict release plan,
-        # so the contract base's value coercion is switched off here.
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            strict=False, frozen=True, extra="forbid", use_enum_values=False
-        )
-
-        publishable_prefixes: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                default=(),
-                description=(
-                    "Distribution-name prefixes eligible for build/publish. "
-                    "Empty means every resolved project is eligible."
-                ),
-            ),
-        ]
-        bump_types: Annotated[
-            Mapping[t.NonEmptyStr, FlextInfraConstantsRelease.VersionBump],
-            m.Field(
-                default_factory=lambda: {
-                    "feat": FlextInfraConstantsRelease.VersionBump.MINOR,
-                    "fix": FlextInfraConstantsRelease.VersionBump.PATCH,
-                    "perf": FlextInfraConstantsRelease.VersionBump.PATCH,
-                },
-                description="Conventional Commits type -> semantic version bump",
-            ),
-        ]
-        publish_url: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                default="https://upload.pypi.org/legacy/",
-                description="Package index upload endpoint for verified artifacts",
-            ),
-        ]
-        build_constraints: Annotated[
-            tuple[FlextInfraConfigModels.BuildConstraintSpec, ...],
-            m.Field(
-                default=(),
-                description=(
-                    "Hash-pinned build-backend requirements every release "
-                    "artifact is built with; projected to "
-                    "config/build-constraints.txt"
-                ),
-            ),
-        ]
 
     class ReleaseAutomationSpec(_ConfigContract):
         """Automated semantic versioning, owned by the market tool.
