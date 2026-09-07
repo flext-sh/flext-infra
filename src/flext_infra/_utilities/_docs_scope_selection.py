@@ -74,7 +74,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
             msg = f"docs project selector escapes repository: {name}"
             raise ValueError(msg)
         project_root = repository_root / relative
-        roots = FlextInfraUtilitiesDocsScope.docs_repository_roots(
+        roots = FlextInfraUtilitiesDocsScope.docs_workspace_roots(
             repository_root, (project_root,)
         )
         if roots.failure:
