@@ -189,8 +189,8 @@ class FlextInfraProtocolsBase(Protocol):
         """Scaffold-only project metadata consumed by initial generation."""
 
         @property
-        def version(self) -> str:
-            """Declared release version, the SSOT for ``[project].version``."""
+        def repository_root_rel(self) -> str:
+            """Declared relative path from the project to its workspace root."""
             ...
 
     @runtime_checkable
@@ -231,8 +231,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def beads(self) -> FlextInfraProtocolsBase.BeadsProjectSpec:
-            """Repository-local Beads identity."""
+        def beads(self) -> FlextInfraProtocolsBase.BeadsProjectSpec | None:
+            """Dormant auxiliary identity, absent from active topology."""
             ...
 
         @property
@@ -241,7 +241,9 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def subprojects(self) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
+        def declared_repositories(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
             """Direct governed repositories declared by local .gitmodules."""
             ...
 
@@ -344,18 +346,18 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def uv_environments(self) -> t.StrSequence:
-            """Marker expressions limiting the environments uv resolves."""
-            ...
-
-        @property
         def dependency_cooldown_days(self) -> int:
-            """Supply-chain cooldown shared by dependency update tools."""
+            """Supply-chain cooldown for uv-resolved runtime libraries."""
             ...
 
         @property
         def dependency_cooldown_exclusions(self) -> t.StrSequence:
             """Packages exempted from cooldown for urgent security floors."""
+            ...
+
+        @property
+        def additional_python_tool_distributions(self) -> t.StrSequence:
+            """Tool identities outside the scaffold requirement owners."""
             ...
 
         @property
@@ -365,7 +367,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def uv_exclude_newer(self) -> str:
-            """Uv exclude-newer cooldown window for dependency resolution."""
+            """Uv exclude-newer window scoped away from development tools."""
             ...
 
         # `uv_exclude_newer_package` used to sit here, undocumented and with no
@@ -444,13 +446,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def beads(self) -> FlextInfraProtocolsBase.BeadsToolSpec:
-            """Official Beads CLI installed through mise."""
-            ...
-
-        @property
-        def protected_mise_tools(self) -> t.StrSequence:
-            """Toolchain field names protected from alternate distributions."""
+        def suspended_mise_selector_patterns(self) -> t.StrSequence:
+            """Selector families rejected while their capabilities are suspended."""
             ...
 
     @runtime_checkable
@@ -473,8 +470,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @classmethod
-    def matches_root_namespace_file(cls, file_name: str) -> bool:
-        """Return whether a file belongs to the governed root namespace."""
+    def is_public_python_module_file(cls, file_name: str) -> bool:
+        """Return whether a file names a public Python module."""
         ...
 
     @staticmethod
@@ -525,7 +522,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Contract for project discovery services."""
 
         def discover_projects(
-            self, workspace_root: Path
+            self, repository_root: Path
         ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
             """Discover projects in a workspace root."""
             ...

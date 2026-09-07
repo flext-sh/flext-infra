@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, config, m, p, t
+from flext_infra import config, m
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
 from flext_infra.gates.base_gate import FlextInfraGate
 
@@ -25,8 +25,6 @@ class FlextInfraLayoutGate(FlextInfraGate):
     gate_id: ClassVar[str] = "layout"
     gate_name: ClassVar[str] = "Project Layout"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["layout"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["layout"][1]
 
     @override
     def check(
@@ -35,7 +33,7 @@ class FlextInfraLayoutGate(FlextInfraGate):
         """Report layout violations for ``project_dir`` from the layout SSOT."""
         started = time.monotonic()
         spec = config.Infra.codegen.layout
-        engine = FlextInfraCodegenLayout(workspace_root=ctx.workspace_root)
+        engine = FlextInfraCodegenLayout(repository_root=ctx.repository_root)
         report = engine.check_project(project_dir)
         warning = spec.severity == "warning"
         report_findings: tuple[m.Infra.LayoutFinding, ...] = report.findings
@@ -53,35 +51,14 @@ class FlextInfraLayoutGate(FlextInfraGate):
         actionable: tuple[m.Infra.LayoutFinding, ...] = report.actionable
         blocking = tuple(finding for finding in actionable if not warning)
         passed = warning or not blocking
-        errors: list[str] = [issue.formatted for issue in issues if not passed]
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=passed,
-                errors=errors,
-                duration=round(time.monotonic() - started, 3),
-            ),
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=passed,
             issues=issues,
             raw_output="\n".join(issue.formatted for issue in issues),
+            started=started,
             ctx=ctx,
         )
-
-    @override
-    def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
-    ) -> t.StrSequence:
-        """No external tool — execution happens in ``check``."""
-        _ = project_dir, ctx, check_dirs
-        return []
-
-    @override
-    def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
-        """Unused — ``check`` is overridden directly."""
-        _ = result, project_dir, ctx
-        return True, ()
 
 
 __all__: list[str] = ["FlextInfraLayoutGate"]

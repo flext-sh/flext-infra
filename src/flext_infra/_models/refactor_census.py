@@ -6,7 +6,8 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+
+from .._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsRefactorCensus:
@@ -17,7 +18,7 @@ class FlextInfraModelsRefactorCensus:
     class FLEXTFamilyTarget(m.ArbitraryTypesModel):
         """Parametrized target for an FLEXT family scan or operations."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         family: Annotated[
             t.NonEmptyStr, m.Field(description="Family alias letter (c/t/p/m/u)")
@@ -49,7 +50,7 @@ class FlextInfraModelsRefactorCensus:
     class CensusMethodInfo(m.ArbitraryTypesModel):
         """A public method extracted from a _utilities class."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Method name")]
         method_type: Annotated[
@@ -60,7 +61,7 @@ class FlextInfraModelsRefactorCensus:
     class CensusUsageRecord(mm.ProjectNameMixin, m.ArbitraryTypesModel):
         """A single method usage found via CST analysis."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         class_name: Annotated[
             t.NonEmptyStr, m.Field(description="Utilities class name")
@@ -75,7 +76,7 @@ class FlextInfraModelsRefactorCensus:
     class CensusMethodSummary(m.ArbitraryTypesModel):
         """Aggregated usage counts for a single method."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Method name")]
         method_type: Annotated[str, m.Field(description="Method kind")]
@@ -91,7 +92,7 @@ class FlextInfraModelsRefactorCensus:
     class CensusClassSummary(m.ArbitraryTypesModel):
         """Aggregated census for one _utilities class."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         class_name: Annotated[
             t.NonEmptyStr, m.Field(description="Utilities class name")
@@ -104,7 +105,7 @@ class FlextInfraModelsRefactorCensus:
     class CensusProjectMethodUsage(m.ArbitraryTypesModel):
         """Usage of a method within a specific project."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         class_name: Annotated[
             t.NonEmptyStr, m.Field(description="Utilities class name")
@@ -116,7 +117,7 @@ class FlextInfraModelsRefactorCensus:
     class CensusProjectSummary(mm.ProjectNameFieldMixin, m.ArbitraryTypesModel):
         """Usage breakdown for one project."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
         usages: t.SequenceOf[
             FlextInfraModelsRefactorCensus.CensusProjectMethodUsage
         ] = m.Field(default_factory=tuple, description="Per-method usages")

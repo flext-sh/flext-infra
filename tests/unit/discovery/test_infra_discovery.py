@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_tests import tm
-from tests import c, m, u
+from tests import m, u
 
 if TYPE_CHECKING:
     from tests import t
@@ -72,9 +72,9 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.that(projects[0].has_src, eq=True)
         tm.that(projects[1].has_src, eq=False)
         tm.that(projects[1].has_tests, eq=False)
-        tm.that(projects[0].workspace_role, eq=c.Infra.WorkspaceProjectRole.STANDALONE)
+        tm.that(projects[0].make_profile, eq=c.Infra.MakeProfile.STANDALONE)
         tm.that(projects[0].declared_subproject, eq=True)
-        tm.that((projects[1].declared_subproject is True), eq=True)
+        tm.that(projects[1].declared_subproject, eq=True)
 
     def test_discover_projects_empty_workspace(
         self, service: u.Infra, tmp_path: Path
@@ -83,13 +83,13 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.ok(result)
         tm.that(result.value, eq=[])
 
-    def test_discover_projects_nonexistent_path(self, service: u.Infra) -> None:
-        nonexistent = Path("/nonexistent/path/to/workspace")
+    def test_discover_projects_nonexistent_path(
+        self, service: u.Infra, tmp_path: Path
+    ) -> None:
+        nonexistent = tmp_path / "missing"
         result = service.discover_projects(nonexistent)
         tm.fail(result)
-        tm.that(result.error, is_=str)
-        tm.that(result.error, is_=str)
-        tm.that(result.error, has="discovery failed")
+        tm.that(result.error or "", has=str(nonexistent))
 
     def test_find_all_pyproject_files_happy_path(
         self, service: u.Infra, tmp_path: Path

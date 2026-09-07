@@ -9,22 +9,7 @@ from flext_infra import config
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
 from flext_tests import tm
-from tests import t, u
-
-
-def _doc_mapping(doc: t.Cli.TomlDocument) -> t.JsonMapping:
-    return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-        u.normalize_to_json_value(doc.unwrap())
-    )
-
-
-def _mapping(value: t.JsonValue) -> t.JsonMapping:
-    return t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
-
-
-def _strings(value: t.JsonValue) -> t.StrSequence:
-    result: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(value)
-    return result
+from tests import u
 
 
 class TestsFlextInfraDepsModernizerCoverage:
@@ -45,10 +30,10 @@ class TestsFlextInfraDepsModernizerCoverage:
 
         _ = FlextInfraEnsureCoverageConfigPhase(configured).apply(doc)
 
-        tool = _mapping(_doc_mapping(doc)["tool"])
-        coverage = _mapping(tool["coverage"])
-        run = _mapping(coverage["run"])
-        tm.that(list(_strings(run["source"])), eq=list(arbitrary_source))
+        tool = u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])
+        coverage = u.Tests.toml_mapping(tool["coverage"])
+        run = u.Tests.toml_mapping(coverage["run"])
+        tm.that(list(u.Tests.strings(run["source"])), eq=list(arbitrary_source))
 
     def test_apply_sets_report_and_run_state(self) -> None:
         """Verify apply sets report and run state."""
@@ -59,10 +44,10 @@ class TestsFlextInfraDepsModernizerCoverage:
             doc, project_kind="integration"
         )
 
-        tool = _mapping(_doc_mapping(doc)["tool"])
-        coverage = _mapping(tool["coverage"])
-        report = _mapping(coverage["report"])
-        run = _mapping(coverage["run"])
+        tool = u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])
+        coverage = u.Tests.toml_mapping(tool["coverage"])
+        report = u.Tests.toml_mapping(coverage["report"])
+        run = u.Tests.toml_mapping(coverage["run"])
         tm.that(
             report["fail_under"], eq=tool_config.tools.coverage.fail_under.integration
         )
@@ -70,11 +55,12 @@ class TestsFlextInfraDepsModernizerCoverage:
         tm.that(report["skip_covered"], eq=False)
         tm.that(report["precision"], eq=tool_config.tools.coverage.precision)
         tm.that(
-            list(_strings(report["exclude_also"])),
+            list(u.Tests.strings(report["exclude_also"])),
             eq=sorted(set(tool_config.tools.coverage.exclude_also)),
         )
         tm.that(
-            list(_strings(run["omit"])), eq=sorted(set(tool_config.tools.coverage.omit))
+            list(u.Tests.strings(run["omit"])),
+            eq=sorted(set(tool_config.tools.coverage.omit)),
         )
         # Declaration-layer Protocol facades are never runtime coverage targets.
         tm.that("*/protocols.py" in tool_config.tools.coverage.omit, eq=True)
@@ -99,7 +85,7 @@ class TestsFlextInfraDepsModernizerCoverage:
         root_path = tmp_path / "pyproject.toml"
         root_source = '[project]\nname = "arbitrary-root"\n'
         root_modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=tmp_path, skip_check=True
+            repository_root=tmp_path, skip_check=True
         )
         root_first: str = tm.ok(
             root_modernizer.conform_source(
@@ -113,6 +99,7 @@ class TestsFlextInfraDepsModernizerCoverage:
         )
 
         member_path = tmp_path / "arbitrary-member" / "pyproject.toml"
+        member_path.parent.mkdir()
         member_source = """[project]
 name = "arbitrary-member"
 dependencies = ["flext-core", "flext-cli", "flext-ldap"]
