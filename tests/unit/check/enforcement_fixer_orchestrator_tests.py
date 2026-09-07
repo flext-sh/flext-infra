@@ -12,21 +12,12 @@ from flext_cli import cli
 from flext_infra import m, main as infra_main, p, t
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
-from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from flext_tests import tm
 from tests import c, u
 
 
 class TestsEnforcementFixerOrchestrator:
     """Root-cause guardrails for fixer collection and routing."""
-
-    @staticmethod
-    def _rule(rule_id: str) -> m.EnforcementRuleSpec:
-        catalog = u.build_canonical_catalog()
-        rule: m.EnforcementRuleSpec = next(
-            rule for rule in catalog.enabled_rules() if rule.id == rule_id
-        )
-        return rule
 
     @staticmethod
     def _orchestrator(workspace: Path) -> FlextInfraEnforcementFixerOrchestrator:
@@ -95,15 +86,13 @@ class TestsEnforcementFixerOrchestrator:
         stub_file = project_dir / "src" / "demo" / "__init__.pyi"
         stub_file.parent.mkdir(parents=True)
         stub_file.write_text("from demo import x as x\n", encoding="utf-8")
-        adapter = FlextInfraRopeFixerAdapter(tmp_path)
-        ctx = m.Infra.FixEnforcementCommand(
-            repository_root=str(tmp_path), projects=("demo",), apply=False
-        )
 
-        result = adapter.fix_project(
+        result = u.Tests.run_rope_fixer(
+            tmp_path,
             project_dir,
-            ((self._rule("ENFORCE-090"), SimpleNamespace(file_path=str(stub_file))),),
-            ctx,
+            u.Tests.enforcement_rule("ENFORCE-090"),
+            stub_file,
+            apply=False,
         )
 
         tm.that(stub_file.exists(), eq=True)
@@ -117,15 +106,13 @@ class TestsEnforcementFixerOrchestrator:
         stub_file = project_dir / "src" / "demo" / "__init__.pyi"
         stub_file.parent.mkdir(parents=True)
         stub_file.write_text("from demo import x as x\n", encoding="utf-8")
-        adapter = FlextInfraRopeFixerAdapter(tmp_path)
-        ctx = m.Infra.FixEnforcementCommand(
-            repository_root=str(tmp_path), projects=("demo",), apply=True
-        )
 
-        result = adapter.fix_project(
+        result = u.Tests.run_rope_fixer(
+            tmp_path,
             project_dir,
-            ((self._rule("ENFORCE-090"), SimpleNamespace(file_path=str(stub_file))),),
-            ctx,
+            u.Tests.enforcement_rule("ENFORCE-090"),
+            stub_file,
+            apply=True,
         )
 
         tm.that(stub_file.exists(), eq=False)
@@ -135,7 +122,7 @@ class TestsEnforcementFixerOrchestrator:
 
     def test_manual_fix_dry_run_previews_without_mutation(self, tmp_path: Path) -> None:
         """Manual fix actions produce explicit previews in dry-run."""
-        rule = self._rule("ENFORCE-097")
+        rule = u.Tests.enforcement_rule("ENFORCE-097")
         fix_action = rule.fix_action
         if fix_action is None:
             pytest.fail("ENFORCE-097 must declare a manual fix action")
@@ -166,7 +153,7 @@ class TestsEnforcementFixerOrchestrator:
 
     def test_manual_fix_apply_fails_loudly(self, tmp_path: Path) -> None:
         """Manual fix actions cannot be reported as applied automatically."""
-        rule = self._rule("ENFORCE-097")
+        rule = u.Tests.enforcement_rule("ENFORCE-097")
         adapter = FlextInfraManualFixerAdapter(tmp_path)
 
         result = adapter.fix_project(
@@ -219,6 +206,23 @@ class TestsEnforcementFixerOrchestrator:
 
         tm.fail(result)
         tm.that(result.error, has="unsafe under --safe-only")
+
+    def test_every_catalog_fix_action_resolves_to_an_adapter(
+        self, tmp_path: Path
+    ) -> None:
+        """Preflight proves the catalog and the adapter registry agree.
+
+        An enabled rule declaring a fix action the runtime cannot route is a
+        contract defect: it must stop the run before any project is touched,
+        not surface later as a per-project failed fix.
+        """
+        orchestrator = FlextInfraEnforcementFixerOrchestrator(
+            repository_root=tmp_path, selected_projects=("demo",)
+        )
+
+        result = orchestrator.execute()
+
+        tm.that((result.error or ""), lacks="no registered fixer adapter")
 
     # Exemplar: this drives the real CLI entry point against a real Git
     # repository, so its cost is the runtime's import chain plus several git

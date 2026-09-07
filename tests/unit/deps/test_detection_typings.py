@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flext_infra import p, r as tr
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_tests import tm
@@ -34,11 +36,12 @@ class TestsFlextInfraDepsDetectionTypings:
         tm.that(result.get("key"), eq="value")
         tm.that(result.get("num"), eq=42)
 
-    def test_failure_returns_empty(self) -> None:
-        """Verify failure returns empty."""
+    def test_failure_fails_loud(self) -> None:
+        """Verify a failed limits read escapes instead of returning empty."""
         service = FlextInfraDependencyDetectionService()
         service.toml = _StubToml([tr[t.JsonMapping].fail("not found")])
-        tm.that(service.load_dependency_limits(Path("/fake/limits.toml")), empty=True)
+        with pytest.raises(RuntimeError, match="failed to load dependency limits"):
+            service.load_dependency_limits(Path("/fake/limits.toml"))
 
     def test_unconvertible_values_skipped(self) -> None:
         """Verify unconvertible values skipped."""

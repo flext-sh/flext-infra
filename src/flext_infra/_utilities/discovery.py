@@ -193,10 +193,10 @@ class FlextInfraUtilitiesDiscovery(
         # from installed FLEXT artifacts; plain modules are never facade parents.
         try:
             spec = importlib_util.find_spec(package_name)
-        except c.EXC_OS_TYPE_VALUE:
-            return False
-        else:
-            return spec is not None and spec.submodule_search_locations is not None
+        except ModuleNotFoundError:
+            # A missing parent package means the name cannot resolve here.
+            spec = None
+        return spec is not None and spec.submodule_search_locations is not None
 
     @classmethod
     @cache
@@ -368,8 +368,9 @@ class FlextInfraUtilitiesDiscovery(
                 return Path(candidate)
         try:
             installed = importlib_util.find_spec(package_name)
-        except c.EXC_OS_TYPE_VALUE:
-            return None
+        except ModuleNotFoundError:
+            # A missing parent package means the name cannot resolve here.
+            installed = None
         if (
             installed is not None
             and installed.submodule_search_locations is not None

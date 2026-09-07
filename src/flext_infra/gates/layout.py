@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, config, m
+from flext_infra import config, m
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
 
 from .base_gate import FlextInfraGate
@@ -26,8 +26,6 @@ class FlextInfraLayoutGate(FlextInfraGate):
     gate_id: ClassVar[str] = "layout"
     gate_name: ClassVar[str] = "Project Layout"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["layout"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["layout"][1]
 
     @override
     def check(

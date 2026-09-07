@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import c, t
+from flext_infra import c, m, t
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.worktree import FlextInfraWorktreeService
 from flext_tests import tm
 from tests import u
@@ -13,6 +15,59 @@ from tests import u
 
 class WorktreeFixture:
     """Provide one repository and lane-path contract without collecting tests."""
+
+    @staticmethod
+    def add_worktree(repository: Path, branch: str, *, base: str = "HEAD") -> str:
+        """Create one applied worktree and return Git's canonical lane path."""
+        return tm.ok(
+            FlextInfraWorktreeService(
+                repository_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch=branch,
+                base=base,
+                apply_changes=True,
+            ).execute()
+        )
+
+    @staticmethod
+    def override_repository_manifest(
+        repository: Path, updates: Mapping[str, t.JsonValue]
+    ) -> m.Infra.RepositoryRef:
+        """Re-select the observed repository, apply overrides, rewrite its manifest."""
+        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(repository))
+        declared = observed.repository.model_copy(update=dict(updates))
+        tm.ok(
+            u.Cli.yaml_dump(
+                repository / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
+                {
+                    "version": 3,
+                    "name": declared.name,
+                    "repository": declared.model_dump(mode="json"),
+                },
+            )
+        )
+        return declared
+
+    @classmethod
+    def attach_member_child(cls, root: Path) -> Path:
+        """Initialize the standard child member and link it to the root ledger."""
+        child = root / "fixture-child"
+        cls.initialize_governed_project(
+            child,
+            "fixture-child",
+            workspace="fixture-child",
+            database="fixture_child",
+            issue_prefix="fixture-child",
+            beads_owner=False,
+        )
+        cls.link_member_beads(
+            child,
+            root,
+            workspace_name="fixture-workspace",
+            database="fixture_workspace",
+            issue_prefix="fixture-workspace",
+        )
+        return child
 
     @staticmethod
     def _lane(primary_root: Path, outermost_project: Path, branch: str) -> Path:

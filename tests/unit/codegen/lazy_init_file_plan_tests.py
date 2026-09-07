@@ -112,13 +112,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         self, tmp_path: Path
     ) -> None:
         """The standalone command is a check surface, never a second writer."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py", class_name="FlextTestsModels", alias="m"
-        )
-        init_path = package_root / c.Infra.INIT_PY
+        _, init_path, service = u.Tests.lazy_init_scenario(tmp_path)
         before = init_path.read_bytes()
-        service = u.Tests.create_lazy_init_service(workspace_root)
         service.apply_changes = True
 
         result = service.execute()
@@ -129,10 +124,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
 
     def test_unknown_target_is_a_causal_plan_failure(self, tmp_path: Path) -> None:
         """A missing target fails instead of widening to the workspace."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        init_path = package_root / c.Infra.INIT_PY
+        _, init_path, service = u.Tests.lazy_init_scenario(tmp_path)
         before = init_path.read_bytes()
-        service = u.Tests.create_lazy_init_service(workspace_root)
         service.target_module = "flext_missing"
 
         result = service.plan_files()

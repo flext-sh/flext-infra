@@ -27,8 +27,7 @@ class FlextInfraSilentFailureGate(FlextInfraScannerGateMixin, FlextInfraGate):
     gate_id: ClassVar[str] = "silent-failure"
     gate_name: ClassVar[str] = "Silent Failure"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = "Flext Silent Failure Detector"
-    tool_url: ClassVar[str] = "internal://flext-infra/silent-failure"
+
     scan_error_message: ClassVar[str] = "silent-failure scan failed"
 
     @override

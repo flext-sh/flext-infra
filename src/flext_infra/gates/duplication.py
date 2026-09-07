@@ -23,8 +23,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     gate_id: ClassVar[str] = "duplication"
     gate_name: ClassVar[str] = "Code Duplication"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["duplication"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["duplication"][1]
 
     # flext-pulj: process results stay structural outside the Pydantic boundary.
     _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
@@ -248,16 +246,17 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             second_name = u.Cli.json_pick_str(second, "name")
             if not cls._is_semantic_clone(duplicate, first, second):
                 continue
+            record = m.Infra.JscpdDuplicate.model_validate(duplicate)
             if first_name.startswith(prefix):
                 issues.append(
-                    cls._issue_from_duplicate(
-                        duplicate, first, first_name, second_name, project_dir
+                    cls._issue(
+                        record, record.first_file, record.second_file, project_dir
                     )
                 )
             elif second_name.startswith(prefix) and second_name != first_name:
                 issues.append(
-                    cls._issue_from_duplicate(
-                        duplicate, second, second_name, first_name, project_dir
+                    cls._issue(
+                        record, record.second_file, record.first_file, project_dir
                     )
                 )
         return r[tuple[m.Infra.Issue, ...]].ok(tuple(issues))
@@ -331,10 +330,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     @staticmethod
     def _python_behavior_ranges(path: Path) -> tuple[tuple[int, int], ...]:
         """Parse one module into ranges for statements with runtime behavior."""
-        try:
-            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        except (OSError, SyntaxError, UnicodeError):
-            return ((1, 2**31 - 1),)
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         parents = {
             child: parent
             for parent in ast.walk(tree)

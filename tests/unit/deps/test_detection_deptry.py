@@ -16,6 +16,18 @@ if TYPE_CHECKING:
 class TestsFlextInfraDepsDetectionDeptry:
     """Test flext infra deps detection deptry behavior."""
 
+    @staticmethod
+    def _deptry_environment(tmp_path: Path) -> tuple[Path, Path]:
+        """Create one venv bin directory and a minimal deptry project."""
+        venv_bin = tmp_path / "venv" / "bin"
+        venv_bin.mkdir(parents=True)
+        project = tmp_path / "test-project-dir"
+        project.mkdir()
+        (project / c.Infra.PYPROJECT_FILENAME).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        return venv_bin, project
+
     def test_success(self, tmp_path: Path) -> None:
         """Verify dependency project discovery succeeds."""
         project = u.Tests.create_project_info(tmp_path / "test-project")
@@ -53,12 +65,8 @@ class TestsFlextInfraDepsDetectionDeptry:
         self, tmp_path: Path, deptry_report_payload: t.JsonPayload
     ) -> None:
         """Verify success with issues."""
-        venv_bin = tmp_path / "venv" / "bin"
-        venv_bin.mkdir(parents=True)
-        project = tmp_path / "test-project-dir"
-        project.mkdir()
-        (project / c.Infra.PYPROJECT_FILENAME).write_text(
-            "", encoding=c.Cli.ENCODING_DEFAULT
+        venv_bin, project = TestsFlextInfraDepsDetectionDeptry._deptry_environment(
+            tmp_path
         )
         out_file = project / ".deptry-report.json"
         write_result = u.Cli.json_write(out_file, deptry_report_payload)
@@ -90,12 +98,8 @@ class TestsFlextInfraDepsDetectionDeptry:
     def test_runner_failure(self, tmp_path: Path) -> None:
         """Verify runner failure."""
         service = u.Tests.create_deptry_service(run_error="runner failed")
-        venv_bin = tmp_path / "venv" / "bin"
-        venv_bin.mkdir(parents=True)
-        project = tmp_path / "test-project-dir"
-        project.mkdir()
-        (project / c.Infra.PYPROJECT_FILENAME).write_text(
-            "", encoding=c.Cli.ENCODING_DEFAULT
+        venv_bin, project = TestsFlextInfraDepsDetectionDeptry._deptry_environment(
+            tmp_path
         )
 
         tm.fail(service.run_deptry(project, venv_bin))
@@ -111,12 +115,8 @@ class TestsFlextInfraDepsDetectionDeptry:
         service = u.Tests.create_deptry_service(
             command_output=u.Tests.create_command_output()
         )
-        venv_bin = tmp_path / "venv" / "bin"
-        venv_bin.mkdir(parents=True)
-        project = tmp_path / "test-project-dir"
-        project.mkdir()
-        (project / c.Infra.PYPROJECT_FILENAME).write_text(
-            "", encoding=c.Cli.ENCODING_DEFAULT
+        venv_bin, project = TestsFlextInfraDepsDetectionDeptry._deptry_environment(
+            tmp_path
         )
         for payload in ("{ invalid json }", ""):
             out_file = project / ".deptry-report.json"
@@ -131,12 +131,8 @@ class TestsFlextInfraDepsDetectionDeptry:
         service = u.Tests.create_deptry_service(
             command_output=u.Tests.create_command_output()
         )
-        venv_bin = tmp_path / "venv" / "bin"
-        venv_bin.mkdir(parents=True)
-        project = tmp_path / "test-project-dir"
-        project.mkdir()
-        (project / c.Infra.PYPROJECT_FILENAME).write_text(
-            "", encoding=c.Cli.ENCODING_DEFAULT
+        venv_bin, project = TestsFlextInfraDepsDetectionDeptry._deptry_environment(
+            tmp_path
         )
         default_out = project / ".deptry-report.json"
         default_out.write_text("[]", encoding=c.Cli.ENCODING_DEFAULT)

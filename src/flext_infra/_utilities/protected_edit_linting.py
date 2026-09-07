@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import concurrent.futures
 import difflib
-import hashlib
 from collections.abc import MutableMapping
 from itertools import islice
 from pathlib import Path
@@ -229,11 +228,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
         py_file: Path, gate_key: t.StrSequence
     ) -> tuple[str, str, t.StrSequence] | None:
         """Lint snapshot cache key."""
-        try:
-            raw_bytes = py_file.read_bytes()
-        except OSError:
-            return None
-        return (str(py_file.resolve()), hashlib.sha256(raw_bytes).hexdigest(), gate_key)
+        raw_bytes = py_file.read_bytes()
+        return (str(py_file.resolve()), u.Cli.sha256_bytes(raw_bytes), gate_key)
 
     @classmethod
     def _execute_selected_lint_tools(

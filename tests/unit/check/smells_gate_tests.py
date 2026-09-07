@@ -22,7 +22,7 @@ class TestSmellsGate:
     """Exercise observable gate behavior with the real setup-provisioned tool."""
 
     def test_registry_exposes_the_canonical_gate(self) -> None:
-        gate = FlextInfraGateRegistry.default().get("smells")
+        gate = FlextInfraGateRegistry.default().get(FlextInfraSmellsGate.gate_id)
         tm.that(gate is FlextInfraSmellsGate, eq=True)
 
     def test_missing_project_configuration_is_a_blocking_failure(

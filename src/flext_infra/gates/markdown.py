@@ -25,8 +25,6 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     # APPLY=Y` skipped this gate, both exiting 0. The tool supports `--fix`, so
     # the gate offers it and the canonical sequence can reach green.
     can_fix: ClassVar[bool] = True
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][1]
 
     def _collect_markdown_files(self, project_dir: Path) -> t.SequenceOf[Path]:
         """Collect markdown files."""

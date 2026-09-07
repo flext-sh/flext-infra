@@ -160,8 +160,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def checkout(self) -> str:
-            """Physical checkout topology."""
+        def kind(self) -> str:
+            """Governance kind; only internal_flext repositories are rewritten."""
             ...
 
         @property
@@ -290,7 +290,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def repository_root(self) -> Path:
-            """Workspace whose active interpreter provenance must be validated."""
+            """Repository whose active interpreter provenance must be validated."""
             ...
 
     @runtime_checkable
@@ -322,6 +322,21 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def uv_environments(self) -> t.StrSequence:
             """Marker expressions limiting the environments uv resolves."""
+            ...
+
+        @property
+        def dependency_cooldown_exclusions(self) -> t.StrSequence:
+            """Packages exempted from the fleet cooldown."""
+            ...
+
+        @property
+        def dependency_cooldown_overrides(self) -> t.StrMapping:
+            """Per-package RFC 3339 cooldown cutoffs."""
+            ...
+
+        @property
+        def uv_exclude_newer(self) -> str:
+            """Shared dependency cooldown rendered in uv duration syntax."""
             ...
 
         @property
@@ -568,7 +583,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for dependency detection across projects."""
 
         def discover_project_paths(
-            self, repository_root: Path, projects_filter: t.StrSequence | None = None
+            self, repository_root: Path, *, projects_filter: t.StrSequence | None = None
         ) -> p.Result[t.SequenceOf[Path]]:
             """Discover project paths in workspace root."""
             ...
@@ -610,7 +625,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for pip-based dependency checking."""
 
         def run_pip_check(
-            self, workspace_root: Path, venv_bin: Path
+            self, repository_root: Path, venv_bin: Path
         ) -> p.Result[t.Pair[t.StrSequence, int]]:
             """Run pip check on workspace and return results."""
             ...
@@ -765,8 +780,3 @@ class FlextInfraProtocolsBase(Protocol):
         ) -> Iterator[FlextInfraProtocolsBase.XmlElementLike]:
             """Iterate over matching elements."""
             ...
-
-    # Why: GithubCliHandlers (sync/lint_github_workflows) removed — dead
-    # residue from the GitHub sync/lint feature retired wholesale in
-    # 95bb47cb8 (constants/models/utilities/tests all deleted there; this
-    # protocol stub was the only piece left referencing the gone models).

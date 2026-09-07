@@ -12,9 +12,8 @@ from typing import ClassVar, override
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.base import s
+from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironmentMixin
 from flext_infra.workspace.environment_contracts import envrc_contract_violations
-
-from .environment import FlextInfraWorkspaceEnvironmentMixin
 
 
 class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMixin):

@@ -77,7 +77,9 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
         try:
             # Why (flext-infra-c3h): same nested-path contract as git_open_repo.
             repo = Repo(resolved, search_parent_directories=True)
-        except (InvalidGitRepositoryError, NoSuchPathError):
+        except InvalidGitRepositoryError:
+            return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
+        except NoSuchPathError:
             return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
         except (GitCommandNotFound, OSError, ValueError) as exc:
             return r[m.Infra.GitBoolReport].fail(

@@ -22,8 +22,6 @@ class FlextInfraBanditGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.SECURITY
     gate_name: ClassVar[str] = "Bandit"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.SECURITY][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.SECURITY][1]
 
     @override
     def _get_check_dirs(

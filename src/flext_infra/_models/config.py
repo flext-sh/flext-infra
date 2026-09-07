@@ -22,15 +22,7 @@ from ._defaults import immutable_empty_mapping
 from .deps_tool_config import FlextInfraModelsDepsToolSettings
 from .layout import FlextInfraModelsLayout
 
-
-class _ConfigContract(m.ContractModel):
-    """Private declarative base for schema-loaded codegen records."""
-
-    # Rendered file payloads are
-    # byte contracts; Pydantic must never trim their final newline.
-    model_config = m.ConfigDict(
-        strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
-    )
+__all__: list[str] = ["FlextInfraConfigModels"]
 
 
 def _tool_version_field(description: str) -> object:
@@ -47,6 +39,15 @@ def _tool_version_field(description: str) -> object:
 
 
 class FlextInfraConfigModels:
+    class _ConfigContract(m.ContractModel):
+        """Private declarative base for schema-loaded codegen records."""
+
+        # Rendered file payloads are
+        # byte contracts; Pydantic must never trim their final newline.
+        model_config = m.ConfigDict(
+            strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
+        )
+
     """Field-only models for config loading and codegen plans."""
 
     # These models replace the former model-less workspace/make dictionaries.
@@ -165,7 +166,14 @@ class FlextInfraConfigModels:
             t.NonEmptyStr | None,
             m.Field(
                 pattern=r"^sha256:[0-9a-f]{64}$",
-                description="SHA-256 digest emitted by Mise when the backend provides one",
+                description=(
+                    "SHA-256 digest emitted by Mise, when the upstream release "
+                    "publishes one. mise.lock is an external artifact this "
+                    "project reads: it records platforms whose asset carries no "
+                    "digest (observed on taplo windows-x64), and requiring one "
+                    "here rejected the whole lock over a platform the declared "
+                    "environments never install."
+                ),
             ),
         ] = None
         url: Annotated[
@@ -573,6 +581,17 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        ci_trigger_branches: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Branches whose pushes trigger the generated CI workflow. "
+                    "Config owns this list: the renderer adds only the repository's "
+                    "own integration branch, so no fleet name is hardcoded in code."
+                ),
+            ),
+        ]
         integration_branch_preference: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -720,9 +739,15 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="External runtime state directory name")
         ]
         dependency_cooldown_days: Annotated[
-            int,
+            t.PositiveInt,
             m.Field(
-                ge=1, le=90, description="Shared uv and Dependabot dependency cooldown"
+                ge=1,
+                le=90,
+                description=(
+                    "Shared uv and Dependabot dependency cooldown rendered into "
+                    "dependabot.yml; the template reads it on every ecosystem "
+                    "block, so the spec must declare it or the whole render dies"
+                ),
             ),
         ]
         github_actions: Annotated[
@@ -781,6 +806,17 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        custom_steps: Annotated[
+            str,
+            m.Field(
+                default="",
+                description=(
+                    "Verbatim project-owned workflow steps injected before the "
+                    "toolchain installer, read from the project's own "
+                    "custom-steps file; empty when the project declares none"
+                ),
+            ),
+        ] = ""
         private_submodules: Annotated[
             FlextInfraConfigModels.CiPrivateSubmodulesSpec | None,
             m.Field(
@@ -1759,9 +1795,14 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Provider key from the codegen configuration"),
         ]
-        checkout: Annotated[
-            FlextInfraConstantsCodegenProject.CheckoutKind,
-            m.Field(description="Physical checkout topology"),
+        kind: Annotated[
+            FlextInfraConstantsCodegenProject.ProjectKind,
+            m.Field(
+                description=(
+                    "Governance kind; only internal_flext repositories are "
+                    "rewritten by generation"
+                )
+            ),
         ]
         codegen: Annotated[
             FlextInfraConstantsCodegenProject.CodegenKind,
@@ -2674,10 +2715,10 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             member_paths = tuple(item.path for item in self.members)
             if len(set(member_paths)) != len(member_paths):
-                msg = "workspace member paths must be unique"
+                msg = "composed project paths must be unique"
                 raise ValueError(msg)
             if set(member_paths).intersection(external_paths):
-                msg = "workspace members cannot also be external dependencies"
+                msg = "composed projects cannot also be external dependencies"
                 raise ValueError(msg)
             projects = tuple(item.project for item in self.repository_policy_overlays)
             if len(set(projects)) != len(projects):
@@ -3373,7 +3414,7 @@ class FlextInfraConfigModels:
         """CLI-safe request for one Python workspace environment sync."""
 
         repository_root: Annotated[
-            Path, m.Field(description="Workspace root receiving the sync")
+            Path, m.Field(description="Repository root receiving the sync")
         ]
         apply: Annotated[
             bool, m.Field(description="Write changes instead of reporting them")
@@ -3390,7 +3431,7 @@ class FlextInfraConfigModels:
         """Validated internal request for one workspace environment sync."""
 
         repository_root: Annotated[
-            Path, m.Field(description="Workspace root receiving the sync")
+            Path, m.Field(description="Repository root receiving the sync")
         ]
         apply: Annotated[
             bool, m.Field(description="Write changes instead of reporting them")
@@ -3657,6 +3698,3 @@ class FlextInfraConfigModels:
             tuple[str, ...],
             m.Field(description="Fail-closed validation or write errors"),
         ] = ()
-
-
-__all__: list[str] = ["FlextInfraConfigModels"]

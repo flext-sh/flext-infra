@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
 from git import GitCommandError
 
 from flext_core import r
-from flext_infra.constants import c
 from flext_infra.models import m
 
 from .worktree_status import FlextInfraUtilitiesGitWorktreeStatusMixin
@@ -75,97 +74,6 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
         except GitCommandError as exc:
             return r[Path].fail(str(exc), exception=exc)
         return r[Path].ok(Path(top_level).resolve())
-
-    @classmethod
-    @override
-    def _git_primary_worktree_root_path(cls, repository_path: Path) -> p.Result[Path]:
-        """Private Path-based primary worktree resolver."""
-        try:
-            repo = cls._repo(repository_path)
-            common_dir_text = repo.git.rev_parse(
-                "--path-format=absolute", "--git-common-dir"
-            ).strip()
-            common_dir = Path(common_dir_text).resolve()
-            configured_output = repo.git.config(
-                "--path", "--get", "core.worktree", with_exceptions=False
-            ).strip()
-        except GitCommandError as exc:
-            return r[Path].fail(str(exc), exception=exc)
-        except (OSError, ValueError) as exc:
-            return r[Path].fail(
-                f"failed to resolve primary worktree: {exc}", exception=exc
-            )
-
-        if configured_output:
-            configured = Path(configured_output)
-            primary_root = (
-                configured if configured.is_absolute() else common_dir / configured
-            ).resolve()
-        elif common_dir.name == c.Infra.GIT_DIR:
-            primary_root = common_dir.parent
-        else:
-            try:
-                git_dir_text = repo.git.rev_parse(
-                    "--path-format=absolute", "--git-dir"
-                ).strip()
-                git_dir = Path(git_dir_text).resolve()
-            except GitCommandError as exc:
-                return r[Path].fail(str(exc), exception=exc)
-            if git_dir != common_dir:
-                listed = repo.git.worktree("list", "--porcelain")
-                registered = tuple(
-                    Path(line.removeprefix("worktree ").strip()).resolve()
-                    for line in listed.splitlines()
-                    if line.startswith("worktree ")
-                )
-                if not registered:
-                    return r[Path].fail(
-                        f"Git worktree registry is empty for {repository_path}"
-                    )
-                primary_root = registered[0]
-                # Verify primary_root is a real worktree top-level by opening
-                # a separate repo context against it.
-                primary_repo_result = cls._open_repo(primary_root)
-                primary_top: Path | None = None
-                if primary_repo_result.success:
-                    try:
-                        primary_top = Path(
-                            primary_repo_result.value.git.rev_parse(
-                                "--show-toplevel"
-                            ).strip()
-                        ).resolve()
-                    except GitCommandError:
-                        primary_top = None
-                if primary_top != primary_root:
-                    caller_top = repo.git.rev_parse("--show-toplevel").strip()
-                    caller_root = Path(caller_top).resolve()
-                    if caller_root not in registered:
-                        return r[Path].fail(
-                            "current worktree is absent from Git's canonical registry: "
-                            f"{caller_root}"
-                        )
-                    primary_root = caller_root
-            else:
-                caller_top = repo.git.rev_parse("--show-toplevel").strip()
-                primary_root = Path(caller_top).resolve()
-
-        # Verify the resolved primary_root is a valid worktree top-level.
-        primary_repo_result = cls._open_repo(primary_root)
-        if primary_repo_result.failure:
-            return r[Path].fail(
-                f"invalid primary worktree: {primary_root}: {primary_repo_result.error}"
-            )
-        try:
-            resolved_top = Path(
-                primary_repo_result.value.git.rev_parse("--show-toplevel").strip()
-            ).resolve()
-        except GitCommandError as exc:
-            return r[Path].fail(f"invalid primary worktree: {primary_root}: {exc}")
-        if resolved_top != primary_root:
-            return r[Path].fail(
-                f"Git primary worktree mismatch: {primary_root} != {resolved_top}"
-            )
-        return r[Path].ok(primary_root)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitWorktreeRootsMixin"]

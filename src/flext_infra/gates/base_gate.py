@@ -19,8 +19,6 @@ class FlextInfraGate:
     gate_id: ClassVar[str] = ""
     gate_name: ClassVar[str] = ""
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = ""
-    tool_url: ClassVar[str] = ""
 
     def __init__(
         self, repository_root: Path, *, runner: p.Cli.CommandRunner | None = None
@@ -321,10 +319,14 @@ class FlextInfraGate:
             cmd, cwd=cwd, timeout=timeout, env=env, remove_env_keys=remove_env_keys
         )
         if result.failure:
-            # A tool that could not run is not a tool that ran and failed.
-            # Synthesizing an exit code here turned every spawn failure into an
-            # ordinary gate issue, which is the silent-failure shape the gates
-            # themselves exist to reject.
+            # A failed Result here means the tool never ran -- it could not be
+            # spawned, or the runner itself failed. Synthesizing a
+            # CommandOutput with an invented raw_return_code=1 made that
+            # indistinguishable from the tool running and reporting findings,
+            # so a missing binary was reported as a code violation against
+            # `<scc>` and an operator chased a finding in a file that was
+            # never scanned. A nonzero exit from a tool that did run still
+            # reaches the parser as a real outcome; this path did not run.
             msg = result.error or "command execution failed"
             raise RuntimeError(msg)
         return result.value

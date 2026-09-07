@@ -53,7 +53,9 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
                 workspace_root, extra_roots
             )
         except (OSError, TypeError, ValueError) as exc:
-            return r[tuple[Path, ...]].fail_op("docs workspace discovery", exc)
+            return r[tuple[Path, ...]].fail(
+                f"docs workspace discovery failed: {exc}", exception=exc
+            )
 
     @staticmethod
     def _docs_workspace_roots(
@@ -86,7 +88,7 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
             selector = Path(declared_path)
             if selector.is_absolute() or ".." in selector.parts:
                 return r[tuple[Path, ...]].fail(
-                    f"invalid docs workspace member path: {selector}"
+                    f"invalid docs composed project path: {selector}"
                 )
             candidates.append(root / selector)
         for candidate in extra_roots:

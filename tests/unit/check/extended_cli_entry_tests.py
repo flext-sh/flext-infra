@@ -80,7 +80,6 @@ class TestWorkspaceCheckCLI:
 
     def test_with_projects_failure(self, tmp_path: Path) -> None:
         workspace = self._workspace(tmp_path)
-        workspace = self._workspace(tmp_path)
         broken_file = workspace / "p1" / "src" / "broken.py"
         broken_file.write_text("def broken(:\n", encoding="utf-8")
         tm.that(
@@ -104,7 +103,6 @@ class TestWorkspaceCheckCLI:
         tm.that(main(["check", "fix-pyrefly-settings", "--help"]), eq=0)
 
     def test_run_cli_with_relative_reports_dir(self, tmp_path: Path) -> None:
-        workspace = self._workspace(tmp_path)
         workspace = self._workspace(tmp_path)
         current = Path.cwd()
         runner_root = tmp_path / "runner"

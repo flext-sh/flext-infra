@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config
+from flext_infra import c
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_tests import tm
 from tests import u
@@ -48,17 +48,8 @@ class TestsFlextInfraCodegenVscode:
             doc["python.defaultInterpreterPath"],
             eq="${workspaceFolder}/.venv/bin/python",
         )
-        search_paths = u.Tests.toml_list(
-            doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
-        )
-        tm.that(
-            search_paths,
-            eq=list(
-                config.Infra.codegen.vscode.list_settings[
-                    c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
-                ]
-            ),
-        )
+        search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
+        tm.that(search_paths, eq=u.Tests.vscode_declared_search_paths())
         tm.that("./apps/*/.venv" in search_paths, eq=False)
         excludes = u.Tests.mapping(doc["files.exclude"])
         tm.that("**/.retired-cache" in excludes, eq=False)
@@ -108,17 +99,8 @@ class TestsFlextInfraCodegenVscode:
         tm.ok(standalone)
         tm.that(result.value.encode(), eq=standalone.value.encode())
         doc = u.Tests.json_payload(result.value)
-        search_paths = u.Tests.toml_list(
-            doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
-        )
-        tm.that(
-            search_paths,
-            eq=list(
-                config.Infra.codegen.vscode.list_settings[
-                    c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
-                ]
-            ),
-        )
+        search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
+        tm.that(search_paths, eq=u.Tests.vscode_declared_search_paths())
         tm.that("./apps/a/.venv" in search_paths, eq=False)
         tm.that("./libs/b/.venv" in search_paths, eq=False)
 

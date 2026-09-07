@@ -91,10 +91,9 @@ class FlextInfraPrivateImportBypassDetector:
     def _package_for_module(cls, module_name: str, family: str) -> str | None:
         """Return the owning package prefix before the private family."""
         parts = module_name.split(".")
-        try:
-            family_index = parts.index(family)
-        except ValueError:
+        if family not in parts:
             return None
+        family_index = parts.index(family)
         return ".".join(parts[:family_index])
 
     @classmethod
@@ -107,8 +106,12 @@ class FlextInfraPrivateImportBypassDetector:
             return False
         try:
             pymodule = u.Infra.get_pymodule(rope_project, resource)
-        except c.EXC_BROAD_IO_TYPE:
-            return False
+        except c.EXC_BROAD_IO_TYPE as exc:
+            msg = (
+                f"private-import-bypass detector could not open facade module "
+                f"{facade_module}: {type(exc).__name__}: {exc!s}"
+            )
+            raise RuntimeError(msg) from exc
         return symbol in pymodule.get_attributes()
 
 

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import ast
+
 from flext_infra.constants import c
+from flext_infra.typings import t
 
 from .transformer_header_parser import FlextInfraUtilitiesTransformerHeaderParser
 
@@ -47,6 +50,9 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             source, alias
         ):
             return source
+        typed = cls._alias_import_under_type_checking(source, module, alias)
+        if typed is not None:
+            return typed
         info = cls._parse_header(source)
         offset = info.span.last_import_end or max(
             info.span.shebang_end,
@@ -59,6 +65,41 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             line = f"{line}\n"
         return f"{source[:offset]}{line}{source[offset:]}"
 
+    @classmethod
+    def _alias_import_under_type_checking(
+        cls, source: str, module: str, alias: str
+    ) -> str | None:
+        """Place an annotation-only facade import inside ``if TYPE_CHECKING:``.
+
+        A module that the package imports while initialising itself cannot
+        import that same package at runtime: injecting the facade at module
+        level made ``__version__.py`` raise ImportError on a partially
+        initialised ``flext_infra``. With deferred annotations the alias is only
+        ever read by a type checker, so the import belongs in the type-checking
+        block, which is also what the facade law prescribes. Returns None when
+        the module has no such block to extend.
+        """
+        if "from __future__ import annotations" not in source:
+            return None
+        if not cls._alias_is_annotation_only(source, alias):
+            return None
+        lines = source.splitlines(keepends=True)
+        for index, line in enumerate(lines):
+            if line.rstrip() != "if TYPE_CHECKING:":
+                continue
+            following = lines[index + 1 :]
+            indent = next(
+                (
+                    item[: len(item) - len(item.lstrip())]
+                    for item in following
+                    if item.strip()
+                ),
+                "    ",
+            )
+            lines.insert(index + 1, f"{indent}from {module} import {alias}\n")
+            return "".join(lines)
+        return None
+
     @staticmethod
     def alias_used(source: str, alias: str) -> bool:
         """Return whether ``alias`` is used as a standalone dotted identifier."""
@@ -69,9 +110,62 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
 
     @classmethod
     def has_alias_import(cls, source: str, alias: str) -> bool:
-        """Return whether ``alias`` is already bound by a ``from`` import."""
-        info = cls._parse_header(source)
-        return alias in info.aliases
+        """Return whether ``alias`` is already bound by a ``from`` import.
+
+        Every binding counts, including one inside ``if TYPE_CHECKING:``. The
+        header scan stops at the first non-header statement, so an alias
+        imported in that block read as absent and a duplicate was injected
+        next to it.
+        """
+        try:
+            module = ast.parse(source)
+        except SyntaxError:
+            info = cls._parse_header(source)
+            return alias in info.aliases
+        return any(
+            (name.asname or name.name) == alias
+            for node in ast.walk(module)
+            if isinstance(node, ast.ImportFrom | ast.Import)
+            for name in node.names
+        )
+
+    @staticmethod
+    def _alias_is_annotation_only(source: str, alias: str) -> bool:
+        """Report whether every use of ``alias`` sits inside an annotation."""
+        try:
+            module = ast.parse(source)
+        except SyntaxError:
+            return False
+        spans: list[tuple[int, int, int, int]] = []
+        for node in ast.walk(module):
+            annotations = []
+            if isinstance(node, ast.AnnAssign | ast.arg):
+                annotations.append(node.annotation)
+            elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                annotations.append(node.returns)
+            for annotation in annotations:
+                if annotation is None or annotation.end_lineno is None:
+                    continue
+                spans.append((
+                    annotation.lineno,
+                    annotation.col_offset,
+                    annotation.end_lineno,
+                    annotation.end_col_offset or 0,
+                ))
+
+        def inside(node: ast.expr) -> bool:
+            position = (node.lineno, node.col_offset)
+            return any(
+                (start_line, start_col) <= position <= (end_line, end_col)
+                for start_line, start_col, end_line, end_col in spans
+            )
+
+        uses = [
+            node
+            for node in ast.walk(module)
+            if isinstance(node, ast.Name) and node.id == alias
+        ]
+        return bool(uses) and all(inside(node) for node in uses)
 
     @staticmethod
     def alias_locally_bound(source: str, alias: str) -> bool:
@@ -93,4 +187,4 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
         )
 
 
-__all__: list[str] = ["FlextInfraUtilitiesTransformerHeader"]
+__all__: t.MutableSequenceOf[str] = ["FlextInfraUtilitiesTransformerHeader"]

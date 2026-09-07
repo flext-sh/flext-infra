@@ -20,8 +20,6 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.FORMAT
     gate_name: ClassVar[str] = "Ruff Format"
     can_fix: ClassVar[bool] = True
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.FORMAT][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.FORMAT][1]
 
     @override
     def _get_check_dirs(

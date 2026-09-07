@@ -8,7 +8,7 @@ from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
 from flext_tests import tm
-from tests import WorktreeFixture
+from tests.unit.workspace import WorktreeFixture
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -69,6 +69,23 @@ def _installed_editable(
     )
 
 
+def _stale_checkout(tmp_path: Path) -> tuple[Path, Path, Path]:
+    """Create the governed workspace, its member, and one stale checkout tree."""
+    workspace = _workspace(tmp_path / "workspace")
+    member = workspace / "sample-member"
+    stale = tmp_path / "stale" / "sample-member"
+    (stale / "src").mkdir(parents=True)
+    return workspace, member, stale
+
+
+def _provenance_failure(workspace: Path, site_packages: Path) -> str:
+    """Validate provenance once and return its typed failure message."""
+    result = FlextInfraWorkspaceEnvironmentProvenance.validate(
+        workspace, metadata_paths=(str(site_packages),)
+    )
+    return tm.fail(result)
+
+
 class TestsFlextInfraWorkspaceEnvironmentProvenance:
     """Validate real PEP 610 and distribution file metadata."""
 
@@ -92,10 +109,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
 
     def test_rejects_stale_direct_url(self, tmp_path: Path) -> None:
         """Reject an editable whose direct URL targets an obsolete checkout."""
-        workspace = _workspace(tmp_path / "workspace")
-        member = workspace / "sample-member"
-        stale = tmp_path / "stale" / "sample-member"
-        (stale / "src").mkdir(parents=True)
+        workspace, member, stale = _stale_checkout(tmp_path)
         site_packages = tmp_path / "site-packages"
         _installed_editable(
             site_packages,
@@ -103,22 +117,14 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             direct_root=stale,
             source_root=member / "src",
         )
-
-        result = FlextInfraWorkspaceEnvironmentProvenance.validate(
-            workspace, metadata_paths=(str(site_packages),)
-        )
-
-        error = tm.fail(result)
+        error = _provenance_failure(workspace, site_packages)
         tm.that(error, has="direct_url mismatch")
         tm.that(error, has=f"expected={member}")
         tm.that(error, has=f"actual={stale}")
 
     def test_rejects_stale_pth_source(self, tmp_path: Path) -> None:
         """Reject an editable path file that exposes an obsolete source tree."""
-        workspace = _workspace(tmp_path / "workspace")
-        member = workspace / "sample-member"
-        stale = tmp_path / "stale" / "sample-member"
-        (stale / "src").mkdir(parents=True)
+        workspace, member, stale = _stale_checkout(tmp_path)
         site_packages = tmp_path / "site-packages"
         _installed_editable(
             site_packages,
@@ -126,12 +132,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             direct_root=member,
             source_root=stale / "src",
         )
-
-        result = FlextInfraWorkspaceEnvironmentProvenance.validate(
-            workspace, metadata_paths=(str(site_packages),)
-        )
-
-        error = tm.fail(result)
+        error = _provenance_failure(workspace, site_packages)
         tm.that(error, has="pth mismatch")
         tm.that(error, has=f"expected_root={member}")
         tm.that(error, has=f"actual={stale / 'src'}")
@@ -142,10 +143,6 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         site_packages = tmp_path / "site-packages"
         site_packages.mkdir()
 
-        result = FlextInfraWorkspaceEnvironmentProvenance.validate(
-            workspace, metadata_paths=(str(site_packages),)
-        )
-
-        error = tm.fail(result)
+        error = _provenance_failure(workspace, site_packages)
         tm.that(error, has="distribution count mismatch")
         tm.that(error, has="distribution=sample-member")

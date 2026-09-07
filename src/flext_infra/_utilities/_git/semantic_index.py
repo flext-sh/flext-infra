@@ -72,7 +72,9 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
         index_z = repo.git.ls_files("--stage", "-z").encode(c.Cli.ENCODING_DEFAULT)
         try:
             head = repo.head.commit.hexsha.encode(c.Cli.ENCODING_DEFAULT)
-        except (ValueError, OSError):
+        except ValueError:
+            # Unborn HEAD: git itself reports no commit, so the fingerprint
+            # input is the literal "UNBORN" marker, matching `git rev-parse HEAD`.
             head = b"UNBORN"
         return paths_z, index_z, head
 

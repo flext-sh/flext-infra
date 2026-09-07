@@ -25,7 +25,7 @@ class TestCodegenCiMatrix:
 
     @staticmethod
     def _render_project(root: Path) -> Path:
-        """Render a fresh EXTERNAL project into root and return the root."""
+        """Render one fresh internal_flext project into root and return it."""
         beads = tm.ok(
             FlextInfraWorkspaceDetector.load_beads_spec(
                 Path(__file__).resolve().parents[3]
@@ -33,7 +33,7 @@ class TestCodegenCiMatrix:
         )
         service = FlextInfraCodegenProjectNew(
             name="flext-demo",
-            kind=c.Infra.ProjectKind.EXTERNAL,
+            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
             provider="flext-sh",
             beads_workspace=beads.workspace,

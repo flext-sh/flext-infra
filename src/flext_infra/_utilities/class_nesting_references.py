@@ -11,6 +11,16 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
+def _dotted_name(node: cst.BaseExpression | None) -> str | None:
+    """Return the dotted path of a libcst expression, or None when unresolvable."""
+    if isinstance(node, cst.Name):
+        return node.value
+    if isinstance(node, cst.Attribute):
+        parent = _dotted_name(node.value)
+        return f"{parent}.{node.attr.value}" if parent else None
+    return None
+
+
 class FlextInfraUtilitiesClassNestingReferences:
     """Rewrite imports and usages of classes moved below a module owner."""
 
@@ -41,16 +51,22 @@ class FlextInfraUtilitiesClassNestingReferences:
                 name: f"{owner}.{name}" for name, owner in definitions.items()
             }
 
-        def _dotted_name(self, node: cst.BaseExpression | None) -> str | None:
-            if isinstance(node, cst.Name):
-                return node.value
-            if isinstance(node, cst.Attribute):
-                parent = self._dotted_name(node.value)
-                return f"{parent}.{node.attr.value}" if parent else None
-            return None
+        @staticmethod
+        def _alias_name(asname: cst.AsName) -> str:
+            """Return the bound alias identifier, rejecting impossible shapes.
+
+            libcst types ``AsName.name`` as ``Name | Tuple | List``, but import
+            aliases parsed from valid Python can only carry a ``Name``
+            (``import x as (a, b)`` is a SyntaxError); Tuple/List belong to
+            ``WithItem``/``ExceptHandler`` clauses only.
+            """
+            if not isinstance(asname.name, cst.Name):
+                msg = f"unsupported import alias target: {type(asname.name).__name__}"
+                raise TypeError(msg)
+            return asname.name.value
 
         def _import_module(self, node: cst.ImportFrom) -> str:
-            suffix = self._dotted_name(node.module) or ""
+            suffix = _dotted_name(node.module) or ""
             if not node.relative:
                 return suffix
             package_parts = self.module_name.split(".")
@@ -68,10 +84,12 @@ class FlextInfraUtilitiesClassNestingReferences:
             if not bindings or isinstance(node.names, cst.ImportStar):
                 return
             for imported in node.names:
-                name = self._dotted_name(imported.name) or ""
+                name = _dotted_name(imported.name) or ""
                 if name not in bindings:
                     continue
-                local_name = imported.asname.name.value if imported.asname else name
+                local_name = (
+                    self._alias_name(imported.asname) if imported.asname else name
+                )
                 owner_name = local_name if imported.asname else bindings[name]
                 self.local_expressions[local_name] = f"{owner_name}.{name}"
 
@@ -88,6 +106,33 @@ class FlextInfraUtilitiesClassNestingReferences:
                 return parent.attr is original_node
             if isinstance(parent, cst.Arg):
                 return parent.keyword is original_node
+            return False
+
+        def _resolves_bare_after_nesting(self, node: cst.CSTNode) -> bool:
+            """Report whether a moved class stays reachable by its bare name here.
+
+            References are rewritten before the structural move, so the current
+            tree cannot answer this; the plan can. After nesting, the owner's
+            class body holds every moved class as a sibling, and a class body
+            reaches its siblings by bare name while it is executing. A method
+            body does not: the enclosing class scope is invisible from inside a
+            function, so there the qualified form is the only one that resolves.
+            Walking outward, a function boundary therefore means qualify, and a
+            class that is the owner or is itself being moved under the owner
+            means the reference will land in that shared class scope.
+            """
+            current: cst.CSTNode | None = self.get_metadata(
+                ParentNodeProvider, node, None
+            )
+            while current is not None:
+                if isinstance(current, cst.FunctionDef):
+                    return False
+                if isinstance(current, cst.ClassDef):
+                    name = current.name.value
+                    return name in self.definitions or name in set(
+                        self.definitions.values()
+                    )
+                current = self.get_metadata(ParentNodeProvider, current, None)
             return False
 
         @override
@@ -107,7 +152,10 @@ class FlextInfraUtilitiesClassNestingReferences:
                 msg = f"ambiguous class-nesting binding: {sorted(replacements)}"
                 raise ValueError(msg)
             parent = self.get_metadata(ParentNodeProvider, original_node)
-            if self._is_structural_position(parent, original_node):
+            if self._is_structural_position(parent, original_node) or (
+                original_node.value in self.definitions
+                and self._resolves_bare_after_nesting(original_node)
+            ):
                 return updated_node
             replacement = self.local_expressions.get(original_node.value)
             if replacement is None:
@@ -148,14 +196,14 @@ class FlextInfraUtilitiesClassNestingReferences:
             aliases: list[cst.ImportAlias] = []
             seen: set[tuple[str, str]] = set()
             for imported in updated_node.names:
-                name = self._dotted_name(imported.name) or ""
+                name = _dotted_name(imported.name) or ""
                 owner = bindings.get(name)
                 rewritten = (
                     imported.with_changes(name=cst.Name(owner)) if owner else imported
                 )
                 identity = (
-                    self._dotted_name(rewritten.name) or "",
-                    rewritten.asname.name.value if rewritten.asname else "",
+                    _dotted_name(rewritten.name) or "",
+                    self._alias_name(rewritten.asname) if rewritten.asname else "",
                 )
                 if identity not in seen:
                     seen.add(identity)

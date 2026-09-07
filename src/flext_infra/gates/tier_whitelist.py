@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, m
+from flext_infra import m
 from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
 
 from .base_gate import FlextInfraGate
@@ -22,8 +22,6 @@ class FlextInfraTierWhitelistGate(FlextInfraGate):
     gate_id: ClassVar[str] = "tier-whitelist"
     gate_name: ClassVar[str] = "Tier Whitelist"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["tier-whitelist"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["tier-whitelist"][1]
 
     @override
     def check(

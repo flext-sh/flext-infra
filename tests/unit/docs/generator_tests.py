@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from typing import TYPE_CHECKING
 
 import pytest
@@ -488,26 +489,31 @@ def test_generate_report_tracks_written_files() -> None:
 
 
 def test_link_sanitizer_preserves_external_schemes_and_fragments() -> None:
-    secure = c.Infra.DOCS_SECURE_WEB_SCHEME
-    external = [
-        f"{secure}://example.invalid",
-        *[
-            f"{scheme}:payload"
-            for scheme in sorted(c.Infra.DOCS_EXTERNAL_SCHEMES)
-            if scheme != secure
-        ],
+    """Keep external and fragment links verbatim while local links become text."""
+    guides = import_module("flext_infra._utilities").FlextInfraUtilitiesDocsGuidesMixin
+    preserved = [
+        f"{c.Infra.DOCS_SECURE_WEB_SCHEME}://example.invalid",
+        "mailto:user@example.invalid",
         f"{c.Infra.DOCS_FRAGMENT_PREFIX}section",
     ]
-    content = "\n".join(f"[link]({target})" for target in external)
+    local = "guides/setup"
+    content = "\n".join([
+        *[f"[link]({target})" for target in preserved],
+        f"[link]({local})",
+    ])
 
-    sanitized = u.Infra.docs_sanitize_internal_anchor_links(content)
+    sanitized = guides.docs_sanitize_internal_anchor_links(content)
 
-    for target in external:
+    for target in preserved:
         tm.that(sanitized, has=f"[link]({target})")
+    tm.that(sanitized, has="link")
+    tm.that(sanitized, lacks=f"[link]({local})")
+    tm.that(sanitized, lacks=local)
 
 
-def test_link_sanitizer_rejects_http() -> None:
+def test_docs_url_scheme_rejects_http() -> None:
+    """The docs URL contract rejects insecure web schemes in favor of HTTPS."""
     target = f"{c.Infra.DOCS_INSECURE_WEB_SCHEME}://example.invalid"
 
     with pytest.raises(ValueError, match="use HTTPS"):
-        u.Infra.docs_sanitize_internal_anchor_links(f"[link]({target})")
+        u.Infra.docs_url_scheme(target)

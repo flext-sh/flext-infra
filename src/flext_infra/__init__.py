@@ -210,6 +210,7 @@ if TYPE_CHECKING:
     from .transformers.import_modernizer import FlextInfraRefactorImportModernizer
     from .transformers.lazy_import_fixer import FlextInfraRefactorLazyImportFixer
     from .transformers.logging_modernizer import FlextInfraRefactorLoggingModernizer
+    from .transformers.mro_remover import FlextInfraRefactorMroRemover
     from .transformers.open_encoding import FlextInfraRefactorOpenEncoding
     from .transformers.pattern import FlextInfraRefactorPatternTransformer
     from .transformers.pattern_modernizer import FlextInfraRefactorPatternModernizer
@@ -260,6 +261,11 @@ if TYPE_CHECKING:
     from .validate.testmon_db import FlextInfraTestmonDbInspector
     from .validate.tier_whitelist import FlextInfraValidateTierWhitelist
     from .workspace.detector import FlextInfraWorkspaceDetector
+    from .workspace.environment import FlextInfraWorkspaceEnvironmentMixin
+    from .workspace.environment_beads import (
+        FlextInfraWorkspaceBeadsEnvironmentMixin,
+        FlextInfraWorkspaceEnvironmentSync,
+    )
     from .workspace.environment_contracts import envrc_contract_violations
     from .workspace.environment_provenance import (
         FlextInfraWorkspaceEnvironmentProvenance,
@@ -404,6 +410,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorImportModernizer",
     "FlextInfraRefactorLazyImportFixer",
     "FlextInfraRefactorLoggingModernizer",
+    "FlextInfraRefactorMroRemover",
     "FlextInfraRefactorOpenEncoding",
     "FlextInfraRefactorPatternModernizer",
     "FlextInfraRefactorPatternTransformer",
@@ -447,9 +454,11 @@ __all__: tuple[str, ...] = (
     "FlextInfraValidateMetadataDiscipline",
     "FlextInfraValidateTierWhitelist",
     "FlextInfraViolationCensusVisitor",
+    "FlextInfraWorkspaceBeadsEnvironmentMixin",
     "FlextInfraWorkspaceCheckGatesMixin",
     "FlextInfraWorkspaceChecker",
     "FlextInfraWorkspaceDetector",
+    "FlextInfraWorkspaceEnvironmentMixin",
     "FlextInfraWorkspaceEnvironmentProvenance",
     "FlextInfraWorkspaceEnvironmentSync",
     "FlextInfraWorktreeService",
@@ -712,6 +721,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".transformers.logging_modernizer": (
                 "FlextInfraRefactorLoggingModernizer",
             ),
+            ".transformers.mro_remover": ("FlextInfraRefactorMroRemover",),
             ".transformers.open_encoding": ("FlextInfraRefactorOpenEncoding",),
             ".transformers.pattern": ("FlextInfraRefactorPatternTransformer",),
             ".transformers.pattern_modernizer": (
@@ -776,6 +786,11 @@ _LAZY_IMPORTS = MappingProxyType(
             ".validate.tier_whitelist": ("FlextInfraValidateTierWhitelist",),
             ".workspace": ("workspace",),
             ".workspace.detector": ("FlextInfraWorkspaceDetector",),
+            ".workspace.environment": ("FlextInfraWorkspaceEnvironmentMixin",),
+            ".workspace.environment_beads": (
+                "FlextInfraWorkspaceBeadsEnvironmentMixin",
+                "FlextInfraWorkspaceEnvironmentSync",
+            ),
             ".workspace.environment_contracts": ("envrc_contract_violations",),
             ".workspace.environment_provenance": (
                 "FlextInfraWorkspaceEnvironmentProvenance",

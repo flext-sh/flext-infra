@@ -105,8 +105,8 @@ endif
 # End SECTION: WORKSPACE_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary.
-PUBLIC_VERBS := help setup deps build check test fmt fix audit status docs clean release-plan release-version release-tag release-build publication gen conform initialize mod waza duplication
-BUILTIN_VERBS := help setup deps build check test fmt fix audit status docs clean release-plan release-version release-tag release-build publication gen conform initialize mod waza duplication
+PUBLIC_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen conform initialize mod waza duplication
+BUILTIN_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen conform initialize mod waza duplication
 SCRIPT_VERBS :=
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
 CUSTOM_DECLARED_TARGETS :=
@@ -562,6 +562,10 @@ fix: _builtin_require_environment
 	$(call _require_apply)
 	$(call RUN_PUBLIC,fix)
 
+fix-enforcement: _builtin_require_environment
+	$(call _require_apply)
+	$(call RUN_PUBLIC,fix-enforcement)
+
 audit: _builtin_require_environment
 	$(call RUN_PUBLIC,audit)
 
@@ -656,6 +660,8 @@ _builtin-help:
 	@printf '  %-16s %s (APPLY=Y)\n' 'fmt' 'Apply canonical formatting.';
 
 	@printf '  %-16s %s (APPLY=Y)\n' 'fix' 'Apply every configured safe correction.';
+
+	@printf '  %-16s %s (APPLY=Y)\n' 'fix-enforcement' 'Apply the safe fix actions declared by the enforcement catalog.';
 
 	@printf '  %-16s %s\n' 'audit' 'Inspect ownership, dependency, and generated-state health.';
 
@@ -882,10 +888,10 @@ _builtin_build_artifacts:
 # make.ci.local_check_gates.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
-		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,canonical-alias,runtime-census,namespace,layout,tier-whitelist,smells,codemod,direnv,duplication"; \
+		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,layout,canonical-alias,codemod,direnv,duplication"; \
 		if [ "$(strip $(CI))" = "Y" ]; then \
-			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,canonical-alias,runtime-census,namespace,layout,tier-whitelist,smells,codemod,direnv,duplication"; \
-			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary canonical-alias runtime-census namespace layout tier-whitelist smells codemod direnv duplication\n'; \
+			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,layout,canonical-alias,codemod,direnv,duplication"; \
+			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
 		printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
@@ -921,8 +927,15 @@ _builtin_fix_check: _builtin_require_environment
 _builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
+	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "lint,markdown,canonical-alias,smells" --projects . --fix
 
 _builtin_fix_apply: _builtin_fix_all
+
+# Catalog-driven enforcement fixes: every ENFORCE rule whose fix action is
+# declared safe, applied through its registered adapter.
+_builtin_fix_enforcement: _builtin_require_environment
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) check fix-enforcement --workspace "$(PROJECT_ROOT)" --safe-only --apply
 
 
 _builtin_run_default: _builtin_require_environment
@@ -1025,6 +1038,7 @@ _builtin-check: _builtin_check_all
 _builtin-test: _builtin_test_all
 _builtin-fmt: _builtin_fmt_all
 _builtin-fix: _builtin_fix_all
+_builtin-fix-enforcement: _builtin_fix_enforcement
 _builtin-audit:
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@$(UV) pip check --python "$(RUNTIME_VENV)"

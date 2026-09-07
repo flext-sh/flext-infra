@@ -22,7 +22,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Validate documentation across the repository root and governed projects."""
         return self.run_scoped_docs(
-            request.workspace_root,
+            request.repository_root,
             projects=request.projects,
             output_dir=request.output_dir,
             handler=lambda scope: self._validate_scope(scope, apply_mode=request.apply),
@@ -33,7 +33,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
         """Execute the configured docs validation flow."""
         result = self.validate_workspace(
             m.Infra.DocsGenerateRequest(
-                workspace_root=self.repository_root,
+                repository_root=self.repository_root,
                 projects=self.selected_projects,
                 output_dir=self.output_dir,
                 apply=self.apply_changes,
@@ -91,9 +91,11 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
             status = c.Infra.ResultStatus.FAIL
             messages.extend(contract_messages)
         message = "; ".join(messages) if messages else "validation passed"
-        wrote_todo = u.Infra.docs_write_todo(scope, apply_mode=apply_mode).unwrap_or(
-            False
-        )
+        todo_result = u.Infra.docs_write_todo(scope, apply_mode=apply_mode)
+        if todo_result.failure:
+            status = c.Infra.ResultStatus.FAIL
+            messages.append(f"failed to write docs todo: {todo_result.error}")
+        wrote_todo = todo_result.unwrap()
         report = m.Infra.DocsPhaseReport(
             phase="validate",
             scope=scope.name,

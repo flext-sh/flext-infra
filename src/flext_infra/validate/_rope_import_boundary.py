@@ -66,8 +66,6 @@ class FlextInfraRopeImportBoundaryBase(s[bool]):
                 if file_path is None or not self._is_in_scope(file_path):
                     continue
                 module_imports = u.Infra.get_module_imports(project, resource)
-                if module_imports is None:
-                    continue
                 violations.extend(
                     self._violations_for_module(file_path, module_imports)
                 )

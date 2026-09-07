@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -170,7 +169,7 @@ class FlextInfraReleaseOrchestratorPhases(
                     )
             else:
                 destination.write_bytes(content)
-            return r[str].ok(hashlib.sha256(content).hexdigest())
+            return r[str].ok(u.Cli.sha256_bytes(content))
         except OSError as exc:
             return r[str].fail_op(f"persist release policy {destination}", exc)
 

@@ -118,10 +118,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
     @classmethod
     def _file_contains_tests(cls, py_file: Path) -> bool:
         """Return whether *py_file* defines pytest-collectable tests."""
-        try:
-            tree = ast.parse(py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT))
-        except SyntaxError:
-            return False
+        tree = ast.parse(py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT))
         for node in ast.walk(tree):
             if isinstance(
                 node, ast.FunctionDef | ast.AsyncFunctionDef

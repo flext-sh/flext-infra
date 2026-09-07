@@ -31,6 +31,9 @@ class FlextInfraUtilitiesRopeStructure:
         enclosers: t.MutableSequenceOf[tuple[int, c.Infra.RopeScopeKind, str]] = []
         type_checking_guards: t.MutableSequenceOf[int] = []
         for start, end in finder.generate_regions():
+            # Rope hands lines back without their newline; a multi-line logical
+            # statement must keep its line breaks so a trailing comment on one
+            # line cannot swallow the rest and offsets stay real source offsets.
             text = "\n".join(lines.get_line(n) for n in range(start, end + 1))
             indent = len(text) - len(text.lstrip())
             FlextInfraUtilitiesRopeStructure._pop_exited_enclosers(enclosers, indent)

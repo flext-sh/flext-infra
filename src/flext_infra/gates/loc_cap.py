@@ -26,8 +26,6 @@ class FlextInfraLocCapGate(FlextInfraGate):
     gate_id: ClassVar[str] = "loc-cap"
     gate_name: ClassVar[str] = "MODULE-LOC SUPREME LAW"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["loc-cap"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["loc-cap"][1]
 
     @override
     def _build_check_command(

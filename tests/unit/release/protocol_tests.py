@@ -75,6 +75,21 @@ def _release_lane_workspace(tmp_path: Path) -> Path:
     return workspace
 
 
+def _commit_merge_subject(workspace: Path, subject: str) -> None:
+    """Record one empty commit whose subject a merge left on the lane."""
+    tm.ok(
+        cli.run_checked(
+            [c.Infra.GIT, "commit", "--allow-empty", "-m", subject], cwd=workspace
+        )
+    )
+
+
+def _planned_release(workspace: Path) -> m.Infra.ReleasePlan:
+    """Run the plan phase once and return its receipt."""
+    tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
+    return _plan(workspace)
+
+
 class TestsFlextInfraReleaseProtocol:
     """Behavior contract for the release protocol."""
 
@@ -143,26 +158,14 @@ class TestsFlextInfraReleaseProtocol:
             workspace = u.Tests.create_release_workspace(tmp_path)
             u.Tests.checkout_integration(workspace)
             _tag(workspace, "v0.1.0rc2")
-            tm.ok(
-                cli.run_checked(
-                    [
-                        c.Infra.GIT,
-                        "commit",
-                        "--allow-empty",
-                        "-m",
-                        "Merge pull request #4 from legacy/lane",
-                    ],
-                    cwd=workspace,
-                )
-            )
+            _commit_merge_subject(workspace, "Merge pull request #4 from legacy/lane")
             tm.ok(
                 cli.run_checked(
                     [c.Infra.GIT, "fetch", c.Infra.GIT_ORIGIN], cwd=workspace
                 )
             )
 
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
-            plan = _plan(workspace)
+            plan = _planned_release(workspace)
             tm.that(plan.next, eq=c.Tests.RELEASE_VERSION_BASE)
             tm.that(plan.previous_tag, eq="v0.1.0rc2")
             tm.that(plan.releasable, eq=True)
@@ -177,18 +180,7 @@ class TestsFlextInfraReleaseProtocol:
             GitHub's default merge subjects) are not consulted.
             """
             workspace = _released_workspace(tmp_path)
-            tm.ok(
-                cli.run_checked(
-                    [
-                        c.Infra.GIT,
-                        "commit",
-                        "--allow-empty",
-                        "-m",
-                        "Merge pull request #3 from legacy/lane",
-                    ],
-                    cwd=workspace,
-                )
-            )
+            _commit_merge_subject(workspace, "Merge pull request #3 from legacy/lane")
             tm.ok(u.Infra.replace_project_version(workspace, "0.2.0"))
             tm.ok(
                 cli.run_checked(
@@ -204,8 +196,7 @@ class TestsFlextInfraReleaseProtocol:
                 )
             )
 
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
-            plan = _plan(workspace)
+            plan = _planned_release(workspace)
             tm.that(plan.next, eq="0.2.0")
             tm.that(plan.bump, eq=c.Infra.VersionBump.NONE)
             tm.that(plan.releasable, eq=True)
@@ -233,8 +224,7 @@ class TestsFlextInfraReleaseProtocol:
             workspace = _released_workspace(tmp_path)
             u.Tests.merge_pull_request(workspace, "feat!: remove the legacy surface")
 
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
-            tm.that(_plan(workspace).next, eq="1.0.0")
+            tm.that(_planned_release(workspace).next, eq="1.0.0")
 
         @staticmethod
         def test_non_releasing_titles_release_nothing(tmp_path: Path) -> None:
@@ -242,8 +232,7 @@ class TestsFlextInfraReleaseProtocol:
             workspace = _released_workspace(tmp_path)
             u.Tests.merge_pull_request(workspace, "docs: explain the protocol")
 
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
-            plan = _plan(workspace)
+            plan = _planned_release(workspace)
             tm.that(plan.next, eq=plan.current)
             tm.that(plan.releasable, eq=False)
 
@@ -296,8 +285,7 @@ class TestsFlextInfraReleaseProtocol:
                 cli.run_checked([c.Infra.GIT, "commit", "-am", subject], cwd=workspace)
             )
 
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
-            plan = _plan(workspace)
+            plan = _planned_release(workspace)
             tm.that(plan.next, eq="0.1.1")
             tm.that(plan.releasable, eq=False)
 
@@ -312,18 +300,7 @@ class TestsFlextInfraReleaseProtocol:
             nor consult the titles merged before it.
             """
             workspace = _released_workspace(tmp_path)
-            tm.ok(
-                cli.run_checked(
-                    [
-                        c.Infra.GIT,
-                        "commit",
-                        "--allow-empty",
-                        "-m",
-                        "Merge pull request #7 from legacy/lane",
-                    ],
-                    cwd=workspace,
-                )
-            )
+            _commit_merge_subject(workspace, "Merge pull request #7 from legacy/lane")
             tm.ok(u.Infra.replace_project_version(workspace, "0.1.1"))
             merged_subject = (
                 f"{c.Infra.RELEASE_COMMIT_SUBJECT.format(version='0.1.1')} (#8)"
@@ -333,21 +310,9 @@ class TestsFlextInfraReleaseProtocol:
                     [c.Infra.GIT, "commit", "-am", merged_subject], cwd=workspace
                 )
             )
-            tm.ok(
-                cli.run_checked(
-                    [
-                        c.Infra.GIT,
-                        "commit",
-                        "--allow-empty",
-                        "-m",
-                        "Merge abc123 into def456",
-                    ],
-                    cwd=workspace,
-                )
-            )
+            _commit_merge_subject(workspace, "Merge abc123 into def456")
 
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
-            plan = _plan(workspace)
+            plan = _planned_release(workspace)
             tm.that(plan.next, eq="0.1.1")
             tm.that(plan.bump, eq=c.Infra.VersionBump.NONE)
             tm.that(plan.releasable, eq=False)

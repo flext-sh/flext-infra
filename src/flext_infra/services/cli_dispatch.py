@@ -85,7 +85,7 @@ class CliDispatchService(CliRouteService, type(cli_facade)):
             app, prog_name=f"{self.app_name} {group}", args=normalized_args
         )
         if result.success:
-            return 0
+            return c.Infra.PROCESS_SUCCESS_EXIT_CODE
         if result.error_code == c.Infra.PROCESS_EXIT_ERROR_CODE:
             # Why: `m` is a TYPE_CHECKING-only name at module scope, so binding
             # it again here made Python treat it as local for the whole function

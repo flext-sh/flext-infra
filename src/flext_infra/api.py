@@ -8,7 +8,7 @@ from flext_core import r
 from flext_infra import m, t, u
 
 from .base import s
-from .services.workspace import FlextInfraWorkspaceEnvironmentSync
+from .workspace.environment_beads import FlextInfraWorkspaceEnvironmentSync
 from .workspace.rope import FlextInfraRopeWorkspace
 
 if TYPE_CHECKING:

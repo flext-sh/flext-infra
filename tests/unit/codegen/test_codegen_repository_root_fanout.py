@@ -13,7 +13,7 @@ from pathlib import Path
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u as test_u
+from tests import u
 
 
 class TestsCodegenRepositoryRootFanout:
@@ -34,13 +34,13 @@ class TestsCodegenRepositoryRootFanout:
         repository_root = _render_root_makefile(tmp_path)
         for verb in (c.Infra.VERB_CHECK, c.Infra.VERB_TEST):
             execution = tm.ok(
-                test_u.Cli.run_raw(
+                u.Cli.run_raw(
                     [c.Infra.MAKE, "--dry-run", verb, "APPLY=Y"],
                     cwd=repository_root,
                     remove_env_keys=("MAKEFLAGS",),
                 )
             )
-            tm.that(test_u.Cli.process_succeeded(execution.outcome), eq=True)
+            tm.that(u.Cli.process_succeeded(execution.outcome), eq=True)
             tm.that(execution.stdout + execution.stderr, has=f"--verb {verb}")
 
     def test_repository_root_deps_dispatches_into_the_managed_lock(
@@ -55,14 +55,14 @@ class TestsCodegenRepositoryRootFanout:
         repository_root = _render_root_makefile(tmp_path)
 
         execution = tm.ok(
-            test_u.Cli.run_raw(
+            u.Cli.run_raw(
                 [c.Infra.MAKE, "--dry-run", c.Infra.VERB_DEPS, "APPLY=Y"],
                 cwd=repository_root,
                 remove_env_keys=("MAKEFLAGS",),
             )
         )
 
-        tm.that(test_u.Cli.process_succeeded(execution.outcome), eq=True)
+        tm.that(u.Cli.process_succeeded(execution.outcome), eq=True)
         rendered = execution.stdout + execution.stderr
         tm.that(rendered, has="_builtin-deps")
         tm.that(rendered, has="lock --project")
@@ -71,7 +71,7 @@ class TestsCodegenRepositoryRootFanout:
 
 def _render_root_makefile(tmp_path: Path) -> Path:
     """Render base/Makefile.j2 from a typed workspace fixture."""
-    repository = test_u.Tests.repository_ref("workspace-fixture")
+    repository = u.Tests.repository_ref("workspace-fixture")
     workspace = m.Infra.WorkspaceSpec(
         name=repository.name,
         beads=m.Infra.BeadsProjectSpec(
@@ -81,7 +81,7 @@ def _render_root_makefile(tmp_path: Path) -> Path:
             issue_prefix=repository.name,
         ),
         repository=repository,
-        project=test_u.Tests.project_spec(repository.name),
+        project=u.Tests.project_spec(repository.name),
     )
     repository_root = tmp_path / "workspace"
     # The bootstrap projection refreshes the dispatcher of an existing checkout:
@@ -105,10 +105,8 @@ def _render_root_makefile(tmp_path: Path) -> Path:
     )
     tm.that(makefile_plans, len=1)
     makefile_path = repository_root / c.Infra.MAKEFILE_FILENAME
-    rendered_content = tm.not_none(makefile_plans[0].desired_content)
     makefile_path.write_text(
-        rendered_content.decode(c.Infra.ENCODING_DEFAULT),
-        encoding=c.Infra.ENCODING_DEFAULT,
+        u.Tests.codegen_file_text(makefile_plans[0]), encoding=c.Infra.ENCODING_DEFAULT
     )
     return repository_root
 

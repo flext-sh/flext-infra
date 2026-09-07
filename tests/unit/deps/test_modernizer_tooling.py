@@ -12,7 +12,7 @@ from flext_infra.deps.phases.ensure_namespace import (
 )
 from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
 from flext_tests import tm
-from tests import u
+from tests import t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -22,6 +22,22 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraDepsModernizerTooling:
     """Declarative tests for formatting, namespace, and Ruff phases."""
+
+    @staticmethod
+    def _deptry_mapping(doc: t.Cli.TomlDocument) -> t.JsonMapping:
+        """Unwrap the canonical tool.deptry table from one document."""
+        return u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["deptry"]
+        )
+
+    @staticmethod
+    def _ruff_ignores(doc: t.Cli.TomlDocument) -> t.JsonMapping:
+        """Unwrap the canonical tool.ruff.lint per-file-ignores table."""
+        root = u.Tests.toml_doc_mapping(doc)
+        lint = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_mapping(root["tool"])["ruff"])["lint"]
+        )
+        return u.Tests.toml_mapping(lint["per-file-ignores"])
 
     def test_typecheck_policy_keeps_tracked_surfaces_visible(
         self, tool_config_document: m.Infra.ToolConfigDocument
@@ -138,9 +154,7 @@ skip = ".git,poetry.lock"
             doc, path=project_dir / "pyproject.toml"
         )
 
-        deptry = u.Tests.mapping(
-            u.Tests.mapping(u.Tests.toml_doc_mapping(doc)["tool"])["deptry"]
-        )
+        deptry = TestsFlextInfraDepsModernizerTooling._deptry_mapping(doc)
         tm.that(
             list(u.Tests.toml_strings(deptry["known_first_party"])),
             eq=["flext_core", "flext_sample"],
@@ -168,9 +182,7 @@ workspace = true
             doc, path=project_dir / "pyproject.toml"
         )
 
-        deptry = u.Tests.mapping(
-            u.Tests.mapping(u.Tests.toml_doc_mapping(doc)["tool"])["deptry"]
-        )
+        deptry = TestsFlextInfraDepsModernizerTooling._deptry_mapping(doc)
         tm.that(
             list(u.Tests.toml_strings(deptry["known_first_party"])),
             eq=["flext_core", "flext_sample"],
@@ -312,11 +324,7 @@ select = ["E501"]
             doc, path=project_dir / "pyproject.toml"
         )
 
-        root = u.Tests.toml_doc_mapping(doc)
-        lint = u.Tests.mapping(
-            u.Tests.mapping(u.Tests.mapping(root["tool"])["ruff"])["lint"]
-        )
-        ignores = u.Tests.mapping(lint["per-file-ignores"])
+        ignores = TestsFlextInfraDepsModernizerTooling._ruff_ignores(doc)
         tm.that(
             list(u.Tests.toml_strings(ignores["src/flext_cli/_config.py"])), eq=["N802"]
         )
@@ -333,11 +341,7 @@ select = ["E501"]
             doc, path=project_dir / "pyproject.toml"
         )
 
-        root = u.Tests.toml_doc_mapping(doc)
-        lint = u.Tests.mapping(
-            u.Tests.mapping(u.Tests.mapping(root["tool"])["ruff"])["lint"]
-        )
-        ignores = u.Tests.mapping(lint["per-file-ignores"])
+        ignores = TestsFlextInfraDepsModernizerTooling._ruff_ignores(doc)
         tm.that(ignores, lacks="src/flext_cli/_config.py")
 
     def test_ruff_phase_project_overrides_are_idempotent(

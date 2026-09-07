@@ -36,8 +36,7 @@ class FlextInfraDeferredSelfReferenceGate(FlextInfraScannerGateMixin, FlextInfra
     gate_id: ClassVar[str] = "deferred-self-reference"
     gate_name: ClassVar[str] = "Deferred Self Reference"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = "Flext Deferred Self Reference Detector"
-    tool_url: ClassVar[str] = "internal://flext-infra/deferred-self-reference"
+
     scan_error_message: ClassVar[str] = "deferred-self-reference scan failed"
 
     @override

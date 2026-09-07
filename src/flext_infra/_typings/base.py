@@ -83,6 +83,8 @@ class FlextInfraTypesBase:
     "Result for writing generated __init__.py."
     type StrSet = set[str]
     "Mutable string set (supports .update/.intersection/etc)."
+    type Container[T] = _Container[T]
+    "Structural membership container (supports ``in``) for any item type."
     type CanonicalValue = t.Scalar | t.StrSequence
     "Canonical governance value: scalar payload or string sequence."
 
