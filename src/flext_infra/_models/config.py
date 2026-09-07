@@ -55,14 +55,14 @@ class FlextInfraConfigModels:
     # model-validated here.
 
     class MiseToolSpec(_ConfigContract):
-        """One mise backend whose exact release is owned by ``mise.lock``."""
+        """One mise backend resolved to the newest published release."""
 
         selector: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical mise backend selector")
         ]
         version: Annotated[
             Literal["latest"],
-            m.Field(description="Moving release selector resolved by mise.lock"),
+            m.Field(description="Moving release selector resolved at setup time"),
         ]
         prerelease: Annotated[
             bool,
@@ -138,78 +138,6 @@ class FlextInfraConfigModels:
                 msg = "beads required_custom_types must be unique"
                 raise ValueError(msg)
             return self
-
-    class MiseLockPlatformSpec(_ConfigContract):
-        """Immutable download metadata for one tool platform."""
-
-        checksum: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                pattern=r"^sha256:[0-9a-f]{64}$",
-                description=(
-                    "SHA-256 digest emitted by Mise, when the upstream release "
-                    "publishes one. mise.lock is an external artifact this "
-                    "project reads: it records platforms whose asset carries no "
-                    "digest (observed on taplo windows-x64), and requiring one "
-                    "here rejected the whole lock over a platform the declared "
-                    "environments never install."
-                ),
-            ),
-        ] = None
-        url: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                pattern=r"^https://",
-                description="Immutable HTTPS artifact URL emitted by Mise",
-            ),
-        ]
-        url_api: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Optional immutable provider API URL"),
-        ] = None
-        provenance: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Optional artifact provenance mechanism"),
-        ] = None
-        provenance_verified: Annotated[
-            bool | None,
-            m.Field(description="Optional local provenance verification result"),
-        ] = None
-
-    class MiseLockToolSpec(_ConfigContract):
-        """One resolved tool version and its platform artifacts."""
-
-        version: Annotated[
-            t.NonEmptyStr, m.Field(description="Resolved immutable tool version")
-        ]
-        backend: Annotated[
-            t.NonEmptyStr, m.Field(description="Resolved Mise backend identity")
-        ]
-        specifiers: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                min_length=1, description="Source selectors resolved by this entry"
-            ),
-        ]
-        platforms: Annotated[
-            Mapping[t.NonEmptyStr, FlextInfraConfigModels.MiseLockPlatformSpec],
-            m.Field(
-                default_factory=dict, description="Resolved platform download metadata"
-            ),
-        ]
-
-    class MiseLockSpec(_ConfigContract):
-        """Typed shape of the generated Mise lockfile."""
-
-        lockfile_version: Annotated[
-            Literal[1], m.Field(description="Supported Mise lock schema version")
-        ]
-        tools: Annotated[
-            Mapping[
-                t.NonEmptyStr, t.VariadicTuple[FlextInfraConfigModels.MiseLockToolSpec]
-            ],
-            m.Field(description="Exactly resolved generated tool set"),
-        ]
 
     class MiseBootstrapEnvironmentSpec(_ConfigContract):
         """Validated environment contract rendered into generated Mise setup."""
@@ -400,23 +328,6 @@ class FlextInfraConfigModels:
                 "is a declared tool"
             ),
         ]
-        mise_lock_platforms: Annotated[
-            t.VariadicTuple[
-                Literal[
-                    "linux-x64",
-                    "linux-arm64",
-                    "linux-x64-musl",
-                    "linux-arm64-musl",
-                    "macos-x64",
-                    "macos-arm64",
-                    "windows-x64",
-                ]
-            ],
-            m.Field(
-                min_length=1,
-                description="Platforms materialized into the project mise lockfile",
-            ),
-        ]
         beads: Annotated[
             FlextInfraConfigModels.BeadsToolSpec,
             m.Field(description="Official Beads CLI installed through mise"),
@@ -446,14 +357,6 @@ class FlextInfraConfigModels:
                 ):
                     msg = f"protected_mise_tools references invalid owner: {owner}"
                     raise TypeError(msg)
-            return self
-
-        @u.model_validator(mode="after")
-        def _validate_mise_lock_platforms(self) -> Self:
-            """Reject duplicate lock targets before platform metadata generation."""
-            if len(set(self.mise_lock_platforms)) != len(self.mise_lock_platforms):
-                msg = "mise_lock_platforms must be unique"
-                raise ValueError(msg)
             return self
 
         @m.computed_field
@@ -2455,13 +2358,6 @@ class FlextInfraConfigModels:
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
         python_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
-        ]
-        mise_lock_platforms: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                min_length=1,
-                description="Fleet platforms projected into native Mise lock policy",
-            ),
         ]
         kubectl_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact kubectl toolchain version")

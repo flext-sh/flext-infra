@@ -172,12 +172,8 @@
 		printf 'ERROR: missing generated mise launcher: %s; run make gen APPLY=Y\n' "{{ mise }}" >&2; \
 		exit 2; \
 	fi; \
-	if [ ! -f "{{ project_root }}/mise.lock" ]; then \
-		printf 'ERROR: missing generated mise.lock; run make gen APPLY=Y and commit it\n' >&2; \
-		exit 2; \
-	fi; \
 	{{ mise_runtime_bootstrap(project_root, mise, bootstrap) }}; \
-	mise_checked "$$scratch/install.log" mise_exec project "$$latest_mise" -C "$$project_root" install --locked --yes; \
+	mise_checked "$$scratch/install.log" mise_exec project "$$latest_mise" -C "$$project_root" install --yes; \
 	mise_checked "$$scratch/uv-version.log" mise_exec project "$$latest_mise" -C "$$project_root" exec -- uv --version; \
 	uv_output=$$(cat "$$scratch/uv-version.log"); \
 	case "$$uv_output" in \

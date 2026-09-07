@@ -4,15 +4,8 @@
 # Free: no
 # End SECTION: header
 # NOTE: mise carries the Python runtime and native tools from the config SSOT.
-# Python dependencies remain owned by uv.lock.
-
-[settings]
-# The lockfile is a generated, committed projection of immutable tool metadata.
-lockfile = true
-lockfile_platforms = {{ mise_lock_platforms | list | tojson }}
-
-[tool_config]
-locked = true
+# Python dependencies remain owned by uv.lock. Mise resolves every tool to the
+# newest published release at setup time: the fleet runs unlocked and current.
 
 # === SECTION: tools (managed) ===
 # Source: config:python_version, config:codegen.scaffold.project.dev native toolchain floors

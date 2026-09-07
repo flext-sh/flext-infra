@@ -68,7 +68,6 @@ class FlextInfraMiseStaging:
         artifact_states = (
             project.artifacts.unix_launcher,
             project.artifacts.windows_launcher,
-            project.artifacts.lock,
         )
         for source, (name, mode) in zip(
             artifact_states, files.ARTIFACT_SPECS, strict=True

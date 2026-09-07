@@ -19,7 +19,6 @@ class FlextInfraMiseArtifactsFiles:
     ARTIFACT_SPECS: Final[t.VariadicTuple[t.Pair[str, int]]] = (
         ("bin/mise", 0o755),
         ("bin/mise.cmd", 0o644),
-        ("mise.lock", 0o644),
     )
     CONFIG_SPEC: Final[t.Pair[str, int]] = (c.Infra.MISE_TOML_FILENAME, 0o644)
     PUBLICATION_SPECS: Final[t.VariadicTuple[t.Pair[str, int]]] = (

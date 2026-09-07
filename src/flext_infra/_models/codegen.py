@@ -50,7 +50,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         windows_launcher: Annotated[
             Path, m.Field(description="Windows launcher destination")
         ]
-        lock: Annotated[Path, m.Field(description="Project Mise lock destination")]
 
     class MiseToolchainProjectLayout(m.ArbitraryTypesModel):
         """Stable paths needed to validate and recover one project."""
@@ -145,7 +144,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         ]
         artifacts: Annotated[
             FlextInfraModelsCodegen.MiseToolchainArtifactSet,
-            m.Field(description="Named launcher and lock states"),
+            m.Field(description="Named launcher states"),
         ]
 
         @u.model_validator(mode="after")
@@ -155,13 +154,11 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 self.layout.artifacts.config,
                 self.layout.artifacts.unix_launcher,
                 self.layout.artifacts.windows_launcher,
-                self.layout.artifacts.lock,
             )
             observed = (
                 self.config.before.path,
                 self.artifacts.unix_launcher.path,
                 self.artifacts.windows_launcher.path,
-                self.artifacts.lock.path,
             )
             if observed != expected:
                 msg = "Mise project states differ from declared destinations"
@@ -179,10 +176,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         windows_launcher: Annotated[
             m.Cli.AtomicFileState,
             m.Field(description="Observed Windows launcher state"),
-        ]
-        lock: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(description="Observed project Mise lock state"),
         ]
 
     class MiseToolchainWorkspacePlan(m.ArbitraryTypesModel):

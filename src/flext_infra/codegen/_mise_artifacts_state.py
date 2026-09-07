@@ -73,7 +73,6 @@ class FlextInfraMiseArtifactsState:
                         project.artifacts.config,
                         project.artifacts.unix_launcher,
                         project.artifacts.windows_launcher,
-                        project.artifacts.lock,
                     )
                 }
                 project_device = cls._hosting_device(project.root)
