@@ -33,8 +33,8 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
-            ".auditor": ("FlextInfraDocAuditor",),
             ".analyzer": ("FlextInfraDocAnalyzer",),
+            ".auditor": ("FlextInfraDocAuditor",),
             ".auditor_mixin": ("FlextInfraDocAuditorMixin",),
             ".base": ("FlextInfraDocServiceBase",),
             ".builder": ("FlextInfraDocBuilder",),

@@ -9,8 +9,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from typing import TYPE_CHECKING, ClassVar, Final
-
     from flext_tests import FlextTestsConstants, d, e, h, r, td, tf, tk, tm, tv, x
 
     from . import integration as integration, refactor as refactor, unit as unit
@@ -37,11 +35,7 @@ if TYPE_CHECKING:
     from .utilities_toml import TestsFlextInfraUtilitiesTomlMixin
     from .utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnvMixin
 __all__: tuple[str, ...] = (
-    "TYPE_CHECKING",
-    "ClassVar",
-    "Final",
     "FlextTestsConstants",
-    "MappingProxyType",
     "TestsFlextInfraConstants",
     "TestsFlextInfraConstantsScanMixin",
     "TestsFlextInfraModels",
@@ -130,8 +124,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "tv",
                 "x",
             ),
-            "types": ("MappingProxyType",),
-            "typing": ("ClassVar", "Final", "TYPE_CHECKING"),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

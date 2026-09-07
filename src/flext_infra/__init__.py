@@ -62,6 +62,7 @@ if TYPE_CHECKING:
     from .codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
     from .codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
     from .codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
+    from .codegen.mise_artifacts_lock import FlextInfraMiseLock
     from .codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
     from .codegen.pipeline import FlextInfraCodegenPipeline
     from .codegen.project_new import FlextInfraCodegenProjectNew
@@ -361,6 +362,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraManualProtocolDetector",
     "FlextInfraManualTypingAliasDetector",
     "FlextInfraMarkdownGate",
+    "FlextInfraMiseLock",
     "FlextInfraMiseWorkspacePlanner",
     "FlextInfraModGateEngine",
     "FlextInfraModels",
@@ -398,6 +400,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorMroRemover",
     "FlextInfraRefactorOpenEncoding",
     "FlextInfraRefactorPatternTransformer",
+    "FlextInfraRefactorProjectAliasMigrator",
     "FlextInfraRefactorPydanticModernizer",
     "FlextInfraRefactorSignaturePropagator",
     "FlextInfraRefactorSymbolPropagator",
@@ -520,6 +523,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen.lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
             ".codegen.make_bootstrap": ("FlextInfraCodegenMakeBootstrap",),
             ".codegen.mise_artifacts": ("FlextInfraCodegenMiseArtifacts",),
+            ".codegen.mise_artifacts_lock": ("FlextInfraMiseLock",),
             ".codegen.mise_artifacts_workspace": ("FlextInfraMiseWorkspacePlanner",),
             ".codegen.pipeline": ("FlextInfraCodegenPipeline",),
             ".codegen.project_new": ("FlextInfraCodegenProjectNew",),
@@ -597,8 +601,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".detectors.runtime_alias_detector": ("FlextInfraRuntimeAliasDetector",),
             ".detectors.silent_failure_detector": ("FlextInfraSilentFailureDetector",),
             ".docs": ("docs",),
-            ".docs.auditor": ("FlextInfraDocAuditor",),
             ".docs.analyzer": ("FlextInfraDocAnalyzer",),
+            ".docs.auditor": ("FlextInfraDocAuditor",),
             ".docs.auditor_mixin": ("FlextInfraDocAuditorMixin",),
             ".docs.base": ("FlextInfraDocServiceBase",),
             ".docs.builder": ("FlextInfraDocBuilder",),

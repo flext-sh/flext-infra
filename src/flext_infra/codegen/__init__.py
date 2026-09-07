@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from .lazy_init_planner import FlextInfraCodegenLazyInitPlanner
     from .make_bootstrap import FlextInfraCodegenMakeBootstrap
     from .mise_artifacts import FlextInfraCodegenMiseArtifacts
+    from .mise_artifacts_lock import FlextInfraMiseLock
     from .mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
     from .pipeline import FlextInfraCodegenPipeline
     from .project_new import FlextInfraCodegenProjectNew
@@ -45,6 +46,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenScaffolder",
     "FlextInfraCodegenTransaction",
     "FlextInfraCodegenVersionFile",
+    "FlextInfraMiseLock",
     "FlextInfraMiseWorkspacePlanner",
 )
 
@@ -63,6 +65,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
             ".make_bootstrap": ("FlextInfraCodegenMakeBootstrap",),
             ".mise_artifacts": ("FlextInfraCodegenMiseArtifacts",),
+            ".mise_artifacts_lock": ("FlextInfraMiseLock",),
             ".mise_artifacts_workspace": ("FlextInfraMiseWorkspacePlanner",),
             ".pipeline": ("FlextInfraCodegenPipeline",),
             ".project_new": ("FlextInfraCodegenProjectNew",),
