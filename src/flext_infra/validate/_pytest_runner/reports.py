@@ -57,6 +57,11 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             return r.ok(accounting)
         if cache_restored and deselected:
             return r.ok(accounting)
+        # An accepted cache plus an empty selection means testmon proved no
+        # test is affected by any change since the last green run: the green
+        # state is idempotent, not absent. A cold cache still fails loud.
+        if cache_restored:
+            return r.ok(accounting)
         msg = self._failure_detail("pytest executed zero tests", log)
         raise RuntimeError(msg)
 
