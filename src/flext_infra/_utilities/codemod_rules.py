@@ -217,7 +217,8 @@ class FlextInfraUtilitiesCodemodRules:
             # sources) expose directory names that are not importable modules;
             # they cannot host codemod provider configs.
             if not package_name or not all(
-                part.isidentifier() for part in package_name.split(".")
+                part.isidentifier()
+                for part in package_name.replace("/", ".").split(".")
             ):
                 continue
             spec = find_spec(package_name)
