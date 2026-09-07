@@ -307,8 +307,6 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
     @override
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
         """Apply alias migration to source text."""
-        from flext_infra import u
-
         self.changes.clear()
         if self._file_path is not None and (
             self._is_private_facade_implementation(self._file_path)
@@ -365,7 +363,7 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
             )
         if file_path is None:
             return m.Infra.AliasMigrationContext(policy_owner="", import_root="")
-        return FlextInfraUtilitiesDiscovery.alias_migration_context(file_path)
+        return u.Infra.alias_migration_context(file_path)
 
     @staticmethod
     def _is_private_facade_implementation(file_path: Path) -> bool:

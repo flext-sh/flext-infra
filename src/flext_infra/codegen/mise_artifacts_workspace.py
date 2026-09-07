@@ -81,7 +81,7 @@ class FlextInfraMiseWorkspacePlanner:
             return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(workspace)
         if requested != scope_root and not any(
             (scope_root / project.path).absolute() == requested
-            for project in workspace.value.declared_repositories
+            for project in workspace.value.subprojects
         ):
             return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
                 f"Git submodule is absent from governed workspace: {requested}"
@@ -90,7 +90,7 @@ class FlextInfraMiseWorkspacePlanner:
             ".",
             *(
                 project.path.as_posix()
-                for project in workspace.value.declared_repositories
+                for project in workspace.value.subprojects
             ),
         )
         return self.layout_from_selectors(

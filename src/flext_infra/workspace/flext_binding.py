@@ -71,7 +71,7 @@ class FlextInfraFlextBindingService:
             )
         available = {
             declared_repository.distribution: declared_repository
-            for declared_repository in workspace.value.declared_repositories
+            for declared_repository in workspace.value.subprojects
             if declared_repository.package
         }
         declared = cls._declared_distributions(consumer_root)
@@ -100,7 +100,7 @@ class FlextInfraFlextBindingService:
             declared_repository.distribution: (
                 flext_root / declared_repository.path
             ).resolve()
-            for declared_repository in workspace.value.declared_repositories
+            for declared_repository in workspace.value.subprojects
             if declared_repository.package
         }
         editables: list[str] = []

@@ -71,7 +71,7 @@ class TestsWorkspaceMemberLedgerIdentity:
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(parent))
 
         tm.that(
-            tuple(item.path for item in workspace.declared_repositories),
+            tuple(item.path for item in workspace.subprojects),
             has=Path("apps/member"),
         )
 
