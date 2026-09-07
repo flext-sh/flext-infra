@@ -7,13 +7,12 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core.result import FlextResult as r
-from flext_infra.constants import FlextInfraConstants as c
-from flext_infra.typings import FlextInfraTypes as t
+from flext_infra import c, t
 
 from .._utilities.git import FlextInfraUtilitiesGit
 
 if TYPE_CHECKING:
-    from flext_infra import FlextInfraProtocols as p
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocsScopePathsMixin:
