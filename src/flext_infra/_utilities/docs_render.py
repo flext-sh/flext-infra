@@ -10,6 +10,8 @@ from typing import ClassVar
 from flext_cli import u
 from flext_infra import c, config, m, t
 
+from .._utilities.docs import FlextInfraUtilitiesDocs
+
 
 class FlextInfraUtilitiesDocsRender:
     """Rendering helpers for generated docs content."""
@@ -111,13 +113,19 @@ class FlextInfraUtilitiesDocsRender:
         ``docs/index.md`` pages are built by MkDocs with ``docs_dir`` isolation,
         so governance pointers must be absolute GitHub URLs.
         """
-        if prefix.startswith(("http://", "https://")):
+        if FlextInfraUtilitiesDocs.docs_is_secure_web_url(prefix):
             kind = "tree" if is_dir else "blob"
-            branch = "0.12.0-dev"
-            for repo in config.Infra.codegen.make.docs.github_repos:
-                if repo.organization == "flext-sh" and repo.repository == "flext":
-                    branch = repo.branch
-                    break
+            branches = tuple(
+                repo.branch
+                for repo in config.Infra.codegen.make.docs.github_repos
+                if prefix.rstrip("/").endswith(
+                    f"/{repo.organization}/{repo.repository}"
+                )
+            )
+            if len(branches) != 1:
+                msg = "documentation repository owner must resolve exactly once"
+                raise ValueError(msg)
+            (branch,) = branches
             return f"{prefix}/{kind}/{branch}/{path}"
         return f"{prefix}/{path}"
 
@@ -236,11 +244,10 @@ class FlextInfraUtilitiesDocsRender:
             "## Quality Gates",
             "",
             (
-                f"Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, "
-                f"`val`, `docs`) — see [`/flext/AGENTS.md`]({agents_link}) `Build & Test` "
-                f"and `Required Python quality gates`; selector routing is owned "
-                f"universally by `config.AiHub.paths.agents_home`/"
-                f"`skills/make-check/SKILL.md`."
+                f"Canonical selector-free `make` verbs (`check`, `test`, `fmt`, "
+                f"`conform`, `docs`) use `APPLY=Y` — see "
+                f"[`/flext/AGENTS.md`]({agents_link}) `Build & Test` and "
+                f"`Required Python quality gates`."
             ),
         ]
 

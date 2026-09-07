@@ -20,7 +20,7 @@ class FlextInfraUtilitiesRepository:
         *,
         provider: m.Infra.ProviderSpec,
         role: c.Infra.MakeProfile = c.Infra.MakeProfile.STANDALONE,
-        checkout: c.Infra.CheckoutKind = c.Infra.CheckoutKind.SUBMODULE,
+        kind: c.Infra.ProjectKind = c.Infra.ProjectKind.INTERNAL_FLEXT,
     ) -> m.Infra.RepositoryRef:
         """Derive one repository reference from generic provider policy.
 
@@ -36,7 +36,7 @@ class FlextInfraUtilitiesRepository:
             path=Path(distribution),
             role=role,
             provider=provider.name,
-            checkout=checkout,
+            kind=kind,
             codegen=c.Infra.CodegenKind.CONFORM,
             package=True,
             editable=True,
@@ -124,7 +124,7 @@ class FlextInfraUtilitiesRepository:
         have published anything yet (project creation). Without it, a checkout
         with no integration branch fails closed instead of guessing.
         """
-        from flext_infra.utilities import u
+        from flext_infra import u
 
         candidates = preference or c.Infra.INTEGRATION_BRANCH_PREFERENCE
         for candidate in candidates:
@@ -159,9 +159,7 @@ class FlextInfraUtilitiesRepository:
         if resolved_workspace is None:
             loaded = FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)
             if loaded.failure:
-                return r[m.Infra.RepositoryConformTarget].fail(
-                    loaded.error or "workspace topology load failed"
-                )
+                return r[m.Infra.RepositoryConformTarget].from_failure(loaded)
             resolved_workspace = loaded.value
         return FlextInfraWorkspaceDetector.conform_target(
             repository_root, resolved_workspace

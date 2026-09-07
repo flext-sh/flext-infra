@@ -2,21 +2,35 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import t
 
+from .._models.deps_tool_config import FlextInfraModelsDepsToolSettings
+
 
 class FlextInfraModelsCodegenRender:
     """Typed render contexts for generated codegen artifacts."""
+
+    class MarkdownLintRenderSpec(m.ContractModel):
+        """Validated tooling-only context for Markdown lint projections."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True, strict=True
+        )
+
+        tooling: Annotated[
+            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
+            m.Field(description="Canonical validated tooling policy."),
+        ]
 
     # NOTE (multi-agent, flext-wkii.17 / agent: uv_overlay_owner): keep the
     # module-skeleton template boundary model-backed and immutable.
     class ModuleSkeletonRenderContext(m.ContractModel):
         """Validated context for one generated module skeleton."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid", frozen=True, str_strip_whitespace=False
         )
 
@@ -30,7 +44,7 @@ class FlextInfraModelsCodegenRender:
     class MkdocsRenderContext(m.ContractModel):
         """Validated common context for a generated MkDocs configuration."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid", frozen=True, strict=True, str_strip_whitespace=False
         )
 
@@ -52,7 +66,7 @@ class FlextInfraModelsCodegenRender:
     class LazyInitRootRender(m.ArbitraryTypesModel):
         """Template context for one lazy public root ``__init__.py``."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
@@ -64,20 +78,20 @@ class FlextInfraModelsCodegenRender:
             default_factory=str,
             description="Static declarations for public lazy exports.",
         )
-        exports: t.StrSequence = m.Field(
-            default_factory=tuple, description="Published root ``__all__`` names."
+        exports_tuple: t.NonEmptyStr = m.Field(
+            description="Canonical rendered root ``__all__`` tuple."
         )
-        lazy_module_groups: t.StrSequencePairSequence = m.Field(
-            default_factory=tuple, description="Lazy imports grouped by module."
+        lazy_module_mapping: t.NonEmptyStr = m.Field(
+            description="Canonical rendered lazy module mapping."
         )
-        lazy_alias_groups: t.StrPairSequencePairSequence = m.Field(
-            default_factory=tuple, description="Lazy aliases grouped by module."
+        lazy_alias_mapping: t.NonEmptyStr = m.Field(
+            description="Canonical rendered lazy alias mapping."
         )
 
     class StaticPackageInitRender(m.ArbitraryTypesModel):
         """Template context for a non-root static ``__init__.py``."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")

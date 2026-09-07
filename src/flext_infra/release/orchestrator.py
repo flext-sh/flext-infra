@@ -6,10 +6,9 @@ from typing import Annotated
 
 from flext_infra import c, m
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-from flext_infra.release._orchestrator_dispatch import (
-    FlextInfraReleaseOrchestratorDispatchMixin,
-)
 from flext_infra.release.orchestrator_phases import FlextInfraReleaseOrchestratorPhases
+
+from ._orchestrator_dispatch import FlextInfraReleaseOrchestratorDispatchMixin
 
 
 class FlextInfraReleaseOrchestrator(
@@ -17,7 +16,7 @@ class FlextInfraReleaseOrchestrator(
     FlextInfraReleaseOrchestratorPhases,
     FlextInfraProjectSelectionServiceBase[bool],
 ):
-    """Run one phase of the release protocol against the workspace root.
+    """Run one phase of the release protocol against the repository root.
 
     The version lives only in ``pyproject.toml``; the protocol derives every
     change from merged pull-request titles and is the sole writer.

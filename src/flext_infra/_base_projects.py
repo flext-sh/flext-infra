@@ -10,10 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import u
-from flext_infra import c, m, p, t
-from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraProjectSelectionMixin:
@@ -30,12 +27,12 @@ class FlextInfraProjectSelectionMixin:
     @property
     def project_names(self) -> t.StrSequence | None:
         """Normalized selected project names."""
-        return ub.normalize_sequence_values(self.selected_projects)
+        return u.Infra.normalize_sequence_values(self.selected_projects)
 
     @property
     def project_dirs(self) -> t.SequenceOf[Path] | None:
         """Resolve selected project directories relative to the repository root."""
-        names = ub.normalize_sequence_values(self.selected_projects)
+        names = u.Infra.normalize_sequence_values(self.selected_projects)
         if names is None:
             return None
         return [self.root / name for name in names]
@@ -49,7 +46,7 @@ class FlextInfraProjectSelectionMixin:
         projects: t.StrSequence | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Run one docs phase across the resolved governed scopes."""
-        return FlextInfraUtilitiesDocs.run_scoped(
+        return u.Infra.run_scoped(
             repository_root,
             projects=self.selected_projects if projects is None else projects,
             output_dir=u.Cli.resolve_optional_path(

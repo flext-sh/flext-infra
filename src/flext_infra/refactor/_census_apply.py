@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import ast
-import re
+import operator
 from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
+from flext_infra import c, m, u
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
@@ -23,15 +23,14 @@ from flext_infra.detectors.manual_typing_alias_detector import (
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
-from flext_infra.refactor._census_apply_formatting import (
-    FlextInfraRefactorCensusApplyFormattingMixin,
-)
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
 )
 
+from ._census_apply_formatting import FlextInfraRefactorCensusApplyFormattingMixin
+
 if TYPE_CHECKING:
-    from flext_infra import m, p, t
+    from flext_infra import p, t
 
 _log = u.fetch_logger(__name__)
 
@@ -196,8 +195,8 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                 if file_path.suffix == ".pyi" and file_path.exists():
                     file_path.unlink()
                     changed = True
-            elif action == "one_class_per_module":
-                changed = self._apply_one_class_per_module(
+            elif action == "relocate_facade_class":
+                changed = self._apply_class_family_relocation(
                     rope=rope, file_path=file_path, object_names=object_names
                 )
             elif action == "fix_silent_failure_sentinels":
@@ -238,7 +237,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                     error=msg,
                 )
                 continue
-            if apply_result.unwrap_or(False):
+            if apply_result.unwrap():
                 applied.add(
                     self._fix_key(Path(candidate.file_path), candidate.object_name)
                 )
@@ -253,7 +252,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         if applied:
             self._ruff_fix_touched_files(touched_paths)
             if not stub_only:
-                self._regenerate_inits_via_codegen()
+                self._preflight_inits_via_codegen()
             rope.reload()
         return frozenset(applied)
 
@@ -290,8 +289,12 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         try:
             pymodule = u.Infra.get_pymodule(rope.rope_project, resource)
             tree = pymodule.get_ast()
-        except (*u.Infra.rope_runtime_errors(), TypeError):
-            return False
+        except (*u.Infra.rope_runtime_errors(), TypeError) as exc:
+            msg = (
+                f"census inline-import apply could not parse {file_path}: "
+                f"{type(exc).__name__}: {exc!s}"
+            )
+            raise RuntimeError(msg) from exc
         if not isinstance(tree, ast.Module):
             return False
         source = rope.source(file_path)
@@ -319,8 +322,12 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         new_source = "".join(updated_lines)
         try:
             compile(new_source, str(file_path), "exec")
-        except SyntaxError:
-            return False
+        except SyntaxError as exc:
+            msg = (
+                f"census inline-import apply produced invalid syntax for "
+                f"{file_path}: {exc}"
+            )
+            raise RuntimeError(msg) from exc
         resource.write(new_source)
         for module_name, names in imports_to_add:
             if module_name:
@@ -374,15 +381,15 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             changed = changed or applied_one
         return changed
 
-    def _apply_one_class_per_module(
+    def _apply_class_family_relocation(
         self, *, rope: p.Infra.RopeWorkspaceDsl, file_path: Path, object_names: set[str]
     ) -> bool:
-        """Apply ENFORCE-067: split a single misplaced class to its own module."""
+        """Relocate misplaced facade classes to their derived family modules."""
         ctx = self._detector_context(rope, file_path)
         violations = [
             violation
             for violation in FlextInfraClassPlacementDetector.detect_file(ctx)
-            if violation.action == "one_class_per_module"
+            if violation.action == "relocate_facade_class"
             and violation.name in object_names
             and violation.fixable
         ]
@@ -395,23 +402,29 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             else convention.package_dir
         )
         changed = False
-        for violation in violations:
+        for violation in sorted(
+            violations, key=operator.attrgetter("line"), reverse=True
+        ):
             family = violation.family
             if not family:
                 continue
-            family_dir = c.Infra.FAMILY_DIRECTORIES.get(family)
-            if family_dir is None:
-                continue
-            target_file = (
-                package_dir / family_dir / f"{self._to_snake_case(violation.name)}.py"
-            )
-            if self._move_class_to_file(
-                rope=rope,
+            target_file = u.Infra.class_target_file(
+                package_dir=package_dir,
                 source_file=file_path,
-                target_file=target_file,
                 class_name=violation.name,
-            ):
-                changed = True
+                family=family,
+            )
+            u.Infra.move_class(
+                m.Infra.ClassMoveRequest(
+                    rope_project=rope.rope_project,
+                    source_file=file_path,
+                    target_file=target_file,
+                    class_name=violation.name,
+                    line=violation.line,
+                    apply=True,
+                )
+            )
+            changed = True
         return changed
 
     @staticmethod
@@ -419,52 +432,6 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         """Return the canonical _constants module for a source convention."""
         base_package = convention.package_name.split(".")[0]
         return f"{base_package}._constants"
-
-    @staticmethod
-    def _to_snake_case(name: str) -> str:
-        """Convert a PascalCase class name to a snake_case module name."""
-        return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
-
-    def _move_class_to_file(
-        self,
-        *,
-        rope: p.Infra.RopeWorkspaceDsl,
-        source_file: Path,
-        target_file: Path,
-        class_name: str,
-    ) -> bool:
-        """Move a single top-level class from ``source_file`` to ``target_file``."""
-        source_resource = rope.resource(source_file)
-        if source_resource is None:
-            return False
-        source = source_resource.read()
-        prefix = f"class {class_name}"
-        offset = source.find(prefix)
-        if offset < 0:
-            return False
-        # Place the cursor on the class name, not on the ``class`` keyword.
-        offset += len("class ")
-
-        target_file.parent.mkdir(parents=True, exist_ok=True)
-        if not target_file.exists():
-            target_file.write_text(
-                f"{c.Infra.FUTURE_ANNOTATIONS}\n", encoding=c.Cli.ENCODING_DEFAULT
-            )
-            rope.reload()
-
-        target_resource = rope.resource(target_file)
-        if target_resource is None:
-            return False
-        try:
-            mover = u.Infra.create_move(rope.rope_project, source_resource, offset)
-        except (*u.Infra.rope_runtime_errors(), TypeError):
-            return False
-        try:
-            changes = mover.get_changes(target_resource)
-            rope.rope_project.do(changes)
-        except c.EXC_BROAD_IO_TYPE:
-            return False
-        return True
 
     @staticmethod
     def _find_inline_import_node(
@@ -493,11 +460,9 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             drop.update(range(start, end + 1))
         return [line for index, line in enumerate(lines, start=1) if index not in drop]
 
-    def _regenerate_inits_via_codegen(self) -> None:
-        """Regenerate every ``__init__.py`` via the canonical lazy-init service."""
-        FlextInfraCodegenLazyInit(repository_root=self.root).generate_inits(
-            check_only=False
-        )
+    def _preflight_inits_via_codegen(self) -> None:
+        """Prove initializer planning before conform publishes the transaction."""
+        FlextInfraCodegenLazyInit(repository_root=self.root).plan_files().unwrap()
 
 
 def _find_parent(tree: ast.AST, target: ast.AST) -> ast.AST | None:

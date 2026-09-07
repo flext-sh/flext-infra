@@ -15,7 +15,7 @@ class FlextInfraModelsWorktree:
     class LintSnapshot(m.ContractModel):
         """Captured diagnostics from one lint tool invocation."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         tool: Annotated[t.NonEmptyStr, m.Field(description="Canonical tool name")]
         exit_code: Annotated[int, m.Field(description="Tool process exit code")]
@@ -32,7 +32,7 @@ class FlextInfraModelsWorktree:
     class RepositoryDelta(m.ContractModel):
         """Operation-only patch for one repository in a workspace transaction."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         relative_path: Annotated[
             t.NonEmptyStr,
@@ -58,7 +58,7 @@ class FlextInfraModelsWorktree:
     class RepositoryWorktree(m.ContractModel):
         """One source repository paired with its isolated worktree checkpoint."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         relative_path: Annotated[
             t.NonEmptyStr,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_infra import c, m, u
+from flext_infra import c, m
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.fixer import FlextInfraDocFixer
@@ -68,20 +68,6 @@ class ValidationRoutes(ValidationCommandRoutes):
                     "Validate completed successfully",
                 ),
             )
-        ),
-        c.Infra.CLI_GROUP_GITHUB: (
-            m.Cli.ResultCommandRoute(
-                name="workflows",
-                help_text="Sync GitHub workflow files across workspace",
-                model_cls=m.Infra.GithubWorkflowSyncRequest,
-                handler=u.Infra.sync_github_workflows,
-            ),
-            m.Cli.ResultCommandRoute(
-                name=c.Infra.LINT_SECTION,
-                help_text="Lint GitHub workflow files",
-                model_cls=m.Infra.GithubWorkflowLintRequest,
-                handler=u.Infra.lint_github_workflows,
-            ),
         ),
         c.Infra.CLI_GROUP_MAINTENANCE: (
             m.Cli.ResultCommandRoute(

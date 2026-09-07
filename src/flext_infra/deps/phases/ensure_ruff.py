@@ -5,9 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, m, t, u
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
@@ -87,11 +84,7 @@ class FlextInfraEnsureRuffConfigPhase:
             # no declared exemption yet. A directory that does exist but cannot
             # be inspected still fails loud below.
             return {}
-        loaded = (
-            FlextInfraUtilitiesProjectManagedArtifacts.load_project_managed_artifacts(
-                project_dir
-            )
-        )
+        loaded = u.Infra.load_project_managed_artifacts(project_dir)
         if loaded.failure:
             raise ValueError(loaded.error or "project artifact load failed")
         return loaded.value.artifacts.Ruff.per_file_ignores

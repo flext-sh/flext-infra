@@ -7,7 +7,8 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
-from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
+
+from .._utilities.base import FlextInfraUtilitiesBase as ub
 
 
 class FlextInfraModelsMixins:
@@ -29,7 +30,7 @@ class FlextInfraModelsMixins:
         command.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
         workspace: Annotated[
             str,

@@ -45,9 +45,9 @@ src/flext_infra/
 ## Commands
 
 ```bash
-make check PROJECT=flext-infra
-make test  PROJECT=flext-infra
-make build WHAT=artifacts
+make check APPLY=Y
+make test APPLY=Y
+make build APPLY=Y
 ```
 <!-- AIHUB-AGENTS-SCOPE-LOCAL-END -->
 

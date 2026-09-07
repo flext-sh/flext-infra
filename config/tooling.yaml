@@ -42,8 +42,6 @@ Infra:
           - .tmp/**
           - .claude/**
           - .vscode/**
-          - .codegraph/**
-          - .code-review-graph/**
           - .serena/**
           - .snapshots/**
           - .benchmarks/**
@@ -144,6 +142,9 @@ Infra:
             # requiring every test to opt in would let live state leak whenever
             # one consumer omitted the fixture.
             - pytest-fixture-autouse
+            # See the rationale below: this rule and ban-private-import demand
+            # opposite forms for the same import.
+            - relative-imports
             - too-many-arguments
             - too-many-branches
             - too-many-locals
@@ -156,9 +157,15 @@ Infra:
             - typing-only-standard-library-import
             - typing-only-third-party-import
           ignored-rule-rationales:
-            unsorted-imports:
-              Ruff sorts TYPE_CHECKING imports lexically and reverses the mandatory
-              semantic c-t-p-m-u dependency order in FLEXT facades.
+            relative-imports: >-
+              The codemod rule ban-private-import requires the opposite form.
+              Same-owner implementation modules use relative sibling imports and
+              every other consumer uses a public facade, because an absolute
+              private import couples a consumer to an owner layout. Selecting
+              both gates makes every internal import fail one of them.
+              Converting the 304 findings produced 301 ban-private-import
+              errors and took the suite from 1717 to 3135, so the architectural
+              rule decides.
             import-outside-top-level:
               Public facade models are imported lazily only at validation and
               construction sites to preserve the c-t-p-m-u graph and prevent runtime cycles.
@@ -526,6 +533,11 @@ Infra:
           # scripts/legado/dispatch.py.
           project-shared-search-paths: []
       pytest:
+        testmon-state-home-variable: XDG_STATE_HOME
+        testmon-datafile-variable: TESTMON_DATAFILE
+        testmon-namespace: flext/testmon
+        testmon-database-filename: .testmondata
+        testmon-lock-filename: cache.lock
         # flext-j47u (codex): scaffold/modernizer consume one complete pytest model.
         # OPERATOR LAW flext-38p39 (2026-08-13), reaffirmed by flext-09686
         # measurement. 10s per case, 60s for an explicitly slow case, 120s for
@@ -550,6 +562,9 @@ Infra:
         # process wall adds one minute for orderly worker/report shutdown.
         run-timeout-seconds: 600
         termination-grace-seconds: 2
+        # The first failing test is the only actionable red. Continuing after
+        # it wastes runtime and obscures the causal failure.
+        max-failures: 1
         enforcement-plugin: flext_tests_enforcement
         progress-args: [--verbose]
         report-args: [-ra, --durations=25, --durations-min=0.001, --tb=short]
@@ -563,9 +578,10 @@ Infra:
         # Reserve physical memory for each xdist worker and its child process
         # tree; this bound may reduce the tested ceiling on smaller hosts.
         parallel-worker-memory-gb: 2
-        # Work stealing drains uneven codegen/subprocess tails without the
-        # serialized 99% tail measured under loadscope.
-        parallel-distribution: worksteal
+        # Keep scheduling centralized so -x stops feeding workers after the
+        # first failure. Work stealing pre-allocated an entire worker queue and
+        # continued hundreds of cases for minutes after a decisive failure.
+        parallel-distribution: load
         profile-sort: cumulative
         profile-limit: 50
         min-version: "8.0"
@@ -619,6 +635,7 @@ Infra:
       tomlsort:
         all: true
         in_place: true
+        process-timeout-seconds: 60
         sort_first: [project, build-system, tool, dependency-groups]
       vulture:
         # NOTE (multi-agent, flext-j47u): Vulture 2.16 reports keyword-bearing

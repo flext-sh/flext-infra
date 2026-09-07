@@ -6,7 +6,8 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
-from flext_infra._models._defaults import ImmutableEmptyMapping
+
+from .._models._defaults import ImmutableEmptyMapping
 
 
 class FlextInfraModelsDepsToolConfigTypeCheckers:
@@ -36,7 +37,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
         class ExecutionEnvironment(m.ContractModel):
             """Pyright execution environment entry."""
 
-            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
             root: Annotated[
                 str, m.Field(description="Execution environment root path.")

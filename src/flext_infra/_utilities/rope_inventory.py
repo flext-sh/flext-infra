@@ -5,13 +5,14 @@ from __future__ import annotations
 from operator import itemgetter
 from pathlib import Path
 
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
-from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
+
+from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from .._utilities.rope_imports import FlextInfraUtilitiesRopeImports
+from .._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeInventory:
@@ -359,7 +360,7 @@ class FlextInfraUtilitiesRopeInventory:
         source: str,
         name: str,
         line: int,
-        rope_workspace: p.AttributeProbe | None = None,
+        rope_workspace: p.Infra.RopeWorkspaceDsl | None = None,
         module_name: str,
     ) -> tuple[
         tuple[m.Infra.Census.ReferenceSite, ...],
@@ -377,16 +378,6 @@ class FlextInfraUtilitiesRopeInventory:
         )
         search_resources: tuple[t.Infra.RopeResource, ...] | None = None
         if rope_workspace is not None and definition_path is not None:
-            fast_path = (
-                FlextInfraUtilitiesRopeInventory._fast_reference_sites_from_index(
-                    rope_workspace,
-                    name=name,
-                    definition_path=definition_path,
-                    line=line,
-                )
-            )
-            if fast_path is not None:
-                return fast_path
             dependent_import_targets = (
                 (module_name, f"{module_name}.{name}")
                 if module_name
@@ -449,139 +440,7 @@ class FlextInfraUtilitiesRopeInventory:
                 FlextInfraUtilitiesRopeInventory._discard_definition_site(
                     runtime_reference_sites, definition_path=definition_path, line=line
                 )
-        has_reference_sites = bool(runtime_reference_sites or script_reference_sites)
-        if (
-            not has_reference_sites
-            and rope_workspace is not None
-            and definition_path is not None
-            and module_name
-        ):
-            (fallback_runtime_reference_sites, fallback_script_reference_sites) = (
-                FlextInfraUtilitiesRopeInventory._fallback_reference_sites_from_index(
-                    rope_workspace,
-                    definition_path=definition_path,
-                    module_name=module_name,
-                    name=name,
-                )
-            )
-            runtime_reference_sites.extend(fallback_runtime_reference_sites)
-            script_reference_sites.extend(fallback_script_reference_sites)
         return (tuple(runtime_reference_sites), tuple(script_reference_sites))
-
-    @staticmethod
-    def _fallback_reference_sites_from_index(
-        rope_workspace: p.AttributeProbe,
-        *,
-        definition_path: Path,
-        module_name: str,
-        name: str,
-    ) -> tuple[
-        tuple[m.Infra.Census.ReferenceSite, ...],
-        tuple[m.Infra.Census.ReferenceSite, ...],
-    ]:
-        """Fallback reference sites from indexed dependent modules.
-
-        Rope can miss external class-name uses for some non-src surfaces even when
-        semantic import analysis already proves the dependent module imports the
-        exact symbol. In that narrow case, synthesize reference sites from the
-        name index restricted to the semantic dependents only.
-        """
-        name_index_getter = getattr(rope_workspace, "name_index", None)
-        import_dependents_getter = getattr(rope_workspace, "import_dependents", None)
-        if name_index_getter is None or not callable(import_dependents_getter):
-            return ((), ())
-        dependent_paths: set[str] = set()
-        for import_target in (module_name, f"{module_name}.{name}"):
-            dependent_paths_raw = import_dependents_getter(import_target)
-            if not isinstance(dependent_paths_raw, tuple):
-                msg = (
-                    "rope import_dependents returned non-tuple for "
-                    f"{import_target}: {type(dependent_paths_raw).__name__}"
-                )
-                raise TypeError(msg)
-            for path in dependent_paths_raw:
-                if not isinstance(path, Path):
-                    msg = (
-                        "rope import_dependents returned invalid path for "
-                        f"{import_target}: {type(path).__name__}"
-                    )
-                    raise TypeError(msg)
-                dependent_paths.add(
-                    FlextInfraUtilitiesRopeInventory._normalize_file_path(
-                        path.resolve()
-                    )
-                )
-        if not dependent_paths:
-            return ((), ())
-        normalized_definition = FlextInfraUtilitiesRopeInventory._normalize_file_path(
-            definition_path.resolve()
-        )
-        runtime_reference_sites: list[m.Infra.Census.ReferenceSite] = []
-        script_reference_sites: list[m.Infra.Census.ReferenceSite] = []
-        seen_sites: set[tuple[str, int, str]] = set()
-        for path, surface, lines in name_index_getter().get(name, ()):
-            normalized_path = FlextInfraUtilitiesRopeInventory._normalize_file_path(
-                path.resolve()
-            )
-            if path.name == c.Infra.INIT_PY or normalized_path == normalized_definition:
-                continue
-            if normalized_path not in dependent_paths:
-                continue
-            for line in lines:
-                site_key = (normalized_path, line, surface)
-                if site_key in seen_sites:
-                    continue
-                seen_sites.add(site_key)
-                reference_site = m.Infra.Census.ReferenceSite(
-                    file_path=normalized_path, line=line, surface=surface
-                )
-                if surface in {c.Infra.DIR_TESTS, c.Infra.DIR_EXAMPLES}:
-                    continue
-                if surface == c.Infra.DIR_SCRIPTS:
-                    script_reference_sites.append(reference_site)
-                    continue
-                runtime_reference_sites.append(reference_site)
-        return (tuple(runtime_reference_sites), tuple(script_reference_sites))
-
-    @staticmethod
-    def _fast_reference_sites_from_index(
-        rope_workspace: p.AttributeProbe, *, name: str, definition_path: Path, line: int
-    ) -> (
-        tuple[
-            tuple[m.Infra.Census.ReferenceSite, ...],
-            tuple[m.Infra.Census.ReferenceSite, ...],
-        ]
-        | None
-    ):
-        """Fast-path reference classification from pre-scanned workspace text index.
-
-        Only short-circuits rope when the index shows the symbol has ZERO
-        external-file occurrences (truly unused candidate). For any symbol
-        with external references the caller falls back to rope's semantic
-        ``find_occurrences`` to correctly handle intra-module ``__all__``
-        literals, decorator references, and same-name collisions.
-        """
-        name_index_getter = getattr(rope_workspace, "name_index", None)
-        if name_index_getter is None:
-            return None
-        occurrences = name_index_getter().get(name, ())
-        if not occurrences:
-            return ((), ())
-        resolved_definition = definition_path.resolve()
-        has_same_file_non_definition = any(
-            path.resolve() == resolved_definition
-            and any(occurrence_line != line for occurrence_line in lines)
-            for path, _surface, lines in occurrences
-        )
-        if has_same_file_non_definition:
-            return None
-        has_external = any(
-            path.resolve() != resolved_definition and path.name != c.Infra.INIT_PY
-            for path, _surface, _lines in occurrences
-        )
-        if has_external:
-            return None
-        return ((), ())
 
     @staticmethod
     def _location_file_path(location: t.Infra.RopeLocation) -> Path | None:

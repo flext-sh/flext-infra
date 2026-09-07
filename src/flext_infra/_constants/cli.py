@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 class FlextInfraConstantsCli:
     """Shared CLI flag vocabularies and route tables."""
 
+    PROCESS_SUCCESS_EXIT_CODE: Final[int] = 0
+    "Exit code reported by a command group that completed successfully."
     PROCESS_TIMEOUT_EXIT_CODE: Final[int] = 124
     "Exit code emitted by the canonical wall-time limiter."
     PROCESS_COMMAND_NOT_FOUND_EXIT_CODE: Final[int] = 127
@@ -77,7 +79,6 @@ class FlextInfraConstantsCli:
         "validate": "Infrastructure validators and diagnostics",
         "deps": "Dependency detection and modernization",
         "docs": "Documentation audit, fix, build, generate, validate",
-        "github": "GitHub workflow synchronization and linting",
         "maintenance": "Python version enforcement",
         "refactor": "Declarative refactoring and modernization",
         "release": "Release orchestration",

@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m
 
 if TYPE_CHECKING:
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
     from flext_infra import p
 
 
@@ -18,7 +17,7 @@ if TYPE_CHECKING:
 class FlextInfraEnforcementEvaluation:
     """Collected rule probes and collection failures for one project."""
 
-    violations: list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]
+    violations: list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]]
     failures: list[m.Infra.FailedFix]
 
 
@@ -27,8 +26,8 @@ class FlextInfraEnforcementCollectionBase:
 
     @staticmethod
     def collect_project_probe(
-        project_dir: Path, rule: me.EnforcementRuleSpec
-    ) -> list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]:
+        project_dir: Path, rule: m.EnforcementRuleSpec
+    ) -> list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]]:
         """Return one project-level probe for gate-backed rules."""
         return [(rule, FlextInfraEnforcementCollectionBase.probe_for_path(project_dir))]
 
@@ -52,7 +51,7 @@ class FlextInfraEnforcementCollectionBase:
 
     @staticmethod
     def collection_failure(
-        project_dir: Path, rule: me.EnforcementRuleSpec, message: str
+        project_dir: Path, rule: m.EnforcementRuleSpec, message: str
     ) -> m.Infra.FailedFix:
         """Build a failed-fix record for collection/routing errors."""
         return m.Infra.FailedFix(
@@ -60,9 +59,9 @@ class FlextInfraEnforcementCollectionBase:
         )
 
     def _empty_failure(
-        self, project_dir: Path, rule: me.EnforcementRuleSpec, message: str
+        self, project_dir: Path, rule: m.EnforcementRuleSpec, message: str
     ) -> tuple[
-        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
+        list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
     ]:
         """Return a typed empty collection plus one structured failure."""
         return [], [self.collection_failure(project_dir, rule, message)]

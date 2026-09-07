@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra import m, u
 from flext_infra.detectors.deferred_self_reference_detector import (
     FlextInfraDeferredSelfReferenceDetector,
@@ -141,3 +143,66 @@ class TestsFlextInfraDeferredSelfReferenceDetector:
         tm.that(len(issues), eq=1)
         tm.that(issues[0].message, has="FLEXT")
         tm.that(issues[0].line, eq=5)
+
+    def test_public_normalizer_qualifies_sibling_annotations_without_reordering(
+        self,
+    ) -> None:
+        """Sibling annotations use the owner while declaration order stays stable."""
+        source = (
+            "from __future__ import annotations\n\n"
+            "class Models:\n"
+            "    class Consumer:\n"
+            "        dependency: Dependency\n\n"
+            "        def runtime(self) -> object:\n"
+            "            return Models.Dependency()\n\n"
+            "    class Dependency:\n"
+            "        pass\n"
+        )
+        normalized = u.Infra.normalize_deferred_self_references(source)
+        tm.that(
+            normalized.index("    class Consumer:"),
+            lt=normalized.index("    class Dependency:"),
+        )
+        tm.that(normalized, has="dependency: Models.Dependency")
+        tm.that(normalized, has="return Models.Dependency()")
+
+    def test_public_normalizer_ignores_a_nested_models_own_return_type(self) -> None:
+        """A method returning its enclosing nested model is not a graph edge."""
+        source = (
+            "class Models:\n"
+            "    class Target:\n"
+            "        @classmethod\n"
+            "        def create(cls) -> Target:\n"
+            "            return cls()\n\n"
+            "    class Other:\n"
+            "        pass\n"
+        )
+        tm.that(u.Infra.normalize_deferred_self_references(source), eq=source)
+
+    def test_public_normalizer_restores_executable_nested_class_bases(self) -> None:
+        """A nested base resolves from the active owner namespace at definition time."""
+        source = (
+            "class Models:\n"
+            "    class Base:\n"
+            "        pass\n\n"
+            "    class Child(Models.Base):\n"
+            "        pass\n"
+        )
+        normalized = u.Infra.normalize_deferred_self_references(source)
+        tm.that(normalized, has="class Child(Base):")
+        tm.that("class Child(Models.Base):" not in normalized, eq=True)
+
+    def test_public_normalizer_rejects_ambiguous_owners_and_model_rebuild(self) -> None:
+        """Unknown owner members and runtime schema repair fail loud."""
+        ambiguous = (
+            "class Models:\n"
+            "    class First:\n"
+            "        value: Models.Missing\n\n"
+            "    class Second:\n"
+            "        pass\n"
+        )
+        rebuild = "class Model:\n    pass\n\nModel.model_rebuild()\n"
+        with pytest.raises(ValueError, match="ambiguous self-qualified annotation"):
+            u.Infra.normalize_deferred_self_references(ambiguous)
+        with pytest.raises(ValueError, match="model_rebuild is prohibited"):
+            u.Infra.normalize_deferred_self_references(rebuild)

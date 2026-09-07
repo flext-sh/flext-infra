@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 from flext_infra import c, m, t
-from flext_infra._utilities.process import FlextInfraUtilitiesProcess
+
+from .._utilities.process import FlextInfraUtilitiesProcess
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
@@ -134,7 +135,7 @@ class FlextInfraUtilitiesResourceLimits:
         validated_limit = limit or cls.mypy_resource_limit()
         combined = f"{output.stdout}\n{output.stderr}".lower()
         classification = FlextInfraUtilitiesProcess.process_exit_classification(
-            output.exit_code
+            output.outcome.raw_return_code
         )
         resource_failure = classification != "failure" or any(
             marker in combined for marker in cls._MEMORY_FAILURE_MARKERS
@@ -155,7 +156,10 @@ class FlextInfraUtilitiesResourceLimits:
             or "resource limit reached"
         )
         return cls._bounded_mypy_diagnostic(
-            validated_limit, detail=detail, exit_code=output.exit_code, signal=signal
+            validated_limit,
+            detail=detail,
+            exit_code=output.outcome.raw_return_code,
+            signal=signal,
         )
 
 

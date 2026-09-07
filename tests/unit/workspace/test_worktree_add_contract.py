@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_infra import FlextInfraWorktreeService, c, m
 from flext_tests import tm
 from tests import u
-from tests.unit.workspace.worktree_fixture import WorktreeFixture
+from tests.unit.workspace import WorktreeFixture
 
 
 class TestsWorktreeAddContract(WorktreeFixture):
@@ -62,15 +62,7 @@ class TestsWorktreeAddContract(WorktreeFixture):
         )
         self._commit_fixture(repository, "test: clean setup failure")
 
-        result = tm.ok(
-            FlextInfraWorktreeService(
-                repository_root=repository,
-                operation=c.Infra.WorktreeOperation.ADD,
-                branch=branch,
-                base="HEAD",
-                apply_changes=True,
-            ).execute()
-        )
+        result = self.add_worktree(repository, branch)
 
         tm.that(result, eq=str(lane))
         tm.that(lane.is_dir(), eq=True)
@@ -92,15 +84,7 @@ class TestsWorktreeAddContract(WorktreeFixture):
         )
         self._commit_fixture(repository, "test: dirty setup failure")
 
-        result = tm.ok(
-            FlextInfraWorktreeService(
-                repository_root=repository,
-                operation=c.Infra.WorktreeOperation.ADD,
-                branch=branch,
-                base="HEAD",
-                apply_changes=True,
-            ).execute()
-        )
+        result = self.add_worktree(repository, branch)
 
         tm.that(result, eq=str(lane))
         tm.that(not (lane / "setup-wip.txt").exists(), where=bool)

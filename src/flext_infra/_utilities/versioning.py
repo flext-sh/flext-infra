@@ -94,7 +94,7 @@ class FlextInfraUtilitiesVersioning:
             return r[str].fail(f"invalid bump type: {bump_type}")
         result = FlextInfraUtilitiesVersioning.parse_semver(version)
         if result.failure:
-            return r[str].fail(result.error or "parse failed")
+            return r[str].from_failure(result)
         if normalized_bump == c.Infra.VersionBump.NONE:
             return r[str].ok(version)
         major, minor, patch = result.value
@@ -116,7 +116,7 @@ class FlextInfraUtilitiesVersioning:
         """Return the base release of ``version`` (a final version is itself)."""
         result = FlextInfraUtilitiesVersioning.parse_semver(version)
         if result.failure:
-            return r[str].fail(result.error or "parse failed")
+            return r[str].from_failure(result)
         major, minor, patch = result.value
         return r[str].ok(f"{major}.{minor}.{patch}")
 
@@ -183,7 +183,7 @@ class FlextInfraUtilitiesVersioning:
         try:
             return r[bool].ok(Version(candidate) > Version(reference))
         except InvalidVersion as exc:
-            return r[bool].fail(f"invalid version: {exc}")
+            return r[bool].fail(f"invalid version: {exc}", exception=exc)
 
     @staticmethod
     def latest_release_tag(tags: t.StrSequence) -> p.Result[str]:
@@ -219,7 +219,7 @@ class FlextInfraUtilitiesVersioning:
         """Render one canonical project-version update without writing it."""
         version_result = FlextInfraUtilitiesVersioning.parse_semver(version)
         if version_result.failure:
-            return r[str].fail(version_result.error or "invalid version")
+            return r[str].from_failure(version_result)
         if not FlextInfraUtilitiesVersioning._has_project_table(content):
             return r[str].fail("missing [project] table")
         updated = FlextInfraUtilitiesVersioning._replace_project_version_in_text(

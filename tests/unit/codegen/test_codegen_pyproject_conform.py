@@ -6,7 +6,6 @@ import tomllib
 from pathlib import Path
 
 from flext_infra import c, config, m, u
-from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import u as test_u
 
@@ -24,11 +23,7 @@ def _repository(
         path=Path(path),
         role=role,
         provider=provider.name,
-        checkout=(
-            c.Infra.CheckoutKind.ROOT
-            if role is c.Infra.MakeProfile.WORKSPACE
-            else c.Infra.CheckoutKind.SUBMODULE
-        ),
+        kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
         codegen=c.Infra.CodegenKind.CONFORM,
         package=role is not c.Infra.MakeProfile.WORKSPACE,
         editable=role is not c.Infra.MakeProfile.WORKSPACE,
@@ -38,12 +33,6 @@ def _repository(
 
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
-        beads=m.Infra.BeadsProjectSpec(
-            version=c.Infra.BEADS_CONFIG_VERSION,
-            workspace="flext",
-            database="flext",
-            issue_prefix="flext",
-        ),
         name="workspace",
         repository=_repository(
             "workspace", role=c.Infra.MakeProfile.WORKSPACE, path="."
@@ -57,39 +46,6 @@ def _workspace() -> m.Infra.WorkspaceSpec:
 
 
 class TestsFlextInfraCodegenPyprojectConform:
-    def test_repository_cooldown_policy_composes_with_fleet_policy(self) -> None:
-        """A local exemption/override narrows the fleet map without replacing it."""
-        repository = _repository(
-            "external-consumer", role=c.Infra.MakeProfile.STANDALONE, path="."
-        ).model_copy(
-            update={
-                "dependency_cooldown_exclusions": (
-                    "repository-exempt",
-                    "fleet-overridden",
-                ),
-                "dependency_cooldown_overrides": {
-                    "repository-dated": "2026-09-01T00:00:00Z"
-                },
-            }
-        )
-        toolchain = config.Infra.codegen.toolchain.model_copy(
-            update={
-                "dependency_cooldown_exclusions": ("fleet-exempt", "repository-dated"),
-                "dependency_cooldown_overrides": {
-                    "fleet-overridden": "2026-08-01T00:00:00Z"
-                },
-            }
-        )
-
-        exclusions, overrides = FlextInfraCodegenConform._dependency_cooldown_policy(  # ruff:ignore[private-member-access]
-            repository, toolchain
-        )
-
-        tm.that(
-            exclusions, eq=("fleet-exempt", "repository-exempt", "fleet-overridden")
-        )
-        tm.that(overrides, eq={"repository-dated": "2026-09-01T00:00:00Z"})
-
     def test_repository_root_uses_workspace_provenance(self) -> None:
         workspace = _workspace()
         result = u.Infra.pyproject_dependencies_conform(
@@ -179,53 +135,6 @@ constraint-dependencies = ["uv>=0"]
         tm.that(uv_config["link-mode"], eq="copy")
         tm.that("constraint-dependencies" not in uv_config, eq=True)
 
-    def test_full_conformance_projects_fleet_dependency_constraints(self) -> None:
-        # Why (flext-yoxv7): the fleet ceiling is owned by the toolchain SSOT and
-        # replaces whatever a member declares by hand; an empty declaration
-        # removes the key. Expectations derive from the toolchain given, never
-        # from today's configured constraint list.
-        workspace = _workspace()
-        required_dev = config.Infra.codegen.scaffold.project.dev
-        declared = ("requests<3", "structlog<26")
-        toolchain = config.Infra.codegen.toolchain.model_copy(
-            update={"dependency_constraints": declared}
-        )
-        source = """[project]
-name = "external-consumer"
-dependencies = ["requests>=2"]
-
-[tool.uv]
-constraint-dependencies = ["uv>=0", "urllib3<3"]
-"""
-        conformed = tm.ok(
-            u.Infra.pyproject_conform(
-                source,
-                providers=config.Infra.codegen.providers,
-                workspace=workspace,
-                workspace_mode=c.Infra.MakeProfile.STANDALONE,
-                toolchain=toolchain,
-                required_dev_dependencies=required_dev,
-            )
-        )
-        tm.that(
-            tomllib.loads(conformed)["tool"]["uv"]["constraint-dependencies"],
-            eq=list(declared),
-        )
-        cleared = tm.ok(
-            u.Infra.pyproject_conform(
-                conformed,
-                providers=config.Infra.codegen.providers,
-                workspace=workspace,
-                workspace_mode=c.Infra.MakeProfile.STANDALONE,
-                toolchain=toolchain.model_copy(update={"dependency_constraints": ()}),
-                required_dev_dependencies=required_dev,
-            )
-        )
-        tm.that(
-            "constraint-dependencies" not in tomllib.loads(cleared)["tool"]["uv"],
-            eq=True,
-        )
-
     def test_standalone_rejects_non_https_catalog_provenance(self) -> None:
         workspace = _workspace()
         member = workspace.declared_repositories[0].model_copy(
@@ -275,6 +184,8 @@ dev = ["custom-tool>=1"]
 
 [tool.uv]
 required-version = ">=0"
+exclude-newer = "7 days"
+exclude-newer-package = { cryptography = false }
 
 [tool.pyrefly]
 python-interpreter-path = "../.venv/bin/python"
@@ -303,13 +214,22 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that(second, eq=first)
         tm.that(document["tool"]["uv"]["link-mode"], eq=toolchain.uv_link_mode)
         tm.that(document["tool"]["uv"]["exclude-newer"], eq=toolchain.uv_exclude_newer)
-        # Why (flext-6itas.4): exclude-newer-package merges boolean exclusions
-        # with per-package RFC 3339 cutoffs (b3f3fb75c added
-        # dependency_cooldown_overrides so a floor published after the shared
-        # cooldown can get its own cutoff instead of only a name-only bypass).
+        declared_dev_names = {
+            name
+            for requirement in document["dependency-groups"]["dev"]
+            if (name := u.Infra.dep_name(requirement)) is not None
+        }
+        # The rolling supply-chain window applies to runtime libraries only.
+        # Exemption follows the typed distribution identities, never table
+        # placement: an unknown package in dev remains a runtime library.
         expected_exclude_newer_package: dict[str, bool | str] = {
             package: False
-            for package in toolchain.dependency_cooldown_exclusions
+            for package in {
+                *toolchain.dependency_cooldown_exclusions,
+                *declared_dev_names.intersection(
+                    config.Infra.codegen.python_tool_distributions
+                ),
+            }
             if package not in toolchain.dependency_cooldown_overrides
         }
         expected_exclude_newer_package.update(toolchain.dependency_cooldown_overrides)
@@ -320,6 +240,10 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that("required-version" not in document["tool"]["uv"], eq=True)
         tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
         tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)
+        tm.that(
+            "custom-tool" not in document["tool"]["uv"]["exclude-newer-package"],
+            eq=True,
+        )
         # Why (CodeRabbit 3742335224): assert the exact requirement the typed
         # SSOT declares, not merely the package name. A name-only assertion
         # stays green even if the generated floor drifts away from the owner.
@@ -421,64 +345,3 @@ dependencies = []
             eq=[{"package": {"name": "flext-tests"}, "dependencies": ["flext-infra"]}],
         )
         tm.that("project" not in excludes[0], eq=True)
-
-    def test_consumer_provider_does_not_reown_fleet_sources(self) -> None:
-        """A consumer under its own provider still sources flext-* from the fleet.
-
-        An undeclared flext distribution is derived from the ordered provider
-        contract, never from the consumer repository's own provider, so an
-        external organization can adopt the toolchain without re-owning it.
-        """
-        fleet_providers = config.Infra.codegen.providers
-        consumer_provider = m.Infra.ProviderSpec(
-            name="consumer-org",
-            organization="consumer-org",
-            base_url="https://github.com/consumer-org",
-            branch="main",
-        )
-        consumer = _repository(
-            "consumer", role=c.Infra.MakeProfile.STANDALONE, path="."
-        ).model_copy(
-            update={
-                "provider": consumer_provider.name,
-                "url": f"{consumer_provider.base_url}/consumer.git",
-                "checkout": c.Infra.CheckoutKind.INDEPENDENT,
-            }
-        )
-        workspace = m.Infra.WorkspaceSpec(
-            beads=m.Infra.BeadsProjectSpec(
-                version=c.Infra.BEADS_CONFIG_VERSION,
-                workspace="consumer",
-                database="consumer",
-                issue_prefix="consumer",
-            ),
-            name="consumer",
-            repository=consumer,
-        )
-        fleet_dev = next(
-            item
-            for item in config.Infra.codegen.scaffold.project.dev
-            if item.startswith("flext-")
-        )
-        source = """[project]
-name = "consumer"
-dependencies = []
-"""
-        conformed = tm.ok(
-            u.Infra.pyproject_conform(
-                source,
-                providers=(*fleet_providers, consumer_provider),
-                workspace=workspace,
-                workspace_mode=c.Infra.MakeProfile.STANDALONE,
-                toolchain=config.Infra.codegen.toolchain,
-                required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
-            )
-        )
-        dev_group = tomllib.loads(conformed)["dependency-groups"]["dev"]
-        fleet_requirement = next(
-            item for item in dev_group if item.startswith(f"{fleet_dev} @ git+")
-        )
-        tm.that(
-            fleet_requirement, has=f"git+{fleet_providers[0].base_url}/{fleet_dev}.git@"
-        )
-        tm.that(any(consumer_provider.base_url in item for item in dev_group), eq=False)

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from flext_tests import tm
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -46,11 +47,7 @@ class TestFlextInfraConfigFixer:
 
     def test_run_with_nonexistent_projects(self, tmp_path: Path) -> None:
         """Test that run() fails closed for an inaccessible explicit project."""
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        result = fixer.run(["nonexistent"])
-
-        tm.fail(result)
-        tm.that(result.error, has="explicit project path is not accessible")
+        u.Tests.reject_inaccessible_config_project(tmp_path)
 
     def test_run_with_dry_run_flag(self, tmp_path: Path) -> None:
         """Test that run() respects dry_run flag."""

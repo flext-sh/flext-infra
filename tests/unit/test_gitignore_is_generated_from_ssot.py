@@ -21,7 +21,7 @@ from tests import u as test_u
 
 
 def _repository_root() -> Path:
-    """Return the repository root that owns this checkout."""
+    """Return the workspace root that owns this checkout."""
     return Path(flext_infra.__file__).resolve().parents[2]
 
 
@@ -93,7 +93,6 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         """
         projects = ("probe-project", "nested/probe-project")
         workspace = m.Infra.WorkspaceSpec(
-            beads=test_u.Tests.beads_project("flext"),
             name="probe-root",
             repository=test_u.Tests.repository_ref("probe-root"),
             declared_repositories=tuple(

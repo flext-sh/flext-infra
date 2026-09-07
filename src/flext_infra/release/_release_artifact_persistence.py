@@ -9,9 +9,8 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import t
-from flext_infra.release._release_artifact_source import (
-    FlextInfraReleaseArtifactSourceMixin,
-)
+
+from ._release_artifact_source import FlextInfraReleaseArtifactSourceMixin
 
 if TYPE_CHECKING:
     from flext_infra import p

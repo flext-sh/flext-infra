@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import flext_infra.validate as core_module
 import pytest
+
+import flext_infra.validate as core_module
 from flext_infra.validate import FlextInfraInventoryService
 from flext_tests import tm
 

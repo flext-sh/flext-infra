@@ -1,0 +1,4 @@
+# AUTO-GENERATED FILE — Materialized by the qlty smells gate at scan
+# time from this typed constant; never hand-edit. Removal is safe: the
+# next scan rewrites it.
+config_version = "0"

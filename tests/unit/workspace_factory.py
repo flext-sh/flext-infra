@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from tests import c
 
 if TYPE_CHECKING:
@@ -21,9 +22,9 @@ if TYPE_CHECKING:
 class TestsFlextInfraWorkspaceFactory:
     """Factory for creating test workspaces with real project structures."""
 
-    default_python: str = "^3.13"
-    default_version: str = "0.1.0"
-    encoding: str = "utf-8"
+    default_python: str = f"^{config.Infra.codegen.toolchain.python_version}"
+    default_version: str = c.Tests.RELEASE_VERSION_BASE
+    encoding: str = c.Cli.ENCODING_DEFAULT
 
     def create_minimal(self, tmp_path: Path, name: t.NonEmptyStr = "test-proj") -> Path:
         """Create a minimal project with pyproject.toml, Makefile, and src/."""

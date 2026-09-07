@@ -4,14 +4,12 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p, t, u
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from flext_infra.services._workspace.environment_beads import (
-    FlextInfraWorkspaceEnvironmentSync,
-)
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_refactor import RefactorRoutes
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace.environment_beads import FlextInfraWorkspaceEnvironmentSync
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
@@ -59,6 +57,13 @@ class WorkspaceRoutes(RefactorRoutes):
             ),
         ),
         c.Infra.CLI_GROUP_WORKSPACE: (
+            m.Cli.ResultCommandRoute(
+                name="identity",
+                help_text="Report canonical Git checkout identity",
+                model_cls=m.Infra.GitRepoRequest,
+                handler=CliRouteBase.result_handler(u.Infra.git_identity),
+                success_message="workspace Git identity resolved",
+            ),
             m.Cli.ResultCommandRoute(
                 name="verify-environment",
                 help_text="Verify live workspace editable provenance",

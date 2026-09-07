@@ -3,100 +3,43 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
-    from .lazy_init_bootstrap_package_tests import (
-        TestsFlextInfraLazyInitBootstrapPackage,
-    )
-    from .lazy_init_fixture_settings_tests import (
-        TestsFlextInfraLazyInitFixtureSettingsCollision,
-    )
+    from .layout_fixture import archive_root, build_loose_project, layout_engine
+    from .lazy_init_file_plan_tests import TestsFlextInfraCodegenLazyInitFilePlans
     from .lazy_init_generation_tests import TestsFlextInfraCodegenGeneration
-    from .lazy_init_helpers_tests import TestsFlextInfraLazyInitHelpers
     from .lazy_init_process_tests import TestsFlextInfraLazyInitProcessing
     from .lazy_init_registry_wrapper_tests import TestsFlextInfraLazyInitCleanup
     from .lazy_init_runtime_tests import TestsFlextInfraLazyInitRuntime
     from .lazy_init_service_tests import TestsFlextInfraCodegenLazyInitService
-    from .lazy_init_tests import (
-        TestAllDirectoriesScanned,
-        TestCheckOnlyMode,
-        TestEdgeCases,
-        TestExcludedDirectories,
-    )
-    from .lazy_init_transforms_tests import TestsFlextInfraLazyInitTransforms
-    from .make_test_selector_tests import TestsMakeTestSelector
-    from .scaffolder_naming_tests import (
-        TestGeneratedClassNamingConvention,
-        TestGeneratedFilesAreValidPython,
-    )
-    from .test_codegen_artifact_ssot import (
-        CodegenSpec,
-        TestsCodegenArtifactSsot,
-        codegen,
-    )
-    from .test_codegen_beads_projection import TestsCodegenBeadsProjection
-    from .test_codegen_conform_progress import TestsFlextInfraCodegenConformProgress
+    from .mise_generation_lock_fixture import lock_identity, lock_owner, lock_repository
     from .test_codegen_hook_conformance import TestGitHookConformance
-    from .test_codegen_linked_worktree_manifest import TestCodegenLinkedWorktreeTopology
-    from .test_codegen_make_environment import TestsCodegenMakeEnvironment
-    from .test_codegen_pipeline_performance import (
-        TestsFlextInfraCodegenPipelinePerformance,
-    )
-    from .test_codegen_pyproject_conform import TestsFlextInfraCodegenPyprojectConform
-    from .test_codegen_uv_exclude_newer_overlay import TestCodegenUvExcludeNewerOverlay
-    from .test_managed_conflicts import TestsFlextInfraCodegenManagedConflicts
-    from .test_managed_maintenance_headers import (
-        TestsFlextInfraManagedMaintenanceHeaders,
-    )
-    from .test_repository_root_setup_submodules import (
-        TestsRepositoryRootSetupSubmodules,
-    )
-    from .test_review_mro_vw2w_template_contracts import TestsReviewTemplateContracts
-    from .test_vscode_owner_merge import TestsVscodeOwnerMerge
+    from .test_utility_facade_projection import TestsFlextInfraUtilityFacadeProjection
 __all__: tuple[str, ...] = (
-    "CodegenSpec",
-    "TestAllDirectoriesScanned",
-    "TestCheckOnlyMode",
-    "TestCodegenLinkedWorktreeTopology",
-    "TestCodegenUvExcludeNewerOverlay",
-    "TestEdgeCases",
-    "TestExcludedDirectories",
-    "TestGeneratedClassNamingConvention",
-    "TestGeneratedFilesAreValidPython",
     "TestGitHookConformance",
-    "TestsCodegenArtifactSsot",
-    "TestsCodegenBeadsProjection",
-    "TestsCodegenMakeEnvironment",
-    "TestsFlextInfraCodegenConformProgress",
     "TestsFlextInfraCodegenGeneration",
+    "TestsFlextInfraCodegenLazyInitFilePlans",
     "TestsFlextInfraCodegenLazyInitService",
-    "TestsFlextInfraCodegenManagedConflicts",
-    "TestsFlextInfraCodegenPipelinePerformance",
-    "TestsFlextInfraCodegenPyprojectConform",
-    "TestsFlextInfraLazyInitBootstrapPackage",
     "TestsFlextInfraLazyInitCleanup",
-    "TestsFlextInfraLazyInitFixtureSettingsCollision",
-    "TestsFlextInfraLazyInitHelpers",
     "TestsFlextInfraLazyInitProcessing",
     "TestsFlextInfraLazyInitRuntime",
-    "TestsFlextInfraLazyInitTransforms",
-    "TestsFlextInfraManagedMaintenanceHeaders",
-    "TestsMakeTestSelector",
-    "TestsRepositoryRootSetupSubmodules",
-    "TestsReviewTemplateContracts",
-    "TestsVscodeOwnerMerge",
+    "TestsFlextInfraUtilityFacadeProjection",
+    "archive_root",
+    "build_loose_project",
     "c",
-    "codegen",
     "d",
     "e",
     "h",
+    "layout_engine",
+    "lock_identity",
+    "lock_owner",
+    "lock_repository",
     "m",
     "p",
     "r",
@@ -114,64 +57,22 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
-            ".lazy_init_bootstrap_package_tests": (
-                "TestsFlextInfraLazyInitBootstrapPackage",
-            ),
-            ".lazy_init_fixture_settings_tests": (
-                "TestsFlextInfraLazyInitFixtureSettingsCollision",
-            ),
+            ".layout_fixture": ("archive_root", "build_loose_project", "layout_engine"),
+            ".lazy_init_file_plan_tests": ("TestsFlextInfraCodegenLazyInitFilePlans",),
             ".lazy_init_generation_tests": ("TestsFlextInfraCodegenGeneration",),
-            ".lazy_init_helpers_tests": ("TestsFlextInfraLazyInitHelpers",),
             ".lazy_init_process_tests": ("TestsFlextInfraLazyInitProcessing",),
             ".lazy_init_registry_wrapper_tests": ("TestsFlextInfraLazyInitCleanup",),
             ".lazy_init_runtime_tests": ("TestsFlextInfraLazyInitRuntime",),
             ".lazy_init_service_tests": ("TestsFlextInfraCodegenLazyInitService",),
-            ".lazy_init_tests": (
-                "TestAllDirectoriesScanned",
-                "TestCheckOnlyMode",
-                "TestEdgeCases",
-                "TestExcludedDirectories",
-            ),
-            ".lazy_init_transforms_tests": ("TestsFlextInfraLazyInitTransforms",),
-            ".make_test_selector_tests": ("TestsMakeTestSelector",),
-            ".scaffolder_naming_tests": (
-                "TestGeneratedClassNamingConvention",
-                "TestGeneratedFilesAreValidPython",
-            ),
-            ".test_codegen_artifact_ssot": (
-                "CodegenSpec",
-                "TestsCodegenArtifactSsot",
-                "codegen",
-            ),
-            ".test_codegen_beads_projection": ("TestsCodegenBeadsProjection",),
-            ".test_codegen_conform_progress": (
-                "TestsFlextInfraCodegenConformProgress",
+            ".mise_generation_lock_fixture": (
+                "lock_identity",
+                "lock_owner",
+                "lock_repository",
             ),
             ".test_codegen_hook_conformance": ("TestGitHookConformance",),
-            ".test_codegen_linked_worktree_manifest": (
-                "TestCodegenLinkedWorktreeTopology",
+            ".test_utility_facade_projection": (
+                "TestsFlextInfraUtilityFacadeProjection",
             ),
-            ".test_codegen_make_environment": ("TestsCodegenMakeEnvironment",),
-            ".test_codegen_pipeline_performance": (
-                "TestsFlextInfraCodegenPipelinePerformance",
-            ),
-            ".test_codegen_pyproject_conform": (
-                "TestsFlextInfraCodegenPyprojectConform",
-            ),
-            ".test_codegen_uv_exclude_newer_overlay": (
-                "TestCodegenUvExcludeNewerOverlay",
-            ),
-            ".test_managed_conflicts": ("TestsFlextInfraCodegenManagedConflicts",),
-            ".test_managed_maintenance_headers": (
-                "TestsFlextInfraManagedMaintenanceHeaders",
-            ),
-            ".test_repository_root_setup_submodules": (
-                "TestsRepositoryRootSetupSubmodules",
-            ),
-            ".test_review_mro_vw2w_template_contracts": (
-                "TestsReviewTemplateContracts",
-            ),
-            ".test_vscode_owner_merge": ("TestsVscodeOwnerMerge",),
             "flext_tests": (
                 "c",
                 "d",

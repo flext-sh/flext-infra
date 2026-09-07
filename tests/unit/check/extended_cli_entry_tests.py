@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import pytest
 from pathlib import Path
 
 from flext_infra import main
@@ -13,6 +12,11 @@ from tests import u
 
 class TestWorkspaceCheckCLI:
     """Tests for the check CLI entry points."""
+
+    @staticmethod
+    def _run_check(workspace: Path, *extra: str) -> int:
+        """Run the check CLI once against one workspace."""
+        return main(["check", "run", "--workspace", str(workspace), *extra])
 
     @staticmethod
     def _workspace(tmp_path: Path) -> Path:
@@ -36,47 +40,26 @@ class TestWorkspaceCheckCLI:
     def test_run_accepts_explicit_scope(self, tmp_path: Path) -> None:
         workspace = self._workspace(tmp_path)
         tm.that(
-            main([
-                "check",
-                "run",
-                "--workspace",
-                str(workspace),
-                "--projects",
-                "p1",
-                "--gates",
-                "lint",
-            ]),
+            TestWorkspaceCheckCLI._run_check(
+                workspace, "--projects", "p1", "--gates", "lint"
+            ),
             eq=0,
         )
 
     def test_run_auto_discovers_workspace_projects(self, tmp_path: Path) -> None:
         workspace = self._workspace(tmp_path)
-        tm.that(
-            main(["check", "run", "--workspace", str(workspace), "--gates", "lint"]),
-            eq=0,
-        )
+        tm.that(TestWorkspaceCheckCLI._run_check(workspace, "--gates", "lint"), eq=0)
 
     def test_with_projects_success(self, tmp_path: Path) -> None:
         workspace = self._workspace(tmp_path)
         tm.that(
-            main([
-                "check",
-                "run",
-                "--workspace",
-                str(workspace),
-                "--projects",
-                "p1",
-                "--gates",
-                "lint",
-            ]),
+            TestWorkspaceCheckCLI._run_check(
+                workspace, "--projects", "p1", "--gates", "lint"
+            ),
             eq=0,
         )
 
-    def test_with_projects_failure(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.delenv("CI", raising=False)
-        workspace = self._workspace(tmp_path)
+    def test_with_projects_failure(self, tmp_path: Path) -> None:
         workspace = self._workspace(tmp_path)
         broken_file = workspace / "p1" / "src" / "broken.py"
         broken_file.write_text("def broken(:\n", encoding="utf-8")
@@ -100,11 +83,7 @@ class TestWorkspaceCheckCLI:
     def test_fix_pyrefly_config_routes_real_help(self) -> None:
         tm.that(main(["check", "fix-pyrefly-settings", "--help"]), eq=0)
 
-    def test_run_cli_with_relative_reports_dir(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.delenv("CI", raising=False)
-        workspace = self._workspace(tmp_path)
+    def test_run_cli_with_relative_reports_dir(self, tmp_path: Path) -> None:
         workspace = self._workspace(tmp_path)
         current = Path.cwd()
         runner_root = tmp_path / "runner"

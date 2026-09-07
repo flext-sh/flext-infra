@@ -6,10 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, ClassVar
 
-from flext_core import m
-from flext_core._models.enforcement import FlextModelsEnforcement as me
+from flext_core import m, m as core_m
 from flext_infra import t
 
 if TYPE_CHECKING:
@@ -47,6 +47,39 @@ class FlextInfraModelsEnforcement:
         file_path: Annotated[str, m.Field(description="Target file when known")]
         error: Annotated[str, m.Field(description="Failure message")]
 
+    class FileFixTarget(m.Value):
+        """One file a per-file fix step runs against.
+
+        ``record_path`` is carried separately because adapters that iterate raw
+        violation probes must report the probe's own path string, which is not
+        always ``str(file_path)``.
+        """
+
+        file_path: Annotated[Path, m.Field(description="File the step runs on")]
+        record_path: Annotated[
+            str, m.Field(description="Path string used in outcome records")
+        ]
+
+    class FileFixOutcome(m.Value):
+        """What one per-file fix step decided for its file.
+
+        A step reports any combination of skip reasons, failures and change
+        messages; an outcome with none of them records nothing for that file.
+        """
+
+        skipped: Annotated[
+            t.StrSequence, m.Field(description="Skip reasons for the file")
+        ] = ()
+        errors: Annotated[
+            t.StrSequence, m.Field(description="Failure messages for the file")
+        ] = ()
+        messages: Annotated[
+            t.StrSequence, m.Field(description="Change messages for the file")
+        ] = ()
+        files_modified: Annotated[
+            t.StrSequence, m.Field(description="Paths modified when the fix is applied")
+        ] = ()
+
     class ProjectFixResult(m.Value):
         """Aggregated fix result for a single project."""
 
@@ -74,10 +107,10 @@ class FlextInfraModelsEnforcement:
     class EnforcementEvaluation(m.ArbitraryTypesModel):
         """Collected rule probes and collection failures for one project."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         violations: Annotated[
-            tuple[tuple[me.EnforcementRuleSpec, p.AttributeProbe], ...],
+            tuple[tuple[core_m.EnforcementRuleSpec, p.AttributeProbe], ...],
             m.Field(description="Rule/probe pairs collected for the project"),
         ]
         failures: Annotated[
@@ -93,7 +126,7 @@ class FlextInfraModelsEnforcement:
         inspect via ``getattr``.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="allow")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="allow")
 
         file_path: Annotated[str, m.Field(description="Target file path")]
         line: Annotated[int, m.Field(description="Line number of the violation")] = 0

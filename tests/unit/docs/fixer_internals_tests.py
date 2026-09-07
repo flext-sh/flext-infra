@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra.docs.fixer import FlextInfraDocFixer
 from flext_tests import tm
-from tests import u
+from tests import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -22,6 +24,13 @@ def test_docs_maybe_fix_link_adds_md_suffix_when_target_exists(tmp_path: Path) -
     fixed = u.Infra.docs_maybe_fix_link(md_file, "guide")
 
     tm.that(fixed, eq="guide.md")
+
+
+def test_docs_maybe_fix_link_rejects_http(tmp_path: Path) -> None:
+    target = f"{c.Infra.DOCS_INSECURE_WEB_SCHEME}://example.invalid"
+
+    with pytest.raises(ValueError, match="use HTTPS"):
+        u.Infra.docs_maybe_fix_link(tmp_path / "README.md", target)
 
 
 def test_anchorize_and_build_toc_are_public_helpers() -> None:

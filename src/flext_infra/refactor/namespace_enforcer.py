@@ -7,12 +7,11 @@ from typing import TYPE_CHECKING, override
 from flext_cli import cli
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.refactor._namespace_enforcer_project import (
-    FlextInfraNamespaceEnforcerProjectMixin,
-)
 from flext_infra.refactor.namespace_enforcer_phases import (
     FlextInfraNamespaceEnforcerPhasesMixin,
 )
+
+from ._namespace_enforcer_project import FlextInfraNamespaceEnforcerProjectMixin
 
 if TYPE_CHECKING:
     from collections.abc import Callable

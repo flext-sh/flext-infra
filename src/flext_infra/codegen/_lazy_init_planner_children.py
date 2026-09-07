@@ -60,7 +60,11 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         if package_entry is None:
             return ()
         resolved_pkg_dir = pkg_dir.resolve()
-        parent_pkg = self.context(pkg_dir).current_pkg
+        parent_context = self.context(pkg_dir)
+        parent_pkg = parent_context.current_pkg
+        publish_child_exports = (
+            parent_context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS
+        )
         direct: list[str] = []
         for child_dir in package_entry.descendant_child_dirs:
             # flext-pulj (codex): do not merge retired root registries into the
@@ -112,6 +116,8 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                 child_pkg_name.rsplit(".", maxsplit=1)[-1],
                 (child_pkg_name, ""),
             )
+            if not publish_child_exports:
+                continue
             for name, (module_name, attr) in child_exports.items():
                 source_module_name = module_name.rsplit(".", maxsplit=1)[-1]
                 test_only_source_module = (

@@ -5,11 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from flext_cli import m as cli_m
 from flext_infra import c
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_tests import tm
-
 from tests import t, u
 
 pytestmark = pytest.mark.slow
@@ -42,7 +42,8 @@ def _consolidator_payload(value: str) -> _ConsolidatorJsonPayload:
     return payload
 
 
-def test_execute_scans_real_package_layout(tmp_path: Path) -> None:
+def _consolidator_layout(tmp_path: Path) -> tuple[Path, Path, Path]:
+    """Create the consolidator workspace, project root, and package directory."""
     repository_root = tmp_path / "workspace"
     repository_root.mkdir(parents=True)
     (repository_root / "pyproject.toml").write_text(
@@ -58,6 +59,25 @@ def test_execute_scans_real_package_layout(tmp_path: Path) -> None:
         'mypy_path = ["src"]\n',
         encoding="utf-8",
     )
+    return repository_root, project_root, package_dir
+
+
+def _execute_consolidator(
+    repository_root: Path, *, dry_run: bool
+) -> _ConsolidatorJsonPayload:
+    """Run the consolidator once in JSON mode and validate its payload."""
+    service = FlextInfraCodegenConsolidator(
+        repository_root=repository_root, dry_run=dry_run, output_format="json"
+    )
+
+    result = service.execute()
+
+    tm.ok(result)
+    return _consolidator_payload(result.value)
+
+
+def test_execute_scans_real_package_layout(tmp_path: Path) -> None:
+    repository_root, _, package_dir = _consolidator_layout(tmp_path)
     (package_dir / "__init__.py").write_text("", encoding="utf-8")
     (package_dir / "constants.py").write_text(
         "class FlextDemoConstants:\n    pass\n\nc = FlextDemoConstants\n",
@@ -74,21 +94,7 @@ def test_execute_scans_real_package_layout(tmp_path: Path) -> None:
 
 def _build_consolidator_workspace(tmp_path: Path) -> Path:
     """Create a workspace with one project whose constants define a demo value."""
-    repository_root = tmp_path / "workspace"
-    repository_root.mkdir(parents=True)
-    (repository_root / "pyproject.toml").write_text(
-        '[tool.uv.workspace]\nmembers = ["flext-demo"]\n', encoding="utf-8"
-    )
-    project_root = repository_root / "flext-demo"
-    package_dir = project_root / "src" / "flext_demo"
-    package_dir.mkdir(parents=True)
-    (project_root / "pyproject.toml").write_text(
-        "[project]\nname='flext-demo'\nversion='0.1.0'\n"
-        "\n"
-        "[tool.mypy]\n"
-        'mypy_path = ["src"]\n',
-        encoding="utf-8",
-    )
+    repository_root, _, package_dir = _consolidator_layout(tmp_path)
     (package_dir / "__init__.py").write_text("", encoding="utf-8")
     (package_dir / "__init__.py").write_text(
         "from flext_demo.constants import c\n", encoding="utf-8"
@@ -165,14 +171,7 @@ def test_execute_apply_mode_scans_wrapper_surfaces(
     constants_family_path.write_text(
         'from __future__ import annotations\n\nVALUE = "demo"\n', encoding="utf-8"
     )
-    service = FlextInfraCodegenConsolidator(
-        repository_root=repository_root, dry_run=False, output_format="json"
-    )
-
-    result = service.execute()
-
-    tm.ok(result)
-    payload = _consolidator_payload(result.value)
+    payload = _execute_consolidator(repository_root, dry_run=False)
     tm.that(payload.total_found, eq=1)
     tm.that(payload.total_applied, eq=1)
     tm.that(payload.total_failed, eq=0)
@@ -192,14 +191,7 @@ def test_execute_apply_mode_scans_wrapper_surfaces(
 @pytest.mark.slow
 def test_execute_apply_mode_json_output(tmp_path: Path) -> None:
     repository_root = _build_consolidator_workspace(tmp_path)
-    service = FlextInfraCodegenConsolidator(
-        repository_root=repository_root, dry_run=False, output_format="json"
-    )
-
-    result = service.execute()
-
-    tm.ok(result)
-    payload = _consolidator_payload(result.value)
+    payload = _execute_consolidator(repository_root, dry_run=False)
     tm.that(payload.total_found, eq=1)
     tm.that(payload.total_applied, eq=1)
     tm.that(payload.total_failed, eq=0)
@@ -209,14 +201,7 @@ def test_execute_apply_mode_json_output(tmp_path: Path) -> None:
 
 def test_execute_dry_run_json_output(tmp_path: Path) -> None:
     repository_root = _build_consolidator_workspace(tmp_path)
-    service = FlextInfraCodegenConsolidator(
-        repository_root=repository_root, dry_run=True, output_format="json"
-    )
-
-    result = service.execute()
-
-    tm.ok(result)
-    payload = _consolidator_payload(result.value)
+    payload = _execute_consolidator(repository_root, dry_run=True)
     tm.that(payload.total_found, eq=1)
     tm.that(payload.total_applied, eq=0)
     tm.that(payload.total_failed, eq=0)

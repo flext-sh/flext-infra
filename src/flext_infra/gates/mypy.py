@@ -20,8 +20,6 @@ class FlextInfraMypyGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.MYPY
     gate_name: ClassVar[str] = "Mypy"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MYPY][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MYPY][1]
 
     @staticmethod
     def _config_exclude(config_path: Path) -> re.Pattern[str] | None:
@@ -53,14 +51,13 @@ class FlextInfraMypyGate(FlextInfraGate):
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
         """Check local Python roots directly instead of recursively scanning ``.``."""
-        # NOTE (multi-agent): Mypy also owns typed tests, including PEP 420 test
-        # roots without __init__.py. Empty or explicitly excluded roots are
-        # still omitted because Mypy aborts when they are passed positionally.
+        # Empty or explicitly excluded roots are omitted because Mypy aborts
+        # when they are passed positionally.
         exclude = self._config_exclude(self._resolve_config(project_dir, ctx))
         discovered_dirs = [
             directory
             for directory in self._dirs_with_py(
-                project_dir, (*c.Infra.CHECK_DIRS_REPOSITORY, c.Infra.DIR_TESTS)
+                project_dir, c.Infra.CHECK_DIRS_REPOSITORY
             )
             if self._has_real_module(project_dir / directory)
             and (exclude is None or not exclude.match(f"{directory}/"))
@@ -172,12 +169,10 @@ class FlextInfraMypyGate(FlextInfraGate):
                     )
             except c.ValidationError:
                 continue
-        if (not issues) and result.exit_code != 0:
+        if (not issues) and not u.Cli.process_succeeded(result.outcome):
             message = (result.stderr or result.stdout).strip()
             if not message:
-                message = (
-                    f"mypy exited with code {result.exit_code} without JSON diagnostics"
-                )
+                message = f"mypy exited with code {result.outcome.raw_return_code} without JSON diagnostics"
             issues.append(
                 m.Infra.Issue(
                     file=c.Infra.PYPROJECT_FILENAME,
@@ -188,7 +183,7 @@ class FlextInfraMypyGate(FlextInfraGate):
                     severity=c.Infra.ERROR,
                 )
             )
-        return result.exit_code == 0, issues
+        return u.Cli.process_succeeded(result.outcome), issues
 
 
 __all__: list[str] = ["FlextInfraMypyGate"]

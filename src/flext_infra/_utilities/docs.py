@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from urllib.parse import urlsplit
 
 from flext_cli import u
 from flext_core import r
-from flext_infra._utilities._docs_scope_build import (
-    FlextInfraUtilitiesDocsScopeBuildMixin,
-)
-from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+from .._utilities._docs_scope_build import FlextInfraUtilitiesDocsScopeBuildMixin
+from .._utilities.docs_contract import FlextInfraUtilitiesDocsContract
+from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -24,6 +24,30 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
     """Documentation-related utility methods exposed via u.Infra."""
+
+    @staticmethod
+    def docs_url_scheme(target: str) -> str:
+        """Return the normalized scheme and reject insecure documentation URLs."""
+        normalized = u.norm_str(target, case="lower").lstrip("<")
+        scheme = urlsplit(normalized).scheme
+        if scheme == c.Infra.DOCS_INSECURE_WEB_SCHEME:
+            msg = f"insecure documentation URL is prohibited; use HTTPS: {target}"
+            raise ValueError(msg)
+        return scheme
+
+    @staticmethod
+    def docs_is_secure_web_url(target: str) -> bool:
+        """Return whether a documentation target is an HTTPS URL."""
+        secure_scheme: str = c.Infra.DOCS_SECURE_WEB_SCHEME
+        return FlextInfraUtilitiesDocs.docs_url_scheme(target) == secure_scheme
+
+    @staticmethod
+    def docs_is_external(target: str) -> bool:
+        """Return whether a target has a permitted external scheme."""
+        return (
+            FlextInfraUtilitiesDocs.docs_url_scheme(target)
+            in c.Infra.DOCS_EXTERNAL_SCHEMES
+        )
 
     @staticmethod
     def iter_markdown_files(repository_root: Path) -> t.SequenceOf[Path]:
@@ -78,7 +102,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
             )
             return r[bool].ok(True)
         except OSError as exc:
-            return r[bool].fail(f"markdown write error: {exc}")
+            return r[bool].fail(f"markdown write error: {exc}", exception=exc)
 
     @staticmethod
     def anchorize(text: str) -> str:
@@ -108,9 +132,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
             repository_root=repository_root, projects=projects, output_dir=output_dir
         )
         if scopes_result.failure:
-            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].fail(
-                scopes_result.error or "scope error"
-            )
+            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(scopes_result)
         return r[t.SequenceOf[m.Infra.DocsPhaseReport]].ok([
             handler(scope) for scope in scopes_result.value
         ])

@@ -3,23 +3,46 @@
 from __future__ import annotations
 
 import concurrent.futures
-import hashlib
+import difflib
 from collections.abc import MutableMapping
+from itertools import islice
 from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+from .._utilities.discovery import FlextInfraUtilitiesDiscovery
+from .._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 
 
 class FlextInfraUtilitiesProtectedEditLinting:
     """Shared linting and path helpers for protected edit workflows."""
 
     _SNAPSHOT_MAX_WORKERS: ClassVar[int] = 4
+
+    @staticmethod
+    def unified_diff_lines(
+        before: str, after: str, *, fromfile: str, tofile: str, max_lines: int
+    ) -> t.StrSequence:
+        """Return a bounded unified diff without materializing omitted lines."""
+        if max_lines < 1:
+            msg = "max_lines must be positive"
+            raise ValueError(msg)
+        return tuple(
+            islice(
+                difflib.unified_diff(
+                    before.splitlines(keepends=True),
+                    after.splitlines(keepends=True),
+                    fromfile=fromfile,
+                    tofile=tofile,
+                    n=3,
+                ),
+                max_lines,
+            )
+        )
 
     @staticmethod
     def _workspace_tool_command(workspace: Path, tool_name: str) -> t.StrSequence:
@@ -131,6 +154,52 @@ class FlextInfraUtilitiesProtectedEditLinting:
         return {c.Infra.ORCHESTRATOR_ENV_NO_COLOR: "1"}
 
     @classmethod
+    def _lint_command(
+        cls,
+        py_file: Path,
+        workspace: Path,
+        *,
+        command_cwd: Path,
+        tool_name: str,
+        template: t.StrSequence,
+    ) -> t.StrSequence:
+        """Build one canonical protected-edit lint command."""
+        command: t.StrSequence = (
+            *cls._workspace_tool_command(workspace, template[0]),
+            *(item.replace("{file}", str(py_file)) for item in template[1:]),
+        )
+        if (
+            tool_name == c.Infra.PYREFLY
+            and (project_config := command_cwd / c.Infra.PYPROJECT_FILENAME).is_file()
+        ):
+            command = (*command, "--config", str(project_config))
+        return (
+            FlextInfraUtilitiesResourceLimits.mypy_limited_command(command)
+            if tool_name == c.Infra.MYPY
+            else command
+        )
+
+    @classmethod
+    def lint_commands(
+        cls, py_file: Path, workspace: Path, *, gates: t.StrSequence | None = None
+    ) -> t.StrSequencePairTuple:
+        """Return the exact public command plan used by protected linting."""
+        command_cwd = cls._command_cwd(py_file, workspace)
+        return tuple(
+            (
+                tool_name,
+                cls._lint_command(
+                    py_file,
+                    workspace,
+                    command_cwd=command_cwd,
+                    tool_name=tool_name,
+                    template=template,
+                ),
+            )
+            for tool_name, template in cls._selected_lint_tools(gates)
+        )
+
+    @classmethod
     def _new_file_lint_baseline(
         cls, py_file: Path, workspace: Path, *, gates: t.StrSequence | None = None
     ) -> t.Infra.LintSnapshot:
@@ -159,11 +228,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
         py_file: Path, gate_key: t.StrSequence
     ) -> tuple[str, str, t.StrSequence] | None:
         """Lint snapshot cache key."""
-        try:
-            raw_bytes = py_file.read_bytes()
-        except OSError:
-            return None
-        return (str(py_file.resolve()), hashlib.sha256(raw_bytes).hexdigest(), gate_key)
+        raw_bytes = py_file.read_bytes()
+        return (str(py_file.resolve()), u.Cli.sha256_bytes(raw_bytes), gate_key)
 
     @classmethod
     def _execute_selected_lint_tools(
@@ -233,19 +299,12 @@ class FlextInfraUtilitiesProtectedEditLinting:
         template: t.StrSequence,
     ) -> m.Infra.LintGateResult:
         """Run one lint gate and return a validated result model."""
-        command: t.StrSequence = (
-            *cls._workspace_tool_command(workspace, template[0]),
-            *(item.replace("{file}", str(py_file)) for item in template[1:]),
-        )
-        if (
-            tool_name == c.Infra.PYREFLY
-            and (project_config := command_cwd / c.Infra.PYPROJECT_FILENAME).is_file()
-        ):
-            command = (*command, "--config", str(project_config))
-        cmd = (
-            FlextInfraUtilitiesResourceLimits.mypy_limited_command(command)
-            if tool_name == c.Infra.MYPY
-            else command
+        cmd = cls._lint_command(
+            py_file,
+            workspace,
+            command_cwd=command_cwd,
+            tool_name=tool_name,
+            template=template,
         )
         run_result = u.Cli.run_raw(
             cmd,
@@ -263,7 +322,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 if tool_name == c.Infra.MYPY
                 else error,
             )
-        elif run_result.success and run_result.value.exit_code != 0:
+        elif run_result.success and not u.Cli.process_succeeded(
+            run_result.value.outcome
+        ):
             resource_diagnostic = (
                 FlextInfraUtilitiesResourceLimits.mypy_failure_diagnostic(
                     run_result.value
@@ -276,6 +337,16 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 or (run_result.value.stdout + run_result.value.stderr).strip()
             )
             gate_errors = tuple(line for line in output.splitlines() if line.strip())
+        elif run_result.value.stderr.strip():
+            gate_errors = tuple(
+                line
+                for line in run_result.value.stderr.splitlines()
+                if line.strip()
+                and not (
+                    tool_name == c.Infra.PYREFLY
+                    and line.strip() == c.Infra.PYREFLY_ZERO_ERRORS_RECEIPT
+                )
+            )
         else:
             gate_errors = ()
         return m.Infra.LintGateResult(tool_name=tool_name, errors=gate_errors)

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from flext_infra._utilities.rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
 from flext_infra.protocols import p
 from flext_infra.typings import t
+
+from .._utilities.rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
 
 
 class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
@@ -22,7 +23,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         ignored_resources: t.SequenceOf[str],
         source_folders: t.SequenceOf[str],
     ) -> t.Infra.RopeProject:
-        project_factory = cls._runtime_callable("rope.base.project", "Project")
+        project_factory = cls._runtime_callable(
+            "flext_infra._utilities._rope.project", "FlextInfraRopeProject"
+        )
         # flext-i6nq.10: FLEXT owns writes; disable Rope's leaking Git subprocess.
         fscommands_factory = cls._runtime_callable(
             "rope.base.fscommands", "FileSystemCommands"
@@ -32,6 +35,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
             fscommands=fscommands_factory(),
             ropefolder=ropefolder,
             save_objectdb=save_objectdb,
+            save_history=False,
             ignored_resources=list(ignored_resources),
             source_folders=list(source_folders),
         )

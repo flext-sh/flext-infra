@@ -100,7 +100,7 @@ class FlextInfraRefactorCensusValidateMixin:
                         )
                     )
                     continue
-                if preview_result.unwrap_or(False):
+                if preview_result.unwrap():
                     validated_candidates_list.append(candidate)
             validated_candidates = tuple(validated_candidates_list)
             validated_reports.append(

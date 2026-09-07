@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from .._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
@@ -61,8 +61,8 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
     @staticmethod
     def get_module_imports(
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
-    ) -> t.Infra.RopeModuleImports | None:
-        """Get module imports."""
+    ) -> t.Infra.RopeModuleImports:
+        """Get module imports, raising when rope cannot build the import table."""
         try:
             module_imports = FlextInfraUtilitiesRopeRuntime.module_imports_for_pymodule(
                 rope_project,
@@ -70,9 +70,16 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
                     rope_project, resource
                 ),
             )
-        except (*FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(), TypeError):
-            return None
-        result: t.Infra.RopeModuleImports | None = module_imports
+        except (
+            *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
+            TypeError,
+        ) as exc:
+            msg = (
+                "rope module import table unavailable for "
+                f"{resource.path}: {type(exc).__name__}: {exc!s}"
+            )
+            raise RuntimeError(msg) from exc
+        result: t.Infra.RopeModuleImports = module_imports
         return result
 
 

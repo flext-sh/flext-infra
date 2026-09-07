@@ -147,7 +147,7 @@ class FlextInfraManualCommandValidator(s[bool]):
             )
         read = u.Cli.files_read_text(config_path)
         if read.failure:
-            return r[bool].fail(read.error or "pre-commit config read failed")
+            return r[bool].from_failure(read)
         if read.value.strip() != self.render_pre_commit_config().strip():
             return r[bool].fail(
                 ".pre-commit-config.yaml drifted from canonical template — run `make gen`"

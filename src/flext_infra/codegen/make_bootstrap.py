@@ -33,9 +33,7 @@ class FlextInfraCodegenMakeBootstrap(s[bool]):
             )
         )
         if conformed.failure:
-            return r[bool].fail(
-                conformed.error or "Makefile bootstrap conformance failed"
-            )
+            return r[bool].from_failure(conformed)
         return r[bool].ok(True)
 
 

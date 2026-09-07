@@ -4,16 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraGitService, c, m, u
 from flext_tests import tm
 from tests import u as test_u
-
-
-def _no_executable(_name: str) -> str | None:
-    """Stand in for ``shutil.which`` when the executable is absent."""
-    return None
 
 
 class TestsFlextInfraGitFacet:
@@ -57,7 +50,7 @@ class TestsFlextInfraGitFacet:
     def test_tracked_scope_does_not_borrow_an_ignoring_parent_repository(
         self, tmp_path: Path
     ) -> None:
-        """An explicitly selected ignored scope owns its filesystem contents."""
+        """An explicitly selected ignored scope remains excluded by its repository."""
         repository = tmp_path / "repository"
         repository.mkdir()
         test_u.Tests.initialize_git_repo(repository)
@@ -68,7 +61,7 @@ class TestsFlextInfraGitFacet:
 
         tracked = u.Infra.git_tracked_scope_paths(ignored_scope)
 
-        tm.that(tracked, eq=None)
+        tm.that(tracked, eq=[])
 
     def test_merge_no_edit_requires_a_non_fast_forward_merge(
         self, tmp_path: Path
@@ -146,6 +139,21 @@ class TestsFlextInfraGitFacet:
         assert dirty.value.dirty is True
         assert "dirty.txt" in dirty.value.porcelain
 
+    def test_changed_paths_reports_tracked_and_untracked_files(
+        self, real_git_repo: Path
+    ) -> None:
+        """The public Git facade returns the complete existing worktree delta."""
+        readme = real_git_repo / "README.md"
+        readme.write_text("changed\n", encoding="utf-8")
+        created = real_git_repo / "created.py"
+        created.write_text("VALUE = 1\n", encoding="utf-8")
+
+        changed = tm.ok(
+            u.Infra.git_changed_paths(m.Infra.GitRepoRequest(repo_root=real_git_repo))
+        )
+
+        tm.that(set(changed), eq={readme.resolve(), created.resolve()})
+
     def test_status_classifies_registered_nested_worktrees_as_administrative(
         self, tmp_path: Path
     ) -> None:
@@ -202,14 +210,12 @@ class TestsFlextInfraGitFacet:
         )
         assert stale.dirty is True
 
-    def test_missing_git_binary_fails_closed(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_missing_git_binary_fails_closed(self, tmp_path: Path) -> None:
         """Missing git on PATH must Result.fail without raising."""
-        monkeypatch.setattr(
-            "flext_infra._utilities._git.repo.shutil.which", _no_executable
-        )
-        result = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=tmp_path))
+        empty_path = tmp_path / "empty-path"
+        empty_path.mkdir()
+        with tm.scope(env={"PATH": str(empty_path)}):
+            result = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=tmp_path))
         assert result.failure
         assert result.error is not None
         assert "git executable not found" in result.error

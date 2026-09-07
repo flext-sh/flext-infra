@@ -9,14 +9,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, ClassVar, Literal
 
 from flext_core import m
-from flext_infra import t
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-from flext_infra._models.refactor_namespace_enforcer import (
-    FlextInfraModelsNamespaceEnforcer,
-)
+from flext_infra import c, t
+
+from .._models.mixins import FlextInfraModelsMixins as mm
+from .._models.refactor_namespace_enforcer import FlextInfraModelsNamespaceEnforcer
 
 
 class FlextInfraModelsScan:
@@ -80,6 +79,130 @@ class FlextInfraModelsScan:
         ]
         detector_name: Annotated[
             str, m.Field(description="Name of the detector that produced this result")
+        ]
+
+    class ModScanFinding(m.ArbitraryTypesModel):
+        """One complete ast-grep JSONL finding with canonical evidence keys."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
+
+        rule_file: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Rule document file producing the finding"),
+        ]
+        rule_id: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact ast-grep rule identifier")
+        ]
+        repository: Annotated[
+            t.NonEmptyStr, m.Field(description="Workspace repository owning the file")
+        ]
+        file: Annotated[Path, m.Field(description="Workspace-relative finding path")]
+        range: Annotated[
+            t.JsonMapping, m.Field(description="Exact ast-grep source range payload")
+        ]
+        text: Annotated[str, m.Field(description="Exact matched source text")]
+        replacement: Annotated[
+            str | None,
+            m.Field(description="Exact replacement when the rule provides one"),
+        ] = None
+        actionable: Annotated[
+            bool, m.Field(description="Whether applying the rule changes source bytes")
+        ]
+        classification: Annotated[
+            c.Infra.ModScanFindingClass,
+            m.Field(description="Rule mutability and byte-change classification"),
+        ]
+        payload: Annotated[
+            t.JsonMapping,
+            m.Field(
+                description="Complete validated ast-grep finding without field loss"
+            ),
+        ]
+
+    class ModScanReport(m.ArbitraryTypesModel):
+        """Verified structural findings and actionable rewrite targets."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
+
+        findings: Annotated[
+            t.NonNegativeInt, m.Field(description="Complete finding count")
+        ]
+        actionable: Annotated[
+            t.NonNegativeInt, m.Field(description="Byte-changing rewrite count")
+        ]
+        detection_only: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Findings produced by rules without a fix"),
+        ]
+        non_actionable_with_fix: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Findings whose declared fix is byte-identical"),
+        ]
+        files: Annotated[
+            frozenset[Path], m.Field(description="Files containing findings")
+        ]
+        entries: Annotated[
+            tuple[FlextInfraModelsScan.ModScanFinding, ...],
+            m.Field(description="Every validated ast-grep finding in stable order"),
+        ]
+
+    class ModScanEvidence(m.ArbitraryTypesModel):
+        """Complete replace-on-run evidence for one public mod scan."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
+
+        schema_version: Annotated[
+            Literal[1], m.Field(description="Exact structured evidence schema")
+        ]
+        command: Annotated[
+            c.Infra.ModScanCommand, m.Field(description="Public mod scan mode")
+        ]
+        root: Annotated[Path, m.Field(description="Absolute scanned workspace root")]
+        scope: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Exact ast-grep target scope"),
+        ]
+        findings: Annotated[
+            t.NonNegativeInt, m.Field(description="Complete finding count")
+        ]
+        actionable: Annotated[
+            t.NonNegativeInt, m.Field(description="Byte-changing rewrite count")
+        ]
+        detection_only: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Findings produced by rules without a fix"),
+        ]
+        non_actionable_with_fix: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Findings whose declared fix is byte-identical"),
+        ]
+        totals_by_class: Annotated[
+            t.MappingKV[c.Infra.ModScanFindingClass, t.NonNegativeInt],
+            m.Field(description="Complete finding totals by mutability class"),
+        ]
+        totals_by_repository: Annotated[
+            t.MappingKV[str, t.NonNegativeInt],
+            m.Field(description="Complete finding totals by repository"),
+        ]
+        totals_by_rule: Annotated[
+            t.MappingKV[str, t.NonNegativeInt],
+            m.Field(description="Complete finding totals by rule identifier"),
+        ]
+        entries: Annotated[
+            tuple[FlextInfraModelsScan.ModScanFinding, ...],
+            m.Field(description="Every finding in deterministic scan order"),
+        ]
+
+    class ModScanEvidenceReceipt(m.ArbitraryTypesModel):
+        """Authenticated publication identity and its exact evidence payload."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
+
+        path: Annotated[Path, m.Field(description="Published evidence destination")]
+        sha256: Annotated[t.NonEmptyStr, m.Field(description="Published byte digest")]
+        evidence: Annotated[
+            FlextInfraModelsScan.ModScanEvidence,
+            m.Field(description="Exact structured evidence that was published"),
         ]
 
 

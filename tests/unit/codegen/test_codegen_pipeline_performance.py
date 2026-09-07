@@ -8,9 +8,6 @@ Popen pipelining (Step 3).
 
 from __future__ import annotations
 
-import cProfile
-import io
-import pstats
 import time
 import tracemalloc
 from pathlib import Path
@@ -52,9 +49,9 @@ class TestsFlextInfraCodegenPipelinePerformance:
         repository_root = _build_synthetic_workspace(tmp_path)
         generator = FlextInfraCodegenLazyInit(repository_root=repository_root)
         start = time.perf_counter()
-        result = generator.generate_inits(check_only=True)
+        result = generator.plan_files()
         elapsed = time.perf_counter() - start
-        tm.that(result, eq=0, msg=f"Lazy-init had errors: {result}")
+        tm.that(result.success, eq=True, msg=f"Lazy-init had errors: {result}")
         tm.that(
             elapsed,
             lt=c.Tests.GEN_PIPELINE_MAX_SECONDS,
@@ -70,12 +67,12 @@ class TestsFlextInfraCodegenPipelinePerformance:
         generator = FlextInfraCodegenLazyInit(repository_root=repository_root)
         tracemalloc.start()
         try:
-            result = generator.generate_inits(check_only=True)
+            result = generator.plan_files()
             _, peak = tracemalloc.get_traced_memory()
         finally:
             tracemalloc.stop()
         peak_mb = peak / 1024 / 1024
-        tm.that(result, eq=0, msg=f"Lazy-init had errors: {result}")
+        tm.that(result.success, eq=True, msg=f"Lazy-init had errors: {result}")
         tm.that(
             peak_mb,
             lt=c.Tests.GEN_PIPELINE_MEMORY_MAX_MB,
@@ -85,44 +82,25 @@ class TestsFlextInfraCodegenPipelinePerformance:
             ),
         )
 
-    def test_cprofile_evidence_captures_optimized_paths(self, tmp_path: Path) -> None:
-        """Benchmark: cProfile confirms optimized code paths are exercised."""
+    def test_generated_initializers_are_directly_compilable(
+        self, tmp_path: Path
+    ) -> None:
+        """Every planned initializer is valid without a formatter subprocess."""
         repository_root = _build_synthetic_workspace(tmp_path)
         generator = FlextInfraCodegenLazyInit(repository_root=repository_root)
-        profile = cProfile.Profile()
-        profile.enable()
-        result = generator.generate_inits(check_only=True)
-        profile.disable()
-        tm.that(result, eq=0, msg=f"Lazy-init had errors: {result}")
-        stream = io.StringIO()
-        stats = pstats.Stats(profile, stream=stream)
-        stats.print_stats()
-        profile_output = stream.getvalue()
-        # flext-perf.1: verify _declared_exports AST cache is exercised
-        tm.that(
-            "_declared_exports" in profile_output,
-            eq=True,
-            msg="_declared_exports not found in cProfile output",
-        )
-        # flext-perf.3: verify _render_model (ruff pipeline) is exercised
-        tm.that(
-            "_render_model" in profile_output,
-            eq=True,
-            msg="_render_model not found in cProfile output",
-        )
-        tm.that(
-            "subprocess" in profile_output or "Popen" in profile_output,
-            eq=True,
-            msg="subprocess/Popen not found in cProfile output",
-        )
+        result = generator.plan_files()
+        tm.that(result.success, eq=True, msg=f"Lazy-init had errors: {result}")
+        for plan in result.value.files:
+            if plan.desired_content is not None:
+                compile(plan.desired_content, str(plan.path), "exec")
 
     def test_repeat_run_is_byte_idempotent(self, tmp_path: Path) -> None:
         """Benchmark: second gen run produces identical output (cache warm)."""
         repository_root = _build_synthetic_workspace(tmp_path)
         generator = FlextInfraCodegenLazyInit(repository_root=repository_root)
         # First run populates _declared_exports cache
-        result_1 = generator.generate_inits(check_only=True)
-        tm.that(result_1, eq=0, msg=f"First run had errors: {result_1}")
+        result_1 = generator.plan_files()
+        tm.that(result_1.success, eq=True, msg=f"First run had errors: {result_1}")
         # Second run should also succeed (cache should not corrupt output)
-        result_2 = generator.generate_inits(check_only=True)
-        tm.that(result_2, eq=0, msg=f"Second run had errors: {result_2}")
+        result_2 = generator.plan_files()
+        tm.that(result_2.success, eq=True, msg=f"Second run had errors: {result_2}")

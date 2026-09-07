@@ -31,7 +31,11 @@ class FlextInfraCodegenPyTyped(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Execute ``py.typed`` synchronization from the validated CLI model."""
-        self.run(check_only=self.check_only)
+        changes = self.run(check_only=self.check_only)
+        if self.check_only and changes:
+            return r[bool].fail(
+                f"py.typed drift detected in {changes} package directorie(s)"
+            )
         return r[bool].ok(True)
 
     def run(self, *, check_only: bool = False) -> int:

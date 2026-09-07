@@ -29,7 +29,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
             return self.toml.read_plain(path)
         plain_result = u.Cli.toml_read_json(path)
         if plain_result.failure:
-            return r[t.JsonMapping].fail(plain_result.error or f"failed to read {path}")
+            return r[t.JsonMapping].from_failure(plain_result)
         return r[t.JsonMapping].ok(
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(plain_result.value)
         )
@@ -121,9 +121,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
             else u.Infra.resolve_projects(repository_root, names)
         )
         if result.failure:
-            return r[t.SequenceOf[Path]].fail(
-                result.error or "project resolution failed"
-            )
+            return r[t.SequenceOf[Path]].from_failure(result)
         projects_info: t.SequenceOf[m.Infra.ProjectInfo] = result.value
         projects = [
             project.path

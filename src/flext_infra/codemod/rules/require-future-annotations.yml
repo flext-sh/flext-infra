@@ -1,0 +1,23 @@
+id: require-future-annotations
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+rule:
+  kind: module
+  not:
+    has:
+      pattern: from __future__ import annotations
+      stopBy: end
+message: >-
+  Python modules must declare `from __future__ import annotations`; insertion
+  remains detection-only because module docstrings, shebangs, encoding markers,
+  and other future imports determine the only legal insertion point.

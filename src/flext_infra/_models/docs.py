@@ -7,7 +7,9 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
-from flext_infra._models.config import FlextInfraConfigModels
+
+from .config import FlextInfraConfigModels
+from .docs_generation import FlextInfraModelsDocsGeneration
 
 
 class _FlextInfraDocsContracts:
@@ -45,7 +47,7 @@ class _FlextInfraDocsContracts:
 
 # NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): docs transport
 # retains the exact metadata/config models and declares only analysis deltas.
-class FlextInfraModelsDocs(_FlextInfraDocsContracts):
+class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContracts):
     """Models for documentation services."""
 
     class DocsGenerateRequest(m.ContractModel):
@@ -56,7 +58,7 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
         """
 
         repository_root: Annotated[
-            Path, m.Field(description="Repository root for docs generation")
+            Path, m.Field(description="Workspace root for docs generation")
         ]
         projects: Annotated[
             t.StrSequence | None, m.Field(description="Optional selected project names")
@@ -90,21 +92,6 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
             False
         )
 
-    class DocScope(m.ArbitraryTypesModel):
-        """Documentation scope targeting a project or repository root."""
-
-        name: Annotated[t.NonEmptyStr, m.Field(description="Scope name")]
-        path: Annotated[Path, m.Field(description="Absolute path to scope root")]
-        report_dir: Annotated[
-            Path, m.Field(description="Report output directory for scope")
-        ]
-        project_class: Annotated[
-            str, m.Field(description="Docs scope classification")
-        ] = "root"
-        package_name: Annotated[
-            str, m.Field(description="Primary package name for scope")
-        ] = ""
-
     class DocstringCoverage(m.ContractModel):
         """Docstring coverage metric for one docs scope (declaration only).
 
@@ -136,7 +123,7 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
     class DocsPublicContract(m.ArbitraryTypesModel):
         """Exact project/config objects plus derived public API analysis."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True, extra="forbid", frozen=True
         )
 

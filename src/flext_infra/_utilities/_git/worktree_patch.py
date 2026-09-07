@@ -8,12 +8,13 @@ from typing import TYPE_CHECKING
 from git import GitCommandError
 
 from flext_core import r
-from flext_infra._utilities._git.worktree_checkpoint import (
-    FlextInfraUtilitiesGitWorktreeCheckpointMixin,
-)
-from flext_infra._utilities._git.worktree_io import git_stdin
 from flext_infra.constants import c
 from flext_infra.models import m
+
+from ..._utilities._git.worktree_checkpoint import (
+    FlextInfraUtilitiesGitWorktreeCheckpointMixin,
+)
+from ..._utilities._git.worktree_io import git_stdin
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -37,9 +38,9 @@ class FlextInfraUtilitiesGitWorktreePatchMixin(
             with git_stdin(patch) as istream:
                 repo.git.apply("--check", "--binary", *direction, "-", istream=istream)
         except GitCommandError as exc:
-            return r[bool].fail(str(exc))
+            return r[bool].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[bool].fail(f"git apply --check failed: {exc}")
+            return r[bool].fail(f"git apply --check failed: {exc}", exception=exc)
         return r[bool].ok(True)
 
     @classmethod
@@ -103,7 +104,7 @@ class FlextInfraUtilitiesGitWorktreePatchMixin(
                         current.as_posix(),
                     )
                 except GitCommandError as exc:
-                    return r[bool].fail(str(exc))
+                    return r[bool].fail(str(exc), exception=exc)
                 except (OSError, ValueError) as exc:
                     return r[bool].fail(f"failed to apply gitlink: {current}: {exc}")
         return r[bool].ok(True)
@@ -139,7 +140,7 @@ class FlextInfraUtilitiesGitWorktreePatchMixin(
                 target.write_bytes(content)
             return r[bool].fail("git apply failed on ignored additions")
         except (OSError, ValueError) as exc:
-            return r[bool].fail(f"git apply failed: {exc}")
+            return r[bool].fail(f"git apply failed: {exc}", exception=exc)
         return r[bool].ok(True)
 
     @classmethod
@@ -155,7 +156,7 @@ class FlextInfraUtilitiesGitWorktreePatchMixin(
             collision_result = cls._git_apply_with_ignored_additions(delta)
             if collision_result.success:
                 return cls._git_apply_gitlinks(delta.source_root, delta.patch)
-            return r[bool].fail(check_result.error or collision_result.error)
+            return r[bool].from_failure(check_result)
         try:
             repo = cls._repo(delta.source_root)
             with git_stdin(delta.patch) as istream:
@@ -166,7 +167,7 @@ class FlextInfraUtilitiesGitWorktreePatchMixin(
                 return cls._git_apply_gitlinks(delta.source_root, delta.patch)
             return r[bool].fail("git apply failed")
         except (OSError, ValueError) as exc:
-            return r[bool].fail(f"git apply failed: {exc}")
+            return r[bool].fail(f"git apply failed: {exc}", exception=exc)
         return cls._git_apply_gitlinks(delta.source_root, delta.patch)
 
 

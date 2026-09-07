@@ -7,11 +7,10 @@ from typing import TYPE_CHECKING
 from git import BaseIndexEntry, GitCommandError, Repo
 
 from flext_core import r
-from flext_infra._utilities._git.semantic_paths import (
-    FlextInfraUtilitiesGitSemanticPathsMixin,
-)
 from flext_infra.constants import c
 from flext_infra.models import m
+
+from ..._utilities._git.semantic_paths import FlextInfraUtilitiesGitSemanticPathsMixin
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -35,9 +34,11 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
             subject = repo.git.log("-1", "--format=%s")
             numstat = repo.git.diff("--numstat", "HEAD~1", c.Infra.GIT_HEAD)
         except GitCommandError as exc:
-            return r[m.Infra.GitNumstatReport].fail(str(exc))
+            return r[m.Infra.GitNumstatReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitNumstatReport].fail(f"git numstat read failed: {exc}")
+            return r[m.Infra.GitNumstatReport].fail(
+                f"git numstat read failed: {exc}", exception=exc
+            )
         return r[m.Infra.GitNumstatReport].ok(
             m.Infra.GitNumstatReport(subject=subject.strip(), numstat=numstat)
         )
@@ -51,10 +52,10 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
             repo = cls._repo(request.repo_root)
             paths_z, index_z, head = cls._git_capture_fingerprint(repo)
         except GitCommandError as exc:
-            return r[m.Infra.GitFingerprintInputsReport].fail(str(exc))
+            return r[m.Infra.GitFingerprintInputsReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[m.Infra.GitFingerprintInputsReport].fail(
-                f"failed to capture fingerprint inputs: {exc}"
+                f"failed to capture fingerprint inputs: {exc}", exception=exc
             )
         return r[m.Infra.GitFingerprintInputsReport].ok(
             m.Infra.GitFingerprintInputsReport(
@@ -71,7 +72,9 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
         index_z = repo.git.ls_files("--stage", "-z").encode(c.Cli.ENCODING_DEFAULT)
         try:
             head = repo.head.commit.hexsha.encode(c.Cli.ENCODING_DEFAULT)
-        except (ValueError, OSError):
+        except ValueError:
+            # Unborn HEAD: git itself reports no commit, so the fingerprint
+            # input is the literal "UNBORN" marker, matching `git rev-parse HEAD`.
             head = b"UNBORN"
         return paths_z, index_z, head
 
@@ -90,10 +93,10 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
             ))
             repo.index.add([entry])
         except GitCommandError as exc:
-            return r[m.Infra.GitBoolReport].fail(str(exc))
+            return r[m.Infra.GitBoolReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[m.Infra.GitBoolReport].fail(
-                f"failed to update-index gitlink: {exc}"
+                f"failed to update-index gitlink: {exc}", exception=exc
             )
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
@@ -110,9 +113,11 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
             repo = cls._repo(request.repo_root)
             output = repo.git.ls_files("--stage", "--", request.reference)
         except GitCommandError as exc:
-            return r[m.Infra.GitOidReport].fail(str(exc))
+            return r[m.Infra.GitOidReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitOidReport].fail(f"failed to read gitlink spec: {exc}")
+            return r[m.Infra.GitOidReport].fail(
+                f"failed to read gitlink spec: {exc}", exception=exc
+            )
         if not output.strip():
             return r[m.Infra.GitOidReport].fail(
                 f"Git gitlink is missing from the index: {request.reference}"
@@ -139,7 +144,8 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
             staged = repo.git.ls_files("--stage", "--", request.reference)
         except (GitCommandError, OSError, ValueError) as exc:
             return r[m.Infra.GitOidReport].fail(
-                f"failed to read the staged gitlink for {request.reference}: {exc}"
+                f"failed to read the staged gitlink for {request.reference}: {exc}",
+                exception=exc,
             )
         for line in staged.splitlines():
             fields = line.split()

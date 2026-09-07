@@ -26,8 +26,6 @@ class FlextInfraDirenvGate(FlextInfraGate):
     gate_id: ClassVar[str] = "direnv"
     gate_name: ClassVar[str] = "DIRENV ENVIRONMENT CONTRACT"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["direnv"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["direnv"][1]
 
     @override
     def check(
@@ -103,7 +101,7 @@ class FlextInfraDirenvGate(FlextInfraGate):
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Pass only on a zero-exit activation."""
         _ = project_dir, ctx
-        if result.exit_code == 0:
+        if u.Cli.process_succeeded(result.outcome):
             return True, ()
         detail = result.stderr.strip() or result.stdout.strip() or "direnv exec failed"
         return (

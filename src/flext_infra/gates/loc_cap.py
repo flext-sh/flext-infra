@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, config, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
@@ -20,13 +20,11 @@ if TYPE_CHECKING:
 
 
 class FlextInfraLocCapGate(FlextInfraGate):
-    """Flag any module whose scc `Code` LOC exceeds ``c.Infra.LOC_CAP_MAX``."""
+    """Flag any module whose scc `Code` LOC exceeds the config-owned ceiling."""
 
     gate_id: ClassVar[str] = "loc-cap"
     gate_name: ClassVar[str] = "MODULE-LOC SUPREME LAW"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["loc-cap"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["loc-cap"][1]
 
     @override
     def _build_check_command(
@@ -42,7 +40,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse scc JSON into one Issue per over-cap module."""
         _ = project_dir, ctx
-        if result.exit_code != 0:
+        if not u.Cli.process_succeeded(result.outcome):
             return (
                 False,
                 (
@@ -56,7 +54,9 @@ class FlextInfraLocCapGate(FlextInfraGate):
                     ),
                 ),
             )
-        issues = self._files_over_cap(result.stdout or "[]", c.Infra.LOC_CAP_MAX)
+        issues = self._files_over_cap(
+            result.stdout or "[]", config.Infra.codegen.loc_cap.max_lines
+        )
         return len(issues) == 0, issues
 
     @staticmethod

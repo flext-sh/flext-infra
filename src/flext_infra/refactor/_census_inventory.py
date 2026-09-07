@@ -54,7 +54,11 @@ class FlextInfraRefactorCensusInventoryMixin:
         """
         projects_result = u.Infra.projects(repository_root)
         if projects_result.failure:
-            return {}
+            msg = (
+                f"failed to discover projects for alias inventory at "
+                f"{repository_root}: {projects_result.error}"
+            )
+            raise RuntimeError(msg)
         inventory: dict[str, list[str]] = defaultdict(list)
         for project in projects_result.unwrap():
             pkg_name = project.name.replace("-", "_")

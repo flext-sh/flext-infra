@@ -12,11 +12,15 @@ from __future__ import annotations
 
 from typing import Annotated, override
 
-from flext_infra import m, p, r, s, t, u
-from flext_infra.deps._toml_phase_ops import FlextInfraTomlPhaseOps
+from flext_infra import m, p, r, t, u
+from flext_infra.base import FlextInfraServiceBase
+
+from ._toml_phase_ops import FlextInfraTomlPhaseOps
 
 
-class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):
+class FlextInfraTomlPhaseService(
+    FlextInfraTomlPhaseOps, FlextInfraServiceBase[t.StrSequence]
+):
     """Apply ``m.Infra.Deps.Toml.PhaseConfig`` phases to a TOML document."""
 
     doc: Annotated[
