@@ -13,9 +13,9 @@ import re
 from enum import StrEnum, unique
 from typing import TYPE_CHECKING, Final
 
-from .._constants.codegen_detection import FlextInfraConstantsCodegenDetection
-from .._constants.codegen_lazy import FlextInfraConstantsCodegenLazy
-from .._constants.codegen_render_names import FlextInfraConstantsCodegenRenderNames
+from .codegen_detection import FlextInfraConstantsCodegenDetection
+from .codegen_lazy import FlextInfraConstantsCodegenLazy
+from .codegen_render_names import FlextInfraConstantsCodegenRenderNames
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -58,6 +58,11 @@ class FlextInfraConstantsCodegen(
     "Regex to parse violation strings: [NS-00X-NNN] path:line — message."
     MISE_RELEASE_COMPONENT_COUNT: Final[int] = 3
     "Number of numeric components in a generated Mise release version."
+    MISE_PLATFORM_INDEPENDENT_BACKENDS: Final[frozenset[str]] = frozenset({"npm:"})
+    (
+        "Mise backend prefixes whose tools ship one artifact for every platform, "
+        "so `mise lock` records no platform table for them (e.g. `npm:jscpd`)."
+    )
     MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE: Final[str] = "MISE_DATA_DIR"
     "Required caller-owned persistent root for generated Mise setup."
     MISE_BOOTSTRAP_FIXED_ENVIRONMENT: Final[t.StrPairSequence] = (

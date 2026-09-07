@@ -11,8 +11,8 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities.docs_contract import FlextInfraUtilitiesDocsContract
-from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from .docs_contract import FlextInfraUtilitiesDocsContract
+from .docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
@@ -69,11 +69,27 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
             return r[tuple[Path, ...]].from_failure(roots)
         paths: set[Path] = set()
         for root in roots.value:
-            for fixed_path in (
+            # The docs configuration lives one directory down, and a repository
+            # that has never generated documentation has no `docs/` yet. Reading
+            # a leaf under a directory that does not exist is not "absent", it
+            # is a failure, so its presence is established first.
+            docs_root_present = (
+                FlextInfraUtilitiesDocsGenerateSourcesMixin._source_directory_exists(
+                    root / c.Infra.DIR_DOCS
+                )
+            )
+            if docs_root_present.failure:
+                return r[tuple[Path, ...]].from_failure(docs_root_present)
+            fixed_paths = (
                 root / c.Infra.GITMODULES,
                 root / c.Infra.PYPROJECT_FILENAME,
-                root / c.Infra.DIR_DOCS / c.Infra.DOCS_CONFIG_FILENAME,
-            ):
+                *(
+                    (root / c.Infra.DIR_DOCS / c.Infra.DOCS_CONFIG_FILENAME,)
+                    if docs_root_present.value
+                    else ()
+                ),
+            )
+            for fixed_path in fixed_paths:
                 state = cli_u.Cli.atomic_read_binary_file_state(
                     fixed_path, required=False
                 )

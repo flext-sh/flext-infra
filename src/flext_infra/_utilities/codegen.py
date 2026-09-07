@@ -9,13 +9,15 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
+from flext_infra import config
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
 
-from .._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
-from .._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
+from .codegen_facades import FlextInfraUtilitiesCodegenFacades
+from .codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
+from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
 
 
 class FlextInfraUtilitiesCodegen(
@@ -38,6 +40,63 @@ class FlextInfraUtilitiesCodegen(
             persistent_environment=c.Infra.MISE_BOOTSTRAP_PERSISTENT_ENVIRONMENT,
             empty_files=c.Infra.MISE_BOOTSTRAP_EMPTY_FILES,
             passthrough_environment=c.Infra.MISE_BOOTSTRAP_PASSTHROUGH_ENVIRONMENT,
+        )
+
+    @staticmethod
+    def envrc_render_spec() -> m.Infra.EnvrcRenderSpec:
+        """Return the sole typed context every generated ``.envrc`` renders from."""
+        toolchain = config.Infra.codegen.toolchain
+        return m.Infra.EnvrcRenderSpec(
+            state_directory_name=toolchain.state_directory_name,
+            scratch_namespace=toolchain.scratch_namespace,
+            pycache_namespace=toolchain.pycache_namespace,
+            environment_path_prepends=toolchain.environment_path_prepends,
+            mise_bootstrap=FlextInfraUtilitiesCodegen.mise_bootstrap_environment(),
+        )
+
+    @staticmethod
+    def render_mise_toml(project_root: Path) -> p.Result[str]:
+        """Return the exact ``.mise.toml`` body ``make gen`` will publish.
+
+        The declaration is the canonical template rendered from
+        ``Infra.codegen.toolchain`` and overlaid with the repository's own
+        ``ManagedArtifacts.Mise`` tools -- the same two owners the conform
+        template loop reads, never the mutable on-disk projection.
+
+        ``make deps`` locks this body, so a selector that the config SSOT has
+        newly declared reaches ``mise.lock`` in the cycle that declares it.
+        Locking the on-disk copy instead made the declaration unreachable: the
+        offline ``gen`` validator refuses to publish a config whose tool set the
+        lock lacks, and the lock could never gain a tool the published config
+        did not already carry. The two paths cannot silently diverge, because
+        that same validator compares this rendered tool set against the lock on
+        every ``gen``.
+        """
+        codegen_spec = config.Infra.codegen
+        entries = tuple(
+            entry
+            for entry in codegen_spec.templates.entries
+            if entry.destination == c.Infra.MISE_TOML_FILENAME
+            and entry.delegate == "render"
+        )
+        if len(entries) != 1:
+            return r[str].fail(
+                "codegen configuration must declare exactly one "
+                f"{c.Infra.MISE_TOML_FILENAME} render template"
+            )
+        templates_root = (
+            Path(__file__).resolve().parent.parent
+            / "templates"
+            / codegen_spec.templates.root
+        ).resolve()
+        source = (templates_root / entries[0].source).resolve()
+        if not source.is_relative_to(templates_root) or not source.is_file():
+            return r[str].fail(f"canonical Mise template is absent: {source}")
+        rendered = u.Cli.template_render(source, codegen_spec.toolchain)
+        if rendered.failure:
+            return r[str].from_failure(rendered)
+        return FlextInfraUtilitiesProjectManagedArtifacts.compose_mise_toml(
+            project_root, rendered.value
         )
 
     @staticmethod
@@ -69,15 +128,19 @@ class FlextInfraUtilitiesCodegen(
             return r[Path].fail(f"Mise storage path must be absolute: {storage_root}")
         physical_project = project_root.resolve(strict=True)
         physical_tmp = Path(tempfile.gettempdir()).resolve(strict=True)
-        if storage_root == physical_tmp or storage_root.is_relative_to(physical_tmp):
-            return r[Path].fail(
-                f"persistent Mise storage must not live under /tmp: {storage_root}"
-            )
+        # Containment is decided before the temp-root rule: a checkout may itself
+        # sit under the temporary root, and reporting `/tmp` there names the
+        # sandbox instead of the actual defect, which is the storage living
+        # inside the checkout it is supposed to outlive.
         if storage_root == physical_project or storage_root.is_relative_to(
             physical_project
         ):
             return r[Path].fail(
                 f"persistent Mise storage must be outside the checkout: {storage_root}"
+            )
+        if storage_root == physical_tmp or storage_root.is_relative_to(physical_tmp):
+            return r[Path].fail(
+                f"persistent Mise storage must not live under /tmp: {storage_root}"
             )
         if physical_project.is_relative_to(storage_root):
             return r[Path].fail(

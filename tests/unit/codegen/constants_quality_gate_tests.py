@@ -30,7 +30,7 @@ class TestConstantsQualityGateCLIDispatch:
         result = main([
             "codegen",
             "constants-quality-gate",
-            "--workspace",
+            "--repository-root",
             str(tmp_path),
         ])
         tm.that(result, is_=int)
@@ -40,7 +40,7 @@ class TestConstantsQualityGateCLIDispatch:
         result = main([
             "codegen",
             "constants-quality-gate",
-            "--workspace",
+            "--repository-root",
             str(tmp_path),
             "--format",
             "json",
@@ -52,7 +52,7 @@ class TestConstantsQualityGateCLIDispatch:
         result = main([
             "codegen",
             "constants-quality-gate",
-            "--workspace",
+            "--repository-root",
             str(tmp_path),
             "--format",
             "text",

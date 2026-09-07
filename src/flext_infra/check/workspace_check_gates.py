@@ -124,7 +124,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
     ) -> m.Infra.GateContext:
         """Create a fresh GateContext scoped to a single project."""
         return m.Infra.GateContext(
-            workspace=ctx.repository_root,
+            repository_root=ctx.repository_root,
             reports_dir=ctx.reports_dir / target.name,
             apply_fixes=ctx.apply_fixes,
             check_only=ctx.check_only,
@@ -200,7 +200,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
     def _gate_ctx(self, reports_dir: Path | None = None) -> m.Infra.GateContext:
         """Gate ctx."""
         return m.Infra.GateContext(
-            workspace=self._repository_root,
+            repository_root=self._repository_root,
             reports_dir=reports_dir or self._default_reports_dir,
         )
 
@@ -281,7 +281,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         ) -> p.Result[m.Cli.PipelineStageResult]:
             """Run the gate and record its execution in the sink."""
             gate_ctx = m.Infra.GateContext(
-                workspace=ctx.repository_root,
+                repository_root=ctx.repository_root,
                 reports_dir=ctx.reports_dir,
                 apply_fixes=ctx.apply_fixes,
                 check_only=ctx.check_only,

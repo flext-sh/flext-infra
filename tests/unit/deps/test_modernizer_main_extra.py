@@ -84,7 +84,11 @@ class TestsFlextInfraDepsModernizerMainExtra:
             skip_comments=True,
             skip_check=False,
         )
-        tm.that(modernizer.run(), eq=1)
+
+        # Unparseable input is not a finding to report as an exit code: the
+        # reader raises and the failure escapes with its own cause.
+        with pytest.raises(ValueError, match="pyproject TOML is invalid"):
+            modernizer.run()
 
     def test_run_rewrite_constraints_requires_uv_lock(
         self, modernizer_workspace: Path

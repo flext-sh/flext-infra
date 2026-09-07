@@ -19,14 +19,7 @@ class TestCodegenUvExcludeNewerOverlay:
     def _repository() -> m.Infra.WorkspaceSpec:
         repository = test_u.Tests.repository_ref(config.Infra.name)
         return m.Infra.WorkspaceSpec(
-            name=repository.distribution,
-            beads=m.Infra.BeadsProjectSpec(
-                version=1,
-                workspace=repository.distribution,
-                database=repository.distribution,
-                issue_prefix=repository.distribution,
-            ),
-            repository=repository,
+            name=repository.distribution, repository=repository
         )
 
     @classmethod

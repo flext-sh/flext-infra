@@ -8,10 +8,10 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 from flext_infra import c, t
 
-from .._models._defaults import ImmutableEmptyMapping
-from .._models._git.identity import FlextInfraModelsGitIdentity
-from .._models.config import FlextInfraConfigModels
-from .._models.mixins import FlextInfraModelsMixins as mm
+from ._defaults import ImmutableEmptyMapping
+from ._git.identity import FlextInfraModelsGitIdentity
+from .config import FlextInfraConfigModels
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsWorkspace:
@@ -27,9 +27,7 @@ class FlextInfraModelsWorkspace:
 
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-        repository_root: Annotated[
-            Path, m.Field(alias="workspace", description="Repository root path")
-        ]
+        repository_root: Annotated[Path, m.Field(description="Repository root path")]
 
     class WorkspaceProjectContext(m.ContractModel):
         """Canonical context derived from one runtime working directory."""
@@ -59,9 +57,7 @@ class FlextInfraModelsWorkspace:
 
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-        repository_root: Annotated[
-            Path, m.Field(alias="workspace", description="Consumer project root")
-        ]
+        repository_root: Annotated[Path, m.Field(description="Consumer project root")]
         flext_root: Annotated[
             Path, m.Field(description="Flext worktree supplying the packages")
         ]

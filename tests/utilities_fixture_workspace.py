@@ -262,7 +262,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         tmp_path: Path, *, project_name: str = "p1", with_src: bool = False
     ) -> tuple[FlextInfraWorkspaceChecker, Path]:
         """Provide the typed test helper `create_checker_project`."""
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
         project_dir = TestsFlextInfraUtilitiesWorkspaceFixtureMixin.mk_project(
             tmp_path, project_name
         )

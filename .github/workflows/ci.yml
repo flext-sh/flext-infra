@@ -48,6 +48,35 @@ jobs:
           submodules: false
           fetch-depth: 0
 
+      # A private git dependency cannot be cloned with the workflow's own
+      # token: secrets.GITHUB_TOKEN is scoped to the repository that runs the
+      # workflow, and uv drives dependency clones through plain git, which
+      # carries no credential at all. The declared App mints an installation
+      # token for the owner, and git reads it from a 0600 file outside the
+      # checkout — never from the environment of the build itself.
+      - name: Mint the private-dependency installation token
+        id: private_dependency_token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3.2.0
+        with:
+          app-id: ${{ secrets.CI_DEPENDENCIES_APP_ID }}
+          private-key: ${{ secrets.CI_DEPENDENCIES_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Authenticate git for private dependencies
+        env:
+          PRIVATE_DEPENDENCY_TOKEN: ${{ steps.private_dependency_token.outputs.token }}
+        run: |
+          set -euo pipefail
+          : "${RUNNER_TEMP:?RUNNER_TEMP is required for private dependency identity}"
+          if [ -z "${PRIVATE_DEPENDENCY_TOKEN}" ]; then
+            echo "::error::the CI_DEPENDENCIES_APP_ID App produced no installation token — a private git dependency cannot be resolved"
+            exit 1
+          fi
+          store="$RUNNER_TEMP/flext-private-dependency-credentials"
+          install -m 600 /dev/null "$store"
+          printf 'https://x-access-token:%s@github.com\n' "$PRIVATE_DEPENDENCY_TOKEN" > "$store"
+          git config --global credential.helper "store --file=$store"
+
       # make setup is the only toolchain installer. It bootstraps the newest
       # released Mise, installs the committed fleet toolchain, publishes that
       # environment through GITHUB_PATH, and prepares the project runtime.
@@ -79,7 +108,7 @@ jobs:
         run: CI=Y make check APPLY=Y
 
       # Why (aihub-v01jg): CI=Y runs ONE HALF of the gate set
-      # (lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication); the complement
+      # (lint pyright deferred-self-reference security markdown boundary canonical-alias runtime-census layout tier-whitelist smells direnv); the complement
       # (pyrefly mypy) is owned by
       # CI=N and, without this step, ran on developer
       # machines only. That split let real defects reach main twice: five
@@ -88,7 +117,7 @@ jobs:
       # construction, so running both here costs one extra pass and closes the
       # hole rather than trusting everyone to run the other half by hand.
       - name: check complement (blocking)
-        run: CI=N make check
+        run: CI=N make check APPLY=Y
 
       - name: test (blocking)
         # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
@@ -151,6 +180,35 @@ jobs:
         with:
           fetch-depth: 0
           submodules: false
+
+      # A private git dependency cannot be cloned with the workflow's own
+      # token: secrets.GITHUB_TOKEN is scoped to the repository that runs the
+      # workflow, and uv drives dependency clones through plain git, which
+      # carries no credential at all. The declared App mints an installation
+      # token for the owner, and git reads it from a 0600 file outside the
+      # checkout — never from the environment of the build itself.
+      - name: Mint the private-dependency installation token
+        id: private_dependency_token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3.2.0
+        with:
+          app-id: ${{ secrets.CI_DEPENDENCIES_APP_ID }}
+          private-key: ${{ secrets.CI_DEPENDENCIES_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Authenticate git for private dependencies
+        env:
+          PRIVATE_DEPENDENCY_TOKEN: ${{ steps.private_dependency_token.outputs.token }}
+        run: |
+          set -euo pipefail
+          : "${RUNNER_TEMP:?RUNNER_TEMP is required for private dependency identity}"
+          if [ -z "${PRIVATE_DEPENDENCY_TOKEN}" ]; then
+            echo "::error::the CI_DEPENDENCIES_APP_ID App produced no installation token — a private git dependency cannot be resolved"
+            exit 1
+          fi
+          store="$RUNNER_TEMP/flext-private-dependency-credentials"
+          install -m 600 /dev/null "$store"
+          printf 'https://x-access-token:%s@github.com\n' "$PRIVATE_DEPENDENCY_TOKEN" > "$store"
+          git config --global credential.helper "store --file=$store"
       - name: Boot
         run: make setup
       - name: Release plan and guard

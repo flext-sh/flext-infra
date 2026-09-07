@@ -18,9 +18,9 @@ from .._constants.codegen_project import FlextInfraConstantsCodegenProject
 from .._constants.make import FlextInfraConstantsMake
 from .._constants.release import FlextInfraConstantsRelease
 from .._constants.validate import FlextInfraConstantsSharedInfra
-from .._models._defaults import immutable_empty_mapping
-from .._models.deps_tool_config import FlextInfraModelsDepsToolSettings
-from .._models.layout import FlextInfraModelsLayout
+from ._defaults import immutable_empty_mapping
+from .deps_tool_config import FlextInfraModelsDepsToolSettings
+from .layout import FlextInfraModelsLayout
 
 __all__: list[str] = ["FlextInfraConfigModels"]
 
@@ -53,6 +53,26 @@ class FlextInfraConfigModels:
     # These models replace the former model-less workspace/make dictionaries.
     # YAML is accepted only at the flext-cli loading boundary and is immediately
     # model-validated here.
+
+    class MiseReleaseProbeSpec(_ConfigContract):
+        """Read-only reachability probe deciding online or offline resolution."""
+
+        url: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^https://",
+                description=(
+                    "HTTPS endpoint of the Mise release feed; any HTTP answer "
+                    "means online, a connection failure or timeout means offline"
+                ),
+            ),
+        ]
+        timeout_seconds: Annotated[
+            float,
+            m.Field(
+                gt=0, le=30, description="Bound of the single preflight probe request"
+            ),
+        ]
 
     class MiseToolSpec(_ConfigContract):
         """One mise backend whose exact release is owned by ``mise.lock``."""
@@ -398,6 +418,38 @@ class FlextInfraConfigModels:
                 "is a declared tool"
             ),
         ]
+        mise_lock_platform_exclusions: Annotated[
+            Mapping[
+                t.NonEmptyStr,
+                tuple[
+                    Literal[
+                        "linux-x64",
+                        "linux-arm64",
+                        "linux-x64-musl",
+                        "linux-arm64-musl",
+                        "macos-x64",
+                        "macos-arm64",
+                    ],
+                    ...,
+                ],
+            ],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Platforms a backend cannot represent in mise.lock, declared "
+                    "per selector so the offline validator rejects any other omission"
+                ),
+            ),
+        ]
+        mise_release_probe: Annotated[
+            FlextInfraConfigModels.MiseReleaseProbeSpec,
+            m.Field(
+                description=(
+                    "Preflight probe that selects online or offline Mise "
+                    "toolchain resolution for an apply-mode generation"
+                )
+            ),
+        ]
         mise_lock_platforms: Annotated[
             tuple[
                 Literal[
@@ -610,6 +662,25 @@ class FlextInfraConfigModels:
             ),
         ]
 
+    class CiPrivateDependencyAuthSpec(_ConfigContract):
+        """GitHub App contract that authenticates private git dependencies in CI.
+
+        A workflow's own token is scoped to the repository that runs it, so it
+        cannot clone a private sibling declared as a git dependency; uv drives
+        those clones through plain git, which carries no credential at all. The
+        declared App mints an installation token for the owner instead, and the
+        generated workflow configures git with it before make setup.
+        """
+
+        app_id_secret: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Secret holding the GitHub App identifier"),
+        ]
+        private_key_secret: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Secret holding the GitHub App private key"),
+        ]
+
     class CiPrivateSubmodulesSpec(_ConfigContract):
         """Per-distribution private submodule init contract for generated CI."""
 
@@ -772,6 +843,16 @@ class FlextInfraConfigModels:
                 description=(
                     "Optional private-subproject deploy-key init for this "
                     "distribution; None means the workflow skips the step"
+                ),
+            ),
+        ] = None
+        private_dependency_auth: Annotated[
+            FlextInfraConfigModels.CiPrivateDependencyAuthSpec | None,
+            m.Field(
+                default=None,
+                description=(
+                    "GitHub App that authenticates private git dependencies "
+                    "before make setup; None means the workflow skips the step"
                 ),
             ),
         ] = None
@@ -1969,9 +2050,6 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
-        workspace_root_rel: Annotated[
-            t.NonEmptyStr, m.Field(description="Relative workspace root path")
-        ]
         workspace_subprojects: Annotated[
             tuple[str, ...], m.Field(description="Declared workspace subproject paths")
         ] = ()
@@ -2205,9 +2283,9 @@ class FlextInfraConfigModels:
         documentation: Annotated[
             t.NonEmptyStr, m.Field(description="Project documentation URL")
         ]
-        workspace_root_rel: Annotated[
+        repository_root_rel: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Declared relative path to the workspace root"),
+            m.Field(description="Declared relative path to the repository root"),
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
 
@@ -2288,10 +2366,6 @@ class FlextInfraConfigModels:
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Generated Make execution profile"),
-        ]
-        workspace_root_rel: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Relative path to the declared workspace root"),
         ]
         makefile_custom_include: Annotated[
             str,
@@ -2823,6 +2897,16 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        ci_private_dependency_auth: Annotated[
+            FlextInfraConfigModels.CiPrivateDependencyAuthSpec | None,
+            m.Field(
+                default=None,
+                description=(
+                    "GitHub App that authenticates private git dependencies in "
+                    "generated CI; absent means no repository declares one"
+                ),
+            ),
+        ]
         ci_private_submodules: Annotated[
             Mapping[str, FlextInfraConfigModels.CiPrivateSubmodulesSpec],
             m.Field(
@@ -2843,6 +2927,15 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        retired_generated_paths: Annotated[
+            tuple[Path, ...],
+            m.Field(
+                description=(
+                    "Generated repository-relative projections removed during "
+                    "conformance after their consumers have been rewired"
+                )
+            ),
+        ] = ()
         uv_exclude_dependencies: Annotated[
             tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],
             m.Field(description="Project-scoped official uv dependency exclusions"),
@@ -3499,6 +3592,15 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.CodegenConformMode,
             m.Field(description="Read-only check or atomic apply"),
         ] = FlextInfraConstantsCodegenProject.CodegenConformMode.CHECK
+        toolchain_resolution: Annotated[
+            FlextInfraConstantsCodegenProject.MiseResolutionMode,
+            m.Field(
+                description=(
+                    "Mise toolchain resolution for apply: auto probes the "
+                    "declared release endpoint, online and offline pin the path"
+                )
+            ),
+        ] = FlextInfraConstantsCodegenProject.MiseResolutionMode.AUTO
 
     class CodegenArtifactComposition(_ConfigContract):
         """Rendered artifact plus the exact source states used to compose it."""

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
 
-from ..._utilities._git.semantic_index import FlextInfraUtilitiesGitSemanticIndexMixin
+from .semantic_index import FlextInfraUtilitiesGitSemanticIndexMixin
 
 if TYPE_CHECKING:
     from flext_infra.typings import t

@@ -23,11 +23,9 @@ from flext_infra.detectors.manual_typing_alias_detector import (
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
-from flext_infra.refactor.classvar_constant_autofix import (
-    FlextInfraRefactorClassvarConstantAutofix,
-)
 
 from ._census_apply_formatting import FlextInfraRefactorCensusApplyFormattingMixin
+from .classvar_constant_autofix import FlextInfraRefactorClassvarConstantAutofix
 
 if TYPE_CHECKING:
     from flext_infra import p, t

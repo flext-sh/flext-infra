@@ -96,6 +96,7 @@ jobs:
           submodules: {{ checkout_submodules }}
           token: {% raw %}${{ secrets.RELEASE_TOKEN }}{% endraw %}
 {%- include "_fragments/private_submodules_init.j2" %}
+{%- include "_fragments/private_dependency_auth.j2" %}
       - name: Release identity
         run: |
           git config user.name "github-actions[bot]"
@@ -128,6 +129,7 @@ jobs:
           ref: {% raw %}${{ needs.identity.outputs.ref }}{% endraw %}
           submodules: {{ checkout_submodules }}
 {%- include "_fragments/private_submodules_init.j2" %}
+{%- include "_fragments/private_dependency_auth.j2" %}
       - name: Release identity
         run: |
           git config user.name "github-actions[bot]"

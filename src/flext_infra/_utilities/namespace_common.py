@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
 
-from .._utilities.iteration import FlextInfraUtilitiesIteration
-from .._utilities.rope_source import FlextInfraUtilitiesRopeSource
+from .iteration import FlextInfraUtilitiesIteration
+from .rope_source import FlextInfraUtilitiesRopeSource
 
 if TYPE_CHECKING:
     from flext_infra.typings import t

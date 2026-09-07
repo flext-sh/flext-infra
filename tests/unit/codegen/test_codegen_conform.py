@@ -36,7 +36,6 @@ def _conform_target(
         repository=repository,
         root=root,
         make_profile=make_profile,
-        beads=u.Tests.beads_project(repository.name),
         canonical_project_name=repository.distribution,
         baseline_branch=provider.branch,
         baseline_reference=f"refs/remotes/origin/{provider.branch}",
@@ -565,7 +564,6 @@ class TestCodegenConform:
         )
         workspace = m.Infra.WorkspaceSpec(
             name=repository.name,
-            beads=u.Tests.beads_project(repository.name),
             repository=repository,
             project=u.Tests.project_spec(repository.name),
         )
@@ -612,9 +610,6 @@ class TestCodegenConform:
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
             provider="flext-sh",
-            beads_workspace=name,
-            beads_database=name.replace("-", "_"),
-            beads_issue_prefix=name,
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
@@ -644,7 +639,7 @@ class TestCodegenConform:
         )
         tm.that(first_result.plan.request.root, eq=root.resolve())
         tm.that((root / "config" / "workspace.yaml").exists(), eq=False)
-        tm.that((root / "config" / "beads.yaml").is_file(), eq=True)
+        tm.that((root / "config" / "beads.yaml").exists(), eq=False)
         tm.that((root / "pyproject.toml").is_file(), eq=True)
         tm.that((root / ".env.example").is_file(), eq=True)
         package_name = name.replace("-", "_")
@@ -663,15 +658,15 @@ class TestCodegenConform:
         tm.that(process.value, eq="✅ pong")
 
     @pytest.mark.slow
-    def test_generated_make_uses_unpinned_environment_uv(
+    def test_generated_make_dispatches_through_project_toolchain(
         self, infra_git_repo: Path
     ) -> None:
-        """Generated Make delegates uv selection to the caller environment."""
+        """Public gates select native tools through the project Mise owner."""
         root = infra_git_repo
         workspace = _standalone_workspace(root)
         _apply_conform_surface(root, workspace, c.Infra.CodegenConformSurface.MAKEFILE)
         selected = u.Cli.run_raw(
-            ["make", "-C", str(root), "--dry-run", "_builtin_status_diagnostics"],
+            ["make", "-C", str(root), "--dry-run", "status", "WHAT=diagnostics"],
             remove_env_keys=("MAKEFLAGS",),
         )
 
@@ -682,10 +677,18 @@ class TestCodegenConform:
         tm.that(selected_output, lacks="uv@")
         tm.that(selected_output, lacks="UV_VERSION")
         makefile = (root / "Makefile").read_text(encoding="utf-8")
-        tm.that(makefile, has="UV ?= uv")
+        tm.that(makefile, has="UV := uv")
+        tm.that(makefile, has="UV is project-owned by Mise and cannot be overridden")
         tm.that(makefile, lacks="UV_VERSION")
         tm.that(makefile, lacks="uv@")
-        tm.that(makefile, lacks="mise exec")
+        tm.that(
+            makefile,
+            has=(
+                '$(MISE_PROJECT_CONFIG_ENV) "$(SETUP_MISE)" '
+                '-C "$(PROJECT_ROOT)" exec --'
+            ),
+        )
+        tm.that(makefile, has='$(SELF_MAKE) "_mise_dispatch_$@"')
 
     @pytest.mark.slow
     def test_existing_manifest_converges_to_identical_tree(
@@ -697,9 +700,6 @@ class TestCodegenConform:
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=existing_root,
             provider="flext-sh",
-            beads_workspace="flext-demo",
-            beads_database="flext_demo",
-            beads_issue_prefix="flext-demo",
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
@@ -882,7 +882,6 @@ class TestCodegenConform:
         member = u.Tests.repository_ref("flext-core", path=Path("flext-core"))
         workspace = m.Infra.WorkspaceSpec(
             name="flext",
-            beads=u.Tests.beads_project("flext"),
             repository=root_repository,
             project=u.Tests.project_spec("flext"),
             subprojects=(member,),
@@ -925,7 +924,6 @@ class TestCodegenConform:
         )
         workspace = m.Infra.WorkspaceSpec(
             name="arbitrary-root",
-            beads=u.Tests.beads_project("arbitrary-root"),
             repository=repository,
             project=u.Tests.project_spec("arbitrary-root"),
         )
@@ -977,10 +975,7 @@ class TestCodegenConform:
             update={"upstream": "flext_cli"}
         )
         workspace = m.Infra.WorkspaceSpec(
-            name="consumer",
-            beads=u.Tests.beads_project("consumer"),
-            repository=repository,
-            project=project,
+            name="consumer", repository=repository, project=project
         )
         root = tmp_path / "consumer"
         request = m.Infra.CodegenConformRequest(
@@ -1026,11 +1021,7 @@ class TestCodegenConform:
     ) -> None:
         """Build Make context from repository-owned data alone."""
         repository = u.Tests.repository_ref("consumer")
-        workspace = m.Infra.WorkspaceSpec(
-            name="consumer",
-            beads=u.Tests.beads_project("consumer"),
-            repository=repository,
-        )
+        workspace = m.Infra.WorkspaceSpec(name="consumer", repository=repository)
         target = _conform_target(
             tmp_path, repository, make_profile=c.Infra.MakeProfile.STANDALONE
         )
@@ -1326,7 +1317,7 @@ class TestCodegenConform:
 
 
 class TestScriptDispatchMakefile:
-    """Prove per-repo extra verbs and script-dispatch WHAT normalization."""
+    """Prove per-repo extra verbs and the script-dispatch lint/type paths."""
 
     @staticmethod
     def _render_root_makefile(
@@ -1357,7 +1348,6 @@ class TestScriptDispatchMakefile:
         )
         workspace = m.Infra.WorkspaceSpec(
             name="demo-root",
-            beads=u.Tests.beads_project("demo-root"),
             repository=root_repository,
             project=u.Tests.project_spec("demo-root"),
             subprojects=(),
@@ -1378,21 +1368,25 @@ class TestScriptDispatchMakefile:
         rendered: str = u.Tests.codegen_file_text(makefile)
         return rendered
 
-    def test_script_dispatch_repo_routes_extra_verbs_and_normalizes_what(
+    def test_script_dispatch_repo_publishes_its_declared_extra_verbs(
         self, tmp_path: Path
     ) -> None:
-        """Extra verbs join PUBLIC_VERBS and WHAT hyphens map to script stems."""
+        """Declared extra verbs join PUBLIC_VERBS and the script-verb roster.
+
+        A verb is the whole operation: the generated Makefile publishes the
+        declared name and nothing selects a sub-operation behind it.
+        """
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(
                 m.Infra.MakeVerbSpec(
                     name="incidente",
-                    description="Dispatch incidente through the declared script dispatcher.",
+                    description="Run the declared incidente script.",
                     requires_apply=True,
                 ),
                 m.Infra.MakeVerbSpec(
                     name="charts",
-                    description="Dispatch charts through the declared script dispatcher.",
+                    description="Run the declared charts script.",
                     requires_apply=True,
                 ),
             ),
@@ -1401,52 +1395,15 @@ class TestScriptDispatchMakefile:
                 roots=("scripts", "apps/demo-app/scripts"),
             ),
         )
-        # Extra verbs are public targets the dispatcher can reach.
-        tm.that("incidente" in rendered, eq=True)
-        tm.that("charts" in rendered, eq=True)
-        # The generated dispatch normalizes hyphenated WHAT to the module stem.
-        tm.that("tr '-' '_'" in rendered, eq=True)
-        # It forwards to the declared dispatcher through uv, not a raw builtin.
-        tm.that("scripts/dispatch.py" in rendered, eq=True)
-        # Existence check spans every declared script root.
-        tm.that("apps/demo-app/scripts" in rendered, eq=True)
-        # REGRESSION (fork-bomb): every line of the single-recipe _dispatch shell
-        # command must continue with a trailing backslash. A blank/unterminated
-        # line splits the recipe, drops $$what/$$builtin, and recurses into the
-        # default goal. Verify continuity across the whole define body.
-        body = rendered.split("define _dispatch", 1)[1].split("endef", 1)[0]
-        recipe = [ln for ln in body.splitlines() if ln.startswith("\t")]
-        broken = [ln for ln in recipe[:-1] if not ln.rstrip().endswith("\\")]
-        tm.that(broken, eq=[])
-
-    def test_dispatch_routes_custom_what_before_allowlist(self, tmp_path: Path) -> None:
-        """Custom ``_custom_<verb>_<what>`` handlers bypass the builtin allowlist.
-
-        ai-hub and other projects extend ``run`` / ``check`` via custom.mk. The
-        continuous Makefile must discover those handlers and dispatch them
-        instead of rejecting unknown WHATs as ``allowed:default``.
-        """
-        rendered = self._render_root_makefile(
-            tmp_path, extra_verbs=(), script_dispatch=None
+        public_line = next(
+            line for line in rendered.splitlines() if line.startswith("PUBLIC_VERBS :=")
         )
-        body = rendered.split("define _dispatch", 1)[1].split("endef", 1)[0]
-        tm.that("_custom_$(1)_$$what" in body, eq=True)
-        tm.that("custom_rc" in body, eq=False)
-        tm.that('$(SELF_MAKE) "$$custom"' in body, eq=True)
-        recipe = [ln for ln in body.splitlines() if ln.startswith("\t")]
-        broken = [ln for ln in recipe[:-1] if not ln.rstrip().endswith("\\")]
-        tm.that(broken, eq=[])
-
-    def test_repo_without_script_dispatch_omits_script_routing(
-        self, tmp_path: Path
-    ) -> None:
-        """A repo with no script dispatch omits every script-routing projection."""
-        rendered = self._render_root_makefile(
-            tmp_path, extra_verbs=(), script_dispatch=None
+        script_line = next(
+            line for line in rendered.splitlines() if line.startswith("SCRIPT_VERBS :=")
         )
-        # No script routing leaks into non-opted-in repositories.
-        tm.that("tr '-' '_'" in rendered, eq=False)
-        tm.that("scripts/dispatch.py" in rendered, eq=False)
+        for verb in ("incidente", "charts"):
+            tm.that(f" {verb}" in public_line, eq=True)
+            tm.that(f" {verb}" in script_line, eq=True)
 
     def test_gen_replaces_codegen_as_the_single_conform_verb(
         self, tmp_path: Path

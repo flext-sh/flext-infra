@@ -9,7 +9,7 @@ from git import GitCommandError, Repo
 
 from flext_core import r
 
-from ..._utilities._git.worktree_patch import FlextInfraUtilitiesGitWorktreePatchMixin
+from .worktree_patch import FlextInfraUtilitiesGitWorktreePatchMixin
 
 if TYPE_CHECKING:
     from flext_infra import p

@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config
+from flext_infra._utilities._git.scope import FlextInfraUtilitiesGitScopeMixin
 
 from .._utilities._git.scope import FlextInfraUtilitiesGitScopeMixin
 
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraUtilitiesIterationDirectory:
+class FlextInfraUtilitiesIterationDirectory(FlextInfraUtilitiesGitScopeMixin):
     """Static helpers for iterating Python files within a single directory tree."""
 
     @classmethod

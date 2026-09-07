@@ -16,11 +16,11 @@ from flext_infra.codegen import (
     _mise_artifacts_state as state,
     _mise_artifacts_verification as verify,
 )
-from flext_infra.codegen.mise_artifacts_lock import FlextInfraMiseLock
-from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 
 from ._mise_artifacts_recovery import FlextInfraMiseRecovery
 from ._mise_artifacts_staging import FlextInfraMiseStaging
+from .mise_artifacts_lock import FlextInfraMiseLock
+from .mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -193,6 +193,16 @@ class FlextInfraCodegenTransaction:
         if materialized.failure:
             return result_type.from_failure(materialized)
         active_journal, active_state = materialized.value
+        destinations = self._authorize_directories(
+            layout,
+            active_journal,
+            active_state,
+            phase="conform",
+            directories=self._absent_destination_parents(ordinary),
+        )
+        if destinations.failure:
+            return result_type.from_failure(destinations)
+        active_journal, active_state = destinations.value
         ordinary_staged = generic_staging.stage_file_plans(layout, "conform", ordinary)
         if ordinary_staged.failure:
             return result_type.from_failure(
@@ -415,6 +425,83 @@ class FlextInfraCodegenTransaction:
             )
         )
 
+    @staticmethod
+    def _absent_destination_parents(
+        plans: tuple[m.Infra.CodegenFilePlan, ...],
+    ) -> tuple[Path, ...]:
+        """Return, parent-first and unique, the directories publication needs.
+
+        A generated file whose directory does not exist yet cannot be staged:
+        staging snapshots the live destination, and that requires a physical
+        parent. The transaction therefore authorizes and creates these chains
+        in its journal before any file phase runs.
+        """
+        return tuple(
+            dict.fromkeys(
+                plan.path.parent
+                for plan in plans
+                if plan.desired_content is not None and not plan.path.parent.is_dir()
+            )
+        )
+
+    def _authorize_directories(
+        self,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+        journal_state: m.Cli.AtomicFileState,
+        *,
+        phase: str,
+        directories: tuple[Path, ...],
+    ) -> p.Result[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
+        """Record missing generated directories in the active journal, then create them.
+
+        The staging journal authorizes only the transaction's own temporary
+        roots, so a generated destination is appended to the journal after it
+        is active and never seeded into it at begin time.
+        """
+        result_type = r[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]
+        planned = state.plan_directories(
+            layout, phase=phase, requested=directories, disposition="generated"
+        )
+        if planned.failure:
+            return result_type.from_failure(
+                self._recover_failure(
+                    layout, planned.error or f"cannot plan {phase} directories"
+                )
+            )
+        if not planned.value:
+            return result_type.ok((journal, journal_state))
+        observed = state.journal_state(layout)
+        observed_snapshot = (
+            None if observed.failure else state.journal_snapshot(observed.value)
+        )
+        if (
+            observed.failure
+            or observed_snapshot is None
+            or observed_snapshot != journal_state
+        ):
+            return result_type.from_failure(
+                self._recover_failure(
+                    layout,
+                    observed.error or "generation journal changed before directories",
+                )
+            )
+        extended = journal_io.append_directories(journal, planned.value)
+        if extended.failure:
+            return result_type.from_failure(
+                self._recover_failure(
+                    layout, extended.error or f"cannot append {phase} directories"
+                )
+            )
+        persisted = journal_io.write(layout, extended.value, expected=journal_state)
+        if persisted.failure:
+            return result_type.from_failure(
+                self._handle_journal_write_failure(
+                    layout, persisted.error or f"cannot persist {phase} directories"
+                )
+            )
+        return self._materialize_directories(layout, extended.value, persisted.value)
+
     def append_directories_locked(
         self,
         session: m.Infra.CodegenTransactionSession,
@@ -423,60 +510,16 @@ class FlextInfraCodegenTransaction:
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Authorize missing generated directories durably, then create them."""
         result_type = r[m.Infra.CodegenTransactionSession]
-        planned = state.plan_directories(
+        authorized = self._authorize_directories(
             session.plan.layout,
+            session.journal,
+            session.journal_state,
             phase=phase,
-            requested=directories,
-            disposition="generated",
+            directories=directories,
         )
-        if planned.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    session.plan.layout,
-                    planned.error or f"cannot plan {phase} directories",
-                )
-            )
-        if not planned.value:
-            return result_type.ok(session)
-        observed = state.journal_state(session.plan.layout)
-        observed_snapshot = (
-            None if observed.failure else state.journal_snapshot(observed.value)
-        )
-        if (
-            observed.failure
-            or observed_snapshot is None
-            or observed_snapshot != session.journal_state
-        ):
-            return result_type.from_failure(
-                self._recover_failure(
-                    session.plan.layout,
-                    observed.error or "generation journal changed before directories",
-                )
-            )
-        extended = journal_io.append_directories(session.journal, planned.value)
-        if extended.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    session.plan.layout,
-                    extended.error or f"cannot append {phase} directories",
-                )
-            )
-        persisted = journal_io.write(
-            session.plan.layout, extended.value, expected=session.journal_state
-        )
-        if persisted.failure:
-            return result_type.from_failure(
-                self._handle_journal_write_failure(
-                    session.plan.layout,
-                    persisted.error or f"cannot persist {phase} directories",
-                )
-            )
-        materialized = self._materialize_directories(
-            session.plan.layout, extended.value, persisted.value
-        )
-        if materialized.failure:
-            return result_type.from_failure(materialized)
-        recorded, recorded_state = materialized.value
+        if authorized.failure:
+            return result_type.from_failure(authorized)
+        recorded, recorded_state = authorized.value
         return result_type.ok(
             m.Infra.CodegenTransactionSession(
                 plan=session.plan,

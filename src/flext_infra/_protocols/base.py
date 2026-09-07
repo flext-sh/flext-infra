@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_cli import p
-    from flext_infra import m, t
+    from flext_infra import c, m, t
 
 
 @runtime_checkable
@@ -199,8 +199,8 @@ class FlextInfraProtocolsBase(Protocol):
         """Scaffold-only project metadata consumed by initial generation."""
 
         @property
-        def workspace_root_rel(self) -> str:
-            """Declared relative path from the project to its workspace root."""
+        def repository_root_rel(self) -> str:
+            """Declared relative path from the project to its repository root."""
             ...
 
     @runtime_checkable
@@ -417,6 +417,21 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def protected_mise_tools(self) -> t.StrSequence:
             """Toolchain field names protected from alternate distributions."""
+            ...
+
+        @property
+        def uv_exclude_newer(self) -> str:
+            """Shared dependency cooldown rendered in uv duration syntax."""
+            ...
+
+        @property
+        def dependency_cooldown_exclusions(self) -> t.StrSequence:
+            """Packages exempted from the fleet dependency cooldown."""
+            ...
+
+        @property
+        def dependency_cooldown_overrides(self) -> t.StrMapping:
+            """Per-package RFC 3339 cooldown cutoffs."""
             ...
 
     @runtime_checkable
@@ -712,6 +727,17 @@ class FlextInfraProtocolsBase(Protocol):
 
         def validate_artifacts(self, project_root: Path) -> p.Result[bool]:
             """Validate one complete project artifact set."""
+            ...
+
+        def resolution_mode(self) -> c.Infra.MiseResolutionMode:
+            """Select online or offline toolchain resolution before any effect."""
+            ...
+
+        # Why: restores the checksum-hydration contract deleted by the
+        # consolidation merge (flext-1wjg1.16); the online staging path calls
+        # this unconditionally before validate_artifacts.
+        def hydrate_lock_checksums_at(self, root: Path) -> p.Result[bool]:
+            """Download exact resolved artifacts and fill missing SHA-256 values."""
             ...
 
     @runtime_checkable

@@ -26,7 +26,9 @@ class TestGateRegistry:
         return FlextInfraCanonicalAliasGate(tmp_path).fix(
             project_dir,
             m.Infra.GateContext(
-                workspace=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=True
+                repository_root=tmp_path,
+                reports_dir=tmp_path / "reports",
+                apply_fixes=True,
             ),
         )
 
@@ -66,7 +68,9 @@ class TestGateRegistry:
         gate = FlextInfraCanonicalAliasGate(tmp_path)
         result = gate.check(
             project_dir,
-            m.Infra.GateContext(workspace=tmp_path, reports_dir=tmp_path / "reports"),
+            m.Infra.GateContext(
+                repository_root=tmp_path, reports_dir=tmp_path / "reports"
+            ),
         )
         tm.that(result.result.passed, eq=False)
         tm.that(result.raw_output, has="canonical alias 'c'")
@@ -115,7 +119,7 @@ class TestGateRegistry:
         )
         gate = FlextInfraCanonicalAliasGate(tmp_path)
         context = m.Infra.GateContext(
-            workspace=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=True
+            repository_root=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=True
         )
         first_result = gate.fix(project_dir, context)
         first_consumer = test_file.read_bytes()

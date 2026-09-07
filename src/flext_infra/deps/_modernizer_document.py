@@ -6,27 +6,22 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from flext_infra.deps.phases.consolidate_groups import FlextInfraConsolidateGroupsPhase
-from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
-from flext_infra.deps.phases.ensure_formatting import (
-    FlextInfraEnsureFormattingToolingPhase,
-)
-from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
-from flext_infra.deps.phases.ensure_namespace import (
-    FlextInfraEnsureNamespaceToolingPhase,
-)
-from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
-from flext_infra.deps.phases.ensure_pydantic_mypy import (
-    FlextInfraEnsurePydanticMypyConfigPhase,
-)
-from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
-from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
-from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
-from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-from flext_infra.deps.phases.ensure_vulture import FlextInfraEnsureVultureConfigPhase
-from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
 from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
+
+from .extra_paths import FlextInfraExtraPathsManager
+from .phases.consolidate_groups import FlextInfraConsolidateGroupsPhase
+from .phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
+from .phases.ensure_formatting import FlextInfraEnsureFormattingToolingPhase
+from .phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
+from .phases.ensure_namespace import FlextInfraEnsureNamespaceToolingPhase
+from .phases.ensure_packaging import FlextInfraEnsurePackagingPhase
+from .phases.ensure_pydantic_mypy import FlextInfraEnsurePydanticMypyConfigPhase
+from .phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
+from .phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
+from .phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
+from .phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
+from .phases.ensure_vulture import FlextInfraEnsureVultureConfigPhase
+from .phases.inject_comments import FlextInfraInjectCommentsPhase
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -59,6 +54,10 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         # default comes from the tomlsort SSOT. A property here would make the
         # field an incompatible override of a read-only descriptor.
         tomlsort_sort_first: t.StrSequence
+
+        # Caller-owned project ManagedArtifacts resolution, supplied by the
+        # composed owner (FlextInfraPyprojectModernizer) as a Pydantic field.
+        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None
 
         def _reorder_document_inplace(
             self,

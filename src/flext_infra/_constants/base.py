@@ -9,9 +9,9 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import TYPE_CHECKING, Final
 
-from .._constants.make import FlextInfraConstantsMake
-from .._constants.source_code import FlextInfraConstantsSourceCode
-from .._constants.validate import FlextInfraConstantsSharedInfra
+from .make import FlextInfraConstantsMake
+from .source_code import FlextInfraConstantsSourceCode
+from .validate import FlextInfraConstantsSharedInfra
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -212,6 +212,10 @@ class FlextInfraConstantsBase(
     "Reproducible-build timestamp environment variable."
     RELEASE_BUILD_CONSTRAINTS_PATH: Final[str] = "config/build-constraints.txt"
     "Workspace-relative hashed build-backend constraint file."
+    # Why: restored — deleted declaration with consumers left behind (worktree
+    # exclusions and mise-artifact transaction staging).
+    TRANSACTION_STATE_DIRNAME: Final[str] = ".state"
+    "Root of regenerable codegen transaction state; never repository content."
     RELEASE_BUILD_TOOLCHAIN_REQUIREMENTS: Final[frozenset[str]] = frozenset({
         "hatchling",
         "packaging",
@@ -358,7 +362,6 @@ class FlextInfraConstantsBase(
     RK_ID: Final[str] = "id"
     RK_URL: Final[str] = "url"
     RK_CLASS_NESTING: Final[str] = "class_nesting"
-    RK_REWRITE_SCOPE: Final[str] = "rewrite_scope"
     RK_CONFIDENCE: Final[str] = "confidence"
     RK_FIX_ACTION: Final[str] = "fix_action"
     RK_DESCRIPTION: Final[str] = "description"

@@ -9,9 +9,9 @@ from flext_cli import u
 from flext_infra.constants import c
 from flext_infra.models import m
 
-from .._utilities.docs import FlextInfraUtilitiesDocs
-from .._utilities.docs_api import FlextInfraUtilitiesDocsApi
-from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from .docs import FlextInfraUtilitiesDocs
+from .docs_api import FlextInfraUtilitiesDocsApi
+from .docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
     from pathlib import Path

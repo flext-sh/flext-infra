@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra.models import m
 
-from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from .docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
@@ -94,7 +94,14 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         """Return one lexical report path owned by its project root."""
         relative = Path(output_dir)
         if relative.is_absolute() or ".." in relative.parts:
-            msg = f"docs output directory escapes project {project_root}: {relative}"
+            # Each scope anchors its own reports under its own root, so the
+            # argument is a project-relative directory. An absolute path is
+            # rejected even when it happens to sit inside one of the roots:
+            # it would force every member scope into a single owner.
+            msg = (
+                "docs output directory must be relative to each project root, "
+                f"got {relative} for {project_root}"
+            )
             raise ValueError(msg)
         return project_root / relative
 

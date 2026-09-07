@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraUtilitiesIterationMatching:
+class FlextInfraUtilitiesIterationMatching(FlextInfraUtilitiesGitScopeMixin):
     """Static helpers for matching files by include/exclude glob patterns."""
 
     @classmethod

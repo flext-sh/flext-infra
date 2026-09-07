@@ -52,20 +52,16 @@ class FlextInfraCodegenPipeline(
 
     def _build_codegen_stages(self) -> t.SequenceOf[m.Cli.PipelineStageSpec]:
         """Build DAG stage specs with linear dependency chain."""
-        handlers: dict[str, p.Cli.PipelineStage] = {
-            c.Infra.PipelineStage.DISCOVER: lambda ctx, /: self._stage_discover(ctx),
-            c.Infra.PipelineStage.TOOLCHAIN: lambda ctx, /: self._stage_toolchain(ctx),
-            c.Infra.PipelineStage.PY_TYPED: lambda ctx, /: self._stage_py_typed(ctx),
-            c.Infra.PipelineStage.CENSUS_BEFORE: lambda ctx, /: (
-                self._stage_census_before(ctx)
-            ),
-            c.Infra.PipelineStage.SCAFFOLD: lambda ctx, /: self._stage_scaffold(ctx),
-            c.Infra.PipelineStage.AUTO_FIX: lambda ctx, /: self._stage_auto_fix(ctx),
-            c.Infra.PipelineStage.DEPS: lambda ctx, /: self._stage_deps(ctx),
-            c.Infra.PipelineStage.LAZY_INIT: lambda ctx, /: self._stage_lazy_init(ctx),
-            c.Infra.PipelineStage.CENSUS_AFTER: lambda ctx, /: self._stage_census_after(
-                ctx
-            ),
+        handlers: t.Infra.PipelineHandlerMap = {
+            c.Infra.PipelineStage.DISCOVER: self._stage_discover,
+            c.Infra.PipelineStage.TOOLCHAIN: self._stage_toolchain,
+            c.Infra.PipelineStage.PY_TYPED: self._stage_py_typed,
+            c.Infra.PipelineStage.CENSUS_BEFORE: self._stage_census_before,
+            c.Infra.PipelineStage.SCAFFOLD: self._stage_scaffold,
+            c.Infra.PipelineStage.AUTO_FIX: self._stage_auto_fix,
+            c.Infra.PipelineStage.DEPS: self._stage_deps,
+            c.Infra.PipelineStage.LAZY_INIT: self._stage_lazy_init,
+            c.Infra.PipelineStage.CENSUS_AFTER: self._stage_census_after,
         }
         return cli.linear_pipeline(c.Infra.PIPELINE_STAGE_ORDER, handlers)
 

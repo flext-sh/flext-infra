@@ -93,6 +93,21 @@ class FlextInfraUtilitiesClassNestingReferences:
                 owner_name = local_name if imported.asname else bindings[name]
                 self.local_expressions[local_name] = f"{owner_name}.{name}"
 
+        @staticmethod
+        def _is_structural_position(
+            parent: cst.CSTNode, original_node: cst.Name
+        ) -> bool:
+            """Whether the name occupies a structural position, not a value use."""
+            if isinstance(parent, cst.ImportAlias):
+                return True
+            if isinstance(parent, cst.ClassDef):
+                return parent.name is original_node
+            if isinstance(parent, cst.Attribute):
+                return parent.attr is original_node
+            if isinstance(parent, cst.Arg):
+                return parent.keyword is original_node
+            return False
+
         def _resolves_bare_after_nesting(self, node: cst.CSTNode) -> bool:
             """Report whether a moved class stays reachable by its bare name here.
 
@@ -137,16 +152,9 @@ class FlextInfraUtilitiesClassNestingReferences:
                 msg = f"ambiguous class-nesting binding: {sorted(replacements)}"
                 raise ValueError(msg)
             parent = self.get_metadata(ParentNodeProvider, original_node)
-            if isinstance(parent, cst.ImportAlias):
-                return updated_node
-            if isinstance(parent, cst.ClassDef) and parent.name is original_node:
-                return updated_node
-            if isinstance(parent, cst.Attribute) and parent.attr is original_node:
-                return updated_node
-            if isinstance(parent, cst.Arg) and parent.keyword is original_node:
-                return updated_node
-            if original_node.value in self.definitions and (
-                self._resolves_bare_after_nesting(original_node)
+            if self._is_structural_position(parent, original_node) or (
+                original_node.value in self.definitions
+                and self._resolves_bare_after_nesting(original_node)
             ):
                 return updated_node
             replacement = self.local_expressions.get(original_node.value)

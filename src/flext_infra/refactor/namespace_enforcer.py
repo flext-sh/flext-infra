@@ -7,11 +7,9 @@ from typing import TYPE_CHECKING, override
 from flext_cli import cli
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.refactor.namespace_enforcer_phases import (
-    FlextInfraNamespaceEnforcerPhasesMixin,
-)
 
 from ._namespace_enforcer_project import FlextInfraNamespaceEnforcerProjectMixin
+from .namespace_enforcer_phases import FlextInfraNamespaceEnforcerPhasesMixin
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -146,7 +144,7 @@ class FlextInfraNamespaceEnforcer(
         cls, params: m.Infra.RefactorNamespaceEnforceInput
     ) -> p.Result[m.Infra.WorkspaceEnforcementReport]:
         """Execute namespace enforcement directly from the canonical payload."""
-        enforcer = cls(repository_root=params.workspace_path)
+        enforcer = cls(repository_root=params.repository_root)
         report = enforcer.enforce(
             apply=params.apply, project_names=params.project_names, gates=params.gates
         )

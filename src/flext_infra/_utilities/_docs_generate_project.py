@@ -9,13 +9,13 @@ from flext_core import r
 from flext_infra import config
 from flext_infra.models import m
 
-from .._utilities._docs_generate_plan import (
+from ._docs_generate_plan import (
     DocsRenderedArtifactTuple,
     FlextInfraUtilitiesDocsGeneratePlanMixin,
 )
-from .._utilities.docs_api import FlextInfraUtilitiesDocsApi
-from .._utilities.docs_contract import FlextInfraUtilitiesDocsContract
-from .._utilities.docs_render import FlextInfraUtilitiesDocsRender
+from .docs_api import FlextInfraUtilitiesDocsApi
+from .docs_contract import FlextInfraUtilitiesDocsContract
+from .docs_render import FlextInfraUtilitiesDocsRender
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p

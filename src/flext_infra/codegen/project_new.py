@@ -15,7 +15,8 @@ from typing import TYPE_CHECKING, Annotated, override
 from flext_core import r
 from flext_infra import c, config, m, u
 from flext_infra.base import s
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+
+from .conform import FlextInfraCodegenConform
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -64,15 +65,6 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
     repository_url: Annotated[
         str, m.Field(description="Canonical Git clone URL for the new repository.")
     ] = ""
-    beads_workspace: Annotated[
-        str, m.Field(min_length=1, description="Explicit Beads workspace identity.")
-    ]
-    beads_database: Annotated[
-        str, m.Field(min_length=1, description="Explicit Beads database identity.")
-    ]
-    beads_issue_prefix: Annotated[
-        str, m.Field(min_length=1, description="Explicit Beads issue prefix.")
-    ]
     license: Annotated[
         str, m.Field(min_length=1, description="SPDX project license identifier.")
     ]
@@ -134,13 +126,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             read_only=False,
         )
         workspace = m.Infra.WorkspaceSpec(
-            name=self.beads_workspace,
-            beads=m.Infra.BeadsProjectSpec(
-                version=c.Infra.BEADS_CONFIG_VERSION,
-                workspace=self.beads_workspace,
-                database=self.beads_database,
-                issue_prefix=self.beads_issue_prefix,
-            ),
+            name=self.name,
             repository=repository,
             project=m.Infra.ProjectSpec(
                 package_name=package_name,
@@ -161,7 +147,6 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
                 homepage=repository_page,
                 documentation=repository_page,
                 repository_root_rel=".",
-                workspace_root_rel=".",
                 year=self.year,
             ),
         )

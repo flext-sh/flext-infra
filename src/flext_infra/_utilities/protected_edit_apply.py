@@ -15,7 +15,7 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities.protected_edit_preview import FlextInfraUtilitiesProtectedEditPreview
+from .protected_edit_preview import FlextInfraUtilitiesProtectedEditPreview
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p

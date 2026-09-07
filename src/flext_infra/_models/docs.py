@@ -58,7 +58,7 @@ class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContra
         """
 
         repository_root: Annotated[
-            Path, m.Field(description="Workspace root for docs generation")
+            Path, m.Field(description="Repository root for docs generation")
         ]
         projects: Annotated[
             t.StrSequence | None, m.Field(description="Optional selected project names")

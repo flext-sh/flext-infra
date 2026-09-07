@@ -11,10 +11,8 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c
 
-from .._utilities._project_discovery_shape import (
-    FlextInfraUtilitiesProjectDiscoveryShapeMixin,
-)
-from .._utilities.git import FlextInfraUtilitiesGit
+from ._project_discovery_shape import FlextInfraUtilitiesProjectDiscoveryShapeMixin
+from .git import FlextInfraUtilitiesGit
 
 if TYPE_CHECKING:
     from flext_infra import t

@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
 
 import pytest
@@ -228,7 +227,9 @@ class TestSkillValidatorBaselineTemplate:
         (package_root / "m.py").write_text("forbidden_token = 1\n", encoding="utf-8")
         baseline_path = tmp_path / ".reports" / "test-skill" / "baseline.json"
         baseline_path.parent.mkdir(parents=True)
-        baseline_path.write_text(json.dumps({"counts": {"t": 0}}), encoding="utf-8")
+        baseline_path.write_text(
+            tm.ok(u.Cli.json_dumps({"counts": {"t": 0}})), encoding="utf-8"
+        )
 
         report: m.Infra.ValidationReport = tm.ok(
             FlextInfraSkillValidator(skill="test-skill").build_report(

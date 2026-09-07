@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .._utilities.protected_edit_writes import FlextInfraUtilitiesProtectedEditWrites
+from .protected_edit_writes import FlextInfraUtilitiesProtectedEditWrites
 
 
 class FlextInfraUtilitiesProtectedEdit(FlextInfraUtilitiesProtectedEditWrites):

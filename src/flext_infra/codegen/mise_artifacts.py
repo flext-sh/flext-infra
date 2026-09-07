@@ -5,12 +5,15 @@ from __future__ import annotations
 from collections.abc import Mapping
 from hashlib import sha256
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, ClassVar, override
+from urllib.parse import urlsplit
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
 from flext_infra.base import s
-from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
+
+from .codegen_transaction import FlextInfraCodegenTransaction
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -20,6 +23,36 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
     """Validate committed Mise artifacts entirely offline."""
 
     _PLATFORM_PREFIX: ClassVar[str] = "platforms."
+
+    toolchain_resolution: c.Infra.MiseResolutionMode = m.Field(
+        default=c.Infra.MiseResolutionMode.AUTO,
+        description=(
+            "Requested Mise toolchain resolution; auto is decided once by the "
+            "declared release probe before any effect"
+        ),
+    )
+
+    def resolution_mode(self) -> c.Infra.MiseResolutionMode:
+        """Select online or offline toolchain resolution before any effect.
+
+        Online means the newest Mise release and every moving tool selector are
+        resolved and published; offline keeps the published launchers and lock
+        byte-identical. The probe is read-only and bounded by its declared
+        timeout, so the path is chosen in preflight and never as a fallback
+        after a failed download.
+        """
+        requested = c.Infra.MiseResolutionMode(self.toolchain_resolution)
+        if requested is not c.Infra.MiseResolutionMode.AUTO:
+            return requested
+        probe = config.Infra.codegen.toolchain.mise_release_probe
+        reachable = u.Infra.endpoint_reachable(
+            probe.url, timeout_seconds=probe.timeout_seconds
+        )
+        return (
+            c.Infra.MiseResolutionMode.ONLINE
+            if reachable
+            else c.Infra.MiseResolutionMode.OFFLINE
+        )
 
     @staticmethod
     def _read_toml(path: Path) -> p.Result[t.JsonMapping]:
@@ -100,6 +133,185 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             "lockfile_version": payload.get("lockfile_version"),
             "tools": normalized_tools,
         })
+
+    # Why: restores the checksum-hydration owner deleted by the consolidation
+    # merge (flext-1wjg1.16); `mise lock --bump` never fills aqua-backend
+    # checksums, so the current owner must download and fill them itself.
+    @classmethod
+    def _entry_missing_checksums(
+        cls, selector: str, raw_entry: t.JsonValue
+    ) -> p.Result[tuple[tuple[str, str, str], ...]]:
+        """Return missing checksum sources from one normalized lock entry."""
+        result_type = r[tuple[tuple[str, str, str], ...]]
+        normalized = cls._normalize_lock_entry(selector, raw_entry)
+        if normalized.failure:
+            return result_type.fail(normalized.error)
+        platforms = normalized.value.get("platforms")
+        if not isinstance(platforms, Mapping):
+            return result_type.fail(
+                f"mise.lock contains invalid platform metadata for {selector}"
+            )
+        missing: list[tuple[str, str, str]] = []
+        for platform, metadata in platforms.items():
+            if not platform or not isinstance(metadata, Mapping):
+                return result_type.fail(
+                    f"mise.lock contains invalid platform metadata for {selector}"
+                )
+            if metadata.get("checksum") is not None:
+                continue
+            raw_url = metadata.get("url")
+            if not isinstance(raw_url, str):
+                return result_type.fail(
+                    f"mise.lock checksum source missing for {selector}/{platform}"
+                )
+            parsed_url = urlsplit(raw_url)
+            if (
+                parsed_url.scheme != "https"
+                or parsed_url.hostname is None
+                or parsed_url.username is not None
+                or parsed_url.password is not None
+            ):
+                return result_type.fail(
+                    f"mise.lock checksum source is not safe for {selector}/{platform}"
+                )
+            missing.append((selector, platform, raw_url))
+        return result_type.ok(tuple(missing))
+
+    @classmethod
+    def _missing_checksums(
+        cls, payload: t.JsonMapping
+    ) -> p.Result[tuple[tuple[str, str, str], ...]]:
+        """Return typed selector/platform/URL triples lacking a checksum."""
+        result_type = r[tuple[tuple[str, str, str], ...]]
+        raw_tools = payload.get("tools")
+        if not isinstance(raw_tools, Mapping):
+            return result_type.fail("mise.lock must declare [tools]")
+        missing: list[tuple[str, str, str]] = []
+        for selector, raw_entries in raw_tools.items():
+            if not isinstance(raw_entries, list):
+                return result_type.fail("mise.lock contains an invalid tool entry")
+            for raw_entry in raw_entries:
+                entry = cls._entry_missing_checksums(selector, raw_entry)
+                if entry.failure:
+                    return result_type.fail(entry.error)
+                missing.extend(entry.value)
+        return result_type.ok(tuple(missing))
+
+    @staticmethod
+    def _platform_header(selector: str, platform: str) -> p.Result[str]:
+        """Render the exact platform header emitted by Mise."""
+        safe_characters = frozenset(
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_:/.-"
+        )
+        if (
+            not selector
+            or any(character not in safe_characters for character in selector)
+            or not platform
+            or any(character not in safe_characters for character in platform)
+        ):
+            return r[str].fail("mise.lock contains an unsupported TOML key")
+        selector_key = (
+            selector
+            if all(character.isalnum() or character in "_-" for character in selector)
+            else f'"{selector}"'
+        )
+        return r[str].ok(f'[tools.{selector_key}."platforms.{platform}"]')
+
+    @classmethod
+    def _download_checksum(
+        cls, selector: str, platform: str, url: str, artifact: Path
+    ) -> p.Result[str]:
+        """Download and hash one validated HTTPS artifact."""
+        download = u.Cli.run_raw(
+            (
+                "curl",
+                "--fail",
+                "--location",
+                "--proto",
+                "=https",
+                "--proto-redir",
+                "=https",
+                "--silent",
+                "--show-error",
+                "--output",
+                str(artifact),
+                url,
+            ),
+            cwd=artifact.parent,
+        )
+        if download.failure:
+            return r[str].fail(
+                download.error or f"checksum download failed for {selector}/{platform}"
+            )
+        if not u.Cli.process_succeeded(download.value.outcome):
+            cause = download.value.stderr.strip() or (
+                f"curl exited {download.value.outcome.raw_return_code}"
+            )
+            return r[str].fail(
+                f"checksum download failed for {selector}/{platform}: {cause}"
+            )
+        digest = u.Cli.sha256_file(artifact)
+        if not cls._is_sha256(digest):
+            return r[str].fail(f"invalid downloaded checksum for {selector}/{platform}")
+        return r[str].ok(digest)
+
+    def _hydrate_source(
+        self, source: str, missing: tuple[tuple[str, str, str], ...], scratch: Path
+    ) -> p.Result[str]:
+        """Download each unique URL and return lock text with complete checksums."""
+        hydrated = source
+        digests: dict[str, str] = {}
+        for index, (selector, platform, url) in enumerate(missing):
+            digest = digests.get(url)
+            if digest is None:
+                downloaded = self._download_checksum(
+                    selector, platform, url, scratch / f"artifact-{index}"
+                )
+                if downloaded.failure:
+                    return r[str].fail(downloaded.error)
+                digest = downloaded.value
+                digests[url] = digest
+            header = self._platform_header(selector, platform)
+            if header.failure:
+                return r[str].fail(header.error or "invalid mise.lock header")
+            marker = f"{header.value}\n"
+            if hydrated.count(marker) != 1:
+                return r[str].fail(
+                    "mise.lock platform section is not unique for "
+                    f"{selector}/{platform}"
+                )
+            hydrated = hydrated.replace(
+                marker, f'{marker}checksum = "sha256:{digest}"\n', 1
+            )
+        return r[str].ok(hydrated)
+
+    def hydrate_lock_checksums_at(self, root: Path) -> p.Result[bool]:
+        """Download exact resolved artifacts and atomically add missing SHA-256 values."""
+        lock_path = root / "mise.lock"
+        source = u.Cli.files_read_text(lock_path)
+        if source.failure:
+            return r[bool].fail(source.error or "cannot read mise.lock")
+        payload = u.Cli.toml_mapping_from_text(source.value)
+        if payload is None:
+            return r[bool].fail("invalid TOML in mise.lock")
+        missing = self._missing_checksums(payload)
+        if missing.failure:
+            return r[bool].fail(missing.error or "invalid mise.lock checksum metadata")
+        if not missing.value:
+            return r[bool].ok(True)
+        try:
+            with TemporaryDirectory(prefix=".mise-checksum.", dir=root) as raw_scratch:
+                hydrated = self._hydrate_source(
+                    source.value, missing.value, Path(raw_scratch)
+                )
+        except OSError as exc:
+            return r[bool].fail(f"cannot hydrate mise.lock checksums: {exc}")
+        if hydrated.failure:
+            return r[bool].fail(hydrated.error or "cannot hydrate mise.lock checksums")
+        write = u.Cli.atomic_write_text_file(lock_path, hydrated.value)
+        if write.failure:
+            return r[bool].fail(write.error or "cannot publish hydrated mise.lock")
+        return r[bool].ok(True)
 
     @staticmethod
     def _assignment(content: str, name: str) -> str | None:
@@ -268,11 +480,21 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                 return r[bool].fail(f"Mise lock specifier drift for {selector}")
             if selector.startswith("github:") and entry.backend != selector:
                 return r[bool].fail(f"Mise lock backend drift for {selector}")
+            # A backend that cannot represent a declared platform says so in the
+            # toolchain SSOT; every other omission is a lock defect.
+            excluded = frozenset(
+                toolchain.mise_lock_platform_exclusions.get(selector, ())
+            )
+            expected_platforms = declared_platforms - excluded
+            if selector.startswith(tuple(c.Infra.MISE_PLATFORM_INDEPENDENT_BACKENDS)):
+                # A platform-independent backend installs one artifact on every
+                # platform, so `mise lock` records no platform metadata at all.
+                expected_platforms = frozenset()
             actual_platforms = frozenset(entry.platforms)
-            if not actual_platforms <= declared_platforms:
+            if actual_platforms != expected_platforms:
                 return r[bool].fail(
                     f"Mise lock platform metadata mismatch for {selector}: "
-                    f"declared={sorted(declared_platforms)} "
+                    f"expected={sorted(expected_platforms)} "
                     f"actual={sorted(actual_platforms)}"
                 )
         return r[bool].ok(True)

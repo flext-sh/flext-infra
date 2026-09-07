@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from flext_core import r
 from flext_infra import c, m
 
-from .._utilities.class_nesting_cst import FlextInfraUtilitiesClassNestingCst
+from .class_nesting_cst import FlextInfraUtilitiesClassNestingCst
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -127,7 +127,6 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
                     class_name=item.name,
                     target_namespace=target_namespace,
                     confidence=confidence,
-                    rewrite_scope=c.Infra.RK_FILE,
                 )
                 for item in top_level_classes
                 if item.name != target_namespace and item.name not in bound

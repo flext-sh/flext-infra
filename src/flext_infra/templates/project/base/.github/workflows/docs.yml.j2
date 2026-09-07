@@ -37,6 +37,7 @@ jobs:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
+{%- include "_fragments/private_dependency_auth.j2" %}
 
       - name: Sync workspace toolchain
         run: make setup
@@ -101,6 +102,7 @@ jobs:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
+{%- include "_fragments/private_dependency_auth.j2" %}
 
       - name: Sync workspace toolchain
         run: make setup

@@ -6,14 +6,14 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
+from flext_infra import config
 from flext_infra.typings import t
 
-from .._config import config
-from .._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
-from .._utilities._rope_core_pymodule import FlextInfraUtilitiesRopeCorePyModuleMixin
-from .._utilities._rope_core_resources import FlextInfraUtilitiesRopeCoreResourcesMixin
-from .._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from .._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from ._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
+from ._rope_core_pymodule import FlextInfraUtilitiesRopeCorePyModuleMixin
+from ._rope_core_resources import FlextInfraUtilitiesRopeCoreResourcesMixin
+from .project_discovery import FlextInfraUtilitiesProjectDiscovery
+from .rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeCore(

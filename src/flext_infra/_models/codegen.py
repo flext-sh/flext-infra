@@ -10,10 +10,10 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m, u
 from flext_infra import c, p, t
 
-from .._models._defaults import ImmutableEmptyMapping
-from .._models.codegen_render import FlextInfraModelsCodegenRender
-from .._models.config import FlextInfraConfigModels
-from .._models.mixins import FlextInfraModelsMixins as mm
+from ._defaults import ImmutableEmptyMapping
+from .codegen_render import FlextInfraModelsCodegenRender
+from .config import FlextInfraConfigModels
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
@@ -782,9 +782,19 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 msg = "staging codegen journal must not authorize live transitions"
                 raise ValueError(msg)
             if self.state == "staging" and any(
-                directory.disposition != "temporary" for directory in self.directories
+                directory.disposition == "generated"
+                and directory.phase == "transaction"
+                for directory in self.directories
             ):
-                msg = "staging codegen journal can authorize only temporary paths"
+                # A staging journal authorizes no live transition — that is the
+                # `entries` rule above. It must still authorize the destination
+                # directory of a file phase: staging snapshots the live target,
+                # which requires a physical parent, so a generated destination
+                # can never be recorded after the entries it makes possible.
+                # Rollback removes them with the temporary roots
+                # (`include_generated` for any non-committed journal). Only the
+                # transaction's own roots stay restricted to `temporary`.
+                msg = "staging codegen journal cannot generate a transaction root"
                 raise ValueError(msg)
             entry_paths = tuple(entry.path for entry in self.entries)
             if len(set(entry_paths)) != len(entry_paths):
