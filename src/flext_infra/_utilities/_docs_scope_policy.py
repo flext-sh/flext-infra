@@ -16,16 +16,16 @@ class FlextInfraUtilitiesDocsScopePolicyMixin(FlextInfraUtilitiesDocsScopeStateM
     """Interpret the authenticated docs policy for one project or workspace."""
 
     @staticmethod
-    def config_path(workspace_root: Path) -> Path:
+    def config_path(repository_root: Path) -> Path:
         """Return the minimal docs policy settings path."""
         dir_docs: str = c.Infra.DIR_DOCS
         docs_config: str = c.Infra.DOCS_CONFIG_FILENAME
-        return workspace_root / dir_docs / docs_config
+        return repository_root / dir_docs / docs_config
 
     @staticmethod
-    def load_config(workspace_root: Path) -> t.JsonMapping:
+    def load_config(repository_root: Path) -> t.JsonMapping:
         """Load the minimal docs policy settings if present."""
-        path = FlextInfraUtilitiesDocsScopePolicyMixin.config_path(workspace_root)
+        path = FlextInfraUtilitiesDocsScopePolicyMixin.config_path(repository_root)
         # An absent optional config has no parent identity to authenticate. A
         # present parent is delegated to the atomic owner, which still rejects
         # symlinks, unsafe identities, and every real read failure.
@@ -47,9 +47,9 @@ class FlextInfraUtilitiesDocsScopePolicyMixin(FlextInfraUtilitiesDocsScopeStateM
         return dict(validated)
 
     @staticmethod
-    def excluded_roots(workspace_root: Path) -> t.Infra.StrSet:
+    def excluded_roots(repository_root: Path) -> t.Infra.StrSet:
         """Return explicitly excluded root directories from docs scope."""
-        payload = FlextInfraUtilitiesDocsScopePolicyMixin.load_config(workspace_root)
+        payload = FlextInfraUtilitiesDocsScopePolicyMixin.load_config(repository_root)
         scope = payload.get("scope")
         if not isinstance(scope, dict):
             return set()
@@ -88,9 +88,9 @@ class FlextInfraUtilitiesDocsScopePolicyMixin(FlextInfraUtilitiesDocsScopeStateM
         return False
 
     @staticmethod
-    def is_governed_project(project_name: str, workspace_root: Path) -> bool:
+    def is_governed_project(project_name: str, repository_root: Path) -> bool:
         """Return whether a project belongs to the governed FLEXT docs scope."""
-        project_root = workspace_root / project_name
+        project_root = repository_root / project_name
         docs_meta = FlextInfraUtilitiesDocsScopePolicyMixin.project_docs_meta(
             project_root
         )
@@ -100,7 +100,7 @@ class FlextInfraUtilitiesDocsScopePolicyMixin(FlextInfraUtilitiesDocsScopeStateM
             project_name.startswith(c.Infra.PKG_PREFIX_HYPHEN)
             and project_name
             not in FlextInfraUtilitiesDocsScopePolicyMixin.excluded_roots(
-                workspace_root
+                repository_root
             )
             and is_enabled
         )

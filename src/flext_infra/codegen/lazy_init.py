@@ -72,11 +72,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         self._duplicate_class_names = 0
         if not self.repository_root.is_dir():
             return r[m.Infra.CodegenPhaseAnalysis].fail(
-<<<<<<< HEAD
                 f"lazy-init repository is not a directory: {self.repository_root}"
-=======
-                f"lazy-init workspace is not a directory: {self.repository_root}"
->>>>>>> origin/0.12.0-dev
             )
         started_at = perf_counter()
         u.Cli.info(
@@ -113,15 +109,15 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Build immutable plans from one stable Rope workspace snapshot."""
         workspace_index = rope.workspace_index
-        resolved_workspace_root = self.repository_root.resolve()
+        resolved_repository_root = self.repository_root.resolve()
         indexed_package_dirs = tuple(
             sorted(
                 (
                     package_dir.resolve()
                     for package_dir in workspace_index.package_dirs
-                    if package_dir.is_relative_to(resolved_workspace_root)
+                    if package_dir.is_relative_to(resolved_repository_root)
                     and not frozenset(
-                        package_dir.relative_to(resolved_workspace_root).parts
+                        package_dir.relative_to(resolved_repository_root).parts
                     )
                     & c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES
                 ),
@@ -161,7 +157,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         package_dirs = self._package_dirs_for_target(
             indexed_package_dirs,
             target_package_dir=target_package_dir,
-            workspace_root=resolved_workspace_root,
+            repository_root=resolved_repository_root,
         )
         snapshots = self._snapshot_planner_inputs(workspace_index)
         if snapshots.failure:
@@ -210,12 +206,12 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         indexed_package_dirs: t.SequenceOf[Path],
         *,
         target_package_dir: Path | None,
-        workspace_root: Path,
+        repository_root: Path,
     ) -> tuple[Path, ...]:
         """Select the target's source/test scope and its production sibling."""
         if target_package_dir is None:
             return tuple(indexed_package_dirs)
-        target_parts = target_package_dir.relative_to(workspace_root).parts
+        target_parts = target_package_dir.relative_to(repository_root).parts
         boundary_names = frozenset({
             c.Infra.DEFAULT_SRC_DIR,
             *c.Infra.NON_PUBLIC_LAZY_ROOTS,
@@ -234,9 +230,9 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         return tuple(
             package_dir
             for package_dir in indexed_package_dirs
-            if package_dir.relative_to(workspace_root).parts[: len(scope_prefix)]
+            if package_dir.relative_to(repository_root).parts[: len(scope_prefix)]
             == scope_prefix
-            or package_dir.relative_to(workspace_root).parts[: len(production_prefix)]
+            or package_dir.relative_to(repository_root).parts[: len(production_prefix)]
             == production_prefix
         )
 

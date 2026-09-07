@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import os
-import stat
 from fnmatch import fnmatchcase
 from pathlib import Path
 
-from flext_cli import u
 from flext_core import r
-from flext_infra import c, config, m, p, t
+from flext_infra import c, config, m, p, t, u
 
 
 class FlextInfraUtilitiesProjectManagedArtifacts:
@@ -19,7 +16,17 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
     def snapshot_config_sources(
         cls, project_dir: Path
     ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
-        """Capture one stable, physical, direct ``config/*.yaml`` file set."""
+        """Capture one stable, physical, direct ``config/*.yaml`` file set.
+
+        A project root that does not exist yet declares no managed artifacts, so
+        it snapshots empty — the same answer ``_config_directory_identity``
+        already gives for an absent ``config/`` directory. ``codegen conform``
+        plans a brand-new project before materializing its tree, and that plan
+        must not fail on the absence it is about to fix. Every other inspection
+        failure (permission, non-directory, reparse point) still fails loud.
+        """
+        if not project_dir.exists():
+            return r[tuple[m.Cli.AtomicFileState, ...]].ok(())
         project_identity = cls._required_directory_identity(
             project_dir, purpose="project root"
         )
@@ -136,114 +143,47 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
     def validate_mise_tool_selectors(
         selectors: t.StrSequence, *, source: Path
     ) -> p.Result[bool]:
-        """Reject alternate distributions of fleet-owned tool identities."""
-        toolchain = config.Infra.codegen.toolchain
-        protected_tools = tuple(
-            (owner, getattr(toolchain, owner))
-            for owner in toolchain.protected_mise_tools
-        )
+        """Reject selectors belonging to suspended auxiliary capabilities."""
+        patterns = config.Infra.codegen.toolchain.suspended_mise_selector_patterns
         for selector in selectors:
-            for owner, tool in protected_tools:
-                if not any(
-                    fnmatchcase(selector, pattern) for pattern in tool.selector_patterns
-                ):
+            for pattern in patterns:
+                if not fnmatchcase(selector, pattern):
                     continue
-                if selector == tool.selector:
-                    return r[bool].fail(
-                        "project Mise selector collides with fleet tool "
-                        f"{selector!r} in {source}; protected tool {owner!r} is "
-                        "owned exclusively by the fleet toolchain"
-                    )
                 return r[bool].fail(
-                    "project Mise selector declares an alternate distribution "
-                    f"for fleet identity {owner!r}: {selector!r} in "
-                    f"{source}; canonical selector is {tool.selector!r}"
+                    "project Mise selector belongs to a suspended toolchain: "
+                    f"{selector!r} in {source}"
                 )
         return r[bool].ok(True)
 
-    @classmethod
-    def load_project_managed_artifacts(
-        cls, project_dir: Path
-    ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
-        """Snapshot every YAML once and parse that exact source set."""
-        snapshot = cls.snapshot_project_managed_artifacts(project_dir)
-        if snapshot.failure:
-            return r[m.Infra.ProjectManagedArtifactsResolution].from_failure(snapshot)
-        return r[m.Infra.ProjectManagedArtifactsResolution].ok(
-            snapshot.value.resolution
+    @staticmethod
+    def load(project_dir: Path) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
+        """Load the neutral tooling owner without probing auxiliary configs."""
+        config_dir = project_dir / c.CONFIG_DIR_NAME
+        empty = m.Infra.ProjectManagedArtifactsResolution(
+            artifacts=m.Infra.ProjectManagedArtifactsConfig(), mise_tool_sources={}
         )
-
-    @classmethod
-    def snapshot_project_managed_artifacts(
-        cls, project_dir: Path
-    ) -> p.Result[m.Infra.ProjectManagedArtifactsSnapshot]:
-        """Capture and parse exactly one immutable project configuration view."""
-        source_snapshot = cls.snapshot_config_sources(project_dir)
-        if source_snapshot.failure:
-            return r[m.Infra.ProjectManagedArtifactsSnapshot].from_failure(
-                source_snapshot
-            )
-        resolution = cls.load_project_managed_artifacts_from_snapshot(
-            source_snapshot.value
-        )
-        if resolution.failure:
-            return r[m.Infra.ProjectManagedArtifactsSnapshot].from_failure(resolution)
-        return r[m.Infra.ProjectManagedArtifactsSnapshot].ok(
-            m.Infra.ProjectManagedArtifactsSnapshot(
-                sources=source_snapshot.value, resolution=resolution.value
-            )
-        )
-
-    @classmethod
-    def load_project_managed_artifacts_from_snapshot(
-        cls, source_snapshot: tuple[m.Cli.AtomicFileState, ...]
-    ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
-        """Parse one caller-owned immutable project YAML snapshot."""
-        if not source_snapshot:
-            return r[m.Infra.ProjectManagedArtifactsResolution].ok(
-                cls.empty_snapshot().resolution
+        tooling_path = config_dir / "tooling.yaml"
+        if not tooling_path.is_file():
+            return r[m.Infra.ProjectManagedArtifactsResolution].ok(empty)
+        loaded = u.Cli.config_load(tooling_path, expand_env=False)
+        if loaded.failure:
+            return r[m.Infra.ProjectManagedArtifactsResolution].fail(
+                loaded.error or f"project tooling config load failed: {tooling_path}"
             )
         ruff_ignores: dict[str, set[str]] = {}
-        mise_tools: dict[str, m.Infra.ProjectMiseTool] = {}
+        mise_tools: dict[str, str] = {}
         mise_sources: dict[str, Path] = {}
-        gitignore_patterns: list[str] = []
-
-        for source_state in source_snapshot:
-            source = source_state.path
-            if source_state.content is None:
-                return r[m.Infra.ProjectManagedArtifactsResolution].fail(
-                    f"project config snapshot is absent: {source}"
-                )
-            try:
-                source_text = source_state.content.decode(c.Cli.ENCODING_DEFAULT)
-            except UnicodeDecodeError as exc:
-                return r[m.Infra.ProjectManagedArtifactsResolution].fail_op(
-                    f"decode project config source {source}", exc
-                )
-            loaded = u.Cli.yaml_parse(source_text)
-            if loaded.failure:
-                return r[m.Infra.ProjectManagedArtifactsResolution].from_failure(loaded)
-            managed = loaded.value.get("ManagedArtifacts")
-            if not managed:
-                continue
+        managed = loaded.value.data.get("ManagedArtifacts")
+        if managed:
             project_config = m.Infra.ProjectConfigDocument.model_validate({
                 "ManagedArtifacts": managed
             })
             artifacts = project_config.ManagedArtifacts
             for pattern, rules in artifacts.Ruff.per_file_ignores.items():
                 ruff_ignores.setdefault(pattern, set()).update(rules)
-            for pattern in artifacts.Gitignore.patterns:
-                if pattern not in gitignore_patterns:
-                    gitignore_patterns.append(pattern)
-            for selector, tool in artifacts.Mise.tools.items():
-                previous = mise_sources.get(selector)
-                if previous is not None:
-                    return r[m.Infra.ProjectManagedArtifactsResolution].fail(
-                        "duplicate project Mise selector "
-                        f"{selector!r}: {previous} and {source}"
-                    )
-
-                mise_tools[selector] = tool
+            source = tooling_path
+            for selector, version in artifacts.Mise.tools.items():
+                mise_tools[selector] = version
                 mise_sources[selector] = source
         artifacts = m.Infra.ProjectManagedArtifactsConfig(
             Ruff=m.Infra.ProjectRuffConfig(
@@ -253,9 +193,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 }
             ),
             Mise=m.Infra.ProjectMiseConfig(tools=dict(sorted(mise_tools.items()))),
-            Gitignore=m.Infra.ProjectGitignoreConfig(
-                patterns=tuple(gitignore_patterns)
-            ),
         )
         return r[m.Infra.ProjectManagedArtifactsResolution].ok(
             m.Infra.ProjectManagedArtifactsResolution(
@@ -266,20 +203,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
     @classmethod
     def compose_mise_toml(cls, project_dir: Path, rendered: str) -> p.Result[str]:
-        """Snapshot project YAML and compose Mise from those exact bytes."""
-        source_snapshot = cls.snapshot_config_sources(project_dir)
-        if source_snapshot.failure:
-            return r[str].from_failure(source_snapshot)
-        return cls.compose_mise_toml_from_snapshot(source_snapshot.value, rendered)
-
-    @classmethod
-    def compose_mise_toml_from_snapshot(
-        cls, source_snapshot: tuple[m.Cli.AtomicFileState, ...], rendered: str
-    ) -> p.Result[str]:
-        """Add local tools from one caller-owned immutable YAML snapshot."""
-        resolved = cls.load_project_managed_artifacts_from_snapshot(source_snapshot)
+        """Add local tools through TOML types and reject global collisions."""
+        resolved = cls.load(project_dir)
         if resolved.failure:
-            return r[str].from_failure(resolved)
+            return r[str].fail(resolved.error or "project artifact load failed")
         local_tools = resolved.value.artifacts.Mise.tools
         if not local_tools:
             return r[str].ok(rendered)
@@ -288,19 +215,22 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 (selector,), source=resolved.value.mise_tool_sources[selector]
             )
             if selector_validation.failure:
-                return r[str].from_failure(selector_validation)
+                return r[str].fail(
+                    selector_validation.error
+                    or "project Mise identity validation failed"
+                )
         doc = u.Cli.toml_parse_text(rendered)
         if doc is None:
             return r[str].fail("canonical .mise.toml template is invalid")
         tools = u.Cli.toml_ensure_table(doc, "tools")
-        for selector, tool in local_tools.items():
+        for selector, version in local_tools.items():
             if selector in tools:
                 source = resolved.value.mise_tool_sources[selector]
                 return r[str].fail(
                     "project Mise selector collides with fleet tool "
                     f"{selector!r}: global .mise.toml template and {source}"
                 )
-            tools[selector] = tool.version
+            tools[selector] = version
         return r[str].ok(u.Cli.toml_dumps(doc))
 
 

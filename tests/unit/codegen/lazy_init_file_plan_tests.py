@@ -15,7 +15,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         self, tmp_path: Path
     ) -> None:
         """Return exact target/source states while preserving every target byte."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         module_path = package_root / "models.py"
         u.Tests.write_lazy_init_namespace_module(
             module_path, class_name="FlextTestsModels", alias="m"
@@ -26,7 +26,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             f"{c.Infra.AUTOGEN_HEADER}\n", encoding=c.Cli.ENCODING_DEFAULT
         )
         before = {path: path.read_bytes() for path in (init_path, unit_path)}
-        service = u.Tests.create_lazy_init_service(workspace_root)
+        service = u.Tests.create_lazy_init_service(repository_root)
 
         result = service.plan_files()
 
@@ -35,7 +35,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that(analysis.phase, eq="lazy-init")
         plans = {plan.path: plan for plan in analysis.files}
         init_plan = plans[init_path.resolve()]
-        tm.that(init_plan.project, eq=workspace_root.resolve())
+        tm.that(init_plan.project, eq=repository_root.resolve())
         tm.that(
             tm.ok(u.Infra.codegen_file_before_state(init_plan)).content,
             eq=before[init_path],
@@ -65,7 +65,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         self, tmp_path: Path
     ) -> None:
         """Describe the closed sidecar cleanup set, including one-pass constants."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py", class_name="FlextTestsModels", alias="m"
         )
@@ -96,7 +96,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         }
         before = {path: path.read_bytes() for path in expected_deletes}
 
-        result = u.Tests.create_lazy_init_service(workspace_root).plan_files()
+        result = u.Tests.create_lazy_init_service(repository_root).plan_files()
 
         tm.that(result.success, eq=True)
         deletes = {

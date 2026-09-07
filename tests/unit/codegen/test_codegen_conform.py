@@ -16,10 +16,7 @@ from difflib import unified_diff
 from pathlib import Path
 
 import pytest
-<<<<<<< HEAD
 from filelock import UnixFileLock
-=======
->>>>>>> origin/0.12.0-dev
 
 from flext_infra import config, main
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenProjectNew
@@ -27,7 +24,6 @@ from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_tests import tm
-<<<<<<< HEAD
 from tests import c, m, p, r, u
 
 _CAPTURE_MODULE_OUTPUT = (
@@ -55,9 +51,6 @@ def _generation_lock_path(root: Path) -> Path:
     )
     return identity.git_dir / "HEAD"
 
-=======
-from tests import c, m, p, u
->>>>>>> origin/0.12.0-dev
 
 pytestmark = [pytest.mark.slow, pytest.mark.usefixtures("isolate_github_trigger_sha")]
 
@@ -73,7 +66,6 @@ def _conform_target(
         repository=repository,
         root=root,
         make_profile=make_profile,
-        beads=u.Tests.beads_project(repository.name),
         canonical_project_name=repository.distribution,
         baseline_branch=provider.branch,
         baseline_reference=f"refs/remotes/origin/{provider.branch}",
@@ -382,8 +374,7 @@ class TestCodegenConform:
                 ["git", "merge-base", "--is-ancestor", baseline, divergent], cwd=root
             )
         )
-        tm.that(divergent_check.outcome.raw_return_code, eq=1)
-<<<<<<< HEAD
+        tm.that(divergent_check.exit_code, eq=1)
         repository = u.Tests.repository_ref("flext-infra").model_copy(
             update={"path": Path()}
         )
@@ -406,11 +397,8 @@ class TestCodegenConform:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         service = FlextInfraCodegenConform(
-            repository_root=root, request=request, initial_workspace=workspace
+            workspace_root=root, request=request, initial_workspace=workspace
         )
-=======
-        service, request = _self_check_conform_service(root)
->>>>>>> origin/0.12.0-dev
 
         before_merge = tm.ok(service.plan(request)).branch_ancestry[0]
         divergent_current = next(
@@ -509,7 +497,6 @@ class TestCodegenConform:
         )
         tm.that(live_tip_check.outcome.raw_return_code, eq=1)
 
-<<<<<<< HEAD
         repository = u.Tests.repository_ref("flext-infra").model_copy(
             update={"path": Path()}
         )
@@ -534,9 +521,6 @@ class TestCodegenConform:
         service = FlextInfraCodegenConform(
             repository_root=root, request=request, initial_workspace=workspace
         )
-=======
-        service, request = _self_check_conform_service(root)
->>>>>>> origin/0.12.0-dev
 
         monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_SHA, triggering_sha)
         anchored = tm.ok(service.plan(request)).branch_ancestry[0]
@@ -589,7 +573,6 @@ class TestCodegenConform:
             eq=128,
         )
         monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_SHA, foreign_sha)
-<<<<<<< HEAD
         repository = u.Tests.repository_ref("flext-infra").model_copy(
             update={"path": Path()}
         )
@@ -614,9 +597,6 @@ class TestCodegenConform:
         service = FlextInfraCodegenConform(
             repository_root=root, request=request, initial_workspace=workspace
         )
-=======
-        service, request = _self_check_conform_service(root)
->>>>>>> origin/0.12.0-dev
 
         anchored = tm.ok(service.plan(request)).branch_ancestry[0]
         tm.that(anchored.baseline_sha, eq=lane_point)
@@ -687,7 +667,6 @@ class TestCodegenConform:
         )
         workspace = m.Infra.WorkspaceSpec(
             name=repository.name,
-            beads=u.Tests.beads_project(repository.name),
             repository=repository,
             project=u.Tests.project_spec(repository.name),
         )
@@ -734,9 +713,6 @@ class TestCodegenConform:
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
             provider="flext-sh",
-            beads_workspace=name,
-            beads_database=name.replace("-", "_"),
-            beads_issue_prefix=name,
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
@@ -766,7 +742,7 @@ class TestCodegenConform:
         )
         tm.that(first_result.plan.request.root, eq=root.resolve())
         tm.that((root / "config" / "workspace.yaml").exists(), eq=False)
-        tm.that((root / "config" / "beads.yaml").is_file(), eq=True)
+        tm.that((root / "config" / "beads.yaml").exists(), eq=False)
         tm.that((root / "pyproject.toml").is_file(), eq=True)
         tm.that((root / ".env.example").is_file(), eq=True)
         package_name = name.replace("-", "_")
@@ -785,33 +761,39 @@ class TestCodegenConform:
         tm.that(process.value, eq="✅ pong")
 
     @pytest.mark.slow
-    def test_generated_make_uses_unpinned_environment_uv(
+    def test_generated_make_dispatches_through_project_toolchain(
         self, infra_git_repo: Path
     ) -> None:
-        """Generated Make delegates uv selection to the caller environment."""
+        """Public gates select native tools through the project Mise owner."""
         root = infra_git_repo
         workspace = _standalone_workspace(root)
         _apply_conform_surface(root, workspace, c.Infra.CodegenConformSurface.MAKEFILE)
         selected = u.Cli.run_raw(
-            ["make", "-C", str(root), "--dry-run", "_builtin_status_diagnostics"],
+            ["make", "-C", str(root), "--dry-run", "status", "WHAT=diagnostics"],
             remove_env_keys=("MAKEFLAGS",),
         )
 
         selected_process = tm.ok(selected)
         selected_output = selected_process.stdout + selected_process.stderr
-<<<<<<< HEAD
         tm.that(selected_process.outcome.raw_return_code, eq=0)
-=======
-        tm.that(u.Cli.process_succeeded(selected_process.outcome), eq=True)
->>>>>>> origin/0.12.0-dev
         tm.that(selected_output, has="uv --version")
         tm.that(selected_output, lacks="uv@")
         tm.that(selected_output, lacks="UV_VERSION")
+        tm.that(selected_process.exit_code, eq=0)
+        tm.that(selected_output, has=["mise", "exec --", "_mise_dispatch_status"])
         makefile = (root / "Makefile").read_text(encoding="utf-8")
-        tm.that(makefile, has="UV ?= uv")
+        tm.that(makefile, has="UV := uv")
+        tm.that(makefile, has="UV is project-owned by Mise and cannot be overridden")
         tm.that(makefile, lacks="UV_VERSION")
         tm.that(makefile, lacks="uv@")
-        tm.that(makefile, lacks="mise exec")
+        tm.that(
+            makefile,
+            has=(
+                '$(MISE_PROJECT_CONFIG_ENV) "$(SETUP_MISE)" '
+                '-C "$(PROJECT_ROOT)" exec --'
+            ),
+        )
+        tm.that(makefile, has='$(SELF_MAKE) "_mise_dispatch_$@"')
 
     @pytest.mark.slow
     def test_existing_manifest_converges_to_identical_tree(
@@ -823,9 +805,6 @@ class TestCodegenConform:
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=existing_root,
             provider="flext-sh",
-            beads_workspace="flext-demo",
-            beads_database="flext_demo",
-            beads_issue_prefix="flext-demo",
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
@@ -1008,10 +987,9 @@ class TestCodegenConform:
         member = u.Tests.repository_ref("flext-core", path=Path("flext-core"))
         workspace = m.Infra.WorkspaceSpec(
             name="flext",
-            beads=u.Tests.beads_project("flext"),
             repository=root_repository,
             project=u.Tests.project_spec("flext"),
-            subprojects=(member,),
+            declared_repositories=(member,),
         )
         root = tmp_path / "flext"
         request = m.Infra.CodegenConformRequest(
@@ -1033,7 +1011,7 @@ class TestCodegenConform:
         )
 
     @pytest.mark.slow
-    def test_workspace_root_catalog_profile_preserves_platform_coverage(
+    def test_repository_root_catalog_profile_preserves_platform_coverage(
         self, tmp_path: Path
     ) -> None:
         """Route an arbitrary workspace root through its typed catalog profile."""
@@ -1051,7 +1029,6 @@ class TestCodegenConform:
         )
         workspace = m.Infra.WorkspaceSpec(
             name="arbitrary-root",
-            beads=u.Tests.beads_project("arbitrary-root"),
             repository=repository,
             project=u.Tests.project_spec("arbitrary-root"),
         )
@@ -1103,10 +1080,7 @@ class TestCodegenConform:
             update={"upstream": "flext_cli"}
         )
         workspace = m.Infra.WorkspaceSpec(
-            name="consumer",
-            beads=u.Tests.beads_project("consumer"),
-            repository=repository,
-            project=project,
+            name="consumer", repository=repository, project=project
         )
         root = tmp_path / "consumer"
         request = m.Infra.CodegenConformRequest(
@@ -1152,11 +1126,7 @@ class TestCodegenConform:
     ) -> None:
         """Build Make context from repository-owned data alone."""
         repository = u.Tests.repository_ref("consumer")
-        workspace = m.Infra.WorkspaceSpec(
-            name="consumer",
-            beads=u.Tests.beads_project("consumer"),
-            repository=repository,
-        )
+        workspace = m.Infra.WorkspaceSpec(name="consumer", repository=repository)
         target = _conform_target(
             tmp_path, repository, make_profile=c.Infra.MakeProfile.STANDALONE
         )
@@ -1180,7 +1150,87 @@ class TestCodegenConform:
         rendered = tm.ok(context)
         tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)
         tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
-        tm.that(rendered.workspace_root_rel, eq=".")
+        # A standalone consumer declares no flext-infra member, so the
+        # reference is derived from the provider contract. The generated
+        # Makefile consumes exactly the distribution and the URL (the
+        # bootstrap requirement), which is what this asserts; the topology
+        # role of a derived reference is not part of that contract.
+        tm.that(rendered.infra_repository.distribution, eq=config.Infra.name)
+        tm.that(
+            rendered.infra_repository.url,
+            eq=f"{u.Tests.provider().base_url.rstrip('/')}/{config.Infra.name}.git",
+        )
+        tm.that(rendered.infra_source_root_rel, eq=None)
+
+    def test_make_context_resolves_workspace_infra_project(
+        self, tmp_path: Path
+    ) -> None:
+        """A workspace project bootstraps from its declared local checkout."""
+        workspace_repository = u.Tests.repository_ref("workspace-root-fixture")
+        infra_repository = u.Tests.repository_ref(config.Infra.name)
+        workspace = m.Infra.WorkspaceSpec(
+            name=workspace_repository.name,
+            repository=workspace_repository,
+            subprojects=(infra_repository,),
+        )
+        target = _conform_target(
+            tmp_path, workspace_repository, make_profile=c.Infra.MakeProfile.WORKSPACE
+        )
+        tooling_runtime = tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=tmp_path, skip_check=True
+            ).resolve_tooling_context(
+                project_name=infra_repository.distribution,
+                package_name=infra_repository.distribution.replace("-", "_"),
+                path=tmp_path / infra_repository.path / "pyproject.toml",
+                declared_python_dirs=("src",),
+            )
+        )
+
+        rendered = tm.ok(
+            FlextInfraCodegenConform.make_render_context(
+                infra_repository,
+                target,
+                workspace,
+                config.Infra.codegen,
+                tooling_runtime=tooling_runtime,
+            )
+        )
+
+        tm.that(rendered.infra_source_root_rel, eq=infra_repository.path.as_posix())
+
+    def test_make_context_bootstraps_standalone_infra_from_itself(
+        self, tmp_path: Path
+    ) -> None:
+        """The engine repository never resolves itself through an invalid Git ref."""
+        repository = u.Tests.repository_ref(config.Infra.name)
+        workspace = m.Infra.WorkspaceSpec(name=repository.name, repository=repository)
+        target = _conform_target(
+            tmp_path, repository, make_profile=c.Infra.MakeProfile.STANDALONE
+        )
+        tooling_runtime = tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=tmp_path, skip_check=True
+            ).resolve_tooling_context(
+                project_name=repository.distribution,
+                package_name=repository.distribution.replace("-", "_"),
+                path=tmp_path / "pyproject.toml",
+                declared_python_dirs=("src",),
+            )
+        )
+
+        rendered = tm.ok(
+            FlextInfraCodegenConform.make_render_context(
+                repository,
+                target,
+                workspace,
+                config.Infra.codegen,
+                tooling_runtime=tooling_runtime,
+            )
+        )
+
+        tm.that(rendered.infra_source_root_rel, eq=".")
+        tm.that(rendered.repository_root_rel, eq=".")
 
     # Why (suite budget): parametrized over both conform modes, each running a
     # full plan/apply cycle on a real git repo; 10s only holds on an idle CPU.
@@ -1357,11 +1407,7 @@ class TestCodegenConform:
         )
         output = tm.ok(outcome)
         tm.that(output.stderr, eq="")
-<<<<<<< HEAD
         tm.that(output.outcome.raw_return_code, eq=0)
-=======
-        tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
->>>>>>> origin/0.12.0-dev
         tm.that(
             output.stdout,
             has=[
@@ -1397,11 +1443,7 @@ class TestCodegenConform:
         )
         outcome = u.Cli.run_raw(["make", "-C", str(root), "check", "WHAT=probe"])
         output = tm.ok(outcome)
-<<<<<<< HEAD
         tm.that(output.outcome.raw_return_code, eq=0)
-=======
-        tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
->>>>>>> origin/0.12.0-dev
         combined = output.stdout + output.stderr
         pre_at = combined.find("HOOK_PRE")
         body_at = combined.find("HANDLER_BODY")
@@ -1492,10 +1534,9 @@ class TestScriptDispatchMakefile:
         )
         workspace = m.Infra.WorkspaceSpec(
             name="demo-root",
-            beads=u.Tests.beads_project("demo-root"),
             repository=root_repository,
             project=u.Tests.project_spec("demo-root"),
-            subprojects=(),
+            declared_repositories=(),
         )
         root = tmp_path / "demo-root"
         request = m.Infra.CodegenConformRequest(
@@ -1520,7 +1561,6 @@ class TestScriptDispatchMakefile:
             extra_verbs=(
                 m.Infra.MakeVerbSpec(
                     name="incidente",
-<<<<<<< HEAD
                     description="Report incident state.",
                     requires_apply=False,
                 ),
@@ -1528,15 +1568,6 @@ class TestScriptDispatchMakefile:
                     name="charts",
                     description="Render deployment charts.",
                     requires_apply=False,
-=======
-                    description="Dispatch incidente through the declared script dispatcher.",
-                    requires_apply=True,
-                ),
-                m.Infra.MakeVerbSpec(
-                    name="charts",
-                    description="Dispatch charts through the declared script dispatcher.",
-                    requires_apply=True,
->>>>>>> origin/0.12.0-dev
                 ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
@@ -1566,14 +1597,7 @@ class TestScriptDispatchMakefile:
         tm.that("gen" in verb_names, eq=True)
         tm.that("codegen" in verb_names, eq=False)
         gen = next(verb for verb in make_config.verbs if verb.name == "gen")
-<<<<<<< HEAD
         tm.that(gen.requires_apply, eq=True)
-=======
-        # WHAT selectors were exterminated: one verb, one meaning, declared once.
-        tm.that(hasattr(gen, "default_what"), eq=False)
-        tm.that(gen.requires_apply, eq=True)
-        tm.that("initialize" in verb_names, eq=True)
->>>>>>> origin/0.12.0-dev
         tm.that(hasattr(make_config, "serialization"), eq=False)
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
@@ -1643,6 +1667,9 @@ class TestScriptDispatchMakefile:
         tm.that("define _generated_docs" in rendered, eq=False)
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
         tm.that("_builtin_gen_all" in gen_apply_body, eq=True)
+        gen_init_body = rendered.split("_builtin_gen_init:", 1)[1].split("\n\n", 1)[0]
+        tm.that(gen_init_body.count("codegen init"), eq=2)
+        tm.that(gen_init_body, lacks=["codegen conform", "REPOSITORY_ROOT", "bd"])
         # The regeneration contract published on every projection speaks gen.
         tm.that("# @flext-regenerate: make gen APPLY=Y" in rendered, eq=True)
         # The custom-surface policy names gen (not codegen) for hooks/handlers.
@@ -1721,13 +1748,7 @@ class TestScriptDispatchMakefile:
             env=environment,
         )
 
-<<<<<<< HEAD
         output = tm.ok(invoked)
-=======
-        tm.ok(invoked)
-        tm.that(u.Cli.process_succeeded(invoked.value.outcome), eq=True)
-        tm.that(forbidden.exists(), eq=False)
->>>>>>> origin/0.12.0-dev
         tm.that(
             output.outcome.raw_return_code,
             eq=0,
@@ -1914,7 +1935,6 @@ class TestScriptDispatchMakefile:
             extra_verbs=(
                 m.Infra.MakeVerbSpec(
                     name="charts",
-<<<<<<< HEAD
                     description="Render deployment charts.",
                     requires_apply=False,
                 ),
@@ -1927,20 +1947,6 @@ class TestScriptDispatchMakefile:
                     name="bead",
                     description="Record one work item.",
                     requires_apply=False,
-=======
-                    description="Dispatch charts through the declared script dispatcher.",
-                    requires_apply=True,
-                ),
-                m.Infra.MakeVerbSpec(
-                    name="chart-release",
-                    description="Dispatch chart-release through the declared script dispatcher.",
-                    requires_apply=True,
-                ),
-                m.Infra.MakeVerbSpec(
-                    name="bead",
-                    description="Dispatch bead through the declared script dispatcher.",
-                    requires_apply=True,
->>>>>>> origin/0.12.0-dev
                 ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(

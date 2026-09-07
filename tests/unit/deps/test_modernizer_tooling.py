@@ -311,7 +311,7 @@ select = ["E501"]
         project_dir = tmp_path / "flext-cli"
         config_dir = project_dir / "config"
         config_dir.mkdir(parents=True)
-        (config_dir / "cli.yaml").write_text(
+        (config_dir / "tooling.yaml").write_text(
             "ManagedArtifacts:\n"
             "  Ruff:\n"
             "    per_file_ignores:\n"
@@ -351,7 +351,7 @@ select = ["E501"]
         project_dir = tmp_path / "flext-cli"
         config_dir = project_dir / "config"
         config_dir.mkdir(parents=True)
-        (config_dir / "cli.yaml").write_text(
+        (config_dir / "tooling.yaml").write_text(
             "ManagedArtifacts:\n"
             "  Ruff:\n"
             "    per_file_ignores:\n"

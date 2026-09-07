@@ -2,49 +2,34 @@
 
 from __future__ import annotations
 
-from flext_infra import u as flext_infra_u
-from flext_tests import FlextTestsUtilities
-from tests import m
-from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
-from tests.utilities_deps import TestsFlextInfraUtilitiesDepsMixin
-from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixtureMixin
-from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
-from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
-from tests.utilities_fixture_workspace import (
-    TestsFlextInfraUtilitiesWorkspaceFixtureMixin,
-)
-from tests.utilities_gates import TestsFlextInfraUtilitiesGatesMixin
-from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
-from tests.utilities_release import TestsFlextInfraUtilitiesReleaseMixin
-from tests.utilities_replay import TestsFlextInfraUtilitiesReplayRunnerMixin
-from tests.utilities_replay_sequence import TestsFlextInfraUtilitiesReplaySequenceMixin
-from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
-from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnvMixin
+import json
+import shutil
+import tomllib
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from pathlib import Path
+from typing import TYPE_CHECKING, override
+
+from flext_cli import cli as cli_facade
+from flext_infra import config, main, r, u
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.deps.detection import FlextInfraDependencyDetectionService
+from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
+from flext_tests import FlextTestsUtilities, tm
+from tests import c, m, p, t
+
+if TYPE_CHECKING:
+    from flext_infra.gates.base_gate import FlextInfraGate
 
 
-class TestsFlextInfraUtilities(FlextTestsUtilities, flext_infra_u):
+class TestsFlextInfraUtilities(FlextTestsUtilities, u):
     """Typed test utilities for flext-infra."""
 
-    class Tests(
-        TestsFlextInfraUtilitiesTomlMixin,
-        TestsFlextInfraUtilitiesReplayRunnerMixin,
-        TestsFlextInfraUtilitiesReplaySequenceMixin,
-        TestsFlextInfraUtilitiesProjectFixtureMixin,
-        TestsFlextInfraUtilitiesWorkspaceFixtureMixin,
-        TestsFlextInfraUtilitiesToolingFixtureMixin,
-        TestsFlextInfraUtilitiesDocsFixtureMixin,
-        TestsFlextInfraUtilitiesReleaseMixin,
-        TestsFlextInfraUtilitiesGitMixin,
-        TestsFlextInfraUtilitiesGatesMixin,
-        TestsFlextInfraUtilitiesCodegenMixin,
-        TestsFlextInfraUtilitiesDepsMixin,
-        TestsFlextInfraUtilitiesWorkspaceEnvMixin,
-        FlextTestsUtilities.Tests,
-    ):
+    class Tests(FlextTestsUtilities.Tests):
         """Canonical test helper namespace."""
 
         @staticmethod
-<<<<<<< HEAD
         def make_read_only(path: Path) -> None:
             """Make one fixture path read-only."""
             path.chmod(0o444)
@@ -1942,15 +1927,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, flext_infra_u):
                 del limits_path
                 limits: dict[str, str] = {}
                 return limits
-=======
-        def enforcement_rule(rule_id: str) -> m.EnforcementRuleSpec:
-            """Resolve one enabled rule from the canonical enforcement catalog."""
-            catalog = u.build_canonical_catalog()
-            rule: m.EnforcementRuleSpec = next(
-                rule for rule in catalog.enabled_rules() if rule.id == rule_id
-            )
-            return rule
->>>>>>> origin/0.12.0-dev
 
 
 u = TestsFlextInfraUtilities
