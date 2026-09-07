@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-<<<<<<< HEAD
 from flext_infra import m, r
 from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
 from flext_tests import tm
@@ -56,11 +55,6 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
         _ = workspace_root
         _ = venv_bin
         return r[tuple[t.StrSequence, int]].ok(([], self._pip_exit))
-=======
-from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
-from flext_tests import tm
-from tests import TestsFlextInfraUtilities as u, m, p, t
->>>>>>> origin/0.12.0-dev
 
 
 class _DetectorStub:

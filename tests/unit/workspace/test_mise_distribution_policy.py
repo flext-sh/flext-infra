@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 """Fleet-owned mise distribution policy at its composition owner.
 
 ``codegen conform`` exclusively owns ``.mise.toml`` (workspace environment
@@ -6,19 +5,12 @@ sync stopped writing it when the toolchain transaction landed), so the
 distribution policy is proven against ``u.Infra.compose_mise_toml`` — the one
 surface that turns a repository's ``config/*.yaml`` overlay into that file.
 """
-=======
-"""Public workspace sync contracts for suspended Mise toolchains."""
->>>>>>> Stashed changes
 
 from __future__ import annotations
 
 from pathlib import Path
 
-<<<<<<< Updated upstream
 from flext_infra import config, u
-=======
-from flext_infra import infra, m
->>>>>>> Stashed changes
 from flext_tests import tm
 
 
@@ -45,27 +37,16 @@ def _fleet_render() -> str:
 
 
 class TestsMiseDistributionPolicy:
-<<<<<<< Updated upstream
     """Reject alternate owners and fleet collisions through the composition owner."""
-=======
-    """Reject every selector family belonging to a suspended capability."""
->>>>>>> Stashed changes
 
-    def test_tooling_owner_rejects_suspended_distribution(
-        self, tmp_path: Path
-    ) -> None:
+    def test_tooling_owner_rejects_suspended_distribution(self, tmp_path: Path) -> None:
         root = _workspace(tmp_path / "project")
         config_dir = root / "config"
         config_dir.mkdir()
         selector = _alternate_selector()
-<<<<<<< Updated upstream
         (config_dir / "tools.yaml").write_text(
             "ManagedArtifacts:\n  Mise:\n    tools:\n"
             f'      "{selector}":\n        version: "1.0.0"\n',
-=======
-        (config_dir / "tooling.yaml").write_text(
-            f'ManagedArtifacts:\n  Mise:\n    tools:\n      "{selector}": "1.0.0"\n',
->>>>>>> Stashed changes
             encoding="utf-8",
         )
 
@@ -77,13 +58,8 @@ class TestsMiseDistributionPolicy:
         root = _workspace(tmp_path / "project")
         config_dir = root / "config"
         config_dir.mkdir()
-<<<<<<< Updated upstream
         (config_dir / "tools.yaml").write_text(
             'ManagedArtifacts:\n  Mise:\n    tools:\n      beads:\n        version: "1.2.2"\n',
-=======
-        (config_dir / "tooling.yaml").write_text(
-            'ManagedArtifacts:\n  Mise:\n    tools:\n      beads: "1.2.2"\n',
->>>>>>> Stashed changes
             encoding="utf-8",
         )
 
@@ -97,16 +73,10 @@ class TestsMiseDistributionPolicy:
         root = _workspace(tmp_path / "project")
         config_dir = root / "config"
         config_dir.mkdir()
-<<<<<<< Updated upstream
         beads = config.Infra.codegen.toolchain.beads
         (config_dir / "tools.yaml").write_text(
             "ManagedArtifacts:\n  Mise:\n    tools:\n"
             f'      "{beads.selector}":\n        version: "{beads.version}.divergent"\n',
-=======
-        dormant = config_dir / "beads.yaml"
-        dormant.write_text(
-            "version: [\nManagedArtifacts:\n  Mise:\n    tools:\n      beads: 1\n",
->>>>>>> Stashed changes
             encoding="utf-8",
         )
         before = dormant.read_bytes()
@@ -127,7 +97,6 @@ class TestsMiseDistributionPolicy:
 
         tm.fail(result, has=["suspended toolchain", selector, ".mise.toml"])
 
-<<<<<<< Updated upstream
     def test_canonical_selector_is_accepted(self, tmp_path: Path) -> None:
         """An arbitrary non-protected selector passes identity validation."""
         root = _workspace(tmp_path / "project")
@@ -138,20 +107,6 @@ class TestsMiseDistributionPolicy:
         )
 
         tm.ok(result)
-=======
-    def test_custom_mise_rejects_exact_suspended_distribution(
-        self, tmp_path: Path
-    ) -> None:
-        root = _workspace(tmp_path / "project")
-        (root / ".mise.toml").write_text(
-            '[tools]\n"github:gastownhall/beads" = "1.2.2"\nnode = "22"\n',
-            encoding="utf-8",
-        )
-
-        result = _sync(root)
-
-        tm.fail(result, has=["suspended toolchain", "github:gastownhall/beads"])
->>>>>>> Stashed changes
 
 
 __all__: tuple[str, ...] = ()

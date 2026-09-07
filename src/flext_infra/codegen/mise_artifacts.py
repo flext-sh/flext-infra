@@ -71,9 +71,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         return r[t.StrMapping].ok(specifiers)
 
     @staticmethod
-    def _validate_suspended_selectors(
-        configured_tools: t.StrMapping,
-    ) -> p.Result[bool]:
+    def _validate_suspended_selectors(configured_tools: t.StrMapping) -> p.Result[bool]:
         """Reject dormant capabilities before lock, download, or publication."""
         patterns = config.Infra.codegen.toolchain.suspended_mise_selector_patterns
         suspended = tuple(
@@ -517,9 +515,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                 or not isinstance(raw_tool_config, Mapping)
                 or raw_tool_config.get("locked") is not True
             ):
-                return r[bool].fail(
-                    ".mise.toml must enable lockfile and locked mode"
-                )
+                return r[bool].fail(".mise.toml must enable lockfile and locked mode")
             return r[bool].ok(True)
         if not self.effective_dry_run:
             return self._hydrate_lock_checksums(configured_tools=tools_result.value)

@@ -2670,18 +2670,14 @@ class FlextInfraConfigModels:
             owned_names = tuple(
                 match.group("name").lower()
                 for requirement in owned_requirements
-                if (
-                    match := FlextInfraConstantsDeps.PEP621_NAME_RE.match(requirement)
-                )
+                if (match := FlextInfraConstantsDeps.PEP621_NAME_RE.match(requirement))
                 is not None
             )
             return tuple(
-                dict.fromkeys(
-                    (
-                        *owned_names,
-                        *self.toolchain.additional_python_tool_distributions,
-                    )
-                )
+                dict.fromkeys((
+                    *owned_names,
+                    *self.toolchain.additional_python_tool_distributions,
+                ))
             )
 
         @u.model_validator(mode="after")
@@ -2695,14 +2691,10 @@ class FlextInfraConfigModels:
             derived = {
                 match.group("name").lower()
                 for requirement in derived_requirements
-                if (
-                    match := FlextInfraConstantsDeps.PEP621_NAME_RE.match(requirement)
-                )
+                if (match := FlextInfraConstantsDeps.PEP621_NAME_RE.match(requirement))
                 is not None
             }
-            additional = set(
-                self.toolchain.additional_python_tool_distributions
-            )
+            additional = set(self.toolchain.additional_python_tool_distributions)
             duplicate_owners = derived.intersection(additional)
             if duplicate_owners:
                 msg = (
@@ -2724,9 +2716,7 @@ class FlextInfraConfigModels:
                 match.group("name").lower()
                 for profile in self.scaffold.project.dependency_profiles
                 for requirement in profile.runtime
-                if (
-                    match := FlextInfraConstantsDeps.PEP621_NAME_RE.match(requirement)
-                )
+                if (match := FlextInfraConstantsDeps.PEP621_NAME_RE.match(requirement))
                 is not None
             }
             misclassified = catalog.intersection(runtime_libraries)
