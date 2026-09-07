@@ -125,8 +125,8 @@ if TYPE_CHECKING:
     )
     from .detectors.runtime_alias_detector import FlextInfraRuntimeAliasDetector
     from .detectors.silent_failure_detector import FlextInfraSilentFailureDetector
-    from .docs.auditor import FlextInfraDocAuditor
     from .docs.analyzer import FlextInfraDocAnalyzer
+    from .docs.auditor import FlextInfraDocAuditor
     from .docs.auditor_mixin import FlextInfraDocAuditorMixin
     from .docs.base import FlextInfraDocServiceBase
     from .docs.builder import FlextInfraDocBuilder
@@ -311,8 +311,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyDetectorRuntime",
     "FlextInfraDirenvGate",
-    "FlextInfraDocAuditor",
     "FlextInfraDocAnalyzer",
+    "FlextInfraDocAuditor",
     "FlextInfraDocAuditorMixin",
     "FlextInfraDocBuilder",
     "FlextInfraDocFixer",
