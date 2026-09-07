@@ -126,6 +126,7 @@ if TYPE_CHECKING:
     from .detectors.runtime_alias_detector import FlextInfraRuntimeAliasDetector
     from .detectors.silent_failure_detector import FlextInfraSilentFailureDetector
     from .docs.auditor import FlextInfraDocAuditor
+    from .docs.analyzer import FlextInfraDocAnalyzer
     from .docs.auditor_mixin import FlextInfraDocAuditorMixin
     from .docs.base import FlextInfraDocServiceBase
     from .docs.builder import FlextInfraDocBuilder
@@ -311,6 +312,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraDependencyDetectorRuntime",
     "FlextInfraDirenvGate",
     "FlextInfraDocAuditor",
+    "FlextInfraDocAnalyzer",
     "FlextInfraDocAuditorMixin",
     "FlextInfraDocBuilder",
     "FlextInfraDocFixer",
@@ -596,6 +598,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".detectors.silent_failure_detector": ("FlextInfraSilentFailureDetector",),
             ".docs": ("docs",),
             ".docs.auditor": ("FlextInfraDocAuditor",),
+            ".docs.analyzer": ("FlextInfraDocAnalyzer",),
             ".docs.auditor_mixin": ("FlextInfraDocAuditorMixin",),
             ".docs.base": ("FlextInfraDocServiceBase",),
             ".docs.builder": ("FlextInfraDocBuilder",),

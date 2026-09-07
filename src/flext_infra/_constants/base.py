@@ -276,6 +276,8 @@ class FlextInfraConstantsBase(
     "ast-grep scan subcommand."
     MAKE: Final[str] = "make"
     "Make build tool binary."
+    CRG: Final[str] = "code-review-graph"
+    "AI Hub code-review-graph analysis binary."
 
     CHECK: Final[str] = "check"
     "Generic check command/subcommand identifier."
