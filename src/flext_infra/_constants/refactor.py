@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 def _build_namespace_file_to_family(
-    mapping: Sequence[tuple[str, Sequence[str]]],
+    mapping: Sequence[t.Pair[str, Sequence[str]]],
 ) -> t.StrMapping:
     """Build file name → family alias mapping from (alias, file_names) pairs."""
     result: dict[str, str] = {}
@@ -29,7 +29,7 @@ def _build_namespace_file_to_family(
 
 
 def _build_namespace_family_expected_alias(
-    mapping: Sequence[tuple[str, Sequence[str]]], suffixes: t.StrMapping
+    mapping: Sequence[t.Pair[str, Sequence[str]]], suffixes: t.StrMapping
 ) -> t.MappingKV[str, t.StrPair]:
     """Build file name → (alias, suffix) mapping from family specs."""
     result: dict[str, t.StrPair] = {}
@@ -155,9 +155,8 @@ class FlextInfraConstantsRefactor:
     RULE_MATCHERS_BY_KIND: Final[
         t.MappingKV[
             RefactorRuleKind,
-            tuple[
-                tuple[frozenset[str], frozenset[str], frozenset[str], frozenset[str]],
-                ...,
+            t.VariadicTuple[
+                t.Quad[frozenset[str], frozenset[str], frozenset[str], frozenset[str]]
             ],
         ]
     ] = MappingProxyType({
@@ -388,7 +387,7 @@ class FlextInfraConstantsRefactor:
         "flext-grpc",
     })
     "Known platform-layer packages."
-    INTEGRATION_CLASS_PREFIXES: Final[tuple[str, ...]] = (
+    INTEGRATION_CLASS_PREFIXES: Final[t.VariadicTuple[str]] = (
         "FlextTap",
         "FlextTarget",
         "FlextDbt",

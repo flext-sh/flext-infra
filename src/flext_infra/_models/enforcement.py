@@ -110,11 +110,11 @@ class FlextInfraModelsEnforcement:
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         violations: Annotated[
-            tuple[tuple[core_m.EnforcementRuleSpec, p.AttributeProbe], ...],
+            t.VariadicTuple[t.Pair[core_m.EnforcementRuleSpec, p.AttributeProbe]],
             m.Field(description="Rule/probe pairs collected for the project"),
         ]
         failures: Annotated[
-            tuple[FlextInfraModelsEnforcement.FailedFix, ...],
+            t.VariadicTuple[FlextInfraModelsEnforcement.FailedFix],
             m.Field(description="Structured collection/routing failures"),
         ]
 

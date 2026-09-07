@@ -140,12 +140,14 @@ class FlextInfraConstantsCheck:
     })
     # Precompiled (lib, regex, replacement) rows — click is exempted at the call
     # site for Singer-SDK boundary files.
-    BOUNDARY_BANNED_RULES: Final[tuple[tuple[str, t.RegexPattern, str], ...]] = tuple(
+    BOUNDARY_BANNED_RULES: Final[
+        t.VariadicTuple[t.Triple[str, t.RegexPattern, str]]
+    ] = tuple(
         (lib, re.compile(rf"^\s*(import|from)\s+{lib}(\s|$|\.)", re.MULTILINE), repl)
         for lib, repl in BOUNDARY_BANNED_LIBS.items()
     )
     # Unconditional (regex, message) catalog — one data-driven loop in the gate.
-    BOUNDARY_SIMPLE_RULES: Final[tuple[tuple[t.RegexPattern, str], ...]] = (
+    BOUNDARY_SIMPLE_RULES: Final[t.VariadicTuple[t.Pair[t.RegexPattern, str]]] = (
         (
             re.compile(
                 rf"^\s*(import|from)\s+{'sub' + 'process'}(\s|$|\.)", re.MULTILINE

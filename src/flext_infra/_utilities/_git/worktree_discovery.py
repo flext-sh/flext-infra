@@ -127,7 +127,9 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
         )
 
     @staticmethod
-    def _read_gitmodule_contract(gitmodules: Path, member_path: str) -> tuple[str, str]:
+    def _read_gitmodule_contract(
+        gitmodules: Path, member_path: str
+    ) -> t.Pair[str, str]:
         """Read URL and branch for one submodule from .gitmodules."""
         with GitConfigParser(file_or_files=gitmodules, read_only=True) as config:
             matching_sections = tuple(

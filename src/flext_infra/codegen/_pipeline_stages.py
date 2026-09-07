@@ -48,14 +48,14 @@ class FlextInfraCodegenPipelineStagesMixin:
         actual workspace inventory.
         """
 
-        def _action() -> tuple[m.Infra.ProjectInfo, ...]:
+        def _action() -> t.VariadicTuple[m.Infra.ProjectInfo]:
             projects_result = u.Infra.projects(ctx.repository_root)
             if projects_result.failure:
                 msg = projects_result.error or "project discovery failed"
                 raise RuntimeError(msg)
             return tuple(projects_result.unwrap())
 
-        def _emit(discovered: tuple[m.Infra.ProjectInfo, ...]) -> t.JsonMapping:
+        def _emit(discovered: t.VariadicTuple[m.Infra.ProjectInfo]) -> t.JsonMapping:
             self._state.discovered_projects = discovered
             return {"projects_discovered": len(discovered)}
 
@@ -153,7 +153,7 @@ class FlextInfraCodegenPipelineStagesMixin:
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run census (before fixes) and cache reports in typed state."""
 
-        def _action() -> tuple[
+        def _action() -> t.Pair[
             FlextInfraCodegenCensus, t.SequenceOf[m.Infra.CensusReport]
         ]:
             census = FlextInfraCodegenCensus(repository_root=ctx.repository_root)
@@ -161,7 +161,9 @@ class FlextInfraCodegenPipelineStagesMixin:
             return census, census.run(projects=projects)
 
         def _emit(
-            payload: tuple[FlextInfraCodegenCensus, t.SequenceOf[m.Infra.CensusReport]],
+            payload: t.Pair[
+                FlextInfraCodegenCensus, t.SequenceOf[m.Infra.CensusReport]
+            ],
         ) -> t.JsonMapping:
             census, reports = payload
             self._state.census_service = census

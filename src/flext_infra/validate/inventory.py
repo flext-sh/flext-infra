@@ -65,7 +65,7 @@ class FlextInfraInventoryService(s[bool]):
     @staticmethod
     def _report_payloads(
         root: Path, scripts: t.StrSequence
-    ) -> tuple[t.JsonMapping, t.JsonMapping, t.JsonMapping]:
+    ) -> t.Triple[t.JsonMapping, t.JsonMapping, t.JsonMapping]:
         """Build inventory, wiring, and external candidate payloads."""
         now = u.now().isoformat()
         inventory_payload = t.json_value_adapter().validate_python({
@@ -107,7 +107,7 @@ class FlextInfraInventoryService(s[bool]):
         external: t.JsonMapping,
     ) -> p.Result[list[str]]:
         """Write all inventory report payloads."""
-        report_specs: tuple[tuple[str, t.JsonMapping], ...] = (
+        report_specs: t.VariadicTuple[t.Pair[str, t.JsonMapping]] = (
             ("scripts-infra--json--scripts-inventory.json", inventory),
             ("scripts-infra--json--scripts-wiring.json", wiring),
             ("scripts-infra--json--external-scripts-candidates.json", external),

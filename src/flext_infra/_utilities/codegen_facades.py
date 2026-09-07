@@ -102,8 +102,9 @@ class FlextInfraUtilitiesCodegenFacades:
     @staticmethod
     def _utility_owners(
         owners_dir: Path,
-    ) -> tuple[
-        tuple[tuple[str, str, frozenset[str]], ...], t.MappingKV[str, frozenset[str]]
+    ) -> t.Pair[
+        t.VariadicTuple[t.Triple[str, str, frozenset[str]]],
+        t.MappingKV[str, frozenset[str]],
     ]:
         owners: list[tuple[str, str, frozenset[str]]] = []
         ancestors: dict[str, frozenset[str]] = {}
@@ -133,7 +134,7 @@ class FlextInfraUtilitiesCodegenFacades:
     @staticmethod
     def _facade_classes(
         tree: ast.Module, path: Path
-    ) -> tuple[ast.ClassDef, ast.ClassDef]:
+    ) -> t.Pair[ast.ClassDef, ast.ClassDef]:
         facades = tuple(node for node in tree.body if isinstance(node, ast.ClassDef))
         if len(facades) != 1:
             message = f"expected one utility facade class in {path}"

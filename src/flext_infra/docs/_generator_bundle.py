@@ -69,7 +69,7 @@ class FlextInfraDocGeneratorBundleMixin:
         source_paths = u.Infra.docs_source_paths(repository_root, tuple(selected_roots))
         if source_paths.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(source_paths)
-        sources = u.Infra.docs_snapshot_sources(source_paths.value)
+        sources = u.Infra.required_file_states(source_paths.value)
         if sources.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(sources)
         selected = u.Infra.build_scopes(repository_root, request.projects, output_dir)

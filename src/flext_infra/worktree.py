@@ -10,7 +10,7 @@ from flext_infra import c, m, u
 from flext_infra.base import s
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 class FlextInfraWorktreeService(s[str]):
@@ -107,7 +107,7 @@ class FlextInfraWorktreeService(s[str]):
     @staticmethod
     def _registered_worktrees(
         primary_root: Path,
-    ) -> p.Result[tuple[tuple[Path, str], ...]]:
+    ) -> p.Result[t.VariadicTuple[t.Pair[Path, str]]]:
         """Pair every registered worktree root with the branch it checks out."""
         listed = u.Infra.git_list_worktrees(
             m.Infra.GitRepoRequest(repo_root=primary_root)
@@ -143,7 +143,7 @@ class FlextInfraWorktreeService(s[str]):
     @classmethod
     def registered_children(
         cls, primary_root: Path, epic_lane: Path
-    ) -> p.Result[tuple[Path, ...]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Return every registered lane nested under one epic lane container."""
         entries = cls._registered_worktrees(primary_root)
         if entries.failure:

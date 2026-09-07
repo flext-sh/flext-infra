@@ -134,7 +134,9 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
         return not before or not (before.isalnum() or before == "_")
 
     @staticmethod
-    def _match_simple_type_alias(text: str, index: int) -> tuple[str, str, int] | None:
+    def _match_simple_type_alias(
+        text: str, index: int
+    ) -> t.Triple[str, str, int] | None:
         """Return a leaf-type rewrite for ``Any``/``typing.Any``/``object``."""
         for token in ("typing.Any", "Any", "object"):
             if not text.startswith(token, index):
@@ -152,7 +154,7 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
         return None
 
     @staticmethod
-    def _extract_square_bracket_content(text: str, open_index: int) -> tuple[str, int]:
+    def _extract_square_bracket_content(text: str, open_index: int) -> t.Pair[str, int]:
         """Return the content and end offset for a square-bracket type expression."""
         depth = 0
         cursor = open_index

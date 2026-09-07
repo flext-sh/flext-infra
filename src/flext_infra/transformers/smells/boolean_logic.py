@@ -11,10 +11,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra.transformers.smells.base import (
-    FlextInfraSmellFixer,
-    register_smell_fixer,
-)
+from flext_infra.transformers.smells.base import FlextInfraSmellFixer
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -61,7 +58,7 @@ class _BooleanSimplifier(ast.NodeTransformer):
         return False
 
 
-@register_smell_fixer
+@FlextInfraSmellFixer.register_smell_fixer
 class FlextInfraBooleanLogicFixer(FlextInfraSmellFixer):
     """Simplify boolean expressions reported by the boolean-logic smell."""
 

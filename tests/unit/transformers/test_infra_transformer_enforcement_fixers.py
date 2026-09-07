@@ -17,12 +17,9 @@ from flext_infra.transformers.hardcoded_version import (
 )
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
 from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransformer
-from flext_infra.transformers.typing_dict_attr import FlextInfraRefactorTypingDictAttr
-from flext_infra.transformers.typing_dict_import import (
-    FlextInfraRefactorTypingDictImport,
-)
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 from flext_tests import tm
+from tests import t
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -36,13 +33,37 @@ def _transform(
     | FlextInfraRefactorHardcodedVersion
     | FlextInfraRefactorOpenEncoding
     | FlextInfraRefactorPatternTransformer
-    | FlextInfraRefactorTypingDictAttr
-    | FlextInfraRefactorTypingDictImport
     | FlextInfraRefactorTypingUnifier,
 ) -> tuple[str, Sequence[str]]:
     """Apply a stateless transformer to source text."""
     result: tuple[str, Sequence[str]] = transformer.apply_to_source(source)
     return result
+
+
+_BARE_EXCEPT_PATTERN: t.MappingKV[str, t.JsonValue] = {
+    "regex": r"^(?P<indent>\s*)except\s*:(?P<trail>.*)$",
+    "replacement": r"\g<indent>except Exception:\g<trail>",
+    "change_message": "Rewrote bare except to except Exception",
+    "flags": ["MULTILINE"],
+}
+
+_PRINT_TO_LOGGER_PATTERN: t.MappingKV[str, t.JsonValue] = {
+    "regex": r"\bprint\s*\(\s*(?P<args>[^)]*)\s*\)",
+    "replacement": r"u.fetch_logger(__name__).info(\g<args>)",
+    "change_message": "Rewrote u.Cli.print() to logger",
+}
+
+_TYPING_LIST_PATTERN: t.MappingKV[str, t.JsonValue] = {
+    "regex": r"\bList\s*\[",
+    "replacement": "t.SequenceOf[",
+    "change_message": "Rewrote List[...] to t.SequenceOf[...]",
+}
+
+_TYPING_LIST_ATTR_PATTERN: t.MappingKV[str, t.JsonValue] = {
+    "regex": r"\btyping\s*\.\s*List\s*\[",
+    "replacement": "t.SequenceOf[",
+    "change_message": "Rewrote typing.List[...] to t.SequenceOf[...]",
+}
 
 
 class TestsFlextInfraTransformersFutureImport:
@@ -186,109 +207,6 @@ class TestsFlextInfraTransformersOpenEncoding:
         tm.that(changes, eq=[])
 
 
-class TestsFlextInfraTransformersTypingDictImport:
-    """Behavior contract for FlextInfraRefactorTypingDictImport."""
-
-    def test_typing_dict_import_removed_and_rewritten(self, tmp_path: Path) -> None:
-        """Verify typing dict import removed and rewritten."""
-        source = (
-            "from typing import Dict, List\n\n"
-            "def foo(x: Dict[str, int]) -> None:\n    pass\n"
-        )
-        transformer = FlextInfraRefactorTypingDictImport(
-            file_path=tmp_path / "module.py"
-        )
-        code, changes = transformer.apply_to_source(source)
-        tm.that(code, lacks="from typing import Dict")
-        tm.that(code, has="from typing import List")
-        tm.that(code, has="t.MappingKV[str, int]")
-        tm.that(code, has="from flext_core import t")
-        tm.that(changes, empty=False)
-
-    def test_typing_dict_import_only_removed_when_empty(self, tmp_path: Path) -> None:
-        """Verify typing dict import only removed when empty."""
-        source = (
-            "from typing import Dict\n\ndef foo(x: Dict[str, int]) -> None:\n    pass\n"
-        )
-        transformer = FlextInfraRefactorTypingDictImport(
-            file_path=tmp_path / "module.py"
-        )
-        code, changes = transformer.apply_to_source(source)
-        tm.that(code, lacks="from typing import")
-        tm.that(code, has="t.MappingKV[str, int]")
-        tm.that(changes, empty=False)
-
-    def test_t_import_not_duplicated(self, tmp_path: Path) -> None:
-        """Verify t import not duplicated."""
-        source = (
-            "from typing import Dict\n"
-            "from flext_core import t\n\n"
-            "def foo(x: Dict[str, int]) -> None:\n    pass\n"
-        )
-        transformer = FlextInfraRefactorTypingDictImport(
-            file_path=tmp_path / "module.py"
-        )
-        code, changes = transformer.apply_to_source(source)
-        tm.that(code.count("from flext_core import t"), eq=1)
-        tm.that(code, has="t.MappingKV[str, int]")
-        tm.that(changes, empty=False)
-
-    def test_no_dict_does_not_add_t_import(self, tmp_path: Path) -> None:
-        """Verify no dict does not add t import."""
-        source = (
-            "from __future__ import annotations\n\n"
-            "def foo(result):\n"
-            "    assert result.success\n"
-        )
-        transformer = FlextInfraRefactorTypingDictImport(
-            file_path=tmp_path / "module.py"
-        )
-        code, changes = transformer.apply_to_source(source)
-        tm.that(code, eq=source)
-        tm.that(changes, eq=[])
-
-
-class TestsFlextInfraTransformersTypingDictAttr:
-    """Behavior contract for FlextInfraRefactorTypingDictAttr."""
-
-    def test_typing_dict_attr_rewritten(self, tmp_path: Path) -> None:
-        """Verify typing dict attr rewritten."""
-        source = (
-            "import typing\n\ndef foo(x: typing.Dict[str, int]) -> None:\n    pass\n"
-        )
-        transformer = FlextInfraRefactorTypingDictAttr(file_path=tmp_path / "module.py")
-        code, changes = transformer.apply_to_source(source)
-        tm.that(code, lacks="typing.Dict")
-        tm.that(code, has="t.MappingKV[str, int]")
-        tm.that(code, has="from flext_core import t")
-        tm.that(changes, empty=False)
-
-    def test_t_import_not_duplicated(self, tmp_path: Path) -> None:
-        """Verify t import not duplicated."""
-        source = (
-            "import typing\n"
-            "from flext_core import t\n\n"
-            "def foo(x: typing.Dict[str, int]) -> None:\n    pass\n"
-        )
-        transformer = FlextInfraRefactorTypingDictAttr(file_path=tmp_path / "module.py")
-        code, changes = transformer.apply_to_source(source)
-        tm.that(code.count("from flext_core import t"), eq=1)
-        tm.that(code, has="t.MappingKV[str, int]")
-        tm.that(changes, empty=False)
-
-    def test_no_typing_dict_does_not_add_t_import(self, tmp_path: Path) -> None:
-        """Verify no typing dict does not add t import."""
-        source = (
-            "from __future__ import annotations\n\n"
-            "def foo(result):\n"
-            "    assert result.success\n"
-        )
-        transformer = FlextInfraRefactorTypingDictAttr(file_path=tmp_path / "module.py")
-        code, changes = transformer.apply_to_source(source)
-        tm.that(code, eq=source)
-        tm.that(changes, eq=[])
-
-
 class TestsFlextInfraTransformersTypingUnifier:
     """Behavior contract for FlextInfraRefactorTypingUnifier."""
 
@@ -334,14 +252,7 @@ class TestsFlextInfraTransformersPattern:
         """Verify bare except pattern."""
         source = "try:\n    pass\nexcept:\n    pass\n"
         transformer = FlextInfraRefactorPatternTransformer(
-            patterns=[
-                {
-                    "regex": r"^(?P<indent>\s*)except\s*:(?P<trail>.*)$",
-                    "replacement": r"\g<indent>except Exception:\g<trail>",
-                    "change_message": "Rewrote bare except to except Exception",
-                    "flags": ["MULTILINE"],
-                }
-            ]
+            patterns=[_BARE_EXCEPT_PATTERN]
         )
         code, changes = transformer.apply_to_source(source)
         tm.that(code, has="except Exception:")
@@ -354,14 +265,7 @@ class TestsFlextInfraTransformersPattern:
             "def foo():\n    try:\n        pass\n    except ValueError:\n        pass\n"
         )
         transformer = FlextInfraRefactorPatternTransformer(
-            patterns=[
-                {
-                    "regex": r"^(?P<indent>\s*)except\s*:(?P<trail>.*)$",
-                    "replacement": r"\g<indent>except Exception:\g<trail>",
-                    "change_message": "Rewrote bare except to except Exception",
-                    "flags": ["MULTILINE"],
-                }
-            ]
+            patterns=[_BARE_EXCEPT_PATTERN]
         )
         code, changes = transformer.apply_to_source(source)
         tm.that(code, eq=source)
@@ -416,13 +320,7 @@ class TestsFlextInfraTransformersPattern:
         """Verify pattern with required alias."""
         source = "def foo(x):\n    return u.Cli.print(x)\n"
         transformer = FlextInfraRefactorPatternTransformer(
-            patterns=[
-                {
-                    "regex": r"\bprint\s*\(\s*(?P<args>[^)]*)\s*\)",
-                    "replacement": r"u.fetch_logger(__name__).info(\g<args>)",
-                    "change_message": "Rewrote u.Cli.print() to logger",
-                }
-            ],
+            patterns=[_PRINT_TO_LOGGER_PATTERN],
             required_alias="u",
             file_path=tmp_path / "module.py",
         )
@@ -435,13 +333,7 @@ class TestsFlextInfraTransformersPattern:
         """Verify pattern required alias not duplicated."""
         source = 'from flext_core import c, u\n\nu.Cli.print("hello")\n'
         transformer = FlextInfraRefactorPatternTransformer(
-            patterns=[
-                {
-                    "regex": r"\bprint\s*\(\s*(?P<args>[^)]*)\s*\)",
-                    "replacement": r"u.fetch_logger(__name__).info(\g<args>)",
-                    "change_message": "Rewrote u.Cli.print() to logger",
-                }
-            ],
+            patterns=[_PRINT_TO_LOGGER_PATTERN],
             required_alias="u",
             file_path=tmp_path / "module.py",
         )
@@ -543,13 +435,7 @@ class TestsFlextInfraTransformersPatternList:
             "x: List[int] = []\n"
         )
         transformer = FlextInfraRefactorPatternTransformer(
-            patterns=[
-                {
-                    "regex": r"\bList\s*\[",
-                    "replacement": "t.SequenceOf[",
-                    "change_message": "Rewrote List[...] to t.SequenceOf[...]",
-                }
-            ],
+            patterns=[_TYPING_LIST_PATTERN],
             required_alias="t",
             file_path=tmp_path / "module.py",
         )
@@ -567,13 +453,7 @@ class TestsFlextInfraTransformersPatternList:
             "x: typing.List[int] = []\n"
         )
         transformer = FlextInfraRefactorPatternTransformer(
-            patterns=[
-                {
-                    "regex": r"\btyping\s*\.\s*List\s*\[",
-                    "replacement": "t.SequenceOf[",
-                    "change_message": "Rewrote typing.List[...] to t.SequenceOf[...]",
-                }
-            ],
+            patterns=[_TYPING_LIST_ATTR_PATTERN],
             required_alias="t",
             file_path=tmp_path / "module.py",
         )

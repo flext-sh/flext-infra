@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import config, m
+from flext_infra import config, m, t
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
 from flext_infra.gates.base_gate import FlextInfraGate
 
@@ -36,7 +36,7 @@ class FlextInfraLayoutGate(FlextInfraGate):
         engine = FlextInfraCodegenLayout(repository_root=ctx.repository_root)
         report = engine.check_project(project_dir)
         warning = spec.severity == "warning"
-        report_findings: tuple[m.Infra.LayoutFinding, ...] = report.findings
+        report_findings: t.VariadicTuple[m.Infra.LayoutFinding] = report.findings
         issues = tuple(
             m.Infra.Issue(
                 file=str(project_dir / finding.path),
@@ -48,7 +48,7 @@ class FlextInfraLayoutGate(FlextInfraGate):
             )
             for finding in report_findings
         )
-        actionable: tuple[m.Infra.LayoutFinding, ...] = report.actionable
+        actionable: t.VariadicTuple[m.Infra.LayoutFinding] = report.actionable
         blocking = tuple(finding for finding in actionable if not warning)
         passed = warning or not blocking
         return self._build_check_gate_execution(

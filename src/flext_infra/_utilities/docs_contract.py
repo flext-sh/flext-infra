@@ -11,6 +11,7 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
+from .._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
 from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
@@ -124,12 +125,12 @@ class FlextInfraUtilitiesDocsContract:
         return f"{c.Infra.TOC_START}\n" + "\n".join(items) + f"\n{c.Infra.TOC_END}"
 
     @staticmethod
-    def docs_workspace_contract(repository_root: Path) -> t.JsonMapping:
+    def docs_workspace_contract(workspace_root: Path) -> t.JsonMapping:
         """Return the root docs contract using root ``pyproject.toml`` metadata."""
-        payload = FlextInfraUtilitiesDocsScope.project_payload(repository_root)
+        payload = FlextInfraUtilitiesDocsScope.project_payload(workspace_root)
         docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
         exclude_docs = FlextInfraUtilitiesDocsScope.docs_meta_list(
-            repository_root, "exclude_docs"
+            workspace_root, "exclude_docs"
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
         project_meta: t.JsonMapping = (
@@ -206,19 +207,6 @@ class FlextInfraUtilitiesDocsContract:
         return dict(validated)
 
     @staticmethod
-    def docs_snapshot_sources(
-        paths: t.SequenceOf[Path],
-    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
-        """Capture descriptor-authenticated states for every planner source."""
-        states: list[m.Cli.AtomicFileState] = []
-        for path in sorted(set(paths)):
-            state = u.Cli.atomic_read_binary_file_state(path, required=True)
-            if state.failure:
-                return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(state)
-            states.append(state.value)
-        return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(states))
-
-    @staticmethod
     def docs_file_plan(
         project: Path,
         path: Path,
@@ -242,30 +230,15 @@ class FlextInfraUtilitiesDocsContract:
             return r[m.Infra.CodegenFilePlan].fail(
                 f"docs desired bytes and mode differ: {path}"
             )
-        target = path
-        parent = u.Cli.atomic_plan_directory_chain(target.parent)
-        if parent.failure:
-            return r[m.Infra.CodegenFilePlan].from_failure(parent)
-        if parent.value.directories:
-            before: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan = (
-                parent.value
-            )
-        else:
-            observed = u.Cli.atomic_read_binary_file_state(target, required=False)
-            if observed.failure:
-                return r[m.Infra.CodegenFilePlan].from_failure(observed)
-            before = observed.value
-        return r[m.Infra.CodegenFilePlan].ok(
-            m.Infra.CodegenFilePlan(
-                project=project,
-                path=target,
-                before=before,
-                desired_content=content,
-                desired_mode=desired_mode,
-                source_states=tuple(source_states),
-                owner="docs",
-                policy="full",
-            )
+        return FlextInfraUtilitiesCodegenFilePlan.planned_file(
+            project,
+            path,
+            required=False,
+            desired_content=content,
+            desired_mode=desired_mode,
+            source_states=source_states,
+            owner="docs",
+            policy="full",
         )
 
     @staticmethod
