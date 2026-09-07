@@ -287,7 +287,9 @@ class TestsFlextInfraModernizerPyrefly:
         fresh_tool = _json_table(fresh["tool"])
         tm.that(
             u.Cli.toml_unwrap_item(pyrefly["search-path"]),
-            eq=u.Cli.toml_unwrap_item(_json_table(fresh_tool["pyrefly"])["search-path"]),
+            eq=u.Cli.toml_unwrap_item(
+                _json_table(fresh_tool["pyrefly"])["search-path"]
+            ),
         )
         tm.that(
             u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES]),

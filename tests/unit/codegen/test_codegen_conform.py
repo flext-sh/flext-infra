@@ -397,7 +397,7 @@ class TestCodegenConform:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         service = FlextInfraCodegenConform(
-          workspace_root=root, request=request, initial_workspace=workspace
+            workspace_root=root, request=request, initial_workspace=workspace
         )
 
         before_merge = tm.ok(service.plan(request)).branch_ancestry[0]
@@ -1080,9 +1080,7 @@ class TestCodegenConform:
             update={"upstream": "flext_cli"}
         )
         workspace = m.Infra.WorkspaceSpec(
-            name="consumer",
-            repository=repository,
-            project=project,
+            name="consumer", repository=repository, project=project
         )
         root = tmp_path / "consumer"
         request = m.Infra.CodegenConformRequest(
@@ -1128,10 +1126,7 @@ class TestCodegenConform:
     ) -> None:
         """Build Make context from repository-owned data alone."""
         repository = u.Tests.repository_ref("consumer")
-        workspace = m.Infra.WorkspaceSpec(
-            name="consumer",
-            repository=repository,
-        )
+        workspace = m.Infra.WorkspaceSpec(name="consumer", repository=repository)
         target = _conform_target(
             tmp_path, repository, make_profile=c.Infra.MakeProfile.STANDALONE
         )
@@ -1209,10 +1204,7 @@ class TestCodegenConform:
     ) -> None:
         """The engine repository never resolves itself through an invalid Git ref."""
         repository = u.Tests.repository_ref(config.Infra.name)
-        workspace = m.Infra.WorkspaceSpec(
-            name=repository.name,
-            repository=repository,
-        )
+        workspace = m.Infra.WorkspaceSpec(name=repository.name, repository=repository)
         target = _conform_target(
             tmp_path, repository, make_profile=c.Infra.MakeProfile.STANDALONE
         )

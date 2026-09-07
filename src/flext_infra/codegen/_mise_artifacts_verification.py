@@ -291,11 +291,7 @@ def phase_analysis_live(analysis: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool
 def sources(plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
     """Prove every snapshotted Mise config source is byte-identical."""
     for project in plan.projects:
-<<<<<<< HEAD
         current = states_current(project.config.sources)
-=======
-        current = u.Infra.snapshot_config_sources(project.layout.root)
->>>>>>> origin/0.12.0-dev
         if current.failure:
             return r[bool].fail(
                 current.error or f"Mise sources changed: {project.layout.selector}"
