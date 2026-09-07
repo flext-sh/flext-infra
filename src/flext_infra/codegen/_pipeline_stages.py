@@ -229,7 +229,7 @@ class FlextInfraCodegenPipelineStagesMixin:
                 .unwrap()
             )
             return sum(
-                u.Infra.codegen_file_requires_effect(plan) for plan in plans.files
+                u.Infra.codegen_file_requires_effect(plan) for plan in analysis.files
             )
 
         return self._run_stage(

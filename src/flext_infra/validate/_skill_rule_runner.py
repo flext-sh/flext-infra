@@ -140,7 +140,7 @@ class FlextInfraSkillRuleRunnerMixin:
             if script.suffix == c.Infra.EXT_PYTHON
             else [str(script)]
         )
-        cmd.extend(["--workspace", str(project_path)])
+        cmd.extend(["--repository", str(project_path)])
         if bool(rule.get("pass_mode")):
             cmd.extend(["--mode", mode.value])
         result_wrapper = u.Cli.run_raw(

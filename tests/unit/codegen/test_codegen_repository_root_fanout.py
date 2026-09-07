@@ -13,7 +13,7 @@ from pathlib import Path
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u
+from tests import u, u as test_u
 
 
 class TestsCodegenRepositoryRootFanout:
@@ -34,39 +34,35 @@ class TestsCodegenRepositoryRootFanout:
         repository_root = _render_root_makefile(tmp_path)
         for verb in (c.Infra.VERB_CHECK, c.Infra.VERB_TEST):
             execution = tm.ok(
-                u.Cli.run_raw(
+                test_u.Cli.run_raw(
                     [c.Infra.MAKE, "--dry-run", verb, "APPLY=Y"],
                     cwd=repository_root,
                     remove_env_keys=("MAKEFLAGS",),
                 )
             )
-            tm.that(execution.outcome.raw_return_code, eq=0)
+            tm.that(u.Cli.process_succeeded(execution.outcome), eq=True)
             tm.that(execution.stdout + execution.stderr, has=f"--verb {verb}")
 
-    def test_repository_root_deps_dispatches_into_the_managed_lock(
+    def test_repository_root_deps_profiles_canonical_modernization(
         self, tmp_path: Path
     ) -> None:
-        """A dry run descends into the verb and shows the work it would do.
-
-        Profiling is opt-in and therefore absent from a gate-path verb; what the
-        dispatcher must prove is that `-n` reaches the builtin recipe at all,
-        which it does only because the recursive line is marked with `+`.
-        """
+        """Generated deps profiles and renders the exact modernizer invocation."""
         repository_root = _render_root_makefile(tmp_path)
 
         execution = tm.ok(
-            u.Cli.run_raw(
+            test_u.Cli.run_raw(
                 [c.Infra.MAKE, "--dry-run", c.Infra.VERB_DEPS, "APPLY=Y"],
                 cwd=repository_root,
                 remove_env_keys=("MAKEFLAGS",),
             )
         )
 
-        tm.that(execution.outcome.raw_return_code, eq=0)
+        tm.that(u.Cli.process_succeeded(execution.outcome), eq=True)
         rendered = execution.stdout + execution.stderr
-        tm.that(rendered, has="_builtin-deps")
-        tm.that(rendered, has="lock --project")
-        tm.that(rendered, lacks="-m cProfile")
+        tm.that(rendered, has="-m cProfile")
+        tm.that(rendered, has="deps.pstats")
+        tm.that(rendered, has="validate cprofile-report")
+        tm.that(rendered, has="deps.txt")
 
 
 def _render_root_makefile(tmp_path: Path) -> Path:
@@ -87,7 +83,7 @@ def _render_root_makefile(tmp_path: Path) -> Path:
     # The bootstrap projection refreshes the dispatcher of an existing checkout:
     # the root is present, even when it carries no metadata or topology yet.
     repository_root.mkdir()
-    request = test_u.Tests.conform_request(
+    request = u.Tests.conform_request(
         repository_root,
         what=c.Infra.CodegenConformSurface.MAKEFILE,
         scope=c.Infra.CodegenConformScope.SELF,
@@ -107,8 +103,7 @@ def _render_root_makefile(tmp_path: Path) -> Path:
     makefile_path = repository_root / c.Infra.MAKEFILE_FILENAME
     tm.not_none(makefile_plans[0].desired_content)
     makefile_path.write_text(
-        test_u.Tests.codegen_file_text(makefile_plans[0]),
-        encoding=c.Infra.ENCODING_DEFAULT,
+        u.Tests.codegen_file_text(makefile_plans[0]), encoding=c.Infra.ENCODING_DEFAULT
     )
     return repository_root
 

@@ -3,6 +3,11 @@ Infra:
     # NOTE(mro-wkii.17.5, agent implement_manifest): declarative SSOT for deterministic project conformance.
     version: 1
 
+    # Per-module scc code-LOC ceiling. Operator instruction 2026-09-07:
+    # the former 1000-LOC allowance stands (supersedes the 200 constant).
+    loc_cap:
+      max_lines: 1000
+
     toolchain:
       # Single-source Python minor line. The environment resolves the newest
       # compatible 3.13 patch; no patch is pinned in generated repositories.
@@ -103,7 +108,8 @@ Infra:
     # 'false' is the safe default: the workflow GITHUB_TOKEN cannot clone
     # sibling PRIVATE repositories, so 'recursive' aborts the job at checkout
     # with "Repository not found" before any code runs. Only projects that
-    # really exercise their subprojects in CI opt in through the override map.
+    # really exercise their subprojects in CI opt in through
+    # config/codegen-overrides.yaml.
     checkout_submodules: "false"
     checkout_submodules_overrides: {}
 
@@ -116,34 +122,11 @@ Infra:
         # tests/test_xlsx_recalc.py: headless LibreOffice recalculation.
         - libreoffice-calc
     # Per-distribution private composed-project auth for CI. The default
-    # GITHUB_TOKEN cannot clone sibling private repos; these projects declare
-    # read-only deploy-key secrets that the generated workflow materializes
+    # GITHUB_TOKEN cannot clone sibling private repos; projects that need
+    # private submodules declare read-only deploy-key secrets via
+    # config/codegen-overrides.yaml, which the generated workflow materializes
     # before `make setup` (which otherwise fails on HTTPS submodule clone).
-    ci_private_submodules:
-      cosmos-main:
-        known_hosts: &github_ssh_known_hosts
-          - github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
-        paths:
-          - apps/cosmos-charts
-          - apps/cosmos-gitops
-        deploy_keys:
-          - secret: CHARTS_DEPLOY_KEY
-            submodule: cosmos-charts
-            path: apps/cosmos-charts
-            remote: git@github.com:datacosmos-br/cosmos-charts.git
-          - secret: GITOPS_DEPLOY_KEY
-            submodule: cosmos-gitops
-            path: apps/cosmos-gitops
-            remote: git@github.com:datacosmos-br/cosmos-gitops.git
-      invest:
-        known_hosts: *github_ssh_known_hosts
-        paths:
-          - neptor
-        deploy_keys:
-          - secret: NEPTOR_DEPLOY_KEY
-            submodule: neptor
-            path: neptor
-            remote: git@github.com:marlonsc/neptor.git
+    ci_private_submodules: {}
 
     github_actions:
       checkout:
@@ -174,11 +157,6 @@ Infra:
         repository: actions/deploy-pages
         version: v5.0.0
         sha: cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
-    # Generated projections already retired: their consumers are rewired, so
-    # conformance removes them and the layout gate still accepts them at the
-    # repository root until that removal lands everywhere.
-    retired_generated_paths:
-      - sgconfig.yml
 
     uv_exclude_dependencies:
       # Standalone CI installs the project editable while sibling flext packages
@@ -517,6 +495,7 @@ Infra:
         - name: duplication
           description: Run the canonical jscpd duplicate-code gate.
           requires_apply: true
+      custom_handler_profile_overrides: {}
       custom_handler_policy:
         filename: custom.mk
         # Custom behavior is one private whole-verb replacement or one lifecycle
@@ -525,10 +504,6 @@ Infra:
         target_pattern: "^((pre|post)-[a-z][a-z0-9-]*|_custom-[a-z][a-z0-9-]*)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
-      custom_handler_profile_overrides:
-        workspace:
-          allow_public_targets: true
-          allow_toolchain_declarations: true
 
     # NOTE (mro-jnm1.1 / mro-jnm1.4): SINGLE SSOT for ephemeral/generated
     # resources. VS Code files.exclude/search.exclude (vscode_exclude),
@@ -689,22 +664,81 @@ Infra:
       # hang interpreter discovery on large monorepos.
       scalar_settings:
         files.autoSave: afterDelay
+        python.analysis.autoFormatStrings: true
+        python.analysis.autoImportCompletions: true
+        python.analysis.completeFunctionParens: true
         python.analysis.diagnosticMode: workspace
         python.analysis.typeCheckingMode: strict
+        python.analysis.findRefsInBackgroundThread: false
+        python.analysis.generateWithTypeAnnotation: true
+        python.analysis.gotoOverrideCodeLens: false
+        python.analysis.includeAliasesFromUserFiles: false
+        python.analysis.includeExtraPathSymbolsInSymbolSearch: false
+        python.analysis.includeVenvInWorkspaceSymbols: false
+        python.analysis.useNearestConfiguration: false
+        python.analysis.usePerProjectEnvironments: false
+        python.analysis.userFileIndexingLimit: 2000
         python.defaultInterpreterPath: ${workspaceFolder}/.venv/bin/python
+        python.languageServer: Pylance
+        python.pyrefly.diagnosticMode: workspace
+        python.pyrefly.disableLanguageServices: true
+        python.pyrefly.disableTypeErrors: false
+        python.pyrefly.syncNotebooks: false
+        python.testing.pytestEnabled: false
+        python.testing.unittestEnabled: false
         python.terminal.activateEnvInCurrentTerminal: true
         python.terminal.activateEnvironment: true
+        python.useEnvironmentsExtension: false
         ruff.configurationPreference: filesystemFirst
         ruff.format.preview: true
         ruff.importStrategy: fromEnvironment
         ruff.lint.preview: true
         ruff.nativeServer: on
+        pyrefly.lspPath: ${workspaceFolder}/.venv/bin/pyrefly
+        markdownlint.configFile: .markdownlint.json
         shellcheck.useWorkspaceRootAsCwd: true
+        shellcheck.useRepositoryRootAsCwd: true
+        git.autoRepositoryDetection: subFolders
+        git.detectSubmodules: true
+        git.detectSubmodulesLimit: 100
+        git.openRepositoryInParentFolders: always
+        git.repositoryScanMaxDepth: 2
+        githubPullRequests.autoRepositoryDetection: true
+        githubPullRequests.ignoreSubmodules: false
       list_settings:
         python-envs.workspaceSearchPaths:
           - ./.venv
           - ./*/.venv
+        ruff.interpreter:
+          - ${workspaceFolder}/.venv/bin/python
+        ruff.path:
+          - ${workspaceFolder}/.venv/bin/ruff
+        markdownlint.lintWorkspaceGlobs:
+          - "!**/.git/**"
+          - "!**/.planning/**"
+          - "!**/.reports/**"
+          - "!**/.venv/**"
+          - "!**/*.code-search"
+          - "!**/bower_components/**"
+          - "!**/build/**"
+          - "!**/dist/**"
+          - "!**/node_modules/**"
+          - "!**/output/**"
+          - "!**/tmp/**"
+          - "!**/vendor/**"
+          - "**/*.{md,mkd,mdwn,mdown,markdown,markdn,mdtxt,mdtext,workbook}"
+        yaml.disableSchemaDetection:
+          - "**/.github/workflows/*.yml"
+          - "**/.github/workflows/*.yaml"
+          - "**/.gitea/workflows/*.yml"
+          - "**/.gitea/workflows/*.yaml"
+          - "**/.forgejo/workflows/*.yml"
+          - "**/.forgejo/workflows/*.yaml"
       map_union_settings:
+        "[python]":
+          diffEditor.ignoreTrimWhitespace: true
+          editor.defaultFormatter: charliermarsh.ruff
+          editor.formatOnSave: true
         python.analysis.diagnosticSeverityOverrides:
           reportUntypedBaseClass: none
         terminal.integrated.env.linux:
@@ -893,155 +927,9 @@ Infra:
         - external-docs
       # Per-project overrides: extra archives (with the matching .gitignore
       # additions), explicit nested moves, and empty-directory archives.
-      project_overrides:
-        flext-cli:
-          archive_names:
-            - settings.json
-          gitignore_additions:
-            - settings.json
-        flext-core:
-          archive_names:
-            - config.json
-        flext-tap-oracle-wms:
-          archive_names:
-            - config.json
-          gitignore_additions:
-            - config.json
-        flext-target-oracle-oic:
-          archive_names:
-            - config.json
-          gitignore_additions:
-            - config.json
-        flext-oracle-oic:
-          archive_names:
-            - config.json
-          gitignore_additions:
-            - config.json
-        flext-dbt-ldif:
-          moves:
-            - { source: profiles/profiles.yml, target: profiles.yml }
-          archive_empty_dirs:
-            - profiles
-        flext-dbt-oracle-wms:
-          moves:
-            - { source: models/reference.md, target: docs/reference.md }
-          archive_empty_dirs:
-            - models
-        # Consumer ecosystem root keep-lists (plan B): declared only via overrides.
-        ai-hub:
-          keep_root_files:
-            - UNIVERSAL_CORE.md
-            - ECOSYSTEM.md
-            - CATALOG.md
-            - config.yaml
-            - schema.json
-            - version.json
-            - surface-catalog.json
-            - env.example
-            - bootstrap.ps1
-          ignore_globs:
-            - skills
-            - rules
-            - bin
-            - templates
-            - tools
-            - evals
-            - mcp
-            - openclaw
-            - opencode
-            - run
-            - ast-grep-rule-tests
-        cosmos-docgen:
-          keep_root_files:
-            - ECOSYSTEM.md
-            - Taskfile.yml
-            - dcdoc.config.yaml
-            - coverage.json
-          ignore_globs:
-            - skills
-            - templates
-            - layouts
-            - assets
-        cosmos-main:
-          keep_root_files:
-            - ECOSYSTEM.md
-            - SECURITY.md
-            - ONBOARDING.md
-            - LICENSE-3RD-PARTY.md
-            - LICENSE.quick-reference.md
-            - QODER.md
-            - mkdocs.yaml
-            - Makefile.check
-            - config.yaml
-            - cloud-init.sh
-            - pycodestyle.cfg
-            - pylintrc
-            - patch.diff
-          ignore_globs:
-            - cosmos
-            - apps
-            - package.json
-            - package-lock.json
-            - node_modules
-            - pnpm-lock.yaml
-            - yarn.lock
-            - tsconfig.json
-            - turbo.json
-            - bin
-            - build
-            - coordination
-            - cosmos_main.egg-info
-            - evals
-            - json
-            - mro
-            - platform-namespaces
-            - policy
-            - scratchpad
-            - site
-            - skills
-            - templates
-            - work
-        cosmos-charts:
-          keep_root_files:
-            - cosmos-release.lock
-            - release.lock.json
-            - pycodestyle.cfg
-          ignore_globs:
-            - build
-            - charts
-            - images
-        cosmos-gitops:
-          ignore_globs:
-            - build
-            - repo
-            - tenants
-        neptor:
-          keep_root_files:
-            - Taskfile.yml
-            - workspace_custom.mk
-          ignore_globs:
-            - typings
-        vectorbt.pro:
-          ignore_globs:
-            - "*"
-        invest:
-          keep_root_files:
-            - BEADS_WORKFLOW.md
-            - GEMINI.md
-            - activate_workspace.sh
-            - poetry.toml
-            - workspace_config.py
-            - workspace_custom.mk
-          ignore_globs:
-            - neptor
-            - mt5linux
-            - mt5docker
-            - vectorbt.pro
-            - ansible
-            - docker
-            - scripts
-            - typings
-            - external-docs
+      # Project-specific entries live in config/codegen-overrides.yaml so
+      # codegen.yaml stays an immutable fleet-wide rule set.
+      project_overrides: {}
 
     managed_files:
       - path: .github/ci-template/ci.yml
@@ -1104,18 +992,12 @@ Infra:
       - path: .beads/metadata.json
         owner: codegen
         policy: full
-      - path: .env.example
-        owner: codegen
-        policy: create-only
       - path: .envrc
         owner: codegen
         policy: full
       - path: .gitignore
         owner: codegen
         policy: merge
-      - path: .gitmodules
-        owner: workspace
-        policy: manual
       - path: .mise.toml
         owner: codegen
         policy: full
@@ -1139,9 +1021,6 @@ Infra:
       - path: .vscode/settings.json
         owner: vscode
         policy: merge
-      - path: LICENSE
-        owner: codegen
-        policy: create-only
       # Release build policies (flext-to3n7): fully generated fleet-wide bytes.
       - path: config/build-constraints.txt
         owner: codegen
@@ -1152,18 +1031,6 @@ Infra:
       - path: Makefile
         owner: make
         policy: full
-      - path: README.md
-        owner: codegen
-        policy: create-only
-      - path: base.mk
-        owner: make
-        policy: delegated
-      - path: config/workspace.yaml
-        owner: workspace
-        policy: manual
-      - path: custom.mk
-        owner: custom
-        policy: create-only
       - path: pyproject.toml
         owner: codegen
         policy: merge
@@ -1317,9 +1184,7 @@ Infra:
             - "!.taplo.toml"
             - "!pyrefly.toml"
             - "!poetry.lock"
-            - "!uv.lock"
             - "!ruff-shared.toml"
-            - "!uv.lock"
         - name: "mise toolchain pinning"
           profiles: [workspace]
           patterns:
@@ -1337,19 +1202,16 @@ Infra:
             - "!*.mk"
             # jscpd detector SSOT consumed by the committed `make duplication`
             # target (flext-1sm3w); the deny-first root cannot swallow it.
-            - "!.jscpd.json"
-            - "!*.mk"
+            - ".jscpd.json"
             # The generated toolchain config and launcher must reach a clean
             # CI checkout, so the deny-first root cannot swallow them;
             # `make gen` owns their content.
-            - "!.mise.toml"
             - "!bin/mise"
             - "!bin/mise.cmd"
         - name: "Documentation"
           profiles: [workspace]
           patterns:
             - "!README.md"
-            - "!AGENTS.md"
             - "!AGENTS.md"
             - "!codex.md"
             - "!.markdownlint.json"
@@ -1449,6 +1311,7 @@ Infra:
             - ".cursor/aihub-hooks/"
             - ".gemini/aihub-hooks/"
             - ".opencode/aihub-hooks/"
+            - ".github/hooks/"
             - "*/hooks.json"
             - "*/.hooks.json.agents-governance.json"
             - ".claude/settings.local.json"

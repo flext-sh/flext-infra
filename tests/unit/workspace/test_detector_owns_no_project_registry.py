@@ -43,6 +43,6 @@ class TestsDetectorOwnsNoProjectRegistry:
         tm.that(spec.repository.name, eq="totally-unknown")
         tm.that(spec.name, eq="totally-unknown")
         tm.that(spec.repository.path, eq=Path())
-        tm.that(spec.declared_repositories, empty=True)
+        tm.that(spec.subprojects, empty=True)
         tm.that(u.Tests.required_beads(spec).workspace, eq="totally-unknown-workspace")
         tm.that(spec.beads, none=True)

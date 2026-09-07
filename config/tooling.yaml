@@ -62,8 +62,13 @@ Infra:
       ruff:
         # P0 law: lint covers every tracked Python surface. No excludes over
         # legado, examples, tests, or scripts code anywhere in this config.
+        # Received agent-hook projections are runtime state owned by ai-hub,
+        # never fleet source: they are untracked and outside the lint surface.
         exclude:
           - .git
+          - .github/hooks
+          - .github/hooks/**
+          - "**/aihub-hooks/**"
           - .mypy_cache
           - .pytest_cache
           - .ruff_cache

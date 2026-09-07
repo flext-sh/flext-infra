@@ -105,8 +105,8 @@ class TestsDocstringCoverage:
             summary = u.Tests.json_payload(
                 (report_dir / "audit-summary.json").read_text(encoding="utf-8")
             )
-            metric = u.Tests.mapping(
-                u.Tests.mapping(summary["summary"])["docstring_coverage"]
+            metric = u.Tests.toml_mapping(
+                u.Tests.toml_mapping(summary["summary"])["docstring_coverage"]
             )
             checked = metric["checked"]
             percent = metric["percent"]
@@ -131,9 +131,9 @@ class TestsDocstringCoverage:
                     encoding="utf-8"
                 )
             )
-            summary = u.Tests.mapping(summary["summary"])
+            summary = u.Tests.toml_mapping(summary["summary"])
             tm.that(summary["checks"], eq=["docstrings"])
-            coverage = u.Tests.mapping(summary["docstring_coverage"])
+            coverage = u.Tests.toml_mapping(summary["docstring_coverage"])
             checked = coverage["checked"]
             assert isinstance(checked, int)
             tm.that(checked > 0, eq=True)
@@ -149,7 +149,7 @@ class TestsDocstringCoverage:
                     encoding="utf-8"
                 )
             )
-            summary = u.Tests.mapping(summary["summary"])
+            summary = u.Tests.toml_mapping(summary["summary"])
             tm.that(summary["checks"], has="docstrings")
             tm.that(summary["checks"], has="links")
 
@@ -169,11 +169,11 @@ class TestsDocstringCoverage:
                     encoding="utf-8"
                 )
             )
-            summary = u.Tests.mapping(summary["summary"])
+            summary = u.Tests.toml_mapping(summary["summary"])
             tm.that(
                 (
                     u.Tests.number(
-                        u.Tests.mapping(summary["docstring_coverage"])["percent"]
+                        u.Tests.toml_mapping(summary["docstring_coverage"])["percent"]
                     )
                     < _PARTIAL_COVERAGE_THRESHOLD
                 ),

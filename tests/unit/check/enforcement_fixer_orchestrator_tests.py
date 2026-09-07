@@ -13,7 +13,7 @@ from flext_infra import m, main as infra_main, p, t
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
 from flext_tests import tm
-from tests import c
+from tests import c, u
 
 
 class TestsEnforcementFixerOrchestrator:
@@ -263,7 +263,7 @@ class TestsEnforcementFixerOrchestrator:
 
         def run_git(args: t.StrSequence) -> None:
             output = cli.run_raw([c.Infra.GIT, *args], cwd=project_dir).value
-            tm.that(output.outcome.raw_return_code, eq=0)
+            tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
 
         run_git(("init",))
         run_git(("add", "--", "pyproject.toml", "src"))

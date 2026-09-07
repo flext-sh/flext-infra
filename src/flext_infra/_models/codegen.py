@@ -854,7 +854,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         phase: Annotated[
-            Literal["lazy-init"],
+            Literal["docs", "lazy-init"],
             m.Field(description="Generation phase that produced this receipt"),
         ]
         files: Annotated[

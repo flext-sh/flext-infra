@@ -83,7 +83,8 @@ def test_conform_packages_every_declared_python_root(infra_git_repo: Path) -> No
     module_path = f"{c.Infra.DEFAULT_SRC_DIR}/{root_module}.py"
     tm.that(set(u.Tests.toml_list(wheel["packages"])), eq=package_paths)
     tm.that(
-        u.Tests.mapping(wheel["force-include"])[module_path], eq=f"{root_module}.py"
+        u.Tests.toml_mapping(wheel["force-include"])[module_path],
+        eq=f"{root_module}.py",
     )
     only_include = set(u.Tests.toml_list(sdist["only-include"]))
     tm.that(package_paths <= only_include, eq=True)

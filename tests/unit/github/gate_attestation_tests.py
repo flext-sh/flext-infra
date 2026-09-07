@@ -14,16 +14,22 @@ from tests import u as test_u
 
 
 def _signed_repository(root: Path) -> Path:
-    test_u.Tests.git_bootstrap(root, ("init",))
-    for name, value in (
+    test_u.Tests.git_bootstrap(root, ("init", "-b", c.Infra.GIT_MAIN))
+    for key, value in (
         ("user.name", "Attestation Test"),
         ("user.email", "attestation@example.test"),
         ("gpg.format", "ssh"),
         ("commit.gpgsign", "false"),
     ):
-        test_u.Tests.git_bootstrap(root, ("config", name, value))
+        test_u.Tests.git_bootstrap(root, ("config", key, value))
     test_u.Tests.git_bootstrap(
-        root, ("remote", "add", "origin", "https://github.example/flext/fixture.git")
+        root,
+        (
+            "remote",
+            "add",
+            c.Infra.GIT_ORIGIN,
+            "https://github.example/flext/fixture.git",
+        ),
     )
     key_path = root / "signing_key"
     tm.ok(
@@ -63,7 +69,7 @@ def _signed_repository(root: Path) -> Path:
     allowed_signers.write_text(
         f"attester@example.test {public_key}\n", encoding="utf-8"
     )
-    return repo, allowed_signers
+    return allowed_signers
 
 
 def _head(root: Path) -> str:
@@ -84,11 +90,7 @@ def _rev_parse(root: Path, commitish: str) -> str:
 
 @pytest.fixture
 def signed_repository_factory() -> Callable[[Path], Path]:
-    """Build one signed repository per test through the creation helper.
-
-    Nothing needs closing: repository construction runs as isolated git
-    commands, so no handle outlives the call.
-    """
+    """Create one SSH-signing fixture repository per test invocation."""
     return _signed_repository
 
 
@@ -116,7 +118,7 @@ def _verify(
 def test_signed_gate_attestation_round_trip_is_local(
     tmp_path: Path, signed_repository_factory: Callable[[Path], Path]
 ) -> None:
-    _repo, allowed_signers = signed_repository_factory(tmp_path)
+    allowed_signers = signed_repository_factory(tmp_path)
     created = u.Infra.git_create_gate_attestation(_request(tmp_path))
 
     tm.ok(created)
@@ -131,7 +133,7 @@ def test_signed_gate_attestation_round_trip_is_local(
 def test_gate_attestation_normalizes_network_remote_git_suffix(
     tmp_path: Path, signed_repository_factory: Callable[[Path], Path]
 ) -> None:
-    _repo, allowed_signers = signed_repository_factory(tmp_path)
+    allowed_signers = signed_repository_factory(tmp_path)
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
     remote = tm.ok(
         u.Infra.git_remote_url(m.Infra.GitRemoteUrlRequest(repo_root=tmp_path))
@@ -146,7 +148,7 @@ def test_gate_attestation_normalizes_network_remote_git_suffix(
 def test_gate_attestation_verifies_selected_commit_with_equal_tree(
     tmp_path: Path, signed_repository_factory: Callable[[Path], Path]
 ) -> None:
-    _repo, allowed_signers = signed_repository_factory(tmp_path)
+    allowed_signers = signed_repository_factory(tmp_path)
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
     selected_sha = _head(tmp_path)
     selected_tree = _rev_parse(tmp_path, "HEAD^{tree}")
@@ -167,7 +169,7 @@ def test_gate_attestation_verifies_selected_commit_with_equal_tree(
 def test_gate_attestation_rejects_incomplete_coverage(
     tmp_path: Path, signed_repository_factory: Callable[[Path], Path]
 ) -> None:
-    _repo, allowed_signers = signed_repository_factory(tmp_path)
+    allowed_signers = signed_repository_factory(tmp_path)
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
 
     verified = _verify(tmp_path, allowed_signers, _head(tmp_path), "check")

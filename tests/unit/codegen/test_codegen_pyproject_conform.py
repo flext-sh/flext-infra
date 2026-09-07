@@ -69,7 +69,7 @@ workspace = true
 
     def test_standalone_uses_catalog_git_provenance(self) -> None:
         workspace = _workspace()
-        member = workspace.declared_repositories[0]
+        member = workspace.subprojects[0]
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
             providers=config.Infra.codegen.providers,
@@ -137,7 +137,7 @@ constraint-dependencies = ["uv>=0"]
 
     def test_standalone_rejects_non_https_catalog_provenance(self) -> None:
         workspace = _workspace()
-        member = workspace.declared_repositories[0].model_copy(
+        member = workspace.subprojects[0].model_copy(
             update={"url": "git@github.com:flext-sh/flext-core.git"}
         )
         invalid_workspace = workspace.model_copy(
@@ -153,7 +153,7 @@ constraint-dependencies = ["uv>=0"]
 
     def test_workspace_rejects_conflicting_direct_source(self) -> None:
         workspace = _workspace()
-        member = workspace.declared_repositories[0]
+        member = workspace.subprojects[0]
         result = u.Infra.pyproject_dependencies_conform(
             (
                 '[project]\nname = "workspace"\n'
@@ -266,8 +266,8 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that(
             document["project"]["dependencies"][0],
             eq=(
-                f"{workspace.declared_repositories[0].distribution} @ "
-                f"git+{workspace.declared_repositories[0].url}@{_PROVIDER_SPEC.branch}"
+                f"{workspace.subprojects[0].distribution} @ "
+                f"git+{workspace.subprojects[0].url}@{_PROVIDER_SPEC.branch}"
             ),
         )
 

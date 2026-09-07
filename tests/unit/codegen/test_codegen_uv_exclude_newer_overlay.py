@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from flext_infra import c, config, m, u
 from flext_tests import tm
 from tests import u as test_u
@@ -17,9 +19,13 @@ class TestCodegenUvExcludeNewerOverlay:
 
     @staticmethod
     def _repository() -> m.Infra.WorkspaceSpec:
-        repository = test_u.Tests.repository_ref(config.Infra.name)
+        repository = test_u.Tests.repository_ref(config.Infra.name).model_copy(
+            update={"path": Path()}
+        )
         return m.Infra.WorkspaceSpec(
-            name=repository.distribution, repository=repository
+            name=repository.name,
+            beads=test_u.Tests.beads_project(repository.name),
+            repository=repository,
         )
 
     @classmethod
@@ -80,13 +86,12 @@ dependencies = ["ruff", "requests"]
 dev = ["pytest", "pydantic"]
 codegen = ["rumdl", "jinja2"]
 """
-        workspace = self._workspace()
         rendered = tm.ok(
             u.Infra.pyproject_conform(
                 source,
-                codegen=config.Infra.codegen,
-                workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                providers=config.Infra.codegen.providers,
+                workspace=self._repository(),
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
                 required_dev_dependencies=(),
             )
@@ -94,7 +99,9 @@ codegen = ["rumdl", "jinja2"]
         document = u.Cli.toml_mapping_from_text(rendered)
         tm.that(document is not None, eq=True)
         assert document is not None
-        exemptions = document["tool"]["uv"]["exclude-newer-package"]
+        tool = test_u.Tests.toml_mapping(document["tool"])
+        uv = test_u.Tests.toml_mapping(tool["uv"])
+        exemptions = test_u.Tests.toml_mapping(uv["exclude-newer-package"])
 
         for tool_distribution in ("hatchling", "ruff", "pytest", "rumdl"):
             tm.that(exemptions[tool_distribution], eq=False)

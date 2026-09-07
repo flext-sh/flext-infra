@@ -9,7 +9,7 @@ import pytest
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u, u as test_u
+from tests import u
 from tests.unit.workspace import WorktreeFixture
 
 
@@ -37,7 +37,7 @@ class TestsCodegenBeadsProjection:
         for managed in config.Infra.codegen.managed_files:
             (root / managed.path).parent.mkdir(parents=True, exist_ok=True)
         result = FlextInfraCodegenConform(repository_root=root).plan(
-            test_u.Tests.conform_request(
+            u.Tests.conform_request(
                 root,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.CHECK,
@@ -55,7 +55,7 @@ class TestsCodegenBeadsProjection:
         return (
             None
             if match is None or match.desired_content is None
-            else test_u.Tests.codegen_file_text(match)
+            else u.Tests.codegen_file_text(match)
         )
 
     def test_local_identity_renders_only_declarative_beads_files(

@@ -71,9 +71,9 @@ class _DepsStub(
 
     @override
     def run_pip_check(
-        self, workspace_root: Path, venv_bin: Path
+        self, repository_root: Path, venv_bin: Path
     ) -> p.Result[tuple[t.StrSequence, int]]:
-        del workspace_root, venv_bin
+        del repository_root, venv_bin
         return r[tuple[t.StrSequence, int]].ok(([], 0))
 
 

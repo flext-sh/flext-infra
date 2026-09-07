@@ -26,7 +26,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         cls, request: p.Infra.WorkspaceEnvironmentRequest
     ) -> p.Result[int]:
         """Validate one CLI request without mutating the environment."""
-        return cls.validate(request.workspace_root)
+        return cls.validate(request.repository_root)
 
     @classmethod
     def validate(
@@ -41,7 +41,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             return r[int].from_failure(workspace_result)
         repositories = tuple(
             repository
-            for repository in workspace_result.value.declared_repositories
+            for repository in workspace_result.value.subprojects
             if repository.package and repository.editable
         )
         validated = 0

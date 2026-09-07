@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_cli import p
-    from flext_infra import c, m, t
+    from flext_infra import m, t
 
 
 @runtime_checkable
@@ -254,9 +254,7 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def subprojects(
-            self,
-        ) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
+        def subprojects(self) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
             """Direct governed repositories declared by local .gitmodules."""
             ...
 
@@ -290,45 +288,11 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class GithubPullRequestFields(Protocol):
-        """Shared PR execution fields accepted at the transport boundary."""
-
-        @property
-        def action(self) -> c.Infra.PullRequestAction:
-            """Requested PR operation."""
-            ...
-
-        @property
-        def base(self) -> str | None:
-            """Target branch when explicitly selected."""
-            ...
-
-        @property
-        def head(self) -> str | None:
-            """Source branch when explicitly selected."""
-            ...
-
-        @property
-        def title(self) -> str | None:
-            """PR title used for creation."""
-            ...
-
-        @property
-        def body(self) -> str | None:
-            """PR body used for creation."""
-            ...
-
-        @property
-        def draft(self) -> bool:
-            """Whether creation requests a draft PR."""
-            ...
-
-    @runtime_checkable
     class WorkspaceEnvironmentRequest(Protocol):
         """Read-only workspace environment validation request."""
 
         @property
-        def workspace_root(self) -> Path:
+        def repository_root(self) -> Path:
             """Workspace whose active interpreter provenance must be validated."""
             ...
 
@@ -607,7 +571,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for dependency detection across projects."""
 
         def discover_project_paths(
-            self, workspace_root: Path, *, projects_filter: t.StrSequence | None = None
+            self, repository_root: Path, *, projects_filter: t.StrSequence | None = None
         ) -> p.Result[t.SequenceOf[Path]]:
             """Discover project paths in workspace root."""
             ...
@@ -649,7 +613,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for pip-based dependency checking."""
 
         def run_pip_check(
-            self, workspace_root: Path, venv_bin: Path
+            self, repository_root: Path, venv_bin: Path
         ) -> p.Result[t.Pair[t.StrSequence, int]]:
             """Run pip check on workspace and return results."""
             ...
@@ -715,7 +679,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def run(
             self,
-            workspace_root: Path | None = None,
+            repository_root: Path | None = None,
             *,
             output_format: str = "json",
             projects: t.SequenceOf[FlextInfraProtocolsBase.ProjectInfo] | None = None,
@@ -808,31 +772,3 @@ class FlextInfraProtocolsBase(Protocol):
         show_diff: bool
         analysis_output: Path | None
         impact_map_output: Path | None
-
-    @runtime_checkable
-    class GithubCliHandlers(Protocol):
-        """Protocol for GitHub CLI handler mixins."""
-
-        def sync_github_workflows(
-            self, params: m.Infra.GithubWorkflowSyncRequest
-        ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:
-            """Sync GitHub workflow files."""
-            ...
-
-        def lint_github_workflows(
-            self, params: m.Infra.GithubWorkflowLintRequest
-        ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
-            """Lint GitHub workflow files."""
-            ...
-
-        def run_github_pull_request(
-            self, params: m.Infra.GithubPullRequestRequest
-        ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
-            """Manage pull request for a single project."""
-            ...
-
-        def run_github_workspace_pull_requests(
-            self, params: m.Infra.GithubPullRequestWorkspaceRequest
-        ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
-            """Manage pull requests across the workspace."""
-            ...

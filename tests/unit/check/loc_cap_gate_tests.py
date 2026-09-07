@@ -1,9 +1,9 @@
 """Tests for the module-cap SUPREME LAW (§3.1) gate.
 
-The gate flags any module whose scc `Code` line count exceeds the owned cap
-the config-owned ceiling and accepts modules under it, exercised through the
-public gate runner. Fixtures derive from that constant so a legitimate cap
-change never silently inverts these assertions (UNIVERSAL_CORE P0).
+The gate flags any module whose scc `Code` line count exceeds the config-owned
+ceiling and accepts modules under it, exercised through the public gate runner.
+Fixtures derive from that config-owned ceiling so a legitimate cap change never
+silently inverts these assertions (UNIVERSAL_CORE P0).
 """
 
 from __future__ import annotations

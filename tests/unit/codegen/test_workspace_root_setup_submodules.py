@@ -36,7 +36,7 @@ def _run_setup(workspace: Path, env: dict[str, str]) -> p.Cli.CommandOutput:
     )
 
 
-def _render_workspace_root_makefile(tmp_path: Path) -> str:
+def _render_repository_root_makefile(tmp_path: Path) -> str:
     root_repository = test_u.Tests.repository_ref("flext")
     member = test_u.Tests.repository_ref(
         "flext-core", path=Path("flext-core"), role=c.Infra.RepositoryRole.STANDALONE
@@ -56,7 +56,7 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
         mode=c.Infra.CodegenConformMode.CHECK,
     )
     planned = FlextInfraCodegenConform(
-        workspace_root=root, request=request, initial_workspace=workspace
+        repository_root=root, request=request, initial_workspace=workspace
     ).plan(request)
     plan = tm.ok(planned)
     makefile: m.Infra.CodegenFilePlan = next(
@@ -154,7 +154,7 @@ class TestsWorkspaceRootSetupSubmodules:
     def test_generated_setup_orders_submodules_before_first_uv(
         self, tmp_path: Path
     ) -> None:
-        rendered = _render_workspace_root_makefile(tmp_path)
+        rendered = _render_repository_root_makefile(tmp_path)
 
         tm.that(rendered, has="_builtin_setup_environment: _builtin_setup_submodules")
         tm.that(rendered, has="submodule update --init --")
@@ -165,7 +165,7 @@ class TestsWorkspaceRootSetupSubmodules:
         self, tmp_path: Path
     ) -> None:
         """Initialize the exact gitlink once; never repair a present checkout."""
-        rendered = _render_workspace_root_makefile(tmp_path)
+        rendered = _render_repository_root_makefile(tmp_path)
         workspace = _create_uninitialized_workspace(tmp_path, rendered)
         env = os.environ.copy()
         env["GIT_ALLOW_PROTOCOL"] = "file"
@@ -199,7 +199,7 @@ class TestsWorkspaceRootSetupSubmodules:
     def test_unexpected_git_probe_failure_preserves_cause(self, tmp_path: Path) -> None:
         """A Git probe error is never reclassified as a missing remote ref."""
         workspace = _create_uninitialized_workspace(
-            tmp_path, _render_workspace_root_makefile(tmp_path)
+            tmp_path, _render_repository_root_makefile(tmp_path)
         )
         real_git = tm.not_none(shutil.which("git"))
         fake_bin = tmp_path / "failing-git-bin"

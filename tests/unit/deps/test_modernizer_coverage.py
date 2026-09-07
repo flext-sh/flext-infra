@@ -43,10 +43,10 @@ class TestsFlextInfraDepsModernizerCoverage:
             doc, project_kind="integration"
         )
 
-        tool = u.Tests.mapping(u.Tests.toml_doc_mapping(doc)["tool"])
-        coverage = u.Tests.mapping(tool["coverage"])
-        report = u.Tests.mapping(coverage["report"])
-        run = u.Tests.mapping(coverage["run"])
+        tool = u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])
+        coverage = u.Tests.toml_mapping(tool["coverage"])
+        report = u.Tests.toml_mapping(coverage["report"])
+        run = u.Tests.toml_mapping(coverage["run"])
         tm.that(
             report["fail_under"], eq=tool_config.tools.coverage.fail_under.integration
         )

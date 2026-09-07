@@ -38,7 +38,7 @@ class TestsToolchainBeadsDistribution:
         )
 
     def test_release_policy_tracks_the_latest_fork_release(self) -> None:
-        """Keep the fork identity stable while mise.lock attests its release."""
+        """Keep the fork identity stable while mise resolves its newest release."""
         toolchain = config.Infra.codegen.toolchain
         version = toolchain.beads.version
 

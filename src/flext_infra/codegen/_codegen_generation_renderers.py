@@ -5,11 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, t, u
+from flext_infra import u
 
 from ._codegen_generation_lazy_entries import (
-from flext_infra import u
-from flext_infra.codegen._codegen_generation_lazy_entries import (
     FlextInfraCodegenGenerationLazyEntriesMixin,
 )
 

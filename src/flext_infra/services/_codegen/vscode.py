@@ -196,14 +196,13 @@ class FlextInfraCodegenVscodeMixin:
             or artifacts_changed
             or changed.value
         )
-        return r[bool].ok(changed.value or artifacts_changed or extensions_changed)
 
     @classmethod
     def _apply_enforced_settings(
         cls,
         settings: t.MutableJsonMapping,
         *,
-        scalar_settings: Mapping[str, str | bool],
+        scalar_settings: Mapping[str, str | bool | int],
         list_settings: Mapping[str, t.VariadicTuple[str]],
         repository_root: Path,
     ) -> p.Result[bool]:
@@ -233,7 +232,7 @@ class FlextInfraCodegenVscodeMixin:
     @staticmethod
     def _apply_union_settings(
         settings: t.MutableJsonMapping,
-        map_union_settings: Mapping[str, Mapping[str, str | bool]],
+        map_union_settings: Mapping[str, Mapping[str, str | bool | int]],
     ) -> bool:
         """Union-merge canonical map keys over existing project entries."""
         changed = False
@@ -260,7 +259,7 @@ class FlextInfraCodegenVscodeMixin:
     @staticmethod
     def _apply_exact_map_settings(
         settings: t.MutableJsonMapping,
-        exact_maps: Mapping[str, Mapping[str, str | bool]],
+        exact_maps: Mapping[str, Mapping[str, str | bool | int]],
     ) -> bool:
         """Replace generated maps so removed SSOT entries leave no residue."""
         changed = False

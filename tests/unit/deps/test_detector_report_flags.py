@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from flext_infra import m, r
 from flext_tests import tm
-from tests import TestsFlextInfraUtilities as u
+from tests import TestsFlextInfraUtilities as u, p, t
 
 if TYPE_CHECKING:
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
@@ -53,9 +54,9 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
 
     @override
     def run_pip_check(
-        self, workspace_root: Path, venv_bin: Path
+        self, repository_root: Path, venv_bin: Path
     ) -> p.Result[tuple[t.StrSequence, int]]:
-        del workspace_root
+        del repository_root
         del venv_bin
         return r[tuple[t.StrSequence, int]].ok(([], self._pip_exit))
 
@@ -72,19 +73,19 @@ class TestsFlextInfraDepsDetectorReportFlags:
 
     def test_run_with_issues_and_pip_failure(self, tmp_path: Path) -> None:
         """Verify run with issues and pip failure."""
-        detector = _setup(tmp_path, u.Tests.DepsReportStub(tmp_path / "proj-a", 5, 1))
+        detector = _setup(tmp_path, _DepsStub(tmp_path / "proj-a", 5, 1))
         tm.fail(detector.execute(), has="dependency issues detected")
 
     def test_run_with_no_fail_flag_with_issues(self, tmp_path: Path) -> None:
         """Verify run with no fail flag with issues."""
-        detector = _setup(
-            tmp_path, u.Tests.DepsReportStub(tmp_path / "proj-a", 5, 1)
-        ).model_copy(update={"no_fail": True})
+        detector = _setup(tmp_path, _DepsStub(tmp_path / "proj-a", 5, 1)).model_copy(
+            update={"no_fail": True}
+        )
         tm.that(tm.ok(detector.execute()), eq=True)
 
     def test_run_with_json_stdout_flag(self, tmp_path: Path) -> None:
         """Verify run with json stdout flag."""
-        detector = _setup(
-            tmp_path, u.Tests.DepsReportStub(tmp_path / "proj-a", 0, 0)
-        ).model_copy(update={"output_format": "json", "no_pip_check": True})
+        detector = _setup(tmp_path, _DepsStub(tmp_path / "proj-a", 0, 0)).model_copy(
+            update={"output_format": "json", "no_pip_check": True}
+        )
         tm.that(tm.ok(detector.execute()), eq=True)

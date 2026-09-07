@@ -141,7 +141,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
     ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
         """Discover the root or projects declared by its own ``.gitmodules``."""
         owner = FlextInfraUtilitiesDocsScopeProjectsMixin
-        roots = owner.docs_workspace_roots(repository_root)
+        roots = owner.docs_repository_roots(repository_root)
         if roots.failure:
             return r[t.SequenceOf[mw.ProjectInfo]].from_failure(roots)
         repository_root = roots.value[0]

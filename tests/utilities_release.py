@@ -144,7 +144,13 @@ class TestsFlextInfraUtilitiesReleaseMixin:
     @staticmethod
     def run_release_main(repository_root: Path, *arguments: str) -> int:
         """Run the public release CLI against one real test workspace."""
-        return main(["release", "run", "--workspace", str(repository_root), *arguments])
+        return main([
+            "release",
+            "run",
+            "--repository",
+            str(repository_root),
+            *arguments,
+        ])
 
     @staticmethod
     def run_release_build(

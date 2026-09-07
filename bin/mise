@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Canonical packaged bootstrap seed; codegen publishes fresh runtime launchers.
 set -eu
 
 __mise_bootstrap() {

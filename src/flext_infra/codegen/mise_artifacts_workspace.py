@@ -8,10 +8,9 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.codegen._mise_artifacts_files import (
-    FlextInfraMiseArtifactsFiles as files,
-)
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -82,17 +81,14 @@ class FlextInfraMiseWorkspacePlanner:
             return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(workspace)
         if requested != scope_root and not any(
             (scope_root / project.path).absolute() == requested
-            for project in workspace.value.declared_repositories
+            for project in workspace.value.subprojects
         ):
             return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
                 f"Git submodule is absent from governed workspace: {requested}"
             )
         selectors = (
             ".",
-            *(
-                project.path.as_posix()
-                for project in workspace.value.declared_repositories
-            ),
+            *(project.path.as_posix() for project in workspace.value.subprojects),
         )
         return self.layout_from_selectors(
             scope_root, selectors, transaction_id=transaction_id
@@ -301,10 +297,7 @@ class FlextInfraMiseWorkspacePlanner:
             replacement_content = config_plan.desired_content
             config_sources = config_plan.source_states
         artifacts: list[m.Cli.AtomicFileState] = []
-        for path in (
-            layout.artifacts.unix_launcher,
-            layout.artifacts.windows_launcher,
-        ):
+        for path in (layout.artifacts.unix_launcher, layout.artifacts.windows_launcher):
             state = files.read_state(path, required=False)
             if state.failure:
                 return r[m.Infra.MiseToolchainProjectState].from_failure(state)
