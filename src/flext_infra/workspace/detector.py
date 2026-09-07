@@ -293,7 +293,7 @@ class FlextInfraWorkspaceDetector(
         declared_url: str | None = None,
     ) -> p.Result[m.Infra.RepositoryRef]:
         """Build repository policy from local metadata and an immutable Git URL."""
-        metadata = u.read_project_metadata(repository_root)
+        metadata = u.Infra.read_project_metadata_result(repository_root)
         if metadata.failure:
             return r[m.Infra.RepositoryRef].from_failure(metadata)
         origin = cls._git_origin_url(repository_root)
@@ -590,7 +590,7 @@ class FlextInfraWorkspaceDetector(
                 f"{workspace.repository.provider}"
             )
         (provider,) = providers
-        metadata = u.read_project_metadata(resolved_root)
+        metadata = u.Infra.read_project_metadata_result(resolved_root)
         if metadata.failure:
             return r[m.Infra.RepositoryConformTarget].from_failure(metadata)
         canonical_project_name = metadata.value.project.name

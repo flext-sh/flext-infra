@@ -25,7 +25,7 @@ class TestsFlextInfraInfraVersionCore:
         return Path(__file__).resolve().parents[2]
 
     def _metadata(self) -> p.ProjectMetadata:
-        metadata_result = u.read_project_metadata(self._project_root())
+        metadata_result = u.Infra.read_project_metadata_result(self._project_root())
         tm.ok(metadata_result)
         return metadata_result.value
 

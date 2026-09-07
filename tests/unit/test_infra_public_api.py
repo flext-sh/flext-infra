@@ -78,7 +78,7 @@ class TestsFlextInfraPublicApi:
         self, infra_public_root: ModuleType
     ) -> None:
         root = infra_public_root
-        metadata_result = root.u.read_project_metadata(self._project_root())
+        metadata_result = root.u.Infra.read_project_metadata_result(self._project_root())
         tm.ok(metadata_result)
         metadata = metadata_result.value
 

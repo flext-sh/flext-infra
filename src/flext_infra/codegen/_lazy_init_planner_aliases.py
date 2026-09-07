@@ -133,7 +133,11 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         )
         for alias_name in alias_names:
             existing = lazy_map.get(alias_name)
-            if existing is not None and existing[0].startswith(current_pkg):
+            if existing is not None and existing[0] != current_pkg:
+                # A real provider (facet module or foreign package) already owns
+                # this alias; only an exact self-referential entry — collected
+                # from a module importing the letter from the package root —
+                # still needs its true inherited source resolved below.
                 continue
             package_name = self._resolve_inherited_alias_source(
                 inherited_packages,

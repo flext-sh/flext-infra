@@ -1697,7 +1697,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"existing repository has no pyproject.toml: {root}; "
                 "scaffold templates are available only through codegen new"
             )
-        metadata = u.read_project_metadata(root)
+        metadata = u.Infra.read_project_metadata_result(root)
         if metadata.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(metadata)
         dist = metadata.value.project.name

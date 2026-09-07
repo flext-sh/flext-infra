@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_cli import u
+from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -405,7 +405,9 @@ class FlextInfraUtilitiesDocsApi:
     def public_contract(project_root: Path, package_name: str) -> t.JsonMapping:
         """Build the public API contract from pyproject, exports, and Rope validation."""
         # flext-j47u: retain flext-core's validated metadata object; no shadow DTO.
-        metadata_result = u.read_project_metadata(project_root)
+        metadata_result = FlextInfraUtilitiesPyproject.read_project_metadata_result(
+            project_root
+        )
         if metadata_result.failure:
             msg = (
                 metadata_result.error or f"project metadata unavailable: {project_root}"

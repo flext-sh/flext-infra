@@ -1,7 +1,7 @@
 """Auto-generate ``__version__.py`` files from the project-metadata SSOT.
 
 Each generated file inherits ``FlextVersion`` from flext-core, with the
-project name baked in from ``u.read_project_metadata()`` at generation
+project name baked in from ``u.Infra.read_project_metadata_result()`` at generation
 time.  No fallback, no hardcoded defaults — ``PackageNotFoundError``
 propagates if the package is not installed.
 
@@ -56,7 +56,7 @@ class FlextInfraCodegenVersionFile(s[bool]):
         skipped = 0
 
         for project_info in discovered.value:
-            metadata_result = u.read_project_metadata(project_info.path)
+            metadata_result = u.Infra.read_project_metadata_result(project_info.path)
             if metadata_result.failure:
                 return r[bool].from_failure(metadata_result)
             meta = metadata_result.value
