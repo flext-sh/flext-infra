@@ -26,9 +26,7 @@ class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
 
     @staticmethod
-    def read_project_metadata_result(
-        project_root: Path,
-    ) -> p.Result[m.ProjectMetadata]:
+    def read_project_metadata_result(project_root: Path) -> p.Result[m.ProjectMetadata]:
         """Read one project's metadata through the canonical owner chain.
 
         flext-core retired its Result-returning compatibility wrapper; this is
