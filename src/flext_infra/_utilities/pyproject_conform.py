@@ -10,10 +10,12 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .dependencies import FlextInfraUtilitiesDependencies
-from .repository import FlextInfraUtilitiesRepository
+from .._utilities.dependencies import FlextInfraUtilitiesDependencies
+from .._utilities.repository import FlextInfraUtilitiesRepository
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from flext_infra.protocols import p
 
 
@@ -22,6 +24,76 @@ class FlextInfraUtilitiesPyprojectConform:
 
     # This pure renderer replaces the mutating dependency path-sync command;
     # codegen is the only public orchestrator.
+
+    @staticmethod
+    def requirement_group_fields(
+        document: t.Cli.TomlDocument, project: t.Cli.TomlTable
+    ) -> Iterator[t.Pair[t.Cli.TomlTable, str]]:
+        """Yield ``(section, group_name)`` for every declared requirement group.
+
+        Optional dependencies hang off ``[project]`` while dependency groups hang
+        off the document root; this is the single owner of that traversal for
+        every requirement rewriter.
+        """
+        for section_name in (c.Infra.OPTIONAL_DEPENDENCIES, c.Infra.DEPENDENCY_GROUPS):
+            parent = (
+                project if section_name == c.Infra.OPTIONAL_DEPENDENCIES else document
+            )
+            section = u.Cli.toml_table_child(parent, section_name)
+            if section is None:
+                continue
+            for group_name in tuple(section):
+                yield section, group_name
+
+    @classmethod
+    def _parsed_pyproject(
+        cls, pyproject_content: str
+    ) -> p.Result[t.Pair[t.Cli.TomlDocument, str]]:
+        """Parse one pyproject source and return it with its declared project name."""
+        source = u.Cli.toml_parse_text(pyproject_content)
+        if source is None:
+            return r[t.Pair[t.Cli.TomlDocument, str]].fail(
+                "pyproject content is not valid TOML"
+            )
+        project = u.Cli.toml_table_child(source, c.Infra.PROJECT)
+        if project is None:
+            return r[t.Pair[t.Cli.TomlDocument, str]].fail(
+                "pyproject content must define [project]"
+            )
+        project_name_raw = u.Cli.toml_value(project, c.Infra.NAME)
+        if not isinstance(project_name_raw, str) or not project_name_raw.strip():
+            return r[t.Pair[t.Cli.TomlDocument, str]].fail(
+                "[project].name must be a non-empty string"
+            )
+        return r[t.Pair[t.Cli.TomlDocument, str]].ok((source, project_name_raw.strip()))
+
+    @classmethod
+    def _rendered_conformed_document(
+        cls,
+        document: t.Cli.TomlDocument,
+        *,
+        project_name: str,
+        workspace: p.Infra.WorkspaceSpec,
+        workspace_mode: c.Infra.MakeProfile,
+        invalid_render_error: str,
+    ) -> p.Result[str]:
+        """Validate dependency provenance, then render canonical TOML.
+
+        ``invalid_render_error`` carries the only difference between the two
+        public conformers: the message each reports for an unparsable render.
+        """
+        provenance_result = cls._validate_dependency_provenance(
+            document,
+            project_name=project_name,
+            workspace=workspace,
+            workspace_mode=workspace_mode,
+        )
+        if provenance_result.failure:
+            return r[str].from_failure(provenance_result)
+        rendered = u.Cli.toml_dumps(document)
+        if u.Cli.toml_parse_text(rendered) is None:
+            return r[str].fail(invalid_render_error)
+        return r[str].ok(rendered)
 
     @classmethod
     def pyproject_conform(
@@ -40,16 +112,10 @@ class FlextInfraUtilitiesPyprojectConform:
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and root workspace."""
-        source = u.Cli.toml_parse_text(pyproject_content)
-        if source is None:
-            return r[str].fail("pyproject content is not valid TOML")
-        project = u.Cli.toml_table_child(source, c.Infra.PROJECT)
-        if project is None:
-            return r[str].fail("pyproject content must define [project]")
-        project_name_raw = u.Cli.toml_value(project, c.Infra.NAME)
-        if not isinstance(project_name_raw, str) or not project_name_raw.strip():
-            return r[str].fail("[project].name must be a non-empty string")
-        project_name = project_name_raw.strip()
+        parsed = cls._parsed_pyproject(pyproject_content)
+        if parsed.failure:
+            return r[str].from_failure(parsed)
+        source, project_name = parsed.value
         cls._sync_dependency_groups(
             source,
             project_name=project_name,
@@ -93,19 +159,15 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if sources_result.failure:
             return r[str].from_failure(sources_result)
-        provenance_result = cls._validate_dependency_provenance(
+        return cls._rendered_conformed_document(
             source,
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
+            invalid_render_error=(
+                "canonical pyproject rendering produced invalid TOML"
+            ),
         )
-        if provenance_result.failure:
-            return r[str].from_failure(provenance_result)
-
-        rendered = u.Cli.toml_dumps(source)
-        if u.Cli.toml_parse_text(rendered) is None:
-            return r[str].fail("canonical pyproject rendering produced invalid TOML")
-        return r[str].ok(rendered)
 
     @classmethod
     def pyproject_dependencies_conform(
@@ -117,16 +179,10 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace_mode: c.Infra.MakeProfile,
     ) -> p.Result[str]:
         """Conform only internal requirements and their root workspace overlay."""
-        source = u.Cli.toml_parse_text(pyproject_content)
-        if source is None:
-            return r[str].fail("pyproject content is not valid TOML")
-        project = u.Cli.toml_table_child(source, c.Infra.PROJECT)
-        if project is None:
-            return r[str].fail("pyproject content must define [project]")
-        project_name_raw = u.Cli.toml_value(project, c.Infra.NAME)
-        if not isinstance(project_name_raw, str) or not project_name_raw.strip():
-            return r[str].fail("[project].name must be a non-empty string")
-        project_name = project_name_raw.strip()
+        parsed = cls._parsed_pyproject(pyproject_content)
+        if parsed.failure:
+            return r[str].from_failure(parsed)
+        source, project_name = parsed.value
         workspace_context_root = cls._is_workspace_context_root(
             project_name=project_name,
             workspace=workspace,
@@ -166,18 +222,13 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if sources_result.failure:
             return r[str].from_failure(sources_result)
-        provenance_result = cls._validate_dependency_provenance(
+        return cls._rendered_conformed_document(
             source,
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
+            invalid_render_error="dependency conformance produced invalid TOML",
         )
-        if provenance_result.failure:
-            return r[str].from_failure(provenance_result)
-        rendered = u.Cli.toml_dumps(source)
-        if u.Cli.toml_parse_text(rendered) is None:
-            return r[str].fail("dependency conformance produced invalid TOML")
-        return r[str].ok(rendered)
 
     @classmethod
     def _normalize_requirements(
@@ -216,24 +267,17 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if normalized.failure:
             return normalized
-        for section_name in (c.Infra.OPTIONAL_DEPENDENCIES, c.Infra.DEPENDENCY_GROUPS):
-            parent = (
-                project if section_name == c.Infra.OPTIONAL_DEPENDENCIES else document
+        for section, group_name in cls.requirement_group_fields(document, project):
+            group_result = cls._normalize_requirement_field(
+                section,
+                group_name,
+                repositories=available,
+                providers=providers,
+                canonicalize_all=canonicalize_all,
+                workspace_dependencies=workspace_dependencies,
             )
-            section = u.Cli.toml_table_child(parent, section_name)
-            if section is None:
-                continue
-            for group_name in tuple(section):
-                group_result = cls._normalize_requirement_field(
-                    section,
-                    group_name,
-                    repositories=available,
-                    providers=providers,
-                    canonicalize_all=canonicalize_all,
-                    workspace_dependencies=workspace_dependencies,
-                )
-                if group_result.failure:
-                    return group_result
+            if group_result.failure:
+                return group_result
         return r[bool].ok(True)
 
     @classmethod
@@ -270,7 +314,7 @@ class FlextInfraUtilitiesPyprojectConform:
         canonical = tuple(dict.fromkeys(normalized_items))
         if canonicalize_all:
 
-            def requirement_key(requirement: str) -> tuple[str, str]:
+            def requirement_key(requirement: str) -> t.Pair[str, str]:
                 name = FlextInfraUtilitiesDependencies.dep_name(requirement) or ""
                 return name, requirement
 

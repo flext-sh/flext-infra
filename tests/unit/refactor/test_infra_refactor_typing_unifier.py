@@ -507,7 +507,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
             "    c,\n"
             "    m,\n"
             ")\n\n"
-            "value: list[object]\n"
+            "def consume(value: list[object]) -> None:\n    pass\n"
         )
         rule = FlextInfraRefactorTypingUnificationRule({
             "id": "unify-typings",
@@ -533,7 +533,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
             "    m,\n"
             "    t,\n"
             ")\n\n"
-            "value: list[object]\n"
+            "def consume(value: list[object]) -> None:\n    pass\n"
         )
         rule = FlextInfraRefactorTypingUnificationRule({
             "id": "unify-typings",

@@ -103,7 +103,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
 
     def _consume_forbidden_multiline_import(
         self, lines: t.StrSequence, start: int, stripped_line: str
-    ) -> tuple[int, str | None, bool]:
+    ) -> t.Triple[int, str | None, bool]:
         """Consume one forbidden parenthesized import statement when present."""
         from_match = c.Infra.FROM_IMPORT_CAPTURE_PAREN_OPEN_RE.match(stripped_line)
         if from_match is None:

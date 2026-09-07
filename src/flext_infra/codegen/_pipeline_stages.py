@@ -5,14 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
+from flext_infra.codegen.census import FlextInfraCodegenCensus
+from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.codegen.fixer import FlextInfraCodegenFixer
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
+from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
-
-from .census import FlextInfraCodegenCensus
-from .conform import FlextInfraCodegenConform
-from .fixer import FlextInfraCodegenFixer
-from .lazy_init import FlextInfraCodegenLazyInit
-from .py_typed import FlextInfraCodegenPyTyped
-from .scaffolder import FlextInfraCodegenScaffolder
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -49,14 +48,14 @@ class FlextInfraCodegenPipelineStagesMixin:
         actual workspace inventory.
         """
 
-        def _action() -> tuple[m.Infra.ProjectInfo, ...]:
+        def _action() -> t.VariadicTuple[m.Infra.ProjectInfo]:
             projects_result = u.Infra.projects(ctx.repository_root)
             if projects_result.failure:
                 msg = projects_result.error or "project discovery failed"
                 raise RuntimeError(msg)
             return tuple(projects_result.unwrap())
 
-        def _emit(discovered: tuple[m.Infra.ProjectInfo, ...]) -> t.JsonMapping:
+        def _emit(discovered: t.VariadicTuple[m.Infra.ProjectInfo]) -> t.JsonMapping:
             self._state.discovered_projects = discovered
             return {"projects_discovered": len(discovered)}
 
@@ -154,7 +153,7 @@ class FlextInfraCodegenPipelineStagesMixin:
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run census (before fixes) and cache reports in typed state."""
 
-        def _action() -> tuple[
+        def _action() -> t.Pair[
             FlextInfraCodegenCensus, t.SequenceOf[m.Infra.CensusReport]
         ]:
             census = FlextInfraCodegenCensus(repository_root=ctx.repository_root)
@@ -162,7 +161,9 @@ class FlextInfraCodegenPipelineStagesMixin:
             return census, census.run(projects=projects)
 
         def _emit(
-            payload: tuple[FlextInfraCodegenCensus, t.SequenceOf[m.Infra.CensusReport]],
+            payload: t.Pair[
+                FlextInfraCodegenCensus, t.SequenceOf[m.Infra.CensusReport]
+            ],
         ) -> t.JsonMapping:
             census, reports = payload
             self._state.census_service = census
@@ -228,7 +229,9 @@ class FlextInfraCodegenPipelineStagesMixin:
                 .unwrap()
             )
             return sum(
-                u.Infra.codegen_file_requires_effect(plan) for plan in analysis.files
+                1
+                for plan in analysis.files
+                if u.Infra.codegen_file_requires_effect(plan)
             )
 
         return self._run_stage(

@@ -33,8 +33,7 @@ class FlextInfraConstantsCodegenProject:
         """Repository selection accepted by ``codegen conform``."""
 
         SELF = "self"
-        # Why: aligns with WorkspaceSpec.subprojects (repository_root cutover, fix/fleet-toolchain-gc-fc2)
-        SUBPROJECTS = "subprojects"
+        DECLARED = "declared_repositories"
         ALL = "all"
 
     @unique
@@ -52,21 +51,6 @@ class FlextInfraConstantsCodegenProject:
 
         CHECK = "check"
         APPLY = "apply"
-
-    @unique
-    class MiseResolutionMode(StrEnum):
-        """How an apply-mode ``codegen conform`` resolves the Mise toolchain.
-
-        ``AUTO`` probes the declared release endpoint once in preflight and
-        becomes ``ONLINE`` (the newest Mise release and every moving tool
-        selector are resolved and published) or ``OFFLINE`` (the published
-        launchers and lock are kept byte-identical). The explicit values pin
-        one path; none of them is a fallback taken after a failed effect.
-        """
-
-        AUTO = "auto"
-        ONLINE = "online"
-        OFFLINE = "offline"
 
     @unique
     class MakeProfile(StrEnum):

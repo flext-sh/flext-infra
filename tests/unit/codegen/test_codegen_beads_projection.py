@@ -37,8 +37,8 @@ class TestsCodegenBeadsProjection:
         for managed in config.Infra.codegen.managed_files:
             (root / managed.path).parent.mkdir(parents=True, exist_ok=True)
         result = FlextInfraCodegenConform(repository_root=root).plan(
-            m.Infra.CodegenConformRequest(
-                root=root,
+            test_u.Tests.conform_request(
+                root,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.CHECK,
             )

@@ -57,8 +57,8 @@ class TestCodegenManifestlessExisting:
         tm.that(derived.repository.distribution, eq=repository.distribution)
         tm.that(derived.repository.path, eq=Path())
         tm.that(derived.project, eq=None)
-        request = m.Infra.CodegenConformRequest(
-            root=root,
+        request = u.Tests.conform_request(
+            root,
             what=c.Infra.CodegenConformSurface.PYPROJECT,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,

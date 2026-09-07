@@ -167,7 +167,7 @@ class FlextInfraCodegenScaffolder(s[str]):
 
     def _scaffold_dir(
         self, request: m.Infra.ScaffoldDirRequest
-    ) -> tuple[t.MutableSequenceOf[str], t.MutableSequenceOf[str]]:
+    ) -> t.Pair[t.MutableSequenceOf[str], t.MutableSequenceOf[str]]:
         """Generate missing modules in a directory and return file lists."""
         files_created: t.MutableSequenceOf[str] = []
         files_skipped: t.MutableSequenceOf[str] = []

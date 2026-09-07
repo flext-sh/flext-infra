@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, m
+from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u
-from tests.unit.workspace.worktree_fixture import WorktreeFixture
+from tests import u as test_u
+from tests.unit.workspace import WorktreeFixture
 
 pytestmark = pytest.mark.slow
 
@@ -18,7 +19,7 @@ pytestmark = pytest.mark.slow
 def _repository(
     name: str, *, path: str, role: c.Infra.MakeProfile
 ) -> m.Infra.RepositoryRef:
-    reference = u.Tests.repository_ref(name, path=Path(path), role=role)
+    reference = test_u.Tests.repository_ref(name, path=Path(path), role=role)
     is_standalone = role is c.Infra.MakeProfile.STANDALONE
     return reference.model_copy(
         update={"package": is_standalone, "editable": is_standalone}
@@ -135,7 +136,7 @@ class TestsCodegenCatalogExtensions:
             tmp_path, c.Infra.MISE_TOML_FILENAME, '[tools]\npython = "3.13"\n'
         )
 
-        rendered = u.Tests.toml_payload(tm.ok(result).rendered)
+        rendered = tomllib.loads(tm.ok(result).rendered)
         tm.that(rendered["tools"], eq={"python": "3.13", "node": "26"})
 
     def test_local_manifest_conforms_without_global_repository_rows(
@@ -149,12 +150,12 @@ class TestsCodegenCatalogExtensions:
         )
         workspace = m.Infra.WorkspaceSpec(
             name=root.name,
-            beads=u.Tests.beads_project(root.name),
+            beads=test_u.Tests.beads_project(root.name),
             repository=root,
-            project=u.Tests.project_spec(root.name),
+            project=test_u.Tests.project_spec(root.name),
             subprojects=(member,),
         )
-        provider = u.Tests.provider()
+        provider = test_u.Tests.provider()
         member_source = tmp_path / "member-source"
         WorktreeFixture.initialize_governed_project(
             member_source,
@@ -272,8 +273,8 @@ class TestsCodegenCatalogExtensions:
         )
         declared_gitmodules = gitmodules.read_bytes()
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
-            m.Infra.CodegenConformRequest(
-                root=workspace_root,
+            test_u.Tests.conform_request(
+                workspace_root,
                 what=c.Infra.CodegenConformSurface.ALL,
                 scope=c.Infra.CodegenConformScope.ALL,
                 mode=c.Infra.CodegenConformMode.CHECK,
@@ -290,7 +291,7 @@ class TestsCodegenCatalogExtensions:
             if file.path == workspace_root.resolve() / c.Infra.MAKEFILE_FILENAME
         )
         tm.that(
-            u.Tests.codegen_file_text(root_makefile),
+            test_u.Tests.codegen_file_text(root_makefile),
             has=f"DECLARED_REPOSITORIES := {member.name}",
         )
         gitmodules_plan = next(

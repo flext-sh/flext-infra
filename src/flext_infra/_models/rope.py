@@ -26,7 +26,7 @@ class FlextInfraModelsRope:
         """Exact project roots selected for one production-source scan."""
 
         project_roots: Annotated[
-            tuple[Path, ...],
+            t.VariadicTuple[Path],
             m.Field(
                 min_length=1, description="Non-empty ordered project roots to scan"
             ),
@@ -154,7 +154,7 @@ class FlextInfraModelsRope:
         """Unified semantic snapshot for one Rope module analysis pass."""
 
         class_infos: Annotated[
-            tuple[FlextInfraModelsRope.ClassInfo, ...],
+            t.VariadicTuple[FlextInfraModelsRope.ClassInfo],
             m.Field(description="Local classes discovered in the module"),
         ] = ()
         declared_imports: Annotated[
@@ -226,19 +226,19 @@ class FlextInfraModelsRope:
             ),
         ] = None
         modules: Annotated[
-            tuple[FlextInfraModelsRope.RopeModuleIndexEntry, ...],
+            t.VariadicTuple[FlextInfraModelsRope.RopeModuleIndexEntry],
             m.Field(
                 description="Direct Python module resources that belong to this package"
             ),
         ] = ()
         direct_child_dirs: Annotated[
-            tuple[Path, ...],
+            t.VariadicTuple[Path],
             m.Field(
                 description="Direct child package directories discovered from Rope"
             ),
         ] = ()
         descendant_child_dirs: Annotated[
-            tuple[Path, ...],
+            t.VariadicTuple[Path],
             m.Field(
                 description="All descendant package directories discovered from Rope"
             ),
@@ -254,7 +254,7 @@ class FlextInfraModelsRope:
             ),
         ]
         package_dirs: Annotated[
-            tuple[Path, ...],
+            t.VariadicTuple[Path],
             m.Field(
                 description="All package directories discovered from Rope resources"
             ),
