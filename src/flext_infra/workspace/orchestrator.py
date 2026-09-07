@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, override
 
 from flext_core import r, s
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, t, u
 
 from ._orchestrator_discovery import FlextInfraWorkspaceOrchestratorDiscoveryMixin
 from ._orchestrator_execution import FlextInfraWorkspaceOrchestratorExecutionMixin
@@ -31,6 +31,10 @@ class FlextInfraOrchestratorService(
         ),
     ]
     verb: Annotated[str, m.Field(description="Make verb to execute")]
+    projects: Annotated[
+        t.StrSequence | None,
+        m.Field(description="Projects to process; repeat --projects NAME as needed"),
+    ] = None
 
     @m.computed_field
     @property

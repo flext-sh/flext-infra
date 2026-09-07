@@ -629,35 +629,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             Path(c.Infra.BEADS_METADATA_RELPATH).name,
             c.Infra.BEADS_LOCAL_VERSION_FILENAME,
         })
-        pending: list[Path] = []
-        for repository in workspace.subprojects:
-            member = (root / repository.path).resolve()
-            route = member / c.Infra.BEADS_DIRNAME
-            if route.is_symlink():
-                if route.resolve() != owner.resolve():
-                    return r[bool].fail(
-                        f"workspace Beads ledger route has another owner: {route}"
-                    )
-                continue
-            if route.exists():
-                if not route.is_dir():
-                    return r[bool].fail(
-                        f"workspace Beads ledger route is not a directory: {route}"
-                    )
-                unexpected = sorted(
-                    entry.name
-                    for entry in route.iterdir()
-                    if entry.name not in allowed_entries
-                )
-                if unexpected:
-                    return r[bool].fail(
-                        f"workspace member has unmerged Beads state at {route}: "
-                        + ", ".join(unexpected)
-                    )
-            pending.append(route)
-        if not pending:
-            return r[bool].ok(False)
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+        route = root / c.Infra.BEADS_DIRNAME
+        if route.is_symlink():
             return r[bool].fail(
                 "composed project reaches the workspace ledger through a "
                 f"cross-project symbolic link: {route}"
@@ -2551,7 +2524,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 version=version_result.value,
                 license=project.license,
                 python_required_version=codegen.toolchain.python_required_version,
-                mise_lock_platforms=codegen.toolchain.mise_lock_platforms,
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,

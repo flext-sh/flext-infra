@@ -304,14 +304,13 @@ class FlextInfraMiseWorkspacePlanner:
         for path in (
             layout.artifacts.unix_launcher,
             layout.artifacts.windows_launcher,
-            layout.artifacts.lock,
         ):
             state = files.read_state(path, required=False)
             if state.failure:
                 return r[m.Infra.MiseToolchainProjectState].from_failure(state)
             artifacts.append(state.value)
         artifact_set = m.Infra.MiseToolchainArtifactSet(
-            unix_launcher=artifacts[0], windows_launcher=artifacts[1], lock=artifacts[2]
+            unix_launcher=artifacts[0], windows_launcher=artifacts[1]
         )
         return r[m.Infra.MiseToolchainProjectState].ok(
             m.Infra.MiseToolchainProjectState(
@@ -348,7 +347,6 @@ class FlextInfraMiseWorkspacePlanner:
                     config=root.value / files.CONFIG_SPEC[0],
                     unix_launcher=root.value / files.ARTIFACT_NAMES[0],
                     windows_launcher=root.value / files.ARTIFACT_NAMES[1],
-                    lock=root.value / files.ARTIFACT_NAMES[2],
                 ),
             )
         )
@@ -376,7 +374,7 @@ class FlextInfraMiseWorkspacePlanner:
         for part in files.STATE_DIRECTORY.parts:
             cursor /= part
             if not cursor.exists() and not cursor.is_symlink():
-                continue
+                cursor.mkdir(mode=0o700, exist_ok=True)
             physical = self._physical_directory(cursor)
             if physical.failure:
                 return r[Path].from_failure(physical)

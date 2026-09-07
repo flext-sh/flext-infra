@@ -12,6 +12,9 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
 from flext_infra.fixers.base import FlextInfraFixerAdapter
+from flext_infra.refactor.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
 from flext_infra.transformers.compatibility_alias import (
     FlextInfraRefactorCompatibilityAlias,
 )

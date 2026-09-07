@@ -32,7 +32,6 @@ class FlextInfraCodegenFileStaging:
                 project.layout.artifacts.config,
                 project.layout.artifacts.unix_launcher,
                 project.layout.artifacts.windows_launcher,
-                project.layout.artifacts.lock,
             )
         }
         publications: list[m.Cli.AtomicFilePublication] = []

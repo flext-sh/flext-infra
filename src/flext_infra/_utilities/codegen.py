@@ -64,7 +64,7 @@ class FlextInfraUtilitiesCodegen(
         template loop reads, never the mutable on-disk projection.
 
         ``make deps`` locks this body, so a selector that the config SSOT has
-        newly declared reaches ``mise.lock`` in the cycle that declares it.
+        newly declared reaches the generated Mise declaration in the same cycle.
         Locking the on-disk copy instead made the declaration unreachable: the
         offline ``gen`` validator refuses to publish a config whose tool set the
         lock lacks, and the lock could never gain a tool the published config

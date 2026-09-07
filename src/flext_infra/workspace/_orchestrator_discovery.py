@@ -8,16 +8,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
-from flext_infra import m, u
+from flext_infra import m, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
     class _WorkspaceOrchestratorProtocol(Protocol):
         @property
         def root(self) -> Path: ...
+
+        @property
+        def projects(self) -> t.StrSequence | None: ...
 
 
 class FlextInfraWorkspaceOrchestratorDiscoveryMixin:
@@ -26,8 +29,8 @@ class FlextInfraWorkspaceOrchestratorDiscoveryMixin:
     def _resolved_projects(
         self: _WorkspaceOrchestratorProtocol,
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
-        """Resolve the complete declared project inventory."""
-        return u.Infra.resolve_projects(self.root, ())
+        """Resolve the declared project inventory, narrowed by explicit selection."""
+        return u.Infra.resolve_projects(self.root, self.projects or ())
 
     @staticmethod
     def _project_target(project: m.Infra.ProjectInfo, *, repository_root: Path) -> str:

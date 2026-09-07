@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import os
 from collections.abc import Callable, Mapping
 from importlib.metadata import requires
 from importlib.resources import files
@@ -36,103 +35,6 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesDependencies:
     """Static helpers for inspecting dependency declarations in pyproject payloads."""
-
-    @staticmethod
-    def update_mise_lock(
-        project_root: Path, *, platforms: t.StrSequence, staging_parent: Path
-    ) -> p.Result[bool]:
-        """Generate a fresh native Mise lock and publish it atomically.
-
-        The lock is resolved from the rendered declaration -- the config SSOT
-        that ``make gen`` publishes -- never from the on-disk ``.mise.toml``.
-        Locking the stale projection deadlocked every newly declared selector:
-        offline ``gen`` refuses a config whose tool set the lock lacks, and the
-        lock never gained a tool the published config did not already carry.
-        This step is the online owner of the lock, so it resolves the declared
-        set here and ``gen`` stays offline.
-        """
-        launcher = project_root / "bin" / ("mise.cmd" if os.name == "nt" else "mise")
-        if not launcher.is_file():
-            return r[bool].fail(f"generated Mise launcher is absent: {launcher}")
-        declaration = FlextInfraUtilitiesCodegen.render_mise_toml(project_root)
-        if declaration.failure:
-            return r[bool].from_failure(declaration)
-        declared_content = declaration.value.encode("utf-8")
-        live_lock = u.Cli.atomic_read_binary_file_state(
-            project_root / c.Infra.MISE_LOCK_FILENAME, required=False
-        )
-        if live_lock.failure:
-            return r[bool].from_failure(live_lock)
-        parent_plan = u.Cli.atomic_plan_directory_chain(staging_parent)
-        if parent_plan.failure:
-            return r[bool].from_failure(parent_plan)
-        parent_created = u.Cli.atomic_create_directory_chain_guarded(
-            parent_plan.value, permission_mode=0o700
-        )
-        if parent_created.failure:
-            return r[bool].from_failure(parent_created)
-        temporary = u.Cli.files_create_temporary_directory(
-            prefix="mise-lock-", parent_path=staging_parent
-        )
-        if temporary.failure:
-            return r[bool].from_failure(temporary)
-        stage_root = temporary.value
-        staged_config = u.Cli.atomic_create_binary_file_guarded(
-            stage_root / c.Infra.MISE_TOML_FILENAME,
-            declared_content,
-            permission_mode=0o644,
-        )
-        generated: p.Result[bytes]
-        if staged_config.failure:
-            generated = r[bytes].from_failure(staged_config)
-        else:
-            executed = u.Cli.run_live(
-                (
-                    str(launcher),
-                    "-C",
-                    str(stage_root),
-                    "lock",
-                    "--bump",
-                    "--platform",
-                    ",".join(platforms),
-                ),
-                cwd=stage_root,
-                timeout=c.Infra.TIMEOUT_LONG,
-            )
-            if executed.failure:
-                generated = r[bytes].from_failure(executed)
-            else:
-                staged_lock = u.Cli.atomic_read_binary_file_state(
-                    stage_root / c.Infra.MISE_LOCK_FILENAME, required=True
-                )
-                if staged_lock.failure:
-                    generated = r[bytes].from_failure(staged_lock)
-                elif staged_lock.value.content is None:
-                    generated = r[bytes].fail("Mise generated an empty lock state")
-                else:
-                    generated = r[bytes].ok(staged_lock.value.content)
-        manifest = u.Cli.atomic_inventory_physical_tree(stage_root)
-        if manifest.failure:
-            return r[bool].fail(
-                f"{generated.error}; {manifest.error}"
-                if generated.failure
-                else manifest.error or "Mise staging inventory failed"
-            )
-        cleaned = u.Cli.atomic_cleanup_physical_tree_guarded(manifest.value)
-        if cleaned.failure:
-            return r[bool].fail(
-                f"{generated.error}; {cleaned.error}"
-                if generated.failure
-                else cleaned.error or "Mise staging cleanup failed"
-            )
-        if generated.failure:
-            return r[bool].from_failure(generated)
-        published = u.Cli.atomic_write_binary_file_guarded(
-            live_lock.value, generated.value, permission_mode=0o644
-        )
-        if published.failure:
-            return r[bool].from_failure(published)
-        return r[bool].ok(True)
 
     @staticmethod
     def dep_name(requirement: str, *, active_only: bool = False) -> str | None:

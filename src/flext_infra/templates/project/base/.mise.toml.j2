@@ -4,12 +4,8 @@
 # Free: no
 # End SECTION: header
 # NOTE: mise carries the Python runtime and native tools from the config SSOT.
-# Python dependencies remain owned by uv.lock.
-
-[settings]
-# The lockfile is a generated, committed projection of immutable tool metadata.
-lockfile = true
-lockfile_platforms = {{ mise_lock_platforms | list | tojson }}
+# Python dependencies remain owned by uv.lock. Mise resolves every tool to the
+# newest published release at setup time: the fleet runs unlocked and current.
 
 # === SECTION: tools (managed) ===
 # Source: config:python_version, config:codegen.scaffold.project.dev native toolchain floors
@@ -38,17 +34,22 @@ kubeconform = "{{ kubeconform_version }}"
 node = "{{ node_version }}"
 "npm:jscpd" = "{{ jscpd_version }}"
 "github:microsoft/waza" = "{{ waza_version }}"
+# Go runtime for the Go projects in this workspace.
+go = "{{ go_version }}"
 # qlty ships no mise registry alias; the github backend selector is the only
 # resolvable form (bare 'qlty' fails mise install: 'not found in registry').
-"github:qltysh/qlty" = "{{ qlty_version }}"
-# Go runtime for projects that declare Go tooling.
-go = "{{ go_version }}"
+# GitHub Artifact Attestations is an external-token capability and is not
+# selected by setup/gen; the lock still authenticates the downloaded bytes by
+# checksum without silently requiring a personal GitHub credential.
+[tools."github:qltysh/qlty"]
+version = "{{ qlty_version }}"
+github_attestations = false
 [tools."{{ beads.selector }}"]
 version = "{{ beads.version }}"
-prerelease = {{ beads.prerelease | lower }}
+prerelease = {{ "true" if beads.prerelease else "false" }}
 github_attestations = false
 [tools."{{ gascity.selector }}"]
 version = "{{ gascity.version }}"
-prerelease = {{ gascity.prerelease | lower }}
+prerelease = {{ "true" if gascity.prerelease else "false" }}
 github_attestations = false
 # End SECTION: tools

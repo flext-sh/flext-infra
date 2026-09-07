@@ -39,7 +39,7 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
         """Run the lazy-init generator in check-only mode, collect stale inits.
 
         Args:
-            workspace_root: Root directory under which to scan packages.
+            repository_root: Root directory under which to scan packages.
 
         Returns:
             r with ValidationReport listing each stale ``__init__.py`` as a violation.
