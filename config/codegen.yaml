@@ -1290,9 +1290,7 @@ Infra:
             - "!.taplo.toml"
             - "!pyrefly.toml"
             - "!poetry.lock"
-            - "!uv.lock"
             - "!ruff-shared.toml"
-            - "!uv.lock"
         - name: "mise toolchain pinning"
           profiles: [workspace]
           patterns:
@@ -1310,19 +1308,16 @@ Infra:
             - "!*.mk"
             # jscpd detector SSOT consumed by the committed `make duplication`
             # target (flext-1sm3w); the deny-first root cannot swallow it.
-            - "!.jscpd.json"
-            - "!*.mk"
+            - ".jscpd.json"
             # The generated toolchain config and launcher must reach a clean
             # CI checkout, so the deny-first root cannot swallow them;
             # `make gen` owns their content.
-            - "!.mise.toml"
             - "!bin/mise"
             - "!bin/mise.cmd"
         - name: "Documentation"
           profiles: [workspace]
           patterns:
             - "!README.md"
-            - "!AGENTS.md"
             - "!AGENTS.md"
             - "!codex.md"
             - "!.markdownlint.json"
