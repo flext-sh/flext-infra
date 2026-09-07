@@ -26,8 +26,13 @@ class FlextInfraUtilitiesCodegenFacades:
         facade_path = pkg_dir / c.Infra.UTILITIES_PY
         owners_dir = pkg_dir / c.Infra.FAMILY_DIRECTORIES["u"]
         owners_exist, facade_exists = owners_dir.is_dir(), facade_path.is_file()
-        if owners_exist != facade_exists:
-            message = f"incomplete utility facade artifacts in {pkg_dir}"
+        # Why: only owners-without-facade is incomplete -- the owners would have
+        # no public surface at all. A facade with no owners directory is the
+        # legitimate pure re-export shape this same generator emits for a package
+        # that adds no local utilities (src/flext: `class FlextRootUtilities(u)`),
+        # and there is simply nothing to project onto it.
+        if owners_exist and not facade_exists:
+            message = f"utility owners in {pkg_dir} have no public facade"
             raise ValueError(message)
         if not owners_exist:
             return None
