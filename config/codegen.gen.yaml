@@ -45,10 +45,50 @@ requirements:
   # No inline values, hardcoded defaults, or manual edits to managed files.
   config_authority:
     requires_config: true
-    requires_overrides: false
+    requires_overrides: true
     reject_manual_edits: true
 
   # Fixed-point validation: after generation, re-conform must find zero drift.
   fixed_point:
     required: true
     max_replans: 1
+
+  # Externally-managed files: these are owned by other systems (operator,
+  # workspace, make) and are NOT generated from .j2 templates, but they ARE
+  # subject to .gen compliance validation. Each entry declares the owner
+  # and the validation contract the file must satisfy. This replaces the
+  # old bypass policies (manual/delegated/create-only) with explicit,
+  # auditable external ownership declarations.
+  externally_managed:
+    # Operator-owned topology SSOT — handwritten, not generated.
+    config/workspace.yaml:
+      owner: workspace
+      validation: exists_and_validated
+      description: "Handwritten workspace topology SSOT consumed by codegen conform"
+    .gitmodules:
+      owner: workspace
+      validation: exists_and_validated
+      description: "Repository submodule topology, operator-owned"
+    # Make-owned bootstrap — delegated to the make contract system.
+    base.mk:
+      owner: make
+      validation: conforms_to_layout
+      description: "Generated Make bootstrap, delegated to internal make engine"
+    # Project-owned custom handler — created once, never overwritten.
+    custom.mk:
+      owner: custom
+      validation: exists_or_absent
+      description: "Project extension hooks; create-only by project convention"
+    # Project-owned LICENSE and README — created once, never overwritten.
+    LICENSE:
+      owner: codegen
+      validation: exists_or_absent
+      description: "Project license file"
+    README.md:
+      owner: codegen
+      validation: exists_or_absent
+      description: "Project README"
+    .env.example:
+      owner: codegen
+      validation: exists_or_absent
+      description: "Environment variable documentation"

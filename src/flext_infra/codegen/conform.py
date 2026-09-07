@@ -307,9 +307,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
 
     @staticmethod
-    def _enforce_gen_requirements(
-        request: m.Infra.CodegenConformRequest,
-    ) -> p.Result[bool]:
+    def _enforce_gen_requirements() -> p.Result[bool]:
         """Load and validate the ``.gen`` requirements contract before generation.
 
         The ``.gen`` file is the compliance contract that declares mandatory
@@ -342,12 +340,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         try:
             requirements = m.Infra.GenRequirementsSpec.model_validate(loaded.value.data)
-        except Exception as exc:
+        except c.ValidationError as exc:
             return r[bool].fail(
-                f"invalid .gen requirements contract at {gen_path}: {exc}"
+                f"invalid .gen requirements contract at {gen_path}: {exc}",
+                exception=exc,
             )
         bypass_policies = c.Infra.MANAGED_FILE_POLICIES_BYPASS
-        forbidden_in_contract = frozenset(requirements.requirements.managed_file_policies.forbidden)
+        forbidden_in_contract = frozenset(
+            requirements.requirements.managed_file_policies.forbidden
+        )
         if bypass_policies != forbidden_in_contract:
             return r[bool].fail(
                 f".gen requirements declares forbidden policies {sorted(forbidden_in_contract)} "
@@ -389,7 +390,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenResult]:
         """Run complete conformance inside the sole generation lock."""
-        gen_violation = self._enforce_gen_requirements(request)
+        gen_violation = self._enforce_gen_requirements()
         if gen_violation.failure:
             return r[m.Infra.CodegenResult].from_failure(gen_violation)
         mode = c.Infra.CodegenConformMode(request.mode)
@@ -821,7 +822,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenPlan]:
         """Build and validate the complete selection without writing."""
-        gen_violation = self._enforce_gen_requirements(request)
+        gen_violation = self._enforce_gen_requirements()
         if gen_violation.failure:
             return r[m.Infra.CodegenPlan].from_failure(gen_violation)
         config_spec = config.Infra.codegen

@@ -1512,6 +1512,32 @@ class FlextInfraConfigModels:
             ),
         ] = ()
 
+    class ExternallyManagedSpec(_ConfigContract):
+        """One externally-managed file declared by a .gen contract.
+
+        Replaces the old bypass policies (manual/delegated/create-only) with
+        an explicit, auditable ownership declaration. The file is not generated
+        from a .j2 template but is still subject to .gen compliance validation.
+        """
+
+        owner: Annotated[
+            t.NonEmptyStr, m.Field(description="Canonical external owner")
+        ]
+        validation: Annotated[
+            Literal["exists_and_validated", "conforms_to_layout", "exists_or_absent"],
+            m.Field(
+                description=(
+                    "Validation contract: exists_and_validated = file must exist "
+                    "and pass schema/layout checks; conforms_to_layout = file must "
+                    "pass the layout engine; exists_or_absent = file may exist "
+                    "(create-only semantics) but must not be regenerated"
+                ),
+            ),
+        ]
+        description: Annotated[
+            t.NonEmptyStr, m.Field(description="Human-readable purpose of this external file")
+        ]
+
     class TemplateEntrySpec(_ConfigContract):
         """One scaffold-only template mapping consumed by ``codegen new``."""
 
@@ -3393,7 +3419,7 @@ class FlextInfraConfigModels:
         ]
 
     class GenRequirementEntries(_ConfigContract):
-        """The three mandatory requirement groups enforced by a .gen contract."""
+        """The mandatory requirement groups enforced by a .gen contract."""
 
         managed_file_policies: Annotated[
             FlextInfraConfigModels.ManagedFilePoliciesSpec,
@@ -3410,6 +3436,18 @@ class FlextInfraConfigModels:
         fixed_point: Annotated[
             FlextInfraConfigModels.FixedPointSpec,
             m.Field(description="Post-generation fixed-point validation"),
+        ]
+        externally_managed: Annotated[
+            Mapping[str, FlextInfraConfigModels.ExternallyManagedSpec],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Files owned by external systems (operator, workspace, make) "
+                    "that are validated through .gen compliance but not generated "
+                    "from .j2 templates. Replaces bypass policies with auditable "
+                    "ownership declarations."
+                ),
+            ),
         ]
 
     class CodegenToolchainOverridesSpec(_ConfigContract):
