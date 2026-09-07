@@ -24,8 +24,6 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     # APPLY=Y` skipped this gate, both exiting 0. The tool supports `--fix`, so
     # the gate offers it and the canonical sequence can reach green.
     can_fix: ClassVar[bool] = True
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][1]
 
     def _collect_markdown_files(self, project_dir: Path) -> t.SequenceOf[Path]:
         """Collect markdown files."""
@@ -47,7 +45,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         """Resolve only the repository-local markdown settings owner."""
         config_path = project_dir / ".markdownlint.json"
         if not config_path.is_file():
-            return []
+            return ["--no-config"]
         return ["--config", str(config_path.resolve())]
 
     @override
@@ -125,7 +123,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
                     message=match.group("msg"),
                 )
             )
-        if result.exit_code != 0 and not issues:
+        if not u.Cli.process_succeeded(result.outcome) and not issues:
             detail = (result.stderr or result.stdout).strip() or "no diagnostics"
             issues.append(
                 m.Infra.Issue(
@@ -133,11 +131,11 @@ class FlextInfraMarkdownGate(FlextInfraGate):
                     line=1,
                     column=1,
                     code="TOOL_ERROR",
-                    message=f"rumdl exited with code {result.exit_code}: {detail}",
+                    message=f"rumdl exited with code {result.outcome.raw_return_code}: {detail}",
                     severity="ERROR",
                 )
             )
-        return result.exit_code == 0, issues
+        return u.Cli.process_succeeded(result.outcome), issues
 
 
 __all__: list[str] = ["FlextInfraMarkdownGate"]

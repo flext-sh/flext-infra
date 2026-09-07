@@ -36,7 +36,7 @@ class FlextInfraGateContractValidator(
 
     def run(self) -> m.Infra.GateContractRunResult:
         """Run validation and return the CLI outcome."""
-        root = self.workspace_root.resolve()
+        root = self.repository_root.resolve()
         if not root.exists() or not root.is_dir():
             msg = f"root directory not found: {root}"
             raise GateContractUsageError(msg)
@@ -70,7 +70,7 @@ class FlextInfraGateContractValidator(
         try:
             outcome = self.run()
         except (GateContractUsageError, GateContractInfraError) as exc:
-            return r[bool].fail(str(exc))
+            return r[bool].fail(str(exc), exception=exc)
         if outcome.exit_code == int(c.Infra.ScriptExitCode.PASS):
             return r[bool].ok(True)
         return r[bool].fail(f"gate contract found {outcome.violation_count} error(s)")

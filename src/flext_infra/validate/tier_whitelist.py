@@ -22,7 +22,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c
-from flext_infra.validate._rope_import_boundary import FlextInfraRopeImportBoundaryBase
+
+from ._rope_import_boundary import FlextInfraRopeImportBoundaryBase
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -75,7 +76,12 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
         owner = c.ENFORCEMENT_LIBRARY_OWNERS.get(top)
         if owner is None:
             return False
-        return f"/{owner}/src/" in _file_path.as_posix()
+        # Ownership is the owner's PACKAGE tree, never the checkout directory
+        # name: a lane worktree named ``flext-infra-<lane>`` is still the
+        # ``flext-infra`` source tree, so dirname matching would be blind to
+        # every governed worktree.
+        package_root = f"/src/{owner.replace('-', '_')}/"
+        return package_root in _file_path.as_posix()
 
     @override
     def _format_violation(self, file_path: Path, module_name: str) -> str:

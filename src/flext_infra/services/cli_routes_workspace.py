@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p, t, u
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_refactor import RefactorRoutes
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace.environment_beads import FlextInfraWorkspaceEnvironmentSync
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
@@ -25,10 +26,22 @@ class WorkspaceRoutes(RefactorRoutes):
     ) -> p.Result[t.Cli.ResultValue]:
         """Apply the typed binding request through its service owner."""
         return FlextInfraFlextBindingService.apply(
-            consumer_root=params.workspace_root,
+            consumer_root=params.repository_root,
             flext_root=params.flext_root,
             python=params.python,
         ).map(CliRouteBase.as_route_value)
+
+    @staticmethod
+    def _sync_environment(
+        params: m.Infra.WorkspaceEnvironmentCliRequest,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Keep the internal beads render context off the public CLI surface."""
+        request = m.Infra.WorkspaceEnvironmentSyncRequest.model_validate(
+            params.model_dump()
+        )
+        return FlextInfraWorkspaceEnvironmentSync.execute_request(request).map(
+            CliRouteBase.as_route_value
+        )
 
     workspace_routes: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
         c.Infra.CLI_GROUP_REFACTOR: RefactorRoutes.refactor_routes,
@@ -44,6 +57,13 @@ class WorkspaceRoutes(RefactorRoutes):
             ),
         ),
         c.Infra.CLI_GROUP_WORKSPACE: (
+            m.Cli.ResultCommandRoute(
+                name="identity",
+                help_text="Report canonical Git checkout identity",
+                model_cls=m.Infra.GitRepoRequest,
+                handler=CliRouteBase.result_handler(u.Infra.git_identity),
+                success_message="workspace Git identity resolved",
+            ),
             m.Cli.ResultCommandRoute(
                 name="verify-environment",
                 help_text="Verify live workspace editable provenance",
@@ -83,6 +103,12 @@ class WorkspaceRoutes(RefactorRoutes):
                         CliRouteBase.result_handler(
                             FlextInfraOrchestratorService.execute_command
                         ),
+                    ),
+                    (
+                        "sync-environment",
+                        "Sync generated direnv/mise environment files",
+                        m.Infra.WorkspaceEnvironmentCliRequest,
+                        _sync_environment,
                     ),
                 )
             ),
