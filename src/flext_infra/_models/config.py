@@ -18,6 +18,7 @@ from flext_infra._models._defaults import ImmutableEmptyMapping
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
 from flext_infra._constants.deps import FlextInfraConstantsDeps
 from flext_infra._constants.make import FlextInfraConstantsMake
+from flext_infra._constants.release import FlextInfraConstantsRelease
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
 from flext_infra._models.layout import FlextInfraModelsLayout
@@ -304,6 +305,17 @@ class FlextInfraConfigModels:
         mise_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact mise binary version")
         ]
+        protected_mise_tools: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Toolchain field names protected from alternate "
+                    "distributions; the full member validation returns with "
+                    "the config-contract reunion"
+                ),
+            ),
+        ] = ()
         mise_lock_platforms: Annotated[
             tuple[
                 Literal[
@@ -1995,6 +2007,73 @@ class FlextInfraConfigModels:
             m.Field(description="Extra file:variable version anchors"),
         ] = ()
 
+    class BuildConstraintSpec(_ConfigContract):
+        """One hash-pinned build requirement (``uv build --require-hashes``)."""
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+        version: Annotated[t.NonEmptyStr, m.Field(description="Exact version")]
+        hashes: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Accepted sha256 digests"),
+        ]
+
+    class ReleasePolicySpec(_ConfigContract):
+        """The release protocol's declared data: who publishes, what bumps, where.
+
+        Why (aihub-ioijy.9): publishable membership is project policy, not a
+        naming convention. ``bump_types`` maps a Conventional Commits type
+        found in a merged pull-request title to the bump it earns; a type
+        absent from the map releases nothing, and ``!`` in the title always
+        earns a major bump. The Conventional Commits defaults are the typed
+        default, so a consumer repository declares only what differs.
+        """
+
+        # The bump map is consumed as enum members by the strict release plan,
+        # so the contract base's value coercion is switched off here.
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            strict=False, frozen=True, extra="forbid", use_enum_values=False
+        )
+
+        publishable_prefixes: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Distribution-name prefixes eligible for build/publish. "
+                    "Empty means every resolved project is eligible."
+                ),
+            ),
+        ]
+        bump_types: Annotated[
+            Mapping[t.NonEmptyStr, FlextInfraConstantsRelease.VersionBump],
+            m.Field(
+                default_factory=lambda: {
+                    "feat": FlextInfraConstantsRelease.VersionBump.MINOR,
+                    "fix": FlextInfraConstantsRelease.VersionBump.PATCH,
+                    "perf": FlextInfraConstantsRelease.VersionBump.PATCH,
+                },
+                description="Conventional Commits type -> semantic version bump",
+            ),
+        ]
+        publish_url: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                default="https://upload.pypi.org/legacy/",
+                description="Package index upload endpoint for verified artifacts",
+            ),
+        ]
+        build_constraints: Annotated[
+            tuple[FlextInfraConfigModels.BuildConstraintSpec, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Hash-pinned build-backend requirements every release "
+                    "artifact is built with; projected to "
+                    "config/build-constraints.txt"
+                ),
+            ),
+        ]
+
     class ReleaseAutomationSpec(_ConfigContract):
         """Automated semantic versioning, owned by the market tool.
 
@@ -2552,10 +2631,28 @@ class FlextInfraConfigModels:
             m.Field(description="VS Code map keys union-merged over project settings"),
         ]
 
+    class CodegenLocCapSpec(_ConfigContract):
+        """Per-module logical-LOC ceiling policy (scc code lines)."""
+
+        max_lines: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                description=(
+                    "Per-module code-LOC ceiling. Operator instruction "
+                    "2026-09-07: the former 1000-LOC allowance stands."
+                ),
+            ),
+        ] = 1000
+
     class CodegenConfigSpec(_ConfigContract):
         """Fully modeled content of ``config/codegen.yaml``."""
 
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
+        loc_cap: Annotated[
+            FlextInfraConfigModels.CodegenLocCapSpec,
+            m.Field(description="Per-module code-LOC ceiling policy"),
+        ]
         toolchain: Annotated[
             FlextInfraConfigModels.ToolchainSpec,
             m.Field(description="Exact generated toolchain"),
@@ -3035,8 +3132,14 @@ class FlextInfraConfigModels:
         """Complete flext-infra configuration namespace."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Project distribution name")]
-        version: Annotated[
-            t.NonEmptyStr, m.Field(description="Project release version")
+        initial_project_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Version seeded into a newly scaffolded project's pyproject; "
+                    "from then on the release protocol is the only writer"
+                )
+            ),
         ]
         codegen: Annotated[
             FlextInfraConfigModels.CodegenConfigSpec,
@@ -3049,6 +3152,10 @@ class FlextInfraConfigModels:
         source_scan: Annotated[
             FlextInfraConfigModels.SourceScanSpec,
             m.Field(description="Production-only source discovery contract"),
+        ]
+        release: Annotated[
+            FlextInfraConfigModels.ReleasePolicySpec,
+            m.Field(description="Release protocol policy: eligibility, bumps, index"),
         ]
         # Static policy is validated data, never detector code.
         enforcement: Annotated[
