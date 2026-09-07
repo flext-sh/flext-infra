@@ -645,8 +645,6 @@ class TestsFlextInfraLazyInitHelpers:
         tests_unit_root.joinpath(c.Infra.INIT_PY).write_text(
             "", encoding=c.Cli.ENCODING_DEFAULT
         )
-<<<<<<< HEAD
-=======
         # `__all__` is the publication contract on EVERY surface — a module
         # that declares nothing publishes nothing, in tests exactly as in src.
         # The fixture declares its publics like every other module here does,
@@ -666,7 +664,6 @@ class TestsFlextInfraLazyInitHelpers:
             '__all__: list[str] = ["TestsFlextDemoUnitModels"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
->>>>>>> origin/0.12.0-dev
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         init_content = tests_unit_root.joinpath(c.Infra.INIT_PY).read_text(

@@ -321,7 +321,6 @@ class TestsFlextInfraRefactorMainCli:
     def _build_compatibility_alias_workspace(cls, tmp_path: Path) -> tuple[Path, Path]:
         return cls._build_module_workspace(tmp_path, _COMPATIBILITY_ALIAS_MODULE)
 
-<<<<<<< HEAD
     @staticmethod
     def _build_lazy_init_cascade_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
         workspace = tmp_path / "workspace"
@@ -366,15 +365,6 @@ class TestsFlextInfraRefactorMainCli:
             "    assert only_for_tests(1) == 2\n",
         )
         return workspace, service_file, init_path
-=======
-    @classmethod
-    def _build_test_only_workspace(cls, tmp_path: Path) -> Path:
-        return cls._build_service_workspace(
-            tmp_path,
-            service_source=_TEST_ONLY_FUNCTION_SERVICE,
-            test_source=_TEST_ONLY_FUNCTION_TEST,
-        )[0]
->>>>>>> origin/0.12.0-dev
 
     @classmethod
     def _build_test_only_workspace_with_source_import(
