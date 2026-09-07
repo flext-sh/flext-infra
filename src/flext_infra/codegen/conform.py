@@ -386,19 +386,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         externally_managed = requirements.requirements.externally_managed
         managed_by_path = {item.path: item for item in config_spec.managed_files}
-        for relative_path, spec in externally_managed.items():
+        for relative_path in externally_managed:
             managed_entry = managed_by_path.get(Path(relative_path))
             if managed_entry is None:
                 continue
             if managed_entry.policy not in bypass_policies:
                 return r[bool].fail(
-                    f"externally-managed file {relative_path} is declared in codegen.yaml "
-                    f"with policy '{managed_entry.policy}' but .gen lists it as externally managed; "
-                    f"externally managed files must use bypass policies or be removed from managed_files"
+                    f"externally-managed file {relative_path} is declared in "
+                    f"codegen.yaml with policy '{managed_entry.policy}' but .gen "
+                    f"lists it as externally managed; externally managed files "
+                    f"must use bypass policies or be removed from managed_files"
                 )
-            for bypass in bypass_policies:
-                if managed_entry.policy == bypass:
-                    break
         bypass_in_managed = tuple(
             managed.path
             for managed in config_spec.managed_files
