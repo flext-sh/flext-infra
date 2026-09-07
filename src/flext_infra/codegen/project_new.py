@@ -147,7 +147,6 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
                 homepage=repository_page,
                 documentation=repository_page,
                 repository_root_rel=".",
-                repository_root_rel=".",
                 year=self.year,
             ),
         )
