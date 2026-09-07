@@ -88,10 +88,7 @@ class FlextInfraMiseWorkspacePlanner:
             )
         selectors = (
             ".",
-            *(
-                project.path.as_posix()
-                for project in workspace.value.subprojects
-            ),
+            *(project.path.as_posix() for project in workspace.value.subprojects),
         )
         return self.layout_from_selectors(
             scope_root, selectors, transaction_id=transaction_id

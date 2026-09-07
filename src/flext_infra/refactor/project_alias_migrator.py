@@ -15,8 +15,6 @@ import libcst as cst
 from flext_infra.constants import c
 from flext_infra.models import m
 
-from .._utilities.discovery import FlextInfraUtilitiesDiscovery
-from .._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from .._utilities.transformer_base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:

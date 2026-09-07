@@ -6,7 +6,6 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
-from git import Repo
 
 from flext_cli import u as cli_u
 from flext_infra import c, m, p, u
@@ -14,15 +13,24 @@ from flext_tests import tm
 from tests import u as test_u
 
 
-def _signed_repository(root: Path, repositories: list[Repo]) -> tuple[Repo, Path]:
-    repo = Repo.init(root)
-    repositories.append(repo)
-    with repo.config_writer() as config:
-        config.set_value("user", "name", "Attestation Test")
-        config.set_value("user", "email", "attestation@example.test")
-        config.set_value("gpg", "format", "ssh")
-        config.set_value("commit", "gpgsign", "false")
-    repo.create_remote("origin", "https://github.example/flext/fixture.git")
+def _signed_repository(root: Path) -> Path:
+    test_u.Tests.git_bootstrap(root, ("init", "-b", c.Tests.GIT_MAIN))
+    for key, value in (
+        ("user.name", "Attestation Test"),
+        ("user.email", "attestation@example.test"),
+        ("gpg.format", "ssh"),
+        ("commit.gpgsign", "false"),
+    ):
+        test_u.Tests.git_bootstrap(root, ("config", key, value))
+    test_u.Tests.git_bootstrap(
+        root,
+        (
+            "remote",
+            "add",
+            c.Infra.GIT_ORIGIN,
+            "https://github.example/flext/fixture.git",
+        ),
+    )
     key_path = root / "signing_key"
     tm.ok(
         cli_u.Cli.run_raw(
