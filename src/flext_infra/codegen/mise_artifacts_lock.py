@@ -1,4 +1,4 @@
-"""Descriptor-bound generation lock in the exact worktree Git directory."""
+"""Descriptor-bound generation lock over an existing worktree Git HEAD."""
 
 from __future__ import annotations
 
@@ -12,9 +12,9 @@ from typing import Never
 
 from filelock import lock_descriptor, unlock_descriptor
 
-from flext_infra import c, m, u
+from flext_infra import m, t, u
 
-_LEASE_FAILURES: tuple[type[BaseException], ...] = (
+_LEASE_FAILURES: t.VariadicTuple[type[BaseException]] = (
     Exception,
     BaseExceptionGroup,
     GeneratorExit,
@@ -24,7 +24,7 @@ _LEASE_FAILURES: tuple[type[BaseException], ...] = (
 
 
 class FlextInfraMiseLock:
-    """Own one authenticated native lock without locking mutable Git refs."""
+    """Own one authenticated native lock on a worktree-specific Git anchor."""
 
     _UNSAFE_MODE_BITS = 0o7133
 
@@ -33,63 +33,42 @@ class FlextInfraMiseLock:
     def lease(
         identity: m.Infra.GitIdentityReport,
     ) -> Generator[m.Infra.MiseToolchainLockLease]:
-        """Lock one dedicated per-worktree administrative file exactly once."""
+        """Lock existing per-worktree ``git_dir/HEAD`` exactly once."""
         if not identity.is_inside_work_tree:
             raise OSError(
                 errno.EINVAL,
                 f"generation lock requires a Git worktree: {identity.repo_root}",
             )
-        head_path = identity.git_dir / "HEAD"
-        lock_path = identity.git_dir / c.Infra.CODEGEN_TRANSACTION_LOCK_FILENAME
-        head_state = FlextInfraMiseLock._snapshot(head_path)
-        descriptor = os.open(
-            lock_path,
-            FlextInfraMiseLock._open_flags(),
-            c.Infra.CODEGEN_TRANSACTION_LOCK_MODE,
-        )
-        try:
-            lock_state = FlextInfraMiseLock._snapshot_lock(lock_path)
-        except _LEASE_FAILURES:
-            os.close(descriptor)
-            raise
+        path = identity.git_dir / "HEAD"
+        before = FlextInfraMiseLock._snapshot(path)
+        descriptor = os.open(path, FlextInfraMiseLock._open_flags())
         acquired = False
         authenticated = False
         try:
-            FlextInfraMiseLock._assert_descriptor(lock_state, descriptor)
-            acquired = FlextInfraMiseLock._acquire(descriptor, lock_path)
-            FlextInfraMiseLock._assert_held(lock_state, head_state, descriptor)
+            FlextInfraMiseLock._assert_descriptor(before, descriptor)
+            acquired = FlextInfraMiseLock._acquire(descriptor, path)
+            FlextInfraMiseLock._assert_held(before, descriptor)
             authenticated = True
-            yield m.Infra.MiseToolchainLockLease(
-                descriptor=descriptor, lock_state=lock_state, head_state=head_state
-            )
+            yield m.Infra.MiseToolchainLockLease(descriptor=descriptor, state=before)
         except _LEASE_FAILURES as operation_error:
             try:
                 FlextInfraMiseLock._release(
-                    lock_state,
-                    head_state,
-                    descriptor,
-                    acquired=acquired,
-                    authenticated=authenticated,
+                    before, descriptor, acquired=acquired, authenticated=authenticated
                 )
             except _LEASE_FAILURES as release_error:
                 FlextInfraMiseLock._raise_failures(
                     [operation_error, release_error],
-                    "generation operation and lock release failed",
+                    "generation operation and Git HEAD lock release failed",
                 )
             raise
         else:
             FlextInfraMiseLock._release(
-                lock_state,
-                head_state,
-                descriptor,
-                acquired=acquired,
-                authenticated=authenticated,
+                before, descriptor, acquired=acquired, authenticated=authenticated
             )
 
     @staticmethod
     def _release(
-        expected_lock: m.Cli.AtomicFileState,
-        expected_head: m.Cli.AtomicFileState,
+        expected: m.Cli.AtomicFileState,
         descriptor: int,
         *,
         acquired: bool,
@@ -99,9 +78,7 @@ class FlextInfraMiseLock:
         failures: list[BaseException] = []
         if authenticated:
             try:
-                FlextInfraMiseLock._assert_held(
-                    expected_lock, expected_head, descriptor
-                )
+                FlextInfraMiseLock._assert_held(expected, descriptor)
             except _LEASE_FAILURES as exc:
                 failures.append(exc)
         if acquired:
@@ -114,9 +91,7 @@ class FlextInfraMiseLock:
         except _LEASE_FAILURES as exc:
             failures.append(exc)
         if failures:
-            FlextInfraMiseLock._raise_failures(
-                failures, "generation lock release failed"
-            )
+            FlextInfraMiseLock._raise_failures(failures, "Git HEAD lock release failed")
 
     @staticmethod
     def _acquire(descriptor: int, path: Path) -> bool:
@@ -136,66 +111,44 @@ class FlextInfraMiseLock:
 
     @staticmethod
     def _snapshot(path: Path) -> m.Cli.AtomicFileState:
-        """Read complete file identity through the canonical atomic owner."""
+        """Read complete HEAD identity through the canonical atomic owner."""
         snapshot = u.Cli.atomic_read_binary_file_state(path, required=True)
         if snapshot.failure:
             raise OSError(
                 errno.EPERM,
-                snapshot.error or f"cannot authenticate generation state: {path}",
+                snapshot.error or f"cannot authenticate generation lock HEAD: {path}",
             )
         state = snapshot.value
         mode = state.mode
         if mode is None:
             raise FileNotFoundError(
-                errno.ENOENT, f"generation state is absent: {path}", path
+                errno.ENOENT, f"generation lock HEAD is absent: {path}", path
             )
         if mode & FlextInfraMiseLock._UNSAFE_MODE_BITS or not mode & stat.S_IRUSR:
             raise PermissionError(
-                errno.EPERM, f"generation state has unsafe mode {mode:#o}: {path}", path
-            )
-        return state
-
-    @staticmethod
-    def _snapshot_lock(path: Path) -> m.Cli.AtomicFileState:
-        """Require the dedicated administrative lock to remain owner-private."""
-        state = FlextInfraMiseLock._snapshot(path)
-        if state.mode != c.Infra.CODEGEN_TRANSACTION_LOCK_MODE:
-            raise PermissionError(
                 errno.EPERM,
-                "generation lock requires mode "
-                f"{c.Infra.CODEGEN_TRANSACTION_LOCK_MODE:#o}, "
-                f"observed {state.mode:#o}: {path}",
+                f"generation lock HEAD has unsafe mode {mode:#o}: {path}",
                 path,
             )
         return state
 
     @staticmethod
-    def _assert_held(
-        expected_lock: m.Cli.AtomicFileState,
-        expected_head: m.Cli.AtomicFileState,
-        descriptor: int,
-    ) -> None:
-        """Require the lock descriptor and observed HEAD to remain unchanged."""
-        observed_lock = FlextInfraMiseLock._snapshot_lock(expected_lock.path)
-        if observed_lock != expected_lock:
+    def _assert_held(expected: m.Cli.AtomicFileState, descriptor: int) -> None:
+        """Require pathname, parent, bytes, and descriptor to remain unchanged."""
+        observed = FlextInfraMiseLock._snapshot(expected.path)
+        if observed != expected:
             raise OSError(
                 errno.ESTALE,
-                f"generation lock pathname changed while held: {expected_lock.path}",
-                expected_lock.path,
+                f"generation lock HEAD changed while held: {expected.path}",
+                expected.path,
             )
-        observed_head = FlextInfraMiseLock._snapshot(expected_head.path)
-        if observed_head != expected_head:
-            raise OSError(
-                errno.ESTALE,
-                f"generation observed HEAD changed while held: {expected_head.path}",
-                expected_head.path,
-            )
-        FlextInfraMiseLock._assert_descriptor(expected_lock, descriptor)
+        FlextInfraMiseLock._assert_descriptor(expected, descriptor)
 
     @staticmethod
     def _assert_descriptor(expected: m.Cli.AtomicFileState, descriptor: int) -> None:
-        """Bind the exact physical lock state to the opened descriptor."""
-        observed = os.fstat(descriptor)
+        """Bind the exact HEAD physical state to the opened descriptor."""
+        before = os.fstat(descriptor)
+        after = os.fstat(descriptor)
         expected_key = (
             expected.mode,
             expected.device,
@@ -204,7 +157,10 @@ class FlextInfraMiseLock:
             expected.file_attributes,
             expected.reparse_tag,
         )
-        if FlextInfraMiseLock._state_key(observed) != expected_key:
+        if (
+            FlextInfraMiseLock._state_key(before) != expected_key
+            or FlextInfraMiseLock._state_key(after) != expected_key
+        ):
             raise OSError(
                 errno.ESTALE,
                 f"generation lock descriptor changed while held: {expected.path}",
@@ -229,15 +185,15 @@ class FlextInfraMiseLock:
 
     @staticmethod
     def _open_flags() -> int:
-        """Build a dedicated, non-following, non-inheritable lock contract."""
-        flags = os.O_RDWR | os.O_CREAT | os.O_NONBLOCK
+        """Build a read-only, non-creating, non-inheritable open contract."""
+        flags = os.O_RDONLY | os.O_NONBLOCK
         flags |= getattr(os, "O_CLOEXEC", 0)
         if os.name == "nt":
             flags |= getattr(os, "O_BINARY", 0) | getattr(os, "O_NOINHERIT", 0)
         else:
             nofollow = getattr(os, "O_NOFOLLOW", None)
             if nofollow is None:
-                raise OSError(errno.ENOTSUP, "no-follow lock open is unsupported")
+                raise OSError(errno.ENOTSUP, "Git HEAD no-follow open is unsupported")
             flags |= nofollow
         return flags
 

@@ -24,7 +24,7 @@ from flext_infra import c, m, u
 from flext_infra.base import s
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 logger = u.fetch_logger(__name__)
 
@@ -61,7 +61,7 @@ class FlextInfraPythonVersionEnforcer(s[int]):
         required_minor = self._read_required_minor(root)
         discovered_projects = u.Infra.discover_projects(root)
         if discovered_projects.failure:
-            projects: tuple[Path, ...] = ()
+            projects: t.VariadicTuple[Path] = ()
         else:
             projects = tuple(
                 project.path

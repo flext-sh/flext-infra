@@ -125,7 +125,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
             )
             raise RuntimeError(msg) from exc
         probes: list[p.AttributeProbe] = []
-        parent_map = cls._rope_parent_map(tree)
+        parent_map = u.Infra.ast_parent_map(tree)
         for node in u.Infra.walk_ast_nodes(tree):
             if u.Infra.node_kind(node) != "Constant":
                 continue
@@ -244,25 +244,8 @@ class FlextInfraRefactorDeclarativeEnforcement:
         parent_kind = u.Infra.node_kind(parent)
         return parent_kind in {"arguments", "arg", "keyword", "AnnAssign"} or (
             parent_kind in {"Assign", "AnnAssign"}
-            and cls._is_module_level(parent, parent_map)
+            and u.Infra.is_module_level_node(parent, parent_map)
         )
-
-    @classmethod
-    def _is_module_level(
-        cls, node: p.AttributeProbe, parent_map: dict[int, p.AttributeProbe]
-    ) -> bool:
-        """Return True when ``node`` is a direct child of the module body."""
-        current = node
-        while True:
-            parent = parent_map.get(id(current))
-            if parent is None:
-                return False
-            parent_kind = u.Infra.node_kind(parent)
-            if parent_kind in {"ClassDef", "FunctionDef", "AsyncFunctionDef"}:
-                return False
-            if parent_kind == "Module":
-                return True
-            current = parent
 
     @staticmethod
     def _probe(
@@ -272,22 +255,3 @@ class FlextInfraRefactorDeclarativeEnforcement:
         return SimpleNamespace(
             file_path=str(file_path), line=line, rule_id=rule_id, **kwargs
         )
-
-    @staticmethod
-    def _rope_parent_map(root: p.AttributeProbe) -> dict[int, p.AttributeProbe]:
-        """Build a child-id -> parent map for the full rope AST."""
-        parent_map: dict[int, p.AttributeProbe] = {}
-        stack: list[p.AttributeProbe] = [root]
-        while stack:
-            parent = stack.pop()
-            for field_name in getattr(parent, "_fields", ()):
-                value = getattr(parent, field_name, None)
-                if isinstance(value, list):
-                    for child in value:
-                        if hasattr(child, "_fields"):
-                            parent_map[id(child)] = parent
-                            stack.append(child)
-                elif hasattr(value, "_fields"):
-                    parent_map[id(value)] = parent
-                    stack.append(value)
-        return parent_map

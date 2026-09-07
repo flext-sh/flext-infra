@@ -6,6 +6,8 @@ from collections.abc import Iterator, Mapping
 from types import MappingProxyType
 from typing import Any, Never, override
 
+from flext_infra import t
+
 
 class ImmutableEmptyMapping[K, V](Mapping[K, V]):
     """Fully typed immutable empty mapping used as a field factory.
@@ -37,4 +39,4 @@ def immutable_empty_mapping() -> Mapping[Any, Never]:
 
 
 # Internal owner: direct module imports are intentional; no facade ABI is published.
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

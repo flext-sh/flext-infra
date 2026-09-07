@@ -54,7 +54,7 @@ class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
     def _git_create_checkpoint_commit(
         cls,
         worktree_root: Path,
-        gitlink_exclusions: tuple[str, ...],
+        gitlink_exclusions: t.VariadicTuple[str],
         excluded: t.SequenceOf[Path],
         message: str,
     ) -> str:
@@ -113,7 +113,7 @@ class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
         return commit_sha
 
     @staticmethod
-    def _transaction_exclusion_pathspecs() -> tuple[str, ...]:
+    def _transaction_exclusion_pathspecs() -> t.VariadicTuple[str]:
         """Pathspecs that exclude tool-cache directories from operation deltas."""
         return tuple(
             f":(exclude){name}"

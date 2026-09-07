@@ -32,7 +32,9 @@ class FlextInfraRefactorLazyImportFixer(FlextInfraRopeTransformer):
         new_source = "".join(new_lines)
         return new_source, list(self.changes)
 
-    def scan_lines_for_hoist(self, lines: list[str]) -> tuple[list[str], list[str]]:
+    def scan_lines_for_hoist(
+        self, lines: t.SequenceOf[str]
+    ) -> tuple[list[str], list[str]]:
         """Scan source lines, hoist body-local imports, and keep remaining lines."""
         existing_imports: set[str] = set()
         hoisted: list[str] = []
@@ -66,8 +68,8 @@ class FlextInfraRefactorLazyImportFixer(FlextInfraRopeTransformer):
         stripped_line: str,
         line: str,
         body_indent: int,
-        scan_state: tuple[set[str], list[str]],
-    ) -> tuple[bool, bool]:
+        scan_state: t.Pair[set[str], t.SequenceOf[str]],
+    ) -> t.Pair[bool, bool]:
         """Process one line inside a body and return (consumed, still_in_body)."""
         existing_imports, hoisted = scan_state
         cur_indent = self.body_line_indent(

@@ -31,17 +31,6 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         str | None, m.Field(description="Project filter (comma-separated)")
     ] = None
 
-    def _selected_projects(
-        self, projects: t.SequenceOf[p.Infra.ProjectInfo]
-    ) -> t.SequenceOf[p.Infra.ProjectInfo]:
-        """Apply comma-separated project filter when provided."""
-        if self.project_filter is None:
-            return projects
-        selected = {
-            item.strip() for item in self.project_filter.split(",") if item.strip()
-        }
-        return [project for project in projects if project.name in selected]
-
     @staticmethod
     def _package_name_for_project(project: p.Infra.ProjectInfo) -> str | None:
         """Resolve the importable package name for a project root."""
@@ -158,7 +147,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         projects_result = u.Infra.projects(self.repository_root)
         if projects_result.failure:
             return r[m.Infra.ValidationReport].from_failure(projects_result)
-        projects = self._selected_projects(projects_result.unwrap())
+        projects = self._filtered_projects(projects_result.unwrap())
         if not projects:
             return r[m.Infra.ValidationReport].ok(
                 m.Infra.ValidationReport(

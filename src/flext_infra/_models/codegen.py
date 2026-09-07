@@ -95,7 +95,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             ),
         ] = None
         projects: Annotated[
-            tuple[FlextInfraModelsCodegen.MiseToolchainProjectLayout, ...],
+            t.VariadicTuple[FlextInfraModelsCodegen.MiseToolchainProjectLayout],
             m.Field(min_length=1, description="Ordered complete workspace topology"),
         ]
 
@@ -126,7 +126,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             ),
         ]
         sources: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(description="Ordered YAML states that produced the replacement"),
         ] = ()
 
@@ -195,7 +195,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             m.Field(description="Stable workspace topology"),
         ]
         projects: Annotated[
-            tuple[FlextInfraModelsCodegen.MiseToolchainProjectState, ...],
+            t.VariadicTuple[FlextInfraModelsCodegen.MiseToolchainProjectState],
             m.Field(min_length=1, description="Ordered complete workspace topology"),
         ]
 
@@ -749,22 +749,22 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             m.Field(description="Durable publication transition state"),
         ]
         projects: Annotated[
-            tuple[FlextInfraModelsCodegen.CodegenJournalProject, ...],
+            t.VariadicTuple[FlextInfraModelsCodegen.CodegenJournalProject],
             m.Field(
                 min_length=1,
                 description="Ordered project selectors owned by this transaction",
             ),
         ]
         sources: Annotated[
-            tuple[FlextInfraModelsCodegen.CodegenJournalSource, ...],
+            t.VariadicTuple[FlextInfraModelsCodegen.CodegenJournalSource],
             m.Field(description="Source identities used by staging"),
         ]
         directories: Annotated[
-            tuple[FlextInfraModelsCodegen.CodegenJournalDirectory, ...],
+            t.VariadicTuple[FlextInfraModelsCodegen.CodegenJournalDirectory],
             m.Field(description="Directories whose prior absence authorizes creation"),
         ]
         entries: Annotated[
-            tuple[FlextInfraModelsCodegen.CodegenJournalEntry, ...],
+            t.VariadicTuple[FlextInfraModelsCodegen.CodegenJournalEntry],
             m.Field(description="Recoverable artifact transitions"),
         ]
 
@@ -831,7 +831,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             m.Field(description="Exact journal CAS state for the next transition"),
         ]
         written_files: Annotated[
-            tuple[Path, ...],
+            t.VariadicTuple[Path],
             m.Field(description="Ordered destinations published by completed phases"),
         ] = ()
 
@@ -855,11 +855,11 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             m.Field(description="Generation phase that produced this receipt"),
         ]
         files: Annotated[
-            tuple[FlextInfraConfigModels.CodegenFilePlan, ...],
+            t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan],
             m.Field(description="Ordered desired publication states"),
         ]
         inputs: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(description="Ordered complete authenticated planner inputs"),
         ]
 

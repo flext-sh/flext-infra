@@ -61,29 +61,13 @@ class FlextInfraConstantsMake:
     # Mutating gates (`format`) are excluded: they rewrite files, so they are
     # owned by `make fmt APPLY=Y` / `make fix APPLY=Y` and a read-only verb
     # must never invoke them.
-    CANONICAL_GATE_IDS: Final[tuple[str, ...]] = tuple(
+    CANONICAL_GATE_IDS: Final[t.VariadicTuple[str]] = tuple(
         gate
         for gate in FlextInfraConstantsCheck.SARIF_TOOL_INFO
         if gate not in FlextInfraConstantsCheck.MUTATING_GATES
     )
-    # Operator instruction 2026-09-07: the default check scope is the
-    # last-authorized nine-gate set (green baseline 147f03888). The gates
-    # introduced by the 2026-09-06 conformance wave stay registered and
-    # reachable through an explicit `make check WHAT=<gate>` selection, but
-    # they are not part of the default pipeline and their adoption debt is
-    # not authorized for payment.
-    CANONICAL_DEFAULT_GATE_IDS: Final[tuple[str, ...]] = (
-        "lint",
-        "pyrefly",
-        "mypy",
-        "pyright",
-        "security",
-        "markdown",
-        "smells",
-        "direnv",
-        "duplication",
-    )
-    CANONICAL_FIXABLE_GATE_IDS: Final[tuple[str, ...]] = (
+    CANONICAL_DEFAULT_GATE_IDS: Final[t.VariadicTuple[str]] = CANONICAL_GATE_IDS
+    CANONICAL_FIXABLE_GATE_IDS: Final[t.VariadicTuple[str]] = (
         "lint",
         "markdown",
         "canonical-alias",

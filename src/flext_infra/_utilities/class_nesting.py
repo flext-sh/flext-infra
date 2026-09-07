@@ -73,7 +73,7 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
     @staticmethod
     def class_nesting_plan(
         rope_workspace: p.Infra.RopeWorkspaceDsl, file_path: Path
-    ) -> p.Result[tuple[m.Infra.ClassNestingViolation, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.ClassNestingViolation]]:
         """Return top-level classes that must move under the declared module owner."""
         resolved_file = file_path.resolve()
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(resolved_file.name)
@@ -140,7 +140,7 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
         *,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
-    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Plan all structural nesting and consumer rewrites without effects."""
         modules = {
             entry.file_path.resolve(): entry for entry in rope_workspace.modules()
