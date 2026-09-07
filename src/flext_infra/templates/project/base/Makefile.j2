@@ -14,18 +14,26 @@
 
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
+ifneq ($(strip $(WHAT)),)
+$(error WHAT selectors are retired; invoke the canonical verb and use APPLY=Y as the sole mutation flag)
+endif
+ifeq ($(filter command line override,$(origin SETUP_BOOTSTRAP_ONLY)),)
+ifneq ($(filter setup,$(MAKECMDGOALS)),)
+SETUP_BOOTSTRAP_ONLY := Y
+export SETUP_BOOTSTRAP_ONLY
+endif
+endif
 
 # === SECTION: project identity (managed) ===
-# Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
+# Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
 PROJECT_NAME := {{ dist }}
 MAKE_PROFILE := {{ make_profile }}
-WORKSPACE_ROOT_REL := {{ workspace_root_rel }}
-# === SECTION: workspace subprojects (managed) ===
-# Source: config:workspace_subprojects (list), config:workspace_repositories (list)
+REPOSITORY_ROOT_REL := {{ repository_root_rel }}
+# === SECTION: workspace declared_repositories (managed) ===
+# Source: config:workspace_declared_repositories (list), config:workspace_repositories (list)
 # Computed: MANAGED_GITLINKS mirrors the read-only local .gitmodules topology.
-WORKSPACE_SUBPROJECTS :={% for subproject in workspace_subprojects %} {{ subproject }}{% endfor %}
-WORKSPACE_ROOT_PACKAGE := {% if workspace_root_package %}Y{% else %}N{% endif %}
-MANAGED_GITLINKS :={% if make_profile == "workspace" %}$(WORKSPACE_SUBPROJECTS){% endif %}
+DECLARED_REPOSITORIES :={% for declared_repository in workspace_declared_repositories %} {{ declared_repository }}{% endfor %}
+MANAGED_GITLINKS :={% if make_profile == "workspace" %}$(DECLARED_REPOSITORIES){% endif %}
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.{% for repository in workspace_repositories %} {{ repository.distribution }}:{{ repository.path }}{% endfor %}
 UV_LINK_MODE := {{ uv_link_mode }}
 # End SECTION: project identity
@@ -114,29 +122,24 @@ TRACKED_MISE := $(PROJECT_ROOT)/bin/mise.cmd
 else
 TRACKED_MISE := $(PROJECT_ROOT)/bin/mise
 endif
-SETUP_MISE ?= $(if $(wildcard $(TRACKED_MISE)),$(TRACKED_MISE),$(if $(filter $(SETUP_MISE_VERSION),$(SYSTEM_MISE_VERSION)),$(SYSTEM_MISE),$(TRACKED_MISE)))
-MISE_LOCK_PLATFORMS := {{ mise_lock_platforms | join(",") }}
-MISE_LOCK_PROJECTS := .{% if make_profile == "workspace" %}{% for subproject in workspace_subprojects %} {{ subproject }}{% endfor %}{% endif %}
-MISE_PROJECT_CONFIG_ENV := MISE_GLOBAL_CONFIG_FILE="$(PROJECT_ROOT)/.mise.toml" MISE_CEILING_PATHS="$(abspath $(PROJECT_ROOT)/..)"
-override export FLEXT_PYTEST_TARGET_RAW := tests
-WORKSPACE ?= $(PROJECT_ROOT)
-# === SECTION: WORKSPACE_ROOT isolation (managed) ===
-# Source: the checkout that owns this Makefile.
-# Rule: a linked worktree is its own writable lane. Parent, superproject and
-# primary-worktree discovery never redirect generated writes or runtime state.
-WORKSPACE_ROOT := $(PROJECT_ROOT)
-# End SECTION: WORKSPACE_ROOT isolation
-# A workspace lane is always registered at the workspace root. Other verbs may
-# select a subproject through PROJECT while workspace orchestration keeps the root
-# so one Git worktree owns the complete project matrix.
-ifeq ($(filter command line override,$(origin WORKSPACE)),)
-ifneq ($(strip $(PROJECT)),)
-ifneq ($(filter $(PROJECT),$(WORKSPACE_SUBPROJECTS)),)
-override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)
+override SETUP_MISE := $(TRACKED_MISE)
+override export FLEXT_PYTEST_TARGET_RAW := {{ make.testmon_cache.target_directory }}
+PROJECT_STATE_ROOT := $(abspath $(PROJECT_ROOT)/../{{ state_directory_name }}/$(notdir $(PROJECT_ROOT)))
+PROJECT_SCRATCH_ROOT := $(PROJECT_STATE_ROOT)/{{ scratch_namespace }}
+TESTMON_DATAFILE := $(PROJECT_STATE_ROOT)/{{ make.testmon_cache.namespace }}/{{ make.testmon_cache.database_filename }}
+export TESTMON_DATAFILE
+# === SECTION: REPOSITORY_ROOT isolation (managed) ===
+# Source: computed (rule: derive from current checkout unless caller overrides)
+# Rule: REPOSITORY_ROOT is always derived from the current checkout unless the
+# caller passed it on the command line or via an override origin. An inherited
+# environment REPOSITORY_ROOT (e.g. a leaked .envrc export from a foreign checkout)
+# must never redirect verbs to another working tree. The git queries therefore
+# run inside MAKEFILE_ROOT: run from a foreign CWD they would report THAT
+# checkout's topology and redirect the verb to the wrong tree.
+ifeq ($(filter command line override,$(origin REPOSITORY_ROOT)),)
+REPOSITORY_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$(MAKEFILE_ROOT)"; fi)
 endif
-endif
-endif
-
+# End SECTION: REPOSITORY_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
 #        config:make.check_gates_default
@@ -251,6 +254,15 @@ ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV_BIN))
 SANITIZED_CALLER_PATH :=
 endif
 endif
+ifneq ($(filter Y,$(SETUP_BOOTSTRAP_ONLY)),)
+RESOLVED_UV :=
+else
+RESOLVED_UV := $(shell PATH="$(SANITIZED_CALLER_PATH)" command -v "$(UV_REQUESTED)")
+ifneq ($(.SHELLSTATUS),0)
+$(error Required uv executable not found: $(UV_REQUESTED))
+endif
+endif
+override UV := $(if $(strip $(RESOLVED_UV)),$(RESOLVED_UV),$(UV_REQUESTED))
 override FLEXT_INFRA_PYTHON := $(FLEXT_INFRA_RUNTIME_PYTHON)
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
@@ -270,7 +282,7 @@ endif
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
-ALLOWED_PROJECTS := . $(WORKSPACE_SUBPROJECTS)
+ALLOWED_PROJECTS := . $(DECLARED_REPOSITORIES)
 else
 CODEGEN_SCOPE := self
 ALLOWED_PROJECTS := .
@@ -297,36 +309,16 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 	$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra {{ workspace_cli_group }} orchestrate
-REQUESTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
-{% if make_profile == "workspace" %}
-{% if workspace_root_package %}
-# A publishing workspace root runs its own gates locally and sends only member
-# paths to the orchestrator. FILE narrows root-owned tests before orchestration.
-WORKSPACE_FILE_MEMBER := $(firstword $(foreach project,$(WORKSPACE_SUBPROJECTS),$(if $(filter $(project)/%,$(FILE)),$(project))))
-DEFAULT_PROJECTS := $(if $(strip $(FILE)),$(if $(WORKSPACE_FILE_MEMBER),$(WORKSPACE_SUBPROJECTS),.),. $(WORKSPACE_SUBPROJECTS))
-SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
-{% else %}
-# A non-publishing workspace root owns no local gate implementation. Selecting
-# `.` maps to members so it can never orchestrate itself recursively.
-DEFAULT_PROJECTS := $(WORKSPACE_SUBPROJECTS)
-SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(if $(filter .,$(REQUESTED_PROJECTS)),$(WORKSPACE_SUBPROJECTS),$(REQUESTED_PROJECTS)),$(DEFAULT_PROJECTS))
-{% endif %}
-{% else %}
-DEFAULT_PROJECTS := .
-SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
-{% endif %}
-SELECTED_ROOT_PROJECT := $(filter .,$(SELECTED_PROJECTS))
-SELECTED_SUBPROJECTS := $(filter-out .,$(SELECTED_PROJECTS))
-WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_SUBPROJECTS),--projects $(project))
-WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
-WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}") $(if $(strip $(FLEXT_PYTEST_WHAT_RAW)),--what "$${FLEXT_PYTEST_WHAT_RAW}")
-DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
-ORCHESTRATED_VERBS :={% for verb in orchestrated_verbs %} {{ verb }}{% endfor %}
+DEFAULT_PROJECTS := $(DECLARED_REPOSITORIES){% if make_profile != "workspace" %} .{% endif %}
+SELECTED_PROJECTS := $(DEFAULT_PROJECTS)
+WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
+DOCS_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
 
-# Prefer PROJECT_ROOT/src so the Makefile owner always wins over any stale
-# editable metadata inside its checkout-local environment (terminus T4 /
-# path-purity).
-UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT UV_PROJECT_ENVIRONMENT="$(RUNTIME_VENV)" PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
+# A borrowed RUNTIME_VENV keeps the primary editable install. Clearing
+# PYTHONPATH would make `make test` in a linked worktree execute that primary
+# tree instead of this checkout. Prefer PROJECT_ROOT/src so the Makefile owner
+# always wins over the shared editable (terminus T4 / path-purity).
+UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT -u PROJECT_ROOT PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # Scaffold dev tools live in the validated optional dev
@@ -335,9 +327,10 @@ PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT
 # no local venv -- RUNTIME_VENV is RUNTIME_ROOT/.venv -- so every checkout that
 # provisions a shared environment must describe the same contents. A subproject
 # syncing without --all-packages treats the siblings already installed there as
-# surplus and uninstalls them, undoing the root's provisioning. A standalone
-# project owns its venv alone and has no workspace packages to include.
-SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(WORKSPACE_SUBPROJECTS)),1,))
+# surplus and uninstalls them, undoing the root's provisioning and leaving
+# `uv sync --check` permanently divergent. A standalone project owns its venv
+# alone and has no workspace packages to include.
+SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(DECLARED_REPOSITORIES)),1,))
 UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups
 
 ifneq ($(strip $(PROJECT)),)
@@ -558,9 +551,9 @@ _builtin_deps_upgrade: _builtin_require_environment
 	if [ -z "$$selected" ]; then selected="."; fi; \
 	set --; \
 	for project in $$selected; do set -- "$$@" --projects "$$project"; done; \
-	$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" \
-		--apply $(if $(strip $(DEPENDENCY)),,--rewrite-constraints) --skip-check "$$@"
-	$(call _run_for_selected_projects,)
+	$(PROJECT_FLEXT_INFRA) deps modernize --repository-root "$(PROJECT_ROOT)" \
+		--apply --rewrite-constraints --skip-check "$$@"
+	$(call _run_for_all_projects,)
 
 {% if make_profile == "workspace" %}
 _builtin_build_artifacts:
@@ -1029,11 +1022,6 @@ _builtin_gen_check:
 	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 	$(call _generated_docs,--check)
 	$(call _mise_artifacts_check)
-
-_builtin_gen_init:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --apply
-	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --check
 
 _builtin_gen_all:
 	$(call _require_apply)

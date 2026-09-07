@@ -189,8 +189,8 @@ class FlextInfraProtocolsBase(Protocol):
         """Scaffold-only project metadata consumed by initial generation."""
 
         @property
-        def version(self) -> str:
-            """Declared release version, the SSOT for ``[project].version``."""
+        def repository_root_rel(self) -> str:
+            """Declared relative path from the project to its workspace root."""
             ...
 
     @runtime_checkable
@@ -241,7 +241,9 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def subprojects(self) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
+        def declared_repositories(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
             """Direct governed repositories declared by local .gitmodules."""
             ...
 
@@ -520,7 +522,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Contract for project discovery services."""
 
         def discover_projects(
-            self, workspace_root: Path
+            self, repository_root: Path
         ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
             """Discover projects in a workspace root."""
             ...

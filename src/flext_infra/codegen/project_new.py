@@ -129,6 +129,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             repository=repository,
             project=m.Infra.ProjectSpec(
                 package_name=package_name,
+                workspace_root_rel=".",
                 class_stem=class_stem,
                 namespace=project_namespace,
                 constant_name=self.name,
@@ -146,7 +147,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
                 homepage=repository_page,
                 documentation=repository_page,
                 repository_root_rel=".",
-                workspace_root_rel=".",
+                repository_root_rel=".",
                 year=self.year,
             ),
         )

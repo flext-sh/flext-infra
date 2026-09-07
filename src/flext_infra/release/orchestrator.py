@@ -16,7 +16,7 @@ class FlextInfraReleaseOrchestrator(
     FlextInfraReleaseOrchestratorPhases,
     FlextInfraProjectSelectionServiceBase[bool],
 ):
-    """Run one phase of the release protocol against the workspace root.
+    """Run one phase of the release protocol against the repository root.
 
     The version lives only in ``pyproject.toml``; the protocol derives every
     change from merged pull-request titles and is the sole writer.

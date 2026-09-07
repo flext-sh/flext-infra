@@ -50,9 +50,25 @@ def _repository(
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
         name="workspace",
-        repository=_repository("workspace", role=_ROLE.WORKSPACE, path="."),
+<<<<<<< HEAD
+        repository=_repository(
+            "workspace",
+            role=_ROLE.WORKSPACE,
+            path=".",
+            checkout=c.Infra.CheckoutKind.ROOT,
+        ),
         subprojects=(
+            _repository(
+                "flext-core",
+                role=_ROLE.STANDALONE,
+                path="flext-core",
+                checkout=c.Infra.CheckoutKind.SUBMODULE,
+            ),
+=======
+        repository=_repository("workspace", role=_ROLE.WORKSPACE, path="."),
+        declared_repositories=(
             _repository("flext-core", role=_ROLE.STANDALONE, path="flext-core"),
+>>>>>>> origin/0.12.0-dev
         ),
     )
 
@@ -61,7 +77,7 @@ def _workspace_with_consumer() -> m.Infra.WorkspaceSpec:
     workspace = _workspace()
     consumer = _repository("flext-api", role=_ROLE.STANDALONE, path="flext-api")
     return workspace.model_copy(
-        update={"subprojects": (*workspace.subprojects, consumer)}
+        update={"declared_repositories": (*workspace.declared_repositories, consumer)}
     )
 
 
@@ -118,7 +134,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         # The expected specifier is derived from the same declared repository
         # contract the generator reads - never a hardcoded URL or branch.
-        project = workspace.subprojects[0]
+        project = workspace.declared_repositories[0]
         tm.that(
             dependencies,
             eq=(f"{project.distribution} @ git+{project.url}@{_PROVIDER_SPEC.branch}",),
@@ -126,9 +142,9 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
     def test_publishable_project_keeps_catalog_git_provenance(self) -> None:
         workspace = _workspace_with_consumer()
-        provider = workspace.subprojects[0]
+        provider = workspace.declared_repositories[0]
         publishable_project = (
-            f'[project]\nname = "{workspace.subprojects[1].distribution}"\n'
+            f'[project]\nname = "{workspace.declared_repositories[1].distribution}"\n'
             'version = "0.1.0"\n'
             'dependencies = ["flext-core"]\n'
         )
@@ -155,7 +171,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
     def test_publishable_project_pins_unmapped_provider_source_to_branch(self) -> None:
         """Derive the declared branch for a provider absent from subprojects."""
         workspace = _workspace_with_consumer()
-        consumer = workspace.subprojects[1]
+        consumer = workspace.declared_repositories[1]
         result = u.Infra.pyproject_dependencies_conform(
             (
                 f'[project]\nname = "{consumer.distribution}"\n'
@@ -185,7 +201,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
     ) -> None:
         """Prove uv resolves project Git metadata through the root overlay."""
         workspace = _workspace_with_consumer()
-        provider, consumer = workspace.subprojects
+        provider, consumer = workspace.declared_repositories
         root = tmp_path / "workspace"
         provider_root = root / provider.path
         consumer_root = root / consumer.path
@@ -253,7 +269,11 @@ workspace = true
             )
         )
 
+<<<<<<< HEAD
+        tm.that(lock_result.outcome.raw_return_code, eq=0)
+=======
         tm.that(u.Cli.process_succeeded(lock_result.outcome), eq=True)
+>>>>>>> origin/0.12.0-dev
         lock_content = (root / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8")
         packages = tu.Tests.toml_tables_at(lock_content, "package")
         provider_packages = [
@@ -274,7 +294,7 @@ workspace = true
             workspace_mode=c.Infra.MakeProfile.STANDALONE,
         )
 
-        project = workspace.subprojects[0]
+        project = workspace.declared_repositories[0]
         rendered = tm.ok(result)
         dependencies = tu.Tests.toml_strings_at(rendered, "project", "dependencies")
         tm.that(

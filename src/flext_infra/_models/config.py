@@ -1827,10 +1827,10 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
-        workspace_root_rel: Annotated[
+        repository_root_rel: Annotated[
             t.NonEmptyStr, m.Field(description="Relative workspace root path")
         ]
-        workspace_subprojects: Annotated[
+        workspace_declared_repositories: Annotated[
             tuple[str, ...], m.Field(description="Declared workspace subproject paths")
         ] = ()
         workspace_root_package: Annotated[
@@ -2141,7 +2141,7 @@ class FlextInfraConfigModels:
         documentation: Annotated[
             t.NonEmptyStr, m.Field(description="Project documentation URL")
         ]
-        workspace_root_rel: Annotated[
+        repository_root_rel: Annotated[
             t.NonEmptyStr,
             m.Field(description="Declared relative path to the workspace root"),
         ]
@@ -2235,7 +2235,7 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Generated Make execution profile"),
         ]
-        workspace_root_rel: Annotated[
+        repository_root_rel: Annotated[
             t.NonEmptyStr,
             m.Field(description="Relative path to the declared workspace root"),
         ]
@@ -2246,7 +2246,7 @@ class FlextInfraConfigModels:
                 description=("Make directive that includes the custom Make surface"),
             ),
         ]
-        workspace_subprojects: Annotated[
+        workspace_declared_repositories: Annotated[
             tuple[str, ...], m.Field(description="Ordered workspace subproject paths")
         ] = ()
         workspace_root_package: Annotated[
@@ -2468,7 +2468,7 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.ProjectSpec | None,
             m.Field(description="Metadata required only when materializing a new tree"),
         ] = None
-        subprojects: Annotated[
+        declared_repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
             m.Field(description="Direct governed repositories from local .gitmodules"),
         ] = ()
@@ -2496,11 +2496,15 @@ class FlextInfraConfigModels:
             ):
                 msg = "external dependency paths must be unique"
                 raise ValueError(msg)
-            subproject_paths = {item.path for item in self.subprojects}
-            if len(subproject_paths) != len(self.subprojects):
+            declared_repository_paths = {
+                item.path for item in self.declared_repositories
+            }
+            if len(declared_repository_paths) != len(self.declared_repositories):
                 msg = "subproject paths must be unique"
                 raise ValueError(msg)
-            overlap = subproject_paths.intersection(self.external_dependency_paths)
+            overlap = declared_repository_paths.intersection(
+                self.external_dependency_paths
+            )
             if overlap:
                 msg = (
                     "external dependencies cannot also be governed subprojects: "

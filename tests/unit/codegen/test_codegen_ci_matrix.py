@@ -24,16 +24,7 @@ class TestCodegenCiMatrix:
 
     @staticmethod
     def _render_project(root: Path) -> Path:
-<<<<<<< Updated upstream
-        """Render one fresh internal_flext project into root and return it."""
-        beads = tm.ok(
-            FlextInfraWorkspaceDetector.load_beads_spec(
-                Path(__file__).resolve().parents[3]
-            )
-        )
-=======
         """Render a fresh EXTERNAL project into root and return the root."""
->>>>>>> Stashed changes
         service = FlextInfraCodegenProjectNew(
             name="flext-demo",
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
@@ -289,14 +280,9 @@ class TestCodegenCiMatrix:
             dist="cosmos-main",
             make_profile=c.Infra.MakeProfile.WORKSPACE,
             repository_branch="develop",
-<<<<<<< Updated upstream
-            ci_trigger_branches=(
-                *config.Infra.codegen.branch_policy.ci_trigger_branches,
-                "develop",
-            ),
+            ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
         ).model_copy(update={"private_submodules": private})
         rendered = u.Cli.template_render(tpl, spec)
-=======
             ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
             python_version=codegen.toolchain.python_version,
             mise_version=codegen.toolchain.mise_version,
@@ -307,7 +293,6 @@ class TestCodegenCiMatrix:
             private_submodules=private,
         )
         rendered = cli_u.Cli.template_render(tpl, spec)
->>>>>>> Stashed changes
         tm.ok(rendered)
         rendered_text: str = rendered.value
         tm.that(rendered_text, has="Init private workspace projects")
@@ -328,13 +313,8 @@ class TestCodegenCiMatrix:
                     has=f"{action.repository}@{action.sha}  # {action.version}",
                 )
 
-<<<<<<< Updated upstream
-    def test_dependabot_does_not_delay_available_updates(self, tmp_path: Path) -> None:
-        """Every declared ecosystem can select its newest available release."""
-=======
     def test_dependabot_does_not_cap_tool_updates(self, tmp_path: Path) -> None:
         """Dependabot proposes released tools without inheriting the library window."""
->>>>>>> Stashed changes
         root = self._render_project(tmp_path / "external")
 
         document = u.Cli.yaml_load_mapping(root / ".github" / "dependabot.yml")
@@ -346,11 +326,7 @@ class TestCodegenCiMatrix:
         tm.that(ecosystems, eq={"github-actions", "pip"})
         for item in updates:
             update = t.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
-<<<<<<< Updated upstream
-            tm.that(update, lacks="cooldown")
-=======
             tm.that("cooldown" not in update, eq=True)
->>>>>>> Stashed changes
 
     def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
         """Generated project carries one Dockerfile per supported distro."""
@@ -465,7 +441,7 @@ class TestCodegenCiMatrix:
         matrix = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
             encoding="utf-8"
         )
-        integrations = tuple(config.Infra.codegen.branch_policy.ci_trigger_branches)
+        integrations = ("dev", "develop", "0.12.0-dev", "main")
         tm.that(integrations, has=branch)
         for integration in integrations:
             tm.that(blocking, has=f"      - {integration}")

@@ -129,12 +129,12 @@ class TestsMiseDistributionPolicy:
 
 <<<<<<< Updated upstream
     def test_canonical_selector_is_accepted(self, tmp_path: Path) -> None:
-        """The canonical fleet selector passes the same identity validation."""
+        """An arbitrary non-protected selector passes identity validation."""
         root = _workspace(tmp_path / "project")
-        beads = config.Infra.codegen.toolchain.beads
+        selector = tmp_path.name
 
         result = u.Infra.validate_mise_tool_selectors(
-            (beads.selector,), source=root / ".mise.toml"
+            (selector,), source=root / ".mise.toml"
         )
 
         tm.ok(result)

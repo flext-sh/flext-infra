@@ -134,23 +134,11 @@ Infra:
         - linux-arm64-musl
         - macos-x64
         - macos-arm64
-        - windows-x64
-      # Mise 2026.8.14 cannot emit lock metadata for Cargo-backed tools, and
-      # ast-grep publishes no distinct musl assets. Every unsupported pair is
-      # explicit so the offline validator rejects any additional omission.
       mise_lock_platform_exclusions:
-        ast-grep:
-          - linux-x64-musl
-          - linux-arm64-musl
-        tokei:
-          - linux-x64
-          - linux-arm64
-          - linux-x64-musl
-          - linux-arm64-musl
-          - macos-x64
-          - macos-arm64
-          - windows-x64
-      # Go runtime retained for projects that use mise go: backend selectors.
+        ast-grep: [linux-x64-musl, linux-arm64-musl]
+      protected_mise_tools:
+        - beads
+        - gascity
       go_version: "1.26"
       # Suspended auxiliary toolchains are rejected before any generated-owner
       # effect. These are selector-family guards, never installation selections.
@@ -173,7 +161,7 @@ Infra:
     # 'false' is the safe default: the workflow GITHUB_TOKEN cannot clone
     # sibling PRIVATE repositories, so 'recursive' aborts the job at checkout
     # with "Repository not found" before any code runs. Only projects that
-    # really exercise their subprojects in CI opt in through the override map.
+    # really exercise their declared_repositories in CI opt in through the override map.
     checkout_submodules: "false"
     checkout_submodules_overrides: {}
 
@@ -584,7 +572,9 @@ Infra:
           allow_public_targets: true
           allow_toolchain_declarations: true
 
-    # SINGLE SSOT for ephemeral/generated
+    loc_cap:
+      max_lines: 200
+    # NOTE (mro-jnm1.1 / mro-jnm1.4): SINGLE SSOT for ephemeral/generated
     # resources. VS Code files.exclude/search.exclude (vscode_exclude),
     # files.watcherExclude (watch_exclude), and source_scan.ignored_resources
     # (source_scan_ignore) are DERIVED from this list by CodegenConfigSpec
@@ -1883,11 +1873,19 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        - source: base/src/__init__.py.j2
-          destination: "src/{package_name}/__init__.py"
+        - source: base/config/workspace.yaml.j2
+          destination: config/workspace.yaml
+          profiles: [workspace, standalone]
+          delegate: manifest
+          overwrite: false
+        # Repository-local Beads identity. conform requires this file to
+        # exist before it can plan, so a scaffolded project that never
+        # rendered it could not be conformed at all.
+        - source: base/config/beads.yaml.j2
+          destination: config/beads.yaml
           profiles: [workspace, standalone]
           delegate: render
-          overwrite: false
+          overwrite: true
         - source: base/src/api.py.j2
           destination: "src/{package_name}/api.py"
           profiles: [workspace, standalone]
@@ -1948,12 +1946,7 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        - source: base/src/services/__init__.py.j2
-          destination: "src/{package_name}/services/__init__.py"
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: false
-        # Domain behavior is generated in services, not base.py.
+        # NOTE(codex, mro-j47u): domain behavior is generated in services, not base.py.
         - source: base/src/services/ping.py.j2
           destination: "src/{package_name}/services/ping.py"
           profiles: [workspace, standalone]
@@ -1968,11 +1961,6 @@ Infra:
           overwrite: false
         # Config/settings declarations live in
         # the canonical public models/config/settings facets, never parallel parts.
-        - source: base/src/_models/__init__.py.j2
-          destination: "src/{package_name}/_models/__init__.py"
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: false
         - source: base/src/_models/ping.py.j2
           destination: "src/{package_name}/_models/ping.py"
           profiles: [workspace, standalone]
@@ -1988,11 +1976,6 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        - source: base/src/_constants/__init__.py.j2
-          destination: "src/{package_name}/_constants/__init__.py"
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: false
         - source: base/src/_constants/config.py.j2
           destination: "src/{package_name}/_constants/config.py"
           profiles: [workspace, standalone]
@@ -2000,11 +1983,6 @@ Infra:
           overwrite: false
         - source: base/src/_constants/settings.py.j2
           destination: "src/{package_name}/_constants/settings.py"
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/src/_protocols/__init__.py.j2
-          destination: "src/{package_name}/_protocols/__init__.py"
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
@@ -2023,18 +2001,8 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        - source: base/src/_typings/__init__.py.j2
-          destination: "src/{package_name}/_typings/__init__.py"
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: false
         - source: base/src/_typings/base.py.j2
           destination: "src/{package_name}/_typings/base.py"
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/tests/__init__.py.j2
-          destination: tests/__init__.py
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false

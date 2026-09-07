@@ -6,8 +6,7 @@ from collections.abc import Mapping
 from fnmatch import fnmatchcase
 from hashlib import sha256
 from pathlib import Path
-from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Annotated, ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 from urllib.parse import urlsplit
 
 from flext_core import r
@@ -240,7 +239,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[str].fail(
                 download.error or f"checksum download failed for {selector}/{platform}"
             )
-        if download.value.exit_code != 0:
+        if download.value.outcome.raw_return_code != 0:
             cause = download.value.stderr.strip() or "curl exited non-zero"
             return r[str].fail(
                 f"checksum download failed for {selector}/{platform}: {cause}"
@@ -280,58 +279,47 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             )
         return r[str].ok(hydrated)
 
-    @staticmethod
-    def _prune_unconfigured_lock_tools(
-        source: str, *, configured_tools: t.StrMapping
-    ) -> p.Result[str]:
-        """Derive the lock projection from the current generated Mise payload."""
-        document = u.Cli.toml_parse_text(source)
-        if document is None:
-            return r[str].fail("invalid TOML in mise.lock")
-        tools = u.Cli.toml_ensure_table(document, "tools")
-        for selector in tuple(tools):
-            if selector not in configured_tools:
-                del tools[selector]
-        return r[str].ok(u.Cli.toml_dumps(document))
-
-    def _hydrate_lock_checksums(
-        self, *, configured_tools: t.StrMapping
-    ) -> p.Result[bool]:
-        """Prune and hydrate the generated lock, then publish it once atomically."""
-        lock_path = self.workspace_root / "mise.lock"
+    def hydrate_lock_checksums_at(self, root: Path) -> p.Result[bool]:
+        """Download exact resolved artifacts and atomically add missing SHA-256 values."""
+        lock_path = root / c.Infra.MISE_LOCK_FILENAME
         source = u.Cli.files_read_text(lock_path)
         if source.failure:
             return r[bool].fail(source.error or "cannot read mise.lock")
-        pruned = self._prune_unconfigured_lock_tools(
-            source.value, configured_tools=configured_tools
-        )
-        if pruned.failure:
-            return r[bool].fail(pruned.error or "cannot prune mise.lock")
-        payload = u.Cli.toml_mapping_from_text(pruned.value)
+        payload = u.Cli.toml_mapping_from_text(source.value)
         if payload is None:
             return r[bool].fail("invalid TOML in mise.lock")
         missing = self._missing_checksums(payload)
         if missing.failure:
             return r[bool].fail(missing.error or "invalid mise.lock checksum metadata")
-        if not missing.value and pruned.value == source.value:
+        if not missing.value:
             return r[bool].ok(True)
-        hydrated_source = pruned.value
-        try:
-            if missing.value:
-                with TemporaryDirectory(
-                    prefix=".mise-checksum.", dir=self.workspace_root
-                ) as raw_scratch:
-                    hydrated = self._hydrate_source(
-                        pruned.value, missing.value, Path(raw_scratch)
-                    )
-                if hydrated.failure:
-                    return r[bool].fail(
-                        hydrated.error or "cannot hydrate mise.lock checksums"
-                    )
-                hydrated_source = hydrated.value
-        except OSError as exc:
-            return r[bool].fail(f"cannot hydrate mise.lock checksums: {exc}")
-        write = u.Cli.atomic_write_text_file(lock_path, hydrated_source)
+        scratch = root / ".mise-checksum"
+        planned = u.Cli.atomic_plan_directory_chain(scratch)
+        if planned.failure:
+            return r[bool].from_failure(planned)
+        if tuple(planned.value.directories) != (scratch,):
+            return r[bool].fail(f"Mise checksum scratch already exists: {scratch}")
+        created = u.Cli.atomic_create_directory_chain_guarded(
+            planned.value, permission_mode=0o700
+        )
+        if created.failure:
+            return r[bool].from_failure(created)
+        hydrated = self._hydrate_source(source.value, missing.value, scratch)
+        inventory = u.Cli.atomic_inventory_physical_tree(scratch)
+        if inventory.failure:
+            return r[bool].fail(
+                f"{hydrated.error or 'Mise checksum hydration completed'}; "
+                f"scratch inventory failed: {inventory.error}"
+            )
+        cleanup = u.Cli.atomic_cleanup_physical_tree_guarded(inventory.value)
+        if cleanup.failure:
+            return r[bool].fail(
+                f"{hydrated.error or 'Mise checksum hydration completed'}; "
+                f"scratch cleanup failed: {cleanup.error}"
+            )
+        if hydrated.failure:
+            return r[bool].fail(hydrated.error or "cannot hydrate mise.lock checksums")
+        write = u.Cli.atomic_write_text_file(lock_path, hydrated.value)
         if write.failure:
             return r[bool].fail(write.error or "cannot publish hydrated mise.lock")
         return r[bool].ok(True)
@@ -356,21 +344,69 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         )
 
     @classmethod
-    def _validate_launchers(cls, root: Path) -> p.Result[bool]:
-        shell_path = root / "bin" / "mise"
-        windows_path = root / "bin" / "mise.cmd"
-        shell_source = u.Cli.files_read_text(shell_path)
-        windows_source = u.Cli.files_read_text(windows_path)
-        if shell_source.failure or windows_source.failure:
-            return r[bool].fail("missing generated Mise launcher")
-        version = config.Infra.codegen.toolchain.mise_version
-        shell_marker = f'local mise_version="${{MISE_VERSION:-{version}}}"'
-        windows_marker = f'set "pinned_version={version}"'
-        if (
-            shell_marker not in shell_source.value
-            or windows_marker not in windows_source.value
+    def launcher_release(cls, root: Path) -> p.Result[str]:
+        """Return the one exact release embedded by both generated launchers."""
+        shell = cls.validate_seed(
+            root / c.Infra.MISE_LAUNCHER_DIRECTORY / c.Infra.MISE_UNIX_LAUNCHER_FILENAME
+        )
+        windows = cls.validate_seed(
+            root
+            / c.Infra.MISE_LAUNCHER_DIRECTORY
+            / c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME
+        )
+        if shell.failure or windows.failure:
+            return r[str].fail(shell.error or windows.error or "invalid Mise launcher")
+        if shell.value != windows.value:
+            return r[str].fail("Mise launcher version drift")
+        return r[str].ok(shell.value)
+
+    @classmethod
+    def bootstrap_launchers(cls) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+        """Return the complete checksum-validated packaged launcher receipt."""
+        root = (
+            Path(__file__).resolve().parents[1] / c.Infra.MISE_BOOTSTRAP_SEED_DIRECTORY
+        )
+        states: list[m.Cli.AtomicFileState] = []
+        releases: set[str] = set()
+        for name, expected_mode in (
+            (c.Infra.MISE_UNIX_LAUNCHER_FILENAME, 0o755),
+            (c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME, 0o644),
         ):
-            return r[bool].fail("Mise launcher version drift")
+            path = root / name
+            state = u.Cli.atomic_read_binary_file_state(path, required=True)
+            if state.failure:
+                return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(state)
+            if state.value.content is None or state.value.mode != expected_mode:
+                return r[tuple[m.Cli.AtomicFileState, ...]].fail(
+                    f"packaged Mise launcher mode differs: {path}"
+                )
+            validated = cls.validate_seed(path)
+            if validated.failure:
+                return r[tuple[m.Cli.AtomicFileState, ...]].fail(
+                    validated.error or f"invalid packaged Mise launcher: {path}"
+                )
+            states.append(state.value)
+            releases.add(validated.value)
+        if len(releases) != 1:
+            return r[tuple[m.Cli.AtomicFileState, ...]].fail(
+                "packaged Mise launcher version drift"
+            )
+        return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(states))
+
+    @classmethod
+    def validate_seed(cls, path: Path) -> p.Result[str]:
+        """Validate one native staged bootstrap seed without executing live bytes."""
+        source = u.Cli.files_read_text(path)
+        if source.failure:
+            return r[str].from_failure(source)
+        windows = path.name == "mise.cmd"
+        release = (
+            cls._assignment(source.value, "pinned_version")
+            if windows
+            else cls._shell_launcher_version(source.value)
+        )
+        if release is None or not cls.is_mise_release(release):
+            return r[str].fail(f"Mise seed has an invalid release: {path}")
         try:
             shell_mode = shell_path.stat().st_mode
         except OSError as exc:
@@ -391,6 +427,39 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         if not cls._is_sha256(cls._assignment(windows_source.value, "sum_x64")):
             return r[bool].fail("Mise launcher checksum missing: windows-x64")
         return r[bool].ok(True)
+
+    def validate_artifacts(self, project_root: Path) -> p.Result[bool]:
+        """Validate one project's committed Mise artifacts entirely offline."""
+        config_result = self._read_toml(project_root / ".mise.toml")
+        if config_result.failure:
+            return r[bool].from_failure(config_result)
+        raw_settings = config_result.value.get("settings")
+        raw_tool_config = config_result.value.get("tool_config")
+        if (
+            not isinstance(raw_settings, Mapping)
+            or raw_settings.get("lockfile") is not True
+            or not isinstance(raw_tool_config, Mapping)
+            or raw_tool_config.get("locked") is not True
+        ):
+            return r[bool].fail(".mise.toml must enable lockfile and locked mode")
+        tools_result = self._tool_specifiers(config_result.value)
+        if tools_result.failure:
+            return r[bool].from_failure(tools_result)
+        lock_result = self._read_toml(project_root / "mise.lock")
+        if lock_result.failure:
+            return r[bool].from_failure(lock_result)
+        normalized_lock = self._normalize_lock_payload(lock_result.value)
+        if normalized_lock.failure:
+            return r[bool].from_failure(normalized_lock)
+        try:
+            lock = m.Infra.MiseLockSpec.model_validate(normalized_lock.value)
+        except c.ValidationError as exc:
+            return r[bool].fail(f"invalid mise.lock metadata: {exc}", exception=exc)
+        launcher_result = self.validate_launchers(project_root)
+        if launcher_result.failure:
+            return launcher_result
+
+        return self._validate_lock(lock, configured_tools=tools_result.value)
 
     @staticmethod
     def _validate_lock(
@@ -419,7 +488,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             )
             expected_platforms = declared_platforms - excluded
             actual_platforms = frozenset(entry.platforms)
-            if actual_platforms != expected_platforms:
+            if not actual_platforms <= declared_platforms:
                 return r[bool].fail(
                     f"Mise lock platform metadata mismatch for {selector}: "
                     f"expected={sorted(expected_platforms)} "
