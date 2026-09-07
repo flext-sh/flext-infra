@@ -36,7 +36,7 @@ dependencies = [
   "mkdocstrings-python>=2.0.5",
   "pyrefly>=1.2.0",
   "rope>=1.14.0",
-  "ruff>=0.16.6",
+  "ruff>=0.16.5",
 ]
 description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
 keywords = ["automation", "codegen", "flext", "infrastructure", "tooling"]
