@@ -1520,9 +1520,7 @@ class FlextInfraConfigModels:
         from a .j2 template but is still subject to .gen compliance validation.
         """
 
-        owner: Annotated[
-            t.NonEmptyStr, m.Field(description="Canonical external owner")
-        ]
+        owner: Annotated[t.NonEmptyStr, m.Field(description="Canonical external owner")]
         validation: Annotated[
             Literal["exists_and_validated", "conforms_to_layout", "exists_or_absent"],
             m.Field(
@@ -1531,11 +1529,12 @@ class FlextInfraConfigModels:
                     "and pass schema/layout checks; conforms_to_layout = file must "
                     "pass the layout engine; exists_or_absent = file may exist "
                     "(create-only semantics) but must not be regenerated"
-                ),
+                )
             ),
         ]
         description: Annotated[
-            t.NonEmptyStr, m.Field(description="Human-readable purpose of this external file")
+            t.NonEmptyStr,
+            m.Field(description="Human-readable purpose of this external file"),
         ]
 
     class TemplateEntrySpec(_ConfigContract):
@@ -3455,9 +3454,7 @@ class FlextInfraConfigModels:
 
         dependency_cooldown_overrides: Annotated[
             Mapping[str, t.VariadicTuple[t.NonEmptyStr]],
-            m.Field(
-                description="Per-package RFC 3339 cooldown override cutoffs",
-            ),
+            m.Field(description="Per-package RFC 3339 cooldown override cutoffs"),
         ] = immutable_empty_mapping()
 
     class CodegenOverridesRoot(_ConfigContract):
@@ -3477,8 +3474,7 @@ class FlextInfraConfigModels:
         """Override deltas that deep-merge onto CodegenConfigSpec fields."""
 
         toolchain: Annotated[
-            FlextInfraConfigModels.CodegenToolchainOverridesSpec
-            | None,
+            FlextInfraConfigModels.CodegenToolchainOverridesSpec | None,
             m.Field(default=None, description="Toolchain override deltas"),
         ] = None
         checkout_submodules_overrides: Annotated[

@@ -384,13 +384,40 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[bool].fail(
                 ".gen requirements must declare fixed_point.required: true"
             )
+        externally_managed = requirements.requirements.externally_managed
+        managed_by_path = {item.path: item for item in config_spec.managed_files}
+        for relative_path, spec in externally_managed.items():
+            managed_entry = managed_by_path.get(Path(relative_path))
+            if managed_entry is None:
+                continue
+            if managed_entry.policy not in bypass_policies:
+                return r[bool].fail(
+                    f"externally-managed file {relative_path} is declared in codegen.yaml "
+                    f"with policy '{managed_entry.policy}' but .gen lists it as externally managed; "
+                    f"externally managed files must use bypass policies or be removed from managed_files"
+                )
+            for bypass in bypass_policies:
+                if managed_entry.policy == bypass:
+                    break
+        bypass_in_managed = tuple(
+            managed.path
+            for managed in config_spec.managed_files
+            if managed.policy in bypass_policies
+            and managed.path.as_posix() not in externally_managed
+        )
+        if bypass_in_managed:
+            paths = ", ".join(str(p) for p in bypass_in_managed)
+            return r[bool].fail(
+                f"managed files use bypass policies without .gen externally_managed "
+                f"declaration: {paths}"
+            )
         return r[bool].ok(True)
 
     def _execute_managed(
         self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenResult]:
         """Run complete conformance inside the sole generation lock."""
-        gen_violation = self._enforce_gen_requirements()
+        gen_violation = self._enforce_gen_requirements(request)
         if gen_violation.failure:
             return r[m.Infra.CodegenResult].from_failure(gen_violation)
         mode = c.Infra.CodegenConformMode(request.mode)

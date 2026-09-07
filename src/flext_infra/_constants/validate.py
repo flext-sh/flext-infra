@@ -182,9 +182,11 @@ class FlextInfraConstantsSharedInfra:
     MANAGED_FILE_POLICY_CREATE_ONLY: Final[str] = "create-only"
     MANAGED_FILE_POLICY_MANUAL: Final[str] = "manual"
     "Managed-file policies that bypass or skip generation — forbidden by .gen requirements."
-    MANAGED_FILE_POLICIES_BYPASS: Final[frozenset[str]] = frozenset(
-        {MANAGED_FILE_POLICY_DELEGATED, MANAGED_FILE_POLICY_CREATE_ONLY, MANAGED_FILE_POLICY_MANUAL}
-    )
+    MANAGED_FILE_POLICIES_BYPASS: Final[frozenset[str]] = frozenset({
+        MANAGED_FILE_POLICY_DELEGATED,
+        MANAGED_FILE_POLICY_CREATE_ONLY,
+        MANAGED_FILE_POLICY_MANUAL,
+    })
     "Bypass policies forbidden by strict .gen compliance."
     "Managed-file policy whose artifact is generated per checkout, not committed."
     INIT_PY: Final[str] = "__init__.py"
