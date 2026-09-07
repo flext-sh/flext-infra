@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from git import GitCommandError
 
@@ -21,18 +21,18 @@ from ..._utilities._git.semantic_identity import (
 if TYPE_CHECKING:
     from flext_infra import p, t
 
-_TAG_PREFIX = "attest/gates/v1"
-_SSH_SIGNATURE_MARKER = "\n-----BEGIN SSH SIGNATURE-----"
-
 
 class FlextInfraUtilitiesGitAttestationMixin(
     FlextInfraUtilitiesGitSemanticIdentityMixin
 ):
     """Create and verify immutable SSH-signed gate tags."""
 
-    @staticmethod
-    def _attestation_tag(commit_sha: str) -> str:
-        return f"{_TAG_PREFIX}/{commit_sha}"
+    _TAG_PREFIX: ClassVar[str] = "attest/gates/v1"
+    _SSH_SIGNATURE_MARKER: ClassVar[str] = "\n-----BEGIN SSH SIGNATURE-----"
+
+    @classmethod
+    def _attestation_tag(cls, commit_sha: str) -> str:
+        return f"{cls._TAG_PREFIX}/{commit_sha}"
 
     @classmethod
     def _attestation_predicate(
@@ -219,7 +219,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 "attestation tag target does not equal selected commit: "
                 f"{target} != {commit_sha}"
             )
-        message = tag_ref.tag.message.split(_SSH_SIGNATURE_MARKER, maxsplit=1)[0]
+        message = tag_ref.tag.message.split(cls._SSH_SIGNATURE_MARKER, maxsplit=1)[0]
         parsed = u.Cli.json_loads(message)
         if parsed.failure:
             return r[m.Infra.GateAttestationPredicate].from_failure(parsed)
