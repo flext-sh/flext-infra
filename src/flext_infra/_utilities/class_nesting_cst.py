@@ -37,8 +37,8 @@ class FlextInfraUtilitiesClassNestingCst(FlextInfraUtilitiesClassNestingReferenc
         )
         return cls._nest_definitions(rewritten, definitions)
 
-    @staticmethod
-    def _nest_definitions(source: str, definitions: t.StrMapping) -> str:
+    @classmethod
+    def _nest_definitions(cls, source: str, definitions: t.StrMapping) -> str:
         if not definitions:
             return source
         owners = frozenset(definitions.values())
@@ -77,7 +77,12 @@ class FlextInfraUtilitiesClassNestingCst(FlextInfraUtilitiesClassNestingReferenc
                 and isinstance(existing[0].body[0], cst.Pass)
             ):
                 existing = ()
-            body = owner.body.with_changes(body=(*nested, *existing))
+            # A moved class was defined before the owner at module level, so a
+            # class body member may already use it as a definition-time base.
+            # Appending would place the definition after that use and break
+            # import; the docstring keeps position and the moves lead the rest.
+            docstring, remainder = cls._split_docstring(existing)
+            body = owner.body.with_changes(body=(*docstring, *nested, *remainder))
         elif isinstance(owner.body, cst.SimpleStatementSuite):
             # A simple suite can only hold small statements; narrow before
             # promoting the remaining ones into an IndentedBlock line.
@@ -89,7 +94,8 @@ class FlextInfraUtilitiesClassNestingCst(FlextInfraUtilitiesClassNestingReferenc
             existing_lines = (
                 (cst.SimpleStatementLine(body=statements),) if statements else ()
             )
-            body = cst.IndentedBlock(body=(*nested, *existing_lines))
+            docstring, remainder = cls._split_docstring(existing_lines)
+            body = cst.IndentedBlock(body=(*docstring, *nested, *remainder))
         else:
             msg = (
                 f"unsupported class body for {owner_name}: {type(owner.body).__name__}"
@@ -105,6 +111,25 @@ class FlextInfraUtilitiesClassNestingCst(FlextInfraUtilitiesClassNestingReferenc
                 )
             )
         ).code
+
+    @staticmethod
+    def _split_docstring(
+        body: t.SequenceOf[cst.BaseStatement],
+    ) -> tuple[tuple[cst.BaseStatement, ...], tuple[cst.BaseStatement, ...]]:
+        """Split one class body into its leading docstring and the remainder."""
+        if not body:
+            return ((), ())
+        head = body[0]
+        if (
+            isinstance(head, cst.SimpleStatementLine)
+            and len(head.body) == 1
+            and isinstance(head.body[0], cst.Expr)
+            and isinstance(
+                head.body[0].value, cst.SimpleString | cst.ConcatenatedString
+            )
+        ):
+            return ((head,), tuple(body[1:]))
+        return ((), tuple(body))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesClassNestingCst"]

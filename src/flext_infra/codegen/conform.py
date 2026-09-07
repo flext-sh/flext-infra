@@ -349,27 +349,36 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             workspace = workspace_result.value
         project = workspace.project
-        if project is None:
+        if project is None and scaffolding is not None:
             # Scaffolding a new project requires its declared metadata, and that
-            # path supplies the workspace explicitly. Conforming a repository
-            # that declares no project block has no scaffold chain to create —
-            # nothing to do is not invalid input, and treating it as an error
-            # made `make gen APPLY=Y` unusable in every repository without its
-            # own manifest.
-            if scaffolding is not None:
-                return r[tuple[m.Cli.AtomicDirectoryState, ...]].fail(
-                    "scaffold workspace has no project metadata"
-                )
-            return r[tuple[m.Cli.AtomicDirectoryState, ...]].ok(())
-        profile = workspace.repository.role
-        root = request.root.expanduser().resolve()
-        directories = {root}
-        for entry in config.Infra.codegen.templates.entries:
-            if profile not in entry.profiles:
-                continue
-            destination = entry.destination.format(
-                package_name=project.package_name, ns=project.namespace_attribute
+            # path supplies the workspace explicitly, so its absence there is
+            # invalid input rather than an empty plan.
+            return r[tuple[m.Cli.AtomicDirectoryState, ...]].fail(
+                "scaffold workspace has no project metadata"
             )
+        root = request.root.expanduser().resolve()
+        # Why (flext-jwpyy.1): package_name/ns are scaffold-only metadata that
+        # exists solely on the `codegen new` route; load_workspace_spec never
+        # carries them. An existing tree renders the literal managed_files
+        # surface, so its parent chains derive from that SSOT instead of the
+        # placeholder template destinations, and conforming a repository that
+        # declares no project block stays a valid, non-empty plan.
+        if project is None:
+            destinations: t.StrSequence = tuple(
+                managed.path.as_posix()
+                for managed in config.Infra.codegen.managed_files
+            )
+        else:
+            profile = workspace.repository.role
+            destinations = tuple(
+                entry.destination.format(
+                    package_name=project.package_name, ns=project.namespace_attribute
+                )
+                for entry in config.Infra.codegen.templates.entries
+                if profile in entry.profiles
+            )
+        directories = {root}
+        for destination in destinations:
             relative = Path(destination)
             if relative.is_absolute() or ".." in relative.parts:
                 return r[tuple[m.Cli.AtomicDirectoryState, ...]].fail(

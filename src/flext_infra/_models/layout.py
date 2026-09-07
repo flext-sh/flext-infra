@@ -33,6 +33,18 @@ class FlextInfraModelsLayout:
 
     """Field-only layout SSOT contracts and engine result models."""
 
+    class _LayoutContract(m.ContractModel):
+        """Private declarative base for schema-loaded layout records.
+
+        Mirrors ``_ConfigContract`` from ``_models/config.py``; kept local
+        because ``config.py`` consumes this module (a reverse import would be
+        a cycle).
+        """
+
+        model_config = m.ConfigDict(
+            strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
+        )
+
     class LayoutMoveSpec(_LayoutContract):
         """One explicit per-project move override (nested source allowed)."""
 

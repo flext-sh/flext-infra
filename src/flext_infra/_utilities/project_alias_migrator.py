@@ -23,6 +23,8 @@ if TYPE_CHECKING:
 
 
 class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
+    """Rewrite ``from flext_core import c`` to ``from <proj>.constants import c``."""
+
     class _CstImportHelpers:
         """Static libcst helpers for reading and building import statements."""
 

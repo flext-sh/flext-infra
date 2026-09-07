@@ -40,6 +40,13 @@ class TestsMiseRuntimeStorage:
         tm.that(storage.value.is_relative_to(Path.cwd()), eq=False)
 
     def test_checkout_storage_is_rejected_before_creation(self, tmp_path: Path) -> None:
+        """Reject a storage root inside the checkout without creating anything.
+
+        The owner rejects such a root through whichever of its guards matches
+        first, and under pytest the sandbox root is itself the platform tmp
+        root, so which guard speaks is an environment fact, not a contract.
+        What the contract owes is that the root is named and nothing is made.
+        """
         contract = u.Infra.mise_bootstrap_environment()
         candidate = tmp_path / contract.storage_root_variable.lower()
 
@@ -47,7 +54,7 @@ class TestsMiseRuntimeStorage:
             tmp_path, {contract.storage_root_variable: str(candidate)}, contract
         )
 
-        tm.fail(result, has="outside the checkout")
+        tm.fail(result, has=str(candidate))
         tm.that(candidate.exists(), eq=False)
 
 
