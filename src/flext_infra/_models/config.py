@@ -3247,12 +3247,157 @@ class FlextInfraConfigModels:
             m.Field(description="Rope-only static enforcement policy"),
         ]
 
-    class Root(_ConfigContract):
+     class Root(_ConfigContract):
         """Root payload deep-merged from flext-infra config files."""
 
         Infra: Annotated[
             FlextInfraConfigModels.Infra,
             m.Field(description="Validated flext-infra namespace"),
+        ]
+
+    class ConfigLayerSpec(_ConfigContract):
+        """One layer of the hierarchical config architecture."""
+
+        path: Annotated[
+            Path,
+            m.Field(description="Config file path relative to flext-infra config root"),
+        ]
+        mutable: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether this layer accepts project-specific overrides; "
+                    "true for overrides, false for immutable business rules"
+                ),
+            ),
+        ]
+        description: Annotated[
+            t.NonEmptyStr, m.Field(description="Human-readable purpose of this config layer"),
+        ]
+
+    class ConfigLayersSpec(_ConfigContract):
+        """Hierarchical config architecture: immutable config + project overrides."""
+
+        primary: Annotated[
+            FlextInfraConfigModels.ConfigLayerSpec,
+            m.Field(description="Layer 1: immutable fleet-wide business rules"),
+        ]
+        overrides: Annotated[
+            FlextInfraConfigModels.ConfigLayerSpec,
+            m.Field(description="Layer 2: project-specific parameter overrides"),
+        ]
+
+    class ManagedFilePoliciesSpec(_ConfigContract):
+        """Mandatory generation requirement: allowed/forbidden managed-file policies."""
+
+        allowed: Annotated[
+            t.VariadicTuple[str],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Managed-file policies that permit generation; "
+                    "create-only/delegated/manual are bypass policies"
+                ),
+            ),
+        ]
+        forbidden: Annotated[
+            t.VariadicTuple[str],
+            m.Field(
+                min_length=1,
+                description="Policies that bypass generation — always rejected by .gen enforcement",
+            ),
+        ]
+        enforcement: Annotated[
+            Literal["strict", "advisory"],
+            m.Field(
+                default="strict",
+                description="strict rejects any forbidden policy; advisory reports without failing",
+            ),
+        ] = "strict"
+
+        @u.model_validator(mode="after")
+        def _validate_no_policy_overlap(self) -> Self:
+            """Allowed and forbidden policies must not intersect."""
+            allowed_set = set(self.allowed)
+            forbidden_set = set(self.forbidden)
+            overlap = allowed_set & forbidden_set
+            if overlap:
+                msg = f".gen policies overlap: {overlap}"
+                raise ValueError(msg)
+            return self
+
+    class GenerationStepsSpec(_ConfigContract):
+        """Mandatory generation requirement: all steps must run."""
+
+        mandatory: Annotated[
+            bool, m.Field(description="Whether every generation step must execute"),
+        ]
+        skip_on_no_change: Annotated[
+            bool, m.Field(description="Whether steps with no change are eligible to skip")
+        ]
+        fail_on_drift: Annotated[
+            bool, m.Field(description="Whether detected drift causes failure")
+        ]
+
+    class ConfigAuthoritySpec(_ConfigContract):
+        """Mandatory generation requirement: config-driven authority."""
+
+        requires_config: Annotated[
+            bool, m.Field(description="Whether generation requires authoritative config"),
+        ]
+        requires_overrides: Annotated[
+            bool, m.Field(description="Whether the overrides layer must be present"),
+        ]
+        reject_manual_edits: Annotated[
+            bool, m.Field(description="Whether manual edits to managed files are rejected")
+        ]
+
+    class FixedPointSpec(_ConfigContract):
+        """Mandatory generation requirement: post-generation fixed-point validation."""
+
+        required: Annotated[
+            bool, m.Field(description="Whether fixed-point re-conform validation is required")
+        ]
+        max_replans: Annotated[
+            int, m.Field(ge=1, le=10, description="Maximum re-plan attempts before failure")
+        ]
+
+    class GenRequirementsSpec(_ConfigContract):
+        """Typed content of a ``.gen`` requirements contract file (codegen.gen.yaml).
+
+        Declares mandatory generation requirements that the conform system must
+        satisfy. The ``.j2`` templates remain the content generators; this file
+        is the compliance contract that governs their execution.
+        """
+
+        version: Annotated[int, m.Field(ge=1, description="Generation requirements contract version")]
+        config_layers: Annotated[
+            FlextInfraConfigModels.ConfigLayersSpec,
+            m.Field(description="Hierarchical config architecture (immutable + overrides)"),
+        ]
+        requirements: Annotated[
+            "FlextInfraConfigModels.GenRequirementEntries",
+            m.Field(description="Mandatory generation requirements"),
+        ]
+
+    class GenRequirementEntries(_ConfigContract):
+        """The three mandatory requirement groups enforced by a .gen contract."""
+
+        managed_file_policies: Annotated[
+            FlextInfraConfigModels.ManagedFilePoliciesSpec,
+            m.Field(description="Bypass policy enforcement for managed files"),
+        ]
+        generation_steps: Annotated[
+            FlextInfraConfigModels.GenerationStepsSpec,
+            m.Field(description="Step-level generation requirements"),
+        ]
+        config_authority: Annotated[
+            FlextInfraConfigModels.ConfigAuthoritySpec,
+            m.Field(description="Config-driven authority enforcement"),
+        ]
+        fixed_point: Annotated[
+            FlextInfraConfigModels.FixedPointSpec,
+            m.Field(description="Post-generation fixed-point validation"),
         ]
 
     class UvEnvironmentPlan(_ConfigContract):

@@ -114,6 +114,11 @@ class FlextInfraConstantsCodegenProject:
     """
     CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"
     TEMPLATE_MODULE_SKELETON: Final[str] = "module_skeleton.py.j2"
+    CODEGEN_CONFIG_FILENAME: Final[str] = "codegen.yaml"
+    CODEGEN_OVERRIDES_FILENAME: Final[str] = "codegen-overrides.yaml"
+    CODEGEN_GEN_FILENAME: Final[str] = "codegen.gen.yaml"
+    CODEGEN_GEN_SUFFIX: Final[str] = ".gen.yaml"
+    "File suffix for generation requirements contract files managed by conform."
     "Scaffold module-skeleton template (replaces the legacy f-string)."
 
     # One base catalog serves both profiles;
