@@ -3420,7 +3420,7 @@ class FlextInfraConfigModels:
             m.Field(
                 description="Per-distribution dependency cooldown override contracts",
             ),
-        ] = MappingProxyType({})
+        ] = immutable_empty_mapping()
 
     class CodegenOverridesSpec(_ConfigContract):
         """Typed content of the config overrides layer (config/codegen-overrides.yaml).
