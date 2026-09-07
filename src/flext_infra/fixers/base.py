@@ -9,9 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_infra import m
+
 if TYPE_CHECKING:
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
-    from flext_infra import m, p, t
+    from flext_infra import p, t
 
 
 class FlextInfraFixerAdapter:
@@ -23,18 +24,18 @@ class FlextInfraFixerAdapter:
 
     kind: ClassVar[str] = ""
 
-    def __init__(self, workspace_root: Path) -> None:
-        """Bind the workspace root used during fix execution."""
-        self._workspace_root = workspace_root
+    def __init__(self, repository_root: Path) -> None:
+        """Bind the repository root used during fix execution."""
+        self._repository_root = repository_root
 
-    def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
+    def can_fix(self, fix_action: m.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""
         return fix_action.kind == self.kind
 
     def fix_project(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Apply fixes for the given violations in ``project_dir``."""
@@ -42,11 +43,37 @@ class FlextInfraFixerAdapter:
         raise NotImplementedError(msg)
 
     @staticmethod
+    def _build_project_fix_result(
+        project_dir: Path,
+        fixed: t.SequenceOf[m.Infra.FixedViolation],
+        previewed: t.SequenceOf[m.Infra.PreviewedViolation],
+        skipped: t.SequenceOf[m.Infra.SkippedViolation],
+        failed: t.SequenceOf[m.Infra.FailedFix],
+        files_modified: t.IterableOf[str] = (),
+    ) -> m.Infra.ProjectFixResult:
+        """Build the immutable ``ProjectFixResult`` from accumulated outcomes.
+
+        Every adapter ends its run by naming the same six things, so the shape
+        belongs to the adapter contract rather than to each adapter. Callers
+        accumulate ``files_modified`` in a set, whose iteration order is not
+        stable between runs; sorting here makes the reported file list
+        deterministic for the caller that prints or diffs it.
+        """
+        return m.Infra.ProjectFixResult(
+            project=project_dir.name,
+            fixed=tuple(fixed),
+            previewed=tuple(previewed),
+            skipped=tuple(skipped),
+            failed=tuple(failed),
+            files_modified=tuple(sorted(files_modified)),
+        )
+
+    @staticmethod
     def _group_by_target(
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-    ) -> dict[str, list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]]:
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
+    ) -> dict[str, list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]]]:
         """Group violations by the fix target declared in their catalog action."""
-        grouped: dict[str, list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]] = {}
+        grouped: dict[str, list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]]] = {}
         for rule, probe in violations:
             fix_action = rule.fix_action
             if fix_action is None:
@@ -57,7 +84,7 @@ class FlextInfraFixerAdapter:
     @staticmethod
     def _collect_file_paths(
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
     ) -> tuple[Path, ...]:
         """Extract unique existing file paths from violation probes."""
         seen: set[Path] = set()
@@ -77,7 +104,7 @@ class FlextInfraFixerAdapter:
 
     @staticmethod
     def _rule_id(
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
     ) -> str:
         """Return the first rule id in a grouped violation batch."""
         return violations[0][0].id if violations else ""

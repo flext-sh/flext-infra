@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, config, m
+from flext_infra import config, m
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
 from flext_infra.gates.base_gate import FlextInfraGate
 
@@ -25,8 +25,6 @@ class FlextInfraLayoutGate(FlextInfraGate):
     gate_id: ClassVar[str] = "layout"
     gate_name: ClassVar[str] = "Project Layout"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["layout"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["layout"][1]
 
     @override
     def check(
@@ -35,7 +33,7 @@ class FlextInfraLayoutGate(FlextInfraGate):
         """Report layout violations for ``project_dir`` from the layout SSOT."""
         started = time.monotonic()
         spec = config.Infra.codegen.layout
-        engine = FlextInfraCodegenLayout(workspace_root=ctx.workspace_root)
+        engine = FlextInfraCodegenLayout(repository_root=ctx.repository_root)
         report = engine.check_project(project_dir)
         warning = spec.severity == "warning"
         report_findings: tuple[m.Infra.LayoutFinding, ...] = report.findings

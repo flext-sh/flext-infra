@@ -14,7 +14,6 @@ from pathlib import Path
 
 from flext_infra import c, config
 from flext_tests import tm
-
 from tests import u
 
 
@@ -65,9 +64,10 @@ class TestsReleasePolicyOwner:
             tm.that(rendered, has=f"{pin.name}=={pin.version} \\")
             for digest in pin.hashes:
                 tm.that(rendered, has=f"--hash=sha256:{digest}")
-        tm.that(rendered.count("--hash=sha256:"), eq=sum(
-            len(pin.hashes) for pin in config.Infra.release.build_constraints
-        ))
+        tm.that(
+            rendered.count("--hash=sha256:"),
+            eq=sum(len(pin.hashes) for pin in config.Infra.release.build_constraints),
+        )
         tm.that(rendered.endswith("\n"), eq=True)
         tm.that(rendered, lacks="\\\n\n")
 
@@ -78,8 +78,7 @@ class TestsReleasePolicyOwner:
         so no repository can drift from the fleet policy or lack it.
         """
         entries = {
-            entry.destination: entry
-            for entry in config.Infra.codegen.templates.entries
+            entry.destination: entry for entry in config.Infra.codegen.templates.entries
         }
         for policy_path in (
             c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,

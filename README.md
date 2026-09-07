@@ -57,13 +57,12 @@ slot registry verification).
 - Public extensions exposed by this project: `FlextInfra`,
   `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
-  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+189 more).
+  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+192 more).
 - Library abstraction boundaries: see AGENTS.md §2.7.
 
 ## Quality Gates
 
-Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, `val`,
-`docs`) — see
+Canonical `make` verbs (`check`, `test`, `fmt APPLY=Y`, `val`, `docs`) — see
 [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/AGENTS.md)
 `Build & Test` and `Required Python quality gates`; selector routing is owned
 universally by `config.AiHub.paths.agents_home`/`skills/make-check/SKILL.md`.

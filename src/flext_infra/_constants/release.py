@@ -61,6 +61,8 @@ class FlextInfraConstantsRelease:
     RELEASE_PLAN_FILENAME: Final[str] = "plan.json"
     RELEASE_NOTES_FILENAME: Final[str] = "RELEASE_NOTES.md"
     RELEASE_REPORT_FILENAME: Final[str] = "build-report.json"
+    PYPI_UPLOAD_URL: Final[str] = "https://upload.pypi.org/legacy/"
+    "Canonical verified-artifact upload endpoint."
     GH: Final[str] = "gh"
 
 

@@ -302,8 +302,13 @@ class TestsFlextInfraTransformersTypingUnifier:
             canonical_map={}, file_path=tmp_path / "module.py"
         )
         code, changes = transformer.apply_to_source(source)
-        tm.that(code, has="t.MutableMappingKV[str, int]")
-        tm.that(code, has="t.MutableSequenceOf[str]")
+        # A parameter is widened: every caller that could pass a dict still
+        # can, and callers holding any other mapping now can too. The return
+        # is left alone -- handing back a read-only view would take capability
+        # away from existing callers, which is a contract decision rather than
+        # a mechanical fix.
+        tm.that(code, has="x: t.MappingKV[str, int]")
+        tm.that(code, has="-> list[str]")
         tm.that(code, has="from flext_core import t")
         tm.that(changes, empty=False)
 

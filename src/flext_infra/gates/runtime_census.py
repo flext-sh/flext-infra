@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m
+from flext_infra import m
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
 
@@ -23,8 +23,6 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
     gate_id: ClassVar[str] = "runtime-census"
     gate_name: ClassVar[str] = "Runtime Enforcement Census"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["runtime-census"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["runtime-census"][1]
 
     @override
     def check(
@@ -34,7 +32,7 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
         _ = ctx
         started = time.monotonic()
         validator = FlextInfraRuntimeCensusValidator(
-            workspace_root=self._workspace_root, project_filter=project_dir.name
+            repository_root=self._repository_root, project_filter=project_dir.name
         )
         result = validator.execute()
         passed = result.success and result.value is True

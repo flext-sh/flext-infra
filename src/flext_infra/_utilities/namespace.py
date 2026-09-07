@@ -6,51 +6,44 @@ import ast
 import operator
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar, Final
+from typing import ClassVar
 
 from flext_cli import r, u
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
 
+from .._utilities.discovery import FlextInfraUtilitiesDiscovery
+from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from .._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from .._utilities.rope_source import FlextInfraUtilitiesRopeSource
+
 
 class FlextInfraUtilitiesCodegenNamespace:
     """Canonical namespace helpers for codegen discovery, parsing, and fixes."""
 
-    _governance_cache: ClassVar[
-        MutableMapping[str, m.Infra.ConstantsGovernanceConfig]
-    ] = {}
-    _governance_file: Final[Path] = (
-        Path(__file__).parent.parent / "rules" / "constants-governance.yml"
-    )
     # flext-perf.1 (agent: codex): cache __all__ AST extraction by path+mtime
     # so the 4-5 redundant _declared_exports calls per policy() hit memory
     # instead of re-reading + re-parsing the same file from disk each time.
     _declared_exports_cache: ClassVar[dict[str, tuple[int, t.StrSequence]]] = {}
 
-    @classmethod
-    def _is_rule_fixable(cls, rule_id: str, module: str) -> bool:
-        """Is rule fixable."""
-        cached = cls._governance_cache.get("settings")
-        if cached is None:
-            raw = u.Cli.yaml_load_mapping(cls._governance_file)
-            cached = m.Infra.ConstantsGovernanceConfig.model_validate(raw)
-            cls._governance_cache["settings"] = cached
-        for rule in cached.rules:
-            if rule.id != rule_id:
-                continue
-            if not rule.fixable:
+    @staticmethod
+    def _is_rule_fixable(rule_id: str, module: str) -> bool:
+        """Derive fix support from the implemented namespace-rule contract."""
+        match rule_id:
+            case "NS-000":
                 return False
-            if rule.fixable_exclusion is None:
+            case "NS-001" | "NS-003":
                 return True
-            return not module.endswith(rule.fixable_exclusion)
-        return False
+            case "NS-002":
+                typings_filename: str = c.Infra.TYPINGS_PY
+                return Path(module).name != typings_filename
+
+            case _:
+                msg = f"unsupported namespace rule: {rule_id}"
+                raise ValueError(msg)
 
     @classmethod
     def matches_root_namespace_file(cls, file_name: str) -> bool:
@@ -192,7 +185,10 @@ class FlextInfraUtilitiesCodegenNamespace:
         cached = cls._declared_exports_cache.get(cache_key)
         if cached is not None and cached[0] == mtime_ns:
             return cached[1]
-        tree = ast.parse(file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT))
+        tree = ast.parse(
+            file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT),
+            filename=str(file_path),
+        )
         result: t.StrSequence = ()
         for node in tree.body:
             match node:
@@ -458,14 +454,14 @@ class FlextInfraUtilitiesCodegenNamespace:
     @classmethod
     def projects(
         cls,
-        workspace_root: Path,
+        repository_root: Path,
         *,
         projects: t.SequenceOf[m.Infra.ProjectInfo] | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
         """Discover only projects that participate in codegen automation."""
         if projects is None:
             projects_result = FlextInfraUtilitiesDocsScope.discover_projects(
-                workspace_root
+                repository_root
             )
             if not projects_result.success:
                 return r[t.SequenceOf[m.Infra.ProjectInfo]].fail(
@@ -487,9 +483,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     ) -> p.Result[tuple[m.Infra.CensusViolation, ...]]:
         """Convert validator output into typed census violations."""
         if validation.failure:
-            return r[tuple[m.Infra.CensusViolation, ...]].fail(
-                validation.error or "namespace validation failed"
-            )
+            return r[tuple[m.Infra.CensusViolation, ...]].from_failure(validation)
         report = validation.unwrap()
         parsed: list[m.Infra.CensusViolation] = []
         for violation in report.violations:

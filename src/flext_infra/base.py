@@ -7,13 +7,11 @@ from typing import Annotated, ClassVar, Self, override
 
 from flext_core import s
 from flext_infra import c, m, p, settings, t, u
-from flext_infra._base_payload import FlextInfraCommandPayloadMixin
-from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
 
-type _InfraResultValue = t.Cli.ResultValue
+from ._base_payload import FlextInfraCommandPayloadMixin
 
 
-class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
+class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     s[TDomainResult], FlextInfraCommandPayloadMixin
 ):
     """Domain command context shared by all flext-infra CLI services.
@@ -22,7 +20,7 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
     apply/dry-run toggles, output formatting, and project filtering.
     """
 
-    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+    model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
         validate_by_name=True, validate_by_alias=True
     )
 
@@ -32,16 +30,18 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
         # flext-j47u: configure the inherited runtime once; no settings proxy/property.
         return m.RuntimeBootstrapOptions(settings_type=type(settings))
 
-    workspace_root: Annotated[
+    repository_root: Annotated[
         Path,
         m.BeforeValidator(
-            lambda v: ub.resolve_workspace_root_or_cwd(
+            lambda v: u.Infra.resolve_repository_root_or_cwd(
                 v if isinstance(v, Path) else Path(v)
             )
         ),
     ] = m.Field(
-        default_factory=ub.resolve_workspace_root_or_cwd,
+        default_factory=u.Infra.resolve_repository_root_or_cwd,
         alias="workspace",
+        validation_alias=t.AliasChoices("repository_root", "workspace"),
+        serialization_alias="workspace",
         description="Workspace root",
     )
     apply_changes: bool = m.Field(
@@ -66,7 +66,7 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
         alias="module",
         description=(
             "Dotted module path to scope the verb to a single module "
-            "(e.g. flext_core.result). Composes with --workspace/--projects."
+            "(e.g. flext_core.result). Composes with --repository-root/--projects."
         ),
     )
     target_namespace: str | None = m.Field(
@@ -80,7 +80,7 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
     report_path: Annotated[
         Path | None,
         m.Field(description="Report output path", exclude=True),
-        m.BeforeValidator(ub.normalize_optional_path),
+        m.BeforeValidator(u.Infra.normalize_optional_path),
     ] = None
     output_dir: Annotated[
         Path | None, m.Field(description="Output directory", exclude=True)
@@ -93,9 +93,9 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
         if value is None:
             return None
         normalized_values = (
-            ub.normalize_cli_values(value)
+            u.Infra.normalize_cli_values(value)
             if isinstance(value, str)
-            else ub.normalize_cli_values(*value)
+            else u.Infra.normalize_cli_values(*value)
         )
         return ",".join(normalized_values) or None
 
@@ -111,8 +111,8 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
     @m.computed_field
     @property
     def root(self) -> Path:
-        """Canonical normalized workspace root."""
-        return self.workspace_root
+        """Canonical normalized repository root."""
+        return self.repository_root
 
     @property
     def fail_fast(self) -> bool:

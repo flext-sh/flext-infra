@@ -5,9 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, m, t, u
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
@@ -26,7 +23,7 @@ class FlextInfraEnsureRuffConfigPhase:
 
     @staticmethod
     def _workspace_project_namespaces(project_dir: Path) -> t.StrSequence:
-        """Discover child project packages when generating workspace root settings."""
+        """Discover child project packages when generating repository root settings."""
         if not (project_dir / c.Infra.PYPROJECT_FILENAME).is_file():
             return ()
         discovered = u.Infra.discover_projects(project_dir)
@@ -82,11 +79,12 @@ class FlextInfraEnsureRuffConfigPhase:
         """Load validated project-owned Ruff additions from ``config/*.yaml``."""
         if managed_artifacts is not None:
             return managed_artifacts.artifacts.Ruff.per_file_ignores
-        loaded = (
-            FlextInfraUtilitiesProjectManagedArtifacts.load_project_managed_artifacts(
-                project_dir
-            )
-        )
+        if not project_dir.is_dir():
+            # A scaffold target is materialized by this same plan, so it owns
+            # no declared exemption yet. A directory that does exist but cannot
+            # be inspected still fails loud below.
+            return {}
+        loaded = u.Infra.load_project_managed_artifacts(project_dir)
         if loaded.failure:
             raise ValueError(loaded.error or "project artifact load failed")
         return loaded.value.artifacts.Ruff.per_file_ignores

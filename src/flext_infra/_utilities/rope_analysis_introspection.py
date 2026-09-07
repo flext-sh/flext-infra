@@ -5,11 +5,12 @@ from __future__ import annotations
 import operator
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra.constants import c
 from flext_infra.models import m
+
+from .._utilities.discovery import FlextInfraUtilitiesDiscovery
+from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from .._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -38,12 +39,9 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         class_name: str,
     ) -> t.StrSequence:
         """Return names of nested classes within a given class."""
-        try:
-            return FlextInfraUtilitiesRopeAnalysisIntrospection._nested_class_names(
-                rope_project, resource, class_name
-            )
-        except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
-            return ()
+        return FlextInfraUtilitiesRopeAnalysisIntrospection._nested_class_names(
+            rope_project, resource, class_name
+        )
 
     @staticmethod
     def _nested_class_names(
@@ -72,20 +70,17 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
     ) -> t.SequenceOf[m.Infra.SymbolInfo]:
         """Return top-level symbols defined in one module through Rope metadata."""
         result: t.MutableSequenceOf[m.Infra.SymbolInfo] = []
-        try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-            tree: p.AttributeProbe = pymodule.get_ast()
-            body: p.AttributeProbe = getattr(tree, "body", ())
-            if not isinstance(body, (list, tuple)):
-                return result
-            for node in body:
-                result.extend(
-                    FlextInfraUtilitiesRopeAnalysisIntrospection._module_symbols_from_node(
-                        node
-                    )
-                )
-        except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
+        pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
+        tree: p.AttributeProbe = pymodule.get_ast()
+        body: p.AttributeProbe = getattr(tree, "body", ())
+        if not isinstance(body, (list, tuple)):
             return result
+        for node in body:
+            result.extend(
+                FlextInfraUtilitiesRopeAnalysisIntrospection._module_symbols_from_node(
+                    node
+                )
+            )
         return sorted(result, key=operator.attrgetter("line"))
 
     @staticmethod

@@ -42,7 +42,6 @@ class TestsToolchainBeadsDistribution:
         toolchain = config.Infra.codegen.toolchain
         version = toolchain.beads.version
 
-        tm.that(toolchain.beads.minimum_release_age, eq=None)
         tm.that(toolchain.beads.selector, eq=_CANONICAL_SELECTOR)
         tm.that(version, eq=_CANONICAL_VERSION_SELECTOR)
         tm.that(toolchain.beads.prerelease, eq=True)

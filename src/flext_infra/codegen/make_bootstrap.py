@@ -26,16 +26,14 @@ class FlextInfraCodegenMakeBootstrap(s[bool]):
         )
         conformed = FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
-                root=self.workspace_root,
+                root=self.repository_root,
                 what=c.Infra.CodegenConformSurface.MAKEFILE,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=mode,
             )
         )
         if conformed.failure:
-            return r[bool].fail(
-                conformed.error or "Makefile bootstrap conformance failed"
-            )
+            return r[bool].from_failure(conformed)
         return r[bool].ok(True)
 
 

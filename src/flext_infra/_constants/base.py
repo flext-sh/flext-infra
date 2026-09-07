@@ -9,9 +9,9 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import TYPE_CHECKING, Final
 
-from flext_infra._constants.make import FlextInfraConstantsMake
-from flext_infra._constants.source_code import FlextInfraConstantsSourceCode
-from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
+from .._constants.make import FlextInfraConstantsMake
+from .._constants.source_code import FlextInfraConstantsSourceCode
+from .._constants.validate import FlextInfraConstantsSharedInfra
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -75,6 +75,8 @@ class FlextInfraConstantsBase(
     "Mypy tool section key."
     PYRIGHT: Final[str] = "pyright"
     "Pyright tool section key."
+    PYRIGHT_LANGSERVER: Final[str] = "pyright-langserver"
+    "Pyright Language Server Protocol executable."
     PYTEST: Final[str] = "pytest"
     "Pytest tool section key."
     RUFF: Final[str] = "ruff"
@@ -215,6 +217,7 @@ class FlextInfraConstantsBase(
         "packaging",
         "pathspec",
         "pluggy",
+        "tomlkit",
         "trove-classifiers",
     })
     "Complete registry package set required by the isolated Hatch build backend."
@@ -222,6 +225,12 @@ class FlextInfraConstantsBase(
     "Workspace-relative trusted release secret-scan configuration."
     PYPI_SIMPLE_INDEX_URL: Final[str] = "https://pypi.org/simple"
     "Canonical public package index used by isolated release builds."
+    PYPI_UPLOAD_URL: Final[str] = "https://upload.pypi.org/legacy/"
+    "Canonical public package upload endpoint."
+    JSON_RPC_VERSION: Final[str] = "2.0"
+    "Canonical JSON-RPC protocol version used by LSP transports."
+    GATE_ATTESTATION_SCHEMA: Final[str] = "https://flext.sh/attestations/gates/v1"
+    "Canonical schema identifier for signed gate attestations."
     UV_HTTP_CONNECT_TIMEOUT: Final[str] = "UV_HTTP_CONNECT_TIMEOUT"
     "uv HTTP connection timeout environment key."
     UV_HTTP_TIMEOUT: Final[str] = "UV_HTTP_TIMEOUT"
@@ -247,6 +256,12 @@ class FlextInfraConstantsBase(
     "Ambient uv variables removed before a policy-bound release build."
     SG: Final[str] = "ast-grep"
     "Canonical ast-grep binary."
+    SG_CONFIG_FLAG: Final[str] = "--config"
+    "Canonical ast-grep configuration-file option."
+    SG_FILTER_FLAG: Final[str] = "--filter"
+    "Canonical ast-grep rule-ID filter option."
+    SG_UPDATE_ALL: Final[str] = "--update-all"
+    "ast-grep fixture and rewrite update flag."
     BANDIT: Final[str] = "bandit"
     "Bandit security linter binary."
     RUMDL: Final[str] = "rumdl"
@@ -258,16 +273,8 @@ class FlextInfraConstantsBase(
     MAKE: Final[str] = "make"
     "Make build tool binary."
 
-    # Quality gate identifiers.
     CHECK: Final[str] = "check"
     "Generic check command/subcommand identifier."
-    LINT: Final[str] = "lint"
-    FORMAT: Final[str] = "format"
-    MARKDOWN: Final[str] = "markdown"
-    SILENT_FAILURE: Final[str] = "silent-failure"
-    DEFAULT_CSV: Final[str] = (
-        "lint,format,pyrefly,mypy,pyright,silent-failure,security,markdown"
-    )
 
     @unique
     class TomlMergeMode(StrEnum):
@@ -347,23 +354,15 @@ class FlextInfraConstantsBase(
     RK_WORKSPACE: Final[str] = "workspace"
     RK_ROOT: Final[str] = "root"
     ROOT_PROJECT_SELECTOR: Final[str] = "."
-    "Project selector naming the workspace root itself."
+    "Project selector naming the repository root itself."
     RK_ID: Final[str] = "id"
     RK_URL: Final[str] = "url"
     RK_CLASS_NESTING: Final[str] = "class_nesting"
-    RK_TARGET_NAMESPACE: Final[str] = "target_namespace"
-    RK_SOURCE_SYMBOL: Final[str] = "source_symbol"
-    RK_LOOSE_NAME: Final[str] = "loose_name"
     RK_REWRITE_SCOPE: Final[str] = "rewrite_scope"
     RK_CONFIDENCE: Final[str] = "confidence"
     RK_FIX_ACTION: Final[str] = "fix_action"
-    RK_CURRENT_FILE: Final[str] = "current_file"
     RK_DESCRIPTION: Final[str] = "description"
     RK_SEVERITY: Final[str] = "severity"
-    RK_VIOLATION_TYPE: Final[str] = "violation_type"
-    RK_SUGGESTED_FIX: Final[str] = "suggested_fix"
-    RK_HELPER_CONSOLIDATION: Final[str] = "helper_consolidation"
-    RK_POST_CHECKS: Final[str] = "post_checks"
 
     CLI_APPLY_OPTION_DECLS: Final[t.StrSequence] = ("--apply/--dry-run",)
     "Typer dual-flag declarations for --apply/--dry-run option."
@@ -380,13 +379,6 @@ class FlextInfraConstantsBase(
 
     SAFE_EXECUTION_DEFAULT_GATES: Final[str] = "lint,mypy,pyright,pyrefly"
     "Default quality gates for post-transform validation."
-    ENFORCEMENT_ADVISORY_GATES: Final[frozenset[str]] = frozenset({
-        "runtime-census",
-        "namespace",
-        "tier-whitelist",
-        "silent-failure",
-    })
-    "Gates that report violations as warnings rather than failing the pipeline."
     SAFE_EXECUTION_BAK_SUFFIX: Final[str] = ".bak"
     "File backup suffix for copy-on-write safety."
     ENV_VAR_LINT_SNAPSHOT_GATES: Final[str] = "FLEXT_INFRA_LINT_SNAPSHOT_GATES"
@@ -395,7 +387,7 @@ class FlextInfraConstantsBase(
     "Color-forcing variable: its mere presence makes ruff emit ANSI sequences."
 
     ENV_VAR_STANDALONE: Final[str] = "FLEXT_STANDALONE"
-    ENV_VAR_WORKSPACE_ROOT: Final[str] = "FLEXT_WORKSPACE_ROOT"
+    ENV_VAR_REPOSITORY_ROOT: Final[str] = "FLEXT_REPOSITORY_ROOT"
     ENV_VAR_USE_HTTPS: Final[str] = "FLEXT_USE_HTTPS"
     ENV_VAR_GITHUB_ACTIONS: Final[str] = "GITHUB_ACTIONS"
     ENV_VAR_GITHUB_HEAD_REF: Final[str] = "GITHUB_HEAD_REF"
