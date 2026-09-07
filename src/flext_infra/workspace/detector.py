@@ -16,7 +16,7 @@ from flext_infra.base import s
 from ._governance import FlextInfraWorkspaceGovernanceMixin
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 class FlextInfraWorkspaceDetector(
@@ -272,7 +272,7 @@ class FlextInfraWorkspaceDetector(
     @staticmethod
     def _gitmodule_contract(
         workspace_root: Path, subproject_path: Path
-    ) -> p.Result[tuple[str, str]]:
+    ) -> p.Result[t.Pair[str, str]]:
         """Read one exact URL/branch pair from the local ``.gitmodules``."""
         contract = u.Infra.gitmodule_contract(
             m.Infra.GitSubmoduleContractRequest(
@@ -338,7 +338,9 @@ class FlextInfraWorkspaceDetector(
     @classmethod
     def _load_subprojects(
         cls, repository_root: Path, *, workspace_beads: m.Infra.BeadsProjectSpec
-    ) -> p.Result[tuple[tuple[m.Infra.RepositoryRef, ...], tuple[Path, ...]]]:
+    ) -> p.Result[
+        t.Pair[t.VariadicTuple[m.Infra.RepositoryRef], t.VariadicTuple[Path]]
+    ]:
         """Validate every direct governed .gitmodules entry before planning writes."""
         declared = u.Infra.git_declared_submodule_paths(repository_root)
         result_type = r[tuple[tuple[m.Infra.RepositoryRef, ...], tuple[Path, ...]]]
@@ -642,14 +644,14 @@ class FlextInfraWorkspaceDetector(
     @staticmethod
     def workspace_analysis_exclusion_paths(
         workspace: m.Infra.WorkspaceSpec,
-    ) -> tuple[Path, ...]:
+    ) -> t.VariadicTuple[Path]:
         """Return read-only external Git dependencies excluded from analysis."""
         return workspace.external_dependency_paths
 
     @classmethod
     def analysis_exclusion_paths(
         cls, repository_root: Path
-    ) -> p.Result[tuple[Path, ...]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Load exclusions for governed repositories; ignore ungoverned trees."""
         resolved_root = repository_root.expanduser().resolve()
         if not cls._beads_path(resolved_root).is_file():

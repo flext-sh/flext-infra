@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import t
+from flext_core import r
+from flext_infra.docs.generator import FlextInfraDocGenerator
+from flext_tests import tm
+from tests import m, t
+from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 
 
@@ -122,6 +126,57 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
                 workspace, project_names
             )
         return workspace
+
+    @staticmethod
+    def docs_workspace_generator(
+        root: Path,
+        *,
+        project_names: t.StrSequence = (),
+        selected_projects: t.StrSequence | None = None,
+    ) -> tuple[Path, FlextInfraDocGenerator]:
+        """Create one docs workspace plus the generator scoped to its selection."""
+        workspace = TestsFlextInfraUtilitiesDocsFixtureMixin.create_docs_workspace(
+            root, project_names=project_names
+        )
+        generator = FlextInfraDocGenerator(
+            repository_root=workspace, selected_projects=selected_projects
+        )
+        return workspace, generator
+
+    @staticmethod
+    def prepare_docs_bundle(
+        generator: FlextInfraDocGenerator,
+    ) -> m.Infra.DocsGenerationBundle:
+        """Freeze one docs bundle and create every parent directory it requires."""
+        prepared = generator.prepare_bundle()
+        tm.ok(prepared)
+        required = generator.required_directories(prepared.value)
+        tm.ok(required)
+        for directory in required.value:
+            directory.mkdir(parents=True, exist_ok=True)
+        return prepared.value
+
+    @staticmethod
+    def plan_docs_bundle(
+        generator: FlextInfraDocGenerator,
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+        """Prepare one docs bundle, create its required parents, and plan files."""
+        bundle = TestsFlextInfraUtilitiesDocsFixtureMixin.prepare_docs_bundle(generator)
+        planned = generator.plan_files(bundle)
+        tm.ok(planned)
+        return planned.value
+
+    @staticmethod
+    def publish_docs_bundle(
+        generator: FlextInfraDocGenerator,
+    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+        """Publish one planned docs bundle through the test transaction adapter."""
+        plans = TestsFlextInfraUtilitiesDocsFixtureMixin.plan_docs_bundle(generator)
+        published = TestsFlextInfraUtilitiesCodegenMixin.materialize_codegen_plans(
+            r[tuple[m.Infra.CodegenFilePlan, ...]].ok(plans)
+        )
+        tm.ok(published)
+        return plans
 
 
 __all__: list[str] = ["TestsFlextInfraUtilitiesDocsFixtureMixin"]

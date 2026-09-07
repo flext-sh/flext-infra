@@ -14,7 +14,7 @@ def make_request(
 ) -> m.Infra.WorkspaceEnvironmentSyncRequest:
     """Build one canonical beads-workspace sync request."""
     return m.Infra.WorkspaceEnvironmentSyncRequest(
-        repository_root=root,
+        workspace_root=root,
         apply=apply,
         force=force,
         beads=m.Infra.BeadsWorkspaceEnvironmentSpec(),

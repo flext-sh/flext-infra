@@ -85,7 +85,7 @@ class FlextInfraCodegenGenerationStandardMixin(
     @classmethod
     def _lazy_groups(
         cls, plan: m.Infra.LazyInitPlan
-    ) -> tuple[
+    ) -> t.Triple[
         t.StrSequencePairSequence, t.StrPairSequencePairSequence, t.LazyAliasMap
     ]:
         """Build owned lazy metadata groups and their filtered public map."""

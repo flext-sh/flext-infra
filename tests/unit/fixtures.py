@@ -168,6 +168,14 @@ def mod_workspace(tmp_path: Path) -> Path:
             "u.Infra.serialization_lock_execute(paths, timeout)\n",
         )
     )
+    package_dir = workspace / "src" / str(project.project.name).replace("-", "_")
+    tm.ok(u.Cli.ensure_dir(package_dir))
+    tm.ok(
+        u.Cli.atomic_write_text_file(
+            package_dir / c.Infra.INIT_PY,
+            '"""Public refactor-mod fixture package."""\n\nfrom __future__ import annotations\n',
+        )
+    )
     u.Tests.initialize_git_repo(workspace)
     return workspace
 

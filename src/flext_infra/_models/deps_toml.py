@@ -120,10 +120,10 @@ class FlextInfraModelsDepsToml:
                     def _nested_operations(
                         cls,
                         *,
-                        values: t.SequenceOf[tuple[str, t.JsonValue]] = (),
+                        values: t.SequenceOf[t.Pair[str, t.JsonValue]] = (),
                         lists: t.SequenceOf[t.StrSequencePair] = (),
                         deprecated_keys: t.StrSequence = (),
-                    ) -> tuple[FlextInfraModelsDepsToml.Deps.Toml.Operation, ...]:
+                    ) -> t.VariadicTuple[FlextInfraModelsDepsToml.Deps.Toml.Operation]:
                         """Nested operations."""
                         return tuple(
                             chain(
@@ -214,7 +214,7 @@ class FlextInfraModelsDepsToml:
                     def nested(
                         self,
                         *path: str,
-                        values: t.SequenceOf[tuple[str, t.JsonValue]] = (),
+                        values: t.SequenceOf[t.Pair[str, t.JsonValue]] = (),
                         lists: t.SequenceOf[t.StrSequencePair] = (),
                         deprecated_keys: t.StrSequence = (),
                     ) -> Self:

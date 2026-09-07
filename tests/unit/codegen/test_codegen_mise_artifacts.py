@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config, m, u
+import pytest
+
+from flext_infra import config, m, r, u
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_tests import tm
 from tests import u as test_u
@@ -155,7 +157,7 @@ class TestsCodegenMiseArtifacts:
         root = self._project(tmp_path / "project")
 
         service = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         })
         tm.that(service.repository_root, eq=root)
@@ -167,11 +169,50 @@ class TestsCodegenMiseArtifacts:
 
         tm.ok(result, eq=True)
 
+    def test_config_preflight_rejects_suspended_selector_before_lock_access(
+        self, tmp_path: Path
+    ) -> None:
+        """A dormant capability cannot reach lock, download, or publication."""
+        root = tmp_path / "project"
+        root.mkdir()
+        (root / ".mise.toml").write_text(
+            "[settings]\n"
+            "lockfile = true\n"
+            "[tool_config]\n"
+            "locked = true\n"
+            "[tools]\n"
+            'beads = "1.2.2"\n',
+            encoding="utf-8",
+        )
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "workspace_root": root,
+            "config_only": True,
+        }).execute()
+
+        tm.fail(result, has=["suspended toolchain", "beads"])
+        tm.that((root / "mise.lock").exists(), eq=False)
+
+    def test_apply_prunes_unconfigured_lock_tools_through_the_lock_owner(
+        self, tmp_path: Path
+    ) -> None:
+        """Retire stale generated lock entries without invoking Mise."""
+        stale_selector = "github:example/stale"
+        root = self._project(tmp_path / "project", extra_lock_selector=stale_selector)
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "workspace_root": root,
+            "apply_changes": True,
+        }).execute()
+
+        tm.ok(result, eq=True)
+        tm.that((root / "mise.lock").read_text(encoding="utf-8"), lacks=stale_selector)
+
     def test_missing_platform_checksum_is_rejected(self, tmp_path: Path) -> None:
         root = self._project(tmp_path / "project", include_checksum=False)
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -185,7 +226,7 @@ class TestsCodegenMiseArtifacts:
         before = lock_path.read_bytes()
 
         apply_result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "apply_changes": True,
         }).execute()
 
@@ -203,7 +244,7 @@ class TestsCodegenMiseArtifacts:
         )
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -215,7 +256,7 @@ class TestsCodegenMiseArtifacts:
         root = self._project(tmp_path / "project", platforms=("linux-x64",))
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -227,7 +268,7 @@ class TestsCodegenMiseArtifacts:
         )
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -238,7 +279,7 @@ class TestsCodegenMiseArtifacts:
         self._write_launchers(root, windows_version="2000.1.1")
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -257,7 +298,7 @@ class TestsCodegenMiseArtifacts:
             )
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -267,7 +308,7 @@ class TestsCodegenMiseArtifacts:
         root = self._project(tmp_path / "project", selector="npm:jscpd", platforms=())
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 

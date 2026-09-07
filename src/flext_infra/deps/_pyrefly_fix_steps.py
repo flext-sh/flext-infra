@@ -84,7 +84,7 @@ class FlextInfraConfigFixerSteps:
 
     def _strip_ignored_sub_configs(
         self, pyrefly: MutableMapping[str, t.Infra.InfraValue]
-    ) -> p.Result[tuple[t.StrSequence, bool]]:
+    ) -> p.Result[t.Pair[t.StrSequence, bool]]:
         """Drop ignore=true entries from tool.pyrefly.sub-config."""
         sub_configs = pyrefly.get(c.Infra.SUB_CONFIG)
         if not isinstance(sub_configs, list):

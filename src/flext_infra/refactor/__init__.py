@@ -3,8 +3,9 @@
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
+
+from types import MappingProxyType
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
@@ -16,6 +17,7 @@ if TYPE_CHECKING:
     from .modernize_orchestrator import FlextInfraModernizeOrchestrator
     from .namespace_enforcer import FlextInfraNamespaceEnforcer
     from .namespace_enforcer_phases import FlextInfraNamespaceEnforcerPhasesMixin
+    from .project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
     from .project_classifier import FlextInfraProjectClassifier
     from .violation_analyzer import FlextInfraRefactorViolationAnalyzer
     from .wrapper_root_namespace import FlextInfraWrapperRootNamespaceRefactor
@@ -28,6 +30,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorCensus",
     "FlextInfraRefactorClassNestingAnalyzer",
     "FlextInfraRefactorClassvarConstantAutofix",
+    "FlextInfraRefactorProjectAliasMigrator",
     "FlextInfraRefactorViolationAnalyzer",
     "FlextInfraWrapperRootNamespaceRefactor",
 )
@@ -44,6 +47,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".modernize_orchestrator": ("FlextInfraModernizeOrchestrator",),
             ".namespace_enforcer": ("FlextInfraNamespaceEnforcer",),
             ".namespace_enforcer_phases": ("FlextInfraNamespaceEnforcerPhasesMixin",),
+            ".project_alias_migrator": ("FlextInfraRefactorProjectAliasMigrator",),
             ".project_classifier": ("FlextInfraProjectClassifier",),
             ".violation_analyzer": ("FlextInfraRefactorViolationAnalyzer",),
             ".wrapper_root_namespace": ("FlextInfraWrapperRootNamespaceRefactor",),

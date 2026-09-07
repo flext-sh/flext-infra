@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Final
 from flext_infra import c
 
 if TYPE_CHECKING:
-    from flext_infra import m
+    from flext_infra import m, t
 
 # Why (ai-hub-xkux, fleet-wide fix): the previous CliRouteService composed
 # CodegenRoutes + ValidationRoutes + WorkspaceRoutes via multi-inheritance and
@@ -73,7 +73,7 @@ class CliRouteService:
 
     @classmethod
     @functools.cache
-    def route_table_for(cls, group: str) -> tuple[m.Cli.ResultCommandRoute, ...]:
+    def route_table_for(cls, group: str) -> t.VariadicTuple[m.Cli.ResultCommandRoute]:
         """Return the routes for one command group, importing only its owner."""
         if group in {
             c.Infra.CLI_GROUP_CHECK,

@@ -12,7 +12,9 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
-from flext_infra.workspace.environment_contracts import envrc_contract_violations
+from flext_infra.workspace.environment_contracts import (
+    FlextInfraWorkspaceEnvironmentContracts,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -53,7 +55,9 @@ class FlextInfraDirenvGate(FlextInfraGate):
                 raw_output=issue.message,
                 started=started,
             )
-        violations = envrc_contract_violations(content.value, root=project_dir)
+        violations = FlextInfraWorkspaceEnvironmentContracts.envrc_contract_violations(
+            content.value, root=project_dir
+        )
         if violations:
             issues = tuple(
                 m.Infra.Issue(
@@ -98,7 +102,7 @@ class FlextInfraDirenvGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
         """Pass only on a zero-exit activation."""
         _ = project_dir, ctx
         if u.Cli.process_succeeded(result.outcome):
@@ -119,4 +123,4 @@ class FlextInfraDirenvGate(FlextInfraGate):
         )
 
 
-__all__: tuple[str, ...] = ("FlextInfraDirenvGate",)
+__all__: t.VariadicTuple[str] = ("FlextInfraDirenvGate",)

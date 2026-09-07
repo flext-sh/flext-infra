@@ -35,6 +35,12 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             bool,
             m.Field(description="Never write files even when fix mode is requested"),
         ] = False
+        gate_mode: Annotated[
+            Literal["error", "warn"],
+            m.Field(
+                description="Gate failure mode: error fails the pipeline, warn reports only"
+            ),
+        ] = "error"
         ruff_args: Annotated[
             t.StrSequence, m.Field(description="Extra arguments for Ruff")
         ] = ()
@@ -100,7 +106,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             t.StrSequence, m.Field(min_length=1, description="Exactly covered gates")
         ]
         commands: Annotated[
-            tuple[FlextInfraModelsGates.GateCommandEvidence, ...],
+            t.VariadicTuple[FlextInfraModelsGates.GateCommandEvidence],
             m.Field(min_length=1, description="Successful canonical invocations"),
         ]
 

@@ -189,5 +189,23 @@ class TestsFlextInfraUtilitiesGitMixin:
             ),
         )
 
+    @staticmethod
+    def git_repository(parent: Path, name: str = "repository") -> Path:
+        """Create and initialize one Git fixture repository under ``parent``."""
+        root = parent / name
+        root.mkdir(parents=True)
+        TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(root)
+        return root
+
+    @staticmethod
+    def git_run(repo_root: Path, *args: str) -> bool:
+        """Run one Git command inside the fixture repository, failing closed."""
+        return tm.ok(u.Cli.run_checked(["git", *args], cwd=repo_root))
+
+    @staticmethod
+    def git_capture(repo_root: Path, *args: str) -> str:
+        """Capture one Git command's stdout inside the fixture repository."""
+        return tm.ok(u.Cli.capture(["git", *args], cwd=repo_root))
+
 
 __all__: list[str] = ["TestsFlextInfraUtilitiesGitMixin"]

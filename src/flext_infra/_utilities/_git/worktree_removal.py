@@ -12,7 +12,7 @@ from flext_core import r
 from ..._utilities._git.worktree_patch import FlextInfraUtilitiesGitWorktreePatchMixin
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 class FlextInfraUtilitiesGitWorktreeRemovalMixin(
@@ -32,7 +32,7 @@ class FlextInfraUtilitiesGitWorktreeRemovalMixin(
         )
 
     @staticmethod
-    def _nested_submodule_changes(repo: Repo) -> tuple[str, ...]:
+    def _nested_submodule_changes(repo: Repo) -> t.VariadicTuple[str]:
         nested = repo.git.submodule(
             "foreach",
             "--recursive",

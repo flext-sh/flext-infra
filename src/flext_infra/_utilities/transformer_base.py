@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from abc import abstractmethod
 from typing import TYPE_CHECKING
 
@@ -44,32 +43,6 @@ class FlextInfraRopeTransformer(FlextInfraChangeTrackingTransformer):
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
         """Apply transformation to in-memory source."""
         ...
-
-    @staticmethod
-    def _ensure_u_import(source: str) -> str:
-        """Ensure ``from <core_pkg> import u`` is present in source text.
-
-        The facades are resolved at call time: this module is imported while
-        ``flext_infra.utilities`` is still initializing, so a module-level
-        ``from flext_infra import u`` would bind the parent CLI facade.
-        """
-        from flext_infra import c, u
-
-        core_pkg = c.Infra.PKG_CORE_UNDERSCORE
-        pkg_match = re.search(
-            rf"^from\s+{re.escape(core_pkg)}\s+import\s+([^\n]+)", source, re.MULTILINE
-        )
-        if pkg_match:
-            names = pkg_match.group(1).strip()
-            name_set = {n.strip() for n in names.split(",")}
-            if "u" in name_set:
-                return source
-            new_names = names + ", u"
-            return source[: pkg_match.start(1)] + new_names + source[pkg_match.end(1) :]
-        lines = source.splitlines(keepends=True)
-        insert_idx = u.Infra.find_import_insert_position(lines, past_existing=False)
-        lines.insert(insert_idx, f"from {core_pkg} import u\n")
-        return "".join(lines)
 
     def transform(
         self, rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource

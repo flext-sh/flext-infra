@@ -26,6 +26,23 @@ from .._utilities.transformer_header import FlextInfraUtilitiesTransformerHeader
 class FlextInfraUtilitiesRefactorNamespaceMoves:
     """Helpers for block moves and compatibility-alias rewrites."""
 
+    @staticmethod
+    def _normalize_rewritten_file(
+        rope_project: t.Infra.RopeProject,
+        file_path: Path,
+        *,
+        preserve_canonical_aliases: bool = False,
+    ) -> None:
+        """Normalize imports for one rewritten file; a failed cleanup is loud."""
+        cleanup_result = FlextInfraUtilitiesRopeImports.normalize_imports(
+            rope_project,
+            file_paths=(file_path,),
+            preserve_canonical_aliases=preserve_canonical_aliases,
+        )
+        if cleanup_result.failure:
+            msg = cleanup_result.error or "rope import cleanup failed"
+            raise RuntimeError(msg)
+
     @classmethod
     def rewrite_import_violations(
         cls, *, py_files: t.SequenceOf[Path], project_package: str
@@ -71,14 +88,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 )
                 if rewritten is None:
                     continue
-                cleanup_result = FlextInfraUtilitiesRopeImports.normalize_imports(
-                    rope_project,
-                    file_paths=(file_path,),
-                    preserve_canonical_aliases=True,
+                FlextInfraUtilitiesRefactorNamespaceMoves._normalize_rewritten_file(
+                    rope_project, file_path, preserve_canonical_aliases=True
                 )
-                if cleanup_result.failure:
-                    msg = cleanup_result.error or "rope import cleanup failed"
-                    raise RuntimeError(msg)
 
     @staticmethod
     def rewrite_namespace_source_violations(
@@ -89,7 +101,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     ) -> None:
         """Rewrite runtime aliases imported from a foreign FLEXT package source."""
         _ = parse_failures, gates
-        grouped: t.MappingKV[Path, t.MutableMappingKV[tuple[str, str], set[str]]] = (
+        grouped: t.MappingKV[Path, t.MutableMappingKV[t.Pair[str, str], set[str]]] = (
             defaultdict(lambda: defaultdict(set))
         )
         for violation in violations:
@@ -129,14 +141,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     changed = changed or updated is not None
                 if not changed:
                     continue
-                cleanup_result = FlextInfraUtilitiesRopeImports.normalize_imports(
-                    rope_project,
-                    file_paths=(file_path,),
-                    preserve_canonical_aliases=True,
+                FlextInfraUtilitiesRefactorNamespaceMoves._normalize_rewritten_file(
+                    rope_project, file_path, preserve_canonical_aliases=True
                 )
-                if cleanup_result.failure:
-                    msg = cleanup_result.error or "rope import cleanup failed"
-                    raise RuntimeError(msg)
 
     @classmethod
     def rewrite_runtime_alias_violations(
@@ -421,12 +428,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             source = resource.read()
             names_in_file = _names(source)
         if changed:
-            cleanup_result = FlextInfraUtilitiesRopeImports.normalize_imports(
-                rope_project, file_paths=(file_path,)
+            FlextInfraUtilitiesRefactorNamespaceMoves._normalize_rewritten_file(
+                rope_project, file_path
             )
-            if cleanup_result.failure:
-                msg = cleanup_result.error or "rope import cleanup failed"
-                raise RuntimeError(msg)
 
     @staticmethod
     def _move_named_blocks(
@@ -891,12 +895,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     )
                     changed = changed or updated is not None
                 if changed:
-                    cleanup_result = FlextInfraUtilitiesRopeImports.normalize_imports(
-                        rope_project, file_paths=(resolved_py_file,)
+                    FlextInfraUtilitiesRefactorNamespaceMoves._normalize_rewritten_file(
+                        rope_project, resolved_py_file
                     )
-                    if cleanup_result.failure:
-                        msg = cleanup_result.error or "rope import cleanup failed"
-                        raise RuntimeError(msg)
                     backup_path = resolved_py_file.with_suffix(
                         resolved_py_file.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX
                     )

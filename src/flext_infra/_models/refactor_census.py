@@ -98,7 +98,7 @@ class FlextInfraModelsRefactorCensus:
             t.NonEmptyStr, m.Field(description="Utilities class name")
         ]
         source_file: Annotated[str, m.Field(description="Source filename")]
-        methods: tuple[FlextInfraModelsRefactorCensus.CensusMethodSummary, ...] = (
+        methods: t.VariadicTuple[FlextInfraModelsRefactorCensus.CensusMethodSummary] = (
             m.Field(default_factory=tuple, description="Method summaries")
         )
 
@@ -128,12 +128,12 @@ class FlextInfraModelsRefactorCensus:
     class UtilitiesCensusReport(m.ArbitraryTypesModel):
         """Full census report for _utilities method usage."""
 
-        classes: tuple[FlextInfraModelsRefactorCensus.CensusClassSummary, ...] = (
+        classes: t.VariadicTuple[FlextInfraModelsRefactorCensus.CensusClassSummary] = (
             m.Field(default_factory=tuple, description="Per-class summaries")
         )
-        projects: tuple[FlextInfraModelsRefactorCensus.CensusProjectSummary, ...] = (
-            m.Field(default_factory=tuple, description="Per-project breakdowns")
-        )
+        projects: t.VariadicTuple[
+            FlextInfraModelsRefactorCensus.CensusProjectSummary
+        ] = m.Field(default_factory=tuple, description="Per-project breakdowns")
         total_classes: Annotated[
             t.NonNegativeInt, m.Field(description="Number of utility classes")
         ]

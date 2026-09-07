@@ -11,7 +11,7 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities.docs_contract import FlextInfraUtilitiesDocsContract
+from .._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
 from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
@@ -36,7 +36,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         recursive: bool,
         suffixes: frozenset[str],
         excluded_names: frozenset[str] = frozenset(),
-    ) -> p.Result[tuple[Path, ...]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """List regular source files through one authenticated tree inventory."""
         planned = cli_u.Cli.atomic_plan_directory_chain(root)
         if planned.failure:
@@ -60,7 +60,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
     @staticmethod
     def docs_source_paths(
         workspace_root: Path, extra_roots: t.SequenceOf[Path] = ()
-    ) -> p.Result[tuple[Path, ...]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Discover every physical source consumed by one docs render."""
         roots = FlextInfraUtilitiesDocsScope.docs_workspace_roots(
             workspace_root, extra_roots
@@ -141,7 +141,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                 f"added={[path.as_posix() for path in added]}, "
                 f"removed={[path.as_posix() for path in removed]}"
             )
-        current = FlextInfraUtilitiesDocsContract.docs_snapshot_sources(
+        current = FlextInfraUtilitiesCodegenFilePlan.required_file_states(
             discovered.value
         )
         if current.failure:

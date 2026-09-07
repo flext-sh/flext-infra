@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, m
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,7 +32,7 @@ class FlextInfraEnforcementCollectionBase:
         return [(rule, FlextInfraEnforcementCollectionBase.probe_for_path(project_dir))]
 
     @staticmethod
-    def stub_file_paths(project_dir: Path) -> tuple[Path, ...]:
+    def stub_file_paths(project_dir: Path) -> t.VariadicTuple[Path]:
         """Return source stub files while respecting canonical excluded dirs."""
         paths: set[Path] = set()
         for path in project_dir.rglob("*.pyi"):

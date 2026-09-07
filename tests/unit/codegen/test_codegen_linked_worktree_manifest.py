@@ -56,8 +56,8 @@ class TestCodegenLinkedWorktreeTopology:
         )
         primary_snapshot = WorktreeFixture.repository_snapshot(primary)
 
-        request = m.Infra.CodegenConformRequest(
-            root=lane,
+        request = u.Tests.conform_request(
+            lane,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
@@ -118,8 +118,8 @@ class TestCodegenLinkedWorktreeTopology:
         before = WorktreeFixture.repository_snapshot(root)
 
         result = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
+            u.Tests.conform_request(
+                root,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.APPLY,
             )
@@ -181,8 +181,8 @@ class TestCodegenLinkedWorktreeTopology:
 
         applied = tm.ok(
             FlextInfraCodegenConform.execute_request(
-                m.Infra.CodegenConformRequest(
-                    root=root,
+                u.Tests.conform_request(
+                    root,
                     scope=c.Infra.CodegenConformScope.SUBPROJECTS,
                     mode=c.Infra.CodegenConformMode.APPLY,
                 )
@@ -226,8 +226,8 @@ class TestCodegenLinkedWorktreeTopology:
         outside_snapshot = WorktreeFixture.repository_snapshot(outside)
 
         result = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
+            u.Tests.conform_request(
+                root,
                 what=c.Infra.CodegenConformSurface.MAKEFILE,
                 scope=c.Infra.CodegenConformScope.SUBPROJECTS,
                 mode=c.Infra.CodegenConformMode.CHECK,

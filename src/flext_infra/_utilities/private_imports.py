@@ -120,7 +120,7 @@ class FlextInfraUtilitiesPrivateImports:
         root: Path,
         sources: t.MappingKV[Path, str],
         findings: t.SequenceOf[m.Infra.ModScanFinding],
-    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Plan owner-aware relative and binding-aware public import rewrites."""
         facades = FlextInfraUtilitiesPrivateImportFacades.discover(sources)
         specs: dict[Path, list[tuple[str, str, str, str, str]]] = {}
@@ -236,9 +236,8 @@ class FlextInfraUtilitiesPrivateImports:
                                     facade_alias
                                 )
             all_removals = {
-                module: frozenset(
-                    removals.get(module, set()) | obsolete_imports.get(module, set())
-                )
+                module: removals.get(module, set())
+                | obsolete_imports.get(module, set())
                 for module in removals.keys() | obsolete_imports.keys()
             }
             for facade_alias, package in public_imports.items():
