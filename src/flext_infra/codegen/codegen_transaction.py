@@ -11,10 +11,16 @@ from flext_core import r
 from flext_infra import m, u
 from flext_infra.codegen import (
     _codegen_staging as generic_staging,
-    _mise_artifacts_journal as journal_io,
     _mise_artifacts_publication as publication,
-    _mise_artifacts_state as state,
-    _mise_artifacts_verification as verify,
+)
+from flext_infra.codegen._mise_artifacts_journal import (
+    FlextInfraMiseArtifactsJournal as journal_io,
+)
+from flext_infra.codegen._mise_artifacts_state import (
+    FlextInfraMiseArtifactsState as state,
+)
+from flext_infra.codegen._mise_artifacts_verification import (
+    FlextInfraMiseArtifactsVerification as verify,
 )
 from flext_infra.codegen.mise_artifacts_lock import FlextInfraMiseLock
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
