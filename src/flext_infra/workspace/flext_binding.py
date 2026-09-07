@@ -39,7 +39,7 @@ class FlextInfraFlextBindingService:
     """Resolve and apply one session binding onto a flext worktree."""
 
     @staticmethod
-    def _declared_distributions(consumer_root: Path) -> p.Result[tuple[str, ...]]:
+    def _declared_distributions(consumer_root: Path) -> p.Result[t.VariadicTuple[str]]:
         """Return the distribution names the consumer declares as dependencies."""
         manifest = consumer_root / c.Infra.PYPROJECT_FILENAME
         if not manifest.is_file():
@@ -57,7 +57,7 @@ class FlextInfraFlextBindingService:
     @classmethod
     def plan_targets(
         cls, *, consumer_root: Path, flext_root: Path
-    ) -> p.Result[tuple[str, ...]]:
+    ) -> p.Result[t.VariadicTuple[str]]:
         """Return the distributions this worktree can supply to the consumer.
 
         Fails closed when ``flext_root`` is not a flext workspace, so a mistyped
@@ -71,7 +71,7 @@ class FlextInfraFlextBindingService:
             )
         available = {
             declared_repository.distribution: declared_repository
-            for declared_repository in workspace.value.subprojects
+            for declared_repository in workspace.value.declared_repositories
             if declared_repository.package
         }
         declared = cls._declared_distributions(consumer_root)
@@ -100,7 +100,7 @@ class FlextInfraFlextBindingService:
             declared_repository.distribution: (
                 flext_root / declared_repository.path
             ).resolve()
-            for declared_repository in workspace.value.subprojects
+            for declared_repository in workspace.value.declared_repositories
             if declared_repository.package
         }
         editables: list[str] = []

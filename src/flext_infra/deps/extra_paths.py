@@ -76,19 +76,61 @@ class FlextInfraExtraPathsManager(
             return r[bool].from_failure(result)
         return r[bool].ok(True)
 
+    @staticmethod
+    def _existing_typings_paths(
+        rules: p.Infra.TypeCheckerPathRules, *, project_dir: Path, is_root: bool
+    ) -> t.StrSequence:
+        """Return the configured typings roots that exist under ``project_dir``."""
+        configured_typings = (
+            rules.root_typings_paths if is_root else rules.project_typings_paths
+        )
+        return tuple(
+            relative_path
+            for relative_path in configured_typings
+            if (project_dir / relative_path).is_dir()
+        )
+
+    def _search_path_set(
+        self,
+        rules: p.Infra.TypeCheckerPathRules,
+        *,
+        project_dir: Path,
+        is_root: bool,
+        shared_search_paths: t.StrSequence,
+        include_generated_roots: bool,
+    ) -> t.Infra.StrSet:
+        """Return the unordered search roots a checker shares, minus ordered ones.
+
+        ``include_generated_roots`` carries the only difference between the two
+        callers: pyrefly also accepts a shared root the active codegen plan is
+        about to materialize, mypy accepts only roots already on disk.
+        """
+        shared_paths = [
+            relative_path
+            for relative_path in shared_search_paths
+            if (project_dir / relative_path).is_dir()
+            or (
+                include_generated_roots and relative_path in self.generated_python_roots
+            )
+        ]
+        paths: t.Infra.StrSet = {
+            *self._existing_typings_paths(
+                rules, project_dir=project_dir, is_root=is_root
+            ),
+            *shared_paths,
+        }
+        paths.discard(rules.source_dir)
+        paths.discard(rules.project_root)
+        return paths
+
     @override
     def pyright_extra_paths(self, *, project_dir: Path, is_root: bool) -> t.StrSequence:
         """Compute pyright extra paths for a project."""
         rules = config.Infra.tooling.tools.pyright.path_rules
         source_root = rules.source_dir
-        configured_typings = (
-            rules.root_typings_paths if is_root else rules.project_typings_paths
+        typings_paths = self._existing_typings_paths(
+            rules, project_dir=project_dir, is_root=is_root
         )
-        typings_paths = [
-            relative_path
-            for relative_path in configured_typings
-            if (project_dir / relative_path).is_dir()
-        ]
         # Why: naive sorted({".", "src"}) puts "." first and diverges from the
         # declared scaffold roots and pyrefly search-path ordering, so conform
         # apply never reached a fixed point on pyproject.toml. Keep the source
@@ -110,20 +152,6 @@ class FlextInfraExtraPathsManager(
         """
         rules = config.Infra.tooling.tools.pyrefly.path_rules
         source_root = rules.source_dir
-        configured_typings = (
-            rules.root_typings_paths if is_root else rules.project_typings_paths
-        )
-        typings_paths = [
-            relative_path
-            for relative_path in configured_typings
-            if (project_dir / relative_path).is_dir()
-        ]
-        shared_paths = [
-            relative_path
-            for relative_path in rules.project_shared_search_paths
-            if (project_dir / relative_path).is_dir()
-            or relative_path in self.generated_python_roots
-        ]
         # Why (cosmos-45hiv, 2026-08-31): the project root closes the chain for
         # cross-tree imports. `scripts/` is a checked env dir and owns
         # `scripts/__init__.py`, so `tests/` and `scripts/` import its modules
@@ -136,12 +164,16 @@ class FlextInfraExtraPathsManager(
         # which is why the two tools now derive separately.
         root_path = rules.project_root
         has_project_root = (project_dir / root_path).is_dir()
-        paths: t.Infra.StrSet = {*typings_paths, *shared_paths}
+        paths = self._search_path_set(
+            rules,
+            project_dir=project_dir,
+            is_root=is_root,
+            shared_search_paths=rules.project_shared_search_paths,
+            include_generated_roots=True,
+        )
         has_source_root = (
             project_dir / source_root
         ).is_dir() or source_root in self.generated_python_roots
-        paths.discard(source_root)
-        paths.discard(root_path)
         ordered = sorted(paths)
         if has_project_root:
             ordered.append(root_path)
@@ -165,22 +197,13 @@ class FlextInfraExtraPathsManager(
         """
         rules = config.Infra.tooling.tools.pyrefly.path_rules
         source_root = rules.source_dir
-        configured_typings = (
-            rules.root_typings_paths if is_root else rules.project_typings_paths
+        paths = self._search_path_set(
+            rules,
+            project_dir=project_dir,
+            is_root=is_root,
+            shared_search_paths=rules.project_shared_search_paths,
+            include_generated_roots=False,
         )
-        typings_paths = [
-            relative_path
-            for relative_path in configured_typings
-            if (project_dir / relative_path).is_dir()
-        ]
-        shared_paths = [
-            relative_path
-            for relative_path in rules.project_shared_search_paths
-            if (project_dir / relative_path).is_dir()
-        ]
-        paths: t.Infra.StrSet = {*typings_paths, *shared_paths}
-        paths.discard(source_root)
-        paths.discard(rules.project_root)
         if (project_dir / source_root).is_dir():
             return (source_root, *sorted(paths))
         return tuple(sorted(paths))

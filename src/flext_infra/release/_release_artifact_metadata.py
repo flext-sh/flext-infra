@@ -119,19 +119,12 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
         )
         if result.failure:
             return r[str].from_failure(result)
-        for section_name in (c.Infra.OPTIONAL_DEPENDENCIES, c.Infra.DEPENDENCY_GROUPS):
-            parent = (
-                project if section_name == c.Infra.OPTIONAL_DEPENDENCIES else document
+        for section, group_name in u.Infra.requirement_group_fields(document, project):
+            group_result = cls._rewrite_requirement_field(
+                section, group_name, versions=versions
             )
-            section = u.Cli.toml_table_child(parent, section_name)
-            if section is None:
-                continue
-            for group_name in tuple(section):
-                group_result = cls._rewrite_requirement_field(
-                    section, str(group_name), versions=versions
-                )
-                if group_result.failure:
-                    return r[str].from_failure(group_result)
+            if group_result.failure:
+                return r[str].from_failure(group_result)
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         hatch = u.Cli.toml_table_child(tool, "hatch") if tool is not None else None
         if tool is not None:

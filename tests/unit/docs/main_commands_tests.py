@@ -48,24 +48,12 @@ def test_fixer_execute_fails_on_unapplied_drift(tmp_path: Path) -> None:
 
 
 def test_generator_plans_root_and_selected_project(tmp_path: Path) -> None:
-    workspace = u.Tests.create_docs_workspace(
-        tmp_path, project_names=("flext-a", "flext-b")
+    workspace, generator = u.Tests.docs_workspace_generator(
+        tmp_path, project_names=("flext-a", "flext-b"), selected_projects=["flext-a"]
     )
+    plans = u.Tests.publish_docs_bundle(generator)
 
-    generator = FlextInfraDocGenerator(
-        repository_root=workspace, selected_projects=["flext-a"]
-    )
-    prepared = generator.prepare_bundle()
-    tm.ok(prepared)
-    required = generator.required_directories(prepared.value)
-    tm.ok(required)
-    for directory in required.value:
-        directory.mkdir(parents=True, exist_ok=True)
-    planned = generator.plan_files(prepared.value)
-    result = u.Tests.materialize_codegen_plans(planned)
-
-    tm.ok(result)
-    planned_paths = {plan.path for plan in planned.value}
+    planned_paths = {plan.path for plan in plans}
     tm.that(workspace / "docs/projects/generated/catalog.md" in planned_paths, eq=True)
     tm.that(workspace / "flext-a/README.md" in planned_paths, eq=True)
     tm.that(workspace / "flext-b/README.md" not in planned_paths, eq=True)
@@ -83,15 +71,7 @@ def test_validator_execute_fails_before_generation_and_succeeds_after(
     generator = FlextInfraDocGenerator(
         repository_root=workspace, selected_projects=["flext-a"]
     )
-    prepared = generator.prepare_bundle()
-    tm.ok(prepared)
-    required = generator.required_directories(prepared.value)
-    tm.ok(required)
-    for directory in required.value:
-        directory.mkdir(parents=True, exist_ok=True)
-    planned = generator.plan_files(prepared.value)
-    generated = u.Tests.materialize_codegen_plans(planned)
-    tm.ok(generated)
+    _ = u.Tests.publish_docs_bundle(generator)
     after = FlextInfraDocValidator(
         repository_root=workspace, selected_projects=["flext-a"], apply_changes=True
     ).execute()

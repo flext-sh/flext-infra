@@ -10,12 +10,11 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
+from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from flext_infra.detectors.lsp_diagnostics import FlextInfraLspDiagnosticsDetector
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
-
-from .snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 
 
 class FlextInfraModGateEngine:
@@ -55,7 +54,7 @@ class FlextInfraModGateEngine:
                 shutil.copytree(
                     config_root,
                     temp_root,
-                    ignore=shutil.ignore_patterns(c.Infra.CODEMOD_EPHEMERAL_DIRNAME),
+                    ignore=shutil.ignore_patterns(c.Infra.DUNDER_PYCACHE),
                 )
                 split_rules = cls._materialize_split_rule_files(
                     config_root=config_root,
@@ -76,7 +75,7 @@ class FlextInfraModGateEngine:
         return r.ok(True)
 
     @staticmethod
-    def _rule_documents(rule: Path) -> tuple[str, ...]:
+    def _rule_documents(rule: Path) -> t.VariadicTuple[str]:
         """Return every non-empty YAML document in one rule file."""
         documents = tuple(rule.read_text(encoding="utf-8").split("\n---"))
         return tuple(
@@ -150,15 +149,10 @@ class FlextInfraModGateEngine:
             if not temp_path.is_file():
                 continue
             relative = temp_path.relative_to(temp_root)
-            if relative in split_temp_paths or c.Infra.CODEMOD_EPHEMERAL_DIRNAME in (
-                relative.parts
-            ):
+            if relative in split_temp_paths:
                 continue
             source_path = config_root / relative
             if source_path.is_file():
-                # Byte comparison, not text: the config root also carries
-                # non-UTF-8 files (compiled caches next to the rules), and
-                # deciding "unchanged" never requires decoding them.
                 if source_path.read_bytes() == temp_path.read_bytes():
                     continue
             else:
@@ -389,7 +383,7 @@ class FlextInfraModGateEngine:
             )
             sys.stderr.flush()
             context = m.Infra.GateContext(
-                repository_root=owner,
+                workspace=owner,
                 reports_dir=owner / c.Infra.REPORTS_DIR_NAME,
                 check_only=True,
             )
@@ -429,38 +423,27 @@ class FlextInfraModGateEngine:
             f"providers={len(plan.rulesets)} rules={len(plan.rules)}\n"
         )
         sys.stderr.flush()
-        for ruleset in plan.rulesets:
-            ruleset_files = {
-                rule_id: rule_files_by_id[rule_id] for rule_id in ruleset.rule_ids
-            }
-            scan_command = u.Infra.ast_grep_scan_command(
-                ruleset.config,
-                rule_ids=ruleset.rule_ids,
-                targets=targets,
-                json_stream=True,
-            )
-            run = cls._run_tool(root, scan_command, finding_exit_code=1)
-            if run.failure:
-                return r[m.Infra.ModScanReport].from_failure(run)
-            report = cls._parse_findings(
-                run.value.stdout,
-                root,
-                ruleset_files,
-                frozenset(ruleset.fixable_rule_ids),
-            ).unwrap()
-            if run.value.outcome.raw_return_code != 0:
-                error_findings = sum(
-                    entry.payload.get("severity") == "error" for entry in report.entries
-                )
-                cls._validate_finding_receipt(run.value.stderr, error_findings).unwrap()
-            findings += report.findings
-            actionable_findings += report.actionable
-            detection_only_findings += report.detection_only
-            non_actionable_with_fix_findings += report.non_actionable_with_fix
-            files.update(report.files)
-            entries.extend(report.entries)
-            if not (fix and report.actionable and ruleset.fixable_rule_ids):
-                continue
+        scan_command = u.Infra.ast_grep_scan_command(
+            rules[0],
+            rule_ids=tuple(sorted(known_rule_ids)),
+            targets=targets,
+            json_stream=True,
+        )
+        run = cls._run_tool(root, scan_command, finding_exit_code=1)
+        if run.failure:
+            return r[m.Infra.ModScanReport].from_failure(run)
+        report = cls._parse_findings(
+            run.value.stdout, root, rule_files_by_id, frozenset(fixable_ids)
+        ).unwrap()
+        if run.value.outcome.raw_return_code != 0:
+            cls._validate_finding_receipt(run.value.stderr, report.findings).unwrap()
+        findings = report.findings
+        actionable_findings = report.actionable
+        detection_only_findings = report.detection_only
+        non_actionable_with_fix_findings = report.non_actionable_with_fix
+        files.update(report.files)
+        entries.extend(report.entries)
+        if fix and report.actionable:
             apply_command = u.Infra.ast_grep_scan_command(
                 ruleset.config,
                 rule_ids=ruleset.fixable_rule_ids,

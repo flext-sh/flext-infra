@@ -87,7 +87,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
     @staticmethod
     def find_top_level_block(
         *, lines: t.StrSequence, header: str
-    ) -> tuple[int, int] | None:
+    ) -> t.Pair[int, int] | None:
         """Find top level block."""
         start_idx = -1
         for idx, line in enumerate(lines):

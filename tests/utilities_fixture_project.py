@@ -42,10 +42,10 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
         """
         provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
         resolved_path = Path() if path is None else path
-        is_subproject = bool(resolved_path.parts)
+        is_declared_repository = bool(resolved_path.parts)
         resolved_role = role or (
             c.Infra.MakeProfile.STANDALONE
-            if is_subproject
+            if is_declared_repository
             else c.Infra.MakeProfile.WORKSPACE
         )
         return m.Infra.RepositoryRef(
@@ -58,7 +58,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             codegen=c.Infra.CodegenKind.CONFORM,
             package=True,
-            editable=is_subproject,
+            editable=is_declared_repository,
             read_only=False,
         )
 
@@ -98,7 +98,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             ),
             homepage=homepage,
             documentation=homepage,
-            workspace_root_rel=".",
+            repository_root_rel=".",
             year=2026,
         )
 

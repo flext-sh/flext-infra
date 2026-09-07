@@ -16,9 +16,11 @@ from git import (
 from flext_core import r
 from flext_infra.models import m
 
-from .remote import redact_origin_remote
-from .repo import FlextInfraUtilitiesGitRepo
-from .semantic_worktree import FlextInfraUtilitiesGitSemanticWorktreeMixin
+from ..._utilities._git.remote import FlextInfraUtilitiesGitRemote
+from ..._utilities._git.repo import FlextInfraUtilitiesGitRepo
+from ..._utilities._git.semantic_worktree import (
+    FlextInfraUtilitiesGitSemanticWorktreeMixin,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -108,8 +110,16 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
         remotes = {remote.name: remote.url for remote in repo.remotes}
         origin = remotes.get("origin")
         upstream = remotes.get("upstream")
-        origin_remote = redact_origin_remote(origin) if origin else None
-        upstream_remote = redact_origin_remote(upstream) if upstream else None
+        origin_remote = (
+            FlextInfraUtilitiesGitRemote.redact_origin_remote(origin)
+            if origin
+            else None
+        )
+        upstream_remote = (
+            FlextInfraUtilitiesGitRemote.redact_origin_remote(upstream)
+            if upstream
+            else None
+        )
         raw_super = repo.git.rev_parse("--show-superproject-working-tree").strip()
         if not raw_super and primary_root != working_tree:
             primary_repo = cls._repo(primary_root)

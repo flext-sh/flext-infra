@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -17,8 +18,6 @@ from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from tests import m, t
 
 
@@ -74,8 +73,7 @@ def test_project_without_src_returns_empty(tmp_path: Path) -> None:
     tm.that(result.files_modified, empty=True)
 
 
-def test_lazy_init_artifacts_defer_to_the_conform_transaction(tmp_path: Path) -> None:
-    """The fixer never writes a generated init; the journaled transaction owns it."""
+def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
     project = u.Tests.create_codegen_project(
         tmp_path=tmp_path,
         name="test-proj",
@@ -83,16 +81,17 @@ def test_lazy_init_artifacts_defer_to_the_conform_transaction(tmp_path: Path) ->
         files={
             "base.py": "from typing import Final\nMAX_RETRIES: Final = 3\n"
             "class TestProjBase:\n    pass\n\n"
-            '__all__: list[str] = ["MAX_RETRIES", "TestProjBase"]\n'
+            '__all__: list[str] = ["MAX_RETRIES", "TestProjBase"]\n',
+            "constants.py": "class TestProjConstants:\n    pass\n",
         },
     )
     fixer = FlextInfraCodegenFixer(repository_root=tmp_path)
     [result] = fixer.fix_workspace(projects=[_project_info(project)])
-    tm.that(result.files_modified, empty=True)
-    [deferred] = result.violations_skipped
-    tm.that(deferred.rule, eq="LAZY-INIT")
-    tm.that(deferred.message, has="codegen conform transaction")
-    tm.that(deferred.fixable, eq=False)
+    modified_paths = tuple(Path(path) for path in result.files_modified)
+    tm.that(modified_paths, length_gte=1)
+    tm.that(all(path.is_file() for path in modified_paths), where=bool)
+    tm.that(any(path.name == "constants.py" for path in modified_paths), where=bool)
+    tm.that(any(path.name == "__init__.py" for path in modified_paths), eq=False)
 
 
 __all__: t.StrSequence = []

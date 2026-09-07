@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import ast
 
-from .silent_failure_ast_rules import FlextInfraUtilitiesSilentFailureAstRules
+from flext_infra import t
+
+from .._utilities.silent_failure_ast_rules import (
+    FlextInfraUtilitiesSilentFailureAstRules,
+)
 
 
 class FlextInfraUtilitiesSilentFailureAst:
@@ -13,7 +17,7 @@ class FlextInfraUtilitiesSilentFailureAst:
     @classmethod
     def collect_silent_failure_findings(
         cls, tree: ast.Module, source: str
-    ) -> tuple[FlextInfraUtilitiesSilentFailureAstRules.Finding, ...]:
+    ) -> t.VariadicTuple[FlextInfraUtilitiesSilentFailureAstRules.Finding]:
         """Collect all silent-failure findings in one module."""
         return FlextInfraUtilitiesSilentFailureAstRules(source).analyze(tree)
 
@@ -24,7 +28,7 @@ class FlextInfraUtilitiesSilentFailureAst:
         source: str,
         *,
         kinds: set[str] | frozenset[str] | None = None,
-    ) -> tuple[tuple[int, int, str], ...]:
+    ) -> t.VariadicTuple[t.Triple[int, int, str]]:
         """Return deterministic fixes for the selected finding kinds."""
         allowed = kinds or frozenset()
         return tuple(
@@ -37,4 +41,4 @@ class FlextInfraUtilitiesSilentFailureAst:
         )
 
 
-__all__: tuple[str, ...] = ("FlextInfraUtilitiesSilentFailureAst",)
+__all__: t.VariadicTuple[str] = ("FlextInfraUtilitiesSilentFailureAst",)

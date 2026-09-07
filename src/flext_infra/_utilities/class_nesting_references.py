@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, override
 import libcst as cst
 from libcst.metadata import MetadataWrapper, ParentNodeProvider, QualifiedNameProvider
 
+from .._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
+
 if TYPE_CHECKING:
     from flext_infra import t
 
@@ -93,21 +95,6 @@ class FlextInfraUtilitiesClassNestingReferences:
                 owner_name = local_name if imported.asname else bindings[name]
                 self.local_expressions[local_name] = f"{owner_name}.{name}"
 
-        @staticmethod
-        def _is_structural_position(
-            parent: cst.CSTNode, original_node: cst.Name
-        ) -> bool:
-            """Whether the name occupies a structural position, not a value use."""
-            if isinstance(parent, cst.ImportAlias):
-                return True
-            if isinstance(parent, cst.ClassDef):
-                return parent.name is original_node
-            if isinstance(parent, cst.Attribute):
-                return parent.attr is original_node
-            if isinstance(parent, cst.Arg):
-                return parent.keyword is original_node
-            return False
-
         def _resolves_bare_after_nesting(self, node: cst.CSTNode) -> bool:
             """Report whether a moved class stays reachable by its bare name here.
 
@@ -135,10 +122,14 @@ class FlextInfraUtilitiesClassNestingReferences:
                 current = self.get_metadata(ParentNodeProvider, current, None)
             return False
 
-        @override
-        def leave_Name(
-            self, original_node: cst.Name, updated_node: cst.Name
-        ) -> cst.BaseExpression:
+        def _single_binding(
+            self, original_node: cst.CSTNode, *, ambiguity: str
+        ) -> str | None:
+            """Return the one class-nesting replacement bound to ``original_node``.
+
+            ``None`` when the node carries no nesting binding; two competing
+            bindings are ambiguous and raise with ``ambiguity`` naming the site.
+            """
             replacements = {
                 replacement
                 for qualified_name in self.get_metadata(
@@ -147,38 +138,43 @@ class FlextInfraUtilitiesClassNestingReferences:
                 if (replacement := self.qualified.get(qualified_name.name)) is not None
             }
             if not replacements:
-                return updated_node
+                return None
             if len(replacements) != 1:
-                msg = f"ambiguous class-nesting binding: {sorted(replacements)}"
+                msg = f"ambiguous class-nesting {ambiguity}: {sorted(replacements)}"
                 raise ValueError(msg)
+            return replacements.pop()
+
+        @override
+        def leave_Name(
+            self, original_node: cst.Name, updated_node: cst.Name
+        ) -> cst.BaseExpression:
+            bound = self._single_binding(original_node, ambiguity="binding")
+            if bound is None:
+                return updated_node
             parent = self.get_metadata(ParentNodeProvider, original_node)
-            if self._is_structural_position(parent, original_node) or (
-                original_node.value in self.definitions
-                and self._resolves_bare_after_nesting(original_node)
+            if FlextInfraUtilitiesQualifiedNames.rebinds_name_in_place(
+                parent, original_node
+            ):
+                return updated_node
+            if isinstance(parent, cst.ClassDef) and parent.name is original_node:
+                return updated_node
+            if original_node.value in self.definitions and (
+                self._resolves_bare_after_nesting(original_node)
             ):
                 return updated_node
             replacement = self.local_expressions.get(original_node.value)
             if replacement is None:
-                replacement = next(iter(replacements))
+                replacement = bound
             return cst.parse_expression(replacement)
 
         @override
         def leave_Attribute(
             self, original_node: cst.Attribute, updated_node: cst.Attribute
         ) -> cst.BaseExpression:
-            replacements = {
-                replacement
-                for qualified_name in self.get_metadata(
-                    QualifiedNameProvider, original_node, ()
-                )
-                if (replacement := self.qualified.get(qualified_name.name)) is not None
-            }
-            if not replacements:
+            bound = self._single_binding(original_node, ambiguity="attribute")
+            if bound is None:
                 return updated_node
-            if len(replacements) != 1:
-                msg = f"ambiguous class-nesting attribute: {sorted(replacements)}"
-                raise ValueError(msg)
-            owner, name = replacements.pop().split(".", maxsplit=1)
+            owner, name = bound.split(".", maxsplit=1)
             return cst.Attribute(
                 value=cst.Attribute(value=updated_node.value, attr=cst.Name(owner)),
                 attr=cst.Name(name),
@@ -194,7 +190,7 @@ class FlextInfraUtilitiesClassNestingReferences:
             if not bindings or isinstance(updated_node.names, cst.ImportStar):
                 return updated_node
             aliases: list[cst.ImportAlias] = []
-            seen: set[tuple[str, str]] = set()
+            seen: set[t.Pair[str, str]] = set()
             for imported in updated_node.names:
                 name = _dotted_name(imported.name) or ""
                 owner = bindings.get(name)

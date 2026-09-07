@@ -7,15 +7,30 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.codegen import _mise_artifacts_files as files
+from flext_infra.codegen._mise_artifacts_files import (
+    FlextInfraMiseArtifactsFiles as files,
+)
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
+
+
+def normalize_lock_mode(path: Path) -> p.Result[bool]:
+    """Normalize an external lock output through guarded byte-mode publication."""
+    state = files.read_state(path, required=True)
+    if state.failure:
+        return r[bool].from_failure(state)
+    if state.value.content is None or state.value.mode is None:
+        return r[bool].fail(f"generated Mise lock is absent: {path}")
+    return u.Cli.atomic_write_binary_file_guarded(
+        state.value, state.value.content, permission_mode=files.ARTIFACT_SPECS[2][1]
+    )
 
 
 def publication_plan(
-    projects: tuple[m.Infra.MiseToolchainProjectState, ...], stages: tuple[Path, ...]
-) -> p.Result[tuple[m.Infra.CodegenStagedFile, ...]]:
+    projects: t.VariadicTuple[m.Infra.MiseToolchainProjectState],
+    stages: t.VariadicTuple[Path],
+) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]:
     """Bind each staged artifact to its exact pre-lock destination state."""
     publications: list[m.Infra.CodegenStagedFile] = []
     for project, stage in zip(projects, stages, strict=True):

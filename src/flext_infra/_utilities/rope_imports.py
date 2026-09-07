@@ -40,7 +40,7 @@ class FlextInfraUtilitiesRopeImports:
     @staticmethod
     def import_statement_names_and_aliases(
         import_statement: t.Infra.RopeImportStatement,
-    ) -> t.SequenceOf[tuple[str, str | None]]:
+    ) -> t.SequenceOf[t.Pair[str, str | None]]:
         """Return validated imported-name pairs from one Rope import statement."""
         import_info = import_statement.import_info
         if not (
@@ -131,7 +131,7 @@ class FlextInfraUtilitiesRopeImports:
         name: str,
         definition_path: Path,
         dependent_import_targets: t.StrSequence = (),
-    ) -> tuple[t.Infra.RopeResource, ...]:
+    ) -> t.VariadicTuple[t.Infra.RopeResource]:
         """Build the minimal Rope resource set for semantic occurrence searches.
 
         The workspace name index already narrows the candidate module set to
@@ -519,7 +519,7 @@ class FlextInfraUtilitiesRopeImports:
         source_module: str,
         target_module: str,
         aliases_to_move: frozenset[str],
-    ) -> tuple[t.Infra.RopeImportStatement | None, t.Infra.StrSet]:
+    ) -> t.Pair[t.Infra.RopeImportStatement | None, t.Infra.StrSet]:
         """Remove ``aliases_to_move`` from each ``from source_module`` statement.
 
         Returns ``(target_import_stmt_or_None, moved_aliases_set)``. Mutates
@@ -562,7 +562,7 @@ class FlextInfraUtilitiesRopeImports:
         target_import_stmt: t.Infra.RopeImportStatement | None,
         target_module: str,
         moved_aliases: t.Infra.StrSet,
-    ) -> t.SequenceOf[tuple[str, str | None]]:
+    ) -> t.SequenceOf[t.Pair[str, str | None]]:
         """Merge ``moved_aliases`` into the target import; create one if missing."""
         sorted_moved = sorted(moved_aliases)
         if target_import_stmt is None:
@@ -605,7 +605,7 @@ class FlextInfraUtilitiesRopeImports:
         *,
         source: str,
         module_name: str,
-        names_and_aliases: t.SequenceOf[tuple[str, str | None]],
+        names_and_aliases: t.SequenceOf[t.Pair[str, str | None]],
     ) -> str:
         """Format parenthesized from import."""
         entries = [
@@ -689,6 +689,26 @@ class FlextInfraUtilitiesRopeImports:
         return result
 
     @staticmethod
+    def _persisted_import_block(
+        module_imports: t.Infra.RopeModuleImports,
+        resource: t.Infra.RopeResource,
+        *,
+        apply: bool,
+    ) -> str | None:
+        """Normalize, render, and optionally write one module's import block.
+
+        ``None`` when the rendered block already matches the file on disk.
+        """
+        module_imports.remove_duplicates()
+        module_imports.sort_imports()
+        updated: str = module_imports.get_changed_source()
+        if updated == resource.read():
+            return None
+        if apply:
+            resource.write(updated)
+        return updated
+
+    @staticmethod
     def add_import(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
@@ -706,14 +726,9 @@ class FlextInfraUtilitiesRopeImports:
                 from_module, 0, [(name, None) for name in sorted(names)]
             )
         )
-        module_imports.remove_duplicates()
-        module_imports.sort_imports()
-        updated: str = module_imports.get_changed_source()
-        if updated == resource.read():
-            return None
-        if apply:
-            resource.write(updated)
-        return updated
+        return FlextInfraUtilitiesRopeImports._persisted_import_block(
+            module_imports, resource, apply=apply
+        )
 
     @staticmethod
     def remove_import_names(
@@ -756,14 +771,9 @@ class FlextInfraUtilitiesRopeImports:
                 changed = True
         if not changed:
             return None
-        module_imports.remove_duplicates()
-        module_imports.sort_imports()
-        updated: str = module_imports.get_changed_source()
-        if updated == resource.read():
-            return None
-        if apply:
-            resource.write(updated)
-        return updated
+        return FlextInfraUtilitiesRopeImports._persisted_import_block(
+            module_imports, resource, apply=apply
+        )
 
     @staticmethod
     def rewrite_private_import_bypass_violations(
@@ -779,8 +789,8 @@ class FlextInfraUtilitiesRopeImports:
         callers already filter the violation list before invoking this helper.
         """
         _ = parse_failures
-        removals: t.MappingKV[tuple[Path, str], set[str]] = defaultdict(set)
-        additions: t.MappingKV[tuple[Path, str], set[str]] = defaultdict(set)
+        removals: t.MappingKV[t.Pair[Path, str], set[str]] = defaultdict(set)
+        additions: t.MappingKV[t.Pair[Path, str], set[str]] = defaultdict(set)
         for violation in violations:
             file_path = Path(violation.file)
             removals[file_path, violation.private_module].add(violation.imported_symbol)

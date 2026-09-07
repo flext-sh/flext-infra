@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesResourceLimits:
     """Build resource-bounded commands for memory-intensive quality tools."""
 
-    _MEMORY_FAILURE_MARKERS: ClassVar[tuple[str, ...]] = (
+    _MEMORY_FAILURE_MARKERS: ClassVar[t.VariadicTuple[str]] = (
         "cannot allocate memory",
         "failed to map segment",
         "memoryerror",
