@@ -16,6 +16,7 @@ from ._utilities.base import FlextInfraUtilitiesBase
 from ._utilities.census import FlextInfraUtilitiesRefactorCensus
 from ._utilities.class_nesting import FlextInfraUtilitiesClassNesting
 from ._utilities.codegen import FlextInfraUtilitiesCodegen
+from ._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
 from ._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
 from ._utilities.compatibility_aliases import FlextInfraUtilitiesCompatibilityAliases
 from ._utilities.deferred_self_reference_ast import (
@@ -98,6 +99,7 @@ class FlextInfraUtilities(cli_u):
         FlextInfraUtilitiesNetwork,
         FlextInfraUtilitiesResourceLimits,
         FlextInfraUtilitiesCodegen,
+        FlextInfraUtilitiesCodegenFilePlan,
         FlextInfraUtilitiesCompatibilityAliases,
         FlextInfraUtilitiesCodegenNamespace,
         FlextInfraUtilitiesPyprojectConform,

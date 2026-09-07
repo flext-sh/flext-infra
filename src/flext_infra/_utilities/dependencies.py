@@ -26,6 +26,7 @@ from flext_infra.constants import c
 # facade import and stays cycle-free.
 from flext_infra.typings import t
 
+from .codegen import FlextInfraUtilitiesCodegen
 from .pyproject import FlextInfraUtilitiesPyproject
 
 if TYPE_CHECKING:
