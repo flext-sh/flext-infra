@@ -2743,7 +2743,7 @@ class FlextInfraConfigModels:
         """Fully modeled content of the ``vscode`` section of ``config/codegen.yaml``."""
 
         scalar_settings: Annotated[
-            Mapping[str, str | bool],
+            Mapping[str, str | bool | int],
             m.Field(description="VS Code scalar keys enforced on every project"),
         ]
         list_settings: Annotated[
@@ -2751,7 +2751,7 @@ class FlextInfraConfigModels:
             m.Field(description="VS Code list keys enforced on every project"),
         ]
         map_union_settings: Annotated[
-            Mapping[str, Mapping[str, str | bool]],
+            Mapping[str, Mapping[str, str | bool | int]],
             m.Field(description="VS Code map keys union-merged over project settings"),
         ]
 
