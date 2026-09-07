@@ -286,6 +286,20 @@ class FlextInfraConfigModels:
         linters/type-checkers remain owned by pyproject and uv.lock.
         """
 
+        # Selector families rejected while their capabilities are suspended.
+        # Operator order 2026-09-07: nothing stays suspended -- gc and beads are
+        # operator-owned forks resolved as latest, so the default frees every
+        # selector family and the vocabulary stays declared on this owner.
+        suspended_mise_selector_patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Mise selector families rejected while suspended; empty "
+                    "frees every toolchain"
+                ),
+            ),
+        ] = ()
         python_version: Annotated[
             t.NonEmptyStr,
             m.Field(
