@@ -13,8 +13,9 @@ requires = [
 {% endfor %}
 ]
 
-# [CUSTOM] name, description, authors, maintainers, scripts, classifiers, keywords, license, urls, readme, version
-# [MANAGED] dependencies, requires-python
+# [CUSTOM] name, description, authors, maintainers, scripts, classifiers, keywords, license, urls, readme, version, dependencies
+# [MANAGED] requires-python
+# Runtime profile requirements take precedence over same-name CUSTOM dependencies.
 [project]
 classifiers = [
 {% for item in scaffold.project.classifiers %}
