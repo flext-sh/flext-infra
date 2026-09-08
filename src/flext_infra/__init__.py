@@ -23,21 +23,21 @@ if TYPE_CHECKING:
     from flext_cli import d, e, h, r, x
 
     from . import (
-        check as check,
-        codegen as codegen,
-        codemod as codemod,
-        deps as deps,
-        detectors as detectors,
-        docs as docs,
-        fixers as fixers,
-        gates as gates,
-        maintenance as maintenance,
-        refactor as refactor,
-        release as release,
-        services as services,
-        transformers as transformers,
-        validate as validate,
-        workspace as workspace,
+        check,
+        codegen,
+        codemod,
+        deps,
+        detectors,
+        docs,
+        fixers,
+        gates,
+        maintenance,
+        refactor,
+        release,
+        services,
+        transformers,
+        validate,
+        workspace,
     )
     from ._config import config
     from ._settings import settings

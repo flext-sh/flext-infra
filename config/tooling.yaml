@@ -38,6 +38,7 @@ Infra:
           MD060: false
           MD076: false
         exclude:
+          - .kilo/**
           - .omo/**
           - .tmp/**
           - .claude/**

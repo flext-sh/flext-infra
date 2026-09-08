@@ -606,6 +606,8 @@ name = "flext-tests"
 
 [tool.uv.exclude-newer-package]
 cryptography = false
+ruff = false
+torch = false
 
 [tool.vulture]
 exclude = ["*/_protocols/*"]

@@ -3,10 +3,11 @@
 
 from __future__ import annotations
 {% if type_checking_lines %}
-from typing import TYPE_CHECKING
-{% endif %}
 from types import MappingProxyType
-
+from typing import TYPE_CHECKING
+{% else %}
+from types import MappingProxyType
+{% endif %}
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 {% if runtime_import_lines %}
 {{ runtime_import_lines }}
