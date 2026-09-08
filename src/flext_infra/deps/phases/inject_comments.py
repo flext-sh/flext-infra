@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra import c, config, t
+from flext_infra import c, config, m, t
 
 
 class FlextInfraInjectCommentsPhase:
@@ -61,27 +61,61 @@ class FlextInfraInjectCommentsPhase:
         stripped = line.strip()
         return stripped.startswith("[") and stripped.endswith("]")
 
+    @staticmethod
+    def _pyproject_spec() -> m.Infra.ManagedFileSpec:
+        """Return the pyproject managed-file SSOT. Missing declaration is a bug."""
+        for item in config.Infra.codegen.managed_files:
+            if item.path.as_posix() == c.Infra.PYPROJECT_FILENAME:
+                return item
+        msg = (
+            "codegen.yaml templates.managed_files must declare "
+            f"{c.Infra.PYPROJECT_FILENAME}"
+        )
+        raise RuntimeError(msg)
+
     @classmethod
     def _managed_marker_lines(cls) -> t.Infra.StrSet:
-        """Return the managed marker lines."""
-        markers = {marker for _section_prefix, marker in c.Infra.COMMENT_MARKERS}
-        markers.add(c.Infra.DEV_OPTIONAL_DEPS_MARKER)
-        markers.add(c.Infra.LEGACY_AUTO_MARKER)
-        markers.add(c.Infra.LEGACY_AUTO_BANNER_LINE)
+        """Return banner, rationale, and legacy marker lines to strip."""
+        markers = {
+            c.Infra.DEV_OPTIONAL_DEPS_MARKER,
+            c.Infra.LEGACY_AUTO_MARKER,
+            c.Infra.LEGACY_AUTO_BANNER_LINE,
+        }
         markers.update(c.Infra.BANNER.splitlines())
         markers.update(cls._mypy_rationale_lines())
         markers.update(cls._ruff_rationale_lines())
         markers.update(cls._pyright_rationale_lines())
         return markers
 
-    @staticmethod
-    def _marker_for_section(section_header: str) -> str | None:
-        """Marker for section."""
-        for section_prefix, marker_text in c.Infra.COMMENT_MARKERS:
-            if section_header.startswith(section_prefix):
-                marker: str = marker_text
-                return marker
-        return None
+    @classmethod
+    def _markers_for_section(cls, section_header: str) -> t.StrSequence:
+        """Project comments from ManagedFileSpec. No parallel marker catalog."""
+        spec = cls._pyproject_spec()
+        if section_header == f"[{c.Infra.PROJECT}]":
+            custom = ", ".join(spec.preserve_project_keys)
+            managed = ", ".join(c.Infra.PROJECT_MANAGED_KEYS)
+            markers: list[str] = []
+            if custom:
+                markers.append(f"# [CUSTOM] {custom}")
+            if managed:
+                markers.append(f"# [MANAGED] {managed}")
+            return tuple(markers)
+        inner = section_header.strip("[]")
+        for section in spec.conflict_sections:
+            if inner == section or inner.startswith(f"{section}."):
+                return (f"# [MANAGED] {section}",)
+        if inner.startswith("tool."):
+            tool_table = ".".join(inner.split(".")[:2])
+            managed = any(
+                inner == section
+                or inner.startswith(f"{section}.")
+                or section == tool_table
+                or section.startswith(f"{tool_table}.")
+                for section in spec.conflict_sections
+            )
+            if not managed:
+                return (f"# [CUSTOM] {tool_table}",)
+        return ()
 
     @classmethod
     def _strip_managed_lines(
@@ -100,8 +134,12 @@ class FlextInfraInjectCommentsPhase:
                     skip_broken_group_section = False
                 else:
                     continue
-            # Remove legacy banner variants so canonical banner can be re-injected.
-            if stripped.startswith("# Sections with [MANAGED] are enforced"):
+            # Remove current and legacy section marks so they restamp from SSOT.
+            if stripped.startswith(("# [MANAGED]", "# [CUSTOM]")):
+                continue
+            if stripped.startswith("# Sections with [MANAGED]"):
+                continue
+            if stripped.startswith("# Sections with [CUSTOM]"):
                 continue
             if stripped == c.Infra.LEGACY_AUTO_BANNER_LINE:
                 continue
@@ -168,11 +206,11 @@ class FlextInfraInjectCommentsPhase:
         emitted_markers: set[str] = set()
         for line in content_lines:
             stripped = line.strip()
-            marker = self._marker_for_section(stripped)
-            if marker and marker not in emitted_markers:
-                out.append(marker)
-                changes.append(f"marker injected for {stripped}")
-                emitted_markers.add(marker)
+            for marker in self._markers_for_section(stripped):
+                if marker not in emitted_markers:
+                    out.append(marker)
+                    changes.append(f"marker injected for {stripped}")
+                    emitted_markers.add(marker)
             if stripped == "[project.optional-dependencies]" or stripped.startswith(
                 "optional-dependencies.dev"
             ):

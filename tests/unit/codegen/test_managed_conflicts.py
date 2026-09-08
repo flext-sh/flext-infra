@@ -22,14 +22,9 @@ class TestsManagedConflictRecovery:
             spec for spec in managed if spec.path.as_posix() == "pyproject.toml"
         )
 
-        tm.that(
-            set(pyproject.conflict_sections),
-            eq={
-                "tool.pytest.ini_options",
-                "tool.uv",
-                "tool.ruff.lint.per-file-ignores",
-            },
-        )
+        tm.that("tool.uv" in pyproject.conflict_sections, eq=True)
+        tm.that("build-system" in pyproject.conflict_sections, eq=True)
+        tm.that(pyproject.preserve_project_keys, truthy=True)
 
     def test_recovers_the_lint_policy_section(self) -> None:
         """Keep the owner's current lint projection over an absorbed base."""

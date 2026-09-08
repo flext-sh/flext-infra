@@ -960,14 +960,22 @@ Infra:
       - path: Makefile
         owner: make
         policy: full
+      # CUSTOM vs MANAGED (humans read comments; this block is the owner):
+      #   conflict_sections = MANAGED tables (template wins on make gen APPLY=Y)
+      #   preserve_project_keys = CUSTOM [project] keys (live wins on merge)
+      #   [project] keys the template writes that are not in preserve_project_keys
+      #     (dependencies, requires-python) are MANAGED
+      #   [tool.*] absent from conflict_sections (bandit, …) is CUSTOM
       - path: pyproject.toml
         owner: codegen
         policy: merge
         conflict_sections:
           - build-system
           - dependency-groups
+          - tool.pytest.ini_options
           - tool.uv
           - tool.ruff
+          - tool.ruff.lint.per-file-ignores
           - tool.mypy
           - tool.pyright
           - tool.pyrefly

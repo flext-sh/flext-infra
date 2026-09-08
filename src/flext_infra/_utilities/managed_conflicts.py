@@ -42,7 +42,9 @@ class FlextInfraUtilitiesManagedConflicts:
                 continue
             if control != "current":
                 return r[str].fail("orphan TOML merge-control marker")
-            if section not in allowed:
+            if not any(
+                section == owned or section.startswith(f"{owned}.") for owned in allowed
+            ):
                 return r[str].fail(
                     "merge conflict is outside owner-declared TOML sections: "
                     f"{section or '<document-root>'}"

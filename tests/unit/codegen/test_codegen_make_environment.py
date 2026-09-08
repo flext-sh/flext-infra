@@ -511,13 +511,12 @@ class TestsCodegenMakeEnvironment:
             msg=process.stdout + process.stderr,
         )
         commands = uv_log.read_text(encoding="utf-8").splitlines()
-        # The upgrade scope is exactly the declared project locks: one pass with
-        # the upgrade flag, then one plain lock verification of the same root.
+        # Upgrade re-reads git metadata (--refresh); the follow-up lock is check-only.
         tm.that(
             [line for line in commands if line.startswith("lock")],
             eq=(
-                f"lock --project {project_root} --upgrade",
-                f"lock --project {project_root}",
+                f"lock --project {project_root} --upgrade --refresh",
+                f"lock --project {project_root} --check",
             ),
         )
 
@@ -634,4 +633,5 @@ class TestsCodegenMakeEnvironment:
 
         tm.that(makefile, has="deps modernize")
         tm.that(makefile, has="--rewrite-constraints")
+        tm.that(makefile, has="--upgrade --refresh")
         tm.that(makefile, lacks="--constraint-policy")

@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
-from flext_infra import c
+from flext_infra import c, config, m
 from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
 from flext_tests import tm
+
+
+def _pyproject_spec() -> m.Infra.ManagedFileSpec:
+    return next(
+        item
+        for item in config.Infra.codegen.managed_files
+        if item.path.as_posix() == "pyproject.toml"
+    )
 
 
 class TestsFlextInfraDepsModernizerComments:
@@ -14,7 +22,7 @@ class TestsFlextInfraDepsModernizerComments:
         """Inject the canonical managed banner."""
         rendered = "[project]\nname = 'test'"
         result, changes = FlextInfraInjectCommentsPhase().apply(rendered)
-        tm.that(result, has="[MANAGED] FLEXT pyproject standardization")
+        tm.that(result, starts=c.Infra.BANNER)
         tm.that(any("banner" in change for change in changes), eq=True)
 
     def test_inject_comments_injects_markers(self) -> None:
@@ -22,6 +30,27 @@ class TestsFlextInfraDepsModernizerComments:
         rendered = "[project]\nname = 'test'\n[tool.pytest]"
         _, changes = FlextInfraInjectCommentsPhase().apply(rendered)
         tm.that(any("marker" in change for change in changes), eq=True)
+
+    def test_inject_comments_marks_project_keys_from_ssot(self) -> None:
+        """[project] comments list preserve_project_keys from the managed file."""
+        spec = _pyproject_spec()
+        result, _changes = FlextInfraInjectCommentsPhase().apply(
+            "[project]\nname = 'test'\n"
+        )
+        custom_line = next(
+            line for line in result.splitlines() if line.startswith("# [CUSTOM]")
+        )
+        for key in spec.preserve_project_keys:
+            tm.that(custom_line, has=key)
+        tm.that(result, has="# [MANAGED] " + ", ".join(c.Infra.PROJECT_MANAGED_KEYS))
+        tm.that(custom_line, lacks="project metadata")
+
+    def test_inject_comments_marks_unlisted_tool_table_custom(self) -> None:
+        """A [tool.*] table absent from conflict_sections is CUSTOM."""
+        result, _changes = FlextInfraInjectCommentsPhase().apply(
+            "[tool.bandit]\nskips = []\n"
+        )
+        tm.that(result, has="# [CUSTOM] tool.bandit")
 
     def test_inject_comments_removes_broken_group_section(self) -> None:
         """Remove unsupported dependency-group sections."""
@@ -38,15 +67,15 @@ class TestsFlextInfraDepsModernizerComments:
 
     def test_inject_comments_preserves_existing_markers(self) -> None:
         """Preserve an already canonical section marker."""
-        rendered = "# [MANAGED] build system\n[build-system]"
+        rendered = "# [MANAGED] build-system\n[build-system]"
         result, _ = FlextInfraInjectCommentsPhase().apply(rendered)
-        tm.that(result, has="# [MANAGED] build system")
+        tm.that(result, has="# [MANAGED] build-system")
 
     def test_inject_comments_phase_apply_banner(self) -> None:
         """Return a change record when injecting the banner."""
         rendered = '[project]\nname = "test"\n'
         result, changes = FlextInfraInjectCommentsPhase().apply(rendered)
-        tm.that(result, has="[MANAGED] FLEXT pyproject standardization")
+        tm.that(result, starts=c.Infra.BANNER)
         tm.that(changes, has="managed banner injected")
 
     def test_inject_comments_phase_apply_markers(self) -> None:
@@ -74,7 +103,7 @@ class TestsFlextInfraDepsModernizerComments:
         result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
         lines = result.splitlines()
         pyrefly_idx = lines.index("[tool.pyrefly]")
-        tm.that(lines[pyrefly_idx - 1], eq="# [MANAGED] pyrefly")
+        tm.that(lines[pyrefly_idx - 1], eq="# [MANAGED] tool.pyrefly")
 
     def test_inject_comments_phase_removes_auto_banner_and_auto_marker(self) -> None:
         """Replace superseded automatic banner and marker variants."""
@@ -87,14 +116,14 @@ class TestsFlextInfraDepsModernizerComments:
         """Annotate governed pytest and coverage subtables."""
         rendered = '[tool.pytest.ini_options]\nminversion = "8.0"\n[tool.coverage.report]\nfail_under = 45'
         result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
-        tm.that(result, has="# [MANAGED] pytest")
-        tm.that(result, has="# [MANAGED] coverage")
+        tm.that(result, has="# [MANAGED] tool.pytest")
+        tm.that(result, has="# [MANAGED] tool.coverage")
 
     def test_inject_comments_phase_deduplicates_family_markers(self) -> None:
         """Emit one marker for multiple tables in the same tool family."""
         rendered = "[tool.coverage.run]\nbranch = true\n[tool.coverage.report]\nfail_under = 45"
         result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
-        tm.that(result.count("# [MANAGED] coverage"), eq=1)
+        tm.that(result.count("# [MANAGED] tool.coverage"), eq=1)
 
     def test_inject_comments_phase_is_idempotent_on_managed_content(self) -> None:
         """Produce byte-identical output and no changes on a second pass."""
@@ -128,7 +157,7 @@ class TestsFlextInfraDepsModernizerComments:
         # each pass made `make gen APPLY=Y` never idempotent.
         rendered = (
             '[project]\nname = "test"\n'
-            '\n# [MANAGED] pytest\n\n[tool.pytest.ini_options]\nminversion = "8.0"\n'
+            '\n# [MANAGED] tool.pytest\n\n[tool.pytest.ini_options]\nminversion = "8.0"\n'
         )
         phase = FlextInfraInjectCommentsPhase()
         first_result, _first_changes = phase.apply(rendered)
