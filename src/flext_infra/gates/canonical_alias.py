@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, config, m, r, t, u
 from flext_infra.detectors import (
     FlextInfraCompatibilityAliasDetector,
     FlextInfraCyclicImportDetector,
@@ -288,7 +288,12 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         if not file_paths:
             return
         result = u.Cli.run_raw(
-            ["ruff", "format", *[str(path) for path in file_paths]],
+            [
+                "ruff",
+                "format",
+                *config.Infra.codegen.make.ruff.format_apply,
+                *[str(path) for path in file_paths],
+            ],
             timeout=c.Infra.TIMEOUT_SHORT,
         )
         if result.failure:

@@ -108,6 +108,14 @@ Infra:
           - spec
           - convergence
           - step
+        # Ledger scalars rendered into .beads/config.yaml. Change them here.
+        # Per-repo override of Gas City participation is workspace.yaml
+        # `gascity_enabled` (flips dolt.auto-start and omits gc.*). Never edit
+        # the projection `.beads/config.yaml`.
+        dolt_mode: server
+        export_auto: false
+        backup_enabled: false
+        dolt_disable_event_flush: true
 
     # actions/checkout submodules mode for every generated workflow.
     # 'false' is the safe default: the workflow GITHUB_TOKEN cannot clone
@@ -275,6 +283,16 @@ Infra:
         discovery_scope: none
 
     make:
+      # Operator 2026-09-08: ruff is the formatting and autofix rule.
+      # Every ruff invocation uses --preview. make fmt APPLY=Y also runs
+      # ruff check --fix --unsafe-fixes --preview. Never weaken ruff to
+      # keep a file; change the code. [tool.ruff] preview: true in
+      # tooling.yaml is the same policy projected into pyproject.
+      ruff:
+        format_check: [--preview, --check]
+        format_apply: [--preview]
+        lint_check: [--preview, --no-fix]
+        lint_fix: [--preview, --fix, --unsafe-fixes]
       # Why (mro-dipb): adaptive testmon GitHub Actions cache policy.
       # save_enabled stays false while storage-limit API returns HTTP 402 /
       # flext-infra sits near the default Actions cache ceiling (QUOTA_HOLD).
@@ -447,10 +465,10 @@ Infra:
           description: Run the complete suite through the persistent testmon cache.
           requires_apply: true
         - name: fmt
-          description: Apply canonical formatting.
+          description: Apply ruff format --preview and ruff check --fix --unsafe-fixes --preview. Ruff is the rule; change code, never ruff.
           requires_apply: true
         - name: fix
-          description: Apply every configured safe correction.
+          description: Apply ruff check --fix --unsafe-fixes --preview plus every other configured safe correction. Ruff is the rule; change code, never ruff.
           requires_apply: true
         - name: fix-enforcement
           description: Apply the safe fix actions declared by the enforcement catalog.
@@ -992,6 +1010,9 @@ Infra:
           - urls
           - readme
           - version
+        overwrite_project_keys:
+          - dependencies
+          - requires-python
 
     scaffold:
       build:
@@ -999,6 +1020,8 @@ Infra:
         requirements: [hatchling]
       project:
         readme: README.md
+        # Existing-tree ProjectSpec year. Do not derive from datetime.
+        copyright_year: 2026
         supported_licenses: [MIT, Proprietary]
         classifiers:
           - "Development Status :: 4 - Beta"
