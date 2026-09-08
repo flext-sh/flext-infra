@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from .lazy_init_registry_wrapper_tests import TestsFlextInfraLazyInitCleanup
     from .lazy_init_runtime_tests import TestsFlextInfraLazyInitRuntime
     from .lazy_init_service_tests import TestsFlextInfraCodegenLazyInitService
+    from .mise_generation_lock_fixture import lock_identity, lock_owner, lock_repository
     from .test_codegen_hook_conformance import TestGitHookConformance
     from .test_utility_facade_projection import TestsFlextInfraUtilityFacadeProjection
 __all__: tuple[str, ...] = (
@@ -36,6 +37,9 @@ __all__: tuple[str, ...] = (
     "e",
     "h",
     "layout_engine",
+    "lock_identity",
+    "lock_owner",
+    "lock_repository",
     "m",
     "p",
     "r",
@@ -60,6 +64,11 @@ _LAZY_IMPORTS = MappingProxyType(
             ".lazy_init_registry_wrapper_tests": ("TestsFlextInfraLazyInitCleanup",),
             ".lazy_init_runtime_tests": ("TestsFlextInfraLazyInitRuntime",),
             ".lazy_init_service_tests": ("TestsFlextInfraCodegenLazyInitService",),
+            ".mise_generation_lock_fixture": (
+                "lock_identity",
+                "lock_owner",
+                "lock_repository",
+            ),
             ".test_codegen_hook_conformance": ("TestGitHookConformance",),
             ".test_utility_facade_projection": (
                 "TestsFlextInfraUtilityFacadeProjection",
