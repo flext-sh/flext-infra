@@ -60,7 +60,7 @@ class TestsDocsCli:
             infra_main([
                 "docs",
                 "audit",
-                "--repository-root",
+                "--workspace",
                 str(workspace),
                 "--projects",
                 "flext-a",
@@ -78,7 +78,7 @@ class TestsDocsCli:
         workspace = self._workspace(tmp_path, fixable=True)
 
         tm.that(
-            infra_main(["docs", "fix", "--repository-root", str(workspace), "--apply"]),
+            infra_main(["docs", "fix", "--workspace", str(workspace), "--apply"]),
             eq=0,
         )
         tm.that((workspace / "docs/README.md").read_text(), has="guides/setup.md")
@@ -93,7 +93,7 @@ class TestsDocsCli:
             infra_main([
                 "docs",
                 "generate",
-                "--repository-root",
+                "--workspace",
                 str(workspace),
                 "--apply",
                 "--projects",
@@ -117,7 +117,7 @@ class TestsDocsCli:
             encoding="utf-8",
         )
         tm.that(
-            infra_main(["docs", "build", "--repository-root", str(build_workspace)]),
+            infra_main(["docs", "build", "--workspace", str(build_workspace)]),
             eq=0,
         )
         tm.that((build_workspace / ".reports/docs/build-report.md").exists(), eq=True)

@@ -13,8 +13,14 @@ from pathlib import Path
 
 import pytest
 
+from flext_infra import main
 from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u, c, m
+
+
+def _run_release_main(workspace: Path, *arguments: str) -> int:
+    """Run the public release CLI against one real test workspace."""
+    return main(["release", "run", "--workspace", str(workspace), *arguments])
 
 
 def _built_workspace(tmp_path: Path) -> tuple[Path, m.Infra.BuildReport]:
@@ -29,7 +35,7 @@ def _built_workspace(tmp_path: Path) -> tuple[Path, m.Infra.BuildReport]:
     notes.mkdir(parents=True)
     (notes / "v0.1.0.md").write_text("# Release v0.1.0\n", encoding="utf-8")
     tm.that(
-        u.Tests.run_release_main(
+        _run_release_main(
             workspace, "--phase", "build", "--projects", project_name, "--apply"
         ),
         eq=0,
@@ -66,7 +72,7 @@ class TestsFlextInfraReleasePublish:
             workspace, _report = _built_workspace(tmp_path)
             bin_dir = _shim_path(tmp_path, monkeypatch)
 
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "publish"), eq=0)
+            tm.that(_run_release_main(workspace, "--phase", "publish"), eq=0)
             tm.that((bin_dir / f"{c.Infra.GH}.log").exists(), eq=False)
 
         @staticmethod
@@ -80,7 +86,7 @@ class TestsFlextInfraReleasePublish:
             artifact.write_bytes(artifact.read_bytes() + b"\n")
 
             tm.that(
-                u.Tests.run_release_main(workspace, "--phase", "publish", "--apply"),
+                _run_release_main(workspace, "--phase", "publish", "--apply"),
                 ne=0,
             )
 
@@ -90,7 +96,7 @@ class TestsFlextInfraReleasePublish:
             workspace = u.Tests.create_release_workspace(tmp_path)
 
             tm.that(
-                u.Tests.run_release_main(workspace, "--phase", "publish", "--apply"),
+                _run_release_main(workspace, "--phase", "publish", "--apply"),
                 ne=0,
             )
 
@@ -105,7 +111,7 @@ class TestsFlextInfraReleasePublish:
             workspace, report = _built_workspace(tmp_path)
             bin_dir = _shim_path(tmp_path, monkeypatch)
 
-            result = u.Tests.run_release_main(
+            result = _run_release_main(
                 workspace, "--phase", "publish", "--apply"
             )
 
@@ -125,7 +131,7 @@ class TestsFlextInfraReleasePublish:
             workspace, report = _built_workspace(tmp_path)
             bin_dir = _shim_path(tmp_path, monkeypatch)
 
-            result = u.Tests.run_release_main(
+            result = _run_release_main(
                 workspace, "--phase", "publish", "--apply", "--index"
             )
 

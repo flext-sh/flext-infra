@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import os
+import sys
+from pathlib import Path
 
 import pytest
 
@@ -11,8 +13,19 @@ from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_tests import tm
 from tests import t, u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+
+@pytest.fixture(autouse=True)
+def _census_gate_tools_on_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Expose the running venv's gate tools to the census subprocess gates.
+
+    Why: the census candidate gates execute ``ruff``/``pyrefly`` by name and
+    the declared test invocation (``.venv/bin/python -m pytest``) does not put
+    the venv's ``bin`` on ``PATH``, so the real gate tools would be invisible
+    to the subprocesses.
+    """
+    venv_bin = Path(sys.executable).parent
+    monkeypatch.setenv("PATH", f"{venv_bin}{os.pathsep}{os.environ['PATH']}")
+
 
 _FUTURE_INIT = "from __future__ import annotations\n"
 
@@ -248,9 +261,9 @@ class TestsFlextInfraRefactorMainCli:
     ) -> None:
         """Run one applying census through the CLI, asserting a clean exit."""
         args = [
-            "--repository-root",
-            str(workspace),
             "census",
+            "--workspace",
+            str(workspace),
             "--apply",
             "--rules",
             rules,
@@ -328,50 +341,13 @@ class TestsFlextInfraRefactorMainCli:
     def _build_compatibility_alias_workspace(cls, tmp_path: Path) -> tuple[Path, Path]:
         return cls._build_module_workspace(tmp_path, _COMPATIBILITY_ALIAS_MODULE)
 
-    @staticmethod
-    def _build_lazy_init_cascade_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
-        workspace = tmp_path / "workspace"
-        TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
-        init_path = workspace / "src" / "sample_pkg" / "__init__.py"
-        TestsFlextInfraRefactorMainCli._write(
-            init_path,
-            "# AUTO-GENERATED FILE — Regenerate with: make gen\n"
-            '"""Sample package."""\n\n'
-            "from __future__ import annotations\n\n"
-            "import typing as _t\n\n"
-            "from flext_core.lazy import build_lazy_import_map, install_lazy_exports\n\n"
-            "if _t.TYPE_CHECKING:\n"
-            "    from sample_pkg.operations import helper_used, only_for_tests\n"
-            "_LAZY_IMPORTS = build_lazy_import_map(\n"
-            "    {\n"
-            '        ".operations": ("helper_used", "only_for_tests"),\n'
-            "    },\n"
-            ")\n\n"
-            "install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)\n\n"
-            "__all__: list[str] = [\n"
-            '    "helper_used",\n'
-            '    "only_for_tests",\n'
-            "]\n",
-        )
-        service_file = workspace / "src" / "sample_pkg" / "operations.py"
-        TestsFlextInfraRefactorMainCli._write(
-            service_file,
-            "from __future__ import annotations\n\n"
-            '__all__: list[str] = ["helper_used", "only_for_tests"]\n\n'
-            "def helper_used(value: int) -> int:\n"
-            "    return value * 2\n\n"
-            "def only_for_tests(value: int) -> int:\n"
-            "    return value + 1\n\n"
-            "OBSERVED = helper_used(2)\n",
-        )
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "tests" / "test_operations.py",
-            "from __future__ import annotations\n\n"
-            "from sample_pkg import only_for_tests\n\n"
-            "def test_only_for_tests_returns_incremented_value() -> None:\n"
-            "    assert only_for_tests(1) == 2\n",
-        )
-        return workspace, service_file, init_path
+    @classmethod
+    def _build_test_only_workspace(cls, tmp_path: Path) -> Path:
+        return cls._build_service_workspace(
+            tmp_path,
+            service_source=_TEST_ONLY_FUNCTION_SERVICE,
+            test_source=_TEST_ONLY_FUNCTION_TEST,
+        )[0]
 
     @classmethod
     def _build_test_only_workspace_with_source_import(
@@ -434,7 +410,7 @@ class TestsFlextInfraRefactorMainCli:
         """The root is a subcommand option, not a group flag ahead of the verb."""
         workspace = tmp_path / "workspace"
         self._write_workspace_pyproject(workspace)
-        result = self._refactor_main("census", "--repository-root", str(workspace))
+        result = self._refactor_main("census", "--workspace", str(workspace))
         tm.that(result, eq=0)
 
     def test_refactor_census_apply_fixes_missing_runtime_alias(
@@ -908,9 +884,9 @@ class TestsFlextInfraRefactorMainCli:
         impact_map_path = tmp_path / "cli-impact-map.json"
 
         result = self._refactor_main(
-            "--repository-root",
-            str(workspace),
             "census",
+            "--workspace",
+            str(workspace),
             "--rules",
             "unused",
             "--kinds",

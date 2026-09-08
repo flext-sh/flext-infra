@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import u as infra_u
+from flext_infra import m, u as infra_u
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from flext_tests import tm
-from tests import u as test_u
 
 
 class TestsFlextInfraDepsDetectorInit:
@@ -29,8 +28,8 @@ class TestsFlextInfraDepsDetectorInit:
     def test_detect_command_normalizes_public_fields(self, tmp_path: Path) -> None:
         """Verify detect command normalizes public fields."""
         output_path = tmp_path / "out.json"
-        params = test_u.Tests.detect_command(
-            tmp_path,
+        params = m.Infra.DetectCommand(
+            repository_root=tmp_path,
             projects=["test"],
             no_pip_check=True,
             output_format="json",
@@ -56,17 +55,17 @@ class TestsFlextInfraDepsDetectorInit:
         self, tmp_path: Path
     ) -> None:
         """Verify detect command project names with single project."""
-        params = test_u.Tests.detect_command(tmp_path, projects=["test-proj"])
+        params = m.Infra.DetectCommand(repository_root=tmp_path, projects=["test-proj"])
         tm.that(params.project_names, eq=["test-proj"])
 
     def test_detect_command_project_names_split_csv(self, tmp_path: Path) -> None:
         """Verify detect command project names split csv."""
-        params = test_u.Tests.detect_command(
-            tmp_path, projects=["proj-a,proj-b", "proj-c"]
+        params = m.Infra.DetectCommand(
+            repository_root=tmp_path, projects=["proj-a,proj-b", "proj-c"]
         )
         tm.that(params.project_names, eq=["proj-a", "proj-b", "proj-c"])
 
     def test_detect_command_without_project_filter(self, tmp_path: Path) -> None:
         """Verify detect command without project filter."""
-        params = test_u.Tests.detect_command(tmp_path)
+        params = m.Infra.DetectCommand(repository_root=tmp_path)
         tm.that(params.project_names, eq=None)

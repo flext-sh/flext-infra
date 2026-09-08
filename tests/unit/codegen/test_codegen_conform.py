@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import os
 import sys
-import tomllib
 from difflib import unified_diff
 from pathlib import Path
 
@@ -299,8 +298,9 @@ class TestCodegenConform:
         tm.ok(applied)
         rendered = (root / "pyproject.toml").read_text(encoding="utf-8")
         tm.that(rendered, lacks="<<<<<<<")
-        payload = tomllib.loads(rendered)
-        addopts = payload["tool"]["pytest"]["ini_options"]["addopts"]
+        addopts = u.Tests.toml_table_at(
+            rendered, "tool", "pytest", "ini_options"
+        )["addopts"]
         tm.that(
             addopts,
             has=f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}",
@@ -756,11 +756,22 @@ class TestCodegenConform:
         )
 
         tm.ok(result)
-        payload = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
         tm.that(
-            payload["tool"]["pyrefly"]["project-includes"], lacks="scripts/**/*.py*"
+            u.Tests.toml_table_at(
+                (root / "pyproject.toml").read_text(encoding="utf-8"),
+                "tool",
+                "pyrefly",
+            )["project-includes"],
+            lacks="scripts/**/*.py*",
         )
-        tm.that(payload["tool"]["pyright"]["include"], lacks="scripts")
+        tm.that(
+            u.Tests.toml_table_at(
+                (root / "pyproject.toml").read_text(encoding="utf-8"),
+                "tool",
+                "pyright",
+            )["include"],
+            lacks="scripts",
+        )
 
     # Why (suite budget): two conform apply cycles plus a check over a full
     # managed tree on a real git repo; the per-case wall only holds idle.
@@ -903,11 +914,11 @@ class TestCodegenConform:
             for item in second.files
             if item.path.name == c.Infra.PYPROJECT_FILENAME
         )
-        rendered_tooling = tomllib.loads(u.Tests.codegen_file_text(first_pyproject))[
-            "tool"
-        ]
-        report = rendered_tooling["coverage"]["report"]
-        addopts = set(rendered_tooling["pytest"]["ini_options"]["addopts"])
+        rendered_pyproject = u.Tests.codegen_file_text(first_pyproject)
+        report = u.Tests.toml_table_at(rendered_pyproject, "tool", "coverage", "report")
+        addopts = u.Tests.toml_strings_at(
+            rendered_pyproject, "tool", "pytest", "ini_options", "addopts"
+        )
         pytest_policy = config.Infra.tooling.tools.pytest
 
         tm.that(
@@ -916,7 +927,7 @@ class TestCodegenConform:
         )
         tm.that(addopts, has=f"--timeout={pytest_policy.case_timeout_seconds}")
         tm.that(addopts, lacks="--session-timeout")
-        tm.that(addopts >= set(pytest_policy.standard_addopts), eq=True)
+        tm.that(set(addopts) >= set(pytest_policy.standard_addopts), eq=True)
         tm.that(
             report["fail_under"],
             eq=config.Infra.tooling.tools.coverage.fail_under.platform,

@@ -12,12 +12,18 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from flext_cli import cli
+from flext_infra import main
 from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u, c, m
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator
     from pathlib import Path
+
+
+def _run_release_main(workspace: Path, *arguments: str) -> int:
+    """Run the public release CLI against one real test workspace."""
+    return main(["release", "run", "--workspace", str(workspace), *arguments])
 
 
 def _plan(workspace: Path) -> m.Infra.ReleasePlan:
@@ -88,12 +94,12 @@ def _commit_merge_subject(workspace: Path, subject: str) -> None:
 
 def _planned_release(workspace: Path) -> m.Infra.ReleasePlan:
     """Run the plan phase once and return its receipt."""
-    tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
+    tm.that(_run_release_main(workspace, "--phase", "plan"), eq=0)
     return _plan(workspace)
 
 
 @contextmanager
-def _lane_with_shim(tmp_path: Path) -> Iterator[tuple[Path, Path]]:
+def _lane_with_shim(tmp_path: Path) -> Generator[tuple[Path, Path]]:
     """Yield the release-lane fixture with the recording ``gh`` shim on PATH.
 
     Why: PATH is restored by the public ``env_vars_context`` facade rather than
@@ -108,7 +114,7 @@ def _lane_with_shim(tmp_path: Path) -> Iterator[tuple[Path, Path]]:
 
 def _apply_release_version(workspace: Path, integration: str) -> None:
     """Stamp the release version once and return to the integration branch."""
-    tm.that(u.Tests.run_release_main(workspace, "--phase", "version", "--apply"), eq=0)
+    tm.that(_run_release_main(workspace, "--phase", "version", "--apply"), eq=0)
     tm.ok(cli.run_checked([c.Infra.GIT, "switch", integration], cwd=workspace))
 
 
@@ -127,7 +133,7 @@ class TestsFlextInfraReleaseProtocol:
                 tmp_path, version=c.Tests.RELEASE_VERSION_PRERELEASE
             )
 
-            result = u.Tests.run_release_main(workspace, "--phase", "plan")
+            result = _run_release_main(workspace, "--phase", "plan")
 
             plan = _plan(workspace)
             tm.that(result, eq=0)
@@ -141,7 +147,7 @@ class TestsFlextInfraReleaseProtocol:
             workspace = u.Tests.create_release_workspace(tmp_path)
             u.Tests.merge_pull_request(workspace, "feat: history before the first tag")
 
-            result = u.Tests.run_release_main(workspace, "--phase", "plan")
+            result = _run_release_main(workspace, "--phase", "plan")
 
             plan = _plan(workspace)
             tm.that(result, eq=0)
@@ -160,7 +166,7 @@ class TestsFlextInfraReleaseProtocol:
             _tag(workspace, "v0.1.0rc0")
             u.Tests.merge_pull_request(workspace, "Merge pull request #1 from x/y")
 
-            result = u.Tests.run_release_main(workspace, "--phase", "plan")
+            result = _run_release_main(workspace, "--phase", "plan")
 
             plan = _plan(workspace)
             tm.that(result, eq=0)
@@ -231,7 +237,7 @@ class TestsFlextInfraReleaseProtocol:
             u.Tests.merge_pull_request(workspace, "feat(cli): minor level")
             u.Tests.merge_pull_request(workspace, "[WIP] merge origin/integration")
 
-            result = u.Tests.run_release_main(workspace, "--phase", "plan")
+            result = _run_release_main(workspace, "--phase", "plan")
 
             plan = _plan(workspace)
             tm.that(result, eq=0)
@@ -264,17 +270,17 @@ class TestsFlextInfraReleaseProtocol:
             workspace = _released_workspace(tmp_path)
             u.Tests.merge_pull_request(workspace, "Merge pull request #7 from x/y")
 
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), ne=0)
+            tm.that(_run_release_main(workspace, "--phase", "plan"), ne=0)
 
         @staticmethod
         def test_pull_request_title_is_validated_when_given(tmp_path: Path) -> None:
             """A CI check passes a title; only a Conventional title is accepted."""
             workspace = u.Tests.create_release_workspace(tmp_path)
 
-            accepted = u.Tests.run_release_main(
+            accepted = _run_release_main(
                 workspace, "--phase", "plan", "--pr-title", "feat(core): accepted"
             )
-            rejected = u.Tests.run_release_main(
+            rejected = _run_release_main(
                 workspace, "--phase", "plan", "--pr-title", "Accepted without a type"
             )
 
@@ -295,7 +301,7 @@ class TestsFlextInfraReleaseProtocol:
                 )
             )
 
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), ne=0)
+            tm.that(_run_release_main(workspace, "--phase", "plan"), ne=0)
 
         @staticmethod
         def test_protocol_release_commit_is_accepted(tmp_path: Path) -> None:
@@ -351,7 +357,7 @@ class TestsFlextInfraReleaseProtocol:
                 # holding the pre-stamp document must not leak into the projections.
                 tm.ok(u.Infra.read_project_metadata_result(workspace))
 
-                result = u.Tests.run_release_main(
+                result = _run_release_main(
                     workspace, "--phase", "version", "--apply"
                 )
 
@@ -435,7 +441,7 @@ class TestsFlextInfraReleaseProtocol:
                 integration = u.Tests.integration_branch(workspace)
                 _apply_release_version(workspace, integration)
 
-                result = u.Tests.run_release_main(
+                result = _run_release_main(
                     workspace, "--phase", "version", "--apply"
                 )
 
@@ -464,7 +470,7 @@ class TestsFlextInfraReleaseProtocol:
             """Without apply the plan is reported and the checkout is untouched."""
             workspace = _release_lane_workspace(tmp_path)
 
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "version"), eq=0)
+            tm.that(_run_release_main(workspace, "--phase", "version"), eq=0)
             tm.ok(
                 u.Infra.current_workspace_version(workspace),
                 eq=c.Tests.RELEASE_VERSION_PRERELEASE,
@@ -478,7 +484,7 @@ class TestsFlextInfraReleaseProtocol:
             (workspace / "stray.txt").write_text("wip\n", encoding="utf-8")
 
             tm.that(
-                u.Tests.run_release_main(workspace, "--phase", "version", "--apply"),
+                _run_release_main(workspace, "--phase", "version", "--apply"),
                 ne=0,
             )
 
@@ -490,7 +496,7 @@ class TestsFlextInfraReleaseProtocol:
             )
 
             tm.that(
-                u.Tests.run_release_main(workspace, "--phase", "version", "--apply"),
+                _run_release_main(workspace, "--phase", "version", "--apply"),
                 ne=0,
             )
 
@@ -501,7 +507,7 @@ class TestsFlextInfraReleaseProtocol:
             u.Tests.merge_pull_request(workspace, "docs: nothing to ship")
 
             tm.that(
-                u.Tests.run_release_main(workspace, "--phase", "version", "--apply"),
+                _run_release_main(workspace, "--phase", "version", "--apply"),
                 eq=0,
             )
             tm.that(
@@ -545,8 +551,8 @@ class TestsFlextInfraReleaseProtocol:
                     )
                 )
 
-                first = u.Tests.run_release_main(workspace, "--phase", "tag", "--apply")
-                second = u.Tests.run_release_main(
+                first = _run_release_main(workspace, "--phase", "tag", "--apply")
+                second = _run_release_main(
                     workspace, "--phase", "tag", "--apply"
                 )
 
@@ -575,5 +581,5 @@ class TestsFlextInfraReleaseProtocol:
             u.Tests.merge_pull_request(workspace, "feat: not a release commit")
 
             tm.that(
-                u.Tests.run_release_main(workspace, "--phase", "tag", "--apply"), ne=0
+                _run_release_main(workspace, "--phase", "tag", "--apply"), ne=0
             )

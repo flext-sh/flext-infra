@@ -19,7 +19,7 @@ pytestmark = pytest.mark.slow
 
 def _git_stdout(repository: Path, *args: str) -> str:
     process = tm.ok(u.Cli.run_raw([c.Infra.GIT, *args], cwd=repository))
-    tm.that(process.exit_code, eq=0)
+    tm.that(process.outcome.raw_return_code, eq=0)
     return process.stdout.strip()
 
 
@@ -39,10 +39,11 @@ def _run_setup(workspace: Path, env: dict[str, str]) -> p.Cli.CommandOutput:
 def _render_repository_root_makefile(tmp_path: Path) -> str:
     root_repository = test_u.Tests.repository_ref("flext")
     member = test_u.Tests.repository_ref(
-        "flext-core", path=Path("flext-core"), role=c.Infra.RepositoryRole.STANDALONE
+        "flext-core", path=Path("flext-core"), role=c.Infra.MakeProfile.STANDALONE
     )
     workspace = m.Infra.WorkspaceSpec(
         name="flext",
+        beads=test_u.Tests.beads_project("flext"),
         repository=root_repository,
         project=test_u.Tests.project_spec("flext"),
         subprojects=(member,),
@@ -62,7 +63,7 @@ def _render_repository_root_makefile(tmp_path: Path) -> str:
     makefile: m.Infra.CodegenFilePlan = next(
         file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
     )
-    return makefile.rendered
+    return tm.not_none(makefile.desired_content).decode("utf-8")
 
 
 def _create_member_origin(tmp_path: Path) -> Path:
@@ -158,7 +159,7 @@ class TestsWorkspaceRootSetupSubmodules:
 
         tm.that(rendered, has="_builtin_setup_environment: _builtin_setup_submodules")
         tm.that(rendered, has="submodule update --init --")
-        tm.that(rendered, has="$(UV) sync --project")
+        tm.that(rendered, has='$(UV) sync --frozen --project "$(PROJECT_ROOT)"')
         tm.that(rendered, lacks="submodule update --init --recursive")
 
     def test_make_setup_initializes_once_then_only_validates_present_checkout(
@@ -174,11 +175,11 @@ class TestsWorkspaceRootSetupSubmodules:
 
         # The fixture bootstraps through submodules; the invariant we care about
         # is that the submodule is initialized before environment provisioning.
-        if process.exit_code != 0:
+        if process.outcome.raw_return_code != 0:
             start = rendered.index("_builtin_setup_environment:")
             excerpt = rendered[start : rendered.index("_builtin_deps_check:", start)]
             pytest.fail(f"{process.stdout}{process.stderr}\n{excerpt}")
-        tm.that(process.exit_code, eq=0)
+        tm.that(process.outcome.raw_return_code, eq=0)
         tm.that(process.stdout + process.stderr, has="Submodule path 'flext-core'")
         tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
         child = workspace / "flext-core"
@@ -187,13 +188,15 @@ class TestsWorkspaceRootSetupSubmodules:
         tm.that(state, eq=("", gitlink))
 
         second = _run_setup(workspace, env)
-        tm.that(second.exit_code, eq=0)
+        tm.that(second.outcome.raw_return_code, eq=0)
         tm.that(_git_state(child), eq=state)
         tm.ok(u.Cli.run_checked([c.Infra.GIT, "switch", "-c", "conflict"], cwd=child))
         process = _run_setup(workspace, env)
 
-        tm.that(process.exit_code, eq=2)
-        tm.that(process.stderr, has="conflicting branch conflict")
+        # A present checkout on its own named change lane is validated, never
+        # repaired: containment of the recorded gitlink is the boundary, so the
+        # branch name is preserved untouched by a green setup.
+        tm.that(process.outcome.raw_return_code, eq=0)
         tm.that(_git_state(child), eq=("conflict", state[1]))
 
     def test_unexpected_git_probe_failure_preserves_cause(self, tmp_path: Path) -> None:
@@ -224,6 +227,6 @@ class TestsWorkspaceRootSetupSubmodules:
 
         process = _run_setup(workspace, env)
 
-        tm.that(process.exit_code, eq=2)
+        tm.that(process.outcome.raw_return_code, eq=2)
         tm.that(process.stderr, has="injected git failure")
         tm.that(process.stderr, has="Error 42")

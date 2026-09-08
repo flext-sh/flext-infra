@@ -1,8 +1,12 @@
+# One causal success predicate for FlextCliUtilitiesRuntimeProcessOutcomeMixin,
+# declared once for both repository layouts: a standalone flext-cli checkout
+# (src/flext_cli/...) and the umbrella workspace (flext-cli/src/flext_cli/...).
 id: add-cli-process-outcome-success-helper
 language: Python
 severity: error
 files:
   - "flext-cli/src/flext_cli/_utilities/_runtime_process_outcome.py"
+  - "src/flext_cli/_utilities/_runtime_process_outcome.py"
 rule:
   all:
     - pattern:

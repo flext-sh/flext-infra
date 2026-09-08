@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from flext_infra import config, u
@@ -122,9 +121,9 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
         )
         path.write_text(
             f"version: {spec.version}\n"
-            f"workspace: {json.dumps(spec.workspace)}\n"
-            f"database: {json.dumps(spec.database)}\n"
-            f"issue_prefix: {json.dumps(spec.issue_prefix)}\n\n",
+            f"workspace: {u.Cli.json_dumps(spec.workspace).unwrap()}\n"
+            f"database: {u.Cli.json_dumps(spec.database).unwrap()}\n"
+            f"issue_prefix: {u.Cli.json_dumps(spec.issue_prefix).unwrap()}\n\n",
             encoding="utf-8",
         )
         return path

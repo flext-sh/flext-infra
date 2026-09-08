@@ -2,12 +2,27 @@
 
 from __future__ import annotations
 
+import os
+import sys
 from pathlib import Path
 
 import pytest
 
 from flext_infra import c, m, main as infra_main, u
 from flext_tests import tm
+
+
+@pytest.fixture(autouse=True)
+def _mod_gate_tools_on_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Expose the running venv's gate tools to the mod gate subprocesses.
+
+    Why: the mod zero-finding gate executes ``pyright-langserver`` by name and
+    the declared test invocation (``.venv/bin/python -m pytest``) does not put
+    the venv's ``bin`` on ``PATH``, so the declared dev dependency would be
+    invisible to the subprocess.
+    """
+    venv_bin = Path(sys.executable).parent
+    monkeypatch.setenv("PATH", f"{venv_bin}{os.pathsep}{os.environ['PATH']}")
 
 
 class TestsFlextInfraModCliRoute:
@@ -25,7 +40,7 @@ class TestsFlextInfraModCliRoute:
         first_exit = infra_main([
             "refactor",
             "mod",
-            "--repository-root",
+            "--workspace",
             str(mod_workspace),
         ])
         first_console_capture = capsys.readouterr()
@@ -69,11 +84,16 @@ class TestsFlextInfraModCliRoute:
         tm.that(first_console, has=first_digest)
         tm.that(first_console, lacks='"ruleId"')
 
-        tm.ok(u.Cli.atomic_write_text_file(sample_path, "value = 1\n"))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                sample_path,
+                "from __future__ import annotations\n\nvalue = 1\n",
+            )
+        )
         second_exit = infra_main([
             "refactor",
             "mod",
-            "--repository-root",
+            "--workspace",
             str(mod_workspace),
         ])
         second_console_capture = capsys.readouterr()
@@ -98,25 +118,23 @@ class TestsFlextInfraModCliRoute:
         tm.that(second_console, has=second_digest)
         tm.that(second_console, lacks=first_digest)
 
+    @pytest.mark.slow
     def test_apply_validates_rewrites_before_reporting_detection_only_findings(
         self, mod_workspace: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """Reject an unformatted rewrite before the later findings-only result."""
+        """Retain the validated rewrite while the detection-only residue fails apply."""
         actionable_path = mod_workspace / "actionable.py"
         tm.ok(
             u.Cli.atomic_write_text_file(
                 actionable_path,
-                (
-                    "from flext_infra import m\n"
-                    "publication=m.Infra.MiseToolchainPublication\n"
-                ),
+                "from flext_core import r\npublication=p.Result[int].ok(1)\n",
             )
         )
 
         exit_code = infra_main([
             "refactor",
             "mod",
-            "--repository-root",
+            "--workspace",
             str(mod_workspace),
             "--apply",
         ])
@@ -129,10 +147,10 @@ class TestsFlextInfraModCliRoute:
         ).decode(c.Cli.ENCODING_DEFAULT)
 
         tm.that(exit_code, ne=0)
-        tm.that(updated, has="m.Cli.AtomicFilePublication")
-        tm.that(updated, lacks="m.Infra.MiseToolchainPublication")
-        tm.that(console, has="Would reformat")
-        tm.that(console, has=str(actionable_path))
+        tm.that(updated, has="r[int].ok(1)")
+        tm.that(updated, lacks="p.Result[int].ok(1)")
+        tm.that(console, has="detection-only")
+        tm.that(console, has="ban-make-serialization")
 
     def test_scan_keeps_prefix_rule_ids_exact(self, mod_workspace: Path) -> None:
         config_path = mod_workspace / c.Infra.CODEMOD_CONFIG_FILENAME
@@ -143,7 +161,7 @@ class TestsFlextInfraModCliRoute:
         second_rule = rules_root / "rewire-first-message.yml"
 
         tm.ok(u.Cli.ensure_dir(rules_root))
-        tm.ok(u.Cli.atomic_write_text_file(config_path, "ruleDirs:\n  - rules\n"))
+        tm.ok(u.Cli.atomic_write_text_file(config_path, "ruleDirs:\n  - codemod/rules\n"))
         tm.ok(
             u.Cli.atomic_write_text_file(
                 first_rule,
@@ -180,14 +198,15 @@ class TestsFlextInfraModCliRoute:
         )
         tm.ok(
             u.Cli.atomic_write_text_file(
-                mod_workspace / "sample.py", "value = dict(\n    a=1,\n)\n"
+                mod_workspace / "sample.py",
+                "from __future__ import annotations\n\nvalue = dict(\n    a=1,\n)\n",
             )
         )
 
         exit_code = infra_main([
             "refactor",
             "mod",
-            "--repository-root",
+            "--workspace",
             str(mod_workspace),
         ])
         report_state = tm.ok(
@@ -257,7 +276,7 @@ class TestsFlextInfraModCliRoute:
             )
         )
 
-        exit_code = infra_main(["refactor", "mod", "--repository", str(mod_workspace)])
+        exit_code = infra_main(["refactor", "mod", "--workspace", str(mod_workspace)])
         report_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(
                 mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH, required=True
@@ -296,7 +315,9 @@ class TestsFlextInfraModCliRoute:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 config_path,
-                f"{c.Infra.CODEMOD_RULE_DIRS_KEY}:\n  - {c.Cli.RULES_DIR_NAME}\n",
+                f"{c.Infra.CODEMOD_RULE_DIRS_KEY}:\n"
+                f"  - {c.Infra.CODEMOD_RESOURCE_DIRNAME}/"
+                f"{c.Cli.RULES_DIR_NAME}\n",
             )
         )
         tm.ok(
@@ -316,7 +337,7 @@ class TestsFlextInfraModCliRoute:
             u.Cli.atomic_write_text_file(mod_workspace / "sample.py", f"{statement}\n")
         )
 
-        exit_code = infra_main(["refactor", "mod", "--repository", str(mod_workspace)])
+        exit_code = infra_main(["refactor", "mod", "--workspace", str(mod_workspace)])
         report_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(
                 mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH, required=True

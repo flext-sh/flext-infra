@@ -131,7 +131,7 @@ class TestCodegenLinkedWorktreeTopology:
     def test_workspace_members_inherit_identity_and_topology_inputs_are_never_rewritten(
         self, tmp_path: Path
     ) -> None:
-        """Conform subprojects without creating member-local ledger identity."""
+        """Members declare the workspace identity; conform never rewrites inputs."""
         root = tmp_path / "workspace"
         WorktreeFixture.initialize_governed_project(
             root,
@@ -141,20 +141,11 @@ class TestCodegenLinkedWorktreeTopology:
             issue_prefix="root-prefix",
         )
         project_names = ("fixture-alpha", "fixture-beta")
-        project_names = ("fixture-alpha", "fixture-beta")
         for project_name in project_names:
             WorktreeFixture.initialize_governed_project(
                 root / project_name,
                 project_name,
                 workspace="root-workspace",
-                database="root-database",
-                issue_prefix="root-prefix",
-                beads_owner=False,
-            )
-            WorktreeFixture.link_member_beads(
-                root / project_name,
-                root,
-                workspace_name="root-workspace",
                 database="root-database",
                 issue_prefix="root-prefix",
             )
@@ -177,13 +168,12 @@ class TestCodegenLinkedWorktreeTopology:
             tm.that(beads.workspace, eq="root-workspace")
             tm.that(beads.database, eq="root-database")
             tm.that(beads.issue_prefix, eq="root-prefix")
-            tm.that((root / project_name / ".beads").is_symlink(), eq=True)
 
         applied = tm.ok(
             FlextInfraCodegenConform.execute_request(
                 u.Tests.conform_request(
                     root,
-                    scope=c.Infra.CodegenConformScope.SUBPROJECTS,
+                    scope=c.Infra.CodegenConformScope.ALL,
                     mode=c.Infra.CodegenConformMode.APPLY,
                 )
             )
@@ -200,6 +190,13 @@ class TestCodegenLinkedWorktreeTopology:
             ),
             empty=True,
         )
+        # Every member owns a physical ledger route rendered by generation;
+        # the retired cross-project symlink is never recreated.
+        for project_name in project_names:
+            route = root / project_name / ".beads"
+            tm.that(route.is_dir(), eq=True)
+            tm.that(route.is_symlink(), eq=False)
+            tm.that((route / "config.yaml").is_file(), eq=True)
 
     def test_declared_subproject_cannot_escape_through_a_linked_path(
         self, tmp_path: Path
@@ -229,7 +226,7 @@ class TestCodegenLinkedWorktreeTopology:
             u.Tests.conform_request(
                 root,
                 what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SUBPROJECTS,
+                scope=c.Infra.CodegenConformScope.DECLARED,
                 mode=c.Infra.CodegenConformMode.CHECK,
             )
         )

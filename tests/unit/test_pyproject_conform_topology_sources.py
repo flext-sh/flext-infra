@@ -50,8 +50,9 @@ def _repository(
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
         name="workspace",
+        beads=tu.Tests.beads_project("workspace"),
         repository=_repository("workspace", role=_ROLE.WORKSPACE, path="."),
-        declared_repositories=(
+        subprojects=(
             _repository("flext-core", role=_ROLE.STANDALONE, path="flext-core"),
         ),
     )
@@ -61,7 +62,7 @@ def _workspace_with_consumer() -> m.Infra.WorkspaceSpec:
     workspace = _workspace()
     consumer = _repository("flext-api", role=_ROLE.STANDALONE, path="flext-api")
     return workspace.model_copy(
-        update={"declared_repositories": (*workspace.subprojects, consumer)}
+        update={"subprojects": (*workspace.subprojects, consumer)}
     )
 
 

@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, u
-from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
+from flext_infra import c, m, u
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import u as test_u
 
@@ -479,19 +479,26 @@ class TestsCodegenSetupSubmodules:
 @pytest.fixture(scope="module")
 def generated_project_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
     root = tmp_path_factory.mktemp("setup-submodules") / "project"
+    # Mirror the production `codegen new` spec assembly (its single delegate is
+    # the conform pipeline below) so the template is the full managed render.
+    repository = test_u.Tests.repository_ref(
+        "flext-demo", role=c.Infra.MakeProfile.STANDALONE
+    )
+    workspace = m.Infra.WorkspaceSpec(
+        name=repository.name,
+        beads=test_u.Tests.beads_project(repository.name),
+        repository=repository,
+        project=test_u.Tests.project_spec(repository.name),
+    )
     tm.ok(
-        FlextInfraCodegenProjectNew(
-            name="flext-demo",
-            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
-            output_root=root,
-            provider="flext-sh",
-            license="MIT",
-            author_name="FLEXT Team",
-            author_email="team@flext.dev",
-            upstream="flext_cli",
-            year=2026,
-            apply_changes=True,
-        ).execute()
+        FlextInfraCodegenConform.execute_request(
+            test_u.Tests.conform_request(
+                root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            ),
+            initial_workspace=workspace,
+        )
     )
     return root
 

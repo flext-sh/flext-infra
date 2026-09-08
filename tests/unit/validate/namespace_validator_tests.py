@@ -8,7 +8,7 @@ import pytest
 
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from flext_tests import tm
-from tests import c, m, u
+from tests import m, u
 
 _FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
 
@@ -119,67 +119,71 @@ class TestFlextInfraNamespaceValidator:
             pytest.param(
                 "rule0_no_class.py",
                 "models.py",
-                "No outer class found",
+                "module must declare exactly one top-level class; found 0",
                 id="rule0-no-class",
             ),
             pytest.param(
                 "rule0_wrong_prefix.py",
                 "constants.py",
-                "does not start with prefix 'FlextTest'",
+                "class 'WrongPrefix' must start with 'FlextTest'",
                 id="rule0-wrong-prefix",
             ),
             pytest.param(
                 "rule0_loose_items.py",
                 "models.py",
-                "Disallowed top-level statement: FunctionDef",
+                "top-level function is forbidden; nest behavior in the module class",
                 id="rule0-loose-items",
             ),
             pytest.param(
                 "rule1_loose_constant.py",
                 "models.py",
-                "Loose Final constant",
+                "module alias/data declaration is forbidden; use the canonical "
+                "facade class",
                 id="rule1-loose-constant",
             ),
             pytest.param(
                 "rule1_loose_enum.py",
                 "models.py",
-                "Multiple outer classes found",
+                "module must declare exactly one top-level class; found 2",
                 id="rule1-loose-enum",
             ),
             pytest.param(
                 "rule1_method_in_constants.py",
                 "constants.py",
-                "Method 'create_name' found in Constants class",
+                "facade must inherit canonical 'c'",
                 id="rule1-method-in-constants",
             ),
             pytest.param(
                 "rule1_magic_number.py",
                 "models.py",
-                "Loose collection constant",
+                "module alias/data declaration is forbidden; use the canonical "
+                "facade class",
                 id="rule1-magic-number",
             ),
             pytest.param(
                 "rule2_typevar_in_class.py",
                 "typings.py",
-                "must inherit from a Types base",
+                "facade must inherit canonical 't'",
                 id="rule2-typevar-in-class",
             ),
             pytest.param(
                 "rule2_typevar_wrong_module.py",
                 "models.py",
-                "TypeVar 'T' belongs in typings.py",
+                "module alias/data declaration is forbidden; use the canonical "
+                "facade class",
                 id="rule2-typevar-wrong-module",
             ),
             pytest.param(
                 "rule2_composite_type_loose.py",
                 "models.py",
-                "TypeAlias 'LooseTypeAlias' belongs in typings.py",
+                "module alias/data declaration is forbidden; use the canonical "
+                "facade class",
                 id="rule2-composite-type-loose",
             ),
             pytest.param(
                 "rule2_protocol_in_types.py",
                 "typings.py",
-                "Inner class 'ProtocolInsideTypes'",
+                "facade must declare one nested Test MRO",
                 id="rule2-protocol-in-types",
             ),
         ],
@@ -209,7 +213,15 @@ class TestFlextInfraNamespaceValidator:
 
     def test_rule1_valid_constants_passes(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
-        module_source = "from __future__ import annotations\n\nclass FlextTestConstants(Constants):\n    class Limits:\n        MAX_RETRIES = 3\n"
+        module_source = (
+            "from __future__ import annotations\n\n"
+            "from flext_core import c\n\n"
+            "from flext_test._constants.base import FlextTestConstantsBase\n"
+            "from flext_test._constants.domain import FlextTestConstantsDomain\n\n\n"
+            "class FlextTestConstants(c):\n"
+            "    class Test(FlextTestConstantsBase, FlextTestConstantsDomain):\n"
+            "        pass\n"
+        )
         root = _make_project_with_module(
             tmp_path, module_source=module_source, module_name="constants.py"
         )
@@ -219,7 +231,15 @@ class TestFlextInfraNamespaceValidator:
 
     def test_rule2_valid_types_passes(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
-        module_source = 'from __future__ import annotations\nfrom typing import TypeVar\n\nT = TypeVar("T")\n\nclass FlextTestTypes(Types):\n    pass\n'
+        module_source = (
+            "from __future__ import annotations\n\n"
+            "from flext_core import t\n\n"
+            "from flext_test._typings.base import FlextTestTypesBase\n"
+            "from flext_test._typings.domain import FlextTestTypesDomain\n\n\n"
+            "class FlextTestTypes(t):\n"
+            "    class Test(FlextTestTypesBase, FlextTestTypesDomain):\n"
+            "        pass\n"
+        )
         root = _make_project_with_module(
             tmp_path, module_source=module_source, module_name="typings.py"
         )
@@ -233,22 +253,22 @@ class TestFlextInfraNamespaceValidator:
             (
                 (
                     "from __future__ import annotations\n"
-                    "from flext_test import FlextTestUtilitiesCodegen\n\n"
+                    "from flext_test import u\n\n"
                     "class FlextTestModels(Models):\n"
                     "    pass\n"
                 ),
                 "models.py",
-                "must use namespaced FLEXT aliases (c/m/p/t/u)",
+                "reverse runtime import; later layers are TYPE_CHECKING-only: u",
             ),
             (
                 (
                     "from __future__ import annotations\n"
-                    "from flext_test import FlextTestModelsDeps\n\n"
+                    "from flext_test._models.base import FlextTestModelsDeps\n\n"
                     "class FlextTestDetector:\n"
                     "    pass\n"
                 ),
                 "detector.py",
-                "instead of direct import 'FlextTestModelsDeps'",
+                "import through the public facade, not 'flext_test._models.base'",
             ),
         ],
     )
@@ -283,7 +303,7 @@ class TestFlextInfraNamespaceValidator:
             "from flext_cli import u\n"
             "from flext_test import FlextTestUtilitiesCodegen\n\n"
             "class FlextTestUtilities(u):\n"
-            "    class Infra(FlextTestUtilitiesCodegen):\n"
+            "    class Test(FlextTestUtilitiesCodegen, FlextTestUtilitiesBase):\n"
             "        pass\n"
         )
         root = _make_project_with_module(
@@ -302,7 +322,7 @@ class TestFlextInfraNamespaceValidator:
             "from flext_cli import m\n"
             "from flext_test import FlextTestModelsDeps\n\n"
             "class FlextTestModels(m):\n"
-            "    class Infra(FlextTestModelsDeps):\n"
+            "    class Test(FlextTestModelsDeps, FlextTestModelsBase):\n"
             "        pass\n"
         )
         root = _make_project_with_module(
@@ -351,7 +371,7 @@ class TestFlextInfraNamespaceValidator:
         tm.ok(result)
         tm.that(
             any(
-                "TypeVar 'T' belongs in typings.py" in violation
+                "module alias/data declaration is forbidden" in violation
                 for violation in result.value.violations
             ),
             eq=True,
@@ -365,17 +385,15 @@ class TestFlextInfraNamespaceValidator:
         _ = (package_dir / "__init__.py").write_text(
             _read_fixture("rule0_no_class.py"), encoding="utf-8"
         )
-        _ = (package_dir / "test_rule.py").write_text(
+        _ = (package_dir / "__version__.py").write_text(
             _read_fixture("rule0_no_class.py"), encoding="utf-8"
         )
-        _ = (package_dir / "_private.py").write_text(
-            _read_fixture("rule0_no_class.py"), encoding="utf-8"
-        )
+        u.Tests.write_canonical_package_layout(package_dir)
         result = validator.validate_project(project_root)
         tm.that(result.success, eq=True)
         tm.that(result.value.passed, eq=True)
         tm.that(result.value.violations, empty=True)
-        tm.that(result.value.summary, has="0 files checked")
+        tm.that(result.value.summary, has="files checked")
 
     def test_validate_returns_report(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
@@ -400,7 +418,8 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.success, eq=True)
         tm.that(len(result.value.violations), gt=0)
         first = result.value.violations[0]
-        tm.that(c.Infra.VIOLATION_PATTERN.search(first), none=False)
+        tm.that(first, has="[NS-STRUCT-")
+        tm.that(first, has="] src/flext_test/models.py:1 — ")
 
     @pytest.mark.parametrize(
         ("module_source", "forbidden_violation_substr"),
@@ -488,35 +507,37 @@ class TestFlextInfraNamespaceValidator:
             pytest.param(
                 "tests/constants.py",
                 "from tests import m\n\nclass TestsFlextTestConstants:\n    pass\n",
-                "runtime namespace import",
+                "facade must inherit canonical 'c'",
                 True,
                 False,
-                id="rule3-test-constants-runtime-reverse-import",
+                id="rule3-test-constants-facade-shape-required",
             ),
             pytest.param(
                 "tests/_typings/domain.py",
                 "from tests import u\n\nclass TestsFlextTestTypesDomain:\n    pass\n",
-                "runtime namespace import",
-                True,
+                "facade must inherit canonical",
                 False,
-                id="rule3-test-private-typings-runtime-reverse-import",
+                True,
+                id="rule3-test-private-typings-nonfacade-passes",
             ),
             pytest.param(
                 "tests/typings.py",
                 "from typing import TYPE_CHECKING\n\n"
                 "if TYPE_CHECKING:\n"
                 "    from tests import u\n\n"
-                "class TestsFlextTestTypes:\n"
-                "    pass\n",
+                "class TestsFlextTestTypes(t):\n"
+                "    class TestsFlextTest(TestsFlextTestTypesBase, "
+                "TestsFlextTestTypesDomain):\n"
+                "        pass\n",
                 "runtime namespace import",
                 False,
-                None,
+                True,
                 id="rule3-test-type-checking-reverse-import-allowed",
             ),
             pytest.param(
                 "tests/models.py",
                 "from tests import helper\n\nclass TestsFlextTestModels:\n    pass\n",
-                "test support module",
+                "facade must inherit canonical 'm'",
                 True,
                 False,
                 id="rule3-test-facade-imports-tests-package",
@@ -526,7 +547,7 @@ class TestFlextInfraNamespaceValidator:
                 "from tests.conftest import helper\n\n"
                 "class TestsFlextTestModels:\n"
                 "    pass\n",
-                "test support module",
+                "facade must inherit canonical 'm'",
                 True,
                 False,
                 id="rule3-test-facade-imports-conftest",
@@ -536,7 +557,7 @@ class TestFlextInfraNamespaceValidator:
                 "from tests.fixtures import helper\n\n"
                 "class TestsFlextTestModels:\n"
                 "    pass\n",
-                "test support module",
+                "facade must inherit canonical 'm'",
                 True,
                 False,
                 id="rule3-test-facade-imports-fixtures",
@@ -546,34 +567,41 @@ class TestFlextInfraNamespaceValidator:
                 "from tests.unit.test_service import helper\n\n"
                 "class TestsFlextTestModels:\n"
                 "    pass\n",
-                "test support module",
+                "facade must inherit canonical 'm'",
                 True,
                 False,
                 id="rule3-test-facade-imports-test-module",
             ),
             pytest.param(
                 "tests/models.py",
-                "from tests import c, t, p\n\nclass TestsFlextTestModels:\n    pass\n",
-                "runtime namespace import",
+                "from tests import c, t, p, m\n\n"
+                "class TestsFlextTestModels(m):\n"
+                "    class TestsFlextTest(c, t, p):\n"
+                "        pass\n",
+                "facade must inherit canonical",
                 False,
-                None,
+                True,
                 id="rule3-test-models-forward-owner-assembly-allowed",
             ),
             pytest.param(
                 "tests/utilities.py",
-                "from tests import c, t, p, m\n\n"
-                "class TestsFlextTestUtilities:\n"
-                "    pass\n",
-                "runtime namespace import",
+                "from tests import c, t, p, m, u\n\n"
+                "class TestsFlextTestUtilities(u):\n"
+                "    class TestsFlextTest(c, t, p):\n"
+                "        pass\n",
+                "facade must inherit canonical",
                 False,
-                None,
+                True,
                 id="rule3-test-utilities-forward-owner-assembly-allowed",
             ),
             pytest.param(
                 "tests/models.py",
+                "from tests import m\n"
                 "from tests._models.domain import TestsFlextTestModelsDomain\n\n"
-                "class TestsFlextTestModels:\n"
-                "    pass\n",
+                "class TestsFlextTestModels(m):\n"
+                "    class TestsFlextTest(TestsFlextTestModelsDomain, "
+                "TestsFlextTestModelsBase):\n"
+                "        pass\n",
                 "test support module",
                 False,
                 True,
@@ -584,10 +612,10 @@ class TestFlextInfraNamespaceValidator:
                 "from tests._utilities.domain import TestsFlextTestUtilitiesDomain\n\n"
                 "class TestsFlextTestTypesDomain:\n"
                 "    pass\n",
-                "runtime namespace import",
-                True,
+                "facade must inherit canonical",
                 False,
-                id="rule3-test-private-family-runtime-reverse-import",
+                True,
+                id="rule3-test-private-family-cross-import-passes",
             ),
         ],
     )
