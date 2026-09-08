@@ -243,6 +243,9 @@ class FlextInfraConstantsCheck:
         "**/__snapshots__/**",
         "**/__init__.py",
         "**/api_cases/**",
+        "**/_cases/**",
+        "**/_cov.py",
+        "**/_parts/**",
     )
     "Generated Python surfaces and structured test-case parameterization files "
     "excluded semantically; Git owns artifact visibility."
