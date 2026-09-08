@@ -209,7 +209,9 @@ class FlextInfraWorkspaceDetector(
         *,
         observed: m.Infra.RepositoryRef,
         beads: m.Infra.BeadsProjectSpec,
-    ) -> p.Result[t.Pair[m.Infra.RepositoryRef, bool]]:
+    ) -> p.Result[
+        tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
+    ]:
         """Load a selected repository manifest and reconcile it with Git truth.
 
         A checkout without ``config/workspace.yaml`` remains a valid observed
@@ -221,26 +223,28 @@ class FlextInfraWorkspaceDetector(
         """
         manifest_path = cls._workspace_manifest_path(repository_root)
         if not manifest_path.is_file():
-            return r[t.Pair[m.Infra.RepositoryRef, bool]].ok((observed, True))
+            return r[
+                tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
+            ].ok((observed, True, None))
         loaded = u.Cli.config_load(manifest_path, expand_env=False)
         if loaded.failure:
             error = loaded.error
             if error is None:
                 msg = "workspace manifest load failed without an error"
                 raise RuntimeError(msg)
-            return r[t.Pair[m.Infra.RepositoryRef, bool]].fail(
+            return r[tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]].fail(
                 f"invalid workspace manifest ({manifest_path}): {error}"
             )
         try:
             manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
         except c.ValidationError as exc:
-            return r[t.Pair[m.Infra.RepositoryRef, bool]].fail_op(
+            return r[tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]].fail_op(
                 f"workspace manifest model validation ({manifest_path})", exc
             )
         declared = manifest.repository
         contradictions = cls._manifest_git_contradictions(declared, observed)
         if contradictions:
-            return r[t.Pair[m.Infra.RepositoryRef, bool]].fail(
+            return r[tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]].fail(
                 f"workspace manifest contradicts Git ({manifest_path}): "
                 + "; ".join(contradictions)
             )
@@ -250,13 +254,13 @@ class FlextInfraWorkspaceDetector(
             if error is None:
                 msg = "repository owner resolution failed without an error"
                 raise RuntimeError(msg)
-            return r[t.Pair[m.Infra.RepositoryRef, bool]].fail(error)
+            return r[tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]].fail(error)
         if not cls.repository_is_governed(declared, provider.value):
-            return r[t.Pair[m.Infra.RepositoryRef, bool]].fail(
+            return r[tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]].fail(
                 f"workspace manifest repository is not governed: {manifest_path}"
             )
         if manifest.ledger_id is not None and manifest.ledger_id != beads.database:
-            return r[t.Pair[m.Infra.RepositoryRef, bool]].fail(
+            return r[tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]].fail(
                 "workspace manifest ledger_id contradicts Beads identity "
                 f"({manifest_path}): {manifest.ledger_id!r} != {beads.database!r}"
             )
@@ -264,7 +268,7 @@ class FlextInfraWorkspaceDetector(
             manifest.ledger_prefix is not None
             and manifest.ledger_prefix != beads.issue_prefix
         ):
-            return r[t.Pair[m.Infra.RepositoryRef, bool]].fail(
+            return r[tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]].fail(
                 "workspace manifest ledger_prefix contradicts Beads identity "
                 f"({manifest_path}): {manifest.ledger_prefix!r} != "
                 f"{beads.issue_prefix!r}"
@@ -277,9 +281,12 @@ class FlextInfraWorkspaceDetector(
             ),
             None,
         )
-        return r[t.Pair[m.Infra.RepositoryRef, bool]].ok((
+        return r[
+            tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
+        ].ok((
             declared,
             True if overlay is None else overlay.gascity_enabled,
+            manifest.project,
         ))
 
     @staticmethod
@@ -560,13 +567,14 @@ class FlextInfraWorkspaceDetector(
         )
         if declared_repository.failure:
             return r[m.Infra.WorkspaceSpec].fail(declared_repository.error)
-        repository_ref, gascity_enabled = declared_repository.value
+        repository_ref, gascity_enabled, declared_project = declared_repository.value
         return r[m.Infra.WorkspaceSpec].ok(
             m.Infra.WorkspaceSpec(
                 name=beads.value.workspace,
                 beads=beads.value,
                 gascity_enabled=gascity_enabled,
                 repository=repository_ref,
+                project=declared_project,
                 subprojects=subprojects,
                 external_dependency_paths=external,
             )
@@ -633,6 +641,7 @@ class FlextInfraWorkspaceDetector(
                 root=resolved_root,
                 make_profile=make_profile,
                 beads=workspace.beads,
+                project=workspace.project,
                 canonical_project_name=canonical_project_name,
                 baseline_branch=baseline_result.value,
                 baseline_reference=f"refs/remotes/origin/{baseline_result.value}",

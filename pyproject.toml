@@ -536,21 +536,19 @@ whitelines = 1
 
 [tool.uv]
 link-mode = "copy"
-exclude-newer = "7 days"
+exclude-newer = "0 days"
 environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
-
-[tool.uv.exclude-newer-package]
-cryptography = false
-torch = false
-ruff = false
-faker = false
-pytest-randomly = false
 
 [[tool.uv.exclude-dependencies]]
 dependencies = ["flext-infra"]
 
 [tool.uv.exclude-dependencies.package]
 name = "flext-tests"
+
+[tool.bandit]
+severity = "MEDIUM"
+skips = ["B101"]
+targets = ["src"]
 
 [tool.interrogate]
 fail-under = 70

@@ -44,6 +44,7 @@ def _render_root_makefile(tmp_path: Path) -> str:
     repository = test_u.Tests.repository_ref("workspace-root-fixture")
     workspace = m.Infra.WorkspaceSpec(
         name=repository.name,
+        beads=test_u.Tests.beads_project(repository.name),
         repository=repository,
         project=test_u.Tests.project_spec(repository.name),
     )
@@ -65,7 +66,7 @@ def _render_root_makefile(tmp_path: Path) -> str:
         fp for fp in plan.files if Path(fp.path).name == c.Infra.MAKEFILE_FILENAME
     )
     tm.that(makefile_plans, len=1)
-    rendered: str = makefile_plans[0].rendered
+    rendered: str = test_u.Tests.codegen_file_text(makefile_plans[0])
     return rendered
 
 

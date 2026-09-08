@@ -154,7 +154,7 @@ class TestSilentFailureValidator:
         exit_code = infra_main([
             "validate",
             "silent-failure",
-            "--repository-root",
+            "--workspace",
             str(project),
             "--project-filter",
             "flext-infra",

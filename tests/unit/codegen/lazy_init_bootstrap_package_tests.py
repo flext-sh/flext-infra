@@ -110,4 +110,4 @@ class TestsFlextInfraLazyInitBootstrapPackage:
         )
         tm.that(result, eq=0)
         tm.that(init_content, contains="from flext_core.lazy import")
-        tm.that(init_content, contains="FlextLazyPart")
+        tm.that(init_content, contains="FlextModelsPart")

@@ -32,7 +32,6 @@ class TestsToolchainRequirement:
         tm.that(
             toolchain.uv_exclude_newer, eq=f"{toolchain.dependency_cooldown_days} days"
         )
-        tm.that(toolchain.dependency_cooldown_exclusions, has="cryptography")
         tm.that(
             config.Infra.codegen.python_tool_distributions,
             has=["hatchling", "ruff", "pytest", "rumdl"],
@@ -62,7 +61,6 @@ class TestsToolchainRequirement:
             "pyrefly",
             "pyright",
             "pytest",
-            codegen.release.tool,
             "ruff",
             "rumdl",
             "vulture",

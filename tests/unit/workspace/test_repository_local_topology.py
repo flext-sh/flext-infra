@@ -61,14 +61,23 @@ class TestsRepositoryLocalTopology:
         exclusion = "fixture-manifest-policy-excluded"
         override = "fixture-manifest-policy-overridden"
         cutoff = datetime.now(UTC).isoformat()
-        _ = WorktreeFixture.override_repository_manifest(
-            root,
-            {
-                "kind": c.Infra.ProjectKind.THIRD_PARTY_FORK,
+        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        cooldown_manifest: dict[str, t.JsonValue] = {
+            "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
+            "name": observed.name,
+            "repository": {
+                **observed.repository.model_dump(mode="json"),
+                "kind": c.Infra.ProjectKind.THIRD_PARTY_FORK.value,
                 "uv_link_mode": "clone",
-                "dependency_cooldown_exclusions": (exclusion,),
+                "dependency_cooldown_exclusions": [exclusion],
                 "dependency_cooldown_overrides": {override: cutoff},
             },
+        }
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
+                cooldown_manifest,
+            )
         )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
@@ -199,7 +208,7 @@ class TestsRepositoryLocalTopology:
         """Fail closed on values outside the typed local contract."""
         root = _beads_fixture_root(tmp_path, field)
         payload = _beads_fixture_payload()
-        payload["custom_issue_types"] = []
+        payload["custom_issue_types"] = list[t.JsonValue]()
         payload[field] = invalid_value
         tm.ok(u.Cli.yaml_dump(root / "config" / "beads.yaml", payload))
 

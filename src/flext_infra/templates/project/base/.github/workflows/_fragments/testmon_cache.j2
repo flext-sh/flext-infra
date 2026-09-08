@@ -2,7 +2,7 @@
 {%- set tc = make.testmon_cache %}
       - name: Restore testmon cache
         id: testmon-restore
-        uses: {{ github_actions["cache"].repository }}@{{ github_actions["cache"].sha }}  # {{ github_actions["cache"].version }}
+        uses: {{ github_actions["cache"].repository }}@{{ github_actions["cache"].version }}
         with:
           path: |
             {% raw %}${{ github.workspace }}{% endraw %}/../{{ state_directory_name }}/*/{{ tc.namespace }}/{{ tc.database_filename }}
@@ -14,7 +14,7 @@
 
       - name: Save testmon cache
         if: {% raw %}${{ success() && !cancelled() && github.ref == 'refs/heads/0.12.0-dev' && github.event_name == 'push' }}{% endraw %}
-        uses: {{ github_actions["cache"].repository }}@{{ github_actions["cache"].sha }}  # {{ github_actions["cache"].version }}
+        uses: {{ github_actions["cache"].repository }}@{{ github_actions["cache"].version }}
         with:
           path: |
             {% raw %}${{ github.workspace }}{% endraw %}/../{{ state_directory_name }}/*/{{ tc.namespace }}/{{ tc.database_filename }}
