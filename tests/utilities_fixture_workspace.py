@@ -104,6 +104,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         root_modules: t.StrSequence = (),
         root_packages: t.StrSequence = (),
         extra_verbs: tuple[m.Infra.MakeVerbSpec, ...] = (),
+        gascity_enabled: bool | None = None,
     ) -> Path:
         """Write the declared ``config/workspace.yaml`` of one standalone repository.
 
@@ -115,6 +116,9 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         ``extra_verbs`` declares the repository-owned public Make verbs the
         managed Makefile renders into its help block, so a caller controls
         real rendered content through the declaration the loader validates.
+
+        ``gascity_enabled`` declares the repository policy overlay's Gas City
+        participation; ``None`` writes no overlay at all (the fleet default).
         """
         repository = TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
             name, role=c.Infra.MakeProfile.STANDALONE
@@ -141,6 +145,16 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             repository=repository,
             project=project,
         )
+        if gascity_enabled is not None:
+            manifest = manifest.model_copy(
+                update={
+                    "repository_policy_overlays": (
+                        m.Infra.RepositoryPolicyOverlaySpec(
+                            project=name, gascity_enabled=gascity_enabled
+                        ),
+                    )
+                }
+            )
         config_dir = project_dir / c.CONFIG_DIR_NAME
         config_dir.mkdir(parents=True, exist_ok=True)
         manifest_path = config_dir / c.Infra.WORKSPACE_MANIFEST_FILENAME
