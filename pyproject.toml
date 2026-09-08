@@ -15,7 +15,24 @@ classifiers = [
   "Topic :: Software Development :: Code Generators",
   "Typing :: Typed",
 ]
-dependencies = ["flext-core", "pydantic>=2.13.4", "pydantic-settings>=2.15.0"]
+dependencies = [
+  "annotated-types>=0.8.0",
+  "beartype>=0.22.9",
+  "defusedxml>=0.7.1",
+  "dependency-injector>=4.49.1",
+  "flext-cli",
+  "flext-core",
+  "gitpython>=3.1.61",
+  "jinja2>=3.1.6",
+  "libcst>=1.9.0",
+  "packaging>=26.3",
+  "pydantic>=2.13.4",
+  "pydantic-settings>=2.15.0",
+  "pyyaml>=6.0.3",
+  "rope>=1.14.0",
+  "structlog>=26.1.0",
+  "typing-extensions>=4.16.0",
+]
 description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
 keywords = ["automation", "codegen", "flext", "infrastructure", "tooling"]
 license = "MIT"

@@ -28,8 +28,8 @@
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
   `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+183 more)
 - Exported module shortcuts: `check`, `codegen`, `codemod`, `deps`, `detectors`,
-  `docs`, `fixers`, `gates` (+7 more)
-- Generated module pages: `197`
+  `docs`, `fixers`, `gates` (+8 more)
+- Generated module pages: `198`
 
 ## Next Pages
 
