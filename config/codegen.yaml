@@ -26,7 +26,7 @@ Infra:
       uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
       # Supply-chain cooldown SSOT shared by uv and generated update policy.
       dependency_cooldown_days: 7
-      dependency_cooldown_exclusions: [cryptography, torch, ruff, faker]
+      dependency_cooldown_exclusions: [cryptography, torch, ruff, faker, pytest-randomly]
       dependency_cooldown_overrides: {}
       # [tool.uv] constraint-dependencies rendered from this SSOT only. Empty
       # removes the key from every projection: an orphan cap (e.g. the retired
