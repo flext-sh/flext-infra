@@ -218,6 +218,7 @@ caller_gh_token="$(GH_TOKEN)"; \
 caller_mise_github_token="$(MISE_GITHUB_TOKEN)"; \
 caller_mise_github_credential_command="$(MISE_GITHUB_CREDENTIAL_COMMAND)"; \
 caller_mise_http_timeout="$(MISE_HTTP_TIMEOUT)"; \
+caller_mise_version="$(MISE_VERSION)"; \
 if [ -z "$$mise_storage_root" ]; then \
 		if [ -n "$$caller_xdg_data_home" ]; then \
 			mise_storage_root="$$caller_xdg_data_home/mise"; \
@@ -358,6 +359,7 @@ mise_exec() { \
 "MISE_GITHUB_TOKEN=$$caller_mise_github_token" \
 "MISE_GITHUB_CREDENTIAL_COMMAND=$$caller_mise_github_credential_command" \
 "MISE_HTTP_TIMEOUT=$$caller_mise_http_timeout" \
+"MISE_VERSION=$$caller_mise_version" \
 $${mise_config_argument:+"$$mise_config_argument"} \
 			"$$@"; \
 	}; \
