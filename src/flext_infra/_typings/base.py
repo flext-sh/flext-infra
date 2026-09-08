@@ -8,20 +8,21 @@ from __future__ import annotations
 
 from collections.abc import Callable, Container as _Container, MutableMapping
 from pathlib import Path as _Path
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import Annotated, Literal
 
 from jinja2.environment import (
     Environment as _JinjaEnvironment,
     Template as _JinjaTemplate,
 )
 
+# Why: flext_cli owns the pipeline models/result contract; flext_core's m/p
+# have no nested Cli namespace, so the pipeline handler alias below needs
+# flext_cli's own m/p under a distinct name. The import stays at runtime on
+# purpose: flext-cli's lazy __init__ keeps it cheap, flext-cli never imports
+# flext-infra (no cycle), and the runtime census gate evaluates every alias's
+# __value__, so a TYPE_CHECKING-only import would explode as NameError.
+from flext_cli import m as _cli_m, p as _cli_p
 from flext_core import m, t
-
-if TYPE_CHECKING:
-    # Why: flext_cli owns the pipeline models/result contract; flext_core's m/p
-    # have no nested Cli namespace, so the pipeline handler alias below needs
-    # flext_cli's own m/p under a distinct name (type-checking only, no cycle).
-    from flext_cli import m as _cli_m, p as _cli_p
 
 
 def _reject_blanket_mask(rule: str) -> str:
