@@ -19,10 +19,16 @@ class FlextInfraModelsCheck:
         """Canonical CLI payload for ``flext-infra check run``.
 
         Inherits canonical ``gates`` (parsed to ``t.StrSequence``),
-        ``apply``/``dry_run``, ``workspace``, ``projects``, ``fail_fast``,
-        ``verbose`` from ``WriteMixin``.
+        ``apply``/``dry_run``, ``projects``, ``fail_fast``, ``verbose`` from
+        ``WriteMixin`` and redeclares the scope root as ``workspace`` — the
+        option name this verb's generated CLI contract uses.
         """
 
+        workspace: Annotated[
+            Path,
+            m.BeforeValidator(lambda value: Path(value).resolve()),
+            m.Field(description="Repository root"),
+        ] = Path()
         reports_dir: Annotated[
             str,
             m.Field(
