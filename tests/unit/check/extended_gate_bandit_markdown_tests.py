@@ -325,26 +325,28 @@ class TestBanditAndMarkdownGates:
         # tracking the project files it writes.
         tm.ok(u.Cli.run_checked(["git", "init", "-q", str(tmp_path)]))
         tm.ok(
-            u.Cli.run_checked(
-                ["git", "-C", str(tmp_path), "add", "markdown-fix-project/README.md"]
-            )
+            u.Cli.run_checked([
+                "git",
+                "-C",
+                str(tmp_path),
+                "add",
+                "markdown-fix-project/README.md",
+            ])
         )
         tm.ok(
-            u.Cli.run_checked(
-                [
-                    "git",
-                    "-C",
-                    str(tmp_path),
-                    "-c",
-                    "user.name=fixture",
-                    "-c",
-                    "user.email=fixture@example.test",
-                    "commit",
-                    "-q",
-                    "-m",
-                    "fixture: tracked markdown scope",
-                ]
-            )
+            u.Cli.run_checked([
+                "git",
+                "-C",
+                str(tmp_path),
+                "-c",
+                "user.name=fixture",
+                "-c",
+                "user.email=fixture@example.test",
+                "commit",
+                "-q",
+                "-m",
+                "fixture: tracked markdown scope",
+            ])
         )
         runner = u.Tests.sequence_runner(r.ok(u.Tests.create_command_output()))
         context = m.Infra.GateContext(

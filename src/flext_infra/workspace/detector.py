@@ -277,9 +277,10 @@ class FlextInfraWorkspaceDetector(
             ),
             None,
         )
-        return r[t.Pair[m.Infra.RepositoryRef, bool]].ok(
-            (declared, True if overlay is None else overlay.gascity_enabled)
-        )
+        return r[t.Pair[m.Infra.RepositoryRef, bool]].ok((
+            declared,
+            True if overlay is None else overlay.gascity_enabled,
+        ))
 
     @staticmethod
     def _gitmodule_contract(
