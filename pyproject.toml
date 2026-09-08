@@ -509,25 +509,7 @@ split-on-trailing-comma = false
 [tool.tomlsort]
 all = true
 in_place = true
-sort_first = ["build-system", "dependency-groups", "project", "tool"]
-
-[tool.uv]
-environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
-exclude-newer = "7 days"
-link-mode = "copy"
-
-[[tool.uv.exclude-dependencies]]
-dependencies = ["flext-infra"]
-
-[tool.uv.exclude-dependencies.package]
-name = "flext-tests"
-
-[tool.uv.exclude-newer-package]
-cryptography = false
-faker = false
-ruff = false
-pytest-randomly = false
-torch = false
+sort_first = ["project", "build-system", "tool", "dependency-groups"]
 
 [tool.vulture]
 exclude = ["*/_protocols/*"]
@@ -559,11 +541,6 @@ dependencies = ["flext-infra"]
 
 [tool.uv.exclude-dependencies.package]
 name = "flext-tests"
-
-[tool.bandit]
-severity = "MEDIUM"
-skips = ["B101"]
-targets = ["src"]
 
 [tool.interrogate]
 fail-under = 70

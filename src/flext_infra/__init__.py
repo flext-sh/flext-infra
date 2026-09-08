@@ -531,7 +531,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codemod.semantic_apply": ("FlextInfraCodemodSemanticApply",),
             ".codemod.snapshot_reconciler": ("FlextInfraCodemodSnapshotReconciler",),
             ".constants": ("FlextInfraConstants", "c"),
-            "._models": ("models",),
             ".deps": ("deps",),
             ".deps.detection": ("FlextInfraDependencyDetectionService",),
             ".deps.detection_analysis": ("FlextInfraDependencyDetectionAnalysis",),
