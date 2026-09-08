@@ -975,8 +975,6 @@ class FlextInfraUtilitiesPyprojectConform:
         managed_tool_tables: t.StrSequence | None = None,
     ) -> p.Result[str]:
         """Keep live CUSTOM project keys and unmanaged tool tables."""
-        if live is None:
-            return r[str].ok(rendered)
         if preserve_project_keys is None or managed_tool_tables is None:
             from flext_infra import config as infra_config
 
@@ -993,10 +991,15 @@ class FlextInfraUtilitiesPyprojectConform:
             preserve_project_keys = spec.preserve_project_keys
             managed_tool_tables = spec.managed_tool_tables
         rendered_payload = u.Cli.toml_mapping_from_text(rendered)
-        live_payload = u.Cli.toml_mapping_from_text(live)
         if rendered_payload is None:
             return r[str].fail("rendered pyproject is not valid TOML")
-        if live_payload is None:
+        # An absent live file takes the same canonicalization path as a present
+        # one: the projection is the parse-merge-dump form, so first publication
+        # and every later conform produce byte-identical output (fixed point).
+        live_payload = (
+            u.Cli.toml_mapping_from_text(live) if live is not None else {}
+        )
+        if live is not None and live_payload is None:
             return r[str].fail("live pyproject is not valid TOML")
         merged = dict(rendered_payload)
         project = dict(u.Cli.toml_mapping_child(merged, c.Infra.PROJECT) or {})

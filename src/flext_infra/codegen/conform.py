@@ -1513,6 +1513,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             project_name=repository.distribution,
             package_name=project.package_name,
             path=pyproject,
+            root_modules=project.root_modules,
+            root_packages=project.root_packages,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             analysis_exclusions=analysis_exclusions,
