@@ -2519,15 +2519,45 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed context consumed by project templates."""
-        if workspace.project is not None:
-            project = workspace.project
-        else:
-            derived = FlextInfraCodegenConform._project_spec_from_existing(
-                repository, repository_root, codegen
+        if workspace.project is None:
+            # Existing checkouts declare no scaffold metadata: derive the render
+            # identity from the live project metadata instead of failing, so
+            # conforming a governed repository never depends on scaffold-only
+            # declarations.
+            metadata = u.Infra.read_project_metadata_result(repository_root)
+            if metadata.failure:
+                return r[m.Infra.ProjectRenderContext].from_failure(metadata)
+            repository_provider = FlextInfraCodegenConform._repository_provider(
+                repository, codegen
             )
-            if derived.failure:
-                return r[m.Infra.ProjectRenderContext].from_failure(derived)
-            project = derived.value
+            if repository_provider.failure:
+                return r[m.Infra.ProjectRenderContext].from_failure(
+                    repository_provider
+                )
+            live_name = metadata.value.package_name
+            class_stem = u.derive_class_stem(live_name)
+            project = m.Infra.ProjectSpec(
+                package_name=live_name,
+                class_stem=class_stem,
+                namespace=class_stem.removeprefix("Flext") or class_stem,
+                constant_name=live_name,
+                namespace_attribute=live_name,
+                alias=u.Infra.package_alias(package_name=live_name),
+                environment_prefix=f"{live_name.upper()}_",
+                license=config.Infra.codegen.scaffold.project.supported_licenses[0],
+                author_name="FLEXT Team",
+                author_email="team@flext.dev",
+                upstream=(
+                    config.Infra.codegen.scaffold.project.dependency_profiles[0].upstream
+                ),
+                homepage=f"{repository_provider.value.base_url.rstrip('/')}/",
+                documentation=f"{repository_provider.value.base_url.rstrip('/')}/",
+                repository_root_rel=".",
+                year=time.localtime().tm_year,
+                description=metadata.value.project.description,
+            )
+        else:
+            project = workspace.project
         dependency_profile = next(
             (
                 item
