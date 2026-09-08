@@ -25,9 +25,16 @@ Infra:
       uv_link_mode: copy
       uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
       # Supply-chain cooldown SSOT shared by uv and generated update policy.
-      dependency_cooldown_days: 7
-      dependency_cooldown_exclusions: [cryptography, torch, ruff, faker]
+      # 0 disables the window: uv resolves every version published up to now.
+      dependency_cooldown_days: 0
+      dependency_cooldown_exclusions: []
       dependency_cooldown_overrides: {}
+      # Complete tool catalog uncapped by the uv supply-chain cooldown. The
+      # codegen model projects the closure of this list with the scaffold
+      # requirement owners derived from the build and dev tables; runtime
+      # dependency profiles never enter it.
+      additional_python_tool_distributions:
+        [actionlint-py, bandit, deptry, flext-tests, hatchling, mkdocs, mypy, pip-audit, pre-commit, pyrefly, pyright, pytest, pytest-testmon, ruff, rumdl, vulture, yamlfix]
       # Moving selectors consumed by generated .mise.toml and CI. The fleet
       # runs unlocked: setup converges on the newest published release.
       uv_version: latest

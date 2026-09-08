@@ -145,7 +145,10 @@ class FlextInfraUtilitiesPyprojectConform:
             link_mode=uv_link_mode or toolchain.uv_link_mode,
             exclude_newer=uv_exclude_newer or toolchain.uv_exclude_newer,
             exclude_newer_packages=(
-                toolchain.dependency_cooldown_exclusions
+                tuple(dict.fromkeys((
+                    *toolchain.dependency_cooldown_exclusions,
+                    *toolchain.additional_python_tool_distributions,
+                )))
                 if dependency_cooldown_exclusions is None
                 else dependency_cooldown_exclusions
             ),

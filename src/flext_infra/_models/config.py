@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from fnmatch import fnmatchcase
 from pathlib import Path
@@ -273,7 +274,7 @@ class FlextInfraConfigModels:
         dependency_cooldown_days: Annotated[
             int,
             m.Field(
-                ge=1,
+                ge=0,
                 le=90,
                 description="Supply-chain cooldown shared by uv and update policy",
             ),
@@ -289,6 +290,16 @@ class FlextInfraConfigModels:
                 description="Per-package RFC 3339 cooldown cutoffs",
             ),
         ]
+        additional_python_tool_distributions: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Tool identities outside the scaffold requirement owners; "
+                    "every entry is uncapped by the uv supply-chain cooldown"
+                ),
+            ),
+        ] = ()
         kubectl_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact kubectl version, e.g. '1.32.0'")
         ]
@@ -641,9 +652,9 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="External runtime state directory name")
         ]
         dependency_cooldown_days: Annotated[
-            t.PositiveInt,
+            int,
             m.Field(
-                ge=1,
+                ge=0,
                 le=90,
                 description=(
                     "Shared uv and Dependabot dependency cooldown rendered into "
@@ -3104,6 +3115,33 @@ class FlextInfraConfigModels:
                 for artifact in self.artifacts
                 if artifact.source_scan_ignore
             )
+
+        @m.computed_field
+        @property
+        def python_tool_distributions(self) -> t.VariadicTuple[str]:
+            """Tool catalog uncapped by the uv supply-chain cooldown.
+
+            One catalog projects every owned tool: the scaffold requirement
+            owners (build and dev tables) plus the toolchain's declared
+            additional tool identities. Runtime dependency profiles never
+            enter it.
+            """
+            scaffold_owners: set[str] = set()
+            for requirement in (
+                *self.scaffold.build.requirements,
+                *self.scaffold.project.dev,
+            ):
+                if (name := self._distribution_name(requirement)) is not None:
+                    scaffold_owners.add(name)
+            return tuple(sorted(scaffold_owners | set(
+                self.toolchain.additional_python_tool_distributions
+            )))
+
+        @staticmethod
+        def _distribution_name(requirement: str) -> str | None:
+            """Resolve the distribution name of one PEP 508 requirement line."""
+            match = re.match(r"[A-Za-z0-9][A-Za-z0-9._-]*", requirement)
+            return match.group(0) if match else None
 
         # The canonical .gitignore body is ONE computed
         # projection — the artifact SSOT feeds the Python/build section and the

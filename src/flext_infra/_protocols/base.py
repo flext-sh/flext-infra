@@ -334,7 +334,12 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def additional_python_tool_distributions(self) -> t.StrSequence:
-            """Tool identities outside the scaffold requirement owners."""
+            """Declared tool identities uncapped by the supply-chain cooldown."""
+            ...
+
+        @property
+        def uv_environments(self) -> t.StrSequence:
+            """Marker expressions limiting the uv-resolved lock environments."""
             ...
 
         @property

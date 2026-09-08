@@ -595,7 +595,7 @@ sort_first = ["build-system", "dependency-groups", "project", "tool"]
 
 [tool.uv]
 environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
-exclude-newer = "7 days"
+exclude-newer = "0 days"
 link-mode = "copy"
 
 [[tool.uv.exclude-dependencies]]
@@ -603,11 +603,6 @@ dependencies = ["flext-infra"]
 
 [tool.uv.exclude-dependencies.package]
 name = "flext-tests"
-
-[tool.uv.exclude-newer-package]
-cryptography = false
-ruff = false
-torch = false
 
 [tool.vulture]
 exclude = ["*/_protocols/*"]
