@@ -9,7 +9,6 @@
 # bd reads `issue_prefix` (underscore). Do not emit `issue-prefix`.
 issue_prefix: {{ issue_prefix | tojson }}
 dolt.auto-start: {{ "false" if gascity_enabled else "true" }}
-dolt.mode: {{ dolt_mode }}
 export.auto: {{ export_auto | tojson }}
 backup.enabled: {{ backup_enabled | tojson }}
 {%- if gascity_enabled %}
@@ -18,4 +17,5 @@ gc.endpoint_status: {{ endpoint_status }}
 {%- endif %}
 types.custom: {{ custom_issue_types | join(",") }}
 dolt:
+  mode: {{ dolt_mode }}
   disable-event-flush: {{ dolt_disable_event_flush | tojson }}

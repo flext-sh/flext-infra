@@ -115,7 +115,7 @@ class FlextInfraMiseArtifactsVerification:
             journal,
             directory.manifest,
             observed.value,
-            allow_registered_additions=False,
+            allow_registered_additions=True,
         )
         if transition.failure:
             return result_type.from_failure(transition)

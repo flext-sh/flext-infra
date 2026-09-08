@@ -13,6 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, p, r, t, u
+from flext_infra.codegen._mise_artifacts_publication import publish_file_plan
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
@@ -53,7 +54,18 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             current = read.value
         if rendered.value == current:
             return r[t.Infra.LayoutStatus].ok("noop")
-        written = u.Cli.atomic_write_text_file(gitignore_path, rendered.value)
+        planned = u.Infra.planned_file(
+            project_dir,
+            gitignore_path,
+            required=False,
+            desired_content=rendered.value.encode(c.Cli.ENCODING_DEFAULT),
+            desired_mode=0o644,
+            owner="codegen",
+            policy="full",
+        )
+        if planned.failure:
+            return r[t.Infra.LayoutStatus].from_failure(planned)
+        written = publish_file_plan(planned.value, backup=True, phase="layout")
         if written.failure:
             return r[t.Infra.LayoutStatus].from_failure(written)
         return r[t.Infra.LayoutStatus].ok("applied")
@@ -84,7 +96,18 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             text += "\n"
         text += f"# {c.Infra.GITIGNORE_LAYOUT_SECTION_NAME}\n"
         text += "\n".join(missing) + "\n"
-        written = u.Cli.atomic_write_text_file(gitignore_path, text)
+        planned = u.Infra.planned_file(
+            project_dir,
+            gitignore_path,
+            required=False,
+            desired_content=text.encode(c.Cli.ENCODING_DEFAULT),
+            desired_mode=0o644,
+            owner="codegen",
+            policy="merge",
+        )
+        if planned.failure:
+            return r[t.Infra.LayoutStatus].from_failure(planned)
+        written = publish_file_plan(planned.value, backup=True, phase="layout")
         if written.failure:
             return r[t.Infra.LayoutStatus].from_failure(written)
         return r[t.Infra.LayoutStatus].ok("applied")
