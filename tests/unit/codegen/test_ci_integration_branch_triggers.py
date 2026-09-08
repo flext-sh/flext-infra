@@ -5,8 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, config
 from flext_tests import tm
+
+from flext_infra import c, config
 
 from ._support import CodegenTestSupport
 

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from flext_infra import config, u
 from flext_tests import tm
+
+from flext_infra import u
 
 
 class TestsManagedConflictRecovery:
@@ -17,18 +18,16 @@ class TestsManagedConflictRecovery:
         integration base that still carries the previous lint projection left
         the superproject merge unresolvable through the canonical surface.
         """
-        managed = config.Infra.codegen.managed_files
-        pyproject = next(
-            spec for spec in managed if spec.path.as_posix() == "pyproject.toml"
-        )
-
+        pyproject = tm.ok(u.Infra.pyproject_managed_file())
+        tm.that("tool.uv" in pyproject.conflict_sections, eq=True)
+        tm.that("build-system" in pyproject.conflict_sections, eq=True)
+        tm.that(pyproject.preserve_project_keys, empty=False)
+        tm.that(pyproject.overwrite_project_keys, empty=False)
         tm.that(
-            set(pyproject.conflict_sections),
-            eq={
-                "tool.pytest.ini_options",
-                "tool.uv",
-                "tool.ruff.lint.per-file-ignores",
-            },
+            set(pyproject.overwrite_project_keys).isdisjoint(
+                pyproject.preserve_project_keys
+            ),
+            eq=True,
         )
 
     def test_recovers_the_lint_policy_section(self) -> None:

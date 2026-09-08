@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 from flext_core import r
 from flext_infra import c, m, t, u
 
+from ._floor_profile_writer import FlextInfraDepsFloorProfileWriter
+
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
     from pathlib import Path
@@ -44,9 +46,6 @@ class FlextInfraPyprojectModernizerRunMixin:
             canonical_dev: t.StrSequence,
             dry_run: bool,
             skip_comments: bool,
-            rewrite_constraints: bool = False,
-            locked_versions: t.MappingKV[str, str] | None = None,
-            internal_names: t.StrSequence = (),
             root_modules: t.StrSequence = (),
             root_packages: t.StrSequence = (),
             declared_python_dirs: t.StrSequence = (),
@@ -70,7 +69,6 @@ class FlextInfraPyprojectModernizerRunMixin:
             canonical_dev=canonical_dev,
             dry_run=dry_run,
             skip_comments=skip_comments,
-            rewrite_constraints=False,
         )
 
     def run(self) -> int:
@@ -198,6 +196,21 @@ class FlextInfraPyprojectModernizerRunMixin:
                     | {root_project_name}
                 )
             )
+        # If rewrite_constraints is enabled, write floors to the codegen SSOT
+        # (dependency_profiles) instead of per-pyproject payloads. This is the
+        # flext-gzfd2 cutover: single owner for floors.
+        if self.rewrite_constraints:
+            if not dry_run:
+                profile_changes = (
+                    FlextInfraDepsFloorProfileWriter.rewrite_profiles_from_lock(
+                        locked_versions=locked_versions, internal_names=internal_names
+                    )
+                )
+                if profile_changes:
+                    u.Cli.info("deps: dependency_profiles floors updated from lock")
+                    for change in profile_changes:
+                        u.Cli.info(f"  - {change}")
+            return 0
         violations: MutableMapping[str, t.StrSequence] = {}
         document_states: t.MutableSequenceOf[m.Infra.PyprojectDocumentState] = []
         invalid_paths: t.MutableSequenceOf[Path] = []
@@ -222,9 +235,6 @@ class FlextInfraPyprojectModernizerRunMixin:
                     canonical_dev=canonical_dev,
                     dry_run=dry_run,
                     skip_comments=self.skip_comments,
-                    rewrite_constraints=self.rewrite_constraints,
-                    locked_versions=locked_versions,
-                    internal_names=internal_names,
                 )
                 if changes and not first_drift_reported:
                     diff_lines = u.Infra.unified_diff_lines(

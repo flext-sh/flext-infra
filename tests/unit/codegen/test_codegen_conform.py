@@ -565,7 +565,6 @@ class TestCodegenConform:
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
             provider="flext-sh",
-            beads=u.Tests.beads_project(name),
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
@@ -648,7 +647,6 @@ class TestCodegenConform:
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=existing_root,
             provider="flext-sh",
-            beads=u.Tests.beads_project("flext-demo"),
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
@@ -1574,8 +1572,8 @@ class TestScriptDispatchMakefile:
         tm.that(
             calls.read_text(encoding="utf-8").splitlines(),
             eq=[
-                f"codegen init --repository {root} --apply",
-                f"codegen init --repository {root} --check",
+                f"codegen init --repository-root {root} --apply",
+                f"codegen init --repository-root {root} --check",
             ],
         )
 

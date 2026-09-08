@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import m, u
 from flext_infra.detectors.internal_import_detector import (
     FlextInfraInternalImportDetector,
 )
-from flext_tests import tm
 from tests import u as test_u
 
 if TYPE_CHECKING:

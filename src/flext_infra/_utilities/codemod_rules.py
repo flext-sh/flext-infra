@@ -8,10 +8,10 @@ from importlib.metadata import Distribution, distributions, packages_distributio
 from importlib.util import find_spec
 from pathlib import Path
 
+from flext_cli import p, r, u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
-from flext_cli import p, r, u
 from flext_infra import c, m, t
 
 from .dependencies import FlextInfraUtilitiesDependencies

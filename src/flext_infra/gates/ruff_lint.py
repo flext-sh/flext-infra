@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, config, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
@@ -43,8 +43,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             c.Infra.VERB_CHECK,
             *check_dirs,
             *ctx.ruff_args,
-            # `check` never mutates: fixing belongs to `make fix`.
-            "--no-fix",
+            *config.Infra.codegen.make.ruff.lint_check,
             "--output-format",
             c.Infra.OUTPUT_JSON,
             "--quiet",
@@ -61,7 +60,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             c.Infra.VERB_CHECK,
             *targets,
             *ctx.ruff_args,
-            "--fix",
+            *config.Infra.codegen.make.ruff.lint_fix,
             "--output-format",
             c.Infra.OUTPUT_JSON,
             "--quiet",

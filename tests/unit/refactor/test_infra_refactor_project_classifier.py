@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
 from flext_tests import tm
+
+from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
 
 if TYPE_CHECKING:
     from pathlib import Path

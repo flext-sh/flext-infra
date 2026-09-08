@@ -7,10 +7,10 @@ import sys
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import main as infra_main
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-from flext_tests import tm
 from tests import t, u
 
 

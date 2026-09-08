@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import flext_infra
 from flext_tests import tm
+
+import flext_infra
 from tests import u
 
 ROOT = Path(flext_infra.__file__).resolve().parents[2]

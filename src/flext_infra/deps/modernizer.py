@@ -9,7 +9,6 @@ from flext_core import r
 from flext_infra import c, config, m, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 
-from ._modernizer_constraints import FlextInfraPyprojectModernizerConstraintsMixin
 from ._modernizer_document import FlextInfraPyprojectModernizerDocumentMixin
 from ._modernizer_payload import FlextInfraPyprojectModernizerPayloadMixin
 from ._modernizer_run import FlextInfraPyprojectModernizerRunMixin
@@ -22,7 +21,6 @@ if TYPE_CHECKING:
 
 class FlextInfraPyprojectModernizer(
     FlextInfraProjectSelectionServiceBase[bool],
-    FlextInfraPyprojectModernizerConstraintsMixin,
     FlextInfraPyprojectModernizerPayloadMixin,
     FlextInfraPyprojectModernizerDocumentMixin,
     FlextInfraPyprojectModernizerRunMixin,

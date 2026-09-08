@@ -173,7 +173,7 @@ class TestCodegenLinkedWorktreeTopology:
             FlextInfraCodegenConform.execute_request(
                 u.Tests.conform_request(
                     root,
-                    scope=c.Infra.CodegenConformScope.ALL,
+                    scope=c.Infra.CodegenConformScope.DECLARED,
                     mode=c.Infra.CodegenConformMode.APPLY,
                 )
             )

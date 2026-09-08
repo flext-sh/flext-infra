@@ -9,8 +9,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 from flext_tests import tm
+
+from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 
 if TYPE_CHECKING:
     from tests import t

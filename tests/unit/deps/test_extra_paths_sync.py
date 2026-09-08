@@ -5,10 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tf, tm
 
 from flext_infra import main, t
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from flext_tests import tf, tm
 from tests import u
 
 
