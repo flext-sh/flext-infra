@@ -319,6 +319,33 @@ class TestBanditAndMarkdownGates:
         """
         project_dir = u.Tests.mk_project(tmp_path, "markdown-fix-project")
         (project_dir / "README.md").write_text("# Title   \n", encoding="utf-8")
+        # Gates select scopes through the canonical git-aware path. Tests run
+        # with TMPDIR inside this repository, so an uncommitted tmp file is
+        # invisible to selection; the fixture must model production reality by
+        # tracking the project files it writes.
+        tm.ok(u.Cli.run_checked(["git", "init", "-q", str(tmp_path)]))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "-C", str(tmp_path), "add", "markdown-fix-project/README.md"]
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    "git",
+                    "-C",
+                    str(tmp_path),
+                    "-c",
+                    "user.name=fixture",
+                    "-c",
+                    "user.email=fixture@example.test",
+                    "commit",
+                    "-q",
+                    "-m",
+                    "fixture: tracked markdown scope",
+                ]
+            )
+        )
         runner = u.Tests.sequence_runner(r.ok(u.Tests.create_command_output()))
         context = m.Infra.GateContext(
             repository_root=tmp_path, reports_dir=tmp_path, apply_fixes=True
