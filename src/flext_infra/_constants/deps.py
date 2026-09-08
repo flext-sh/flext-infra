@@ -41,14 +41,16 @@ class FlextInfraConstantsDeps:
     )
     BANNER: Final[str] = (
         "# @flext-generated: continuous\n"
-        "# @flext-owner: flext-infra/src/flext_infra/_constants/deps.py\n"
-        "# @flext-adjust: edit the dependency owner; never this projection\n"
-        "# @flext-regenerate: make deps APPLY=Y\n"
+        "# @flext-owner: flext-infra/config/codegen.yaml"
+        " + flext-infra/src/flext_infra/templates/project/base/pyproject.toml.j2\n"
+        "# @flext-adjust: edit the owner configuration or template;"
+        " never this projection\n"
+        "# @flext-regenerate: make gen APPLY=Y\n"
         "# @flext-owner-dependencies: flext-infra/config/codegen.yaml"
         " (scaffold.project.dev, scaffold.project.external_runtime_packages,"
         " dependency_profiles, runtime_dependency_overlays)\n"
         "# [MANAGED] FLEXT pyproject standardization\n"
-        "# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n"
+        "# Sections with [MANAGED] are restored from the template SSOT.\n"
         "# Sections with [CUSTOM] are project-specific extension points.\n"
     )
     DEV_OPTIONAL_DEPS_MARKER: Final[str] = (
@@ -62,7 +64,7 @@ class FlextInfraConstantsDeps:
     )
     COMMENT_MARKERS: Final[t.StrPairTuple] = (
         ("[build-system]", "# [MANAGED] build system"),
-        ("[project]", "# [CUSTOM] project metadata"),
+        ("[project]", "# [CUSTOM] project metadata; [MANAGED] dependencies, requires-python"),
         ("[tool.poetry.group.dev.dependencies]", "# [CUSTOM] poetry dev extensions"),
         ("[tool.deptry]", "# [MANAGED] deptry"),
         ("[tool.ruff]", "# [MANAGED] ruff"),

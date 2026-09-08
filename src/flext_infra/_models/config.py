@@ -1542,6 +1542,15 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ()
+        preserve_project_keys: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "PEP 621 [project] keys kept from the live file when policy "
+                    "is merge. Template still owns every other project key."
+                )
+            ),
+        ] = ()
 
     class ExternallyManagedSpec(_ConfigContract):
         """One externally-managed file declared by a .gen contract.
