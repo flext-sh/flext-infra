@@ -26,7 +26,7 @@ Infra:
       uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
       # Supply-chain cooldown SSOT shared by uv and generated update policy.
       dependency_cooldown_days: 7
-      dependency_cooldown_exclusions: [cryptography, torch, ruff]
+      dependency_cooldown_exclusions: [cryptography, torch, ruff, faker]
       dependency_cooldown_overrides: {}
       # Moving selectors consumed by generated .mise.toml and CI. The fleet
       # runs unlocked: setup converges on the newest published release.
@@ -155,8 +155,8 @@ Infra:
         sha: fc324d3547104276b827a68afc52ff2a11cc49c9
       deploy-pages:
         repository: actions/deploy-pages
-        version: v5.0.0
-        sha: cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
+        version: v5.0.1
+        sha: 368f82528645a54fb793d4d04e342629a3f51346
 
     uv_exclude_dependencies:
       # Standalone CI installs the project editable while sibling flext packages
