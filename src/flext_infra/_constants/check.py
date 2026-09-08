@@ -122,7 +122,10 @@ class FlextInfraConstantsCheck:
         "protocols.py",
         "typings.py",
         "utilities.py",
+        "config.py",
         "settings.py",
+        "_config.py",
+        "_settings.py",
     })
     BOUNDARY_BANNED_LIBS: Final[t.MappingKV[str, str]] = MappingProxyType({
         "typer": "cli.create_app_with_common_params / cli.register_command",

@@ -125,9 +125,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         dry_run: bool,
         skip_comments: bool,
         format_source: bool = True,
-        rewrite_constraints: bool = False,
-        locked_versions: t.MappingKV[str, str] | None = None,
-        internal_names: t.StrSequence = (),
         root_modules: t.StrSequence = (),
         root_packages: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
@@ -170,14 +167,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         changes: t.MutableSequenceOf[str] = []
         changes.extend(self._ensure_build_system_payload(payload))
         changes.extend(self._remove_empty_poetry_groups_payload(payload))
-        if rewrite_constraints:
-            changes.extend(
-                self._rewrite_dependency_constraints_payload(
-                    payload,
-                    locked_versions=locked_versions or {},
-                    internal_names=internal_names,
-                )
-            )
         changes.extend(
             FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev)
         )
