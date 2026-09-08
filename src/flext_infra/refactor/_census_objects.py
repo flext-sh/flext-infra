@@ -6,7 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m
+from flext_infra import c, m, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -84,6 +84,22 @@ class FlextInfraRefactorCensusObjectsMixin:
             not item.is_facade_member
             and item.references_count == 0
             and not item.name.startswith("_")
+            and not FlextInfraRefactorCensusObjectsMixin._is_pytest_entry_point(item)
+        )
+
+    @staticmethod
+    def _is_pytest_entry_point(item: m.Infra.Census.Object) -> bool:
+        """Return whether the object is a pytest entry point in a test module.
+
+        Pytest discovers ``test_*`` callables in test modules and executes
+        them without any in-repository reference, so a zero reference count
+        never makes one a removal candidate: census apply would otherwise
+        delete the tests it is asked to validate.
+        """
+        return (
+            item.kind in {"class", "function", "method"}
+            and item.name.startswith(c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX)
+            and u.Infra.is_pytest_test_module(Path(item.file_path))
         )
 
     @classmethod

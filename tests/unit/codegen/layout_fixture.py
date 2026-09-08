@@ -32,7 +32,34 @@ def build_loose_project(tmp_path: Path, name: str = "flext-demo") -> Path:
 def layout_engine(
     repository_root: Path, *, apply_changes: bool = False
 ) -> FlextInfraCodegenLayout:
-    """Build the layout service over one fixture repository root."""
+    """Build the layout service over one fixture repository root.
+
+    Apply mode journals through the generation transaction, whose receipt
+    resolves the Git identity of the owning checkout, so the fixture root is
+    initialized as a repository exactly like every governed checkout.
+    """
+    if not (repository_root / ".git").exists():
+        provider = u.Tests.provider()
+        governed_url = f"{provider.base_url.rstrip('/')}/{repository_root.name}.git"
+        u.Tests.initialize_git_repo(repository_root, origin_url=governed_url)
+        u.Tests.write_project_beads_config(repository_root, repository_root.name)
+        root_pyproject = repository_root / "pyproject.toml"
+        if not root_pyproject.is_file():
+            root_pyproject.write_text(
+                f"[project]\nname='{repository_root.name}'\nversion='0.1.0'\n",
+                encoding="utf-8",
+            )
+        gitmodules = repository_root / ".gitmodules"
+        if gitmodules.is_file():
+            for project_path in gitmodules.read_text(encoding="utf-8").splitlines():
+                if project_path.startswith("\tpath = "):
+                    member = repository_root / project_path.removeprefix("\tpath = ")
+                    if member.is_dir():
+                        member_url = (
+                            f"{provider.base_url.rstrip('/')}/{member.name}.git"
+                        )
+                        u.Tests.initialize_git_repo(member, origin_url=member_url)
+                        u.Tests.write_project_beads_config(member, member.name)
     return FlextInfraCodegenLayout(
         repository_root=repository_root, apply_changes=apply_changes
     )

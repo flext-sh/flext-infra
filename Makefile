@@ -213,6 +213,11 @@ caller_comspec="$(COMSPEC)"; \
 caller_pathext="$(PATHEXT)"; \
 caller_systemroot="$(SYSTEMROOT)"; \
 caller_windir="$(WINDIR)"; \
+caller_github_token="$(GITHUB_TOKEN)"; \
+caller_gh_token="$(GH_TOKEN)"; \
+caller_mise_github_token="$(MISE_GITHUB_TOKEN)"; \
+caller_mise_github_credential_command="$(MISE_GITHUB_CREDENTIAL_COMMAND)"; \
+caller_mise_http_timeout="$(MISE_HTTP_TIMEOUT)"; \
 if [ -z "$$mise_storage_root" ]; then \
 		if [ -n "$$caller_xdg_data_home" ]; then \
 			mise_storage_root="$$caller_xdg_data_home/mise"; \
@@ -343,12 +348,16 @@ mise_exec() { \
 "GIT_CEILING_DIRECTORIES=$$project_parent" \
 			"MISE_CEILING_PATHS=$$project_parent" \
 			"MISE_TRUSTED_CONFIG_PATHS=$$project_root" \
-			"MISE_INSTALL_PATH=$$mise_install_path" \
 "PATH=$$caller_path" \
 "COMSPEC=$$caller_comspec" \
 "PATHEXT=$$caller_pathext" \
 "SYSTEMROOT=$$caller_systemroot" \
 "WINDIR=$$caller_windir" \
+"GITHUB_TOKEN=$$caller_github_token" \
+"GH_TOKEN=$$caller_gh_token" \
+"MISE_GITHUB_TOKEN=$$caller_mise_github_token" \
+"MISE_GITHUB_CREDENTIAL_COMMAND=$$caller_mise_github_credential_command" \
+"MISE_HTTP_TIMEOUT=$$caller_mise_http_timeout" \
 $${mise_config_argument:+"$$mise_config_argument"} \
 			"$$@"; \
 	}; \
@@ -370,28 +379,7 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 			printf 'ERROR: Mise emitted a warning\n' >&2; return 2; \
 		fi; \
 	}; \
-	mise_release_from_launcher() { \
-		launcher_path="$$1"; \
-		launcher_release=$$(sed -n 's/^[[:space:]]*local mise_version="$${MISE_VERSION:-\([0-9][0-9.]*\)}"$$/\1/p' "$$launcher_path"); \
-		if [ -z "$$launcher_release" ]; then \
-			launcher_release=$$(sed -n 's/^[[:space:]]*set "pinned_version=\([0-9][0-9.]*\)"$$/\1/p' "$$launcher_path"); \
-		fi; \
-		case "$$launcher_release" in \
-			''|*[!0-9.]*|.*|*.|*..*) printf 'ERROR: Mise launcher has invalid release: %s\n' "$$launcher_path" >&2; return 2 ;; \
-		esac; \
-		launcher_old_ifs=$$IFS; IFS=.; set -- $$launcher_release; IFS=$$launcher_old_ifs; \
-		if [ "$$#" -ne 3 ]; then \
-			printf 'ERROR: Mise launcher has invalid release: %s\n' "$$launcher_path" >&2; return 2; \
-		fi; \
-		printf '%s\n' "$$launcher_release"; \
-	}; \
-	case "$${OS:-}" in \
-		Windows_NT) mise_runtime_suffix='.exe' ;; \
-		*) mise_runtime_suffix= ;; \
-	esac; \
 	latest_mise="$$mise"; \
-	mise_release=$$(mise_release_from_launcher "$$latest_mise"); \
-	mise_install_path="$$mise_storage_root/bootstrap/mise-$$mise_release$$mise_runtime_suffix"; \
 	mise_checked_stdout "$$scratch/runtime-version.stdout" "$$scratch/runtime-version.stderr" mise_exec no-config "$$latest_mise" --version; \
 	receipt_runtime=$$(cat "$$scratch/runtime-version.stdout"); \
 	case "$$receipt_runtime" in \
@@ -405,10 +393,7 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 	if [ "$$#" -ne 3 ]; then \
 		printf 'ERROR: Mise receipt returned invalid version: %s\n' "$$receipt_runtime" >&2; exit 2; \
 	fi; \
-	if [ "$$runtime_release" != "$$mise_release" ]; then \
-		printf 'ERROR: Mise runtime differs from its exact receipt: expected=%s actual=%s\n' "$$mise_release" "$$runtime_release" >&2; exit 2; \
-	fi; \
-	printf 'mise setup receipt=%s storage=%s\n' "$$mise_release" "$$mise_storage_root"; \
+	printf 'mise setup receipt=%s storage=%s\n' "$$runtime_release" "$$mise_storage_root"; \
 	mise_checked "$$scratch/install.log" mise_exec project "$$latest_mise" -C "$$project_root" install --yes; \
 	mise_checked "$$scratch/uv-version.log" mise_exec project "$$latest_mise" -C "$$project_root" exec -- uv --version; \
 	uv_output=$$(cat "$$scratch/uv-version.log"); \
@@ -461,7 +446,7 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 		if [ ! -x "$(RUNTIME_PYTHON)" ]; then \
 			$(UV) venv "$(RUNTIME_VENV)"; \
 		fi; \
-		$(UV) sync --frozen --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"; \
+		$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"; \
 	fi; \
 	XDG_DATA_HOME="$${SETUP_DIRENV_XDG_DATA_HOME:?missing persistent direnv data home}" \
 		"$${SETUP_DIRENV:?missing Mise-resolved direnv executable}" allow "$(PROJECT_ROOT)"

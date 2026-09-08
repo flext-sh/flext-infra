@@ -25,7 +25,7 @@ def _demo_module(tmp_path: Path, module_name: str, source: str) -> tuple[Path, P
     return repository_root, module_path
 
 
-def _paired_namespace_projects(root: Path) -> tuple[Path, Path, Path, Path]:
+def _paired_namespace_projects(root: Path) -> tuple[Path, Path, Path, Path, Path]:
     """Declare two sibling namespace projects and return their roots and modules."""
     project_root, package_root = u.Tests.create_lazy_init_workspace(
         root, project_name="flext-infra", package_name="flext_infra"
@@ -60,7 +60,9 @@ def _module_exports(
         )
 
 
-def _module_objects_by_name(repository_root: Path, module_path: Path) -> t.JsonMapping:
+def _module_objects_by_name(
+    repository_root: Path, module_path: Path
+) -> dict[str, m.Infra.Census.Object]:
     """Index one module's non-local objects by their declared name."""
     with flext_infra.infra.rope_workspace(repository_root) as rope:
         return {
@@ -247,13 +249,10 @@ class TestsFlextInfraInfraRopeService:
 
         with flext_infra.infra.rope_workspace(repository_root) as rope:
             convention = rope.convention(module_path)
-            violations = u.Infra.class_nesting_plans(
-                repository_root,
-                module_path,
-                rope.rope_project,
-                tm.not_none(rope.resource(module_path)),
-            )
+            violations_result = u.Infra.class_nesting_plan(rope, module_path)
 
+        tm.that(violations_result.failure, eq=False)
+        violations = tm.not_none(violations_result.unwrap())
         tm.that(len(violations), eq=1)
         violation = violations[0]
         tm.that(violation.class_name, eq=extra_class_name)
@@ -507,15 +506,25 @@ class TestsFlextInfraInfraRopeService:
         with flext_infra.infra.rope_workspace(repository_root) as rope:
             original_semantic = rope.semantic(module_path)
             tm.that(rope.source(module_path), eq=original_source)
+            tm.that(
+                tuple(item.name for item in original_semantic.class_infos),
+                eq=("Original",),
+            )
 
             module_path.write_text(changed_source, encoding=c.Cli.ENCODING_DEFAULT)
-            tm.that(rope.source(module_path), eq=original_source)
-            tm.that(rope.semantic(module_path) is original_semantic, eq=True)
-
-            rope.refresh()
             tm.that(rope.source(module_path), eq=changed_source)
             tm.that(
                 tuple(item.name for item in rope.semantic(module_path).class_infos),
+                eq=("Original",),
+            )
+            tm.that(
+                tuple(item.name for item in rope.objects(module_path)),
+                eq=("Original",),
+            )
+
+            rope.refresh()
+            tm.that(
+                tuple(item.name for item in rope.objects(module_path)),
                 eq=("Changed",),
             )
 
@@ -559,10 +568,10 @@ class TestsFlextInfraInfraRopeService:
             tm.that(rebuilt_index is not original_index, eq=True)
             tm.that(rebuilt_index, has="second")
 
-    def test_workspace_objects_raise_on_inventory_bootstrap_error(
+    def test_workspace_objects_raise_on_unparseable_module(
         self, tmp_path: Path
     ) -> None:
-        """Inventory bootstrap failures surface instead of returning an empty module."""
+        """Unparseable module sources surface instead of an empty module."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
@@ -571,11 +580,11 @@ class TestsFlextInfraInfraRopeService:
 
         with (
             flext_infra.infra.rope_workspace(repository_root) as rope,
-            pytest.raises(
-                RuntimeError, match=r"rope inventory failed to load .*service\.py"
-            ),
+            pytest.raises(SyntaxError) as parse_error,
         ):
             rope.objects(module_path)
+
+        tm.that(parse_error.value.filename, eq=str(module_path.resolve()))
 
     def test_workspace_name_index_raises_on_module_read_error(
         self, tmp_path: Path

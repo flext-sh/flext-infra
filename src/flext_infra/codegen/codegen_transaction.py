@@ -288,25 +288,13 @@ class FlextInfraCodegenTransaction:
         )
         if not changed:
             return result_type.ok(session)
-        layout = session.plan.layout
-        observed_journal = state.journal_state(layout)
-        observed_journal_snapshot = (
-            None
-            if observed_journal.failure
-            else state.journal_snapshot(observed_journal.value)
+        aligned = self._unchanged_journal(
+            session, "generation journal changed between phases"
         )
-        if (
-            observed_journal.failure
-            or observed_journal_snapshot is None
-            or observed_journal_snapshot != session.journal_state
-        ):
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    observed_journal.error
-                    or "generation journal changed between phases",
-                )
-            )
+        if aligned.failure:
+            return result_type.from_failure(aligned)
+        session = aligned.value
+        layout = session.plan.layout
         sources = self._phase_sources(phase, plans)
         if sources.failure:
             return result_type.from_failure(
@@ -425,6 +413,7 @@ class FlextInfraCodegenTransaction:
         )
         if unchanged.failure:
             return result_type.from_failure(unchanged)
+        session = unchanged.value
         extended = journal_io.append_directories(session.journal, planned.value)
         if extended.failure:
             return result_type.from_failure(
@@ -477,6 +466,7 @@ class FlextInfraCodegenTransaction:
         )
         if unchanged.failure:
             return r[tuple[Path, ...]].from_failure(unchanged)
+        session = unchanged.value
         committed = journal_io.commit(session.journal)
         if committed.failure:
             return r[tuple[Path, ...]].from_failure(
@@ -676,23 +666,33 @@ class FlextInfraCodegenTransaction:
 
     def _unchanged_journal(
         self, session: m.Infra.CodegenTransactionSession, changed_error: str
-    ) -> p.Result[bool]:
-        """Confirm the on-disk journal still matches this session's snapshot."""
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Keep session CAS on live journal identity when bytes and mode match."""
+        result_type = r[m.Infra.CodegenTransactionSession]
         observed = state.journal_state(session.plan.layout)
         observed_snapshot = (
             None if observed.failure else state.journal_snapshot(observed.value)
         )
-        if (
-            observed.failure
-            or observed_snapshot is None
-            or observed_snapshot != session.journal_state
-        ):
-            return r[bool].from_failure(
+        expected = session.journal_state
+        if observed.failure or observed_snapshot is None:
+            return result_type.from_failure(
                 self._recover_failure(
                     session.plan.layout, observed.error or changed_error
                 )
             )
-        return r[bool].ok(True)
+        if (
+            observed_snapshot.path != expected.path
+            or observed_snapshot.content != expected.content
+            or observed_snapshot.mode != expected.mode
+        ):
+            return result_type.from_failure(
+                self._recover_failure(session.plan.layout, changed_error)
+            )
+        if observed_snapshot == expected:
+            return result_type.ok(session)
+        return result_type.ok(
+            session.model_copy(update={"journal_state": observed_snapshot})
+        )
 
     def _recover_failure(
         self, layout: m.Infra.MiseToolchainWorkspaceLayout, failure: str

@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 120
     steps:
       - name: Checkout repository
-        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0

@@ -8,7 +8,7 @@
       # checkout — never from the environment of the build itself.
       - name: Mint the private-dependency installation token
         id: private_dependency_token
-        uses: {{ github_actions["create-github-app-token"].repository }}@{{ github_actions["create-github-app-token"].sha }}  # {{ github_actions["create-github-app-token"].version }}
+        uses: {{ github_actions["create-github-app-token"].repository }}@{{ github_actions["create-github-app-token"].version }}
         with:
           app-id: {% raw %}${{ secrets.{% endraw %}{{ private_dependency_auth.app_id_secret }}{% raw %} }}{% endraw %}
           private-key: {% raw %}${{ secrets.{% endraw %}{{ private_dependency_auth.private_key_secret }}{% raw %} }}{% endraw %}

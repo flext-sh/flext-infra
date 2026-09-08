@@ -237,7 +237,7 @@ class TestsFlextInfraDepsDetectorMain:
             main([
                 "deps",
                 "detect",
-                "--repository-root",
+                "--workspace",
                 "/nonexistent/path",
                 "--no-pip-check",
             ]),

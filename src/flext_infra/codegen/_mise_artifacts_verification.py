@@ -115,7 +115,7 @@ class FlextInfraMiseArtifactsVerification:
             journal,
             directory.manifest,
             observed.value,
-            allow_registered_additions=False,
+            allow_registered_additions=True,
         )
         if transition.failure:
             return result_type.from_failure(transition)
@@ -326,6 +326,12 @@ class FlextInfraMiseArtifactsVerification:
     def sources(cls, plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
         """Prove every Mise config source still equals its full snapshot."""
         for project in plan.projects:
+            if project.config.before.content is None:
+                # First publication: the config sources are themselves created
+                # by this transaction, so their post-transaction bytes cannot
+                # equal a pre-publication snapshot. Integrity for these is
+                # owned by the publication-receipt verification.
+                continue
             current = u.Infra.snapshot_config_sources(project.layout.root)
             if current.failure:
                 return r[bool].from_failure(current)

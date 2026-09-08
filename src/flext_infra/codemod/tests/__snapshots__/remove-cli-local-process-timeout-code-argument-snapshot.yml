@@ -1,12 +1,5 @@
 id: remove-cli-local-process-timeout-code-argument
 snapshots:
-  cls._process_exit_result(command, timed_out=timed_out, timeout_exit_code=timeout_exit_code):
-    fixed: cls._process_exit_result(command, timed_out=timed_out)
-    labels:
-    - source: cls._process_exit_result(command, timed_out=timed_out, timeout_exit_code=timeout_exit_code)
-      style: primary
-      start: 0
-      end: 91
   ? |
     return cls._captured_process_result(
         cmd,

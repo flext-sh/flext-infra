@@ -1,42 +1,65 @@
-# Recomposition of enforcement rules ENFORCE-091 and ENFORCE-092 onto
-# `make mod`.
+# Detection-only companion of typing-list-to-sequence-of.
 #
-#   def f(x: List[str]) -> None: ...          # defect (bare name)
-#   def f(x: typing.List[str]) -> None: ...   # defect (attribute form)
-#   ALIAS = List[str]                         # defect (value position)
-#                       ->
-#   def f(x: t.SequenceOf[str]) -> None: ...  # canonical
+# Flags a legacy `List[T]` / `typing.List[T]` generic whose module does NOT bind
+# the typings facade `t`. The canonical form is `t.SequenceOf[T]`, but a blind
+# rewrite here would emit an undefined name (`t`), causing Ruff F821 / Pyrefly
+# missing-name. This rule has NO `fix:` on purpose: the `t` import must be added
+# first (`from <ns> import ..., t`), after which typing-list-to-sequence-of
+# rewrites the annotation safely.
 #
-# These two enforcement rules configured the generic regex `pattern`
-# transformer with `\bList\s*\[` and `\btyping\s*\.\s*List\s*\[`, substituted by
-# `t.SequenceOf[`. A regex cannot tell code from data, and that is not a
-# theoretical objection: this exact configuration rewrote the text inside
-# docstrings that *described* the rewrite, and inside the tuple literal
-# ("List[", "t.SequenceOf") that was another transformer's own rewrite table --
-# turning that table into a no-op and corrupting ten files in one run.
-#
-# ast-grep matches tree-sitter nodes. A `List[` occurring in a string, a
-# docstring, or a comment is not a generic_type or subscript node, so it is
-# structurally unreachable by this rule rather than merely unlikely to match.
-#
-# Three shapes are needed because tree-sitter-python parses them differently: a
-# bare name in a type position is `generic_type`, while a dotted receiver and a
-# value-position generic are both `subscript`. Each is selected through its own
-# parsing context so the pattern parses in the position it must match.
-#
-# Guards:
-#   - list-imported-from-typing: `List` is a legal identifier, so the bare-name
-#     shapes rewrite only where the module binds `List` from `typing` itself.
-#     The regex had no such notion and rewrote any `List[` it found.
-#   - t-locally-bound: emitting `t.SequenceOf` is F821-safe only where the
-#     module already binds `t`. The transformer instead injected the import
-#     itself through `required_alias: t`; a textual ast-grep fix cannot choose a
-#     legal module-level insertion point, so modules with no `t` binding are
-#     reported by the detection-only companion typing-list-missing-t-import.
-#
-# Nested generics (`List[List[str]]`) rewrite outermost-first; the mod circuit
-# re-scans to a fixed point, so the inner generic is rewritten on the next pass.
-# The now-unused `from typing import List` binding is left to Ruff F401.
+# Why the split: ast-grep cannot conditionally insert an import in a single
+# textual `fix`, and `ruff --fix` only removes unused imports (never adds a
+# missing one). So an import-unsafe rewrite is emitted as a detection, per the
+# library's "detection only when a generic textual fix would be unsafe"
+# contract. The retired regex transformer instead injected the import itself
+# (`required_alias: t`), which is why it could rewrite first and discover the
+# broken module afterwards.
+id: typing-list-missing-t-import
+language: python
+severity: error
+files:
+  - "src/**/*.py"
+  - "tests/**/*.py"
+rule:
+  any:
+    - all:
+        - pattern:
+            context: "def f(x: List[$T]) -> None: ..."
+            selector: generic_type
+        - inside:
+            stopBy: end
+            kind: module
+            has:
+              stopBy: end
+              matches: list-imported-from-typing
+    - all:
+        - pattern:
+            context: "ALIAS = List[$T]"
+            selector: subscript
+        - inside:
+            stopBy: end
+            kind: module
+            has:
+              stopBy: end
+              matches: list-imported-from-typing
+    - pattern:
+        context: "ALIAS = typing.List[$T]"
+        selector: subscript
+  inside:
+    stopBy: end
+    kind: module
+    not:
+      has:
+        stopBy: end
+        matches: t-locally-bound
+message: >-
+  typing.List must become t.SequenceOf[T], but this module does not import `t`.
+  Add the typings import first, then typing-list-to-sequence-of rewrites it. No
+  auto-fix here to avoid emitting an undefined name (Ruff F821 / Pyrefly).
+---
+# Family file for the typing.List modernization pair: the auto-fixing rewrite
+# and its detection-only missing-import companion select the same three
+# generic shapes and differ only in the `t` binding guard.
 id: typing-list-to-sequence-of
 language: python
 severity: error
