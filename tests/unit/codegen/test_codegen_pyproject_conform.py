@@ -353,7 +353,7 @@ dependencies = []
         tm.that("project" not in test_u.Tests.toml_mapping(excludes[0]), eq=True)
 
     def test_overlay_preserves_custom_scripts_and_unmanaged_tools(self) -> None:
-        """Live CUSTOM keys survive; managed tool tables stay on the template."""
+        """Package requirements survive without restoring stale profile pins."""
         rendered = """[project]
 name = "flext"
 dependencies = ["pydantic>=2"]
@@ -364,7 +364,12 @@ line-length = 88
 """
         live = """[project]
 name = "flext"
-dependencies = ["pydantic>=1"]
+dependencies = [
+    "pydantic>=1",
+    "beartype>=0.22",
+    "custom-runtime[feature]>=2; python_version < '3.14'",
+    "custom-runtime[feature]>=3; python_version >= '3.14'",
+]
 scripts = {flext = "flext.workspace:main", flext-dev = "flext.dev:main"}
 
 [tool.ruff]
@@ -373,12 +378,18 @@ line-length = 120
 [tool.bandit]
 skips = ["B101"]
 """
-        document = u.Cli.toml_mapping_from_text(
-            tm.ok(u.Infra.overlay_preserved(rendered, live))
+        first = tm.ok(u.Infra.overlay_preserved(rendered, live))
+        document = tomllib.loads(first)
+        tm.that(
+            document["project"]["dependencies"],
+            eq=[
+                "pydantic>=2",
+                "beartype>=0.22",
+                "custom-runtime[feature]>=2; python_version < '3.14'",
+                "custom-runtime[feature]>=3; python_version >= '3.14'",
+            ],
         )
-        if document is None:
-            pytest.fail("overlay-preserved pyproject must remain valid TOML")
-        tm.that(document["project"]["dependencies"], eq=["pydantic>=2"])
+        tm.that(tm.ok(u.Infra.overlay_preserved(rendered, first)), eq=first)
         tm.that("flext-dev" in document["project"]["scripts"], eq=True)
         tm.that(document["tool"]["ruff"]["line-length"], eq=88)
         tm.that(document["tool"]["bandit"]["skips"], eq=["B101"])

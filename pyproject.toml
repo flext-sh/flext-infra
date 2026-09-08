@@ -2,6 +2,62 @@
 build-backend = "hatchling.build"
 requires = ["hatchling"]
 
+[project]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Framework :: Pydantic :: 2",
+  "Framework :: Pydantic",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Build Tools",
+  "Topic :: Software Development :: Code Generators",
+  "Typing :: Typed",
+]
+dependencies = [
+  "annotated-types>=0.8.0",
+  "beartype>=0.22.9",
+  "defusedxml>=0.7.1",
+  "dependency-injector>=4.49.1",
+  "flext-cli",
+  "flext-core",
+  "gitpython>=3.1.61",
+  "jinja2>=3.1.6",
+  "libcst>=1.9.0",
+  "packaging>=26.3",
+  "pydantic>=2.13.4",
+  "pydantic-settings>=2.15.0",
+  "pyyaml>=6.0.3",
+  "rope>=1.14.0",
+  "structlog>=26.1.0",
+  "typing-extensions>=4.16.0",
+]
+description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
+keywords = ["automation", "codegen", "flext", "infrastructure", "tooling"]
+license = "MIT"
+name = "flext-infra"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+version = "0.12.0rc0"
+
+[[project.authors]]
+email = "team@flext.sh"
+name = "FLEXT Team"
+
+[[project.maintainers]]
+email = "team@flext.sh"
+name = "FLEXT Team"
+
+[project.scripts]
+flext-docs = "flext_infra.cli:docs_main"
+flext-infra = "flext_infra.cli:main"
+
+[project.urls]
+Documentation = "https://github.com/flext-sh/flext-infra/blob/main/README.md"
+Homepage = "https://github.com/flext-sh/flext-infra"
+Repository = "https://github.com/flext-sh/flext-infra"
+
 [dependency-groups]
 dev = [
   "actionlint-py>=1.7.12.24",
@@ -39,45 +95,6 @@ dev = [
   "vulture>=2.16",
   "yamlfix>=1.19.1",
 ]
-
-[project]
-classifiers = [
-  "Development Status :: 3 - Alpha",
-  "Framework :: Pydantic :: 2",
-  "Framework :: Pydantic",
-  "Intended Audience :: Developers",
-  "Operating System :: OS Independent",
-  "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.13",
-  "Topic :: Software Development :: Build Tools",
-  "Topic :: Software Development :: Code Generators",
-  "Typing :: Typed",
-]
-dependencies = ["flext-core", "pydantic>=2.13.4", "pydantic-settings>=2.15.0"]
-description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
-keywords = ["automation", "codegen", "flext", "infrastructure", "tooling"]
-license = "MIT"
-name = "flext-infra"
-readme = "README.md"
-requires-python = ">=3.13,<3.14"
-version = "0.12.0rc0"
-
-[[project.authors]]
-email = "team@flext.sh"
-name = "FLEXT Team"
-
-[[project.maintainers]]
-email = "team@flext.sh"
-name = "FLEXT Team"
-
-[project.scripts]
-flext-docs = "flext_infra.cli:docs_main"
-flext-infra = "flext_infra.cli:main"
-
-[project.urls]
-Documentation = "https://github.com/flext-sh/flext-infra/blob/main/README.md"
-Homepage = "https://github.com/flext-sh/flext-infra"
-Repository = "https://github.com/flext-sh/flext-infra"
 
 [tool.codespell]
 check-filenames = true
@@ -534,7 +551,6 @@ dependencies = ["flext-infra"]
 
 [tool.uv.exclude-dependencies.package]
 name = "flext-tests"
-
 [tool.bandit]
 severity = "MEDIUM"
 skips = ["B101"]

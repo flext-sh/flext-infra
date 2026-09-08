@@ -162,6 +162,53 @@ def _self_check_conform_service(
 class TestCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
 
+    def test_pyproject_plan_preserves_runtime_dependencies_before_conformance(
+        self, tmp_path: Path
+    ) -> None:
+        """Render package requirements, canonicalize internal refs, then replan."""
+        service, request = _self_check_conform_service(tmp_path)
+        request = request.model_copy(
+            update={"what": c.Infra.CodegenConformSurface.PYPROJECT}
+        )
+        pyproject = tmp_path / c.Infra.PYPROJECT_FILENAME
+        source = pyproject.read_text(encoding="utf-8")
+        pyproject.write_text(
+            source
+            + 'dependencies = ["beartype>=0.22", '
+            '"flext-custom @ ../flext-custom"]\n',
+            encoding="utf-8",
+        )
+        first = tm.ok(service.plan(request))
+        rendered = u.Tests.codegen_file_text(
+            next(file for file in first.files if file.path == pyproject)
+        )
+        workspace = service.initial_workspace
+        assert workspace is not None
+        canonical = tm.ok(
+            u.Infra.pyproject_dependencies_conform(
+                pyproject.read_text(encoding="utf-8"),
+                providers=config.Infra.codegen.providers,
+                workspace=workspace,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
+            )
+        )
+        dependencies = u.Tests.toml_strings_at(rendered, "project", "dependencies")
+        tm.that("beartype>=0.22" in dependencies, eq=True)
+        tm.that(
+            set(u.Tests.toml_strings_at(canonical, "project", "dependencies"))
+            <= set(dependencies),
+            eq=True,
+        )
+        tm.that(rendered, lacks="../flext-custom")
+        pyproject.write_text(rendered, encoding="utf-8")
+        second = tm.ok(service.plan(request))
+        tm.that(
+            u.Tests.codegen_file_text(
+                next(file for file in second.files if file.path == pyproject)
+            ),
+            eq=rendered,
+        )
+
     def _conform_with_rendered_makefile(
         self, root: Path, help_text: str
     ) -> p.Result[m.Infra.CodegenResult]:

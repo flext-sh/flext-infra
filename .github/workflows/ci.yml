@@ -99,7 +99,6 @@ jobs:
           git config --global url."https://x-access-token:${access_token}@github.com/".insteadOf "https://github.com/"
           rm -f "$key_path"
 
-
       # make setup is the only toolchain installer. It bootstraps the newest
       # released Mise, installs the committed fleet toolchain, publishes that
       # environment through GITHUB_PATH, and prepares the project runtime.
