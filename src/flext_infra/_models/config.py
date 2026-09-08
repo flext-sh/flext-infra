@@ -300,6 +300,19 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = ()
+        uv_constraint_dependencies: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "PEP 508 constraints rendered into every generated "
+                    "[tool.uv] constraint-dependencies from this SSOT. The "
+                    "declared value replaces any retained value; empty "
+                    "removes the key so no orphan cap survives without an "
+                    "owner (operator directive 2026-09-08: artificial pins "
+                    "are exterminated, never retained)."
+                )
+            ),
+        ] = ()
         kubectl_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact kubectl version, e.g. '1.32.0'")
         ]

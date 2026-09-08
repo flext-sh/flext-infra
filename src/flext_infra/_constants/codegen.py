@@ -53,9 +53,10 @@ class FlextInfraConstantsCodegen(
     )
     "Runtime singleton modules for src/: (filename, class_suffix, base_class, docstring)."
     VIOLATION_PATTERN: Final[t.RegexPattern] = re.compile(
-        r"\[(?P<rule>NS-\d{3})-\d{3}\]\s+(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)"
+        r"\[(?P<rule>NS-(?:[A-Z]+|\d{3}))-\d{3}\]\s+"
+        r"(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)"
     )
-    "Regex to parse violation strings: [NS-00X-NNN] path:line — message."
+    "Regex to parse violation strings: [NS-RULE-NNN] path:line — message."
     MISE_RELEASE_COMPONENT_COUNT: Final[int] = 3
     "Number of numeric components in a generated Mise release version."
     MISE_LAUNCHER_DIRECTORY: Final[str] = "bin"

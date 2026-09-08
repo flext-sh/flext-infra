@@ -132,7 +132,7 @@ def test_generated_collection_rules_pointer_stays_within_consumer_limit(
 def test_governed_api_survives_generation_and_curated_paths_are_unowned(
     tmp_path: Path,
 ) -> None:
-    """Keep colocated root output stable without owning curated indexes."""
+    """Keep the colocated scope deferred to the aggregate owner; curated unowned."""
     workspace = tmp_path
     (workspace / "src/flext_infra_fixture").mkdir(parents=True)
     (workspace / "src/flext_infra_fixture/__init__.py").write_text(
@@ -162,36 +162,24 @@ def test_governed_api_survives_generation_and_curated_paths_are_unowned(
         repository_root=workspace, selected_projects=["flext-infra-fixture"]
     )
 
-    scopes = u.Infra.build_scopes(workspace, None, c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
-    tm.ok(scopes)
-    tm.that([scope.name for scope in scopes.value], eq=["flext-infra-fixture"])
-    tm.that(scopes.value[0].path, eq=workspace)
+    plans = u.Tests.plan_docs_bundle(generator)
+    tm.that(plans, eq=())
 
-    _ = u.Tests.publish_docs_bundle(generator)
-    api_readme = (workspace / "docs/api-reference/README.md").read_text(
-        encoding="utf-8"
+    result = generator.generate(request)
+    tm.ok(result)
+    tm.that([report.scope for report in result.value], eq=["flext-infra-fixture"])
+    for report in result.value:
+        tm.that(report.changed_files, eq=0)
+        tm.that(report.reason, eq="aggregate-root-owner")
+        tm.that(report.passed, eq=True)
+
+    tm.that(
+        (workspace / "docs/api-reference/README.md").read_text(encoding="utf-8"),
+        eq="# Docs\n",
     )
-    tm.that(api_readme, eq="# Docs\n")
-    public_api = workspace / "docs/api-reference/generated/public-api.md"
-    tm.that(public_api.exists(), eq=True)
-    stale = workspace / "docs/api-reference/generated/stale.md"
-    stale.write_text("stale\n", encoding="utf-8")
-    _ = u.Tests.publish_docs_bundle(generator)
-    tm.that(stale.exists(), eq=False)
-    first_output = public_api.read_bytes()
-
-    for relative_path in (
-        "docs/README.md",
-        "docs/architecture/README.md",
-        "docs/projects/README.md",
-    ):
-        (workspace / relative_path).unlink()
-    validation = FlextInfraDocValidator().validate_workspace(request)
-    tm.ok(validation)
-    for report in validation.value:
-        tm.that(report.result, eq="OK")
-    _ = u.Tests.publish_docs_bundle(generator)
-    tm.that(public_api.read_bytes(), eq=first_output)
+    tm.that(
+        (workspace / "docs/api-reference/generated/public-api.md").exists(), eq=False
+    )
 
 
 def test_generate_preserves_declared_export_order_and_is_idempotent(
@@ -225,10 +213,9 @@ def test_generate_preserves_declared_export_order_and_is_idempotent(
     tm.that(first_readme, has=f"{c.Infra.GITHUB_REPO_URL}/blob/")
     tm.that(first_readme, lacks="](../AGENTS.md)")
     for generated_page in (first_readme, first_index):
-        tm.that(
-            generated_page,
-            has=("`config.AiHub.paths.agents_home`/`skills/make-check/SKILL.md`"),
-        )
+        tm.that(generated_page, has="## Governance Pointer")
+        tm.that(generated_page, has="- Skills index:")
+        tm.that(generated_page, has=".agents/skills/")
         tm.that(generated_page, lacks="the agents_home `make-check` skill")
     tm.that(
         first_readme.index("FlextAAlpha") < first_readme.index("FlextABeta"), eq=True

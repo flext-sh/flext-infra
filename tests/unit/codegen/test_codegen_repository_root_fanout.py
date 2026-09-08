@@ -35,7 +35,7 @@ class TestsCodegenRepositoryRootFanout:
         for verb in (c.Infra.VERB_CHECK, c.Infra.VERB_TEST):
             execution = tm.ok(
                 test_u.Cli.run_raw(
-                    [c.Infra.MAKE, "--dry-run", verb, "APPLY=Y"],
+                    [c.Infra.MAKE, "--dry-run", f"_builtin-{verb}", "APPLY=Y"],
                     cwd=repository_root,
                     remove_env_keys=("MAKEFLAGS",),
                 )
@@ -46,12 +46,12 @@ class TestsCodegenRepositoryRootFanout:
     def test_repository_root_deps_profiles_canonical_modernization(
         self, tmp_path: Path
     ) -> None:
-        """Generated deps profiles and renders the exact modernizer invocation."""
+        """Generated deps renders the exact lock-upgrade and modernizer invocation."""
         repository_root = _render_root_makefile(tmp_path)
 
         execution = tm.ok(
             test_u.Cli.run_raw(
-                [c.Infra.MAKE, "--dry-run", c.Infra.VERB_DEPS, "APPLY=Y"],
+                [c.Infra.MAKE, "--dry-run", "_builtin-deps", "APPLY=Y"],
                 cwd=repository_root,
                 remove_env_keys=("MAKEFLAGS",),
             )
@@ -59,10 +59,10 @@ class TestsCodegenRepositoryRootFanout:
 
         tm.that(u.Cli.process_succeeded(execution.outcome), eq=True)
         rendered = execution.stdout + execution.stderr
-        tm.that(rendered, has="-m cProfile")
-        tm.that(rendered, has="deps.pstats")
-        tm.that(rendered, has="validate cprofile-report")
-        tm.that(rendered, has="deps.txt")
+        tm.that(rendered, has="deps modernize")
+        tm.that(rendered, has="--apply --rewrite-constraints --skip-check")
+        tm.that(rendered, has="uv lock --project")
+        tm.that(rendered, has="--upgrade")
 
 
 def _render_root_makefile(tmp_path: Path) -> Path:

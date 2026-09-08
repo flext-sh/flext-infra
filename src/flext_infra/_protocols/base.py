@@ -348,6 +348,11 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def uv_constraint_dependencies(self) -> t.StrSequence:
+            """SSOT-declared [tool.uv] constraints; empty exterminates the key."""
+            ...
+
+        @property
         def uv_exclude_newer(self) -> str:
             """Uv exclude-newer window scoped away from development tools."""
             ...

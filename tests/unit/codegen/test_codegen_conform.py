@@ -289,7 +289,6 @@ class TestCodegenConform:
         applied = FlextInfraCodegenConform.execute_request(
             u.Tests.conform_request(
                 root,
-                what=c.Infra.CodegenConformSurface.PYPROJECT,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.APPLY,
             )
@@ -566,9 +565,7 @@ class TestCodegenConform:
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
             provider="flext-sh",
-            beads_workspace=name,
-            beads_database=name.replace("-", "_"),
-            beads_issue_prefix=name,
+            beads=u.Tests.beads_project(name),
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
@@ -651,9 +648,7 @@ class TestCodegenConform:
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=existing_root,
             provider="flext-sh",
-            beads_workspace="flext-demo",
-            beads_database="flext_demo",
-            beads_issue_prefix="flext-demo",
+            beads=u.Tests.beads_project("flext-demo"),
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
@@ -787,7 +782,7 @@ class TestCodegenConform:
         create_only = {
             "LICENSE": "existing license\n",
             "README.md": "# Existing repository\n",
-            "custom.mk": "_custom_status_diagnostics:\n\t@true\n",
+            "custom.mk": "_custom-status-diagnostics:\n\t@true\n",
         }
         _seed_infra_package_tree(root)
         for relative, content in create_only.items():
@@ -1057,9 +1052,7 @@ class TestCodegenConform:
         """Plan only dependency metadata when another managed surface is invalid."""
         root = infra_git_repo
         workspace = _standalone_workspace(root)
-        _apply_conform_surface(
-            root, workspace, c.Infra.CodegenConformSurface.DEPENDENCIES
-        )
+        _apply_conform_surface(root, workspace, c.Infra.CodegenConformSurface.ALL)
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "custom.mk", ".PHONY: public-handler\npublic-handler:\n\t@true\n"
@@ -1177,50 +1170,52 @@ class TestCodegenConform:
     def test_scaffold_make_help_documents_and_lists_custom_hooks(
         self, infra_git_repo: Path
     ) -> None:
-        """Scaffold help documents the hook contract and lists custom.mk hooks."""
+        """Scaffold help lists the selector-free interface; hooks stay lifecycle-only."""
         root = infra_git_repo
         workspace = _standalone_workspace(root)
         _apply_conform_surface(root, workspace, c.Infra.CodegenConformSurface.MAKEFILE)
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "custom.mk",
-                ".PHONY: pre-check post-test-all _custom_check_myscan\n"
+                ".PHONY: pre-check post-test-all _custom-check-myscan\n"
                 "pre-check:\n\t@true\n"
                 "post-test-all:\n\t@true\n"
-                "_custom_check_myscan:\n\t@true\n",
+                "_custom-check-myscan:\n\t@true\n",
             )
         )
-        outcome = u.Cli.run_raw(
-            ["make", "-C", str(root), "help"], remove_env_keys=("MAKEFLAGS", "WHAT")
-        )
+        outcome = u.Cli.run_raw(["make", "-C", str(root), "help"], remove_env_keys=("MAKEFLAGS",))
         output = tm.ok(outcome)
         tm.that(output.stderr, eq="")
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
         tm.that(
             output.stdout,
             has=[
-                "Custom hooks (custom.mk):",
-                "pre-<verb>",
-                "pre-check",
-                "post-test-all",
-                "_custom_check_myscan",
+                "help",
+                "setup",
+                "check",
+                "test",
+                "fmt",
+                "conform",
+                "docs",
             ],
         )
+        tm.that(output.stdout, lacks="Custom hooks (custom.mk):")
+        tm.that(output.stdout, lacks="WHAT")
 
     @pytest.mark.slow
     def test_scaffold_make_runs_pre_and_post_verb_hooks_in_order(
         self, infra_git_repo: Path
     ) -> None:
-        """Generated _dispatch runs pre-<verb>, handler, post-<verb> in order."""
+        """Generated dispatch runs pre-<verb>, custom handler, post-<verb> in order."""
         root = infra_git_repo
         workspace = _standalone_workspace(root)
         _apply_conform_surface(root, workspace, c.Infra.CodegenConformSurface.MAKEFILE)
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "custom.mk",
-                ".PHONY: pre-check post-check _custom_check_probe\n"
+                ".PHONY: pre-check post-check _custom-check\n"
                 "pre-check:\n\t@echo HOOK_PRE\n"
-                "_custom_check_probe:\n\t@echo HANDLER_BODY\n"
+                "_custom-check:\n\t@echo HANDLER_BODY\n"
                 "post-check:\n\t@echo HOOK_POST\n",
             )
         )
@@ -1229,7 +1224,7 @@ class TestCodegenConform:
         u.Tests.write_executable(
             root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 0\n"
         )
-        outcome = u.Cli.run_raw(["make", "-C", str(root), "check", "WHAT=probe"])
+        outcome = u.Cli.run_raw(["make", "-C", str(root), "check", "APPLY=Y"])
         output = tm.ok(outcome)
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
         combined = output.stdout + output.stderr
@@ -1330,6 +1325,7 @@ class TestScriptDispatchMakefile:
         root = tmp_path / "demo-root"
         request = u.Tests.conform_request(
             root,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )

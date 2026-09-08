@@ -26,7 +26,7 @@ def test_auditor_main_writes_reports_for_selected_project(tmp_path: Path) -> Non
             main([
                 "docs",
                 "audit",
-                "--repository-root",
+                "--workspace",
                 str(workspace),
                 "--projects",
                 "flext-a",
@@ -47,5 +47,5 @@ def test_auditor_main_strict_failure_returns_one(tmp_path: Path) -> None:
     )
 
     tm.that(
-        main(["docs", "audit", "--repository-root", str(workspace), "--strict"]), eq=1
+        main(["docs", "audit", "--workspace", str(workspace), "--strict"]), eq=1
     )

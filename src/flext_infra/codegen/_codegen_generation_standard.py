@@ -85,8 +85,11 @@ class FlextInfraCodegenGenerationStandardMixin(
                 for export_name, imported_name in sorted(eager_groups[module])
                 if imported_name
             )
-            for part in parts:
-                eager_lines.extend(cls._format_import("", rendered_module, (part,)))
+            if parts:
+                # One statement per module group: member-per-statement rendering
+                # diverged from the formatter's canonical single (parenthesized)
+                # import and every generation re-diverged after the autofix.
+                eager_lines.extend(cls._format_import("", rendered_module, parts))
             previous_top = top
         if lines and eager_lines:
             lines.append("")

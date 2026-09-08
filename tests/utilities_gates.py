@@ -61,7 +61,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
     @staticmethod
     def reject_inaccessible_config_project(tmp_path: Path) -> None:
         """Run the config fixer on an inaccessible project, proving the failure."""
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
+        fixer = FlextInfraConfigFixer(repository_root=tmp_path)
         result = fixer.run(["nonexistent"])
 
         tm.fail(result)

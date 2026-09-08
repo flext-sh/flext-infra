@@ -6,7 +6,7 @@ import shutil
 from collections import defaultdict
 from collections.abc import Callable as _CensusCallable
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from flext_cli import u
 from flext_core import r
@@ -27,6 +27,9 @@ if TYPE_CHECKING:
     from flext_infra.protocols import p
 
 _log = u.fetch_logger(__name__)
+
+_UNSUPPORTED_SIMPLE_REMOVAL_CODE: Final[str] = "CENSUS_UNSUPPORTED_SIMPLE_REMOVAL"
+"Error code marking a candidate outside the simple-removal contract (not a failure)."
 
 
 class FlextInfraUtilitiesRefactorCensus:
@@ -635,18 +638,24 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.Census.RemovalCandidate,
         *,
         source_cache: dict[Path, str] | None = None,
-    ) -> p.Result[t.Pair[t.MappingKV[Path, str], _CensusCallable[[], None]] | None]:
+    ) -> p.Result[t.Pair[t.MappingKV[Path, str], _CensusCallable[[], None]]]:
         """Plan one simple removal and bind its post-write Rope cleanup.
 
-        ``r.ok(None)`` when the candidate is outside the simple-removal
-        contract, so both the preview and the apply path report the same
-        "unsupported" outcome from one owner.
+        A candidate outside the simple-removal contract yields a typed
+        failure carrying ``_UNSUPPORTED_SIMPLE_REMOVAL_CODE`` — never a
+        ``None`` payload, which success results forbid. The preview and
+        apply paths translate that code into their own "unsupported"
+        outcome so both report the same result from one owner.
         """
-        planned = r[t.Pair[t.MappingKV[Path, str], _CensusCallable[[], None]] | None]
+        planned = r[t.Pair[t.MappingKV[Path, str], _CensusCallable[[], None]]]
         if not FlextInfraUtilitiesRefactorCensus._supports_simple_removal_candidate(
             candidate
         ):
-            return planned.ok(None)
+            return planned.fail(
+                "candidate is outside the simple-removal contract: "
+                f"{candidate.file_path}:{candidate.line} {candidate.object_name}",
+                error_code=_UNSUPPORTED_SIMPLE_REMOVAL_CODE,
+            )
         updates_result = (
             FlextInfraUtilitiesRefactorCensus._simple_removal_sources_result(
                 rope, candidate, source_cache=source_cache
@@ -685,11 +694,10 @@ class FlextInfraUtilitiesRefactorCensus:
             rope, candidate, source_cache=source_cache
         )
         if planned.failure:
+            if planned.error_code == _UNSUPPORTED_SIMPLE_REMOVAL_CODE:
+                return r[bool].ok(False)
             return r[bool].from_failure(planned)
-        plan = planned.unwrap()
-        if plan is None:
-            return r[bool].ok(False)
-        updates, post_write = plan
+        updates, post_write = planned.unwrap()
         try:
             applied, reports = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
                 updates, workspace=workspace, gates=gates, post_write=post_write
@@ -733,11 +741,10 @@ class FlextInfraUtilitiesRefactorCensus:
             rope, candidate
         )
         if planned.failure:
+            if planned.error_code == _UNSUPPORTED_SIMPLE_REMOVAL_CODE:
+                return r[bool].ok(False)
             return r[bool].from_failure(planned)
-        plan = planned.unwrap()
-        if plan is None:
-            return r[bool].ok(False)
-        updates, cleanup = plan
+        updates, cleanup = planned.unwrap()
 
         def _post_write() -> None:
             """Post write."""
