@@ -28,6 +28,11 @@ Infra:
       dependency_cooldown_days: 7
       dependency_cooldown_exclusions: [cryptography, torch, ruff, faker]
       dependency_cooldown_overrides: {}
+      # [tool.uv] constraint-dependencies rendered from this SSOT only. Empty
+      # removes the key from every projection: an orphan cap (e.g. the retired
+      # structlog<26, which no upstream contract required) can never survive
+      # without a declared owner (operator directive 2026-09-08).
+      uv_constraint_dependencies: []
       # Moving selectors consumed by generated .mise.toml and CI. The fleet
       # runs unlocked: setup converges on the newest published release.
       uv_version: latest
