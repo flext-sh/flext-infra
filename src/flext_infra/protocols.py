@@ -18,6 +18,7 @@ from ._protocols.base import FlextInfraProtocolsBase
 from ._protocols.check import FlextInfraProtocolsCheck
 from ._protocols.deps import FlextInfraProtocolsDeps
 from ._protocols.docs import FlextInfraProtocolsDocs
+from ._protocols.promoted import FlextInfraProtocolsPromoted
 from ._protocols.rope import FlextInfraProtocolsRope
 from ._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
 
@@ -35,6 +36,7 @@ class FlextInfraProtocols(p):
         FlextInfraProtocolsCheck,
         FlextInfraProtocolsDeps,
         FlextInfraProtocolsDocs,
+        FlextInfraProtocolsPromoted,
         FlextInfraProtocolsRopeRuntime,
         FlextInfraProtocolsRope,
         FlextInfraProtocolsBase,
