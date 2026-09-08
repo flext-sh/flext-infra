@@ -86,9 +86,13 @@ class FlextInfraMiseArtifactsFiles:
 
     @classmethod
     def write_publication(
-        cls, publication: m.Infra.CodegenStagedFile
+        cls, publication: m.Infra.CodegenStagedFile, *, backup: bool = True
     ) -> p.Result[bool]:
-        """Consume one staged create/replace/mode/delete through the CLI owner."""
+        """Consume one staged create/replace/mode/delete through the CLI owner.
+
+        ``backup`` is apply-only. Recovery must pass ``backup=False`` so a
+        rollback never snapshots the failed new bytes before restoring.
+        """
         before = publication.before
         replacement = publication.replacement
         if replacement is None:
@@ -97,7 +101,11 @@ class FlextInfraMiseArtifactsFiles:
             return r[bool].fail(
                 f"codegen staged replacement is absent: {replacement.path}"
             )
-        if before.content is not None and before.content != replacement.content:
+        if (
+            backup
+            and before.content is not None
+            and before.content != replacement.content
+        ):
             backed = cls.persist_apply_backup(before.path, before.content)
             if backed.failure:
                 return r[bool].from_failure(backed)

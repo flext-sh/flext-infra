@@ -33,7 +33,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
         """Run one rope fixer adapter pass over a single reported file."""
         adapter = FlextInfraRopeFixerAdapter(tmp_path)
         ctx = m.Infra.FixEnforcementCommand(
-            workspace=str(tmp_path), projects=("demo",), apply=apply
+            repository_root=str(tmp_path), projects=("demo",), apply=apply
         )
         return adapter.fix_project(
             project_dir, ((rule, SimpleNamespace(file_path=str(file_path))),), ctx

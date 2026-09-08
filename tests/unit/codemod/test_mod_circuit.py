@@ -257,7 +257,12 @@ class TestsFlextInfraModCliRoute:
             )
         )
 
-        exit_code = infra_main(["refactor", "mod", "--repository", str(mod_workspace)])
+        exit_code = infra_main([
+            "refactor",
+            "mod",
+            "--repository-root",
+            str(mod_workspace),
+        ])
         report_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(
                 mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH, required=True
@@ -316,7 +321,12 @@ class TestsFlextInfraModCliRoute:
             u.Cli.atomic_write_text_file(mod_workspace / "sample.py", f"{statement}\n")
         )
 
-        exit_code = infra_main(["refactor", "mod", "--repository", str(mod_workspace)])
+        exit_code = infra_main([
+            "refactor",
+            "mod",
+            "--repository-root",
+            str(mod_workspace),
+        ])
         report_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(
                 mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH, required=True

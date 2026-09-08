@@ -61,7 +61,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
     ) -> p.Result[str]:
         """Render one SSOT environment template from the toolchain spec."""
         template_path = (
-            Path(__file__).resolve().parents[2]
+            Path(__file__).resolve().parents[1]
             / "templates"
             / config.Infra.codegen.templates.root
             / "base"

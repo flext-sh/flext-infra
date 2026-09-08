@@ -542,11 +542,6 @@ dependencies = ["flext-infra"]
 [tool.uv.exclude-dependencies.package]
 name = "flext-tests"
 
-[tool.bandit]
-severity = "MEDIUM"
-skips = ["B101"]
-targets = ["src"]
-
 [tool.interrogate]
 fail-under = 70
 ignore-init-method = true
