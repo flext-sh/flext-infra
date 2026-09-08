@@ -121,8 +121,8 @@ DOCS_ACTIONS := generate fix audit build validate
 
 # === SECTION: lint/type paths (managed) ===
 # Source: template + computed (script_dispatch conditional)
-RUFF_PATHS := $(strip $(foreach d,src tests,$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))
-MYPY_PATHS := $(strip $(foreach d,src tests,$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))
+RUFF_PATHS := $(strip $(foreach d,src tests examples,$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))
+MYPY_PATHS := $(strip $(foreach d,src tests examples,$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))
 # End SECTION: lint/type paths
 
 # === SECTION: project tool owner (managed) ===
