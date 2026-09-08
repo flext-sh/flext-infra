@@ -146,7 +146,10 @@ class FlextInfraUtilitiesPyprojectConform:
             link_mode=uv_link_mode or toolchain.uv_link_mode,
             exclude_newer=uv_exclude_newer or toolchain.uv_exclude_newer,
             exclude_newer_packages=(
-                toolchain.dependency_cooldown_exclusions
+                tuple(dict.fromkeys((
+                    *toolchain.dependency_cooldown_exclusions,
+                    *toolchain.additional_python_tool_distributions,
+                )))
                 if dependency_cooldown_exclusions is None
                 else dependency_cooldown_exclusions
             ),
@@ -906,6 +909,9 @@ class FlextInfraUtilitiesPyprojectConform:
             preserve_project_keys = spec.preserve_project_keys
             managed_tool_tables = spec.managed_tool_tables
         rendered_payload = u.Cli.toml_mapping_from_text(rendered)
+        # An absent live file takes the same canonicalization path as a present
+        # one: the projection is the parse-merge-dump form, so first publication
+        # and every later conform produce byte-identical output (fixed point).
         live_payload = u.Cli.toml_mapping_from_text(live)
         if rendered_payload is None:
             return r[str].fail("rendered pyproject is not valid TOML")
