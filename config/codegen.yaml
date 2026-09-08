@@ -29,20 +29,17 @@ Infra:
       dependency_cooldown_days: 0
       dependency_cooldown_exclusions: []
       dependency_cooldown_overrides: {}
-<<<<<<< HEAD
       # Complete tool catalog uncapped by the uv supply-chain cooldown. The
       # codegen model projects the closure of this list with the scaffold
       # requirement owners derived from the build and dev tables; runtime
       # dependency profiles never enter it.
       additional_python_tool_distributions:
         [actionlint-py, bandit, deptry, flext-tests, hatchling, mkdocs, mypy, pip-audit, pre-commit, pyrefly, pyright, pytest, pytest-testmon, ruff, rumdl, vulture, yamlfix]
-=======
       # [tool.uv] constraint-dependencies rendered from this SSOT only. Empty
       # removes the key from every projection: an orphan cap (e.g. the retired
       # structlog<26, which no upstream contract required) can never survive
       # without a declared owner (operator directive 2026-09-08).
       uv_constraint_dependencies: []
->>>>>>> origin/0.12.0-dev
       # Moving selectors consumed by generated .mise.toml and CI. The fleet
       # runs unlocked: setup converges on the newest published release.
       uv_version: latest
