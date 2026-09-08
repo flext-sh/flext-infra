@@ -83,6 +83,42 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         )
 
     @classmethod
+    def _is_pruned_walk_dir(cls, directory: Path, resolved_root: Path) -> bool:
+        """Return whether the pruned stub walk must not descend into ``directory``."""
+        return (
+            (directory / ".git").exists()
+            or (directory / ".git").is_symlink()
+            or cls._inside_nested_repository(directory, resolved_root)
+            or bool(
+                set(directory.relative_to(resolved_root).parts) & cls._excluded_parts()
+            )
+        )
+
+    @classmethod
+    def _pruned_stub_file_paths(cls, resolved_root: Path) -> set[Path]:
+        """Collect ``*.pyi`` paths with a walk that prunes excluded subtrees.
+
+        ``Path.rglob`` cannot prune, so it descends into every excluded
+        subtree — a populated ``.venv`` or an embedded worktree makes the
+        stat crawl cost whatever those directories contain. The walk applies
+        the exclusion names and the nested-repository classification at every
+        depth instead, and never follows symlinked directories.
+        """
+        stub_paths: set[Path] = set()
+        for parent, dir_names, file_names in resolved_root.walk():
+            dir_names[:] = [
+                name
+                for name in dir_names
+                if not cls._is_pruned_walk_dir(parent / name, resolved_root)
+            ]
+            stub_paths.update(
+                (parent / name).resolve()
+                for name in file_names
+                if name.endswith(".pyi") and (parent / name).is_file()
+            )
+        return stub_paths
+
+    @classmethod
     def _python_and_stub_file_paths(
         cls, rope_project: t.Infra.RopeProject, resolved_root: Path
     ) -> t.VariadicTuple[Path]:
@@ -110,15 +146,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 path, resolved_root
             )
         }
-        stub_paths = {
-            path.resolve()
-            for path in resolved_root.rglob("*.pyi")
-            if path.is_file()
-            and not set(path.relative_to(resolved_root).parts) & cls._excluded_parts()
-            and not FlextInfraUtilitiesRopeAnalysisWorkspace._inside_nested_repository(
-                path, resolved_root
-            )
-        }
+        stub_paths = cls._pruned_stub_file_paths(resolved_root)
         return tuple(
             sorted(python_paths | wrapper_paths | stub_paths, key=Path.as_posix)
         )
