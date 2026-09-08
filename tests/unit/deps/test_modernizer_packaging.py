@@ -59,6 +59,7 @@ def _conform_self(infra_git_repo: Path) -> int:
     ])
 
 
+@pytest.mark.slow
 def test_conform_packages_every_declared_python_root(infra_git_repo: Path) -> None:
     """The public generator emits matching bounded wheel and sdist targets."""
     root_module, root_package = _prepare_project(

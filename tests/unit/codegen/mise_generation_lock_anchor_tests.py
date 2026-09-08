@@ -25,6 +25,7 @@ class TestsMiseGenerationLockAnchor:
         replacement.write_bytes(head.read_bytes())
         replacement.replace(head)
 
+    @pytest.mark.slow
     def test_second_process_contends_on_same_scope_head(self, tmp_path: Path) -> None:
         """Make a distinct process lose one nonblocking attempt on the same inode."""
         root = lock_repository(tmp_path / "contended")

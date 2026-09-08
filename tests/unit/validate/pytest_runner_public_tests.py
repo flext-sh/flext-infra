@@ -15,6 +15,7 @@ class TestsFlextInfraPytestRunner:
     """Exercise the real pytest, testmon, coverage, and report lifecycle."""
 
     @pytest.mark.slow
+    @pytest.mark.slow
     def test_complete_suite_persists_cache_and_zero_diagnostic_evidence(
         self, cached_runner_project: Path
     ) -> None:

@@ -130,7 +130,7 @@ def test_gen_init_is_a_direct_hermetic_owner_route() -> None:
     init_commands = [line for line in init_lines if "codegen init" in line]
 
     assert len(init_commands) == 2
-    assert all('--repository "$(PROJECT_ROOT)"' in line for line in init_commands)
+    assert all('--repository-root "$(PROJECT_ROOT)"' in line for line in init_commands)
     assert all("codegen conform" not in line for line in init_lines)
     assert "$(filter-out help setup gen,$(PUBLIC_VERBS)):" in text
     assert (

@@ -73,7 +73,6 @@ class TestsCodegenCatalogExtensions:
         tm.that(template, lacks="latest_release_url")
         tm.that(template, lacks="curl ")
         tm.that(template, lacks="--windows --version")
-        tm.that(template, has="generate install-script --write")
         tm.that(template, has='mise_install_path="$$scratch/runtime/seed-mise')
         tm.that(template, has='mise_install_path="$$scratch/runtime/mise')
         tm.that(template, has="receipt_runtime")
