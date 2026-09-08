@@ -139,6 +139,41 @@ class FlextInfraConfigModels:
                 description="Immutable custom bead types required by Gas City",
             ),
         ]
+        dolt_mode: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Rendered as dolt.mode in .beads/config.yaml. Change "
+                    "toolchain.beads.dolt_mode; never the projection."
+                )
+            ),
+        ]
+        export_auto: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Rendered as export.auto. Override toolchain.beads.export_auto."
+                )
+            ),
+        ]
+        backup_enabled: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Rendered as backup.enabled. Override "
+                    "toolchain.beads.backup_enabled."
+                )
+            ),
+        ]
+        dolt_disable_event_flush: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Rendered as dolt.disable-event-flush. Override "
+                    "toolchain.beads.dolt_disable_event_flush."
+                )
+            ),
+        ]
 
         @u.model_validator(mode="after")
         def _validate_required_custom_types(self) -> Self:
@@ -1254,9 +1289,43 @@ class FlextInfraConfigModels:
             ),
         ]
 
+    class MakeRuffSpec(_ConfigContract):
+        """Ruff CLI contract for generated Make verbs and quality gates.
+
+        Operator 2026-09-08: ruff is the style and autofix rule. Every
+        invocation uses preview. ``make fmt APPLY=Y`` also applies unsafe
+        autofixes. Never weaken ruff to keep a file; change the code.
+        """
+
+        format_check: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Flags for ruff format --check (read-only fmt)"),
+        ]
+        format_apply: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Flags for ruff format APPLY"),
+        ]
+        lint_check: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Flags for ruff check without mutation"),
+        ]
+        lint_fix: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Flags for ruff check --fix including unsafe-fixes; used by "
+                    "make fmt APPLY=Y and make fix APPLY=Y"
+                )
+            ),
+        ]
+
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
 
+        ruff: Annotated[
+            FlextInfraConfigModels.MakeRuffSpec,
+            m.Field(description="Ruff CLI flags for fmt/fix/check Make verbs"),
+        ]
         work_in_progress: Annotated[
             FlextInfraConfigModels.MakeWorkInProgressSpec,
             m.Field(description="WIP branch and draft PR gate predicate"),
@@ -1546,11 +1615,32 @@ class FlextInfraConfigModels:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
-                    "PEP 621 [project] keys kept from the live file when policy "
-                    "is merge. Template still owns every other project key."
+                    "CUSTOM PEP 621 [project] keys kept from the live file when "
+                    "policy is merge."
                 )
             ),
         ] = ()
+        overwrite_project_keys: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "MANAGED PEP 621 [project] keys the template overwrites. "
+                    "Must be disjoint from preserve_project_keys."
+                )
+            ),
+        ] = ()
+
+        @m.computed_field
+        @property
+        def managed_tool_tables(self) -> t.VariadicTuple[str]:
+            """First ``tool.*`` segment of each declared conflict section."""
+            return tuple(
+                dict.fromkeys(
+                    section.split(".", 1)[1].split(".", 1)[0]
+                    for section in self.conflict_sections
+                    if section.startswith("tool.") and "." in section
+                )
+            )
 
     class ExternallyManagedSpec(_ConfigContract):
         """One externally-managed file declared by a .gen contract.
@@ -1645,6 +1735,17 @@ class FlextInfraConfigModels:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Default project keywords"),
         ] = ()
+        copyright_year: Annotated[
+            int,
+            m.Field(
+                ge=2025,
+                description=(
+                    "LICENSE/NOTICE year for existing-tree ProjectSpec. "
+                    "Override scaffold.project.copyright_year; gen must not "
+                    "use the clock."
+                ),
+            ),
+        ]
         dev: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
@@ -2106,6 +2207,20 @@ class FlextInfraConfigModels:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Union of project and required custom bead types"),
         ] = ()
+        dolt_mode: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="From toolchain.beads.dolt_mode"),
+        ]
+        export_auto: Annotated[
+            bool, m.Field(description="From toolchain.beads.export_auto")
+        ]
+        backup_enabled: Annotated[
+            bool, m.Field(description="From toolchain.beads.backup_enabled")
+        ]
+        dolt_disable_event_flush: Annotated[
+            bool,
+            m.Field(description="From toolchain.beads.dolt_disable_event_flush"),
+        ]
 
     class MiseTomlRenderSpec(ToolchainSpec):
         """Toolchain render context for ``.mise.toml`` plus per-project gates.

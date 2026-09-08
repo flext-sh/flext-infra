@@ -420,18 +420,19 @@ class FlextInfraUtilitiesPyprojectConform:
         project = u.Cli.toml_table_child(document, c.Infra.PROJECT)
         requirement_groups: list[t.JsonValue] = []
         if project is not None:
-            requirement_groups.append(
-                u.Cli.toml_value(project, c.Infra.DEPENDENCIES)
-            )
+            requirement_groups.append(u.Cli.toml_value(project, c.Infra.DEPENDENCIES))
             optional = u.Cli.toml_table_child(project, c.Infra.OPTIONAL_DEPENDENCIES)
             if optional is not None:
                 requirement_groups.extend(optional.values())
-        dependency_groups = u.Cli.toml_table_child(
-            document, c.Infra.DEPENDENCY_GROUPS
-        )
+        dependency_groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
         if dependency_groups is not None:
             requirement_groups.extend(
-                u.Cli.toml_value(u.Cli.toml_mapping_ensure_table(document, c.Infra.DEPENDENCY_GROUPS), str(group))
+                u.Cli.toml_value(
+                    u.Cli.toml_mapping_ensure_table(
+                        document, c.Infra.DEPENDENCY_GROUPS
+                    ),
+                    str(group),
+                )
                 for group in dependency_groups
             )
         for group in requirement_groups:
@@ -675,37 +676,6 @@ class FlextInfraUtilitiesPyprojectConform:
                 pyright, "executionEnvironments", normalized_environments
             )
         return r[bool].ok(True)
-
-    @classmethod
-    def sync_uv_sources(
-        cls,
-        document: t.Cli.TomlDocument,
-        *,
-        project_name: str,
-        workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.MakeProfile,
-        link_mode: str | None = None,
-        exclude_newer: str | None = None,
-        exclude_newer_packages: t.StrSequence | None = None,
-        exclude_newer_overrides: t.StrMapping | None = None,
-        constraint_dependencies: t.SequenceOf[str] | None = None,
-        exclude_dependencies: t.SequenceOf[p.Model] | None = None,
-        uv_environments: t.SequenceOf[str] | None = None,
-    ) -> p.Result[bool]:
-        """Public uv-sources sync for sibling render surfaces."""
-        return cls._sync_uv_sources(
-            document,
-            project_name=project_name,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
-            link_mode=link_mode,
-            exclude_newer=exclude_newer,
-            exclude_newer_packages=exclude_newer_packages,
-            exclude_newer_overrides=exclude_newer_overrides,
-            constraint_dependencies=constraint_dependencies,
-            exclude_dependencies=exclude_dependencies,
-            uv_environments=uv_environments,
-        )
 
     @classmethod
     def _sync_uv_sources(
@@ -997,12 +967,27 @@ class FlextInfraUtilitiesPyprojectConform:
         rendered: str,
         live: str | None,
         *,
-        preserve_project_keys: t.StrSequence,
-        managed_tool_tables: t.StrSequence,
+        preserve_project_keys: t.StrSequence | None = None,
+        managed_tool_tables: t.StrSequence | None = None,
     ) -> p.Result[str]:
         """Keep live CUSTOM project keys and unmanaged tool tables."""
         if live is None:
             return r[str].ok(rendered)
+        if preserve_project_keys is None or managed_tool_tables is None:
+            from flext_infra import config as infra_config
+
+            spec = next(
+                (
+                    item
+                    for item in infra_config.Infra.codegen.managed_files
+                    if item.path.as_posix() == c.Infra.PYPROJECT_FILENAME
+                ),
+                None,
+            )
+            if spec is None:
+                return r[str].fail("pyproject.toml is missing from managed_files")
+            preserve_project_keys = spec.preserve_project_keys
+            managed_tool_tables = spec.managed_tool_tables
         rendered_payload = u.Cli.toml_mapping_from_text(rendered)
         live_payload = u.Cli.toml_mapping_from_text(live)
         if rendered_payload is None:
@@ -1019,9 +1004,9 @@ class FlextInfraUtilitiesPyprojectConform:
         tool = dict(u.Cli.toml_mapping_child(merged, c.Infra.TOOL) or {})
         live_tool = u.Cli.toml_mapping_child(live_payload, c.Infra.TOOL) or {}
         managed = frozenset(managed_tool_tables)
-        for key, value in live_tool.items():
-            if key not in managed:
-                tool[key] = value
+        tool.update(
+            {key: value for key, value in live_tool.items() if key not in managed}
+        )
         merged[c.Infra.TOOL] = tool
         return r[str].ok(u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(merged)))
 

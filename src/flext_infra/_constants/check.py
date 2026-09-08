@@ -191,9 +191,7 @@ class FlextInfraConstantsCheck:
         "reader",
         "writer",
     })
-    BOUNDARY_ATTR_RULES: Final[
-        t.VariadicTuple[t.Triple[str, frozenset[str], str]]
-    ] = (
+    BOUNDARY_ATTR_RULES: Final[t.VariadicTuple[t.Triple[str, frozenset[str], str]]] = (
         (
             "json",
             BOUNDARY_JSON_ATTRS,

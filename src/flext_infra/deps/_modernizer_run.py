@@ -203,8 +203,7 @@ class FlextInfraPyprojectModernizerRunMixin:
             if not dry_run:
                 profile_changes = (
                     FlextInfraDepsFloorProfileWriter.rewrite_profiles_from_lock(
-                        locked_versions=locked_versions,
-                        internal_names=internal_names,
+                        locked_versions=locked_versions, internal_names=internal_names
                     )
                 )
                 if profile_changes:

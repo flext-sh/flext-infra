@@ -345,3 +345,30 @@ dependencies = []
             eq=[{"package": {"name": "flext-tests"}, "dependencies": ["flext-infra"]}],
         )
         tm.that("project" not in excludes[0], eq=True)
+
+    def test_overlay_preserves_custom_scripts_and_unmanaged_tools(self) -> None:
+        """Live CUSTOM keys survive; managed tool tables stay on the template."""
+        rendered = """[project]
+name = "flext"
+dependencies = ["pydantic>=2"]
+scripts = {flext = "flext.cli:main"}
+
+[tool.ruff]
+line-length = 88
+"""
+        live = """[project]
+name = "flext"
+dependencies = ["pydantic>=1"]
+scripts = {flext = "flext.workspace:main", flext-dev = "flext.dev:main"}
+
+[tool.ruff]
+line-length = 120
+
+[tool.bandit]
+skips = ["B101"]
+"""
+        document = tomllib.loads(tm.ok(u.Infra.overlay_preserved(rendered, live)))
+        tm.that(document["project"]["dependencies"], eq=["pydantic>=2"])
+        tm.that("flext-dev" in document["project"]["scripts"], eq=True)
+        tm.that(document["tool"]["ruff"]["line-length"], eq=88)
+        tm.that(document["tool"]["bandit"]["skips"], eq=["B101"])
