@@ -43,15 +43,10 @@ class FlextInfraConstantsDeps:
         "# @flext-generated: continuous\n"
         "# @flext-owner: flext-infra/config/codegen.yaml"
         " + flext-infra/src/flext_infra/templates/project/base/pyproject.toml.j2\n"
-        "# @flext-adjust: edit the owner configuration or template;"
-        " never this projection\n"
+        "# @flext-adjust: MANAGED=conflict_sections + overwrite_project_keys."
+        " CUSTOM=preserve_project_keys and [tool.*] outside conflict_sections."
+        " Never edit this projection.\n"
         "# @flext-regenerate: make gen APPLY=Y\n"
-        "# @flext-owner-dependencies: flext-infra/config/codegen.yaml"
-        " (scaffold.project.dev, scaffold.project.external_runtime_packages,"
-        " dependency_profiles, runtime_dependency_overlays)\n"
-        "# [MANAGED] FLEXT pyproject standardization\n"
-        "# Sections with [MANAGED] are restored from the template SSOT.\n"
-        "# Sections with [CUSTOM] are project-specific extension points.\n"
     )
     DEV_OPTIONAL_DEPS_MARKER: Final[str] = (
         "# [MANAGED] consolidated development dependencies"
@@ -61,22 +56,6 @@ class FlextInfraConstantsDeps:
     )
     LEGACY_AUTO_BANNER_LINE: Final[str] = (
         "# Sections with [AUTO] are derived from workspace layout and dependencies."
-    )
-    COMMENT_MARKERS: Final[t.StrPairTuple] = (
-        ("[build-system]", "# [MANAGED] build system"),
-        ("[project]", "# [CUSTOM] project metadata; [MANAGED] dependencies, requires-python"),
-        ("[tool.poetry.group.dev.dependencies]", "# [CUSTOM] poetry dev extensions"),
-        ("[tool.deptry]", "# [MANAGED] deptry"),
-        ("[tool.ruff]", "# [MANAGED] ruff"),
-        ("[tool.codespell]", "# [MANAGED] codespell"),
-        ("[tool.tomlsort]", "# [MANAGED] tomlsort"),
-        ("[tool.yamlfix]", "# [MANAGED] yamlfix"),
-        ("[tool.pytest", "# [MANAGED] pytest"),
-        ("[tool.coverage", "# [MANAGED] coverage"),
-        ("[tool.mypy]", "# [MANAGED] mypy"),
-        ("[tool.pydantic-mypy]", "# [MANAGED] pydantic-mypy"),
-        ("[tool.pyrefly]", "# [MANAGED] pyrefly"),
-        ("[tool.pyright]", "# [MANAGED] pyright"),
     )
     DEPENDENCY_LIMITS_FILENAME: Final[str] = "limits.toml"
     """Packaged dependency-limit configuration resource."""

@@ -13,7 +13,6 @@ from flext_infra.codegen import (
     _codegen_staging as generic_staging,
     _mise_artifacts_publication as publication,
 )
-from flext_infra.codegen.mise_artifacts_lock import FlextInfraMiseLock
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 
 from ._mise_artifacts_journal import FlextInfraMiseArtifactsJournal as journal_io
@@ -33,7 +32,6 @@ class FlextInfraCodegenTransaction:
         """Initialize the transaction with its configured Mise artifact owner."""
         self._owner = owner
         self._planner = FlextInfraMiseWorkspacePlanner(owner)
-        self._lock = FlextInfraMiseLock()
         self._recovery = FlextInfraMiseRecovery()
         self._mise_staging = FlextInfraMiseStaging(owner)
 
@@ -91,19 +89,13 @@ class FlextInfraCodegenTransaction:
     def run_locked[T](
         self, *, prepare: bool, operation: Callable[[Path], p.Result[T]]
     ) -> p.Result[T]:
-        """Run one operation under the stable descriptor-bound workspace lock."""
+        """Run one generation operation. No Git HEAD / Mise descriptor lock."""
         identity = self._planner.scope_identity()
         if identity.failure:
             return r[T].from_failure(identity)
         try:
-            with self._lock.lease(identity.value):
-                return self._run_locked_operation(
-                    identity.value, prepare=prepare, operation=operation
-                )
-        except BlockingIOError:
-            return r[T].fail(
-                "another generation transaction owns the workspace: "
-                f"{identity.value.git_dir / 'HEAD'}"
+            return self._run_locked_operation(
+                identity.value, prepare=prepare, operation=operation
             )
         except OSError as exc:
             return r[T].fail_op("execute generation transaction", exc)

@@ -77,6 +77,7 @@ class TestsCodegenBeadsProjection:
         # issue_prefix`); the hyphenated spelling reads as unset, so bd appended
         # its own key on first write and left every governed checkout dirty.
         tm.that(rendered_config, has='issue_prefix: "project-prefix"')
+        tm.that(rendered_config, lacks="issue-prefix:")
         tm.that(rendered_config, has="gc.endpoint_origin: inherited_city")
         tm.that(rendered_config, has="gc.endpoint_status: verified")
         tm.that(rendered_config, has="types.custom:")
@@ -110,6 +111,7 @@ class TestsCodegenBeadsProjection:
         if rendered_config is None:
             pytest.fail("standalone identity must produce the declarative Beads config")
         tm.that(rendered_config, has='issue_prefix: "project-prefix"')
+        tm.that(rendered_config, lacks="issue-prefix:")
         tm.that(rendered_config, has="dolt.auto-start: true")
         tm.that(rendered_config, lacks="gc.endpoint_origin")
         tm.that(rendered_config, lacks="gc.endpoint_status")

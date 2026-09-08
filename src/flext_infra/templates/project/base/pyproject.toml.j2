@@ -1,10 +1,10 @@
 # @flext-generated: continuous
 # @flext-owner: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/pyproject.toml.j2
-# @flext-adjust: edit the owner configuration or template; never this projection
+# @flext-adjust: MANAGED=conflict_sections + overwrite_project_keys. CUSTOM=preserve_project_keys and [tool.*] outside conflict_sections. Never edit this projection.
 # @flext-regenerate: make gen APPLY=Y
 # {{ dist }} — generated pyproject (FLEXT standard; ADR-005 SSOT).
-# [MANAGED] sections restore from the owner above. [CUSTOM] keys are preserved.
 
+# [MANAGED] build-system
 [build-system]
 build-backend = {{ scaffold.build.backend | tojson }}
 requires = [
@@ -13,7 +13,8 @@ requires = [
 {% endfor %}
 ]
 
-# [CUSTOM] project metadata except [MANAGED] dependencies and requires-python
+# [CUSTOM] name, description, authors, maintainers, scripts, classifiers, keywords, license, urls, readme, version
+# [MANAGED] dependencies, requires-python
 [project]
 classifiers = [
 {% for item in scaffold.project.classifiers %}
@@ -390,6 +391,7 @@ preserve_quotes = {{ tooling.tools.yamlfix.preserve_quotes | lower }}
 section_whitelines = {{ tooling.tools.yamlfix.section_whitelines }}
 whitelines = {{ tooling.tools.yamlfix.whitelines }}
 
+# [MANAGED] tool.uv
 [tool.uv]
 link-mode = "{{ uv_link_mode }}"
 exclude-newer = "{{ uv_exclude_newer }}"

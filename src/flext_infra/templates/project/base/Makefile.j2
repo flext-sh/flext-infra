@@ -323,9 +323,9 @@ _setup_lifecycle:
 _builtin-help:
 	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' '';
 {% for verb in make.verbs %}
-	@printf '  %-16s %s{% if verb.requires_apply %} ({{ make.apply_variable }}={{ make.apply_value }}){% endif %}\n' '{{ verb.name }}' '{{ verb.description }}';
+	@printf '  %-16s %s{% if verb.requires_apply %} ({{ make.apply_variable }}={{ make.apply_value }}){% endif %}\n' '{{ verb.name }}' '{{ verb.description | replace("\n", " ") | trim }}';
 {% endfor %}{% for verb in extra_verbs %}
-	@printf '  %-16s %s{% if verb.requires_apply %} ({{ make.apply_variable }}={{ make.apply_value }}){% endif %}\n' '{{ verb.name }}' '{{ verb.description }}';
+	@printf '  %-16s %s{% if verb.requires_apply %} ({{ make.apply_variable }}={{ make.apply_value }}){% endif %}\n' '{{ verb.name }}' '{{ verb.description | replace("\n", " ") | trim }}';
 {% endfor %}
 
 # A project owns the sources declared by its manifest. The generated setup
@@ -444,24 +444,25 @@ _builtin_test_all: _builtin_require_environment
     invocation_namespace=make.testmon_cache.invocation_namespace,
 ) }}
 
-# One tool, one verb: `fmt` only formats, `check` only lints (--no-fix) and
-# `fix` owns the mutating lint pass. Running ruff twice per gate was the
-# duplication this split removes.
+# Ruff is the style/autofix rule (make.ruff in codegen.yaml). Every
+# invocation uses --preview. fmt APPLY also runs check --fix --unsafe-fixes
+# --preview. Never weaken ruff to keep a file; change the code.
 _builtin_fmt_check: _builtin_require_environment
-	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
+	@$(UV_RUN) ruff format {{ make.ruff.format_check | join(" ") }} $(RUFF_PATHS)
 
 _builtin_fmt_all: _builtin_require_environment
 	$(call _require_apply)
-	@$(UV_RUN) ruff format $(RUFF_PATHS)
+	@$(UV_RUN) ruff format {{ make.ruff.format_apply | join(" ") }} $(RUFF_PATHS)
+	@$(UV_RUN) ruff check {{ make.ruff.lint_fix | join(" ") }} $(RUFF_PATHS)
 
 _builtin_fmt_apply: _builtin_fmt_all
 
 _builtin_fix_check: _builtin_require_environment
-	@$(UV_RUN) ruff check $(RUFF_PATHS)
+	@$(UV_RUN) ruff check {{ make.ruff.lint_check | join(" ") }} $(RUFF_PATHS)
 
 _builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
-	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
+	@$(UV_RUN) ruff check {{ make.ruff.lint_fix | join(" ") }} $(RUFF_PATHS)
 	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "{% for gate in make.check_gates_fixable %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}" --projects . --apply
 
 _builtin_fix_apply: _builtin_fix_all
