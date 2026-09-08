@@ -97,7 +97,7 @@
 			"MISE_CEILING_PATHS=$$project_parent" \
 			"MISE_TRUSTED_CONFIG_PATHS=$$project_root" \
 {% for name in bootstrap.passthrough_environment -%}
-			"{{ name }}=$$caller_{{ name | lower }}" \
+			$${caller_{{ name | lower }}:+"{{ name }}=$$caller_{{ name | lower }}"} \
 {% endfor -%}
 			$${mise_config_argument:+"$$mise_config_argument"} \
 			"$$@"; \
