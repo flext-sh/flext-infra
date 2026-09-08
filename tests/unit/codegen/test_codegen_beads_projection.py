@@ -111,12 +111,12 @@ class TestsCodegenBeadsProjection:
             pytest.fail("standalone identity must produce the declarative Beads config")
         tm.that(rendered_config, has='issue_prefix: "project-prefix"')
         tm.that(rendered_config, has="dolt.auto-start: true")
-        tm.that(rendered_config, has_not="gc.endpoint_origin")
-        tm.that(rendered_config, has_not="gc.endpoint_status")
-        tm.that(rendered_config, has_not="Gas City contract")
+        tm.that(rendered_config, lacks="gc.endpoint_origin")
+        tm.that(rendered_config, lacks="gc.endpoint_status")
+        tm.that(rendered_config, lacks="Gas City contract")
         if rendered_mise is None:
             pytest.fail("standalone identity must produce the managed Mise manifest")
-        tm.that(rendered_mise, has_not="gascity")
+        tm.that(rendered_mise, lacks="gascity")
         tm.that(rendered_mise, has='[tools."github:marlon-costa-dc/beads"]')
 
     def test_metadata_projection_preserves_a_minted_ledger_identity(

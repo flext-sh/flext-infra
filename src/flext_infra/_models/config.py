@@ -621,6 +621,15 @@ class FlextInfraConfigModels:
                 )
             ),
         ]
+        gascity_enabled: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Gas City runtime-contract participation; gates the Dolt "
+                    "server mode the generated Beads policy script asserts."
+                )
+            ),
+        ] = True
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Repository integration branch")
         ]
@@ -1885,6 +1894,16 @@ class FlextInfraConfigModels:
         ci_enabled: Annotated[
             bool, m.Field(description="Whether conform owns the CI projection")
         ]
+        gascity_enabled: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether the repository consumes the Gas City runtime "
+                    "contract; gates the gc tool projection and the inherited "
+                    "Dolt endpoint keys at render time."
+                )
+            ),
+        ] = True
         external_dependency_paths: Annotated[
             t.VariadicTuple[Path],
             m.Field(description="Observed external or fork Git submodule paths"),
@@ -2050,10 +2069,35 @@ class FlextInfraConfigModels:
             Literal["verified"],
             m.Field(description="Gas City inherited endpoint status"),
         ]
+        gascity_enabled: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Gas City runtime-contract participation; False drops the "
+                    "gc endpoint keys and makes Beads own a repository-local "
+                    "Dolt server (dolt.auto-start: true)."
+                )
+            ),
+        ] = True
         custom_issue_types: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Union of project and required custom bead types"),
         ] = ()
+
+    class MiseTomlRenderSpec(ToolchainSpec):
+        """Toolchain render context for ``.mise.toml`` plus per-project gates.
+
+        The template consumes flat toolchain field names, so the context is the
+        fleet ToolchainSpec narrowed by the per-project Gas City participation
+        resolved from the workspace manifest overlay.
+        """
+
+        gascity_enabled: Annotated[
+            bool,
+            m.Field(
+                description=("Whether the gc tool block is projected into .mise.toml.")
+            ),
+        ] = True
 
     class BeadsMetadataRenderSpec(_ConfigContract):
         """Field-only render input for the generated Beads ledger marker.
@@ -2671,6 +2715,17 @@ class FlextInfraConfigModels:
         ci_matrix_auto_run: Annotated[
             bool, m.Field(description="Whether the CI matrix runs automatically")
         ] = False
+        gascity_enabled: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether the repository consumes the Gas City runtime "
+                    "contract (city-owned Dolt server, gc tool projection, "
+                    "inherited endpoint keys). False renders the standalone "
+                    "shape: repository-local Dolt server owned by Beads."
+                )
+            ),
+        ] = True
         extra_ignored_patterns: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Repository-local generated ignore patterns"),
@@ -2783,6 +2838,16 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.BeadsProjectSpec,
             m.Field(description="Repository-local Beads identity"),
         ]
+        gascity_enabled: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Gas City runtime-contract participation resolved from the "
+                    "matched repository policy overlay; True when the checkout "
+                    "declares no manifest or no overlay."
+                )
+            ),
+        ] = True
         repository: Annotated[
             FlextInfraConfigModels.RepositoryRef,
             m.Field(description="Local repository Git contract"),
