@@ -13,7 +13,7 @@ from pathlib import Path
 
 from flext_cli import m
 
-from flext_infra._models.base import FlextInfraModelsBase
+from .base import FlextInfraModelsBase
 
 
 class FlextInfraModelsPromoted(FlextInfraModelsBase):
