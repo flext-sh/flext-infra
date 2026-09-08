@@ -12,13 +12,13 @@ from difflib import unified_diff
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import config, main
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenProjectNew
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from flext_tests import tm
 from tests import c, m, p, u
 
 pytestmark = [pytest.mark.slow, pytest.mark.usefixtures("isolate_github_trigger_sha")]

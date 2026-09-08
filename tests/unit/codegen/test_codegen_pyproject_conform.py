@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
 
-from flext_infra import c, config, m, u
+import pytest
 from flext_tests import tm
+
+from flext_infra import c, config, m, u
 from tests import u as test_u
 
 _PROVIDER_SPEC = config.Infra.codegen.providers[0]
@@ -372,7 +373,11 @@ line-length = 120
 [tool.bandit]
 skips = ["B101"]
 """
-        document = tomllib.loads(tm.ok(u.Infra.overlay_preserved(rendered, live)))
+        document = u.Cli.toml_mapping_from_text(
+            tm.ok(u.Infra.overlay_preserved(rendered, live))
+        )
+        if document is None:
+            pytest.fail("overlay-preserved pyproject must remain valid TOML")
         tm.that(document["project"]["dependencies"], eq=["pydantic>=2"])
         tm.that("flext-dev" in document["project"]["scripts"], eq=True)
         tm.that(document["tool"]["ruff"]["line-length"], eq=88)

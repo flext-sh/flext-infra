@@ -6,8 +6,9 @@ import hashlib
 import zipfile
 from typing import TYPE_CHECKING
 
-from flext_infra import main
 from flext_tests import tm
+
+from flext_infra import main
 from tests import c, u
 
 if TYPE_CHECKING:

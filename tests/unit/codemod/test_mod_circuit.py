@@ -7,9 +7,9 @@ import sys
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c, m, main as infra_main, u
-from flext_tests import tm
 
 
 @pytest.fixture(autouse=True)

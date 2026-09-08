@@ -7,9 +7,8 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
-
 from flext_tests import tm
+from pydantic import ValidationError
 
 from flext_infra import m, t
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService

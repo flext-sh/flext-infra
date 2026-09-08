@@ -12,8 +12,9 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from flext_cli import cli
-from flext_infra import main
 from flext_tests import tm
+
+from flext_infra import main
 from tests import TestsFlextInfraUtilities as u, c, m
 
 if TYPE_CHECKING:
