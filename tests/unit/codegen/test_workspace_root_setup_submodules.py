@@ -44,10 +44,7 @@ def _render_repository_root_makefile(tmp_path: Path) -> str:
     workspace = m.Infra.WorkspaceSpec(
         name="flext",
         beads=m.Infra.BeadsProjectSpec(
-            version=1,
-            workspace="flext",
-            database="flext",
-            issue_prefix="flext",
+            version=1, workspace="flext", database="flext", issue_prefix="flext"
         ),
         repository=root_repository,
         project=test_u.Tests.project_spec("flext"),

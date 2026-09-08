@@ -1005,9 +1005,9 @@ class FlextInfraUtilitiesPyprojectConform:
         tool = dict(u.Cli.toml_mapping_child(merged, c.Infra.TOOL) or {})
         live_tool = u.Cli.toml_mapping_child(live_payload, c.Infra.TOOL) or {}
         managed = frozenset(managed_tool_tables)
-        tool.update(
-            {key: value for key, value in live_tool.items() if key not in managed}
-        )
+        tool.update({
+            key: value for key, value in live_tool.items() if key not in managed
+        })
         merged[c.Infra.TOOL] = tool
         return r[str].ok(u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(merged)))
 

@@ -111,7 +111,9 @@ class FlextInfraMiseRecovery:
                         f"committed generated file changed: {entry.path}"
                     )
                 operation = "noop"
-            elif identity in {desired, original} or (journal.state == "recovering" and identity == rollback):
+            elif identity in {desired, original} or (
+                journal.state == "recovering" and identity == rollback
+            ):
                 operation = "noop"
             elif entry.original_exists:
                 operation = "restore"
