@@ -122,8 +122,12 @@ class FlextInfraConstantsCheck:
         "protocols.py",
         "typings.py",
         "utilities.py",
+        "config.py",
         "settings.py",
+        "_config.py",
+        "_settings.py",
     })
+    BOUNDARY_SKIP_PATH_FRAGMENTS: Final[t.StrSequence] = ("/ai_hub_hook_client/",)
     BOUNDARY_BANNED_LIBS: Final[t.MappingKV[str, str]] = MappingProxyType({
         "typer": "cli.create_app_with_common_params / cli.register_command",
         "click": "flext_cli.cli application, registration, execution, and invocation methods",
@@ -155,18 +159,6 @@ class FlextInfraConstantsCheck:
             "imports subprocess — use cli.run / cli.capture",
         ),
         (
-            re.compile(r"\bjson\.(load|dump|loads|dumps)\b"),
-            "uses json.load/dump — use cli.*_json_file",
-        ),
-        (
-            re.compile(r"\byaml\.(safe_load|dump|load)\b"),
-            "uses yaml.safe_load/dump — use cli.*_yaml_file",
-        ),
-        (
-            re.compile(r"\bcsv\.(reader|writer|DictReader|DictWriter)\b"),
-            "uses csv.reader/writer — use cli.*_csv_file",
-        ),
-        (
             re.compile(r"^\s*print\(", re.MULTILINE),
             "uses u.Cli.print() — use cli.print",
         ),
@@ -182,6 +174,42 @@ class FlextInfraConstantsCheck:
         "flext_infra/_constants/check.py",
         "flext_infra/gates/abstraction_boundary.py",
     })
+    BOUNDARY_JSON_ATTRS: Final[frozenset[str]] = frozenset({
+        "dump",
+        "dumps",
+        "load",
+        "loads",
+    })
+    BOUNDARY_YAML_ATTRS: Final[frozenset[str]] = frozenset({
+        "dump",
+        "load",
+        "safe_load",
+    })
+    BOUNDARY_CSV_ATTRS: Final[frozenset[str]] = frozenset({
+        "DictReader",
+        "DictWriter",
+        "reader",
+        "writer",
+    })
+    BOUNDARY_ATTR_RULES: Final[
+        t.VariadicTuple[t.Triple[str, frozenset[str], str]]
+    ] = (
+        (
+            "json",
+            BOUNDARY_JSON_ATTRS,
+            "uses json serialization — use u.Cli.json_* / cli.json_*",
+        ),
+        (
+            "yaml",
+            BOUNDARY_YAML_ATTRS,
+            "uses yaml serialization — use u.Cli.yaml_* / cli.yaml_*",
+        ),
+        (
+            "csv",
+            BOUNDARY_CSV_ATTRS,
+            "uses csv serialization — use u.Cli.csv_* / cli.csv_*",
+        ),
+    )
     BOUNDARY_TOML_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*(import|from)\s+(tomllib|tomlkit)(\s|$|\.)", re.MULTILINE
     )

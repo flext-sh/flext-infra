@@ -4,21 +4,10 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-from .__version__ import (
-    __author__ as __author__,
-    __author_email__ as __author_email__,
-    __description__ as __description__,
-    __license__ as __license__,
-    __title__ as __title__,
-    __url__ as __url__,
-    __version__ as __version__,
-    __version_info__ as __version_info__,
-)
 from .__version__ import (
     __author__ as __author__,
     __author_email__ as __author_email__,
@@ -34,21 +23,21 @@ if TYPE_CHECKING:
     from flext_cli import d, e, h, r, x
 
     from . import (
-        check as check,
-        codegen as codegen,
-        codemod as codemod,
-        deps as deps,
-        detectors as detectors,
-        docs as docs,
-        fixers as fixers,
-        gates as gates,
-        maintenance as maintenance,
-        refactor as refactor,
-        release as release,
-        services as services,
-        transformers as transformers,
-        validate as validate,
-        workspace as workspace,
+        check,
+        codegen,
+        codemod,
+        deps,
+        detectors,
+        docs,
+        fixers,
+        gates,
+        maintenance,
+        refactor,
+        release,
+        services,
+        transformers,
+        validate,
+        workspace,
     )
     from ._config import config
     from ._settings import settings
