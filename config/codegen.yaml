@@ -1027,8 +1027,8 @@ Infra:
           - urls
           - readme
           - version
-        overwrite_project_keys:
           - dependencies
+        overwrite_project_keys:
           - requires-python
 
     scaffold:

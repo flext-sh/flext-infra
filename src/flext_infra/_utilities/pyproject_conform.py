@@ -887,25 +887,53 @@ class FlextInfraUtilitiesPyprojectConform:
             )
             if spec is None:
                 return r[str].fail("pyproject.toml is missing from managed_files")
-            preserve_project_keys = spec.preserve_project_keys
+            project_keys = spec.preserve_project_keys
             managed_tool_tables = spec.managed_tool_tables
+        else:
+            project_keys = preserve_project_keys
         rendered_payload = u.Cli.toml_mapping_from_text(rendered)
         if rendered_payload is None:
             return r[str].fail("rendered pyproject is not valid TOML")
         # An absent live file takes the same canonicalization path as a present
         # one: the projection is the parse-merge-dump form, so first publication
         # and every later conform produce byte-identical output (fixed point).
-        live_payload = (
+        live_payload: t.JsonMapping | None = (
             u.Cli.toml_mapping_from_text(live) if live is not None else {}
         )
-        if live is not None and live_payload is None:
+        if live_payload is None:
             return r[str].fail("live pyproject is not valid TOML")
         merged = dict(rendered_payload)
         project = dict(u.Cli.toml_mapping_child(merged, c.Infra.PROJECT) or {})
         live_project = u.Cli.toml_mapping_child(live_payload, c.Infra.PROJECT) or {}
-        for key in preserve_project_keys:
+        for key in project_keys:
             if key in live_project:
-                project[key] = live_project[key]
+                if key == c.Infra.DEPENDENCIES:
+                    try:
+                        required = t.Infra.STR_SEQ_ADAPTER.validate_python(
+                            project.get(key, []), strict=True
+                        )
+                        declared = t.Infra.STR_SEQ_ADAPTER.validate_python(
+                            live_project[key], strict=True
+                        )
+                    except c.ValidationError as exc:
+                        return r[str].fail_op("validate runtime dependencies", exc)
+                    # Profile requirements supersede stale pins; retain every
+                    # other declaration, including separate environment markers.
+                    required_names = {
+                        FlextInfraUtilitiesDependencies.dep_name(item)
+                        for item in required
+                    }
+                    project[key] = [
+                        *required,
+                        *(
+                            item
+                            for item in declared
+                            if FlextInfraUtilitiesDependencies.dep_name(item)
+                            not in required_names
+                        ),
+                    ]
+                else:
+                    project[key] = live_project[key]
         merged[c.Infra.PROJECT] = project
         tool = dict(u.Cli.toml_mapping_child(merged, c.Infra.TOOL) or {})
         live_tool = u.Cli.toml_mapping_child(live_payload, c.Infra.TOOL) or {}

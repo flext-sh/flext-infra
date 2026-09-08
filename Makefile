@@ -218,6 +218,7 @@ caller_gh_token="$(GH_TOKEN)"; \
 caller_mise_github_token="$(MISE_GITHUB_TOKEN)"; \
 caller_mise_github_credential_command="$(MISE_GITHUB_CREDENTIAL_COMMAND)"; \
 caller_mise_http_timeout="$(MISE_HTTP_TIMEOUT)"; \
+caller_mise_version="$(MISE_VERSION)"; \
 if [ -z "$$mise_storage_root" ]; then \
 		if [ -n "$$caller_xdg_data_home" ]; then \
 			mise_storage_root="$$caller_xdg_data_home/mise"; \
@@ -358,17 +359,20 @@ mise_exec() { \
 "MISE_GITHUB_TOKEN=$$caller_mise_github_token" \
 "MISE_GITHUB_CREDENTIAL_COMMAND=$$caller_mise_github_credential_command" \
 "MISE_HTTP_TIMEOUT=$$caller_mise_http_timeout" \
+"MISE_VERSION=$$caller_mise_version" \
 $${mise_config_argument:+"$$mise_config_argument"} \
 			"$$@"; \
 	}; \
 	mise_checked() { \
 		mise_log="$$1"; shift; \
+		printf 'setup probe: begin stage=%s log=%s\n' "$${mise_log##*/}" "$$mise_log" >&2; \
 		if "$$@" >"$$mise_log" 2>&1; then :; \
-		else mise_status=$$?; cat "$$mise_log"; return "$$mise_status"; fi; \
+		else mise_status=$$?; cat "$$mise_log"; printf 'setup probe: failed stage=%s exit=%s\n' "$${mise_log##*/}" "$$mise_status" >&2; return "$$mise_status"; fi; \
 		cat "$$mise_log"; \
 		if grep -Fq 'mise WARN' "$$mise_log"; then \
 			printf 'ERROR: Mise emitted a warning\n' >&2; return 2; \
 		fi; \
+		printf 'setup probe: end stage=%s exit=0\n' "$${mise_log##*/}" >&2; \
 	}; \
 	mise_checked_stdout() { \
 		mise_stdout_log="$$1"; mise_stderr_log="$$2"; shift 2; \
@@ -418,7 +422,8 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 		printf '%s\n' "$$project_root/bin" >> "$$GITHUB_PATH"; \
 printf '%s\n' "$$mise_storage_root/shims" >> "$$GITHUB_PATH"; \
 fi; \
-	mise_checked "$$scratch/lifecycle.log" mise_exec project "$$latest_mise" -C "$$project_root" exec -- env "SETUP_DIRENV=$$direnv_executable" "SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" $(SELF_MAKE) _setup_lifecycle
+	printf 'setup: entering lifecycle (submodules, environment, hooks)\n'; \
+	mise_exec project "$$latest_mise" -C "$$project_root" exec -- env "SETUP_DIRENV=$$direnv_executable" "SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" $(SELF_MAKE) _setup_lifecycle
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all

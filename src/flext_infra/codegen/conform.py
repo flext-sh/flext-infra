@@ -1929,6 +1929,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Apply typed project overlays after canonical template rendering."""
         if destination == c.Infra.PYPROJECT_FILENAME:
             live_path = repository_root / c.Infra.PYPROJECT_FILENAME
+            live = (
+                live_path.read_text(encoding="utf-8") if live_path.is_file() else None
+            )
+            overlaid = u.Infra.overlay_preserved(rendered, live)
+            if overlaid.failure:
+                return r[m.Infra.CodegenArtifactComposition].from_failure(overlaid)
+            rendered = overlaid.value
             if workspace is not None and codegen is not None and repository is not None:
                 profile = (
                     target.make_profile
@@ -1953,19 +1960,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if conformed.failure:
                     return r[m.Infra.CodegenArtifactComposition].from_failure(conformed)
                 rendered = conformed.value
-            live = (
-                live_path.read_text(encoding="utf-8") if live_path.is_file() else None
-            )
-            overlaid = u.Infra.overlay_preserved(rendered, live)
-            if overlaid.failure:
-                return r[m.Infra.CodegenArtifactComposition].from_failure(overlaid)
             formatted = u.Infra.format_toml_source(
-                overlaid.value,
+                rendered,
                 path=live_path,
                 toolchain_root=repository_root,
                 taplo_version=config.Infra.codegen.toolchain.taplo_version,
             )
-            rendered = formatted.value if formatted.success else overlaid.value
+            rendered = formatted.value if formatted.success else rendered
         if destination != c.Infra.MISE_TOML_FILENAME:
             return r[m.Infra.CodegenArtifactComposition].ok(
                 m.Infra.CodegenArtifactComposition(rendered=rendered)
