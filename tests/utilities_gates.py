@@ -149,8 +149,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
     ) -> m.Infra.GateContext:
         """Provide the typed test helper `create_gate_context`."""
         return m.Infra.GateContext(
-            repository_root=repository_root,
-            reports_dir=reports_dir or repository_root,
+            repository_root=repository_root, reports_dir=reports_dir or repository_root
         )
 
     @staticmethod
