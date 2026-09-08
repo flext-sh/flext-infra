@@ -105,8 +105,8 @@ endif
 # End SECTION: REPOSITORY_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary.
-PUBLIC_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen conform initialize mod waza duplication
-BUILTIN_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen conform initialize mod waza duplication
+PUBLIC_VERBS := help setup deps build check test test-cov fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen conform initialize mod waza duplication
+BUILTIN_VERBS := help setup deps build check test test-cov fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen conform initialize mod waza duplication
 SCRIPT_VERBS :=
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
 CUSTOM_DECLARED_TARGETS :=
@@ -548,6 +548,10 @@ test: _builtin_require_environment
 	$(call _require_apply)
 	$(call RUN_PUBLIC,test)
 
+test-cov: _builtin_require_environment
+	$(call _require_apply)
+	$(call RUN_PUBLIC,test-cov)
+
 fmt: _builtin_require_environment
 	$(call _require_apply)
 	$(call RUN_PUBLIC,fmt)
@@ -907,6 +911,18 @@ _builtin_test_all: _builtin_require_environment
 		trap cleanup_test_tmp EXIT INT TERM; \
 		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
+# The coverage pass owns the cov plugin exclusively (testmon 2.x refuses
+# branch coverage through it); it runs the whole suite, never the selection.
+_builtin_test_cov_all: _builtin_require_environment
+
+	@set -eu; \
+		test_tmp_parent="$(PROJECT_SCRATCH_ROOT)/pytest"; \
+		mkdir -p "$$test_tmp_parent"; \
+		test_tmp=$$(mktemp -d "$$test_tmp_parent/invocation.XXXXXX"); \
+		cleanup_test_tmp() { rm -rf "$$test_tmp"; }; \
+		trap cleanup_test_tmp EXIT INT TERM; \
+		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry coverage
+
 # One tool, one verb: `fmt` only formats, `check` only lints (--no-fix) and
 # `fix` owns the mutating lint pass. Running ruff twice per gate was the
 # duplication this split removes.
@@ -1034,6 +1050,7 @@ _builtin-deps: _builtin_deps_upgrade
 _builtin-build: _builtin_build_artifacts
 _builtin-check: _builtin_check_all
 _builtin-test: _builtin_test_all
+_builtin-test-cov: _builtin_test_cov_all
 _builtin-fmt: _builtin_fmt_all
 _builtin-fix: _builtin_fix_all
 _builtin-fix-enforcement: _builtin_fix_enforcement

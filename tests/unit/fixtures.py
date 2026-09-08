@@ -131,6 +131,13 @@ def cached_runner_project(tmp_path: Path) -> Path:
     tests_root = project_root / policy.target_directory
     package_root.mkdir(parents=True)
     tests_root.mkdir(parents=True)
+    # A faithful consumer project carries the fleet-standard coverage
+    # boundary: the Cython provider mapping of dependency_injector is not
+    # parseable source and is omitted by every fleet coverage config.
+    (project_root / "pyproject.toml").write_text(
+        '[tool.coverage.run]\nomit = ["*/dependency_injector/providers.pyx"]\n',
+        encoding="utf-8",
+    )
     (package_root / "__init__.py").write_text(
         "def answer() -> int:\n    return 42\n", encoding="utf-8"
     )
