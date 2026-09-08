@@ -909,6 +909,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 root=root,
                 make_profile=current_repository.role,
                 beads=workspace.beads,
+                project=workspace.project,
                 canonical_project_name=current_repository.distribution,
                 baseline_branch=baseline_result.value,
                 baseline_reference=(
@@ -1512,6 +1513,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             project_name=repository.distribution,
             package_name=project.package_name,
             path=pyproject,
+            root_modules=project.root_modules,
+            root_packages=project.root_packages,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             analysis_exclusions=analysis_exclusions,
@@ -1685,6 +1688,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             project_name=repository.distribution,
             package_name=metadata.value.package_name,
             path=pyproject,
+            root_modules=(
+                target.project.root_modules if target.project is not None else ()
+            ),
+            root_packages=(
+                target.project.root_packages if target.project is not None else ()
+            ),
             declared_python_dirs=self._scaffold_python_dirs(
                 codegen.templates.entries, target.make_profile
             ),

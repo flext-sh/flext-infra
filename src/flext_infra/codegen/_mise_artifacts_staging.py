@@ -25,23 +25,22 @@ class FlextInfraMiseStaging:
     def stage(
         self, plan: m.Infra.MiseToolchainWorkspacePlan
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]:
-        """Stage the root-owned launcher fleet alongside each declaration."""
+        """Stage the packaged launcher fleet alongside each declaration."""
         if not plan.projects:
             return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
                 "Mise plan declares no projects"
             )
-        seed_project = next(
-            (project for project in plan.projects if project.layout.selector == "."),
-            plan.projects[0],
-        )
-        seed_launchers = (
-            seed_project.artifacts.unix_launcher,
-            seed_project.artifacts.windows_launcher,
-        )
-        if any(state.content is None for state in seed_launchers):
-            return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
-                f"Mise launcher seed is absent: {seed_project.layout.selector}"
-            )
+        packaged = files.packaged_launchers()
+        if packaged.failure:
+            return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(packaged)
+        return self._stage_projects(plan, packaged.value)
+
+    def _stage_projects(
+        self,
+        plan: m.Infra.MiseToolchainWorkspacePlan,
+        seed_launchers: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]:
+        """Stage the seed launcher pair into every selected project."""
         stages: list[Path] = []
         for project in plan.projects:
             if project.layout.transaction_root is None:
@@ -62,7 +61,7 @@ class FlextInfraMiseStaging:
         project: m.Infra.MiseToolchainProjectState,
         *,
         stage_root: Path,
-        seed_launchers: t.Pair[m.Cli.AtomicFileState],
+        seed_launchers: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[bool]:
         """Build and validate one project without reading mutable source bytes."""
         stage_plan = u.Cli.atomic_plan_directory_chain(stage_root / "bin")
@@ -87,6 +86,10 @@ class FlextInfraMiseStaging:
         for source, (name, mode) in zip(
             seed_launchers, files.ARTIFACT_SPECS, strict=True
         ):
+            if source.content is None:
+                return r[bool].fail(
+                    f"Mise launcher seed content is absent: {name}"
+                )
             copied = process.write_new(stage_root / name, source.content, mode)
             if copied.failure:
                 return copied
