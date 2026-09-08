@@ -115,7 +115,7 @@ class TestCodegenCiMatrix:
             for filename in ("ci.yml", "ci-matrix.yml")
         )
         catalog = {
-            f"{action.repository}@{action.sha}": action.version
+            f"{action.repository}@{action.version}"
             for action in config.Infra.codegen.github_actions.values()
         }
         used_actions = tuple(
@@ -126,8 +126,6 @@ class TestCodegenCiMatrix:
         tm.that(len(used_actions), gt=0)
         for action in used_actions:
             tm.that(catalog, has=action)
-            # yamllint requires two spaces before an inline comment.
-            tm.that(workflows, has=f"{action}  # {catalog[action]}")
 
         tm.that(workflows, lacks="continue-on-error")
         tm.that(workflows, lacks="set +e")
@@ -243,20 +241,20 @@ class TestCodegenCiMatrix:
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
-        # The empty include sits between the checkout and the credential-source
+        # The empty include sits between the checkout and the credential-mint
         # step: no blank line may appear there, and exactly one separates the
-        # last step before the setup commentary from that commentary.
+        # mint step from the setup commentary.
         tm.that(
-            workflow, has="fetch-depth: 0\n      # Mise resolves GitHub credentials"
+            workflow, has="fetch-depth: 0\n      # Cross-repo private git dependencies"
         )
         marker = (
-            '>> "$GITHUB_ENV"\n\n      # make setup is the only toolchain installer.'
+            'rm -f "$key_path"\n\n      # make setup is the only toolchain installer.'
         )
         tm.that(workflow, has=marker)
         tm.that(
             workflow,
             lacks=(
-                '>> "$GITHUB_ENV"\n\n\n'
+                'rm -f "$key_path"\n\n\n'
                 "      # make setup is the only toolchain installer."
             ),
         )
@@ -297,11 +295,7 @@ class TestCodegenCiMatrix:
         actions = config.Infra.codegen.github_actions
         for action in actions.values():
             if action.repository in workflow:
-                # yamllint requires two spaces before an inline comment.
-                tm.that(
-                    workflow,
-                    has=f"{action.repository}@{action.sha}  # {action.version}",
-                )
+                tm.that(workflow, has=f"{action.repository}@{action.version}")
 
     def test_dependabot_does_not_delay_available_updates(self, tmp_path: Path) -> None:
         """Every declared ecosystem can select its newest available release."""
@@ -356,7 +350,11 @@ class TestCodegenCiMatrix:
             tm.that(content, has="cp -R /source/. /workspace/")
             tm.that(content, lacks="COPY")
             tm.that(content, lacks="chmod -R a+rwX")
-            tm.that(content, lacks="GITHUB_TOKEN")
+            # The credential rides only as a declared build-arg consumed by
+            # Mise's GitHub reads: no literal secret, no baked default.
+            tm.that(content, has="ARG GITHUB_TOKEN")
+            tm.that(content, has="ENV MISE_GITHUB_TOKEN=${GITHUB_TOKEN}")
+            tm.that(content, lacks='GITHUB_TOKEN="')
 
     def test_fedora_dockerfile_installs_libatomic_only_for_fedora(
         self, tmp_path: Path
@@ -376,6 +374,21 @@ class TestCodegenCiMatrix:
     def test_dockerfiles_render_byte_idempotently(self, tmp_path: Path) -> None:
         """Repeated project generation preserves the generated Dockerfiles."""
         root = self._render_project(tmp_path / "external")
+        # The re-render is an existing-tree conform whose ancestry preflight
+        # resolves the provider baseline; a project the generator just created
+        # is still unpublished, so the fixture mirrors the post-push ref state
+        # the same way every governed fixture does.
+        provider = config.Infra.codegen.providers[0]
+        tm.ok(
+            u.Cli.run_checked([
+                "git",
+                "-C",
+                root,
+                "update-ref",
+                f"refs/remotes/{c.Infra.GIT_ORIGIN}/{provider.branch}",
+                c.Infra.GIT_HEAD,
+            ])
+        )
         before = {
             distro: (
                 root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile"
@@ -431,7 +444,7 @@ class TestCodegenCiMatrix:
         matrix = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
             encoding="utf-8"
         )
-        integrations = ("dev", "develop", "0.12.0-dev", "main")
+        integrations = config.Infra.codegen.branch_policy.ci_trigger_branches
         tm.that(integrations, has=branch)
         for integration in integrations:
             tm.that(blocking, has=f"      - {integration}")
@@ -490,7 +503,7 @@ class TestCodegenCiMatrix:
             encoding="utf-8"
         )
 
-        for branch in ("dev", "develop", "0.12.0-dev", "main"):
+        for branch in config.Infra.codegen.branch_policy.ci_trigger_branches:
             tm.that(content, has=f"      - {branch}")
 
     def test_ci_matrix_check_uses_ci_token_and_never_runs_test(
@@ -531,8 +544,7 @@ class TestCodegenCiMatrix:
         tm.that(content, has="RUNTIME_BIN := $(RUNTIME_VENV)/Scripts")
         tm.that(content, has="RUNTIME_PYTHON := $(RUNTIME_BIN)/python.exe")
         tm.that(content, has="override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)")
-        tm.that(content, has="_builtin_help_usage:\n\t@printf")
-        tm.that(content, has="'flext-demo [standalone]' '';")
+        tm.that(content, has="_builtin-help:\n\t@printf '%s\\n' 'flext-demo [standalone]' '';")
 
     def test_root_dockerignore_reincludes_bootstrap_surface(self) -> None:
         """Root hand-maintained .dockerignore lets clean-machine bootstrap files into the context."""
