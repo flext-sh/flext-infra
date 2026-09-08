@@ -156,6 +156,7 @@ class FlextInfraUtilitiesPyprojectConform:
             ),
             exclude_dependencies=uv_exclude_dependencies,
             uv_environments=toolchain.uv_environments,
+            constraint_dependencies=toolchain.uv_constraint_dependencies,
         )
         if sources_result.failure:
             return r[str].from_failure(sources_result)
@@ -612,24 +613,35 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace_mode=workspace_mode,
         )
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
+        has_uv = tool is not None and u.Cli.toml_table_child(tool, "uv") is not None
         if tool is None:
-            if not repository_root and link_mode is None and not exclude_dependencies:
+            if (
+                not repository_root
+                and link_mode is None
+                and not exclude_dependencies
+                and not constraint_dependencies
+            ):
                 return r[bool].ok(True)
             tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
         uv = u.Cli.toml_table_child(tool, "uv")
         if uv is None:
-            if not repository_root and link_mode is None and not exclude_dependencies:
+            if (
+                not repository_root
+                and link_mode is None
+                and not exclude_dependencies
+                and not constraint_dependencies
+            ):
+                return r[bool].ok(True)
+            if not constraint_dependencies and not has_uv:
+                # Empty declared constraints on a document without any uv
+                # table: nothing to remove, so no table is created.
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
         u.Cli.toml_remove_key_if_present(uv, "required-version")
-        existing_constraints = u.Cli.toml_as_string_list(
-            u.Cli.toml_value(uv, "constraint-dependencies")
-        )
-        selected_constraints = (
-            tuple(constraint_dependencies)
-            if repository_root and constraint_dependencies is not None
-            else existing_constraints
-        )
+        # Constraints are SSOT-rendered: the declared config value is the only
+        # source, so a removed declaration exterminates the key everywhere and
+        # no orphan cap can survive without an owner (flext-gzfd2 class).
+        selected_constraints = tuple(constraint_dependencies or ())
         retained_constraints = tuple(
             requirement
             for requirement in selected_constraints

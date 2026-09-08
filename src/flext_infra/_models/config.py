@@ -13,13 +13,14 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from flext_infra import t
-from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
-from flext_infra._constants.make import FlextInfraConstantsMake
-from flext_infra._constants.release import FlextInfraConstantsRelease
-from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
-from flext_infra._models._defaults import ImmutableEmptyMapping, immutable_empty_mapping
-from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
-from flext_infra._models.layout import FlextInfraModelsLayout
+
+from .._constants.codegen_project import FlextInfraConstantsCodegenProject
+from .._constants.make import FlextInfraConstantsMake
+from .._constants.release import FlextInfraConstantsRelease
+from .._constants.validate import FlextInfraConstantsSharedInfra
+from ._defaults import ImmutableEmptyMapping, immutable_empty_mapping
+from .deps_tool_config import FlextInfraModelsDepsToolSettings
+from .layout import FlextInfraModelsLayout
 
 __all__: list[str] = ["FlextInfraConfigModels"]
 
@@ -288,6 +289,19 @@ class FlextInfraConfigModels:
                 description="Per-package RFC 3339 cooldown cutoffs",
             ),
         ]
+        uv_constraint_dependencies: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "PEP 508 constraints rendered into every generated "
+                    "[tool.uv] constraint-dependencies from this SSOT. The "
+                    "declared value replaces any retained value; empty "
+                    "removes the key so no orphan cap survives without an "
+                    "owner (operator directive 2026-09-08: artificial pins "
+                    "are exterminated, never retained)."
+                )
+            ),
+        ] = ()
         kubectl_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact kubectl version, e.g. '1.32.0'")
         ]
