@@ -11,6 +11,8 @@ from functools import cache, lru_cache
 from pathlib import Path
 
 from flext_cli import u
+
+from flext_core import r
 from flext_infra import c, p, t
 
 from .git import FlextInfraUtilitiesGit
