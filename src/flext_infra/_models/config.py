@@ -299,7 +299,7 @@ class FlextInfraConfigModels:
                     "removes the key so no orphan cap survives without an "
                     "owner (operator directive 2026-09-08: artificial pins "
                     "are exterminated, never retained)."
-                ),
+                )
             ),
         ] = ()
         kubectl_version: Annotated[
