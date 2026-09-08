@@ -85,6 +85,40 @@ class TestsCodegenBeadsProjection:
         tm.that(rendered_metadata, none=True)
         tm.that(hasattr(plan, "beads"), eq=False)
 
+    def test_gascity_disabled_renders_standalone_beads_config(
+        self, tmp_path: Path
+    ) -> None:
+        """A ``gascity_enabled: false`` overlay drops every gc endpoint key.
+
+        The repository owns its Dolt server in that shape: ``dolt.auto-start``
+        flips to ``true`` so bd materializes and starts the per-project server
+        itself, and the inherited-city endpoint keys never render.
+        """
+        root = self._project(
+            tmp_path / "project",
+            database="project_database",
+            issue_prefix="project-prefix",
+        )
+        u.Tests.write_standalone_workspace_manifest(
+            root, "fixture-project", gascity_enabled=False
+        )
+
+        plan = self._plan(root)
+        rendered_config = self._rendered(plan, c.Infra.BEADS_CONFIG_RELPATH)
+        rendered_mise = self._rendered(plan, ".mise.toml")
+
+        if rendered_config is None:
+            pytest.fail("standalone identity must produce the declarative Beads config")
+        tm.that(rendered_config, has='issue_prefix: "project-prefix"')
+        tm.that(rendered_config, has="dolt.auto-start: true")
+        tm.that(rendered_config, has_not="gc.endpoint_origin")
+        tm.that(rendered_config, has_not="gc.endpoint_status")
+        tm.that(rendered_config, has_not="Gas City contract")
+        if rendered_mise is None:
+            pytest.fail("standalone identity must produce the managed Mise manifest")
+        tm.that(rendered_mise, has_not="gascity")
+        tm.that(rendered_mise, has='[tools."github:marlon-costa-dc/beads"]')
+
     def test_metadata_projection_preserves_a_minted_ledger_identity(
         self, tmp_path: Path
     ) -> None:
