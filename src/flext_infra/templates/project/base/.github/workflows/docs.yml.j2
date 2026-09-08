@@ -32,7 +32,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
@@ -71,7 +71,7 @@ jobs:
 
       - name: Upload docs reports on failure
         if: failure()
-        uses: {{ github_actions["upload-artifact"].repository }}@{{ github_actions["upload-artifact"].sha }}  # {{ github_actions["upload-artifact"].version }}
+        uses: {{ github_actions["upload-artifact"].repository }}@{{ github_actions["upload-artifact"].version }}
         with:
           name: docs-reports
           # Structured docs reports only — omit raw docs log trees that may carry
@@ -97,7 +97,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
@@ -120,11 +120,11 @@ jobs:
       # work when deploy is skipped (deploy already gates on refs/heads/main).
       - name: Configure Pages
         if: github.ref == 'refs/heads/main'
-        uses: {{ github_actions["configure-pages"].repository }}@{{ github_actions["configure-pages"].sha }}  # {{ github_actions["configure-pages"].version }}
+        uses: {{ github_actions["configure-pages"].repository }}@{{ github_actions["configure-pages"].version }}
 
       - name: Upload site artifact
         if: github.ref == 'refs/heads/main'
-        uses: {{ github_actions["upload-pages-artifact"].repository }}@{{ github_actions["upload-pages-artifact"].sha }}  # {{ github_actions["upload-pages-artifact"].version }}
+        uses: {{ github_actions["upload-pages-artifact"].repository }}@{{ github_actions["upload-pages-artifact"].version }}
         with:
           path: .reports/docs/site
 
@@ -143,4 +143,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: {{ github_actions["deploy-pages"].repository }}@{{ github_actions["deploy-pages"].sha }}  # {{ github_actions["deploy-pages"].version }}
+        uses: {{ github_actions["deploy-pages"].repository }}@{{ github_actions["deploy-pages"].version }}

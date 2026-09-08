@@ -43,7 +43,7 @@ jobs:
       {{ make.ci.variable }}: {{ make.ci.value }}
     steps:
       - name: Checkout
-        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
@@ -80,9 +80,9 @@ jobs:
       - name: gen check (blocking)
         run: {{ make.ci.variable }}={{ make.ci.value }} make conform {{ make.apply_variable }}={{ make.apply_value }}
 
-      # Setup installs the committed lock as-is (`uv sync --frozen`); a stale
-      # lock is a reviewed change through `make deps`, so CI proves it here
-      # instead of letting a runner rewrite it.
+      # Setup syncs against the committed lock and refreshes it in place (`uv
+      # sync`); the fleet runs unlocked, so the deps audit proves the resolved
+      # graph instead of preserving a frozen snapshot.
       - name: deps check (blocking)
         run: {{ make.ci.variable }}={{ make.ci.value }} make audit {{ make.apply_variable }}={{ make.apply_value }}
 {%- endif %}
@@ -122,7 +122,7 @@ jobs:
           done
       - name: Upload reports on failure
         if: {% raw %}${{ failure() }}{% endraw %}
-        uses: {{ github_actions["upload-artifact"].repository }}@{{ github_actions["upload-artifact"].sha }}  # {{ github_actions["upload-artifact"].version }}
+        uses: {{ github_actions["upload-artifact"].repository }}@{{ github_actions["upload-artifact"].version }}
         with:
           name: flext-ci-reports-{% raw %}${{ github.run_id }}{% endraw %}
           # Structured reports only — omit raw pytest/tool logs that may carry
@@ -154,7 +154,7 @@ jobs:
       {{ make.ci.variable }}: {{ make.ci.value }}
     steps:
       - name: Checkout
-        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           fetch-depth: 0
           submodules: {{ checkout_submodules }}
@@ -187,7 +187,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout promoted head
-        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           fetch-depth: 1
       - name: Block WIP heads from protected integration branches

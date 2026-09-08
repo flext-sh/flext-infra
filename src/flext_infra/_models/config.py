@@ -328,16 +328,16 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, _tool_version_field("Compatible uv major.minor line")
         ]
         qlty_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact attested qlty release")
+            t.NonEmptyStr, _tool_version_field("Moving qlty release selector, e.g. 'latest'")
         ]
         node_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Compatible Node.js major.minor line")
         ]
         jscpd_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact jscpd duplication engine release")
+            t.NonEmptyStr, _tool_version_field("Moving jscpd release selector, e.g. 'latest'")
         ]
         waza_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact Waza governance engine release")
+            t.NonEmptyStr, _tool_version_field("Moving Waza release selector, e.g. 'latest'")
         ]
         taplo_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
@@ -506,20 +506,14 @@ class FlextInfraConfigModels:
             return self
 
     class GithubActionPinSpec(_ConfigContract):
-        """One immutable GitHub Action reference from the codegen catalog."""
+        """One GitHub Action reference from the codegen catalog."""
 
         repository: Annotated[
             t.NonEmptyStr, m.Field(description="GitHub owner/repository action name")
         ]
         version: Annotated[
-            t.NonEmptyStr, m.Field(description="Human-readable upstream release tag")
-        ]
-        sha: Annotated[
             t.NonEmptyStr,
-            m.Field(
-                pattern=r"^[0-9a-f]{40}$",
-                description="Immutable upstream action commit",
-            ),
+            m.Field(description="Upstream floating release tag the action rides"),
         ]
 
     class CiPrivateSubmoduleDeployKeySpec(_ConfigContract):
@@ -2614,16 +2608,16 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, _tool_version_field("Compatible uv major.minor line")
         ]
         qlty_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact attested qlty release")
+            t.NonEmptyStr, _tool_version_field("Moving qlty release selector, e.g. 'latest'")
         ]
         node_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Compatible Node.js major.minor line")
         ]
         jscpd_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact jscpd duplication engine release")
+            t.NonEmptyStr, _tool_version_field("Moving jscpd release selector, e.g. 'latest'")
         ]
         waza_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact Waza governance engine release")
+            t.NonEmptyStr, _tool_version_field("Moving Waza release selector, e.g. 'latest'")
         ]
         taplo_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")

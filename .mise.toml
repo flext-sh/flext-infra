@@ -32,8 +32,8 @@ gitleaks = "latest"
 "aqua:boyter/scc" = "latest"
 kubeconform = "latest"
 node = "26.8"
-"npm:jscpd" = "5.1.2"
-"github:microsoft/waza" = "0.38.7"
+"npm:jscpd" = "latest"
+"github:microsoft/waza" = "latest"
 # Go runtime for the Go projects in this workspace.
 go = "1.26"
 # qlty ships no mise registry alias; the github backend selector is the only
@@ -42,7 +42,7 @@ go = "1.26"
 # selected by setup/gen, so installation never silently requires a personal
 # GitHub credential.
 [tools."github:qltysh/qlty"]
-version = "0.642.0"
+version = "latest"
 github_attestations = false
 [tools."github:marlon-costa-dc/beads"]
 version = "latest"
