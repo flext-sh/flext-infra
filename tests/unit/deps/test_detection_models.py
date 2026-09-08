@@ -7,9 +7,10 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import cast
 
+from flext_tests import tm
+
 from flext_infra import m, t
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-from flext_tests import tm
 
 
 class TestsFlextInfraDepsDetectionModels:

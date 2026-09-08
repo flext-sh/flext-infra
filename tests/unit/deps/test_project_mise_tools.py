@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import m
 from flext_tests import tm
+
+from flext_infra import m
 from tests import u
 
 _RENDERED = '[tools]\npython = "3.13"\n'

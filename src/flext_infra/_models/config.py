@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
+
 from flext_infra import t
 
 from .._constants.codegen_project import FlextInfraConstantsCodegenProject
@@ -2208,8 +2209,7 @@ class FlextInfraConfigModels:
             m.Field(description="Union of project and required custom bead types"),
         ] = ()
         dolt_mode: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="From toolchain.beads.dolt_mode"),
+            t.NonEmptyStr, m.Field(description="From toolchain.beads.dolt_mode")
         ]
         export_auto: Annotated[
             bool, m.Field(description="From toolchain.beads.export_auto")
@@ -2218,8 +2218,7 @@ class FlextInfraConfigModels:
             bool, m.Field(description="From toolchain.beads.backup_enabled")
         ]
         dolt_disable_event_flush: Annotated[
-            bool,
-            m.Field(description="From toolchain.beads.dolt_disable_event_flush"),
+            bool, m.Field(description="From toolchain.beads.dolt_disable_event_flush")
         ]
 
     class MiseTomlRenderSpec(ToolchainSpec):

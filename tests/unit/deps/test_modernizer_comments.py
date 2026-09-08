@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from flext_tests import tm
+
 from flext_infra import c, u
 from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
-from flext_tests import tm
 
 
 def _owned_marker(section: str) -> str:

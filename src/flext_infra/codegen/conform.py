@@ -1754,19 +1754,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 and managed.path.as_posix() not in contract.destinations
             ):
                 continue
+            pyproject_blocked = managed.path == Path(c.Infra.PYPROJECT_FILENAME) and (
+                not contract.pyproject
+                or (
+                    workspace.project is None
+                    and profile is c.Infra.MakeProfile.WORKSPACE
+                )
+            )
             if (
                 managed.policy in {"delegated", "manual"}
                 or managed.path == Path(c.Infra.CUSTOM_MAKE_FILENAME)
-                or (
-                    managed.path == Path(c.Infra.PYPROJECT_FILENAME)
-                    and (
-                        not contract.pyproject
-                        or (
-                            workspace.project is None
-                            and profile is c.Infra.MakeProfile.WORKSPACE
-                        )
-                    )
-                )
+                or pyproject_blocked
             ):
                 continue
             entries = tuple(
@@ -2467,9 +2465,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         homepage = pep621.urls.homepage or repository.url.removesuffix(".git")
         documentation = pep621.urls.documentation or homepage
         runtime_names = {
-            name
-            for item in pep621.dependencies
-            if (name := u.Infra.dep_name(item))
+            name for item in pep621.dependencies if (name := u.Infra.dep_name(item))
         }
         profiles = codegen.scaffold.project.dependency_profiles
         upstream = next(
@@ -2531,9 +2527,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 repository, codegen
             )
             if repository_provider.failure:
-                return r[m.Infra.ProjectRenderContext].from_failure(
-                    repository_provider
-                )
+                return r[m.Infra.ProjectRenderContext].from_failure(repository_provider)
             live_name = metadata.value.package_name
             class_stem = u.derive_class_stem(live_name)
             project = m.Infra.ProjectSpec(
@@ -2548,7 +2542,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 author_name="FLEXT Team",
                 author_email="team@flext.dev",
                 upstream=(
-                    config.Infra.codegen.scaffold.project.dependency_profiles[0].upstream
+                    config.Infra.codegen.scaffold.project.dependency_profiles[
+                        0
+                    ].upstream
                 ),
                 homepage=f"{repository_provider.value.base_url.rstrip('/')}/",
                 documentation=f"{repository_provider.value.base_url.rstrip('/')}/",

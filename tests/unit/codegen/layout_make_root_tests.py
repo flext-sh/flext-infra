@@ -12,6 +12,7 @@ import shutil
 from pathlib import Path
 
 from flext_tests import tm
+
 from tests import u
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]

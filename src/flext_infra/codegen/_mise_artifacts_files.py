@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 from flext_cli import m as cli_m
+
 from flext_core import r
 from flext_infra import c, m, u
 

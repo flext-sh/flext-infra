@@ -7,10 +7,10 @@ import sys
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import u
 from flext_infra.codegen.mise_artifacts_lock import FlextInfraMiseLock
-from flext_tests import tm
 from tests.unit.codegen.mise_generation_lock_fixture import (
     lock_identity,
     lock_repository,

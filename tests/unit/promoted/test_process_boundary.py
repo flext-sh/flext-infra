@@ -6,7 +6,6 @@ import os
 import select
 import signal
 import sys
-from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
@@ -142,6 +141,7 @@ def test_run_streams_stdout_and_stderr_before_child_completion(tmp_path: Path) -
     pid = _spawn_probe(command, env=env, stdout=stdout_write, stderr=stderr_write)
     os.close(stdout_write)
     os.close(stderr_write)
+    reaped = False
     try:
         ready, _, _ = select.select((ready_read,), (), (), _BARRIER_TIMEOUT)
         if not ready:
@@ -156,14 +156,16 @@ def test_run_streams_stdout_and_stderr_before_child_completion(tmp_path: Path) -
         os.write(release_write, b"1")
         if _wait_status(pid) != 0:
             pytest.fail("successful child exit status was not preserved")
+        reaped = True
     finally:
         os.close(ready_read)
         os.close(release_write)
         os.close(stdout_read)
         os.close(stderr_read)
-        with suppress(ProcessLookupError):
+        if not reaped:
+            # Failure path: the child is provably still alive, so the kill
+            # and the reap must succeed; an OS contradiction escapes loud.
             os.kill(pid, signal.SIGKILL)
-        with suppress(ChildProcessError):
             os.waitpid(pid, 0)
 
 
@@ -193,6 +195,7 @@ def test_run_sigint_terminates_child_without_residual_process(tmp_path: Path) ->
     env["READY_FIFO"] = str(ready_fifo)
     ready_read = os.open(ready_fifo, os.O_RDONLY | os.O_NONBLOCK)
     pid = _spawn_probe(command, env=env, process_group=True)
+    reaped = False
     try:
         ready, _, _ = select.select((ready_read,), (), (), _BARRIER_TIMEOUT)
         if not ready:
@@ -205,11 +208,13 @@ def test_run_sigint_terminates_child_without_residual_process(tmp_path: Path) ->
             pytest.fail("SIGINT was normalized to success")
         with pytest.raises(ProcessLookupError):
             os.kill(child, 0)
+        reaped = True
     finally:
         os.close(ready_read)
-        with suppress(ProcessLookupError):
+        if not reaped:
+            # Failure path: the group is provably still alive, so the kill
+            # and the reap must succeed; an OS contradiction escapes loud.
             os.killpg(pid, signal.SIGKILL)
-        with suppress(ChildProcessError):
             os.waitpid(pid, 0)
 
 

@@ -14,6 +14,7 @@ from types import MappingProxyType
 from typing import Annotated, Literal
 
 from flext_cli import m
+
 from flext_infra import t
 
 from .mixins import FlextInfraModelsMixins as mm

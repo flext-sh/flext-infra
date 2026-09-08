@@ -6,8 +6,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_infra import m, r
 from flext_tests import tm
+
+from flext_infra import m, r
 from tests import TestsFlextInfraUtilities as u, p, t
 
 if TYPE_CHECKING:

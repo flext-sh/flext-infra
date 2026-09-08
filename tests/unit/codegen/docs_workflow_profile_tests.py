@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from flext_infra import config, m
 from flext_tests import tm
+
+from flext_infra import config, m
 
 _DOCS_DESTINATION = ".github/workflows/docs.yml"
 _CI_DESTINATION = ".github/workflows/ci.yml"

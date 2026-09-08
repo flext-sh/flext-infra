@@ -7,10 +7,11 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-from flext_tests import tm
 from tests import m, p, t
 
 if TYPE_CHECKING:

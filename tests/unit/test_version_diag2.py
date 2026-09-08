@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_tests import tm
+
 import flext_infra as infra_pkg
 from flext_infra import u
-from flext_tests import tm
 
 
 def test_version_full_import() -> None:

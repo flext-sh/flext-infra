@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import cli
 from flext_tests import tm
+
 from tests import TestsFlextInfraUtilities as u, c, m
 
 if TYPE_CHECKING:
