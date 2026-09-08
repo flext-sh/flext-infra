@@ -26,7 +26,7 @@ Infra:
       uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
       # Supply-chain cooldown SSOT shared by uv and generated update policy.
       dependency_cooldown_days: 7
-      dependency_cooldown_exclusions: [cryptography, torch, ruff] ae66a7070 (fix(deps): exempt ruff from the supply-chain cooldown)
+      dependency_cooldown_exclusions: [cryptography, torch, ruff]
       dependency_cooldown_overrides: {}
       # Moving selectors consumed by generated .mise.toml and CI. The fleet
       # runs unlocked: setup converges on the newest published release.
