@@ -1075,6 +1075,7 @@ Infra:
           - pyrefly>=1.2.0
           - pyright>=1.1.411
           - pytest>=9.1.1
+          - pytest-randomly>=4.1.0
           - pytest-testmon>=2.2.0
           - ruff>=0.16.5
           - rumdl>=0.2.62
