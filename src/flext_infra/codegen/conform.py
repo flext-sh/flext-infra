@@ -1789,7 +1789,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"managed file requires exactly one render template: {managed.path}"
                 )
             entry = entries[0]
-            u.Cli.emit_raw(f"  template {entry.source} -> {entry.destination}\n")
             relative = Path(entry.destination)
             if relative.is_absolute() or ".." in relative.parts:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
