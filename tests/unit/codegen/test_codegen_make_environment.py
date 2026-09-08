@@ -374,7 +374,7 @@ class TestsCodegenMakeEnvironment:
         gates = ",".join(config.Infra.codegen.make.check_gates_default)
         tm.that(makefile, has=f'gates="{gates}"')
         tm.that(
-            '$(PROJECT_FLEXT_INFRA) check run --repository "$(PROJECT_ROOT)" '
+            '$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" '
             '--gates "$$gates" --projects .' in makefile,
             eq=True,
         )

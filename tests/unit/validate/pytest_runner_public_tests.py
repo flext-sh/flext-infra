@@ -41,6 +41,7 @@ class TestsFlextInfraPytestRunner:
         return tm.ok(u.Cli.files_read_text(reports_root / latest_name / "summary.txt"))
 
     @pytest.mark.slow
+    @pytest.mark.slow
     def test_complete_suite_persists_cache_and_zero_diagnostic_evidence(
         self, cached_runner_project: Path
     ) -> None:

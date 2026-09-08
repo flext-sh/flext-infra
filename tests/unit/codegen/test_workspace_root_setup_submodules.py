@@ -39,10 +39,16 @@ def _run_setup(workspace: Path, env: dict[str, str]) -> p.Cli.CommandOutput:
 def _render_repository_root_makefile(tmp_path: Path) -> str:
     root_repository = test_u.Tests.repository_ref("flext")
     member = test_u.Tests.repository_ref(
-        "flext-core", path=Path("flext-core"), role=c.Infra.RepositoryRole.STANDALONE
+        "flext-core", path=Path("flext-core"), role=c.Infra.MakeProfile.STANDALONE
     )
     workspace = m.Infra.WorkspaceSpec(
         name="flext",
+        beads=m.Infra.BeadsProjectSpec(
+            version=1,
+            workspace="flext",
+            database="flext",
+            issue_prefix="flext",
+        ),
         repository=root_repository,
         project=test_u.Tests.project_spec("flext"),
         subprojects=(member,),
