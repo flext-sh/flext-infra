@@ -77,6 +77,8 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
         posix = str(path).replace("\\", "/")
         if any(frag in posix for frag in c.Infra.BOUNDARY_SELF_FILES):
             return []
+        if any(frag in posix for frag in c.Infra.BOUNDARY_SKIP_PATH_FRAGMENTS):
+            return []
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         click_ok = any(frag in posix for frag in c.Infra.BOUNDARY_CLICK_FILES)
         for lib, regex, replacement in c.Infra.BOUNDARY_BANNED_RULES:
@@ -94,18 +96,30 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
             issues.append(
                 self._issue(path, "imports tomllib/tomlkit — use cli.read_toml_file")
             )
-        issues.extend(self._concrete_cli_issues(path, text, posix))
+        issues.extend(self._ast_boundary_issues(path, text, posix))
         return issues
 
-    def _concrete_cli_issues(
+    def _ast_boundary_issues(
         self, path: Path, text: str, posix: str
     ) -> t.SequenceOf[m.Infra.Issue]:
-        """Flag concrete FlextCli<X> imports outside src extension files."""
-        if "/src/" in posix and path.name in c.Infra.BOUNDARY_EXTENSION_FILES:
-            return ()
+        """Flag live json/yaml/csv calls and concrete FlextCli imports via AST."""
         tree = ast.parse(text, filename=str(path))
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        attr_seen: set[str] = set()
         for statement in ast.walk(tree):
+            if isinstance(statement, ast.Attribute) and isinstance(
+                statement.value, ast.Name
+            ):
+                owner = statement.value.id
+                for module_name, attrs, message in c.Infra.BOUNDARY_ATTR_RULES:
+                    if owner != module_name or statement.attr not in attrs:
+                        continue
+                    if message in attr_seen:
+                        continue
+                    attr_seen.add(message)
+                    issues.append(self._issue(path, message))
+            if "/src/" in posix and path.name in c.Infra.BOUNDARY_EXTENSION_FILES:
+                continue
             if not (
                 isinstance(statement, ast.ImportFrom)
                 and statement.module == "flext_cli"

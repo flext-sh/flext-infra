@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
+from flext_infra import c, config, u
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -21,7 +21,14 @@ class FlextInfraRefactorCensusApplyFormattingMixin:
         if not existing:
             return
         check_result = u.Cli.run_raw(
-            ["ruff", "check", "--fix", "--select", "I,W", *existing],
+            [
+                "ruff",
+                "check",
+                *config.Infra.codegen.make.ruff.lint_fix,
+                "--select",
+                "I,W",
+                *existing,
+            ],
             timeout=c.Infra.TIMEOUT_SHORT,
         )
         if check_result.failure:
@@ -31,7 +38,13 @@ class FlextInfraRefactorCensusApplyFormattingMixin:
             )
             raise RuntimeError(msg)
         format_result = u.Cli.run_raw(
-            ["ruff", "format", *existing], timeout=c.Infra.TIMEOUT_SHORT
+            [
+                "ruff",
+                "format",
+                *config.Infra.codegen.make.ruff.format_apply,
+                *existing,
+            ],
+            timeout=c.Infra.TIMEOUT_SHORT,
         )
         if format_result.failure:
             msg = (

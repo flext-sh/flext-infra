@@ -133,6 +133,16 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if normalized.failure:
             return r[str].from_failure(normalized)
+        git_sources_result = cls._sync_internal_git_sources(
+            source,
+            project_name=project_name,
+            workspace=workspace,
+            workspace_mode=workspace_mode,
+            repositories=(workspace.repository, *workspace.subprojects),
+            providers=providers,
+        )
+        if git_sources_result.failure:
+            return r[str].from_failure(git_sources_result)
         cls._remove_legacy_tooling(source)
         typecheck_paths = cls._sync_typecheck_paths(source)
         if typecheck_paths.failure:
@@ -223,6 +233,16 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if sources_result.failure:
             return r[str].from_failure(sources_result)
+        git_sources_result = cls._sync_internal_git_sources(
+            source,
+            project_name=project_name,
+            workspace=workspace,
+            workspace_mode=workspace_mode,
+            repositories=(workspace.repository, *workspace.subprojects),
+            providers=providers,
+        )
+        if git_sources_result.failure:
+            return r[str].from_failure(git_sources_result)
         return cls._rendered_conformed_document(
             source,
             project_name=project_name,
@@ -362,13 +382,89 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if provider.failure:
             return r[str].from_failure(provider)
-        git_url = cls._git_requirement_url(reference.url)
-        if git_url.failure:
-            return r[str].from_failure(git_url)
-        canonical = f"{head} @ {git_url.value}@{provider.value.branch}"
+        # The distribution renders as a plain name; the mutable branch source
+        # is declared once in [tool.uv.sources] by _sync_internal_git_sources.
+        # An inline PEP 508 ``@<branch>`` URL freezes the first resolved commit
+        # in uv.lock forever (flext-62fbu): uv re-resolves only the explicit
+        # branch source form, so every lock upgrade tracks the declared tip.
         return r[str].ok(
-            f"{canonical}; {marker_text}" if separator and marker_text else canonical
+            f"{head}; {marker_text}" if separator and marker_text else head
         )
+
+    @classmethod
+    def _sync_internal_git_sources(
+        cls,
+        document: t.Cli.TomlDocument,
+        *,
+        project_name: str,
+        workspace: p.Infra.WorkspaceSpec,
+        workspace_mode: c.Infra.MakeProfile,
+        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
+    ) -> p.Result[bool]:
+        """Declare every internal git source as a uv branch-tracked source.
+
+        The workspace root keeps its local overlay only. A publishable member
+        declares each internal distribution once under ``[tool.uv.sources]``
+        with the repository URL and the configured branch: the same pyproject
+        stays resolvable standalone and the lock re-resolves the branch tip on
+        every upgrade (ADR-003 declared-source contract, flext-62fbu).
+        """
+        if cls._is_workspace_context_root(
+            project_name=project_name,
+            workspace=workspace,
+            workspace_mode=workspace_mode,
+        ):
+            return r[bool].ok(True)
+        internal_names: set[str] = set()
+        project = u.Cli.toml_table_child(document, c.Infra.PROJECT)
+        requirement_groups: list[t.JsonValue] = []
+        if project is not None:
+            requirement_groups.append(u.Cli.toml_value(project, c.Infra.DEPENDENCIES))
+            optional = u.Cli.toml_table_child(project, c.Infra.OPTIONAL_DEPENDENCIES)
+            if optional is not None:
+                requirement_groups.extend(optional.values())
+        dependency_groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
+        if dependency_groups is not None:
+            requirement_groups.extend(
+                u.Cli.toml_value(
+                    u.Cli.toml_mapping_ensure_table(
+                        document, c.Infra.DEPENDENCY_GROUPS
+                    ),
+                    str(group),
+                )
+                for group in dependency_groups
+            )
+        for group in requirement_groups:
+            for requirement in u.Cli.toml_as_string_list(group):
+                name = FlextInfraUtilitiesDependencies.dep_name(requirement)
+                if name is not None and name.startswith("flext-"):
+                    internal_names.add(name)
+        if not internal_names:
+            return r[bool].ok(True)
+        tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
+        uv = u.Cli.toml_ensure_table(tool, "uv")
+        sources = u.Cli.toml_ensure_table(uv, "sources")
+        for name in sorted(internal_names):
+            reference_result = cls._repository_reference(
+                name, repositories=repositories, providers=providers
+            )
+            if reference_result.failure:
+                return r[bool].from_failure(reference_result)
+            provider_result = FlextInfraUtilitiesRepository.repository_provider(
+                reference_result.value, providers
+            )
+            if provider_result.failure:
+                return r[bool].from_failure(provider_result)
+            u.Cli.toml_sync_value(
+                sources,
+                name,
+                {
+                    "git": reference_result.value.url,
+                    "branch": provider_result.value.branch,
+                },
+            )
+        return r[bool].ok(True)
 
     @staticmethod
     def _repository_reference(
@@ -404,15 +500,6 @@ class FlextInfraUtilitiesPyprojectConform:
                 f"repository catalog conflicts for distribution: {distribution}"
             )
         return r.ok(reference)
-
-    @staticmethod
-    def _git_requirement_url(url: str) -> p.Result[str]:
-        """Render the configured HTTPS clone URL as a PEP 508 Git URL."""
-        if not url.startswith("https://"):
-            return r[str].fail(
-                f"repository URL must use the configured HTTPS transport: {url}"
-            )
-        return r[str].ok(f"git+{url}")
 
     @classmethod
     def _sync_dependency_groups(
@@ -873,6 +960,55 @@ class FlextInfraUtilitiesPyprojectConform:
                     f"{dependency_name}"
                 )
         return r[bool].ok(True)
+
+    @classmethod
+    def overlay_preserved(
+        cls,
+        rendered: str,
+        live: str | None,
+        *,
+        preserve_project_keys: t.StrSequence | None = None,
+        managed_tool_tables: t.StrSequence | None = None,
+    ) -> p.Result[str]:
+        """Keep live CUSTOM project keys and unmanaged tool tables."""
+        if live is None:
+            return r[str].ok(rendered)
+        if preserve_project_keys is None or managed_tool_tables is None:
+            from flext_infra import config as infra_config
+
+            spec = next(
+                (
+                    item
+                    for item in infra_config.Infra.codegen.managed_files
+                    if item.path.as_posix() == c.Infra.PYPROJECT_FILENAME
+                ),
+                None,
+            )
+            if spec is None:
+                return r[str].fail("pyproject.toml is missing from managed_files")
+            preserve_project_keys = spec.preserve_project_keys
+            managed_tool_tables = spec.managed_tool_tables
+        rendered_payload = u.Cli.toml_mapping_from_text(rendered)
+        live_payload = u.Cli.toml_mapping_from_text(live)
+        if rendered_payload is None:
+            return r[str].fail("rendered pyproject is not valid TOML")
+        if live_payload is None:
+            return r[str].fail("live pyproject is not valid TOML")
+        merged = dict(rendered_payload)
+        project = dict(u.Cli.toml_mapping_child(merged, c.Infra.PROJECT) or {})
+        live_project = u.Cli.toml_mapping_child(live_payload, c.Infra.PROJECT) or {}
+        for key in preserve_project_keys:
+            if key in live_project:
+                project[key] = live_project[key]
+        merged[c.Infra.PROJECT] = project
+        tool = dict(u.Cli.toml_mapping_child(merged, c.Infra.TOOL) or {})
+        live_tool = u.Cli.toml_mapping_child(live_payload, c.Infra.TOOL) or {}
+        managed = frozenset(managed_tool_tables)
+        tool.update(
+            {key: value for key, value in live_tool.items() if key not in managed}
+        )
+        merged[c.Infra.TOOL] = tool
+        return r[str].ok(u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(merged)))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesPyprojectConform"]

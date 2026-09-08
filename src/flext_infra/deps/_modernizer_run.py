@@ -200,14 +200,17 @@ class FlextInfraPyprojectModernizerRunMixin:
         # (dependency_profiles) instead of per-pyproject payloads. This is the
         # flext-gzfd2 cutover: single owner for floors.
         if self.rewrite_constraints:
-            profile_changes = FlextInfraDepsFloorProfileWriter.rewrite_profiles_from_lock(
-                locked_versions=locked_versions,
-                internal_names=internal_names,
-            )
-            if profile_changes:
-                u.Cli.info("deps: dependency_profiles floors updated from lock")
-                for change in profile_changes:
-                    u.Cli.info(f"  - {change}")
+            if not dry_run:
+                profile_changes = (
+                    FlextInfraDepsFloorProfileWriter.rewrite_profiles_from_lock(
+                        locked_versions=locked_versions, internal_names=internal_names
+                    )
+                )
+                if profile_changes:
+                    u.Cli.info("deps: dependency_profiles floors updated from lock")
+                    for change in profile_changes:
+                        u.Cli.info(f"  - {change}")
+            return 0
         violations: MutableMapping[str, t.StrSequence] = {}
         document_states: t.MutableSequenceOf[m.Infra.PyprojectDocumentState] = []
         invalid_paths: t.MutableSequenceOf[Path] = []
