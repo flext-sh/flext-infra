@@ -902,6 +902,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 root=root,
                 make_profile=current_repository.role,
                 beads=workspace.beads,
+                project=workspace.project,
                 canonical_project_name=current_repository.distribution,
                 baseline_branch=baseline_result.value,
                 baseline_reference=(
@@ -1811,6 +1812,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         tooling_result = modernizer.conform_source(
             prepared_result.value,
             path=pyproject,
+            root_modules=(
+                target.project.root_modules if target.project is not None else ()
+            ),
+            root_packages=(
+                target.project.root_packages if target.project is not None else ()
+            ),
             generated_python_roots=generated_python_roots,
             analysis_exclusions=analysis_exclusions,
         )

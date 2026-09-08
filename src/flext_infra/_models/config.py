@@ -1747,6 +1747,15 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.RepositoryState,
             m.Field(description="Repository lifecycle state"),
         ] = FlextInfraConstantsCodegenProject.RepositoryState.ACTIVE
+        checkout: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Physical checkout topology of the declared tree; "
+                    "'root' marks the workspace's own primary checkout"
+                )
+            ),
+        ] = "root"
         provider: Annotated[
             t.NonEmptyStr,
             m.Field(description="Provider key from the codegen configuration"),
@@ -1788,6 +1797,16 @@ class FlextInfraConfigModels:
                 description=(
                     "Repository-scoped packages explicitly exempted from the "
                     "fleet dependency cooldown"
+                )
+            ),
+        ] = ()
+        duplication_trees: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Project-relative directory trees the duplication gate "
+                    "must scan besides the canonical src/tests scope (e.g. "
+                    "declared Helm charts)"
                 )
             ),
         ] = ()
@@ -1897,6 +1916,16 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.BeadsProjectSpec,
             m.Field(description="Repository-local Beads identity"),
         ]
+        project: Annotated[
+            FlextInfraConfigModels.ProjectSpec | None,
+            m.Field(
+                description=(
+                    "Declared project metadata of the manifest, when the "
+                    "repository declares one; carries the distribution roots "
+                    "the packaging phase must prove present"
+                )
+            ),
+        ] = None
         canonical_project_name: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical PEP 621 project name")
         ]
@@ -2527,7 +2556,7 @@ class FlextInfraConfigModels:
         ] = False
         beads: Annotated[
             FlextInfraConfigModels.BeadsProjectSpec,
-            m.Field(description="Explicit repository-local Beads identity"),
+            m.Field(description="Repository-local Beads identity"),
         ]
         canonical_project_name: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical PEP 621 project name")

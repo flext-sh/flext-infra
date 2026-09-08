@@ -112,22 +112,56 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         return self._load_report(report_dir, result)
 
     def _render_scope_dirs(self) -> p.Result[t.StrSequence]:
-        """Every discovered workspace project's existing ``src``/``tests`` trees.
+        """Every discovered project's canonical scope plus declared extra trees.
 
         Reuses the same workspace-topology discovery every other check-scoping
         path uses (``u.Infra.resolve_projects``) — never a second hardcoded
-        project list.
+        project list. A project's manifest may declare additional
+        ``repository.duplication_trees`` (e.g. Helm charts); those declared
+        trees join the scan when they exist on disk.
         """
         discovered = u.Infra.resolve_projects(self._repository_root, ())
         if discovered.failure:
             return r[t.StrSequence].from_failure(discovered)
+        declared_trees = self._declared_duplication_trees()
+        if declared_trees.failure:
+            return r[t.StrSequence].from_failure(declared_trees)
         return r[t.StrSequence].ok(
             tuple(
                 str(project.path / candidate)
                 for project in discovered.value
-                for candidate in self._existing_check_dirs(project.path)
+                for candidate in (
+                    *self._existing_check_dirs(project.path),
+                    *(
+                        tree
+                        for tree in declared_trees.value
+                        if (project.path / tree).is_dir()
+                    ),
+                )
             )
         )
+
+    def _declared_duplication_trees(self) -> p.Result[t.StrSequence]:
+        """Read ``repository.duplication_trees`` from the governed manifest."""
+        manifest_path = (
+            self._repository_root
+            / c.CONFIG_DIR_NAME
+            / c.Infra.WORKSPACE_MANIFEST_FILENAME
+        )
+        if not manifest_path.is_file():
+            return r[t.StrSequence].ok(())
+        loaded = u.Cli.config_load(manifest_path, expand_env=False)
+        if loaded.failure:
+            return r[t.StrSequence].fail(
+                f"invalid workspace manifest ({manifest_path}): {loaded.error}"
+            )
+        try:
+            manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
+        except c.ValidationError as exc:
+            return r[t.StrSequence].fail_op(
+                f"workspace manifest model validation ({manifest_path})", exc
+            )
+        return r[t.StrSequence].ok(tuple(manifest.repository.duplication_trees))
 
     def _scope_paths(self) -> t.StrSequence:
         """Resolve canonical source, test, config, and template roots once."""

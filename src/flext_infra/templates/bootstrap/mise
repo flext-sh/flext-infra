@@ -20,7 +20,7 @@ __mise_bootstrap() {
     else
       mise_version="$(curl -fsSI -o /dev/null -w '%{redirect_url}' https://github.com/jdx/mise/releases/latest 2>/dev/null || true)"
       case $mise_version in
-        "*/tag/"*) mise_version="${mise_version##*/tag/}" ; mise_version="${mise_version#v}" ;;
+        */tag/*) mise_version="${mise_version##*/tag/}" ; mise_version="${mise_version#v}" ;;
         *) echo "mise bootstrap: could not resolve the latest mise release; set MISE_VERSION to pin one" >&2; exit 1 ;;
       esac
     fi

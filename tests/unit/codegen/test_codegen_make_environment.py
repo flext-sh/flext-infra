@@ -229,7 +229,7 @@ class TestsCodegenMakeEnvironment:
         )
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv ")
-        tm.that(commands[1], has="sync --frozen --project")
+        tm.that(commands[1], has="sync --project")
         if profile == c.Infra.MakeProfile.WORKSPACE:
             tm.that(commands[2], has="pip check")
 
@@ -368,18 +368,19 @@ class TestsCodegenMakeEnvironment:
             eq=True,
         )
         tm.that('TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp"' in makefile, eq=True)
-        # Every gate the typed owner schedules by default reaches the runtime in
-        # ONE `check run --gates` invocation. The Make layer no longer publishes
-        # a per-gate selector, so the gate list itself is the reachability proof.
+        # Every gate the typed owner schedules by default reaches the runtime
+        # in ONE `check run --gates` invocation. The Make layer no longer
+        # publishes a per-gate selector, so the gate list itself is the
+        # reachability proof.
         gates = ",".join(config.Infra.codegen.make.check_gates_default)
         tm.that(makefile, has=f'gates="{gates}"')
         tm.that(
-            '$(PROJECT_FLEXT_INFRA) check run --repository "$(PROJECT_ROOT)" '
+            '$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" '
             '--gates "$$gates" --projects .' in makefile,
             eq=True,
         )
         tm.that("$(UV_RUN) actionlint" in makefile, eq=False)
-        tm.that('$(UV) sync --frozen --project "$(PROJECT_ROOT)"' in makefile, eq=True)
+        tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         # Bytecode still lands in the project state root and never inside the
         # checkout. The Makefile stopped exporting it because the shell owns
@@ -429,10 +430,16 @@ class TestsCodegenMakeEnvironment:
         tm.that(makefile, has="_builtin-check: _builtin_check_all")
         tm.that(makefile, has="_builtin_check_all: _builtin_require_environment")
         scheduled = ",".join(config.Infra.codegen.make.check_gates_default)
-        tm.that(makefile, has=f'gates="{scheduled}"')
-        for gate in config.Infra.codegen.make.check_gates_default:
-            tm.that(scheduled.split(","), has=gate)
-        tm.that(makefile, has='--gates "$$gates" --projects .')
+        if profile == c.Infra.MakeProfile.WORKSPACE:
+            # A workspace root schedules gates through the orchestrator; the
+            # declared list reaches each member's own `check run` owner from
+            # the same config SSOT, so the root Makefile embeds no gate list.
+            tm.that(makefile, has="$(WORKSPACE_ORCHESTRATE) --verb check")
+        else:
+            tm.that(makefile, has=f'gates="{scheduled}"')
+            for gate in config.Infra.codegen.make.check_gates_default:
+                tm.that(scheduled.split(","), has=gate)
+            tm.that(makefile, has='--gates "$$gates" --projects .')
 
     def test_standalone_check_executes_its_declared_default_gates(
         self, tmp_path: Path
@@ -599,7 +606,7 @@ class TestsCodegenMakeEnvironment:
                 '"SETUP_DIRENV=$$direnv_executable"'
             ),
             '$(UV) venv "$(RUNTIME_VENV)"',
-            '$(UV) sync --frozen --project "$(PROJECT_ROOT)"',
+            '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
             'git -C "$$superproject" submodule update --init -- "$$child_path"',
             'git -C "$$child_root" branch --show-current',

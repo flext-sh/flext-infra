@@ -71,6 +71,16 @@ class FlextInfraConstantsCodegen(
     "Owner-private mode required for the generation lock."
     MISE_BOOTSTRAP_SEED_DIRECTORY: Final[str] = "templates/bootstrap"
     "Package-local bootstrap seed directory for the authenticated launcher."
+    MISE_UNLOCKED_RESOLUTION_URL: Final[str] = (
+        "https://github.com/jdx/mise/releases/latest"
+    )
+    "Upstream resolution endpoint the unlocked launcher must carry."
+    MISE_UNLOCKED_FAIL_LOUD_CLAUSE: Final[str] = (
+        "could not resolve the latest mise release"
+    )
+    "Fail-loud clause emitted when the releases/latest resolution fails."
+    MISE_UNLOCKED_CHECKSUM_URI: Final[str] = "SHASUMS256.txt"
+    "Release checksum payload the unlocked launcher always verifies."
     MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE: Final[str] = "MISE_DATA_DIR"
     "Required caller-owned persistent root for generated Mise setup."
     MISE_BOOTSTRAP_FIXED_ENVIRONMENT: Final[t.StrPairSequence] = (

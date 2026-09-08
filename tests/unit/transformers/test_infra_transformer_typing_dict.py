@@ -87,7 +87,7 @@ class TestsFlextInfraTypingDictDeactivated:
             probe = SimpleNamespace(file_path=str(module))
             adapter = FlextInfraTransformerFixerAdapter(tmp_path)
             ctx = m.Infra.FixEnforcementCommand(
-                workspace=str(tmp_path), apply=True, check_after=False
+                repository_root=tmp_path, apply=True, check_after=False
             )
             result = adapter.fix_project(tmp_path, ((rule, probe),), ctx)
             tm.that(module.read_text(encoding="utf-8"), eq=_CORRUPTION_PROBE_SOURCE)

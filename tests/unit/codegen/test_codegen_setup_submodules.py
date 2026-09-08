@@ -36,7 +36,13 @@ class TestsCodegenSetupSubmodules:
 
     @classmethod
     def _generated_project(cls, root: Path, template: Path) -> None:
-        shutil.copytree(template, root)
+        # The scaffolded template now carries the framework-initialized git
+        # root (conform provisions an unpublished repository); a scenario
+        # model re-initializes its own topology, so it must not inherit the
+        # template's origin.
+        shutil.copytree(
+            template, root, ignore=shutil.ignore_patterns(c.Infra.GIT_DIR)
+        )
         test_u.Tests.initialize_git_repo(root)
 
     @staticmethod

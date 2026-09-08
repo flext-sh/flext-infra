@@ -44,7 +44,7 @@ class TestDuplicationGate:
 
         tm.that(execution.result.passed, eq=False)
         tm.that(len(execution.issues), eq=1)
-        tm.that(execution.issues[0].message, has="empty JSON report")
+        tm.that(execution.issues[0].message, has="the scanned scope is empty")
         tm.that(execution.issues[0].severity, eq=str(c.Infra.GateSeverity.ERROR.value))
 
     @staticmethod
@@ -81,9 +81,10 @@ class TestDuplicationGate:
             "      labels:\n"
             "        app: fixture\n"
         )
-        (root / "charts" / "values.yaml").write_text(
-            chart_block + "\n---\n" + chart_block, encoding="utf-8"
-        )
+        (root / "charts" / "values.yaml").write_text(chart_block, encoding="utf-8")
+        nested = root / "charts" / "workers" / "prod"
+        nested.mkdir(parents=True)
+        (nested / "values.yaml").write_text(chart_block, encoding="utf-8")
         if declare_trees:
             manifest = root / "config" / "workspace.yaml"
             manifest.parent.mkdir(parents=True, exist_ok=True)
@@ -99,6 +100,7 @@ class TestDuplicationGate:
                 "  path: .\n"
                 "  role: standalone\n"
                 "  state: active\n"
+                "  kind: internal_flext\n"
                 "  checkout: root\n"
                 "  codegen: none\n"
                 "  package: true\n"

@@ -31,11 +31,11 @@ gitleaks = "latest"
 # which keeps the offline setup/gen/check/test path source-build-free.
 "aqua:boyter/scc" = "latest"
 kubeconform = "latest"
-node = "26.8"
+node = "latest"
 "npm:jscpd" = "latest"
 "github:microsoft/waza" = "latest"
 # Go runtime for the Go projects in this workspace.
-go = "1.26"
+go = "latest"
 # qlty ships no mise registry alias; the github backend selector is the only
 # resolvable form (bare 'qlty' fails mise install: 'not found in registry').
 # GitHub Artifact Attestations is an external-token capability and is not

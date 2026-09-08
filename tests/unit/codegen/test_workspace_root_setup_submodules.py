@@ -159,7 +159,7 @@ class TestsWorkspaceRootSetupSubmodules:
 
         tm.that(rendered, has="_builtin_setup_environment: _builtin_setup_submodules")
         tm.that(rendered, has="submodule update --init --")
-        tm.that(rendered, has='$(UV) sync --frozen --project "$(PROJECT_ROOT)"')
+        tm.that(rendered, has='$(UV) sync --project "$(PROJECT_ROOT)"')
         tm.that(rendered, lacks="submodule update --init --recursive")
 
     def test_make_setup_initializes_once_then_only_validates_present_checkout(
