@@ -910,6 +910,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     else f"refs/remotes/origin/{baseline_result.value}"
                 ),
                 ci_enabled=True,
+                gascity_enabled=workspace.gascity_enabled,
                 external_dependency_paths=workspace.external_dependency_paths,
                 technical_branch_patterns=(
                     config_spec.branch_policy.technical_branch_patterns
@@ -2238,7 +2239,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             )
         if destination in {".mise.toml", ".python-version"}:
-            return r[p.Model].ok(codegen.toolchain)
+            # Computed toolchain fields are projections, not inputs: filter the
+            # dump to the render spec's declared fields before construction.
+            toolchain_data = {
+                field_name: value
+                for field_name, value in codegen.toolchain.model_dump().items()
+                if field_name in m.Infra.MiseTomlRenderSpec.model_fields
+            }
+            toolchain_data["gascity_enabled"] = target.gascity_enabled
+            return r[p.Model].ok(m.Infra.MiseTomlRenderSpec(**toolchain_data))
 
         if destination == c.Infra.BEADS_CONFIG_RELPATH:
             project_types = target.beads.custom_issue_types
@@ -2248,6 +2257,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     issue_prefix=target.beads.issue_prefix,
                     endpoint_origin=codegen.toolchain.beads.endpoint_origin,
                     endpoint_status=codegen.toolchain.beads.endpoint_status,
+                    gascity_enabled=target.gascity_enabled,
                     custom_issue_types=tuple(
                         dict.fromkeys((*project_types, *required_types))
                     ),
@@ -2285,6 +2295,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.GithubWorkflowRenderSpec(
                     dist=dist,
                     make_profile=target.make_profile,
+                    gascity_enabled=target.gascity_enabled,
                     repository_branch=branch,
                     ci_trigger_branches=tuple(
                         dict.fromkeys((
