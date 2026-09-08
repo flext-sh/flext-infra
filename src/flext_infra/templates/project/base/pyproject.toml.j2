@@ -22,7 +22,7 @@ classifiers = [
 {% endfor %}
 ]
 dependencies = [
-{% for item in dependency_profile.runtime %}
+{% for item in dependency_profile.runtime if item != dist %}
   {{ item | tojson }},
 {% endfor %}
 ]

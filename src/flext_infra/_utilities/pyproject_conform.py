@@ -283,14 +283,6 @@ class FlextInfraUtilitiesPyprojectConform:
             )
             if group_result.failure:
                 return group_result
-        git_sources_result = cls._sync_internal_git_sources(
-            document,
-            repositories=available,
-            providers=providers,
-            workspace_dependencies=workspace_dependencies,
-        )
-        if git_sources_result.failure:
-            return git_sources_result
         return r[bool].ok(True)
 
     @classmethod
@@ -368,85 +360,13 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if reference_result.failure:
             return r[str].from_failure(reference_result)
-        reference = reference_result.value
-        provider = FlextInfraUtilitiesRepository.repository_provider(
-            reference, providers
-        )
-        if provider.failure:
-            return r[str].from_failure(provider)
-        # The distribution renders as a plain name; the mutable branch source
-        # is declared once in [tool.uv.sources] by _sync_internal_git_sources.
-        # An inline PEP 508 ``@<branch>`` URL freezes the first resolved commit
-        # in uv.lock forever (flext-62fbu): uv re-resolves only the explicit
-        # branch source form, so every lock upgrade tracks the declared tip.
+        # Internal distributions render as plain names: within the fleet
+        # workspace uv resolves them through the root's workspace overlay, and
+        # an inline PEP 508 ``@<branch>`` URL would freeze the first resolved
+        # commit in uv.lock forever (flext-62fbu).
         return r[str].ok(
             f"{head}; {marker_text}" if separator and marker_text else head
         )
-
-    @classmethod
-    def _sync_internal_git_sources(
-        cls,
-        document: t.Cli.TomlDocument,
-        *,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
-        providers: t.SequenceOf[m.Infra.ProviderSpec],
-        workspace_dependencies: frozenset[str],
-    ) -> p.Result[bool]:
-        """Declare every internal git source as a uv branch-tracked source.
-
-        The workspace root keeps its local overlay only — the non-empty
-        workspace-dependency set already encodes that. A publishable member
-        declares each internal distribution once under ``[tool.uv.sources]``
-        with the repository URL and the configured branch: the same pyproject
-        stays resolvable standalone and the lock re-resolves the branch tip on
-        every upgrade (ADR-003 declared-source contract, flext-62fbu).
-        """
-        if workspace_dependencies:
-            return r[bool].ok(True)
-        internal_names: set[str] = set()
-        project = u.Cli.toml_table_child(document, c.Infra.PROJECT)
-        requirement_groups: list[t.JsonValue] = []
-        if project is not None:
-            requirement_groups.append(u.Cli.toml_value(project, c.Infra.DEPENDENCIES))
-            optional = u.Cli.toml_table_child(project, c.Infra.OPTIONAL_DEPENDENCIES)
-            if optional is not None:
-                requirement_groups.extend(optional.values())
-        groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
-        if groups is not None:
-            requirement_groups.extend(groups.values())
-        internal_names.update(
-            name
-            for group in requirement_groups
-            for requirement in u.Cli.toml_as_string_list(group)
-            if (name := FlextInfraUtilitiesDependencies.dep_name(requirement))
-            is not None
-            and name.startswith("flext-")
-        )
-        if not internal_names:
-            return r[bool].ok(True)
-        tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
-        uv = u.Cli.toml_ensure_table(tool, "uv")
-        sources = u.Cli.toml_ensure_table(uv, "sources")
-        for name in sorted(internal_names):
-            reference_result = cls._repository_reference(
-                name, repositories=repositories, providers=providers
-            )
-            if reference_result.failure:
-                return r[bool].from_failure(reference_result)
-            provider_result = FlextInfraUtilitiesRepository.repository_provider(
-                reference_result.value, providers
-            )
-            if provider_result.failure:
-                return r[bool].from_failure(provider_result)
-            u.Cli.toml_sync_value(
-                sources,
-                name,
-                {
-                    "git": reference_result.value.url,
-                    "branch": provider_result.value.branch,
-                },
-            )
-        return r[bool].ok(True)
 
     @staticmethod
     def _repository_reference(
@@ -799,6 +719,9 @@ class FlextInfraUtilitiesPyprojectConform:
             if source_name.startswith("flext-") and (
                 not repository_root or source_name not in workspace_names
             ):
+                # The fleet resolves internal dependencies through the single
+                # uv workspace at the fleet root: a member carries no source
+                # entries, and the root keeps only the workspace overlay.
                 u.Cli.toml_remove_key_if_present(sources, source_name)
         if repository_root:
             for member in workspace.subprojects:
@@ -910,7 +833,7 @@ class FlextInfraUtilitiesPyprojectConform:
         project = payload.get(c.Infra.PROJECT)
         if not isinstance(project, Mapping):
             return r[bool].fail("pyproject content must define [project]")
-        workspace_context_root = cls._is_workspace_context_root(
+        cls._is_workspace_context_root(
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
@@ -931,15 +854,13 @@ class FlextInfraUtilitiesPyprojectConform:
             if dependency_name not in member_names:
                 continue
             has_direct_source = "@" in requirement.partition(";")[0]
-            if workspace_context_root and has_direct_source:
+            if has_direct_source:
+                # An inline PEP 508 ``@<branch>`` URL freezes the first
+                # resolved commit in uv.lock forever (flext-62fbu). Internal
+                # dependencies resolve through the fleet workspace overlay.
                 return r[bool].fail(
-                    "workspace dependency declares a conflicting direct source: "
-                    f"{dependency_name}"
-                )
-            if not workspace_context_root and not has_direct_source:
-                return r[bool].fail(
-                    "publishable dependency lacks configured Git source: "
-                    f"{dependency_name}"
+                    "dependency declares a frozen inline Git URL; "
+                    f"declare the plain distribution only: {dependency_name}"
                 )
         return r[bool].ok(True)
 
