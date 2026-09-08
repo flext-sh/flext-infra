@@ -70,7 +70,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
     @staticmethod
     def gate_context(root: Path) -> m.Infra.GateContext:
         """Build the standard check-mode gate context for one root."""
-        return m.Infra.GateContext(workspace=root, reports_dir=root)
+        return m.Infra.GateContext(repository_root=root, reports_dir=root)
 
     @staticmethod
     def check_gate_asserting(
@@ -149,7 +149,8 @@ class TestsFlextInfraUtilitiesGatesMixin:
     ) -> m.Infra.GateContext:
         """Provide the typed test helper `create_gate_context`."""
         return m.Infra.GateContext(
-            workspace=repository_root, reports_dir=reports_dir or repository_root
+            repository_root=repository_root,
+            reports_dir=reports_dir or repository_root,
         )
 
     @staticmethod

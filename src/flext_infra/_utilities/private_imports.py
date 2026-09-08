@@ -35,13 +35,15 @@ class FlextInfraUtilitiesPrivateImports:
             if part == c.Infra.DEFAULT_SRC_DIR
         ]
         # Repo-rooted trees (tests) import from the checkout root, so the
-        # package path itself anchors the module without a src segment.
-        rooted_parts = path_parts[-(len(package_parts) + 1) :]
-        if (
-            len(rooted_parts) == len(package_parts) + 1
-            and tuple(rooted_parts[:-1]) == package_parts
-        ):
-            source_candidates.append(rooted_parts)
+        # package path itself anchors the module without a src segment. The
+        # anchor applies at ANY depth inside the owner: a module nested in a
+        # private segment (tests/_utilities/x.py) is a same-owner sibling and
+        # must resolve to a minimal relative import, never to a facade hunt.
+        owner_length = len(package_parts)
+        for index in range(len(path_parts) - owner_length):
+            if tuple(path_parts[index : index + owner_length]) == package_parts:
+                source_candidates.append(path_parts[index:])
+                break
         for source_parts in source_candidates:
             if (
                 len(source_parts) <= len(package_parts)

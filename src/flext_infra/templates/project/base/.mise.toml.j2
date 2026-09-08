@@ -12,7 +12,7 @@
 #         (kubectl_version, helm_version, kind_version, taplo_version, ast_grep_version,
 #          gitleaks_version, scc_version, kubeconform_version, qlty_version,
 #          node_version, jscpd_version, waza_version,
-#          beads (selector/version/prerelease), gascity (selector/version/prerelease))
+#          beads (selector/version/prerelease){{ ", gascity (selector/version/prerelease)" if gascity_enabled else "" }})
 [tools]
 python = "{{ python_version }}"
 uv = "{{ uv_version }}"
@@ -48,8 +48,10 @@ github_attestations = false
 version = "{{ beads.version }}"
 prerelease = {{ "true" if beads.prerelease else "false" }}
 github_attestations = false
+{%- if gascity_enabled %}
 [tools."{{ gascity.selector }}"]
 version = "{{ gascity.version }}"
 prerelease = {{ "true" if gascity.prerelease else "false" }}
 github_attestations = false
+{%- endif %}
 # End SECTION: tools
