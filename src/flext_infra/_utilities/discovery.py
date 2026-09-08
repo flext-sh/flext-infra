@@ -214,6 +214,10 @@ class FlextInfraUtilitiesDiscovery(
         """Return the explicit ABI published by one installed package root."""
         try:
             spec = importlib_util.find_spec(package_name)
+        except ModuleNotFoundError:
+            # A submodule name imports its parent first: a missing parent
+            # package means the name cannot resolve in this environment.
+            return frozenset()
         except c.EXC_OS_TYPE_VALUE:
             return frozenset()
         if spec is None or spec.submodule_search_locations is None or not spec.origin:

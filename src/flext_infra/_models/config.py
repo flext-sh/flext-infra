@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from fnmatch import fnmatchcase
 from pathlib import Path
@@ -370,7 +371,7 @@ class FlextInfraConfigModels:
         dependency_cooldown_days: Annotated[
             int,
             m.Field(
-                ge=1,
+                ge=0,
                 le=90,
                 description="Supply-chain cooldown shared by uv and update policy",
             ),
@@ -386,6 +387,16 @@ class FlextInfraConfigModels:
                 description="Per-package RFC 3339 cooldown cutoffs",
             ),
         ]
+        additional_python_tool_distributions: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Tool identities outside the scaffold requirement owners; "
+                    "every entry is uncapped by the uv supply-chain cooldown"
+                ),
+            ),
+        ] = ()
         uv_constraint_dependencies: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
@@ -456,7 +467,7 @@ class FlextInfraConfigModels:
             ),
         ]
         qlty_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("qlty release selector (latest)")
+            t.NonEmptyStr, _tool_version_field("Moving qlty release selector, e.g. 'latest'")
         ]
         node_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Compatible Node.js major.minor line")
@@ -471,7 +482,7 @@ class FlextInfraConfigModels:
             ),
         ]
         jscpd_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("jscpd release selector (latest)")
+            t.NonEmptyStr, _tool_version_field("Moving jscpd release selector, e.g. 'latest'")
         ]
         waza_selector: Annotated[
             t.NonEmptyStr,
@@ -483,7 +494,7 @@ class FlextInfraConfigModels:
             ),
         ]
         waza_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Waza release selector (latest)")
+            t.NonEmptyStr, _tool_version_field("Moving Waza release selector, e.g. 'latest'")
         ]
         taplo_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
@@ -659,20 +670,14 @@ class FlextInfraConfigModels:
             return self
 
     class GithubActionPinSpec(_ConfigContract):
-        """One immutable GitHub Action reference from the codegen catalog."""
+        """One GitHub Action reference from the codegen catalog."""
 
         repository: Annotated[
             t.NonEmptyStr, m.Field(description="GitHub owner/repository action name")
         ]
         version: Annotated[
-            t.NonEmptyStr, m.Field(description="Human-readable upstream release tag")
-        ]
-        sha: Annotated[
             t.NonEmptyStr,
-            m.Field(
-                pattern=r"^[0-9a-f]{40}$",
-                description="Immutable upstream action commit",
-            ),
+            m.Field(description="Upstream floating release tag the action rides"),
         ]
 
     class CiPrivateSubmoduleDeployKeySpec(_ConfigContract):
@@ -805,9 +810,9 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="External runtime state directory name")
         ]
         dependency_cooldown_days: Annotated[
-            t.PositiveInt,
+            int,
             m.Field(
-                ge=1,
+                ge=0,
                 le=90,
                 description=(
                     "Shared uv and Dependabot dependency cooldown rendered into "
@@ -1968,6 +1973,15 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.RepositoryState,
             m.Field(description="Repository lifecycle state"),
         ] = FlextInfraConstantsCodegenProject.RepositoryState.ACTIVE
+        checkout: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Physical checkout topology of the declared tree; "
+                    "'root' marks the workspace's own primary checkout"
+                )
+            ),
+        ] = "root"
         provider: Annotated[
             t.NonEmptyStr,
             m.Field(description="Provider key from the codegen configuration"),
@@ -2009,6 +2023,16 @@ class FlextInfraConfigModels:
                 description=(
                     "Repository-scoped packages explicitly exempted from the "
                     "fleet dependency cooldown"
+                )
+            ),
+        ] = ()
+        duplication_trees: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Project-relative directory trees the duplication gate "
+                    "must scan besides the canonical src/tests scope (e.g. "
+                    "declared Helm charts)"
                 )
             ),
         ] = ()
@@ -2118,6 +2142,16 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.BeadsProjectSpec,
             m.Field(description="Repository-local Beads identity"),
         ]
+        project: Annotated[
+            FlextInfraConfigModels.ProjectSpec | None,
+            m.Field(
+                description=(
+                    "Declared project metadata of the manifest, when the "
+                    "repository declares one; carries the distribution roots "
+                    "the packaging phase must prove present"
+                )
+            ),
+        ] = None
         canonical_project_name: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical PEP 621 project name")
         ]
@@ -2760,7 +2794,7 @@ class FlextInfraConfigModels:
         ] = False
         beads: Annotated[
             FlextInfraConfigModels.BeadsProjectSpec,
-            m.Field(description="Explicit repository-local Beads identity"),
+            m.Field(description="Repository-local Beads identity"),
         ]
         canonical_project_name: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical PEP 621 project name")
@@ -2854,16 +2888,16 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, _tool_version_field("Compatible uv major.minor line")
         ]
         qlty_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact attested qlty release")
+            t.NonEmptyStr, _tool_version_field("Moving qlty release selector, e.g. 'latest'")
         ]
         node_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Compatible Node.js major.minor line")
         ]
         jscpd_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact jscpd duplication engine release")
+            t.NonEmptyStr, _tool_version_field("Moving jscpd release selector, e.g. 'latest'")
         ]
         waza_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact Waza governance engine release")
+            t.NonEmptyStr, _tool_version_field("Moving Waza release selector, e.g. 'latest'")
         ]
         taplo_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
@@ -3355,6 +3389,33 @@ class FlextInfraConfigModels:
                 for artifact in self.artifacts
                 if artifact.source_scan_ignore
             )
+
+        @m.computed_field
+        @property
+        def python_tool_distributions(self) -> t.VariadicTuple[str]:
+            """Tool catalog uncapped by the uv supply-chain cooldown.
+
+            One catalog projects every owned tool: the scaffold requirement
+            owners (build and dev tables) plus the toolchain's declared
+            additional tool identities. Runtime dependency profiles never
+            enter it.
+            """
+            scaffold_owners: set[str] = set()
+            for requirement in (
+                *self.scaffold.build.requirements,
+                *self.scaffold.project.dev,
+            ):
+                if (name := self._distribution_name(requirement)) is not None:
+                    scaffold_owners.add(name)
+            return tuple(sorted(scaffold_owners | set(
+                self.toolchain.additional_python_tool_distributions
+            )))
+
+        @staticmethod
+        def _distribution_name(requirement: str) -> str | None:
+            """Resolve the distribution name of one PEP 508 requirement line."""
+            match = re.match(r"[A-Za-z0-9][A-Za-z0-9._-]*", requirement)
+            return match.group(0) if match else None
 
         # The canonical .gitignore body is ONE computed
         # projection — the artifact SSOT feeds the Python/build section and the

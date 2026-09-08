@@ -41,6 +41,10 @@ class FlextInfraUtilitiesCodegenNamespace:
             case "NS-002":
                 typings_filename: str = c.Infra.TYPINGS_PY
                 return Path(module).name != typings_filename
+            # Validator-reported families with no auto-fix keyed to their
+            # codes: reported as violations, never claimed as fixed.
+            case "NS-STRUCT" | "NS-IMPORT" | "NS-CONTRACT" | "NS-PARSE" | "NS-LAYOUT":
+                return False
 
             case _:
                 msg = f"unsupported namespace rule: {rule_id}"

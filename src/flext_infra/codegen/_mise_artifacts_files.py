@@ -43,6 +43,28 @@ class FlextInfraMiseArtifactsFiles:
         return u.Cli.sha256_bytes(content)
 
     @classmethod
+    def packaged_launchers(
+        cls,
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Load the packaged unlocked bootstrap launcher pair for fresh seeding."""
+        seed_directory = (
+            Path(__file__).resolve().parents[1] / c.Infra.MISE_BOOTSTRAP_SEED_DIRECTORY
+        )
+        states: list[m.Cli.AtomicFileState] = []
+        for name, mode in cls.ARTIFACT_SPECS:
+            path = seed_directory / Path(name).name
+            state = u.Cli.atomic_read_binary_file_state(path, required=True)
+            if state.failure:
+                return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(state)
+            observed = state.value
+            if observed.content is None or observed.mode != mode:
+                return r[tuple[m.Cli.AtomicFileState, ...]].fail(
+                    f"packaged Mise launcher seed is absent or mispermitted: {path}"
+                )
+            states.append(observed)
+        return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(states))
+
+    @classmethod
     def read_state(
         cls, path: Path, *, required: bool
     ) -> p.Result[m.Cli.AtomicFileState]:

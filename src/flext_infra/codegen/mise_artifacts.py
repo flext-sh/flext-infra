@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from fnmatch import fnmatchcase
-from hashlib import sha256
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, TypeIs, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
@@ -84,48 +83,37 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             )
         return r[bool].ok(True)
 
-    @staticmethod
-    def _assignment(content: str, name: str) -> str | None:
-        prefixes = (f'{name}="', f'set "{name}=')
-        for raw_line in content.splitlines():
-            line = raw_line.strip()
-            for prefix in prefixes:
-                if line.startswith(prefix) and line.endswith('"'):
-                    return line.removeprefix(prefix).removesuffix('"')
-        return None
-
-    @staticmethod
-    def _is_sha256(value: str | None) -> bool:
-        if value is None:
-            return False
-        digest = value.split(maxsplit=1)[0]
-        return len(digest) == sha256().digest_size * 2 and all(
-            character in "0123456789abcdef" for character in digest
-        )
-
-    @staticmethod
-    def _shell_launcher_version(content: str) -> str | None:
-        prefix = 'local mise_version="${MISE_VERSION:-'
-        suffix = '}"'
-        for raw_line in content.splitlines():
-            line = raw_line.strip()
-            if line.startswith(prefix) and line.endswith(suffix):
-                return line.removeprefix(prefix).removesuffix(suffix)
-        return None
-
-    @staticmethod
-    def is_mise_release(value: str | None) -> TypeIs[str]:
-        """Return whether a runtime identity is an exact Mise release."""
-        if value is None:
-            return False
-        parts = value.split(".")
-        return len(parts) == c.Infra.MISE_RELEASE_COMPONENT_COUNT and all(
-            part.isdecimal() for part in parts
-        )
+    @classmethod
+    def validate_seed(cls, path: Path) -> p.Result[bool]:
+        """Validate one native staged bootstrap seed without executing live bytes."""
+        source = u.Cli.files_read_text(path)
+        if source.failure:
+            return r[bool].from_failure(source)
+        content = source.value
+        for declaration in (
+            c.Infra.MISE_UNLOCKED_RESOLUTION_URL,
+            c.Infra.MISE_UNLOCKED_FAIL_LOUD_CLAUSE,
+            c.Infra.MISE_UNLOCKED_CHECKSUM_URI,
+        ):
+            if declaration not in content:
+                return r[bool].fail(
+                    f"Mise seed lacks the unlocked resolution contract "
+                    f"({declaration}): {path}"
+                )
+        try:
+            mode = path.stat().st_mode
+        except OSError as exc:
+            return r[bool].fail(
+                f"cannot inspect generated Mise seed: {exc}", exception=exc
+            )
+        windows = path.name == c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME
+        if not windows and not mode & 0o100:
+            return r[bool].fail("generated Unix Mise seed is not executable")
+        return r[bool].ok(True)
 
     @classmethod
-    def launcher_release(cls, root: Path) -> p.Result[str]:
-        """Return the one exact release embedded by both generated launchers."""
+    def validate_launchers(cls, root: Path) -> p.Result[bool]:
+        """Validate both generated launchers and their identical contract."""
         shell = cls.validate_seed(
             root / c.Infra.MISE_LAUNCHER_DIRECTORY / c.Infra.MISE_UNIX_LAUNCHER_FILENAME
         )
@@ -135,72 +123,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             / c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME
         )
         if shell.failure or windows.failure:
-            return r[str].fail(shell.error or windows.error or "invalid Mise launcher")
-        if shell.value != windows.value:
-            return r[str].fail("Mise launcher version drift")
-        return r[str].ok(shell.value)
-
-    @classmethod
-    def validate_seed(cls, path: Path) -> p.Result[str]:
-        """Validate one native staged bootstrap seed without executing live bytes."""
-        source = u.Cli.files_read_text(path)
-        if source.failure:
-            return r[str].from_failure(source)
-        windows = path.name == c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME
-        release = (
-            cls._assignment(source.value, "pinned_version")
-            if windows
-            else cls._shell_launcher_version(source.value)
-        )
-        if release is None or not cls.is_mise_release(release):
-            return r[str].fail(f"Mise seed has an invalid release: {path}")
-        try:
-            mode = path.stat().st_mode
-        except OSError as exc:
-            return r[str].fail(
-                f"cannot inspect generated Mise seed: {exc}", exception=exc
-            )
-        if not windows and not mode & 0o100:
-            return r[str].fail("generated Unix Mise seed is not executable")
-        checksums = (
-            ("sum_x64", "sum_arm64")
-            if windows
-            else (
-                "checksum_linux_x86_64",
-                "checksum_linux_x86_64_musl",
-                "checksum_linux_arm64",
-                "checksum_linux_arm64_musl",
-                "checksum_linux_armv7",
-                "checksum_linux_armv7_musl",
-                "checksum_macos_x86_64",
-                "checksum_macos_arm64",
-                "checksum_linux_x86_64_zstd",
-                "checksum_linux_x86_64_musl_zstd",
-                "checksum_linux_arm64_zstd",
-                "checksum_linux_arm64_musl_zstd",
-                "checksum_linux_armv7_zstd",
-                "checksum_linux_armv7_musl_zstd",
-                "checksum_macos_x86_64_zstd",
-                "checksum_macos_arm64_zstd",
-            )
-        )
-        for checksum_name in checksums:
-            assignment = cls._assignment(source.value, checksum_name)
-            digest = (
-                assignment if windows or assignment is None else assignment.split()[0]
-            )
-            if not cls._is_sha256(digest):
-                return r[str].fail(
-                    f"Mise seed checksum missing in {path.name}: {checksum_name}"
-                )
-        return r[str].ok(release)
-
-    @classmethod
-    def validate_launchers(cls, root: Path) -> p.Result[bool]:
-        """Validate both generated launchers and their identical release."""
-        release = cls.launcher_release(root)
-        if release.failure:
-            return r[bool].from_failure(release)
+            return r[bool].fail(shell.error or windows.error or "invalid Mise launcher")
         return r[bool].ok(True)
 
     def validate_artifacts(self, project_root: Path) -> p.Result[bool]:

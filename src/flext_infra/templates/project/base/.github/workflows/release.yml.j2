@@ -41,7 +41,7 @@ jobs:
       ref: {% raw %}${{ steps.head.outputs.ref }}{% endraw %}
     steps:
       - name: Checkout
-        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -84,7 +84,7 @@ jobs:
       GH_TOKEN: {% raw %}${{ github.token }}{% endraw %}
     steps:
       - name: Checkout
-        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           fetch-depth: 0
           submodules: {{ checkout_submodules }}
@@ -117,7 +117,7 @@ jobs:
       GH_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
     steps:
       - name: Checkout release commit
-        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           fetch-depth: 0
           ref: {% raw %}${{ needs.identity.outputs.ref }}{% endraw %}

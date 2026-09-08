@@ -1,13 +1,3 @@
-# Reusable binding guard for the bare-name ``List[T]`` rewrite.
-#
-# ``List`` is a legal identifier: a module may define its own ``class List`` or
-# bind the name from any package. Rewriting such a name to ``t.SequenceOf``
-# changes an unrelated type. The rewrite is only provable when the module binds
-# ``List`` from ``typing`` itself, and an aliased import (``List as L``) binds
-# ``L`` rather than ``List``, so it is deliberately excluded.
-#
-# Sibling of dict-imported-from-typing: one audited binding guard per legacy
-# typing generic, referenced with ``matches:``.
 id: list-imported-from-typing
 language: python
 rule:
