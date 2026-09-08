@@ -1099,6 +1099,7 @@ Infra:
           - upstream: flext_core
             runtime:
               - flext-core
+              - beartype>=0.22.9
               - pydantic>=2.13.4
               - pydantic-settings>=2.15.0
             codegen: [flext-infra]
