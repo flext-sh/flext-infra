@@ -9,11 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c, config, t, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_tests import tm
 
 from ._support import CodegenTestSupport
 
@@ -26,19 +25,11 @@ class TestCodegenCiMatrix:
     @staticmethod
     def _render_project(root: Path) -> Path:
         """Render one fresh internal_flext project into root and return it."""
-        beads = tm.ok(
-            FlextInfraWorkspaceDetector.load_beads_spec(
-                Path(__file__).resolve().parents[3]
-            )
-        )
         service = FlextInfraCodegenProjectNew(
             name="flext-demo",
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
             provider="flext-sh",
-            beads_workspace=beads.workspace,
-            beads_database=beads.database,
-            beads_issue_prefix=beads.issue_prefix,
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",

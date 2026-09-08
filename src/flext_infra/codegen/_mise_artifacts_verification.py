@@ -47,6 +47,9 @@ class FlextInfraMiseArtifactsVerification:
                 return result_type.fail(
                     f"temporary tree has no created identity: {directory.path}"
                 )
+            if not target.value.exists() and not target.value.is_symlink():
+                registered.append(directory)
+                continue
             observed = u.Cli.atomic_inventory_physical_tree(target.value)
             if observed.failure:
                 return result_type.from_failure(observed)
@@ -97,7 +100,10 @@ class FlextInfraMiseArtifactsVerification:
             return result_type.fail(
                 f"temporary tree has no authorized manifest: {directory.path}"
             )
-        observed = u.Cli.atomic_inventory_physical_tree(directory.manifest.root.path)
+        root = directory.manifest.root.path
+        if not root.exists() and not root.is_symlink():
+            return result_type.ok(directory.manifest)
+        observed = u.Cli.atomic_inventory_physical_tree(root)
         if observed.failure:
             return result_type.from_failure(observed)
         if any(entry.kind == "symlink" for entry in observed.value.entries):
@@ -466,10 +472,14 @@ class FlextInfraMiseArtifactsVerification:
         authorized_files = set(file_specs.value)
         for entry in additions:
             if entry.kind == "directory":
+                if allow_registered_additions:
+                    continue
                 if not any(entry.path in path.parents for path in authorized_files):
                     return r[bool].fail(
                         f"unregistered temporary-tree directory exists: {entry.path}"
                     )
+                continue
+            if allow_registered_additions:
                 continue
             spec = file_specs.value.get(entry.path)
             if spec is None or not cls._matches_journal_file(entry, *spec):

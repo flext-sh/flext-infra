@@ -17,9 +17,10 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+from flext_tests import tm
+
 import flext_infra
 from flext_infra import c
-from flext_tests import tm
 
 
 def _engine_modules() -> tuple[Path, ...]:

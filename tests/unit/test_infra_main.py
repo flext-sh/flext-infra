@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import main
 from flext_tests import tm
+
+from flext_infra import main
 
 if TYPE_CHECKING:
     import pytest

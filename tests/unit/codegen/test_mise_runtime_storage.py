@@ -5,8 +5,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flext_infra import c, u
 from flext_tests import tm
+
+from flext_infra import c, u
 
 
 class TestsMiseRuntimeStorage:

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 
 from flext_cli import u
+
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m

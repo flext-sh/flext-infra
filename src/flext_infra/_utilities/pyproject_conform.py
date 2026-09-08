@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_cli import r, u
+
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -1004,9 +1005,9 @@ class FlextInfraUtilitiesPyprojectConform:
         tool = dict(u.Cli.toml_mapping_child(merged, c.Infra.TOOL) or {})
         live_tool = u.Cli.toml_mapping_child(live_payload, c.Infra.TOOL) or {}
         managed = frozenset(managed_tool_tables)
-        tool.update(
-            {key: value for key, value in live_tool.items() if key not in managed}
-        )
+        tool.update({
+            key: value for key, value in live_tool.items() if key not in managed
+        })
         merged[c.Infra.TOOL] = tool
         return r[str].ok(u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(merged)))
 

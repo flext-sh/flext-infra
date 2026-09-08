@@ -5,8 +5,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flext_infra import config, u
 from flext_tests import tm
+
+from flext_infra import config, u
 from tests import c, m, p, t
 
 

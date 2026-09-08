@@ -6,6 +6,7 @@ import sys
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli as cli_facade
+
 from flext_infra.constants import c
 from flext_infra.typings import t
 from flext_infra.utilities import u

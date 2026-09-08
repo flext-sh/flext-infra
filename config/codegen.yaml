@@ -35,6 +35,8 @@ Infra:
       uv_constraint_dependencies: []
       # Moving selectors consumed by generated .mise.toml and CI. The fleet
       # runs unlocked: setup converges on the newest published release.
+      # Override these YAML keys only. Never edit .mise.toml. Never run
+      # `mise lock`. Never pin a SHA.
       uv_version: latest
       kubectl_version: latest
       helm_version: latest
@@ -43,27 +45,37 @@ Infra:
       taplo_version: latest
       ast_grep_version: latest
       gitleaks_version: latest
-      scc_version: latest
       kubeconform_version: latest
-      qlty_version: "0.642.0"
-      node_version: "26.8"
-      jscpd_version: "5.1.2"
-      waza_version: "0.38.7"
+      # Projection: .mise.toml [settings] lockfile / locked and [tool_config] locked.
+      # false is required: existing lockfiles would pin checksums against latest.
+      mise_lockfile: false
+      mise_locked: false
+      # Projection: .mise.toml [tools] keys. Override the selector here.
+      qlty_selector: github:qltysh/qlty
+      qlty_version: latest
+      node_version: latest
+      jscpd_selector: npm:jscpd
+      jscpd_version: latest
+      waza_selector: github:microsoft/waza
+      waza_version: latest
+      scc_selector: aqua:boyter/scc
+      scc_version: latest
+      go_version: latest
       protected_mise_tools:
         - beads
         - gascity
-      go_version: "1.26"
       gascity:
         # The fleet gc is the operator's fork carrying the native-store
         # compatibility correction required by every governed rig.
+        # Projection: .mise.toml [tools."<selector>"]. Override here.
         selector: github:marlon-costa-dc/gascity
-        # Operator order 2026-09-04: always the newest release of OUR fork.
-        # Freezing this stranded the fleet on a build predating its own source
-        # fix (415a2ea8c, read_timeout 15000 -> 120000), whose 15s bound killed
-        # DOLT_GC at 17s and left the hq store unbacked for days.
+        # release = always version latest (prerelease tags included).
+        # branch = set track: branch and branch: <name> (required, no default main).
+        track: release
         version: latest
         # Suffixed release tag; mise only resolves it when told it is a prerelease.
         prerelease: true
+        github_attestations: false
         # Selector shapes that identify gc in a mise manifest, so a regenerated
         # .mise.toml cannot silently swap the fleet build for another distribution.
         selector_patterns:
@@ -71,15 +83,15 @@ Infra:
           - gascity
           - "*:*/gascity"
       beads:
+        # Projection: .mise.toml [tools."<selector>"]. Override here.
         selector: github:marlon-costa-dc/beads
-        # Operator order 2026-09-04: always the newest release of OUR fork.
-        # The selector, not a pinned version, is what keeps the fleet off
-        # upstream; freezing the version only rejects our own later releases.
+        track: release
         version: latest
         # The fleet bd is the operator's fork carrying the hierarchy-cycle
         # guard required to prevent unbounded list traversal. Its releases use
         # prerelease tags, so mise must be allowed to resolve them.
         prerelease: true
+        github_attestations: false
         # Selector shapes that identify this tool in a mise manifest, so a
         # regenerated .mise.toml cannot silently replace the selected fork.
         selector_patterns:
@@ -1191,6 +1203,11 @@ Infra:
           patterns:
             - "!.mise.toml"
             - "!.python-version"
+            # Lockfiles pin checksums against latest. Never track them.
+            - "mise.lock"
+            - ".mise.lock"
+            - "**/mise.lock"
+            - "**/.mise.lock"
         - name: "Docker configuration"
           profiles: [workspace]
           patterns:
@@ -1577,6 +1594,9 @@ Infra:
             - "*.tpl.rej"
         - name: "--- codegen conform: generated runtime ignores ---"
           patterns:
+            - "mise.lock"
+            - ".mise.lock"
+            - "**/.mise.lock"
             - ".direnv/"
             - ".reports/"
             - ".venv"

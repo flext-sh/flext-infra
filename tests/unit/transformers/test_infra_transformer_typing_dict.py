@@ -21,9 +21,10 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import m, u
 from flext_infra.fixers.transformer_fixer import FlextInfraTransformerFixerAdapter
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -87,7 +88,7 @@ class TestsFlextInfraTypingDictDeactivated:
             probe = SimpleNamespace(file_path=str(module))
             adapter = FlextInfraTransformerFixerAdapter(tmp_path)
             ctx = m.Infra.FixEnforcementCommand(
-                workspace=str(tmp_path), apply=True, check_after=False
+                repository_root=str(tmp_path), apply=True, check_after=False
             )
             result = adapter.fix_project(tmp_path, ((rule, probe),), ctx)
             tm.that(module.read_text(encoding="utf-8"), eq=_CORRUPTION_PROBE_SOURCE)

@@ -38,12 +38,7 @@ class FlextInfraRefactorCensusApplyFormattingMixin:
             )
             raise RuntimeError(msg)
         format_result = u.Cli.run_raw(
-            [
-                "ruff",
-                "format",
-                *config.Infra.codegen.make.ruff.format_apply,
-                *existing,
-            ],
+            ["ruff", "format", *config.Infra.codegen.make.ruff.format_apply, *existing],
             timeout=c.Infra.TIMEOUT_SHORT,
         )
         if format_result.failure:

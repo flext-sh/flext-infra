@@ -18,9 +18,10 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from flext_tests import tm
+
 import flext_infra
 from flext_infra import c
-from flext_tests import tm
 
 # ``$(shell ...)`` call marker. Assignment identity uses c.Infra.MAKE_ASSIGNMENT_RE;
 # immediacy is ``:=`` / ``::=`` (name token ends with ``:`` before ``=``).

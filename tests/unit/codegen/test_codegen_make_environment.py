@@ -7,10 +7,10 @@ import re
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_tests import tm
 from tests import u as test_u
 from tests.unit.workspace import WorktreeFixture
 
@@ -374,7 +374,7 @@ class TestsCodegenMakeEnvironment:
         gates = ",".join(config.Infra.codegen.make.check_gates_default)
         tm.that(makefile, has=f'gates="{gates}"')
         tm.that(
-            '$(PROJECT_FLEXT_INFRA) check run --repository "$(PROJECT_ROOT)" '
+            '$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" '
             '--gates "$$gates" --projects .' in makefile,
             eq=True,
         )

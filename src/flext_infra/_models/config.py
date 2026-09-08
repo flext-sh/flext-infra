@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
+
 from flext_infra import t
 
 from .._constants.codegen_project import FlextInfraConstantsCodegenProject
@@ -64,21 +65,82 @@ class FlextInfraConfigModels:
         )
 
     class MiseToolSpec(_ConfigContract):
-        """One mise backend resolved to the newest published release."""
+        """One mise backend declared in ``codegen.yaml``, projected to ``.mise.toml``.
+
+        Override the YAML fields. Never edit ``.mise.toml``. Never pin a SHA.
+        ``track: release`` always uses ``version: latest``. ``track: branch``
+        requires ``branch`` (no default ``main``) and interpolates that name.
+        """
 
         selector: Annotated[
-            t.NonEmptyStr, m.Field(description="Canonical mise backend selector")
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Mise backend selector (github:/aqua:/npm:). Override "
+                    "toolchain.<tool>.selector; never the .mise.toml key."
+                )
+            ),
         ]
+        track: Annotated[
+            Literal["release", "branch"],
+            m.Field(
+                description=(
+                    "release = newest GitHub/registry release. branch = named "
+                    "branch SHAs as they appear. Override toolchain.<tool>.track."
+                )
+            ),
+        ] = "release"
         version: Annotated[
             Literal["latest"],
-            m.Field(description="Moving release selector resolved at setup time"),
+            m.Field(
+                description=(
+                    "Required when track=release; always latest, never a tag. "
+                    "Override toolchain.<tool>.version."
+                )
+            ),
         ]
         prerelease: Annotated[
             bool,
             m.Field(
-                description="Whether mise may resolve prerelease versions for this tool"
+                description=(
+                    "github backend: include prerelease tags in latest. "
+                    "Override toolchain.<tool>.prerelease."
+                )
             ),
         ] = False
+        branch: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Required when track=branch (e.g. 0.12.0-dev). No default "
+                    "main. Override toolchain.<tool>.branch."
+                )
+            ),
+        ] = None
+        github_attestations: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "GitHub Artifact Attestations. Keep false so setup never "
+                    "silently requires a GitHub credential. Override "
+                    "toolchain.<tool>.github_attestations."
+                )
+            ),
+        ] = False
+
+        @u.model_validator(mode="after")
+        def _validate_track(self) -> Self:
+            """Fail closed: branch track names the branch; release forbids one."""
+            if self.track == "branch":
+                if self.branch is None:
+                    msg = (
+                        "track=branch requires branch in codegen.yaml (no default main)"
+                    )
+                    raise ValueError(msg)
+            elif self.branch is not None:
+                msg = "track=release forbids branch; use version: latest"
+                raise ValueError(msg)
+            return self
 
     class ProtectedMiseToolSpec(MiseToolSpec):
         """One fleet-owned mise distribution identity."""
@@ -252,10 +314,10 @@ class FlextInfraConfigModels:
     class ToolchainSpec(_ConfigContract):
         """Language-runtime and native-tool versions shared by generated projects.
 
-        Language runtimes and native tools are declared as compatible release
-        lines or exact versions. The generated Mise lock records the immutable
-        release and checksums selected inside those constraints. Python
-        linters/type-checkers remain owned by pyproject and uv.lock.
+        Language runtimes and native tools are declared as moving ``latest``
+        selectors or a major.minor line. No mise.lock: setup resolves the
+        newest published release. Python linters/type-checkers remain owned
+        by pyproject and uv.lock.
         """
 
         # Selector families rejected while their capabilities are suspended.
@@ -364,17 +426,64 @@ class FlextInfraConfigModels:
         uv_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Compatible uv major.minor line")
         ]
+        mise_lockfile: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Rendered as [settings] lockfile in .mise.toml. Keep false. "
+                    "Override toolchain.mise_lockfile; never run mise lock; "
+                    "never edit the projection."
+                )
+            ),
+        ] = False
+        mise_locked: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Rendered as [settings] locked and [tool_config] locked. "
+                    "Keep false so new SHAs/releases install without a lockfile. "
+                    "Override toolchain.mise_locked."
+                )
+            ),
+        ] = False
+        qlty_selector: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Mise selector for qlty. Override toolchain.qlty_selector; "
+                    "never the .mise.toml key."
+                )
+            ),
+        ]
         qlty_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact attested qlty release")
+            t.NonEmptyStr, _tool_version_field("qlty release selector (latest)")
         ]
         node_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Compatible Node.js major.minor line")
         ]
+        jscpd_selector: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Mise selector for jscpd. Override toolchain.jscpd_selector; "
+                    "never the .mise.toml key."
+                )
+            ),
+        ]
         jscpd_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact jscpd duplication engine release")
+            t.NonEmptyStr, _tool_version_field("jscpd release selector (latest)")
+        ]
+        waza_selector: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Mise selector for Waza. Override toolchain.waza_selector; "
+                    "never the .mise.toml key."
+                )
+            ),
         ]
         waza_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact Waza governance engine release")
+            t.NonEmptyStr, _tool_version_field("Waza release selector (latest)")
         ]
         taplo_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
@@ -385,8 +494,17 @@ class FlextInfraConfigModels:
         gitleaks_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact Gitleaks scanner version")
         ]
+        scc_selector: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Mise selector for scc. Override toolchain.scc_selector; "
+                    "never the .mise.toml key."
+                )
+            ),
+        ]
         scc_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact scc code-counter version")
+            t.NonEmptyStr, _tool_version_field("scc release selector (latest)")
         ]
         kubeconform_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Compatible kubeconform minor line")
@@ -394,9 +512,7 @@ class FlextInfraConfigModels:
         go_version: Annotated[
             t.NonEmptyStr,
             _tool_version_field(
-                "Exact Go runtime version; mise resolves go: backend "
-                "selectors through it, so beads only installs when Go "
-                "is a declared tool"
+                "Go runtime selector; mise resolves the go backend through it"
             ),
         ]
         beads: Annotated[
@@ -2208,8 +2324,7 @@ class FlextInfraConfigModels:
             m.Field(description="Union of project and required custom bead types"),
         ] = ()
         dolt_mode: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="From toolchain.beads.dolt_mode"),
+            t.NonEmptyStr, m.Field(description="From toolchain.beads.dolt_mode")
         ]
         export_auto: Annotated[
             bool, m.Field(description="From toolchain.beads.export_auto")
@@ -2218,8 +2333,7 @@ class FlextInfraConfigModels:
             bool, m.Field(description="From toolchain.beads.backup_enabled")
         ]
         dolt_disable_event_flush: Annotated[
-            bool,
-            m.Field(description="From toolchain.beads.dolt_disable_event_flush"),
+            bool, m.Field(description="From toolchain.beads.dolt_disable_event_flush")
         ]
 
     class MiseTomlRenderSpec(ToolchainSpec):

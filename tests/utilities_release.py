@@ -147,7 +147,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         return main([
             "release",
             "run",
-            "--repository",
+            "--repository-root",
             str(repository_root),
             *arguments,
         ])

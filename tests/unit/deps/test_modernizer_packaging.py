@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c, config, main as infra_main
-from flext_tests import tm
 from tests import t, u
 
 if TYPE_CHECKING:
@@ -59,6 +59,7 @@ def _conform_self(infra_git_repo: Path) -> int:
     ])
 
 
+@pytest.mark.slow
 def test_conform_packages_every_declared_python_root(infra_git_repo: Path) -> None:
     """The public generator emits matching bounded wheel and sdist targets."""
     root_module, root_package = _prepare_project(

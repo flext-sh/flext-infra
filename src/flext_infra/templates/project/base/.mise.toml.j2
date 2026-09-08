@@ -9,13 +9,34 @@
 # NOTE: mise carries the Python runtime and native tools from the config SSOT.
 # Python dependencies remain owned by uv.lock. Mise resolves every tool to the
 # newest published release at setup time: the fleet runs unlocked and current.
+# Never run `mise lock`. Never commit mise.lock.
+
+{%- macro github_fork_tool(tool) %}
+[tools."{{ tool.selector }}"]
+{%- if tool.track == "branch" %}
+version = "{{ tool.branch }}"
+{%- else %}
+version = "{{ tool.version }}"
+prerelease = {{ "true" if tool.prerelease else "false" }}
+{%- endif %}
+github_attestations = {{ "true" if tool.github_attestations else "false" }}
+{%- endmacro %}
+
+# === SECTION: settings (managed) ===
+# Source: config:codegen.toolchain.mise_lockfile / mise_locked
+[settings]
+lockfile = {{ "true" if mise_lockfile else "false" }}
+locked = {{ "true" if mise_locked else "false" }}
+[tool_config]
+locked = {{ "true" if mise_locked else "false" }}
+# End SECTION: settings
 
 # === SECTION: tools (managed) ===
 # Source: config:python_version, config:codegen.scaffold.project.dev native toolchain floors
 #         (kubectl_version, helm_version, kind_version, taplo_version, ast_grep_version,
-#          gitleaks_version, scc_version, kubeconform_version, qlty_version,
-#          node_version, jscpd_version, waza_version,
-#          beads (selector/version/prerelease){{ ", gascity (selector/version/prerelease)" if gascity_enabled else "" }})
+#          gitleaks_version, scc_selector/scc_version, kubeconform_version, qlty_selector/qlty_version,
+#          node_version, jscpd_selector/jscpd_version, waza_selector/waza_version,
+#          beads (selector/track/version/prerelease/branch){{ ", gascity (selector/track/version/prerelease/branch)" if gascity_enabled else "" }})
 [tools]
 python = "{{ python_version }}"
 uv = "{{ uv_version }}"
@@ -27,34 +48,17 @@ direnv = "{{ direnv_version }}"
 taplo = "{{ taplo_version }}"
 ast-grep = "{{ ast_grep_version }}"
 gitleaks = "{{ gitleaks_version }}"
-# scc (the loc-cap gate's code counter) ships no bare mise registry alias, so
-# pin the aqua backend explicitly (matching the qlty selector below). Its
-# aqua-registry entry carries an evergreen catch-all rule with real
-# per-platform release assets, so it never falls back to a source build,
-# which keeps the offline setup/gen/check/test path source-build-free.
-"aqua:boyter/scc" = "{{ scc_version }}"
+"{{ scc_selector }}" = "{{ scc_version }}"
 kubeconform = "{{ kubeconform_version }}"
 node = "{{ node_version }}"
-"npm:jscpd" = "{{ jscpd_version }}"
-"github:microsoft/waza" = "{{ waza_version }}"
-# Go runtime for the Go projects in this workspace.
+"{{ jscpd_selector }}" = "{{ jscpd_version }}"
+"{{ waza_selector }}" = "{{ waza_version }}"
 go = "{{ go_version }}"
-# qlty ships no mise registry alias; the github backend selector is the only
-# resolvable form (bare 'qlty' fails mise install: 'not found in registry').
-# GitHub Artifact Attestations is an external-token capability and is not
-# selected by setup/gen, so installation never silently requires a personal
-# GitHub credential.
-[tools."github:qltysh/qlty"]
+[tools."{{ qlty_selector }}"]
 version = "{{ qlty_version }}"
 github_attestations = false
-[tools."{{ beads.selector }}"]
-version = "{{ beads.version }}"
-prerelease = {{ "true" if beads.prerelease else "false" }}
-github_attestations = false
+{{ github_fork_tool(beads) }}
 {%- if gascity_enabled %}
-[tools."{{ gascity.selector }}"]
-version = "{{ gascity.version }}"
-prerelease = {{ "true" if gascity.prerelease else "false" }}
-github_attestations = false
+{{ github_fork_tool(gascity) }}
 {%- endif %}
 # End SECTION: tools

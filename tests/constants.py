@@ -13,8 +13,9 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar, Final
 
-from flext_infra import c
 from flext_tests import FlextTestsConstants
+
+from flext_infra import c
 from tests.constants_scan import TestsFlextInfraConstantsScanMixin
 
 if TYPE_CHECKING:

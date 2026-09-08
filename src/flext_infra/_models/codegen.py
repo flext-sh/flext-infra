@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
+
 from flext_infra import c, p, t
 
 from ._defaults import ImmutableEmptyMapping
@@ -18,25 +19,6 @@ from .mixins import FlextInfraModelsMixins as mm
 
 class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
-
-    class MiseToolchainLockLease(m.ArbitraryTypesModel):
-        """Authenticated Git HEAD state plus its locked native descriptor."""
-
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-
-        descriptor: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                strict=True,
-                exclude=True,
-                description="Caller-owned locked descriptor",
-            ),
-        ]
-        state: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(description="Exact HEAD bytes, mode, leaf, and parent identity"),
-        ]
 
     class MiseToolchainArtifactPaths(m.ArbitraryTypesModel):
         """Canonical live toolchain-bundle destinations for one project."""

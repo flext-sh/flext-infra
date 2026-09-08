@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import cli
+
 from flext_infra import c, m, p, r, t, u
 from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
 from flext_infra.gates.bandit import FlextInfraBanditGate

@@ -9,10 +9,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 import flext_infra.validate as core_module
 from flext_infra.validate import FlextInfraInventoryService
-from flext_tests import tm
 
 # Why: the symbol must be absent for the test to mean anything, so it
 # cannot be spelled as a static attribute access without making the file

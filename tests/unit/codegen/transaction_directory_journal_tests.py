@@ -6,12 +6,12 @@ import os
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import m
 from flext_infra.codegen import codegen_transaction as transaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
-from flext_tests import tm
 from tests import u as test_u
 
 

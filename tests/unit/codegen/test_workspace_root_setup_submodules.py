@@ -8,10 +8,10 @@ import shutil
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c, m, p, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_tests import tm
 from tests import u as test_u
 
 pytestmark = pytest.mark.slow
@@ -39,10 +39,13 @@ def _run_setup(workspace: Path, env: dict[str, str]) -> p.Cli.CommandOutput:
 def _render_repository_root_makefile(tmp_path: Path) -> str:
     root_repository = test_u.Tests.repository_ref("flext")
     member = test_u.Tests.repository_ref(
-        "flext-core", path=Path("flext-core"), role=c.Infra.RepositoryRole.STANDALONE
+        "flext-core", path=Path("flext-core"), role=c.Infra.MakeProfile.STANDALONE
     )
     workspace = m.Infra.WorkspaceSpec(
         name="flext",
+        beads=m.Infra.BeadsProjectSpec(
+            version=1, workspace="flext", database="flext", issue_prefix="flext"
+        ),
         repository=root_repository,
         project=test_u.Tests.project_spec("flext"),
         subprojects=(member,),

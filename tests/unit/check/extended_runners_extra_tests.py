@@ -5,11 +5,12 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import c, r
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
-from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -130,7 +131,7 @@ class TestExtendedRunnerExtras:
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         empty_path = tmp_path / "empty-path"
         empty_path.mkdir()
-        runner = u.Tests.command_runner(stdout="[]", returncode=0)
+        runner = u.Tests.command_runner(stdout="{}", returncode=0)
         with tm.scope(env={"PATH": str(empty_path)}):
             result = u.Tests.run_gate_check(
                 FlextInfraBanditGate, tmp_path, project_dir, runner=runner

@@ -5,11 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c, m
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_tests import tm
 from tests import u
 from tests.unit.workspace import WorktreeFixture
 
@@ -183,7 +183,7 @@ class TestCodegenLinkedWorktreeTopology:
             FlextInfraCodegenConform.execute_request(
                 u.Tests.conform_request(
                     root,
-                    scope=c.Infra.CodegenConformScope.SUBPROJECTS,
+                    scope=c.Infra.CodegenConformScope.DECLARED,
                     mode=c.Infra.CodegenConformMode.APPLY,
                 )
             )
@@ -229,7 +229,7 @@ class TestCodegenLinkedWorktreeTopology:
             u.Tests.conform_request(
                 root,
                 what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SUBPROJECTS,
+                scope=c.Infra.CodegenConformScope.DECLARED,
                 mode=c.Infra.CodegenConformMode.CHECK,
             )
         )
