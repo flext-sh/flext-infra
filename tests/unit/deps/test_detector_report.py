@@ -21,7 +21,10 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
 
     @override
     def discover_project_paths(
-        self, repository_root: Path, projects_filter: t.StrSequence | None = None
+        self,
+        repository_root: Path,
+        *,
+        projects_filter: t.StrSequence | None = None,
     ) -> p.Result[Sequence[Path]]:
         _ = repository_root
         _ = projects_filter
@@ -29,13 +32,7 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
 
     @override
     def run_deptry(
-        self,
-        project_path: Path,
-        venv_bin: Path,
-        *,
-        config_path: Path | None = None,
-        json_output_path: Path | None = None,
-        extend_exclude: t.StrSequence | None = None,
+        self, project_path: Path, venv_bin: Path
     ) -> p.Result[t.Pair[Sequence[t.JsonMapping], int]]:
         _ = project_path
         _ = venv_bin
@@ -93,7 +90,11 @@ class TestsFlextInfraDepsDetectorReport:
         )
         runtime = _setup(tmp_path, _DepsStub(tmp_path / "proj-a", 0, 0))
         tm.that(
-            tm.ok(runtime.run(u.Tests.detect_command(tmp_path, no_pip_check=True))),
+            tm.ok(
+                runtime.run(
+                    m.Infra.DetectCommand(repository_root=tmp_path, no_pip_check=True)
+                )
+            ),
             eq=True,
         )
         tm.that(default_output.exists(), eq=True)
@@ -109,8 +110,10 @@ class TestsFlextInfraDepsDetectorReport:
         tm.that(
             tm.ok(
                 runtime.run(
-                    u.Tests.detect_command(
-                        tmp_path, output=str(custom_output), no_pip_check=True
+                    m.Infra.DetectCommand(
+                        repository_root=tmp_path,
+                        output=str(custom_output),
+                        no_pip_check=True,
                     )
                 )
             ),
@@ -131,8 +134,10 @@ class TestsFlextInfraDepsDetectorReport:
         runtime = _setup(tmp_path, _DepsStub(tmp_path / "proj-a", 0, 0))
         error = tm.fail(
             runtime.run(
-                u.Tests.detect_command(
-                    tmp_path, output=str(blocked_output), no_pip_check=True
+                m.Infra.DetectCommand(
+                    repository_root=tmp_path,
+                    output=str(blocked_output),
+                    no_pip_check=True,
                 )
             )
         )
@@ -147,8 +152,10 @@ class TestsFlextInfraDepsDetectorReport:
         runtime = _setup(tmp_path, _DepsStub(tmp_path / "proj-a", 0, 0))
         error = tm.fail(
             runtime.run(
-                u.Tests.detect_command(
-                    tmp_path, output=str(blocked_output), no_pip_check=True
+                m.Infra.DetectCommand(
+                    repository_root=tmp_path,
+                    output=str(blocked_output),
+                    no_pip_check=True,
                 )
             )
         )

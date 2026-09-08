@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import tomllib
 from collections.abc import Mapping
 from pathlib import Path
 from typing import override
@@ -50,7 +49,9 @@ class TestsFlextInfraUtilitiesTomlMixin:
 
     @staticmethod
     def toml_table_at(content: str, *path: str) -> t.JsonMapping:
-        current = TestsFlextInfraUtilitiesTomlMixin.toml_mapping(tomllib.loads(content))
+        current = TestsFlextInfraUtilitiesTomlMixin.toml_doc_mapping(
+            TestsFlextInfraUtilitiesTomlMixin.toml_doc(content)
+        )
         for segment in path:
             current = TestsFlextInfraUtilitiesTomlMixin.toml_mapping(current[segment])
         return current

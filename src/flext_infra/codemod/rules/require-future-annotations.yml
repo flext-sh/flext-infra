@@ -1,3 +1,6 @@
+# Family file for the two universal module-hygiene rules: both scan the same
+# governed Python surface, so the shared files/ignores scan scope stays in one
+# owner file. Each document is one rule; the rule ID is the contract.
 id: require-future-annotations
 language: python
 severity: error
@@ -21,3 +24,26 @@ message: >-
   Python modules must declare `from __future__ import annotations`; insertion
   remains detection-only because module docstrings, shebangs, encoding markers,
   and other future imports determine the only legal insertion point.
+---
+id: ban-star-import-src
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+rule:
+  kind: import_from_statement
+  has:
+    kind: wildcard_import
+    stopBy: end
+message: >-
+  Star imports are forbidden; enumerate the public symbols after semantic
+  reference discovery. Detection remains strict because a textual expansion
+  cannot prove the imported module's runtime export contract.

@@ -108,9 +108,9 @@ class TestsFlextInfraLazyInitCleanup:
         unexpected = obsolete_package / "KEEP.txt"
         unexpected.write_text("operator data\n", encoding=c.Cli.ENCODING_DEFAULT)
 
-        result = u.Tests.run_lazy_init(repository_root)
+        result = u.Tests.plan_lazy_init(repository_root)
 
-        tm.that(result, eq=1)
+        tm.that(result.failure, eq=True)
         tm.that(obsolete_module.is_file(), eq=True)
         tm.that(unexpected.is_file(), eq=True)
 

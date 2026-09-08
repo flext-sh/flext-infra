@@ -7,42 +7,40 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shutil
-import tomllib
 from functools import cache, lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_cli import u
 
 from flext_core import r
-from flext_infra import c, m, t
+from flext_infra import c, p, t
 
 from .git import FlextInfraUtilitiesGit
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
 
     @staticmethod
-    def read_project_metadata_result(project_root: Path) -> p.Result[m.ProjectMetadata]:
+    def read_project_metadata_result(project_root: Path) -> p.Result[p.ProjectMetadata]:
         """Read one project's metadata through the canonical owner chain.
 
         flext-core retired its Result-returning compatibility wrapper; this is
         the consuming project's typed ingress, keeping every metadata reader on
-        one failure contract instead of three ad-hoc try/except blocks.
+        one failure contract instead of three ad-hoc try/except blocks. The
+        declared contract is the canonical structural protocol (the producer
+        builds the exact model behind it), matching every ``p.ProjectMetadata``
+        consumer.
         """
         try:
             document = u.read_project_document_cached(project_root)
             metadata = u.build_project_metadata(project_root, document)
-        except (OSError, ValueError, tomllib.TOMLDecodeError) as exc:
-            return r[m.ProjectMetadata].fail(
+        except (OSError, ValueError) as exc:
+            return r[p.ProjectMetadata].fail(
                 f"cannot read project metadata from {project_root}: {exc}",
                 exception=exc,
             )
-        return r[m.ProjectMetadata].ok(metadata)
+        return r[p.ProjectMetadata].ok(metadata)
 
     @staticmethod
     def validate_infra_payload(payload: object) -> t.JsonMapping:

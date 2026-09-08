@@ -7,11 +7,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from flext_infra.refactor.census import FlextInfraRefactorCensus
+from flext_tests import tm
 from tests import m, p, t
 
 if TYPE_CHECKING:
@@ -33,7 +32,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
         """Run one rope fixer adapter pass over a single reported file."""
         adapter = FlextInfraRopeFixerAdapter(tmp_path)
         ctx = m.Infra.FixEnforcementCommand(
-            repository_root=str(tmp_path), projects=("demo",), apply=apply
+            repository_root=tmp_path, projects=("demo",), apply=apply
         )
         return adapter.fix_project(
             project_dir, ((rule, SimpleNamespace(file_path=str(file_path))),), ctx
@@ -62,7 +61,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
     @staticmethod
     def reject_inaccessible_config_project(tmp_path: Path) -> None:
         """Run the config fixer on an inaccessible project, proving the failure."""
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
+        fixer = FlextInfraConfigFixer(repository_root=tmp_path)
         result = fixer.run(["nonexistent"])
 
         tm.fail(result)

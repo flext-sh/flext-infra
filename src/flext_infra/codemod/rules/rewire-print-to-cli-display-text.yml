@@ -38,3 +38,46 @@ fix: cli.display_text($ARG)
 message: >-
   A module that binds the flext_cli facade emits user-facing output through
   cli.display_text, never through the print builtin or u.Cli.print.
+---
+# Recomposition of the pattern modernizer's print rewrite onto `make mod`.
+#
+# The retired transformer rewrote `print(...)` to `logger.info(...)` while the
+# CLI modernizer rewrote the same construct to `cli.display_text(...)`; which
+# one won depended on the order the two transformers happened to run. The
+# contradiction is resolved structurally by the two rules in this file.
+#
+# The transformer also *injected* `logger = u.fetch_logger(__name__)` when the
+# binding was absent. That insertion is not expressible as a textual ast-grep
+# fix (the legal module-level insertion point depends on the docstring, shebang
+# and `__future__` imports), so this rule requires the binding to exist and
+# leaves the remaining case to Ruff T201.
+id: rewire-print-to-logger-info
+language: python
+severity: error
+files:
+  - "src/**/*.py"
+  - "tests/**/*.py"
+rule:
+  all:
+    - any:
+        - pattern: print($ARG)
+        - pattern: u.Cli.print($ARG)
+    - inside:
+        kind: module
+        stopBy: end
+        all:
+          - has:
+              stopBy: end
+              matches: module-logger-bound
+          - not:
+              has:
+                stopBy: end
+                matches: cli-imported-from-flext-cli
+constraints:
+  ARG:
+    not:
+      kind: keyword_argument
+fix: logger.info($ARG)
+message: >-
+  Library code emits diagnostics through the module logger, never through the
+  print builtin or u.Cli.print.

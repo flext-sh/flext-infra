@@ -127,6 +127,12 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
         )
         workspace = m.Infra.WorkspaceSpec(
             name=self.name,
+            beads=m.Infra.BeadsProjectSpec(
+                version=c.Infra.BEADS_CONFIG_VERSION,
+                workspace=self.name,
+                database=self.name.replace("-", "_"),
+                issue_prefix=self.name,
+            ),
             repository=repository,
             project=m.Infra.ProjectSpec(
                 package_name=package_name,

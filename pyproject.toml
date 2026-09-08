@@ -53,17 +53,7 @@ classifiers = [
   "Topic :: Software Development :: Code Generators",
   "Typing :: Typed",
 ]
-dependencies = [
-  "defusedxml>=0.7.1",
-  "flext-core",
-  "gitpython>=3.1.61",
-  "jinja2>=3.1.6",
-  "libcst>=1.9.0",
-  "packaging>=26.3",
-  "pydantic>=2.13.4",
-  "pydantic-settings>=2.15.0",
-  "rope>=1.14.0",
-]
+dependencies = ["flext-core", "pydantic>=2.13.4", "pydantic-settings>=2.15.0"]
 description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
 keywords = ["automation", "codegen", "flext", "infrastructure", "tooling"]
 license = "MIT"
@@ -536,21 +526,19 @@ whitelines = 1
 
 [tool.uv]
 link-mode = "copy"
-exclude-newer = "7 days"
+exclude-newer = "0 days"
 environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
-
-[tool.uv.exclude-newer-package]
-cryptography = false
-torch = false
-ruff = false
-faker = false
-pytest-randomly = false
 
 [[tool.uv.exclude-dependencies]]
 dependencies = ["flext-infra"]
 
 [tool.uv.exclude-dependencies.package]
 name = "flext-tests"
+
+[tool.bandit]
+severity = "MEDIUM"
+skips = ["B101"]
+targets = ["src"]
 
 [tool.interrogate]
 fail-under = 70

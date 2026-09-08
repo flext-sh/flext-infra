@@ -113,15 +113,10 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         return r[t.Infra.LayoutStatus].ok("applied")
 
     @staticmethod
-    def _managed_profile(project_dir: Path) -> c.Infra.MakeProfile | None:
+    def _managed_profile(project_dir: Path) -> p.Result[c.Infra.MakeProfile | None]:
         """Make profile when the project is governed by a workspace."""
-        repository_root = r[Path].ok(
-            u.Infra.resolve_repository_root_or_cwd(project_dir)
-        )
-        if repository_root.failure:
-            return r[c.Infra.MakeProfile | None].ok(None)
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
-            repository_root.value.repository_root
+            u.Infra.resolve_repository_root_or_cwd(project_dir)
         )
         if workspace.failure:
             return r[c.Infra.MakeProfile | None].from_failure(workspace)
