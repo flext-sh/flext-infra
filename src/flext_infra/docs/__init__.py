@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from .analyzer import FlextInfraDocAnalyzer
     from .auditor import FlextInfraDocAuditor
     from .auditor_mixin import FlextInfraDocAuditorMixin
     from .base import FlextInfraDocServiceBase
@@ -19,7 +18,6 @@ if TYPE_CHECKING:
     from .server import FlextInfraDocServer
     from .validator import FlextInfraDocValidator
 __all__: tuple[str, ...] = (
-    "FlextInfraDocAnalyzer",
     "FlextInfraDocAuditor",
     "FlextInfraDocAuditorMixin",
     "FlextInfraDocBuilder",
@@ -33,7 +31,6 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
-            ".analyzer": ("FlextInfraDocAnalyzer",),
             ".auditor": ("FlextInfraDocAuditor",),
             ".auditor_mixin": ("FlextInfraDocAuditorMixin",),
             ".base": ("FlextInfraDocServiceBase",),
