@@ -32,6 +32,7 @@ if TYPE_CHECKING:
         fixers,
         gates,
         maintenance,
+        promoted,
         refactor,
         release,
         services,
@@ -477,6 +478,7 @@ __all__: tuple[str, ...] = (
     "main",
     "maintenance",
     "p",
+    "promoted",
     "r",
     "refactor",
     "release",
@@ -635,6 +637,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".maintenance.clean": ("FlextInfraCleanService",),
             ".maintenance.python_version": ("FlextInfraPythonVersionEnforcer",),
             ".models": ("FlextInfraModels", "m"),
+            ".promoted": ("promoted",),
             ".protocols": ("FlextInfraProtocols", "FlextInfraProtocolsBase", "p"),
             ".refactor": ("refactor",),
             ".refactor.accessor_migration": (

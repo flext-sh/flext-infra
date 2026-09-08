@@ -160,6 +160,14 @@ class FlextInfraConstantsCodegen(
         "PATHEXT",
         "SYSTEMROOT",
         "WINDIR",
+        # Credential and network-policy keys the lock-time provenance fetch
+        # requires: without them the shared-host GitHub rate limit fails the
+        # lock generation closed. Reinjection stays explicit (allowlist).
+        "GITHUB_TOKEN",
+        "GH_TOKEN",
+        "MISE_GITHUB_TOKEN",
+        "MISE_GITHUB_CREDENTIAL_COMMAND",
+        "MISE_HTTP_TIMEOUT",
     )
     "Only host environment keys eligible for explicit reinjection."
 
