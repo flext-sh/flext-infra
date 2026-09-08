@@ -3,15 +3,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import _git as _git
-    from . import _rope as _rope
+    from . import _git as _git, _rope as _rope
     from ._docs_audit_detectors import FlextInfraUtilitiesDocsAuditDetectorsMixin
     from ._docs_command_contract import FlextInfraUtilitiesDocsCommandContractMixin
     from ._docs_generate_plan import FlextInfraUtilitiesDocsGeneratePlanMixin
