@@ -19,19 +19,19 @@ class FlextInfraUtilitiesPrivateImportFacades:
 
     @staticmethod
     def private_owner(module: str) -> str | None:
-        """Return the owner preceding the first private module segment."""
+        """Return the distribution root owning ``module``.
+
+        The owner is the module's top-level package (the first segment),
+        unless that segment is itself private. Nested private segments
+        (``pkg.servers._oid.x``) belong to the same distribution root — the
+        importer is a same-project sibling and must rewire relatively, never
+        hunt a facade cross-owner.
+        """
         parts = module.split(".")
-        private_index = next(
-            (
-                index
-                for index, part in enumerate(parts)
-                if len(part) > 1 and part.startswith("_") and part[1].isalpha()
-            ),
-            None,
-        )
-        if private_index in {None, 0}:
+        root = parts[0] if parts else ""
+        if not root or (len(root) > 1 and root.startswith("_") and root[1].isalpha()):
             return None
-        return ".".join(parts[:private_index])
+        return root
 
     @staticmethod
     def discover(

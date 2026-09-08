@@ -372,44 +372,6 @@ class FlextInfraUtilitiesDependencies:
                             result = rewritten if rewritten != raw_text else None
         return result
 
-    @classmethod
-    def rewrite_poetry_constraint(
-        cls,
-        dependency_name: str,
-        raw_value: t.Infra.InfraValue,
-        *,
-        locked_versions: t.MappingKV[str, str],
-        internal_names: t.StrSequence = (),
-    ) -> t.Infra.InfraValue | None:
-        """Rewrite one Poetry dependency to the resolved uv.lock floor."""
-        result: t.Infra.InfraValue | None = None
-        normalized_name = cls.dep_name(dependency_name)
-        internal_set = set(internal_names)
-        if (
-            normalized_name is not None
-            and normalized_name != "python"
-            and normalized_name not in internal_set
-        ):
-            locked_version = locked_versions.get(normalized_name)
-            if locked_version is not None:
-                rewritten_specifier = cls.constraint_specifier(locked_version)
-                if not rewritten_specifier:
-                    return None
-                if isinstance(raw_value, str):
-                    result = (
-                        rewritten_specifier
-                        if raw_value != rewritten_specifier
-                        else None
-                    )
-                elif isinstance(raw_value, Mapping) and not any(
-                    key in raw_value for key in (c.Infra.PATH, "git", "url")
-                ):
-                    updated: t.MutableJsonMapping = dict(raw_value)
-                    if updated.get(c.Infra.VERSION) != rewritten_specifier:
-                        updated[c.Infra.VERSION] = rewritten_specifier
-                        result = dict(updated)
-        return result
-
     @staticmethod
     def dedupe_specs(specs: t.StrSequence) -> t.StrSequence:
         """Return deterministic unique dependency specs keyed by normalized name."""

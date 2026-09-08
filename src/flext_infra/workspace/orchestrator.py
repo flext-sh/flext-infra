@@ -49,7 +49,10 @@ class FlextInfraOrchestratorService(
         supplied = (
             u.Cli.env_read(make.apply_variable, dict(os.environ)).unwrap().strip()
         )
-        if supplied != make.apply_value:
+        if supplied == make.apply_value:
+            return self
+        read_only_verbs = frozenset({"check", "test", "docs", "scan", "val", "build"})
+        if self.verb not in read_only_verbs:
             msg = f"workspace orchestration requires {make.apply_variable}={make.apply_value}"
             raise ValueError(msg)
         return self

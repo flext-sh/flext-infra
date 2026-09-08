@@ -26,8 +26,13 @@ Infra:
       uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
       # Supply-chain cooldown SSOT shared by uv and generated update policy.
       dependency_cooldown_days: 7
-      dependency_cooldown_exclusions: [cryptography, torch, ruff]
+      dependency_cooldown_exclusions: [cryptography, torch, ruff, faker, pytest-randomly]
       dependency_cooldown_overrides: {}
+      # [tool.uv] constraint-dependencies rendered from this SSOT only. Empty
+      # removes the key from every projection: an orphan cap (e.g. the retired
+      # structlog<26, which no upstream contract required) can never survive
+      # without a declared owner (operator directive 2026-09-08).
+      uv_constraint_dependencies: []
       # Moving selectors consumed by generated .mise.toml and CI. The fleet
       # runs unlocked: setup converges on the newest published release.
       uv_version: latest
@@ -155,8 +160,8 @@ Infra:
         sha: fc324d3547104276b827a68afc52ff2a11cc49c9
       deploy-pages:
         repository: actions/deploy-pages
-        version: v5.0.0
-        sha: cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
+        version: v5.0.1
+        sha: 368f82528645a54fb793d4d04e342629a3f51346
 
     uv_exclude_dependencies:
       # Standalone CI installs the project editable while sibling flext packages
@@ -331,14 +336,14 @@ Infra:
         # Why: pre-commit runs fmt+fix (mutation) then CI=Y make check (same
         # gates as CI: mypy pyright security markdown smells). This bans
         # broken code from ever being committed. pre-push adds gen+test.
-        - { verb: setup, apply: false, contexts: [local, ci] }
-        - { verb: gen, apply: true, contexts: [local, pre_push] }
-        - { verb: fmt, apply: true, contexts: [local, pre_commit] }
-        - { verb: fix, apply: true, contexts: [local, pre_commit] }
-        - { verb: check, apply: true, contexts: [local, ci, pre_push, pre_commit] }
+        - {verb: setup, apply: false, contexts: [local, ci]}
+        - {verb: gen, apply: true, contexts: [local, pre_push]}
+        - {verb: fmt, apply: true, contexts: [local, pre_commit]}
+        - {verb: fix, apply: true, contexts: [local, pre_commit]}
+        - {verb: check, apply: true, contexts: [local, ci, pre_push, pre_commit]}
         # Review CI proves the complete native gate set. Draft PRs do not select
         # the job, while attestation reuse is selected externally by AI Hub.
-        - { verb: test, apply: true, contexts: [local, ci, pre_push] }
+        - {verb: test, apply: true, contexts: [local, ci, pre_push]}
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.
       clean:
@@ -512,148 +517,72 @@ Infra:
     # computed fields. Add a tool cache/build dir here only — never in the
     # consuming projections. Ordering reproduces the historical derived maps.
     artifacts:
-      - { name: __pycache__, source_scan_ignore: true }
-      - { name: __pyrefly_virtual__ }
-      - { name: .agents }
-      - { name: .beads }
-      - { name: .benchmarks }
+      - {name: __pycache__, source_scan_ignore: true}
+      - {name: __pyrefly_virtual__}
+      - {name: .agents}
+      - {name: .beads}
+      - {name: .benchmarks}
       # mro-0wuz: archive-not-delete target for the layout engine; the generated
       # .gitignore projection must never track archived loose files.
-      - { name: .bkp }
-      - { name: .cache, source_scan_ignore: true }
+      - {name: .bkp}
+      - {name: .cache, source_scan_ignore: true}
       # mro-j47u: agent worktrees are duplicate repositories, never production input.
-      - { name: .claude, source_scan_ignore: true }
+      - {name: .claude, source_scan_ignore: true}
       # mro-jnm1.2: gitignore-only entries absorbed from the removed
       # REQUIRED_GITIGNORE_ENTRIES constant; .direnv keeps the legacy vscode/
       # watch/source-scan projections (order-sensitive, after .claude).
-      - { name: .direnv, source_scan_ignore: true }
-      - { name: .dolt }
-      - { name: .dolt_dropped_databases }
-      - { name: .doltcfg }
-      - { name: .hypothesis }
-      - { name: .git, gitignore: false, source_scan_ignore: true }
-      - { name: .mypy_cache, source_scan_ignore: true }
-      - { name: .omo }
-      - { name: .pylance_cache, vscode_exclude: false }
-      - { name: .pytest_cache, source_scan_ignore: true }
-      - { name: .test-tmp, source_scan_ignore: true }
-      - { name: .test-runtime, source_scan_ignore: true }
-      - { name: .testmondata, is_dir: false, source_scan_ignore: true }
-      - { name: .testmondata-wal, is_dir: false, source_scan_ignore: true }
-      - { name: .testmondata-shm, is_dir: false, source_scan_ignore: true }
-      - { name: .reports, source_scan_ignore: true }
-      - { name: .ropeproject }
-      - { name: .ruff_cache, source_scan_ignore: true }
-      - { name: .scope }
-      - { name: .serena }
-      - { name: .sisyphus }
-      - { name: .state }
-      - { name: .superpowers }
-      - { name: .trash }
-      - { name: .turbo }
-      - { name: .venv, source_scan_ignore: true }
-      - { name: .venv.* }
-      - { name: "*.egg-info", vscode_exclude: false }
-      - { name: build, source_scan_ignore: true }
-      - { name: dist, source_scan_ignore: true }
-      - { name: node_modules, source_scan_ignore: true }
-      - { name: site, watch_exclude: false }
-      - { name: target }
-      - {
-          name: .pyrefly_cache,
-          vscode_exclude: false,
-          watch_exclude: false,
-          source_scan_ignore: true,
-        }
-      - {
-          name: .tox,
-          vscode_exclude: false,
-          watch_exclude: false,
-          source_scan_ignore: true,
-        }
-      - {
-          name: conftest.py,
-          is_dir: false,
-          gitignore: false,
-          vscode_exclude: false,
-          watch_exclude: false,
-          source_scan_ignore: true,
-        }
-      - {
-          name: dist-packages,
-          gitignore: false,
-          vscode_exclude: false,
-          watch_exclude: false,
-          source_scan_ignore: true,
-        }
-      - {
-          name: legado,
-          gitignore: false,
-          vscode_exclude: false,
-          watch_exclude: false,
-          source_scan_ignore: true,
-        }
-      - {
-          name: site-packages,
-          gitignore: false,
-          vscode_exclude: false,
-          watch_exclude: false,
-          source_scan_ignore: true,
-        }
-      - {
-          name: vendor,
-          gitignore: false,
-          vscode_exclude: false,
-          watch_exclude: false,
-          source_scan_ignore: true,
-        }
-      - {
-          name: venv,
-          gitignore: false,
-          vscode_exclude: false,
-          watch_exclude: false,
-          source_scan_ignore: true,
-        }
+      - {name: .direnv, source_scan_ignore: true}
+      - {name: .dolt}
+      - {name: .dolt_dropped_databases}
+      - {name: .doltcfg}
+      - {name: .hypothesis}
+      - {name: .git, gitignore: false, source_scan_ignore: true}
+      - {name: .mypy_cache, source_scan_ignore: true}
+      - {name: .omo}
+      - {name: .pylance_cache, vscode_exclude: false}
+      - {name: .pytest_cache, source_scan_ignore: true}
+      - {name: .test-tmp, source_scan_ignore: true}
+      - {name: .test-runtime, source_scan_ignore: true}
+      - {name: .testmondata, is_dir: false, source_scan_ignore: true}
+      - {name: .testmondata-wal, is_dir: false, source_scan_ignore: true}
+      - {name: .testmondata-shm, is_dir: false, source_scan_ignore: true}
+      - {name: .reports, source_scan_ignore: true}
+      - {name: .ropeproject}
+      - {name: .ruff_cache, source_scan_ignore: true}
+      - {name: .scope}
+      - {name: .serena}
+      - {name: .sisyphus}
+      - {name: .state}
+      - {name: .superpowers}
+      - {name: .trash}
+      - {name: .turbo}
+      - {name: .venv, source_scan_ignore: true}
+      - {name: .venv.*}
+      - {name: "*.egg-info", vscode_exclude: false}
+      - {name: build, source_scan_ignore: true}
+      - {name: dist, source_scan_ignore: true}
+      - {name: node_modules, source_scan_ignore: true}
+      - {name: site, watch_exclude: false}
+      - {name: target}
+      - {name: .pyrefly_cache, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: .tox, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: conftest.py, is_dir: false, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: dist-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: legado, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: site-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: vendor, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: venv, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
       # mro-jnm1.2: gitignore-only entries absorbed from the removed
       # REQUIRED_GITIGNORE_ENTRIES constant; they feed no other projection.
       # NOTA: .flext-deps foi removido — o cutover para fontes git eliminou o
       # cache, e o gate de actions proibe qualquer referencia ao mecanismo.
-      - {
-          name: .flext-sync.lock,
-          is_dir: false,
-          vscode_exclude: false,
-          watch_exclude: false,
-        }
-      - {
-          name: .sync.lock,
-          is_dir: false,
-          vscode_exclude: false,
-          watch_exclude: false,
-        }
-      - { name: .planning, vscode_exclude: false, watch_exclude: false }
-      - {
-          name: skill-create-output,
-          vscode_exclude: false,
-          watch_exclude: false,
-        }
-      - {
-          name: .debug-journal.md,
-          is_dir: false,
-          vscode_exclude: false,
-          watch_exclude: false,
-        }
-      - {
-          name: .mcp.json,
-          is_dir: false,
-          vscode_exclude: false,
-          watch_exclude: false,
-        }
-      - {
-          name: CLAUDE.local.md,
-          is_dir: false,
-          vscode_exclude: false,
-          watch_exclude: false,
-        }
+      - {name: .flext-sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false}
+      - {name: .sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false}
+      - {name: .planning, vscode_exclude: false, watch_exclude: false}
+      - {name: skill-create-output, vscode_exclude: false, watch_exclude: false}
+      - {name: .debug-journal.md, is_dir: false, vscode_exclude: false, watch_exclude: false}
+      - {name: .mcp.json, is_dir: false, vscode_exclude: false, watch_exclude: false}
+      - {name: CLAUDE.local.md, is_dir: false, vscode_exclude: false, watch_exclude: false}
 
     vscode:
       # Canonical .vscode/settings.json content injected with owner semantics:
@@ -1034,12 +963,35 @@ Infra:
       - path: pyproject.toml
         owner: codegen
         policy: merge
-        # Sections codegen renders, so a conflict in them is resolved by
-        # re-rendering instead of by hand. per-file-ignores renders from
-        # tooling.yaml exactly like the pytest and uv sections; leaving it
-        # undeclared made absorbing an integration base that still carried the
-        # previous lint projection unresolvable through the canonical surface.
-        conflict_sections: [tool.pytest.ini_options, tool.uv, tool.ruff.lint.per-file-ignores]
+        conflict_sections:
+          - build-system
+          - dependency-groups
+          - tool.uv
+          - tool.ruff
+          - tool.mypy
+          - tool.pyright
+          - tool.pyrefly
+          - tool.pytest
+          - tool.coverage
+          - tool.codespell
+          - tool.tomlsort
+          - tool.yamlfix
+          - tool.deptry
+          - tool.hatch
+          - tool.pydantic-mypy
+          - tool.vulture
+        preserve_project_keys:
+          - name
+          - description
+          - authors
+          - maintainers
+          - scripts
+          - classifiers
+          - keywords
+          - license
+          - urls
+          - readme
+          - version
 
     scaffold:
       build:
@@ -1070,7 +1022,33 @@ Infra:
           - pyrefly>=1.2.0
           - pyright>=1.1.411
           - pytest>=9.1.1
+          - pytest-randomly>=4.1.0
           - pytest-testmon>=2.2.0
+          # types-* stub floors are declared here (cooldown-eligible dates).
+          # Lock-fed raising wrote dated stub versions into the projections;
+          # dated stubs churn weekly, so the SSOT owns the clamp and the
+          # rolling window governs when the date advances (flext-gzfd2).
+          - types-cachetools>=7.0.0.20260713
+          - types-cffi>=2.1.0.20260827
+          - types-click>=7.1.8
+          - types-defusedxml>=0.7.0.20260504
+          - types-docker>=7.2.0.20260827
+          - types-flask>=1.1.6
+          - types-jsonschema>=4.26.0.20260518
+          - types-ldap3>=2.9.13.20260827
+          - types-paramiko>=5.0.0.20260724
+          - types-protobuf>=7.35.1.20260827
+          - types-psutil>=7.2.2.20260827
+          - types-psycopg2>=2.9.21.20260724
+          - types-pyasn1>=0.6.0.20260724
+          - types-pyopenssl>=24.1.0.20240722
+          - types-python-dateutil>=2.9.0.20260807
+          - types-pyyaml>=6.0.12.20260815
+          - types-redis>=4.6.0.20241004
+          - types-requests>=2.33.0.20260712
+          - types-setuptools>=84.0.0.20260812
+          - types-tabulate>=0.10.0.20260508
+          - types-toml>=0.10.8.20260518
           - ruff>=0.16.5
           - rumdl>=0.2.62
           - vulture>=2.16
@@ -1081,15 +1059,15 @@ Infra:
           - upstream: flext_core
             runtime:
               - flext-core
-              - pydantic>=2.13.3
-              - pydantic-settings>=2.14.0
+              - pydantic>=2.13.4
+              - pydantic-settings>=2.15.0
             codegen: [flext-infra]
           - upstream: flext_cli
             runtime:
               - flext-cli
               - flext-core
-              - pydantic>=2.13.3
-              - pydantic-settings>=2.14.0
+              - pydantic>=2.13.4
+              - pydantic-settings>=2.15.0
             codegen: [flext-infra]
       ping_example:
         command_name: ping
@@ -1223,7 +1201,7 @@ Infra:
             - "!.gitignore"
             - "!.gitmodules"
             - "!.gitattributes"
-        - name: "direnv environment (no secrets \u2014 venv activation only)"
+        - name: "direnv environment (no secrets — venv activation only)"
           profiles: [workspace]
           patterns:
             - "!.envrc"
@@ -1571,7 +1549,7 @@ Infra:
             # the exception the render loses the project id and the gen
             # check gate drifts on every clean clone.
             - "!.beads/identity.toml"
-        - name: "codegen module-standardizer reject artifacts (ADR-005 \u00a79)"
+        - name: "codegen module-standardizer reject artifacts (ADR-005 §9)"
           patterns:
             - "*.tpl.rej"
         - name: "--- codegen conform: generated runtime ignores ---"

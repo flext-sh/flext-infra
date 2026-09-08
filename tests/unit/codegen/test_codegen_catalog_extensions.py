@@ -9,8 +9,8 @@ import pytest
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u, u as test_u
 from tests.unit.workspace import WorktreeFixture
+from tests.utilities import u
 
 pytestmark = pytest.mark.slow
 
@@ -18,7 +18,7 @@ pytestmark = pytest.mark.slow
 def _repository(
     name: str, *, path: str, role: c.Infra.MakeProfile
 ) -> m.Infra.RepositoryRef:
-    reference = test_u.Tests.repository_ref(name, path=Path(path), role=role)
+    reference = u.Tests.repository_ref(name, path=Path(path), role=role)
     is_standalone = role is c.Infra.MakeProfile.STANDALONE
     return reference.model_copy(
         update={"package": is_standalone, "editable": is_standalone}
@@ -149,12 +149,12 @@ class TestsCodegenCatalogExtensions:
         )
         workspace = m.Infra.WorkspaceSpec(
             name=root.name,
-            beads=test_u.Tests.beads_project(root.name),
+            beads=u.Tests.beads_project(root.name),
             repository=root,
-            project=test_u.Tests.project_spec(root.name),
+            project=u.Tests.project_spec(root.name),
             subprojects=(member,),
         )
-        provider = test_u.Tests.provider()
+        provider = u.Tests.provider()
         member_source = tmp_path / "member-source"
         WorktreeFixture.initialize_governed_project(
             member_source,
@@ -272,7 +272,7 @@ class TestsCodegenCatalogExtensions:
         )
         declared_gitmodules = gitmodules.read_bytes()
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
-            test_u.Tests.conform_request(
+            u.Tests.conform_request(
                 repository_root,
                 what=c.Infra.CodegenConformSurface.ALL,
                 scope=c.Infra.CodegenConformScope.ALL,
@@ -290,7 +290,7 @@ class TestsCodegenCatalogExtensions:
             if file.path == repository_root.resolve() / c.Infra.MAKEFILE_FILENAME
         )
         tm.that(
-            test_u.Tests.codegen_file_text(root_makefile),
+            u.Tests.codegen_file_text(root_makefile),
             has=f"DECLARED_REPOSITORIES := {member.name}",
         )
         gitmodules_plan = next(
