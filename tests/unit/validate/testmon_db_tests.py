@@ -6,9 +6,9 @@ import sqlite3
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import FlextInfraTestmonDbInspector, config, m
-from flext_tests import tm
 
 
 class TestsFlextInfraTestmonDbInspector:

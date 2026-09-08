@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from flext_infra import config
 from flext_tests import tm
+
+from flext_infra import config
 from tests import c, u
 
 

@@ -6,10 +6,10 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-
 from flext_cli import u as cli_u
-from flext_infra import c, m, p, u
 from flext_tests import tm
+
+from flext_infra import c, m, p, u
 from tests import u as test_u
 
 

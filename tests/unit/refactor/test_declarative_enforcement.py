@@ -5,12 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import m, u
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
-from flext_tests import tm
 from tests import TestsFlextInfraUtilities as test_u
 
 if TYPE_CHECKING:

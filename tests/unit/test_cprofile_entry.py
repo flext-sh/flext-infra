@@ -6,9 +6,9 @@ import sys
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import config, u
-from flext_tests import tm
 
 
 class TestsCProfileEntry:

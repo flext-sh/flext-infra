@@ -9,9 +9,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import m, u
 from flext_infra.detectors.loose_object_detector import FlextInfraLooseObjectDetector
-from flext_tests import tm
 from tests import u as test_u
 
 if TYPE_CHECKING:

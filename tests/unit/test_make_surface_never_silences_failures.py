@@ -22,9 +22,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_tests import tm
+
 import flext_infra
 from flext_infra import c
-from flext_tests import tm
 
 
 def _repository_root() -> Path:

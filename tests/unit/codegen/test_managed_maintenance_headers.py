@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, u
 from flext_tests import tm
+
+from flext_infra import c, config, u
 
 
 class TestsFlextInfraManagedMaintenanceHeaders:
@@ -82,7 +83,7 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         tm.that(text, lacks="[MANAGED]")
 
     def test_makefile_fmt_renders_ssot_ruff_preview_and_unsafe_fixes(self) -> None:
-        """fmt APPLY uses ruff --preview and --unsafe-fixes from make.ruff."""
+        """Fmt APPLY uses ruff --preview and --unsafe-fixes from make.ruff."""
         ruff = config.Infra.codegen.make.ruff
         tm.that("--preview" in ruff.format_apply, eq=True)
         tm.that("--preview" in ruff.lint_fix, eq=True)

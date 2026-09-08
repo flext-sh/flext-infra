@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_cli import u
 from git import GitCommandError
 
-from flext_cli import u
 from flext_core import r
 from flext_infra.models import m
 

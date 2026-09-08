@@ -19,6 +19,7 @@ from types import MappingProxyType
 from typing import Annotated
 
 from flext_cli import m
+
 from flext_infra import t
 
 from ._defaults import ImmutableEmptyMapping

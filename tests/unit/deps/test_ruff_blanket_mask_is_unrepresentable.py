@@ -19,10 +19,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import pytest
+from flext_tests import tm
 from pydantic import ValidationError
 
 from flext_infra import config, m, t
-from flext_tests import tm
 
 
 class TestsFlextInfraRuffBlanketMaskIsUnrepresentable:

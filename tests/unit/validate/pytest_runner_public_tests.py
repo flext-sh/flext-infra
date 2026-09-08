@@ -6,9 +6,9 @@ import time
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import FlextInfraPytestRunner, config, u
-from flext_tests import tm
 
 
 class TestsFlextInfraPytestRunner:

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, infra, m
 from flext_tests import tm
+
+from flext_infra import c, infra, m
 
 
 def _write_pyproject(root: Path) -> None:

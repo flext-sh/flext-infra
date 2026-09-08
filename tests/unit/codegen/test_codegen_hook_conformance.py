@@ -6,10 +6,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_tests import tm
 from tests import u as test_u
 
 pytestmark = pytest.mark.slow

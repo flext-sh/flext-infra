@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import u
 from flext_infra.detectors.facade_scanner import FlextInfraScanner
-from flext_tests import tm
 from tests import u as test_u
 
 if TYPE_CHECKING:

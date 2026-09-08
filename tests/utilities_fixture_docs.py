@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_tests import tm
+
 from flext_core import r
 from flext_infra.docs.generator import FlextInfraDocGenerator
-from flext_tests import tm
 from tests import m, t
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin

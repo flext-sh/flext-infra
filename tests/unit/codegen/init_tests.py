@@ -10,10 +10,10 @@ import sys
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 import flext_infra.codegen as codegen_module
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_tests import tm
 
 
 def _baseline_leaf_modules() -> tuple[str, ...]:

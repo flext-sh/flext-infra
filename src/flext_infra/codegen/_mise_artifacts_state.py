@@ -300,6 +300,28 @@ class FlextInfraMiseArtifactsState:
         return tuple(sorted(set(residue)))
 
     @classmethod
+    def cleanup_orphan_residue(
+        cls, layout: m.Infra.MiseToolchainWorkspaceLayout
+    ) -> p.Result[bool]:
+        """Delete journal-less transaction trees left by a crashed apply.
+
+        Staging dirs without a journal are not live destinations. Check mode
+        still fails closed; apply reconciles them before begin.
+        """
+        for path in cls.transaction_residue(layout):
+            if not path.exists() and not path.is_symlink():
+                continue
+            observed = u.Cli.atomic_inventory_physical_tree(path)
+            if observed.failure:
+                if not path.exists() and not path.is_symlink():
+                    continue
+                return r[bool].from_failure(observed)
+            removed = u.Cli.atomic_cleanup_physical_tree_guarded(observed.value)
+            if removed.failure:
+                return r[bool].from_failure(removed)
+        return r[bool].ok(True)
+
+    @classmethod
     def cleanup_journaled_directories(
         cls,
         layout: m.Infra.MiseToolchainWorkspaceLayout,

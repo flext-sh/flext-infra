@@ -7,12 +7,12 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
 from flext_cli import cli
+from flext_tests import tm
+
 from flext_infra import m, main as infra_main, p, t
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
-from flext_tests import tm
 from tests import c, u
 
 
