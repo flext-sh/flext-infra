@@ -242,8 +242,10 @@ class FlextInfraConstantsCheck:
     JSCPD_IGNORE_PATTERNS: Final[t.StrSequence] = (
         "**/__snapshots__/**",
         "**/__init__.py",
+        "**/api_cases/**",
     )
-    "Generated Python surfaces excluded semantically; Git owns artifact visibility."
+    "Generated Python surfaces and structured test-case parameterization files "
+    "excluded semantically; Git owns artifact visibility."
 
     # --- Manual-command blocker (AGENTS.md `Build & Test`) SSOT ---
     MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset({
