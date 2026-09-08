@@ -1754,19 +1754,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 and managed.path.as_posix() not in contract.destinations
             ):
                 continue
+            pyproject_skipped = managed.path == Path(c.Infra.PYPROJECT_FILENAME) and (
+                not contract.pyproject
+                or (
+                    workspace.project is None
+                    and profile is c.Infra.MakeProfile.WORKSPACE
+                )
+            )
             if (
                 managed.policy in {"delegated", "manual"}
                 or managed.path == Path(c.Infra.CUSTOM_MAKE_FILENAME)
-                or (
-                    managed.path == Path(c.Infra.PYPROJECT_FILENAME)
-                    and (
-                        not contract.pyproject
-                        or (
-                            workspace.project is None
-                            and profile is c.Infra.MakeProfile.WORKSPACE
-                        )
-                    )
-                )
+                or pyproject_skipped
             ):
                 continue
             entries = tuple(

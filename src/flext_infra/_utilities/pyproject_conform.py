@@ -134,16 +134,6 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if normalized.failure:
             return r[str].from_failure(normalized)
-        git_sources_result = cls._sync_internal_git_sources(
-            source,
-            project_name=project_name,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
-            repositories=(workspace.repository, *workspace.subprojects),
-            providers=providers,
-        )
-        if git_sources_result.failure:
-            return r[str].from_failure(git_sources_result)
         cls._remove_legacy_tooling(source)
         typecheck_paths = cls._sync_typecheck_paths(source)
         if typecheck_paths.failure:
@@ -234,16 +224,6 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if sources_result.failure:
             return r[str].from_failure(sources_result)
-        git_sources_result = cls._sync_internal_git_sources(
-            source,
-            project_name=project_name,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
-            repositories=(workspace.repository, *workspace.subprojects),
-            providers=providers,
-        )
-        if git_sources_result.failure:
-            return r[str].from_failure(git_sources_result)
         return cls._rendered_conformed_document(
             source,
             project_name=project_name,
@@ -300,6 +280,14 @@ class FlextInfraUtilitiesPyprojectConform:
             )
             if group_result.failure:
                 return group_result
+        git_sources_result = cls._sync_internal_git_sources(
+            document,
+            repositories=available,
+            providers=providers,
+            workspace_dependencies=workspace_dependencies,
+        )
+        if git_sources_result.failure:
+            return git_sources_result
         return r[bool].ok(True)
 
     @classmethod
@@ -397,25 +385,20 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         document: t.Cli.TomlDocument,
         *,
-        project_name: str,
-        workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.MakeProfile,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
         providers: t.SequenceOf[m.Infra.ProviderSpec],
+        workspace_dependencies: frozenset[str],
     ) -> p.Result[bool]:
         """Declare every internal git source as a uv branch-tracked source.
 
-        The workspace root keeps its local overlay only. A publishable member
+        The workspace root keeps its local overlay only — the non-empty
+        workspace-dependency set already encodes that. A publishable member
         declares each internal distribution once under ``[tool.uv.sources]``
         with the repository URL and the configured branch: the same pyproject
         stays resolvable standalone and the lock re-resolves the branch tip on
         every upgrade (ADR-003 declared-source contract, flext-62fbu).
         """
-        if cls._is_workspace_context_root(
-            project_name=project_name,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
-        ):
+        if workspace_dependencies:
             return r[bool].ok(True)
         internal_names: set[str] = set()
         project = u.Cli.toml_table_child(document, c.Infra.PROJECT)
@@ -425,22 +408,17 @@ class FlextInfraUtilitiesPyprojectConform:
             optional = u.Cli.toml_table_child(project, c.Infra.OPTIONAL_DEPENDENCIES)
             if optional is not None:
                 requirement_groups.extend(optional.values())
-        dependency_groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
-        if dependency_groups is not None:
-            requirement_groups.extend(
-                u.Cli.toml_value(
-                    u.Cli.toml_mapping_ensure_table(
-                        document, c.Infra.DEPENDENCY_GROUPS
-                    ),
-                    str(group),
-                )
-                for group in dependency_groups
-            )
-        for group in requirement_groups:
-            for requirement in u.Cli.toml_as_string_list(group):
-                name = FlextInfraUtilitiesDependencies.dep_name(requirement)
-                if name is not None and name.startswith("flext-"):
-                    internal_names.add(name)
+        groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
+        if groups is not None:
+            requirement_groups.extend(groups.values())
+        internal_names.update(
+            name
+            for group in requirement_groups
+            for requirement in u.Cli.toml_as_string_list(group)
+            if (name := FlextInfraUtilitiesDependencies.dep_name(requirement))
+            is not None
+            and name.startswith("flext-")
+        )
         if not internal_names:
             return r[bool].ok(True)
         tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
