@@ -47,6 +47,24 @@ def _workspace() -> m.Infra.WorkspaceSpec:
 
 
 class TestsFlextInfraCodegenPyprojectConform:
+    def test_custom_entry_point_groups_survive_conformance(self) -> None:
+        """Plugin registrations remain owned by their declaring distribution."""
+        rendered = '[project]\nname = "sample"\n'
+        live = (
+            '[project]\nname = "sample"\n'
+            '[project.entry-points."example.plugins"]\n'
+            'sample = "sample.plugin:main"\n'
+        )
+
+        overlaid = tm.ok(u.Infra.overlay_preserved(rendered, live))
+
+        tm.that(
+            test_u.Tests.toml_table_at(
+                overlaid, "project", "entry-points", "example.plugins"
+            )["sample"],
+            eq="sample.plugin:main",
+        )
+
     def test_overlay_defaults_only_the_omitted_policy(self) -> None:
         """Explicit empty policies survive default resolution of the other policy."""
         spec = next(

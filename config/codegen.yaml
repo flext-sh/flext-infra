@@ -1021,6 +1021,7 @@ Infra:
           - authors
           - maintainers
           - scripts
+          - entry-points
           - classifiers
           - keywords
           - license

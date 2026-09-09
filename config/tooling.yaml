@@ -573,7 +573,7 @@ Infra:
         # The first failing test is the only actionable red. Continuing after
         # it wastes runtime and obscures the causal failure.
         max-failures: 1
-        enforcement-plugin: flext_tests.enforcement_plugin
+        enforcement-plugin: flext_tests_enforcement
         progress-args: [--verbose]
         report-args: [-ra, --durations=25, --durations-min=0.001, --tb=short]
         diagnostic-args: [-rA, --durations=0, --tb=long, --showlocals]
