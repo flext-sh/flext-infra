@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+import re
 from flext_tests import tm
 
 from flext_infra import config
@@ -284,7 +285,7 @@ ruff check src
         tm.fail(loaded)
         tm.that(loaded.error, has=str(manifest))
 
-        with pytest.raises(ValueError) as caught:
+        with pytest.raises(ValueError, match=re.escape(loaded.error)) as caught:
             u.Infra.docs_command_contract_issues(scope)
 
         tm.that(str(caught.value), eq=loaded.error)
