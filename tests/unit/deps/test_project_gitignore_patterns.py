@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import c, config, m, u
@@ -84,9 +85,5 @@ class TestsProjectGitignorePatterns:
             {"tooling.yaml": "ManagedArtifacts:\n  Gitignore:\n    patterns: ['']\n"},
         )
 
-        try:
+        with pytest.raises(m.ValidationError):
             u.Infra.load_project_managed_artifacts(root)
-        except m.ValidationError:
-            return
-        msg = "an empty ignore pattern must not validate"
-        raise AssertionError(msg)

@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra import main as infra_main
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from tests import t, u
@@ -203,11 +204,11 @@ _LAZY_CASCADE_TEST = (
 )
 
 
-def _parse_source_ast(source: str) -> object | None:
+def _parse_source_ast(source: str) -> r[object]:
     try:
-        return compile(source, "<refactor-test-source>", "exec")
-    except SyntaxError:
-        return None
+        return r[object].ok(compile(source, "<refactor-test-source>", "exec"))
+    except SyntaxError as exc:
+        return r[object].fail(f"source failed to compile: {exc}", exception=exc)
 
 
 def _strings(value: t.JsonValue) -> t.StrSequence:
@@ -582,8 +583,8 @@ class TestsFlextInfraRefactorMainCli:
         test_source = test_file.read_text(encoding="utf-8")
         tm.that(service_source, lacks="only_for_tests")
         tm.that(test_source, has="only_for_tests")
-        tm.that(_parse_source_ast(service_source), none=False)
-        tm.that(_parse_source_ast(test_source), none=False)
+        tm.that(_parse_source_ast(service_source), ok=True)
+        tm.that(_parse_source_ast(test_source), ok=True)
 
         self._assert_no_unused_functions(workspace)
 
@@ -612,9 +613,9 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(init_source, has="build_lazy_import_map(")
         tm.that(init_source, has="helper_used")
         tm.that(helpers_source, has="helper_used")
-        tm.that(_parse_source_ast(init_source), none=False)
-        tm.that(_parse_source_ast(helpers_source), none=False)
-        tm.that(_parse_source_ast(test_source), none=False)
+        tm.that(_parse_source_ast(init_source), ok=True)
+        tm.that(_parse_source_ast(helpers_source), ok=True)
+        tm.that(_parse_source_ast(test_source), ok=True)
 
         self._assert_no_unused_functions(workspace)
 
@@ -649,7 +650,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(service_source, lacks="only_for_tests")
         tm.that(service_source, lacks="@log_entry")
         tm.that(service_source, has="def log_entry")
-        tm.that(_parse_source_ast(service_source), none=False)
+        tm.that(_parse_source_ast(service_source), ok=True)
 
     def test_refactor_census_strip_module_all_entry_multi_line(self) -> None:
         source = (
@@ -708,7 +709,7 @@ class TestsFlextInfraRefactorMainCli:
         service_source = service_file.read_text(encoding="utf-8")
         tm.that(service_source, lacks="def only_for_cleanup")
         tm.that(service_source, lacks="from collections.abc import Sequence")
-        tm.that(_parse_source_ast(service_source), none=False)
+        tm.that(_parse_source_ast(service_source), ok=True)
 
         self._assert_no_unused_functions(workspace)
 

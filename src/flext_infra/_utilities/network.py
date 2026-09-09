@@ -5,12 +5,14 @@ from __future__ import annotations
 from http.client import HTTPConnection, HTTPException, HTTPSConnection
 from urllib.parse import urlsplit
 
+from flext_core import r
+
 
 class FlextInfraUtilitiesNetwork:
     """Decide once, before effects, whether an endpoint answers at all."""
 
     @staticmethod
-    def endpoint_reachable(url: str, *, timeout_seconds: float) -> bool:
+    def endpoint_reachable(url: str, *, timeout_seconds: float) -> r[bool]:
         """Return whether one HEAD request receives any HTTP answer in time.
 
         A server that answers with an error status (403 from a rate limit, 404)
@@ -30,10 +32,12 @@ class FlextInfraUtilitiesNetwork:
         try:
             connection.request("HEAD", parts.path or "/")
             connection.getresponse()
-        except (HTTPException, OSError):
-            return False
+        except (HTTPException, OSError) as exc:
+            return r[bool].fail(
+                f"endpoint {url!r} did not respond: {exc}", exception=exc
+            )
         else:
-            return True
+            return r[bool].ok(True)
         finally:
             connection.close()
 
