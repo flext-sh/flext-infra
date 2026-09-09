@@ -139,6 +139,7 @@ class FlextInfraUtilitiesPrivateImports:
         export_bindings, declared_exports = (
             FlextInfraUtilitiesPrivateImportFacades.declared_exports(discovery_sources)
         )
+        class_bases = FlextInfraUtilitiesPrivateImportFacades.class_bases(discovery_sources)
         direct_specs: dict[Path, dict[str, tuple[str, str]]] = {}
         specs: dict[Path, list[tuple[str, str, str, str, str]]] = {}
         for finding in findings:
@@ -184,6 +185,8 @@ class FlextInfraUtilitiesPrivateImports:
                             owners=facades.get(package, ()),
                             package=package,
                             qualified=qualified,
+                            bindings=export_bindings,
+                            class_bases=class_bases,
                         )
                     )
                 if target_reference is None:

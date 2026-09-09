@@ -282,14 +282,99 @@ class FlextInfraUtilitiesPrivateImportFacades:
         }
 
     @staticmethod
+    def class_bases(
+        sources: t.MappingKV[str, t.Pair[str, bool]],
+    ) -> dict[str, tuple[str, ...]]:
+        """Index static class ancestry, including private intermediate owners."""
+        bases: dict[str, tuple[str, ...]] = {}
+        for module, (source, is_package) in sources.items():
+            tree = ast.parse(source, filename=module)
+            package = module if is_package else module.rpartition(".")[0]
+
+            def collect(
+                statements: list[ast.stmt], scope: str,
+                names: dict[str, str], module: str, package: str,
+            ) -> None:
+                def reference(node: ast.expr) -> str:
+                    expression = ast.unparse(
+                        node.value if isinstance(node, ast.Subscript) else node
+                    )
+                    root, separator, suffix = expression.partition(".")
+                    return names.get(root, f"{module}.{root}") + (
+                        f".{suffix}" if separator else ""
+                    )
+
+                for node in statements:
+                    if isinstance(node, ast.ImportFrom) and node.module:
+                        imported = (
+                            resolve_name(f"{'.' * node.level}{node.module}", package)
+                            if node.level else node.module
+                        )
+                        for alias in node.names:
+                            names[alias.asname or alias.name] = f"{imported}.{alias.name}"
+                    elif isinstance(node, ast.Import):
+                        for alias in node.names:
+                            names[alias.asname or alias.name.split(".")[0]] = (
+                                alias.name if alias.asname else alias.name.split(".")[0]
+                            )
+                    elif isinstance(node, ast.ClassDef):
+                        identity = f"{scope}.{node.name}"
+                        bases[identity] = tuple(
+                            reference(base)
+                            for base in node.bases
+                            if isinstance(base, ast.Name | ast.Attribute | ast.Subscript)
+                        )
+                        collect(node.body, identity, names.copy(), module, package)
+                        names[node.name] = identity
+                    elif isinstance(node, ast.Assign | ast.AnnAssign):
+                        value = node.value
+                        targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                        for target in targets:
+                            if isinstance(target, ast.Name):
+                                names[target.id] = (
+                                    reference(value)
+                                    if isinstance(value, ast.Name | ast.Attribute)
+                                    else f"{scope}.{target.id}"
+                                )
+
+            collect(tree.body, module, {}, module, package)
+        return bases
+
+    @staticmethod
     def public_reference(
         *,
         owners: t.SequenceOf[t.Quad[ast.Module, str, str, str]],
         package: str,
         qualified: str,
+        bindings: t.MappingKV[str, set[str]],
+        class_bases: t.MappingKV[str, tuple[str, ...]],
     ) -> str | None:
         """Resolve one private class to exactly one inherited facade path."""
         references: set[str] = set()
+
+        def inherits(identity: str, visiting: frozenset[str]) -> bool:
+            if identity == qualified:
+                return True
+            if identity in visiting:
+                msg = f"cyclic public facade inheritance: {identity}"
+                raise ValueError(msg)
+            prefix = identity
+            while prefix:
+                targets = bindings.get(prefix)
+                if targets is not None:
+                    if len(targets) != 1:
+                        msg = f"ambiguous public facade base identity: {identity}"
+                        raise ValueError(msg)
+                    target = next(iter(targets)) + identity[len(prefix) :]
+                    if target != identity:
+                        return inherits(target, visiting | {identity})
+                    break
+                prefix = prefix.rpartition(".")[0]
+            return any(
+                inherits(base, visiting | {identity})
+                for base in class_bases.get(identity, ())
+            )
+
         for tree, facade_alias, root_name, facade_file in owners:
             imports: dict[str, str] = {}
             for node in tree.body:
@@ -318,7 +403,14 @@ class FlextInfraUtilitiesPrivateImportFacades:
                 node: ast.ClassDef, public_path: str, imports: dict[str, str]
             ) -> None:
                 if any(
-                    isinstance(base, ast.Name) and imports.get(base.id) == qualified
+                    isinstance(base, ast.Name)
+                    and inherits(
+                        imports.get(
+                            base.id,
+                            f"{package}.{Path(facade_file).stem}.{base.id}",
+                        ),
+                        frozenset(),
+                    )
                     for base in node.bases
                 ):
                     references.add(public_path)

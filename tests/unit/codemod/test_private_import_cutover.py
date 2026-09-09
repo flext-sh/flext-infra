@@ -14,8 +14,9 @@ class TestsFlextInfraPrivateImportCutover:
     """Exercise private-import automation only through ``u.Infra``."""
 
     @pytest.mark.parametrize("case", ["unique", "ambiguous", "shadowed"])
+    @pytest.mark.parametrize("depth", [0, 2])
     def test_installed_facades_are_read_only_discovery_inputs(
-        self, tmp_path: Path, installed_dependency_path: Path, case: str
+        self, tmp_path: Path, installed_dependency_path: Path, case: str, depth: int
     ) -> None:
         consumer, statement, facade_sources = self._facade_case(
             tmp_path, "constants", "profile", "Profile", "c"
@@ -39,6 +40,23 @@ class TestsFlextInfraPrivateImportCutover:
                 nested_class="Other",
                 alias="c",
             )
+        previous_module = "flext_sample._constants.profile"
+        previous_class = "FlextSampleConstantsProfile"
+        for level in range(depth):
+            module_name = f"bridge_{level}"
+            class_name = f"FlextSampleConstantsBridge{level}"
+            dependency_sources[package / f"_constants/{module_name}.py"] = (
+                f"from .{previous_module.rsplit('.', maxsplit=1)[-1]} import {previous_class}\n"
+                f"class {class_name}({previous_class}):\n    pass\n"
+            )
+            previous_module = f"flext_sample._constants.{module_name}"
+            previous_class = class_name
+        if depth:
+            for path in tuple(dependency_sources):
+                if path.parent == package and path.name != "__init__.py":
+                    dependency_sources[path] = dependency_sources[path].replace(
+                        "flext_sample._constants.profile", previous_module
+                    ).replace("FlextSampleConstantsProfile", previous_class)
         for path, source in dependency_sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(source, encoding="utf-8")
