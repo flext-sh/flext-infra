@@ -21,7 +21,8 @@ from flext_core import r
 from flext_core.__version__ import FlextVersion
 from flext_infra import c, u
 from flext_infra.base import s
-from flext_infra.codegen._mise_artifacts_publication import publish_file_plan
+
+from ._mise_artifacts_publication import publish_file_plan
 
 if TYPE_CHECKING:
     from flext_infra import p

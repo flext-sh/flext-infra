@@ -14,7 +14,8 @@ from typing import TYPE_CHECKING, override
 from flext_core import r
 from flext_infra import c, m, u
 from flext_infra.base import s
-from flext_infra.codegen._mise_artifacts_publication import publish_file_plan
+
+from ._mise_artifacts_publication import publish_file_plan
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -200,9 +201,7 @@ class FlextInfraCodegenScaffolder(s[str]):
             if planned.failure:
                 message = f"writing scaffold {filepath}: {planned.error}"
                 raise OSError(message)
-            written = publish_file_plan(
-                planned.value, backup=True, phase="scaffold"
-            )
+            written = publish_file_plan(planned.value, backup=True, phase="scaffold")
             if written.failure:
                 message = f"writing scaffold {filepath}: {written.error}"
                 raise OSError(message)

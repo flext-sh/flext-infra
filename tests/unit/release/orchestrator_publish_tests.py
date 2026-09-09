@@ -12,9 +12,9 @@ import os
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import main
-from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u, c, m
 
 
