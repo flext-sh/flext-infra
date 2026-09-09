@@ -33,7 +33,10 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
 
     @staticmethod
     def docs_command_contract_content_issues(
-        content: str, *, relative_path: str
+        content: str,
+        *,
+        relative_path: str,
+        effective_verbs: t.SequenceOf[m.Infra.MakeVerbSpec],
     ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Return command-contract issues from one Markdown document."""
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
@@ -71,7 +74,7 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
                     verb_spec = next(
                         (
                             spec
-                            for spec in config.Infra.codegen.make.verbs
+                            for spec in effective_verbs
                             if spec.name == verb
                         ),
                         None,
@@ -120,6 +123,15 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
         ``iter_scope_markdown_files`` owns every formal scope exclusion; this
         detector carries no path allowlist or bypass.
         """
+        from flext_infra import u
+
+        loaded = u.Infra.workspace_spec_load(scope.path)
+        if loaded.failure:
+            raise ValueError(loaded.error)
+        effective_verbs = (
+            *config.Infra.codegen.make.verbs,
+            *loaded.value.repository.extra_verbs,
+        )
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         docs_root = scope.path / c.Infra.DIR_DOCS
         for path in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
@@ -138,7 +150,9 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
             )
             issues.extend(
                 FlextInfraUtilitiesDocsCommandContractMixin.docs_command_contract_content_issues(
-                    content, relative_path=relative_path
+                    content,
+                    relative_path=relative_path,
+                    effective_verbs=effective_verbs,
                 )
             )
         return issues

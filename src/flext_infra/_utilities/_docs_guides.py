@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m
+from flext_infra import c, config, m
 
 from ._docs_command_contract import FlextInfraUtilitiesDocsCommandContractMixin
 from ._docs_generate_plan import (
@@ -73,6 +73,8 @@ class FlextInfraUtilitiesDocsGuidesMixin:
         source_states: t.SequenceOf[m.Cli.AtomicFileState],
     ) -> p.Result[t.VariadicTuple[DocsRenderedArtifactTuple]]:
         """Plan root-owned guide projections from authenticated snapshot bytes."""
+        from flext_infra import u
+
         source_root = repository_root / c.Infra.DIR_DOCS / "guides"
         destination_root = scope.path / c.Infra.DIR_DOCS / "guides"
         if source_root == destination_root:
@@ -110,6 +112,13 @@ class FlextInfraUtilitiesDocsGuidesMixin:
                 owned.add(path)
         artifacts: list[DocsRenderedArtifactTuple] = []
         expected_paths = {destination_root / path.name for path in sources}
+        loaded = u.Infra.workspace_spec_load(repository_root)
+        if loaded.failure:
+            return r[tuple[DocsRenderedArtifactTuple, ...]].from_failure(loaded)
+        effective_verbs = (
+            *config.Infra.codegen.make.verbs,
+            *loaded.value.repository.extra_verbs,
+        )
         for source_path, source in sorted(sources.items()):
             destination = destination_root / source_path.name
             if destination in destinations and destination not in owned:
@@ -118,7 +127,9 @@ class FlextInfraUtilitiesDocsGuidesMixin:
                 )
             relative_path = source_path.relative_to(repository_root).as_posix()
             issues = FlextInfraUtilitiesDocsCommandContractMixin.docs_command_contract_content_issues(
-                source, relative_path=relative_path
+                source,
+                relative_path=relative_path,
+                effective_verbs=effective_verbs,
             )
             if issues:
                 first = issues[0]
