@@ -413,7 +413,6 @@ skips = ["B101"]
         tm.that(live_tool, none=False)
         if live_tool is None:
             return
-        live_ruff = u.Cli.toml_mapping_child(live_tool, "ruff")
         rendered_payload = u.Cli.toml_mapping_from_text(rendered)
         tm.that(rendered_payload, none=False)
         if rendered_payload is None:
