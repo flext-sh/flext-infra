@@ -70,6 +70,9 @@ class FlextInfraConstantsNamespace:
         "m",
         "u",
     )
+    NAMESPACE_SETTINGS_IMPORT_ALLOWED_FACADES_SET: Final[frozenset[str]] = frozenset(
+        NAMESPACE_SETTINGS_IMPORT_ALLOWED_FACADES
+    )
     NAMESPACE_LAYER_BY_FILE: Final[MappingProxyType[str, str]] = MappingProxyType({
         "settings.py": "settings",
         "_settings.py": "settings",

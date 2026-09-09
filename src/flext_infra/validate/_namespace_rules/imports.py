@@ -162,8 +162,8 @@ class FlextInfraNamespaceRulesImports(FlextInfraNamespaceRulesBase):
         """
         if owner is None or imported is None or type_only:
             return None
-        if owner in c.Infra.NAMESPACE_SETTINGS_IMPORT_ALLOWED_OWNERS and imported in (
-            *c.Infra.NAMESPACE_SETTINGS_IMPORT_ALLOWED_FACADES,
+        if owner in c.Infra.NAMESPACE_SETTINGS_IMPORT_ALLOWED_OWNERS and (
+            imported in c.Infra.NAMESPACE_SETTINGS_IMPORT_ALLOWED_FACADES_SET
         ):
             return None
         order = c.Infra.NAMESPACE_LAYER_ORDER

@@ -616,7 +616,7 @@ class TestFlextInfraNamespaceValidator:
             "class FlextTestSettings(FlextTestSettingsBase):\n"
             "    class _Test(m.BaseModel):\n"
             "        bag: t.MappingKV[str, str] = m.Field(default_factory=dict)\n"
-            "    @u.model_validator(mode=\"before\")\n"
+            "    @u.model_validator(mode='before')\n"
             "    @classmethod\n"
             "    def _lift(cls, data: t.JsonValue) -> t.JsonValue:\n"
             "        return data\n"
