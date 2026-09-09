@@ -423,7 +423,7 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 printf '%s\n' "$$mise_storage_root/shims" >> "$$GITHUB_PATH"; \
 fi; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks)\n'; \
-	env "MISE_DATA_DIR=$$mise_storage_root" "$$latest_mise" -C "$$project_root" exec -- env "SETUP_DIRENV=$$direnv_executable" "SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" $(SELF_MAKE) _setup_lifecycle
+	mise_exec project "$$latest_mise" -C "$$project_root" exec -- env "SETUP_DIRENV=$$direnv_executable" "SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" "CI=$(CI)" "APPLY=$(APPLY)" $(SELF_MAKE) _setup_lifecycle
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
