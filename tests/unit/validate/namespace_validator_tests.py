@@ -141,114 +141,152 @@ class TestFlextInfraNamespaceValidator:
         [
             (
                 "from collections.abc import Callable\n",
-                "    def execute(self, validator: Callable[[], None]) -> None:\n"
-                "        validator()\n",
+                (
+                    "    def execute(self, validator: Callable[[], None]) -> None:\n"
+                    "        validator()\n"
+                ),
                 False,
             ),
             (
-                "from collections.abc import Callable\n"
+                (
+                    "from collections.abc import Callable\n"
+                    "from pydantic import validator\n"
+                ),
+                (
+                    "    def execute(self, validator: Callable[[], None]) -> None:\n"
+                    "        validator()\n"
+                ),
+                False,
+            ),
+            (
+                (
+                    "from collections.abc import Callable\n"
+                    "from pydantic import root_validator as validate\n"
+                ),
+                (
+                    "    def execute(self, validate: Callable[[], None]) -> None:\n"
+                    "        validate()\n"
+                ),
+                False,
+            ),
+            (
+                (
+                    "from collections.abc import Callable\n"
+                    "from pydantic import validator\n"
+                ),
+                (
+                    "    def execute(self, callback: Callable[[], None]) -> None:\n"
+                    "        validator = callback\n"
+                    "        validator()\n"
+                ),
+                False,
+            ),
+            (
                 "from pydantic import validator\n",
-                "    def execute(self, validator: Callable[[], None]) -> None:\n"
-                "        validator()\n",
-                False,
-            ),
-            (
-                "from collections.abc import Callable\n"
-                "from pydantic import root_validator as validate\n",
-                "    def execute(self, validate: Callable[[], None]) -> None:\n"
-                "        validate()\n",
-                False,
-            ),
-            (
-                "from collections.abc import Callable\n"
-                "from pydantic import validator\n",
-                "    def execute(self, callback: Callable[[], None]) -> None:\n"
-                "        validator = callback\n"
-                "        validator()\n",
-                False,
-            ),
-            (
-                "from pydantic import validator\n",
-                "    def execute(self) -> None:\n"
-                "        def validator() -> None:\n"
-                "            pass\n"
-                "        validator()\n",
+                (
+                    "    def execute(self) -> None:\n"
+                    "        def validator() -> None:\n"
+                    "            pass\n"
+                    "        validator()\n"
+                ),
                 False,
             ),
             (
                 "from unrelated import validator\n",
-                "    @validator('value')\n"
-                "    def validate(cls, value: str) -> str:\n"
-                "        return value\n",
+                (
+                    "    @validator('value')\n"
+                    "    def validate(cls, value: str) -> str:\n"
+                    "        return value\n"
+                ),
                 False,
             ),
             (
                 "import unrelated as pd\n",
-                "    @pd.root_validator()\n"
-                "    def validate(cls, value: str) -> str:\n"
-                "        return value\n",
+                (
+                    "    @pd.root_validator()\n"
+                    "    def validate(cls, value: str) -> str:\n"
+                    "        return value\n"
+                ),
                 False,
             ),
             (
                 "from pydantic import validator\n",
-                "    @validator('value')\n"
-                "    def validate(cls, value: str) -> str:\n"
-                "        return value\n",
+                (
+                    "    @validator('value')\n"
+                    "    def validate(cls, value: str) -> str:\n"
+                    "        return value\n"
+                ),
                 True,
             ),
             (
                 "from pydantic import validator as validate_field\n",
-                "    @validate_field('value')\n"
-                "    def validate(cls, value: str) -> str:\n"
-                "        return value\n",
+                (
+                    "    @validate_field('value')\n"
+                    "    def validate(cls, value: str) -> str:\n"
+                    "        return value\n"
+                ),
                 True,
             ),
             (
                 "from pydantic.v1 import root_validator as validate_root\n",
-                "    @validate_root()\n"
-                "    def validate(cls, value: str) -> str:\n"
-                "        return value\n",
+                (
+                    "    @validate_root()\n"
+                    "    def validate(cls, value: str) -> str:\n"
+                    "        return value\n"
+                ),
                 True,
             ),
             (
                 "from pydantic import root_validator as validate_root\n",
-                "    @validate_root\n"
-                "    def validate(cls, value: str) -> str:\n"
-                "        return value\n",
+                (
+                    "    @validate_root\n"
+                    "    def validate(cls, value: str) -> str:\n"
+                    "        return value\n"
+                ),
                 True,
             ),
             (
                 "import pydantic as pd\n",
-                "    @pd.validator('value')\n"
-                "    def validate(cls, value: str) -> str:\n"
-                "        return value\n",
+                (
+                    "    @pd.validator('value')\n"
+                    "    def validate(cls, value: str) -> str:\n"
+                    "        return value\n"
+                ),
                 True,
             ),
             (
                 "import pydantic.v1 as pd\n",
-                "    @pd.root_validator()\n"
-                "    def validate(cls, value: str) -> str:\n"
-                "        return value\n",
+                (
+                    "    @pd.root_validator()\n"
+                    "    def validate(cls, value: str) -> str:\n"
+                    "        return value\n"
+                ),
                 True,
             ),
             (
                 "",
-                "    def execute(self) -> None:\n"
-                "        from pydantic.v1 import validator as validate\n"
-                "        validate('value')\n",
+                (
+                    "    def execute(self) -> None:\n"
+                    "        from pydantic.v1 import validator as validate\n"
+                    "        validate('value')\n"
+                ),
                 True,
             ),
             (
                 "from pydantic import validator as validate\n",
-                "    def execute(self) -> None:\n"
-                "        label = 'caf\u00e9'; validate('value')\n",
+                (
+                    "    def execute(self) -> None:\n"
+                    "        label = 'caf\u00e9'; validate('value')\n"
+                ),
                 True,
             ),
             (
                 "from pydantic import field_validator as validator\n",
-                "    @validator('value')\n"
-                "    def validate(cls, value: str) -> str:\n"
-                "        return value\n",
+                (
+                    "    @validator('value')\n"
+                    "    def validate(cls, value: str) -> str:\n"
+                    "        return value\n"
+                ),
                 False,
             ),
         ],
