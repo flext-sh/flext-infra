@@ -17,7 +17,6 @@ from typing import Annotated, override
 from flext_core import r
 from flext_infra import config, p, u
 from flext_infra.base import s
-from flext_infra.codegen._mise_artifacts_files import FlextInfraMiseArtifactsFiles
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
@@ -29,6 +28,8 @@ from flext_infra.models import m
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.typings import t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles
 
 
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):

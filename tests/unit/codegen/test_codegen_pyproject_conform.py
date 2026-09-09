@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import c, config, m, u

@@ -14,7 +14,8 @@ from typing import TYPE_CHECKING, override
 from flext_core import r
 from flext_infra import c, m, u
 from flext_infra.base import s
-from flext_infra.codegen._mise_artifacts_publication import publish_file_plan
+
+from ._mise_artifacts_publication import publish_file_plan
 
 if TYPE_CHECKING:
     from flext_infra import p, t
