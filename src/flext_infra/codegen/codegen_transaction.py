@@ -201,7 +201,18 @@ class FlextInfraCodegenTransaction:
                     layout, mise_staged.error or "cannot stage Mise artifacts"
                 )
             )
-        publications = (*ordinary_staged.value, *mise_staged.value)
+        bound = state.bind_created_parents(
+            layout,
+            active_journal.directories,
+            (*ordinary_staged.value, *mise_staged.value),
+        )
+        if bound.failure:
+            return result_type.from_failure(
+                self._recover_failure(
+                    layout, bound.error or "cannot bind generation destination parents"
+                )
+            )
+        publications = bound.value
         barriers = self._verified_prepublication_barriers(
             layout, plan.value, all_sources, publications
         )
@@ -313,6 +324,15 @@ class FlextInfraCodegenTransaction:
             return result_type.from_failure(
                 self._recover_failure(
                     layout, staged.error or f"cannot stage {phase} phase"
+                )
+            )
+        staged = state.bind_created_parents(
+            layout, session.journal.directories, staged.value
+        )
+        if staged.failure:
+            return result_type.from_failure(
+                self._recover_failure(
+                    layout, staged.error or f"cannot bind {phase} destination parents"
                 )
             )
         destination_barrier = verify.states_current(

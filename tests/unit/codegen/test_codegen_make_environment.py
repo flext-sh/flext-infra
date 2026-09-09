@@ -133,6 +133,8 @@ class TestsCodegenMakeEnvironment:
                     "pre-setup:\n"
                     '\t@test ! -e "$(RUNTIME_PYTHON)"\n'
                     "post-setup:\n"
+                    '\t@test -x "$(MAKE_COMMAND)"\n'
+                    '\t@test "$(MAKE_COMMAND)" = "$(SELF_MAKE_EXECUTABLE)"\n'
                     "\t@$(UV_RUN) python -c 'import importlib.metadata, sys; "
                     "from pathlib import Path; import tomllib; "
                     'project = tomllib.loads(Path("pyproject.toml").read_text())'
@@ -252,6 +254,7 @@ class TestsCodegenMakeEnvironment:
         active_env = {
             "PATH": f"{hostile_bin}:{os.environ['PATH']}",
             "UV": str(hostile_uv),
+            "UV_BIN": str(hostile_uv),
             "UV_PROJECT": str(hostile_venv.parent),
             "UV_PROJECT_ENVIRONMENT": str(hostile_venv),
             "FLEXT_INFRA_PYTHON": str(hostile_bin / "python"),
@@ -280,14 +283,19 @@ class TestsCodegenMakeEnvironment:
 
         # A current lock is accepted in CI; a new runtime declaration must fail
         # before post-setup, not provision the previous graph via --frozen.
+        make = config.Infra.codegen.make
         tm.ok(
             u.Cli.atomic_write_text_file(
                 project_root / "custom.mk",
                 ".PHONY: post-setup\npost-setup:\n"
+                '\t@test -x "$(MAKE_COMMAND)"\n'
+                '\t@test "$(MAKE_COMMAND)" = "$(SELF_MAKE_EXECUTABLE)"\n'
+                f'\t@test "$({make.apply_variable})" = "{make.apply_value}"\n'
+                f'\t@test "$({make.ci.variable})" = "{make.ci.value}"\n'
                 "\t@printf '%s\\n' 'ci-runtime-provisioned'\n",
             )
         )
-        ci_env = {**active_env, "CI": "Y"}
+        ci_env = {**active_env, make.ci.variable: make.ci.value}
         locked = tm.ok(
             test_u.Tests.run_isolated_make(
                 ["--no-print-directory", "setup", "APPLY=Y"],

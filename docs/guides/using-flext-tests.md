@@ -23,9 +23,7 @@ the canonical aliases.
 
 ## Aliases
 
-```python
-
-```
+Import the aliases each test consumes from the public `flext_tests` package root.
 
 `flext_tests` reexports `d`, `e`, `h`, `r`, `x` from `flext_infra` and exposes domain helpers (`tk`, `td`, `tf`, `tv`,
 `tm`).
@@ -50,43 +48,56 @@ Add `flext_tests` to your project test dependencies and use these fixtures in `c
 
 | Fixture | Purpose |
 | --------- | --------- |
-| `reset_settings` | Resets `FlextSettings`, `FlextTestsSettings`, and `FlextContainer` singletons between tests (autouse). |
-| `test_runtime` | Binds aliases (`c`, `e`, `m`, `p`, `r`, `s`, `t`, `u`) and `service`/`settings`/`logger` on class instances (autouse). |
+| `reset_settings` | Explicit fixture resetting `FlextSettings`, `FlextTestsSettings`, and `FlextContainer` before and after its consumer. |
+| `test_runtime` | Explicit fixture binding `c`, `e`, `m`, `p`, `r`, `t`, `u` and `service`/`settings`/`logger` on `FlextTestsCase` instances. |
 | `settings` | Clean `FlextTestsSettings(debug=True, trace=False)`. |
 | `settings_factory` | Factory for creating project-specific settings instances. |
 | `temp_dir` / `temp_file` | Temporary paths isolated per test. |
 
+With the settings plugin loaded, its `pytest_runtest_setup` and
+`pytest_runtest_teardown` hooks perform automatic isolation. The two explicit
+fixtures above are not declared with `autouse=True`.
+
 ```python
 from __future__ import annotations
 
-from flext_tests import FlextTestsSettings
-
 from flext_core import FlextSettings
+from flext_tests import FlextTestsSettings
 
 
 def test_settings_isolation(settings: FlextTestsSettings) -> None:
     settings.debug = True
-    # Next test receives a fresh singleton via reset_settings
+    # The settings plugin resets runtime singletons between test functions.
     assert FlextSettings.fetch_global() is not settings
 ```
+
 ## Resetting singletons manually
 
 When a fixture is not enough:
 
 ```python
-from flext_tests import FlextTestsSettings
-
 from flext_core import FlextContainer, FlextSettings
+from flext_tests import FlextTestsSettings
 
 FlextSettings.reset_for_testing()
 FlextTestsSettings.reset_for_testing()
 FlextContainer.reset_for_testing()
 ```
+
 ## Testing result flows
 
 Use the `r` alias instead of importing from `returns` directly:
 
 ```python
+from flext_tests import r
+
+
+def safe_divide(a: float, b: float) -> r[float]:
+    if b == 0:
+        return r[float].fail("division_by_zero")
+    return r[float].ok(a / b)
+
+
 def test_safe_divide() -> None:
     result = safe_divide(10, 2)
     assert result.success
@@ -95,6 +106,7 @@ def test_safe_divide() -> None:
     failure = safe_divide(10, 0)
     assert failure.failure
 ```
+
 ## Good practices
 
 - Rely on `reset_settings` and `test_runtime` for isolation.
@@ -109,10 +121,9 @@ support only. It does not own a Make registry, dispatcher, generator, or
 workspace inventory.
 
 Repository conformance and the complete generated Makefile are owned solely by
-`flext-infra codegen conform`. The generated surface exposes `help` plus twelve
-operational verbs; each action has one verb, one `WHAT` selector, and one
-canonical handler. Project-specific behavior is confined to validated private
-handlers in `custom.mk`.
+`flext-infra codegen conform`. Discover the current selector-free verbs through
+`make help` in the owning repository root. Mutating execution requires `APPLY=Y`;
+do not add a `WHAT` selector or duplicate the dispatcher in a test helper.
 
 Tests for this contract exercise the generated public commands and observable
 artifacts. They do not reproduce command metadata or assert private routing
@@ -122,12 +133,27 @@ the canonical decision.
 
 ## Bad practices
 
-```python
-# Mutating global singleton without resetting
-FlextSettings.fetch_global().debug = True
+Do not mutate a global singleton without the settings plugin or explicit reset
+fixture providing isolation. Do not import a separate result implementation from
+`returns`; exercise the public `r` facade used by the production consumer.
 
-# Importing returns directly instead of using the r alias
+For a standalone test without the settings plugin, keep the reset on both sides
+of the mutation, including assertion failure:
+
+```python
+from flext_core import FlextSettings
+
+
+def test_settings_override() -> None:
+    FlextSettings.reset_for_testing()
+    try:
+        settings = FlextSettings.fetch_global()
+        settings.debug = True
+        assert settings.debug
+    finally:
+        FlextSettings.reset_for_testing()
 ```
+
 ## Related
 
 - `.agents/skills/using-flext-tests/SKILL.md`

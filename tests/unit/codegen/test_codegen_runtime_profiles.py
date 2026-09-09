@@ -20,6 +20,7 @@ class TestCodegenRuntimeProfiles:
         tuple(
             item.upstream
             for item in config.Infra.codegen.scaffold.project.dependency_profiles
+            if item.project is None
         ),
     )
     @pytest.mark.parametrize("composed", [False, True])
@@ -65,7 +66,7 @@ class TestCodegenRuntimeProfiles:
         profile = next(
             item
             for item in config.Infra.codegen.scaffold.project.dependency_profiles
-            if item.upstream == upstream
+            if item.project is None and item.upstream == upstream
         )
         owned_name = tm.not_none(u.Infra.dep_name(profile.runtime[0]))
         custom = (

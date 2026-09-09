@@ -20,19 +20,21 @@ dependencies = [
   "beartype>=0.22.9",
   "defusedxml>=0.7.1",
   "dependency-injector>=4.49.1",
-  "filelock>=3.30.0",
+  "filelock>=3.32.6",
   "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
   "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
-  "gitpython>=3.1.61",
+  "GitPython>=3.1.62",
   "jinja2>=3.1.6",
   "libcst>=1.9.0",
-  "markdown",
+  "Markdown>=3.10.3",
+  "mkdocs>=1.6.1",
   "packaging>=26.3",
-  "pydantic>=2.13.4",
+  "pydantic>=2.13.5",
   "pydantic-settings>=2.15.0",
+  "pytest>=9.1.1",
   "pyyaml>=6.0.3",
   "rope>=1.14.0",
-  "structlog>=26.1.0",
+  "structlog>=25.5.0",
   "typing-extensions>=4.16.0",
 ]
 description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
@@ -69,6 +71,7 @@ dev = [
   "bandit>=1.9.4",
   "deptry",
   "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
+  "hypothesis",
   "mkdocs",
   "mkdocs-autorefs",
   "mkdocs-exclude>=1.0.2",
@@ -571,6 +574,7 @@ whitelines = 1
 [tool.uv]
 link-mode = "copy"
 exclude-newer = "0 days"
+constraint-dependencies = ["structlog<26"]
 environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
 
 [[tool.uv.exclude-dependencies]]

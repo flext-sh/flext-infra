@@ -13,6 +13,16 @@
 # End SECTION: header
 
 SHELL := /bin/sh
+# GNU MAKE_COMMAND may be a bare name. Resolve it before changing PATH so
+# recursive lifecycle calls keep this invoker instead of selecting a Mise shim.
+SELF_MAKE_EXECUTABLE := $(shell command -v "$(MAKE_COMMAND)")
+ifneq ($(.SHELLSTATUS),0)
+$(error Cannot resolve current Make executable: $(MAKE_COMMAND))
+endif
+SELF_MAKE_EXECUTABLE := $(realpath $(SELF_MAKE_EXECUTABLE))
+ifeq ($(strip $(SELF_MAKE_EXECUTABLE)),)
+$(error Current Make executable has no physical path: $(MAKE_COMMAND))
+endif
 .DEFAULT_GOAL := help
 ifeq ($(filter command line override,$(origin SETUP_BOOTSTRAP_ONLY)),)
 ifneq ($(filter setup,$(MAKECMDGOALS)),)
@@ -36,15 +46,23 @@ UV_LINK_MODE := {{ uv_link_mode }}
 # End SECTION: project identity
 
 # === SECTION: public boundary (managed) ===
-PUBLIC_INPUTS := {{ make.apply_variable }}
-COMMAND_LINE_INPUTS := $(foreach name,$(.VARIABLES),$(if $(filter command line override,$(origin $(name))),$(name)))
+# GNU Make built-ins are dot-prefixed; .SHELLSTATUS carries origin "override"
+# on Make >= 4.4, so they are excluded from caller-input detection.
+PUBLIC_INPUTS := {{ make.apply_variable }} INDEX
+COMMAND_LINE_INPUTS := $(foreach name,$(filter-out .%,$(.VARIABLES)),$(if $(filter command line override,$(origin $(name))),$(name)))
 UNKNOWN_INPUTS := $(filter-out $(PUBLIC_INPUTS),$(COMMAND_LINE_INPUTS))
 ifneq ($(strip $(UNKNOWN_INPUTS)),)
-$(error Unsupported Make input(s): $(UNKNOWN_INPUTS); public operations accept only {{ make.apply_variable }}={{ make.apply_value }})
+$(error Unsupported Make input(s): $(UNKNOWN_INPUTS); public operations accept only {{ make.apply_variable }}={{ make.apply_value }} and INDEX=Y)
 endif
 {{ make.apply_variable }} ?= {{ make.apply_absent_value }}
 ifneq ($(filter $({{ make.apply_variable }}),{{ make.apply_absent_value }} {{ make.apply_value }}),$({{ make.apply_variable }}))
 $(error {{ make.apply_variable }} must be {{ make.apply_value }} when enabled)
+endif
+# INDEX refines receipt-attested publication: Y uploads to the package index,
+# N publishes GitHub assets only. Publication itself stays APPLY-gated.
+INDEX ?=
+ifneq ($(filter-out {{ make.apply_value }} {{ make.apply_absent_value }} N,$(strip $(INDEX))),)
+$(error INDEX must be {{ make.apply_value }}, N, or unset)
 endif
 APPLYING := $(if $(filter {{ make.apply_value }},$({{ make.apply_variable }})),{{ make.apply_value }})
 PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
@@ -138,12 +156,12 @@ CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 
 # === SECTION: profile routing (managed) ===
 # Source: repository topology. workspace has .gitmodules; standalone does not.
-# Both own their runtime in PROJECT_ROOT.
+# Attached members share their Git superproject runtime; standalone owns itself.
 ifneq ($(filter $(MAKE_PROFILE),workspace standalone),$(MAKE_PROFILE))
 $(error Invalid MAKE_PROFILE '$(MAKE_PROFILE)')
 endif
 
-RUNTIME_ROOT := $(PROJECT_ROOT)
+RUNTIME_ROOT := $(REPOSITORY_ROOT)
 # End SECTION: profile routing
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
@@ -194,7 +212,7 @@ override VIRTUAL_ENV := $(RUNTIME_VENV)
 override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
 export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
-{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(PROJECT_ROOT)", "$(SETUP_MISE)", uv_version, "$(SELF_MAKE) _setup_lifecycle", mise_bootstrap) }}
+{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(PROJECT_ROOT)", "$(SETUP_MISE)", uv_version, "$(SELF_MAKE) _setup_lifecycle", mise_bootstrap, make) }}
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
@@ -238,7 +256,10 @@ BORROW_RUNTIME_VENV_RECIPE = set -eu; \
 	fi
 
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra {{ workspace_cli_group }} orchestrate
-DEFAULT_PROJECTS := $(WORKSPACE_SUBPROJECTS){% if make_profile != "workspace" %} .{% endif %}
+# Workspace runs include the root project itself: `.` maps to the
+# _builtin-self-* targets, so all 32 distributions execute their own gates
+# (plan contract: no member of the fleet is excluded from required cycles).
+DEFAULT_PROJECTS := $(WORKSPACE_SUBPROJECTS) .
 SELECTED_PROJECTS := $(DEFAULT_PROJECTS)
 WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
 DOCS_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
@@ -264,10 +285,10 @@ PROJECT_FLEXT_INFRA := if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: 
 SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(WORKSPACE_SUBPROJECTS)),1,))
 # CI must verify the committed lock against declared metadata before syncing.
 # --frozen bypasses that check and can omit newly declared runtime dependencies.
-UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups $(if $(CI),--locked ,)
+UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups $(if $({{ make.ci.variable }}),--locked ,)
 
 {{ makefile_custom_include }}
-SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
+SELF_MAKE := "$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define RUN_PUBLIC
 	$(if $(filter pre-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) pre-$(1))
@@ -476,6 +497,47 @@ _builtin_fix_apply: _builtin_fix_all
 _builtin_fix_enforcement: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) check fix-enforcement --repository-root "$(PROJECT_ROOT)" --safe-only --apply
+
+# _builtin-self-* targets serve the workspace root itself (project selector
+# `.` from the orchestrator). They apply the same member-style gate recipes to
+# PROJECT_ROOT without recursing into submodules, so the root distribution
+# runs its own evidence in the global cycles.
+_builtin-self-test: _builtin_require_environment
+{{ test_report_recipe(
+    runner="$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry",
+    invocation_namespace=make.testmon_cache.invocation_namespace,
+) }}
+
+_builtin-self-check: _builtin_require_environment
+	@set -eu; \
+		gates="{% for gate in make.check_gates_default %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
+		if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
+			gates="{% for gate in make.ci.check_gates %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
+			printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates:{% for allowed in make.ci.check_gates %} {{ allowed }}{% endfor %}\n'; \
+		fi; \
+		if [ -z "$$gates" ]; then \
+		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
+		exit 2; \
+	fi; \
+	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects .
+
+_builtin-self-fmt: _builtin_require_environment
+	$(call _require_apply)
+	@$(UV_RUN) ruff format {{ make.ruff.format_apply | join(" ") }} $(RUFF_PATHS)
+	@$(UV_RUN) ruff check {{ make.ruff.lint_fix | join(" ") }} $(RUFF_PATHS)
+
+_builtin-self-fix: _builtin_require_environment
+	$(call _require_apply)
+	@$(UV_RUN) ruff check {{ make.ruff.lint_fix | join(" ") }} $(RUFF_PATHS)
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "{% for gate in make.check_gates_fixable %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}" --projects . --apply
+
+_builtin-self-build:
+	@$(UV) build --project "$(PROJECT_ROOT)"
+
+_builtin-self-clean: _builtin_clean_generated
+
+_builtin-self-docs: _builtin_docs_all
+
 {% endif %}
 
 _builtin_run_default: _builtin_require_environment

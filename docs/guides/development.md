@@ -3,6 +3,8 @@
 
 # flext-infra - Development
 
+> Project profile: `flext-infra`
+
 <!-- TOC START -->
 - [Start at the workspace root](#start-at-the-workspace-root)
 - [Forward workflow](#forward-workflow)
@@ -10,8 +12,6 @@
 - [Documentation ownership](#documentation-ownership)
 - [Related guides](#related-guides)
 <!-- TOC END -->
-
-> Project profile: `flext-infra`
 
 The root `AGENTS.md`, branch-matched `flext-law`, nearest package scope, and
 active Bead define the development contract. This page is the executable

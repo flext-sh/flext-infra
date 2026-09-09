@@ -21,8 +21,9 @@ class TestsTransactionDirectoryJournal:
     _TRANSACTION_ID = "a" * 32
 
     @pytest.mark.parametrize("foreign_change", [False, True])
+    @pytest.mark.parametrize("missing_launcher_parent", [False, True])
     def test_duplicate_phase_recovers_only_its_new_generated_files(
-        self, tmp_path: Path, *, foreign_change: bool
+        self, tmp_path: Path, *, foreign_change: bool, missing_launcher_parent: bool
     ) -> None:
         """Undo exact new publications, never a foreign replacement at their path."""
         root = test_u.Tests.git_repository(tmp_path)
@@ -30,6 +31,16 @@ class TestsTransactionDirectoryJournal:
         owner = transaction.FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=root)
         )
+        layout = tm.ok(
+            FlextInfraMiseWorkspacePlanner(
+                FlextInfraCodegenMiseArtifacts(repository_root=root)
+            ).layout_from_selectors(root.resolve(), (".",))
+        )
+        artifacts = layout.projects[0].artifacts
+        if missing_launcher_parent:
+            artifacts.unix_launcher.unlink()
+            artifacts.windows_launcher.unlink()
+            artifacts.unix_launcher.parent.rmdir()
         target = root / "docs/generated/readme.md"
 
         def conflict(scope_root: Path) -> p.Result[m.Infra.CodegenTransactionSession]:
@@ -50,6 +61,8 @@ class TestsTransactionDirectoryJournal:
             session = tm.ok(
                 owner.begin_locked(scope_root, (config_plan,), (config_plan,))
             )
+            tm.that(artifacts.unix_launcher.is_file(), eq=True)
+            tm.that(artifacts.windows_launcher.is_file(), eq=True)
             session = tm.ok(
                 owner.append_directories_locked(session, "docs", (target.parent,))
             )
@@ -91,6 +104,65 @@ class TestsTransactionDirectoryJournal:
             tm.that(failed.error, lacks="recovery failed")
             tm.that((root / "docs").exists(), eq=False)
             tm.that((root / ".state").exists(), eq=False)
+            tm.that(
+                artifacts.unix_launcher.parent.exists(), eq=not missing_launcher_parent
+            )
+
+    def test_appended_phase_rejects_replaced_created_parent(
+        self, tmp_path: Path
+    ) -> None:
+        """Never adopt a foreign parent while staging a previously absent file."""
+        root = test_u.Tests.git_repository(tmp_path)
+        test_u.Tests.copy_tracked_mise_seeds(root)
+        owner = transaction.FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root)
+        )
+        target = root / "docs/generated/readme.md"
+        preserved = root / "original-generated"
+
+        def replace_parent(
+            scope_root: Path,
+        ) -> p.Result[m.Infra.CodegenTransactionSession]:
+            config_path = root / ".mise.toml"
+            before = tm.ok(
+                u.Cli.atomic_read_binary_file_state(config_path, required=True)
+            )
+            config_plan = tm.ok(
+                u.Infra.planned_file(
+                    root,
+                    config_path,
+                    required=True,
+                    desired_content=before.content,
+                    desired_mode=before.mode,
+                    owner="mise",
+                )
+            )
+            session = tm.ok(
+                owner.begin_locked(scope_root, (config_plan,), (config_plan,))
+            )
+            planned = tm.ok(
+                u.Infra.planned_file(
+                    root,
+                    target,
+                    required=False,
+                    desired_content=b"owned content\n",
+                    desired_mode=before.mode,
+                    owner="docs",
+                )
+            )
+            session = tm.ok(
+                owner.append_directories_locked(session, "docs", (target.parent,))
+            )
+            target.parent.rename(preserved)
+            target.parent.mkdir()
+            return owner.append_phase_locked(session, "docs", (planned,))
+
+        failed = owner.run_locked(prepare=True, operation=replace_parent)
+
+        tm.fail(failed, has="generation destination parent differs from journal")
+        tm.that(target.exists(), eq=False)
+        tm.that(target.parent.is_dir(), eq=True)
+        tm.that(preserved.is_dir(), eq=True)
 
     @staticmethod
     def _layout(root: Path) -> m.Infra.MiseToolchainWorkspaceLayout:

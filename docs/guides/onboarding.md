@@ -3,6 +3,8 @@
 
 # flext-infra - Onboarding
 
+> Project profile: `flext-infra`
+
 <!-- TOC START -->
 - [Resolve authority](#resolve-authority)
 - [Prepare and discover](#prepare-and-discover)
@@ -12,8 +14,6 @@
 - [Command grammar](#command-grammar)
 - [Related guides](#related-guides)
 <!-- TOC END -->
-
-> Project profile: `flext-infra`
 
 Use this sequence before changing any FLEXT package. All actions start at the
 workspace root.
