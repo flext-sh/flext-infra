@@ -21,10 +21,7 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
 
     @override
     def discover_project_paths(
-        self,
-        repository_root: Path,
-        *,
-        projects_filter: t.StrSequence | None = None,
+        self, repository_root: Path, *, projects_filter: t.StrSequence | None = None
     ) -> p.Result[Sequence[Path]]:
         _ = repository_root
         _ = projects_filter

@@ -7,9 +7,8 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
-
 from flext_tests import tm
+from pydantic import ValidationError
 
 from flext_infra import m, t
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
@@ -118,8 +117,7 @@ class TestsFlextInfraDepsDetectionModels:
     def test_list_with_unconvertible(self) -> None:
         """Verify list with unconvertible."""
         tm.that(
-            FlextInfraDependencyDetectionService.to_infra_value([["nested"]]),
-            none=True,
+            FlextInfraDependencyDetectionService.to_infra_value([["nested"]]), none=True
         )
 
     def test_mapping_value(self) -> None:
@@ -135,9 +133,7 @@ class TestsFlextInfraDepsDetectionModels:
     def test_mapping_with_unconvertible(self) -> None:
         """Verify mapping with unconvertible."""
         tm.that(
-            FlextInfraDependencyDetectionService.to_infra_value({
-                "key": ["nested"]
-            }),
+            FlextInfraDependencyDetectionService.to_infra_value({"key": ["nested"]}),
             none=True,
         )
 

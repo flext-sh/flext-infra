@@ -16,10 +16,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-from tests import u as test_u
 
 from flext_infra import c, config, m, u
-from tests import TestsFlextInfraUtilities as tu
+from tests import TestsFlextInfraUtilities as tu, u as test_u
 
 _ROLE = c.Infra.MakeProfile
 # Provider identity, branch and base URL come from the config SSOT, never from
@@ -55,9 +54,7 @@ def _assert_direct_source(rendered: str, ref: m.Infra.RepositoryRef) -> None:
     tm.that(dependencies, eq=(_inline_requirement(ref),))
     parsed = tu.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
     tool = parsed.get("tool")
-    uv_sources = (
-        tu.Tests.toml_mapping(tool.get("uv")).get("sources") if tool else None
-    )
+    uv_sources = tu.Tests.toml_mapping(tool.get("uv")).get("sources") if tool else None
     tm.that(not uv_sources, eq=True)
 
 

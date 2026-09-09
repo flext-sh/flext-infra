@@ -21,9 +21,10 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import m, u
 from flext_infra.fixers.transformer_fixer import FlextInfraTransformerFixerAdapter
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path

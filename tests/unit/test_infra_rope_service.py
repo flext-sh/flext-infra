@@ -518,14 +518,12 @@ class TestsFlextInfraInfraRopeService:
                 eq=("Original",),
             )
             tm.that(
-                tuple(item.name for item in rope.objects(module_path)),
-                eq=("Original",),
+                tuple(item.name for item in rope.objects(module_path)), eq=("Original",)
             )
 
             rope.refresh()
             tm.that(
-                tuple(item.name for item in rope.objects(module_path)),
-                eq=("Changed",),
+                tuple(item.name for item in rope.objects(module_path)), eq=("Changed",)
             )
 
     def test_workspace_refresh_can_preserve_reverted_name_indexes(

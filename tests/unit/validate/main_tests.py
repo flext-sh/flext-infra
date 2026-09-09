@@ -112,11 +112,7 @@ class TestMainCliRouting:
     def test_skill_validate_routing(self, tmp_path: Path) -> None:
         """skill-validate subcommand routes correctly."""
         result = _cli(
-            "skill-validate",
-            "--skill",
-            "test-skill",
-            "--workspace",
-            str(tmp_path),
+            "skill-validate", "--skill", "test-skill", "--workspace", str(tmp_path)
         )
         tm.that({0, 1}, has=result)
 

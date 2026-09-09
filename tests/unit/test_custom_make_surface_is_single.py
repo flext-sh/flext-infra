@@ -32,15 +32,12 @@ class TestsFlextInfraCustomMakeSurfaceIsSingle:
         managed = tuple(
             item.path.as_posix() for item in config.Infra.codegen.managed_files
         )
-        custom_surfaces = sorted(
-            path for path in managed if path.endswith("custom.mk")
-        )
+        custom_surfaces = sorted(path for path in managed if path.endswith("custom.mk"))
 
         tm.that(custom_surfaces, eq=[])
 
         scaffolded = {
-            entry.destination: entry
-            for entry in config.Infra.codegen.templates.entries
+            entry.destination: entry for entry in config.Infra.codegen.templates.entries
         }
         tm.that("custom.mk" in scaffolded, eq=True)
         tm.that(scaffolded["custom.mk"].overwrite, eq=False)

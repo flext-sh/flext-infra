@@ -87,9 +87,7 @@ class FlextInfraMiseStaging:
             seed_launchers, files.ARTIFACT_SPECS, strict=True
         ):
             if source.content is None:
-                return r[bool].fail(
-                    f"Mise launcher seed content is absent: {name}"
-                )
+                return r[bool].fail(f"Mise launcher seed content is absent: {name}")
             copied = process.write_new(stage_root / name, source.content, mode)
             if copied.failure:
                 return copied
