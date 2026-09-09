@@ -138,7 +138,7 @@ class TestsFlextInfraDepsExtraPathsSync:
             _ = _create_pyproject(project, pyright_content)
             argv = ["prog", "--projects", str(project), "--dry-run"]
         u.Tests.initialize_git_repo(tmp_path)
-        argv = [argv[0], "--workspace", str(tmp_path), *argv[1:]]
+        argv = [argv[0], "--repository-root", str(tmp_path), *argv[1:]]
         tm.that(main(["deps", "extra-paths", *argv[1:]]), eq=expected_exit)
 
     @pytest.mark.parametrize(

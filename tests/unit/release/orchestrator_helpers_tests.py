@@ -14,7 +14,7 @@ from tests import c, m, p, u
 
 def _run_release_main(workspace: Path, *arguments: str) -> int:
     """Run the public release CLI against one real test workspace."""
-    return main(["release", "run", "--workspace", str(workspace), *arguments])
+    return main(["release", "run", "--repository-root", str(workspace), *arguments])
 
 
 def _run_release_build(

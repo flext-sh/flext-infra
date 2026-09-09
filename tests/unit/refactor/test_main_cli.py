@@ -260,7 +260,14 @@ class TestsFlextInfraRefactorMainCli:
         cls, workspace: Path, *, rules: str, kinds: str | None = None
     ) -> None:
         """Run one applying census through the CLI, asserting a clean exit."""
-        args = ["census", "--workspace", str(workspace), "--apply", "--rules", rules]
+        args = [
+            "census",
+            "--repository-root",
+            str(workspace),
+            "--apply",
+            "--rules",
+            rules,
+        ]
         if kinds is not None:
             args = [*args, "--kinds", kinds]
         tm.that(cls._refactor_main(*args), eq=0)
@@ -403,7 +410,7 @@ class TestsFlextInfraRefactorMainCli:
         """The root is a subcommand option, not a group flag ahead of the verb."""
         workspace = tmp_path / "workspace"
         self._write_workspace_pyproject(workspace)
-        result = self._refactor_main("census", "--workspace", str(workspace))
+        result = self._refactor_main("census", "--repository-root", str(workspace))
         tm.that(result, eq=0)
 
     def test_refactor_census_apply_fixes_missing_runtime_alias(
@@ -878,7 +885,7 @@ class TestsFlextInfraRefactorMainCli:
 
         result = self._refactor_main(
             "census",
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "--rules",
             "unused",
