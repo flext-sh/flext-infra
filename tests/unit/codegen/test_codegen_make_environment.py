@@ -726,3 +726,46 @@ class TestsCodegenMakeEnvironment:
         tm.that(makefile, has="deps modernize")
         tm.that(makefile, has="--rewrite-constraints")
         tm.that(makefile, lacks="--constraint-policy")
+
+    def test_generated_boundary_rejects_forbidden_makeflags_overrides(
+        self, tmp_path: Path
+    ) -> None:
+        """Hostile MAKEFLAGS assignments are rejected by the public boundary.
+
+        GNU Make propagates any variable on MAKEFLAGS (or the command line) as
+        ``command line override`` to every child process. The generated guard
+        rejects every override that is not the declared public input, so inherited
+        hostile assignments from a parent Make cannot smuggle selectors into the
+        child.
+        """
+        project_root, _repository_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+
+        apply_variable = config.Infra.codegen.make.apply_variable
+        apply_value = config.Infra.codegen.make.apply_value
+        hostile_env = {
+            "MAKEFLAGS": f"FORBIDDEN_VAR=hostile {apply_variable}={apply_value}",
+        }
+        process = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "test"],
+                cwd=project_root,
+                env=hostile_env,
+                remove_env_keys=(
+                    key
+                    for key in c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS
+                    if key not in hostile_env
+                ),
+            )
+        )
+
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
+        tm.that(
+            process.stdout + process.stderr,
+            has="Unsupported Make input(s): FORBIDDEN_VAR",
+        )
+        tm.that(
+            process.stdout + process.stderr,
+            has=f"public operations accept only {apply_variable}={apply_value}",
+        )
