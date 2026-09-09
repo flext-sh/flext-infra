@@ -81,7 +81,11 @@ class FlextInfraModGateEngine:
             config_root
         )
         pending = [config_root / c.Infra.CODEMOD_CONFIG_FILENAME]
-        pending.extend(path for group in directories.values() for path in group)
+        pending.extend((
+            *directories.rule_dirs,
+            *directories.util_dirs,
+            *directories.test_dirs,
+        ))
         files: set[Path] = set()
         folders: set[Path] = set()
         while pending:
@@ -132,9 +136,8 @@ class FlextInfraModGateEngine:
         directories = FlextInfraCodemodSnapshotReconciler.fixture_directories(
             config_root
         )
-        for key in (c.Infra.CODEMOD_RULE_DIRS_KEY, c.Infra.CODEMOD_UTIL_DIRS_KEY):
-            for directory in directories[key]:
-                source_rules.update(directory.rglob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}"))
+        for directory in (*directories.rule_dirs, *directories.util_dirs):
+            source_rules.update(directory.rglob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}"))
         for rule in sorted(source_rules):
             documents = cls._rule_documents(rule)
             if len(documents) <= 1:

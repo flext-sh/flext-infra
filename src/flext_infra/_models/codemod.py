@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_core import m
@@ -10,6 +11,15 @@ from flext_infra import t
 
 class FlextInfraModelsCodemod:
     """Typed reports emitted by ``make mod``."""
+
+    class ModFixtureDirectories(m.ArbitraryTypesModel):
+        """Validated physical directories selected by one ast-grep owner."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
+
+        rule_dirs: tuple[Path, ...]
+        util_dirs: tuple[Path, ...]
+        test_dirs: tuple[Path, ...]
 
     class ModRuleBatch(m.ArbitraryTypesModel):
         """Validated executable ast-grep documents prepared for one circuit."""

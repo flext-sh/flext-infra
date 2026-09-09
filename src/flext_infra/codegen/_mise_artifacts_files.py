@@ -93,7 +93,7 @@ class FlextInfraMiseArtifactsFiles:
         before = u.Cli.atomic_read_binary_file_state(backup, required=False)
         if before.failure:
             return r[Path].from_failure(before)
-        if isinstance(before.value, cli_m.Cli.AtomicDirectoryChainPlan):
+        if before.value.parent_device is None or before.value.parent_inode is None:
             return r[Path].fail(f"generation backup parent is absent: {backup.parent}")
         if before.value.content is not None:
             return r[Path].fail(f"generation backup already exists: {backup}")
