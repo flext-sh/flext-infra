@@ -82,9 +82,92 @@ class FlextInfraMiseArtifactsState:
                     f"Mise state is not on destination filesystem: {project.selector}"
                 )
             roots.append(transaction_root)
-        return cls.plan_directories(
+        temporary = cls.plan_directories(
             layout, phase="transaction", requested=tuple(roots), disposition="temporary"
         )
+        if temporary.failure:
+            return temporary
+        parents = tuple(
+            dict.fromkeys(
+                artifact.parent
+                for project in layout.projects
+                for artifact in (
+                    project.artifacts.config,
+                    project.artifacts.unix_launcher,
+                    project.artifacts.windows_launcher,
+                )
+                if artifact.parent != project.root
+            )
+        )
+        generated = cls.plan_directories(
+            layout, phase="mise", requested=parents, disposition="generated"
+        )
+        if generated.failure:
+            return generated
+        return r[tuple[m.Infra.CodegenJournalDirectory, ...]].ok((
+            *temporary.value,
+            *generated.value,
+        ))
+
+    @classmethod
+    def bind_created_parents(
+        cls,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        directories: t.VariadicTuple[m.Infra.CodegenJournalDirectory],
+        publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]:
+        """Bind absent destinations only to parents created by this journal."""
+        result_type = r[tuple[m.Infra.CodegenStagedFile, ...]]
+        bound: list[m.Infra.CodegenStagedFile] = []
+        for publication in publications:
+            before = publication.before
+            parent = next(
+                (
+                    entry.created
+                    for entry in directories
+                    if layout.scope_root / entry.path == before.path.parent
+                    and entry.disposition == "generated"
+                ),
+                None,
+            )
+            if before.parent_device is not None and before.parent_inode is not None:
+                if parent is not None and (
+                    before.parent_device,
+                    before.parent_inode,
+                ) != (parent.device, parent.inode):
+                    return result_type.fail(
+                        f"generation destination parent differs from journal: {before.path}"
+                    )
+                bound.append(publication)
+                continue
+            if (
+                before.content is not None
+                or parent is None
+                or parent.device is None
+                or parent.inode is None
+            ):
+                return result_type.fail(
+                    f"generation destination has no created parent authority: {before.path}"
+                )
+            expected = m.Cli.AtomicFileState.model_validate({
+                **before.model_dump(),
+                "parent_device": parent.device,
+                "parent_inode": parent.inode,
+            })
+            observed = files.read_state(before.path, required=False)
+            if observed.failure:
+                return result_type.from_failure(observed)
+            if observed.value != expected:
+                return result_type.fail(
+                    f"generation destination changed after parent creation: {before.path}"
+                )
+            bound.append(
+                m.Infra.CodegenStagedFile.model_validate({
+                    **publication.model_dump(),
+                    "before": expected,
+                })
+            )
+        return result_type.ok(tuple(bound))
 
     @classmethod
     def plan_directories(

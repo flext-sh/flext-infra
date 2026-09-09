@@ -1825,6 +1825,12 @@ class FlextInfraConfigModels:
         upstream: Annotated[
             t.NonEmptyStr, m.Field(description="Supported upstream facade package")
         ]
+        project: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description="Distribution receiving additional requirements; unset selects the shared upstream profile"
+            ),
+        ] = None
         runtime: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Runtime requirements"),

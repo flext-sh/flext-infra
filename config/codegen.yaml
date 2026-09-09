@@ -33,8 +33,7 @@ Infra:
       # codegen model projects the closure of this list with the scaffold
       # requirement owners derived from the build and dev tables; runtime
       # dependency profiles never enter it.
-      additional_python_tool_distributions:
-        [actionlint-py, bandit, deptry, flext-tests, hatchling, mypy, pip-audit, pre-commit, pyrefly, pyright, pytest, pytest-testmon, ruff, rumdl, vulture, yamlfix]
+      additional_python_tool_distributions: [actionlint-py, bandit, deptry, flext-tests, hatchling, mypy, pip-audit, pre-commit, pyrefly, pyright, pytest, pytest-testmon, ruff, rumdl, vulture, yamlfix]
       # [tool.uv] constraint-dependencies rendered from this SSOT only. Empty
       # removes the key from every projection: an orphan cap (e.g. the retired
       # structlog<26, which no upstream contract required) can never survive
@@ -751,6 +750,7 @@ Infra:
         - .sonarcloud.properties
         - sonar-project.properties
       canonical_root_dirs:
+        - bin
         - src
         - tests
         - docs
@@ -1124,7 +1124,7 @@ Infra:
               - beartype>=0.22.9
               - dependency-injector>=4.49.1
               - packaging>=26.3
-              - pydantic>=2.13.4
+              - pydantic>=2.13.5
               - pydantic-settings>=2.15.0
               - pyyaml>=6.0.3
               - structlog>=26.1.0
@@ -1134,9 +1134,18 @@ Infra:
             runtime:
               - flext-cli
               - flext-core
-              - pydantic>=2.13.4
+              - pydantic>=2.13.5
               - pydantic-settings>=2.15.0
             codegen: [flext-infra]
+          # Project-scoped requirements extend the shared profile without
+          # leaking API/Web dependencies into core consumers. Unbounded entries
+          # are resolved by deps; its floor writer updates this same owner.
+          - upstream: flext_core
+            project: flext-api
+            runtime: [flext-web, httpx, msgpack]
+          - upstream: flext_cli
+            project: flext-web
+            runtime: [flext-cli, flask, uvicorn, fastapi, starlette, werkzeug]
       ping_example:
         command_name: ping
         help_text: Return the configured health response.
