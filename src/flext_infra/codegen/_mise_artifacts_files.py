@@ -7,8 +7,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
-from flext_cli import m as cli_m
-
 from flext_core import r
 from flext_infra import c, m, u
 
@@ -48,16 +46,17 @@ class FlextInfraMiseArtifactsFiles:
         seed_directory = (
             Path(__file__).resolve().parents[1] / c.Infra.MISE_BOOTSTRAP_SEED_DIRECTORY
         )
+        # Package resources are data; staging owns executable output permissions.
         states: list[m.Cli.AtomicFileState] = []
-        for name, mode in cls.ARTIFACT_SPECS:
+        for name in cls.ARTIFACT_NAMES:
             path = seed_directory / Path(name).name
             state = u.Cli.atomic_read_binary_file_state(path, required=True)
             if state.failure:
                 return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(state)
             observed = state.value
-            if observed.content is None or observed.mode != mode:
+            if not observed.content:
                 return r[tuple[m.Cli.AtomicFileState, ...]].fail(
-                    f"packaged Mise launcher seed is absent or mispermitted: {path}"
+                    f"packaged Mise launcher seed is empty: {path}"
                 )
             states.append(observed)
         return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(states))
