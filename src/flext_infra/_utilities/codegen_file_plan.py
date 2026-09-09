@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Literal
 
+from filelock import FileLock
 from flext_cli import m as cli_m, u
 
 from flext_core import r
@@ -15,6 +18,22 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesCodegenFilePlan:
     """Derive generated-file effects from immutable planning data."""
+
+    @staticmethod
+    @contextmanager
+    def codegen_transaction_lease(journal_path: Path) -> Generator[None]:
+        """Hold native ownership without unlinking the journal's lock identity."""
+        lock_path = journal_path.with_name(f"{journal_path.name}.lock")
+        with FileLock(
+            lock_path,
+            timeout=0,
+            blocking=False,
+            mode=0o600,
+            fallback_to_soft=False,
+            preserve_lock_file=True,
+            close_error_policy="raise",
+        ):
+            yield
 
     @staticmethod
     def planned_file(

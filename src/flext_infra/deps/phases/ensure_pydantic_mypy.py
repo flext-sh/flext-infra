@@ -28,10 +28,7 @@ class FlextInfraEnsurePydanticMypyConfigPhase:
                 "warn_required_dynamic_aliases",
                 self._tool_config.tools.pydantic_mypy.warn_required_dynamic_aliases,
             )
-            .value(
-                "warn_untyped_fields",
-                self._tool_config.tools.pydantic_mypy.warn_untyped_fields,
-            )
+            .deprecated("warn_untyped_fields")
             .build()
         )
 

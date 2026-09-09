@@ -47,6 +47,62 @@ def _workspace() -> m.Infra.WorkspaceSpec:
 
 
 class TestsFlextInfraCodegenPyprojectConform:
+    def test_custom_entry_point_groups_survive_conformance(self) -> None:
+        """Plugin registrations remain owned by their declaring distribution."""
+        rendered = '[project]\nname = "sample"\n'
+        live = (
+            '[project]\nname = "sample"\n'
+            '[project.entry-points."example.plugins"]\n'
+            'sample = "sample.plugin:main"\n'
+        )
+
+        overlaid = tm.ok(u.Infra.overlay_preserved(rendered, live))
+
+        tm.that(
+            test_u.Tests.toml_table_at(
+                overlaid, "project", "entry-points", "example.plugins"
+            )["sample"],
+            eq="sample.plugin:main",
+        )
+
+    def test_overlay_defaults_only_the_omitted_policy(self) -> None:
+        """Explicit empty policies survive default resolution of the other policy."""
+        spec = next(
+            item
+            for item in config.Infra.codegen.managed_files
+            if item.path.as_posix() == c.Infra.PYPROJECT_FILENAME
+        )
+        project_key = spec.preserve_project_keys[0]
+        tool_table = spec.managed_tool_tables[0]
+        rendered = (
+            f'[project]\n{project_key} = "rendered"\n'
+            f'[tool.{tool_table}]\nvalue = "rendered"\n'
+        )
+        live = (
+            f'[project]\n{project_key} = "live"\n[tool.{tool_table}]\nvalue = "live"\n'
+        )
+        project_override = tm.ok(
+            u.Infra.overlay_preserved(rendered, live, preserve_project_keys=())
+        )
+        tm.that(
+            test_u.Tests.toml_table_at(project_override, "project")[project_key],
+            eq="rendered",
+        )
+        tm.that(
+            test_u.Tests.toml_table_at(project_override, "tool", tool_table)["value"],
+            eq="rendered",
+        )
+        tool_override = tm.ok(
+            u.Infra.overlay_preserved(rendered, live, managed_tool_tables=())
+        )
+        tm.that(
+            test_u.Tests.toml_table_at(tool_override, "project")[project_key], eq="live"
+        )
+        tm.that(
+            test_u.Tests.toml_table_at(tool_override, "tool", tool_table)["value"],
+            eq="live",
+        )
+
     def test_custom_typing_and_feature_extras_survive_conformance(self) -> None:
         """CUSTOM PEP 621 extras survive projection and dependency normalization."""
         live = (

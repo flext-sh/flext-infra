@@ -41,7 +41,6 @@ class TestsFlextInfraPytestRunner:
         return tm.ok(u.Cli.files_read_text(reports_root / latest_name / "summary.txt"))
 
     @pytest.mark.slow
-    @pytest.mark.slow
     def test_complete_suite_persists_cache_and_zero_diagnostic_evidence(
         self, cached_runner_project: Path
     ) -> None:
@@ -90,7 +89,16 @@ class TestsFlextInfraPytestRunner:
         for node_id in (line for line in selection.splitlines() if line):
             tm.that(command, has=node_id)
         tm.that(command, has="--no-cov")
+        tm.that(command, has="--testmon --testmon-noselect")
         tm.that((reports_root / latest_name / "coverage.xml").is_file(), eq=False)
+
+        second_exit = tm.ok(self._runner_for(cached_runner_project).execute())
+        tm.that(second_exit, eq=0)
+        second_summary = self._summary(reports_root)
+        tm.that(
+            second_summary,
+            has=["executed=0", "deselected=1", "cache_restored=True", "exit=0"],
+        )
 
     @pytest.mark.slow
     def test_coverage_verb_publishes_artifact_without_testmon(

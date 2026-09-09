@@ -287,9 +287,35 @@ class FlextInfraUtilitiesPrivateImportFacades:
         owners: t.SequenceOf[t.Quad[ast.Module, str, str, str]],
         package: str,
         qualified: str,
+        bindings: t.MappingKV[str, set[str]],
+        class_bases: t.MappingKV[str, tuple[str, ...]],
     ) -> str | None:
         """Resolve one private class to exactly one inherited facade path."""
         references: set[str] = set()
+
+        def inherits(identity: str, visiting: frozenset[str]) -> bool:
+            if identity == qualified:
+                return True
+            if identity in visiting:
+                msg = f"cyclic public facade inheritance: {identity}"
+                raise ValueError(msg)
+            prefix = identity
+            while prefix:
+                targets = bindings.get(prefix)
+                if targets is not None:
+                    if len(targets) != 1:
+                        msg = f"ambiguous public facade base identity: {identity}"
+                        raise ValueError(msg)
+                    target = next(iter(targets)) + identity[len(prefix) :]
+                    if target != identity:
+                        return inherits(target, visiting | {identity})
+                    break
+                prefix = prefix.rpartition(".")[0]
+            return any(
+                inherits(base, visiting | {identity})
+                for base in class_bases.get(identity, ())
+            )
+
         for tree, facade_alias, root_name, facade_file in owners:
             imports: dict[str, str] = {}
             for node in tree.body:
@@ -315,18 +341,26 @@ class FlextInfraUtilitiesPrivateImportFacades:
                 continue
 
             def collect(
-                node: ast.ClassDef, public_path: str, imports: dict[str, str]
+                node: ast.ClassDef,
+                public_path: str,
+                imports: dict[str, str],
+                module: str,
             ) -> None:
                 if any(
-                    isinstance(base, ast.Name) and imports.get(base.id) == qualified
+                    isinstance(base, ast.Name)
+                    and inherits(
+                        imports.get(base.id, f"{module}.{base.id}"), frozenset()
+                    )
                     for base in node.bases
                 ):
                     references.add(public_path)
                 for child in node.body:
                     if isinstance(child, ast.ClassDef):
-                        collect(child, f"{public_path}.{child.name}", imports)
+                        collect(child, f"{public_path}.{child.name}", imports, module)
 
-            collect(root_class, facade_alias, imports)
+            collect(
+                root_class, facade_alias, imports, f"{package}.{Path(facade_file).stem}"
+            )
         if not references:
             return None
         deepest = max(reference.count(".") for reference in references)

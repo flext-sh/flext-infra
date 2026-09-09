@@ -273,16 +273,6 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 description="Warn on required dynamic aliases in pydantic mypy plugin."
             ),
         ]
-        warn_untyped_fields: Annotated[
-            bool,
-            m.Field(
-                alias="warn-untyped-fields",
-                description=(
-                    "Warn when Pydantic model fields are inferred as Any instead of "
-                    "explicitly typed. Aligns with AGENTS.md:279 'no Any allowed'."
-                ),
-            ),
-        ] = False
 
 
 __all__: list[str] = ["FlextInfraModelsDepsToolConfigLinters"]

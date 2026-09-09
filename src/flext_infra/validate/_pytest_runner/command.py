@@ -21,7 +21,22 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     plugin, so the two never share a process).
     """
 
-    def build_selection_command(self) -> t.VariadicTuple[str]:
+    @staticmethod
+    def _plugin_policy_args() -> t.VariadicTuple[str]:
+        """Apply the same configured plugin contract to collection and execution."""
+        pytest = config.Infra.tooling.tools.pytest
+        return (
+            "-p",
+            pytest.enforcement_plugin,
+            "-p",
+            "no:metadata",
+            "-o",
+            f"{c.Infra.ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE}={pytest.asyncio_default_fixture_loop_scope}",
+        )
+
+    def build_selection_command(
+        self, *, complete: bool = False
+    ) -> t.VariadicTuple[str]:
         """Build the read-only argv that resolves the testmon selection once.
 
         Every xdist worker otherwise resolves the selection itself, and two
@@ -29,7 +44,6 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         sets, which xdist aborts with "Different tests were collected". This
         pass runs no test and writes nothing.
         """
-        pytest = config.Infra.tooling.tools.pytest
         return (
             sys.executable,
             "-m",
@@ -37,12 +51,10 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             str(self.target),
             "--testmon",
             "--testmon-nocollect",
+            *(("--testmon-noselect",) if complete else ()),
             "--collect-only",
             "-q",
-            "-p",
-            pytest.enforcement_plugin,
-            "-p",
-            "no:metadata",
+            *self._plugin_policy_args(),
             "-p",
             "no:randomly",
             "-n",
@@ -72,7 +84,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             report_dir,
             targets=(tuple(selection) if selection else (str(self.target),)),
             workers=workers,
-            trailing=_NO_COVERAGE,
+            trailing=(
+                "--testmon",
+                *(("--testmon-noselect",) if selection else ()),
+                *_NO_COVERAGE,
+            ),
         )
 
     def build_coverage_command(
@@ -114,10 +130,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *targets,
             *pytest.progress_args,
             *pytest.report_args,
-            "-p",
-            pytest.enforcement_plugin,
-            "-p",
-            "no:metadata",
+            *self._plugin_policy_args(),
             f"--timeout={pytest.case_timeout_seconds}",
             f"--maxfail={pytest.max_failures}",
             f"--junitxml={report_dir / 'junit.xml'}",

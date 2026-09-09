@@ -88,6 +88,19 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
             empty=True,
         )
 
+    @pytest.mark.parametrize("requirement", ["", " "])
+    def test_blank_typing_requirement_is_rejected(
+        self, tmp_path: Path, requirement: str
+    ) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            f'[project.optional-dependencies]\ntypings = ["{requirement}"]\n',
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="must not be blank"):
+            FlextInfraDependencyDetectionService().get_current_typings_from_pyproject(
+                tmp_path
+            )
+
     def test_malformed_pyproject_preserves_read_failure(self, tmp_path: Path) -> None:
         (tmp_path / "pyproject.toml").write_text("[broken", encoding="utf-8")
         with pytest.raises(RuntimeError, match="failed to read"):

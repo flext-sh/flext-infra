@@ -20,6 +20,7 @@ dependencies = [
   "beartype>=0.22.9",
   "defusedxml>=0.7.1",
   "dependency-injector>=4.49.1",
+  "filelock>=3.30.0",
   "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
   "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
   "gitpython>=3.1.61",
@@ -59,6 +60,9 @@ Documentation = "https://github.com/flext-sh/flext-infra/blob/main/README.md"
 Homepage = "https://github.com/flext-sh/flext-infra"
 Repository = "https://github.com/flext-sh/flext-infra"
 
+[project.optional-dependencies]
+typings = ["types-Markdown"]
+
 [dependency-groups]
 dev = [
   "actionlint-py>=1.7.12.24",
@@ -80,6 +84,7 @@ dev = [
   "pyrefly>=1.2.0",
   "pyright>=1.1.411",
   "pytest>=9.1.1",
+  "pytest-asyncio",
   "pytest-benchmark",
   "pytest-cov",
   "pytest-markdown-docs",
@@ -194,7 +199,6 @@ disable_error_code = ["unreachable"]
 init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
-warn_untyped_fields = true
 
 [tool.pyrefly]
 disable-project-excludes-heuristics = true
@@ -402,6 +406,7 @@ addopts = [
   "--timeout=10",
 ]
 flext_slow_timeout_seconds = "60"
+asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
   "error",
   "module::flext_core._constants.enforcement.FlextMroViolation",

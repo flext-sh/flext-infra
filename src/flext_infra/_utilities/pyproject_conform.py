@@ -947,8 +947,10 @@ class FlextInfraUtilitiesPyprojectConform:
             )
             if spec is None:
                 return r[str].fail("pyproject.toml is missing from managed_files")
-            preserve_project_keys = spec.preserve_project_keys
-            managed_tool_tables = spec.managed_tool_tables
+            if preserve_project_keys is None:
+                preserve_project_keys = spec.preserve_project_keys
+            if managed_tool_tables is None:
+                managed_tool_tables = spec.managed_tool_tables
         rendered_payload = u.Cli.toml_mapping_from_text(rendered)
         # An absent live file takes the same canonicalization path as a present
         # one: the projection is the parse-merge-dump form, so first publication

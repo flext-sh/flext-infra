@@ -180,7 +180,6 @@ disable_error_code = [
 init_forbid_extra = {{ tooling.tools.pydantic_mypy.init_forbid_extra | lower }}
 init_typed = {{ tooling.tools.pydantic_mypy.init_typed | lower }}
 warn_required_dynamic_aliases = {{ tooling.tools.pydantic_mypy.warn_required_dynamic_aliases | lower }}
-warn_untyped_fields = {{ tooling.tools.pydantic_mypy.warn_untyped_fields | lower }}
 
 [tool.pyrefly]
 disable-project-excludes-heuristics = {{ tooling.tools.pyrefly.disable_project_excludes_heuristics | lower }}
@@ -267,6 +266,7 @@ addopts = [
   "--timeout={{ tooling.tools.pytest.case_timeout_seconds }}",
 ]
 flext_slow_timeout_seconds = "{{ tooling.tools.pytest.slow_timeout_seconds }}"
+asyncio_default_fixture_loop_scope = {{ tooling.tools.pytest.asyncio_default_fixture_loop_scope | tojson }}
 {# Deterministic tracked-root collection, warning fail-closed. #}
 filterwarnings = [
 {% for item in tooling.tools.pytest.filter_warnings %}

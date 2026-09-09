@@ -89,16 +89,16 @@ class FlextInfraCodegenTransaction:
     def run_locked[T](
         self, *, prepare: bool, operation: Callable[[Path], p.Result[T]]
     ) -> p.Result[T]:
-        """Run one generation operation. No Git HEAD / Mise descriptor lock."""
+        """Own the shared journal before recovery through final publication cleanup."""
         identity = self._planner.scope_identity()
         if identity.failure:
             return r[T].from_failure(identity)
-        try:
+        with u.Infra.codegen_transaction_lease(
+            self._planner.journal_path(identity.value)
+        ):
             return self._run_locked_operation(
                 identity.value, prepare=prepare, operation=operation
             )
-        except OSError as exc:
-            return r[T].fail_op("execute generation transaction", exc)
 
     def _run_locked_operation[T](
         self,

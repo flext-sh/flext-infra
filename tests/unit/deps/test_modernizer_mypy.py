@@ -192,13 +192,16 @@ warn_return_any = false
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify pydantic mypy phase sets expected state."""
-        doc = u.Cli.toml_document()
+        doc = u.Cli.toml_document_from_mapping({
+            "tool": {"pydantic-mypy": {"warn_untyped_fields": True}}
+        })
 
         _ = FlextInfraEnsurePydanticMypyConfigPhase(tool_config_document).apply(doc)
 
         pydantic_mypy_mapping = u.Tests.toml_mapping(
             u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["pydantic-mypy"]
         )
+        tm.that("warn_untyped_fields" in pydantic_mypy_mapping, eq=False)
         tm.that(
             pydantic_mypy_mapping["init_forbid_extra"],
             eq=tool_config_document.tools.pydantic_mypy.init_forbid_extra,
@@ -223,3 +226,19 @@ warn_return_any = false
         second_changes = phase.apply(doc)
 
         tm.that(second_changes, eq=[])
+
+    def test_pydantic_mypy_payload_removes_obsolete_option(
+        self, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Migrate persisted plugin options through the payload phase owner."""
+        payload: t.MutableJsonMapping = {
+            "tool": {"pydantic-mypy": {"warn_untyped_fields": True}}
+        }
+        phase = FlextInfraEnsurePydanticMypyConfigPhase(tool_config_document)
+        changes = phase.apply_payload(payload)
+        settings = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(payload["tool"])["pydantic-mypy"]
+        )
+        tm.that("warn_untyped_fields" in settings, eq=False)
+        tm.that(changes, has="tool.pydantic-mypy.warn_untyped_fields removed")
+        tm.that(phase.apply_payload(payload), eq=[])

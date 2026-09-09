@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from flext_infra.constants import c
 from flext_infra.models import m
 
+from .private_import_ancestry import FlextInfraUtilitiesPrivateImportAncestry
 from .private_import_cst import FlextInfraUtilitiesPrivateImportCst
 from .private_import_facades import FlextInfraUtilitiesPrivateImportFacades
 from .private_import_validation import FlextInfraUtilitiesPrivateImportValidation
@@ -139,6 +140,9 @@ class FlextInfraUtilitiesPrivateImports:
         export_bindings, declared_exports = (
             FlextInfraUtilitiesPrivateImportFacades.declared_exports(discovery_sources)
         )
+        class_bases = FlextInfraUtilitiesPrivateImportAncestry.class_bases(
+            discovery_sources
+        )
         direct_specs: dict[Path, dict[str, tuple[str, str]]] = {}
         specs: dict[Path, list[tuple[str, str, str, str, str]]] = {}
         for finding in findings:
@@ -184,6 +188,8 @@ class FlextInfraUtilitiesPrivateImports:
                             owners=facades.get(package, ()),
                             package=package,
                             qualified=qualified,
+                            bindings=export_bindings,
+                            class_bases=class_bases,
                         )
                     )
                 if target_reference is None:

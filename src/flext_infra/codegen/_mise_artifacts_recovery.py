@@ -111,14 +111,18 @@ class FlextInfraMiseRecovery:
                         f"committed generated file changed: {entry.path}"
                     )
                 operation = "noop"
-            elif identity in {desired, original} or (
+            elif identity == original or (
                 journal.state == "recovering" and identity == rollback
             ):
                 operation = "noop"
+            elif identity == desired:
+                operation = "noop" if entry.original_exists else "delete"
             elif entry.original_exists:
                 operation = "restore"
             else:
-                operation = "delete"
+                return result_type.fail(
+                    f"new generated file changed before recovery: {entry.path}"
+                )
             actions.append(
                 m.Infra.CodegenRecoveryAction(
                     entry=entry, current=current.value, operation=operation

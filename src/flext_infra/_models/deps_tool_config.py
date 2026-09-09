@@ -144,6 +144,13 @@ class FlextInfraModelsDepsToolSettings(
                 description="Required pytest11 enforcement plugin loaded by Make.",
             ),
         ]
+        asyncio_default_fixture_loop_scope: Annotated[
+            Literal["function", "class", "module", "package", "session"],
+            m.Field(
+                alias="asyncio-default-fixture-loop-scope",
+                description="Explicit event-loop lifetime for asynchronous pytest fixtures.",
+            ),
+        ]
         progress_args: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(

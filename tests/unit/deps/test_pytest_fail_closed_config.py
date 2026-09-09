@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+
+import pytest
 from flext_tests import tm
 
 from flext_infra import config
@@ -11,6 +14,12 @@ from tests import u
 
 class TestsFlextInfraPytestFailClosedConfig:
     """Prove canonical pytest settings replace local bypasses deterministically."""
+
+    @pytest.mark.asyncio
+    async def test_declared_async_provider_executes_coroutines(self) -> None:
+        """Exercise the installed provider rather than merely registering a marker."""
+        await asyncio.sleep(0)
+        tm.that(asyncio.current_task() is not None, eq=True)
 
     def test_phase_replaces_stale_collection_and_warning_policy(self) -> None:
         """Replace ignored roots and warning filters without second-apply drift."""
@@ -45,6 +54,13 @@ testpaths = ["architecture", "guides", "tests"]
             ),
         )
         tm.that(rendered, has="testpaths = [")
+        tm.that(
+            rendered,
+            has=(
+                "asyncio_default_fixture_loop_scope = "
+                f'"{config.Infra.tooling.tools.pytest.asyncio_default_fixture_loop_scope}"'
+            ),
+        )
         for test_path in config.Infra.tooling.tools.pytest.test_paths:
             tm.that(rendered, has=f'    "{test_path}",')
         for preserved_value in ("custom: stale local marker", "Spec*", "spec_*.py"):
