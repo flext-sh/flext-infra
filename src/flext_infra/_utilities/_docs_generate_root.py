@@ -164,13 +164,16 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
         *,
         repository_root: Path,
         aggregate_scopes: t.SequenceOf[m.Infra.DocScope],
+        source_states: t.SequenceOf[m.Cli.AtomicFileState],
     ) -> p.Result[t.VariadicTuple[DocsRenderedArtifactTuple]]:
         """Return the rendered artifact inventory for one docs scope."""
         if scope.name == c.Infra.RK_ROOT:
             return FlextInfraUtilitiesDocsGenerateRootMixin.docs_root_artifacts(
                 repository_root, aggregate_scopes
             )
-        return FlextInfraUtilitiesDocsGenerateRootMixin.docs_project_artifacts(scope)
+        return FlextInfraUtilitiesDocsGenerateRootMixin.docs_project_artifacts(
+            scope, repository_root=repository_root, source_states=source_states
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsGenerateRootMixin"]

@@ -29,7 +29,7 @@ theme:
         name: Switch to light mode
 {%- endmacro %}
 {%- macro plugins_block(exclude_plugin_block, mkdocstrings_paths_block) -%}
-{# flext-kkk5 (agent: kimi) — git-revision-date-localized/mermaid2/redirects/minify enabled per docs-renaissance S2; deps already declared in pyproject docs extra. #}
+{# Plugin distributions are declared by config/codegen.yaml scaffold.project.dev. #}
 plugins:
   - search
 {{ exclude_plugin_block }}  - autorefs
@@ -38,10 +38,6 @@ plugins:
       handlers:
         python:
 {{ mkdocstrings_paths_block }}          docstring_style: auto
-          docstring_options:
-            warnings: false
-            warn_unknown_params: false
-            warn_missing_types: false
           options:
             show_root_heading: true
             show_root_full_path: false
@@ -87,7 +83,7 @@ markdown_extensions:
 {%- endmacro %}
 {%- macro validation_block() -%}
 validation:
-  omitted_files: ignore
+  omitted_files: warn
   absolute_links: warn
   unrecognized_links: warn
 {%- endmacro %}

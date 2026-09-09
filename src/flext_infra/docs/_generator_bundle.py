@@ -92,7 +92,10 @@ class FlextInfraDocGeneratorBundleMixin:
                 rendered.append((scope, ()))
                 continue
             artifacts = u.Infra.docs_scope_artifacts(
-                scope, repository_root=repository_root, aggregate_scopes=aggregate.value
+                scope,
+                repository_root=repository_root,
+                aggregate_scopes=aggregate.value,
+                source_states=sources.value,
             )
             if artifacts.failure:
                 return r[m.Infra.DocsGenerationBundle].from_failure(artifacts)

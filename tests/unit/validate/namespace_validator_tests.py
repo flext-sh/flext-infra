@@ -28,6 +28,7 @@ def _make_project_with_module(
     # The validator grades the whole package, so the fixture is a package.
     u.Tests.write_canonical_package_layout(package_dir)
     _ = (package_dir / module_name).write_text(module_source, encoding="utf-8")
+    u.Tests.initialize_git_repo(project_root)
     return project_root
 
 
@@ -42,6 +43,7 @@ def _make_project_with_module_path(
     target = package_dir / module_path
     target.parent.mkdir(parents=True, exist_ok=True)
     _ = target.write_text(module_source, encoding="utf-8")
+    u.Tests.initialize_git_repo(project_root)
     return project_root
 
 
@@ -634,12 +636,22 @@ class TestFlextInfraNamespaceValidator:
         root = _make_project_with_module_path(
             tmp_path, module_source=module_source, module_path=module_path
         )
+        target = root / "src" / "flext_test" / module_path
+        files = u.Infra.iter_python_files(
+            m.Infra.SourceScanRequest(project_roots=(root,))
+        )
+        tm.ok(files)
+        tm.that(
+            target in files.value,
+            eq=True,
+            msg=f"namespace fixture omitted from source inventory: {target}; {files.value}",
+        )
 
         result = validator.validate_project(root)
 
         tm.ok(result)
         if expect_passed is not None:
-            tm.that(result.value.passed, eq=expect_passed)
+            tm.that(result.value.passed, eq=expect_passed, msg=str(result.value))
         tm.that(
             any(violation_substr in v for v in result.value.violations),
             eq=expect_violation,

@@ -34,7 +34,7 @@ Infra:
       # requirement owners derived from the build and dev tables; runtime
       # dependency profiles never enter it.
       additional_python_tool_distributions:
-        [actionlint-py, bandit, deptry, flext-tests, hatchling, mkdocs, mypy, pip-audit, pre-commit, pyrefly, pyright, pytest, pytest-testmon, ruff, rumdl, vulture, yamlfix]
+        [actionlint-py, bandit, deptry, flext-tests, hatchling, mypy, pip-audit, pre-commit, pyrefly, pyright, pytest, pytest-testmon, ruff, rumdl, vulture, yamlfix]
       # [tool.uv] constraint-dependencies rendered from this SSOT only. Empty
       # removes the key from every projection: an orphan cap (e.g. the retired
       # structlog<26, which no upstream contract required) can never survive
@@ -1058,12 +1058,29 @@ Infra:
           - flext-tests
           # Floors let uv select released tools without a cap or downgrade path.
           # Every diagnostic from the resolved release remains blocking.
+          - mkdocs
+          - mkdocs-autorefs
+          - mkdocs-exclude>=1.0.2
+          - mkdocs-git-revision-date-localized-plugin>=1.5.4
+          - mkdocs-material>=9.7.7
+          - mkdocs-mermaid2-plugin>=1.2.3
+          - mkdocs-minify-plugin>=0.8.0
+          - mkdocs-redirects>=1.2.3
+          - mkdocs-section-index>=0.3.12
+          - mkdocstrings>=1.0.6
+          - mkdocstrings-python>=2.0.8
           - mypy>=2.3.1
+          - pymdown-extensions
           - pyrefly>=1.2.0
           - pyright>=1.1.411
           - pytest>=9.1.1
+          - pytest-benchmark
+          - pytest-cov
+          - pytest-markdown-docs
           - pytest-randomly>=4.1.0
           - pytest-testmon>=2.2.0
+          - pytest-timeout
+          - pytest-xdist
           # types-* stub floors are declared here (cooldown-eligible dates).
           # Lock-fed raising wrote dated stub versions into the projections;
           # dated stubs churn weekly, so the SSOT owns the clamp and the

@@ -264,7 +264,9 @@ addopts = [
 {% for item in tooling.tools.pytest.standard_addopts %}
   {{ item | tojson }},
 {% endfor %}
+  "--timeout={{ tooling.tools.pytest.case_timeout_seconds }}",
 ]
+flext_slow_timeout_seconds = "{{ tooling.tools.pytest.slow_timeout_seconds }}"
 {# Deterministic tracked-root collection, warning fail-closed. #}
 filterwarnings = [
 {% for item in tooling.tools.pytest.filter_warnings %}

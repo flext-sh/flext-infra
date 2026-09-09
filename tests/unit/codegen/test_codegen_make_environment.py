@@ -22,7 +22,11 @@ class TestsCodegenMakeEnvironment:
 
     @staticmethod
     def _render_makefile(
-        tmp_path: Path, profile: c.Infra.MakeProfile, *, local_infra: bool = False
+        tmp_path: Path,
+        profile: c.Infra.MakeProfile,
+        *,
+        local_infra: bool = False,
+        bootstrap: bool = False,
     ) -> tuple[Path, Path]:
         role = c.Infra.MakeProfile(profile.value)
         repository = test_u.Tests.repository_ref(
@@ -30,6 +34,14 @@ class TestsCodegenMakeEnvironment:
         ).model_copy(update={"editable": True})
         project_root = tmp_path / profile.value / "fixture-project"
         WorktreeFixture.write_python_project(project_root, repository.distribution)
+        if bootstrap:
+            test_u.Tests.copy_tracked_mise_seeds(project_root)
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    project_root / config.Infra.codegen.scaffold.project.readme,
+                    "# Bootstrap environment contract\n",
+                )
+            )
         beads = test_u.Tests.beads_project(repository.distribution)
         test_u.Tests.write_beads_project(
             project_root,
@@ -102,6 +114,44 @@ class TestsCodegenMakeEnvironment:
                 project_root / ".envrc", test_u.Tests.codegen_file_text(envrc)
             )
         )
+        if bootstrap:
+            for relative in (c.Infra.PYPROJECT_FILENAME, c.Infra.MISE_TOML_FILENAME):
+                artifact = next(
+                    file for file in plan.files if file.path == project_root / relative
+                )
+                tm.ok(
+                    u.Cli.atomic_write_text_file(
+                        artifact.path, test_u.Tests.codegen_file_text(artifact)
+                    )
+                )
+            # Exercise the documented custom-handler/hook boundary with real
+            # Python and installed metadata, never a substitute tool executable.
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    project_root / "custom.mk",
+                    ".PHONY: pre-setup post-setup _custom-status\n"
+                    "pre-setup:\n"
+                    '\t@test ! -e "$(RUNTIME_PYTHON)"\n'
+                    "post-setup:\n"
+                    "\t@$(UV_RUN) python -c 'import importlib.metadata, sys; "
+                    "from pathlib import Path; import tomllib; "
+                    'project = tomllib.loads(Path("pyproject.toml").read_text())'
+                    '["project"]; '
+                    'assert Path(sys.prefix) == Path("$(RUNTIME_VENV)"); '
+                    'assert importlib.metadata.version(project["name"]) == '
+                    'project["version"]; print("installed-runtime-verified")'
+                    "'\n"
+                    "_custom-status:\n"
+                    "\t@printf '%s\\n' "
+                    "'FLEXT_INFRA_PYTHON=$(FLEXT_INFRA_PYTHON)' "
+                    "'UV_PROJECT_ENVIRONMENT=$(UV_PROJECT_ENVIRONMENT)' "
+                    "'VIRTUAL_ENV=$(VIRTUAL_ENV)' 'PATH=$(PATH)'\n"
+                    "\t@command -v python\n"
+                    "\t@$(UV_RUN) python -c 'import os, sys; "
+                    'print(sys.prefix); print(os.environ["UV_PROJECT_ENVIRONMENT"])'
+                    "'\n",
+                )
+            )
         return project_root, repository_root
 
     @pytest.mark.parametrize(
@@ -111,29 +161,36 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path, profile: c.Infra.MakeProfile
     ) -> None:
         """Every generated shell receives the profile-resolved runtime venv."""
-        project_root, runtime_root = self._render_makefile(tmp_path, profile)
+        project_root, runtime_root = self._render_makefile(
+            tmp_path, profile, bootstrap=True
+        )
+        if profile == c.Infra.MakeProfile.STANDALONE:
+            # Without Make's explicit binding, uv selects this parent's default
+            # .venv even when --project names the member checkout.
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    project_root.parent / "pyproject.toml",
+                    f'[tool.uv.workspace]\nmembers = ["{project_root.name}"]\n',
+                )
+            )
+        setup = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["--no-print-directory", "setup", "APPLY=Y"], cwd=project_root
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(setup.outcome),
+            eq=True,
+            msg=setup.stdout + setup.stderr,
+        )
+        tm.that(setup.stdout, has="installed-runtime-verified")
         runtime_bin = runtime_root / ".venv" / "bin"
-        runtime_bin.mkdir(parents=True)
         runtime_python = runtime_bin / "python"
-        runtime_python.write_text("#!/bin/sh\nexit 0\n")
-        runtime_python.chmod(0o755)
+        tm.that(runtime_python.is_file(), eq=True)
         hostile_venv = tmp_path / "hostile" / ".venv"
         hostile_bin = hostile_venv / "bin"
         hostile_bin.mkdir(parents=True)
         hostile_python = hostile_bin / "python"
-        hostile_python.write_text("#!/bin/sh\nexit 0\n")
-        hostile_python.chmod(0o755)
-        (project_root / "custom.mk").write_text(
-            ".PHONY: _custom-status\n"
-            "_custom-status:\n"
-            "\t@printf '%s\\n' "
-            "'FLEXT_INFRA_PYTHON=$(FLEXT_INFRA_PYTHON)' "
-            "'UV_PROJECT_ENVIRONMENT=$(UV_PROJECT_ENVIRONMENT)' "
-            "'VIRTUAL_ENV=$(VIRTUAL_ENV)' "
-            "'PATH=$(PATH)'\n"
-            "\t@command -v python\n",
-            encoding="utf-8",
-        )
         active_env = {
             "FLEXT_INFRA_PYTHON": str(hostile_python),
             "UV_PROJECT_ENVIRONMENT": str(hostile_venv),
@@ -172,6 +229,9 @@ class TestsCodegenMakeEnvironment:
             eq=True,
         )
         tm.that(output[4], eq=str(runtime_python))
+        tm.that(output[5:], eq=[str(runtime_root / ".venv")] * 2)
+        tm.that(hostile_python.exists(), eq=False)
+        tm.that((project_root.parent / ".venv").exists(), eq=False)
 
     @pytest.mark.parametrize(
         "profile", [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE]
@@ -180,58 +240,43 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path, profile: c.Infra.MakeProfile
     ) -> None:
         """Setup creates the venv and syncs dependencies before any runtime use."""
-        project_root, _repository_root = self._render_makefile(tmp_path, profile)
+        project_root, _repository_root = self._render_makefile(
+            tmp_path, profile, bootstrap=True
+        )
         hostile_venv = tmp_path / "hostile" / ".venv"
         hostile_bin = hostile_venv / "bin"
         hostile_bin.mkdir(parents=True)
         hostile_uv = hostile_bin / "uv"
-        hostile_uv.write_text("#!/bin/sh\nexit 99\n", encoding="utf-8")
-        hostile_uv.chmod(0o755)
-        provisioned_bin = tmp_path / "provisioned" / "bin"
-        provisioned_bin.mkdir(parents=True)
-        uv_log = tmp_path / "uv.log"
-        provisioned_uv = provisioned_bin / "uv"
-        provisioned_uv.write_text(
-            "#!/bin/sh\n"
-            f"printf '%s\\n' \"$*\" >> '{uv_log}'\n"
-            'if [ "$1" = "venv" ]; then\n'
-            '  mkdir -p "$3/bin"\n'
-            "  printf '#!/bin/sh\\nexit 0\\n' > \"$3/bin/python\"\n"
-            '  chmod +x "$3/bin/python"\n'
-            "fi\n"
-            "exit 0\n",
-            encoding="utf-8",
-        )
-        provisioned_uv.chmod(0o755)
-        test_u.Tests.write_mise_stub(project_root / "bin" / "mise")
-
-        clean_env = {
-            **{
-                key: value
-                for key, value in os.environ.items()
-                if key not in {"MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"}
-            },
-            "PATH": f"{hostile_bin}:{provisioned_bin}:{os.environ['PATH']}",
+        sentinel = hostile_venv / "sentinel"
+        sentinel.write_text("untouched\n", encoding="utf-8")
+        active_env = {
+            "PATH": f"{hostile_bin}:{os.environ['PATH']}",
+            "UV": str(hostile_uv),
+            "UV_PROJECT": str(hostile_venv.parent),
+            "UV_PROJECT_ENVIRONMENT": str(hostile_venv),
+            "FLEXT_INFRA_PYTHON": str(hostile_bin / "python"),
             "VIRTUAL_ENV": str(hostile_venv),
         }
-        result = u.Cli.run_raw(
-            [c.Infra.MAKE, "--no-print-directory", "setup"],
-            cwd=project_root,
-            env=clean_env,
-            remove_env_keys=(*c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, "UV"),
+        tm.that((project_root / ".venv").exists(), eq=False)
+        process = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["--no-print-directory", "setup", "APPLY=Y"],
+                cwd=project_root,
+                env=active_env,
+            )
         )
-
-        process = tm.ok(result)
         tm.that(
             u.Cli.process_succeeded(process.outcome),
             eq=True,
             msg=process.stdout + process.stderr,
         )
-        commands = uv_log.read_text(encoding="utf-8").splitlines()
-        tm.that(commands[0], has="venv ")
-        tm.that(commands[1], has="sync --project")
-        if profile == c.Infra.MakeProfile.WORKSPACE:
-            tm.that(commands[2], has="pip check")
+        tm.that(process.stdout, has="installed-runtime-verified")
+        tm.that((project_root / ".venv" / "pyvenv.cfg").is_file(), eq=True)
+        tm.that((project_root / "uv.lock").is_file(), eq=True)
+        tm.that(sentinel.read_text(encoding="utf-8"), eq="untouched\n")
+        tm.that(tuple(hostile_bin.iterdir()), eq=())
+        tm.that((hostile_venv / "pyvenv.cfg").exists(), eq=False)
+        tm.that((hostile_venv.parent / "uv.lock").exists(), eq=False)
 
     def test_setup_fails_when_the_tracked_mise_launcher_is_missing(
         self, tmp_path: Path
@@ -340,16 +385,8 @@ class TestsCodegenMakeEnvironment:
             "override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)" in makefile, eq=True
         )
         tm.that("UV ?= uv" in makefile, eq=True)
-        tm.that(
-            (
-                "UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT "
-                "-u UV_PROJECT_ENVIRONMENT "
-                '-u PROJECT_ROOT PYTHONPATH="$(PROJECT_ROOT)/src" '
-                '$(UV) run --project "$(RUNTIME_ROOT)" --no-sync'
-            )
-            in makefile,
-            eq=True,
-        )
+        # UV_RUN's environment binding is exercised by the real runtime test
+        # above, including a parent uv workspace with a different default venv.
         toolchain = config.Infra.codegen.toolchain
         # The state root is a SIBLING of the checkout, never a directory inside
         # it: derived from the Makefile's own PROJECT_ROOT so a verb invoked

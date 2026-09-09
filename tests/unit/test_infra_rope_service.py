@@ -74,6 +74,20 @@ def _module_objects_by_name(
 class TestsFlextInfraInfraRopeService:
     """Validate the public Rope workspace DSL through public methods only."""
 
+    @pytest.mark.parametrize(
+        ("source", "symbol", "documented"),
+        [
+            ("from .sibling import Public\n", "Public", False),
+            ('class Public:\n    """Public contract."""\n', "Public", True),
+            ("class Public:\n    pass\n", "Public", False),
+        ],
+    )
+    def test_source_docstrings_only_resolve_local_definitions(
+        self, source: str, symbol: str, *, documented: bool
+    ) -> None:
+        """Relative reexports require repository context, not source-only lookup."""
+        tm.that(u.Infra.symbol_has_docstring_source(source, symbol), eq=documented)
+
     def test_open_workspace_materializes_snapshot(self, tmp_path: Path) -> None:
         """Public service class exposes one typed workspace snapshot."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)

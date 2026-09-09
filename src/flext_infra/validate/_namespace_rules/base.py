@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ast import Import, ImportFrom
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
@@ -74,7 +75,7 @@ class FlextInfraNamespaceRulesBase:
     @classmethod
     def imports_with_context(
         cls, tree: object
-    ) -> t.SequenceOf[t.Pair[t.JsonValue, bool]]:
+    ) -> t.SequenceOf[t.Pair[t.Infra.PythonImportNode, bool]]:
         """Return every import with its TYPE_CHECKING-only state."""
         guarded = {
             id(child)
@@ -86,7 +87,7 @@ class FlextInfraNamespaceRulesBase:
         return tuple(
             (node, id(node) in guarded)
             for node in cls.walk(tree)
-            if cls.kind(node) in {"Import", "ImportFrom"}
+            if isinstance(node, (Import, ImportFrom))
         )
 
     @staticmethod

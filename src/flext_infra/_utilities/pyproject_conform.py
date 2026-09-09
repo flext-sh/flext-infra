@@ -542,7 +542,7 @@ class FlextInfraUtilitiesPyprojectConform:
         u.Cli.toml_remove_key_if_present(groups, "workspace")
 
     @staticmethod
-    def _is_repository_root(
+    def _is_topology_repository_root(
         *, project_name: str, workspace: p.Infra.WorkspaceSpec
     ) -> bool:
         """Identify the real multi-project root, not an autonomous repository."""
@@ -561,7 +561,9 @@ class FlextInfraUtilitiesPyprojectConform:
         """Identify the root only when the active topology is a workspace."""
         return (
             workspace_mode is c.Infra.MakeProfile.WORKSPACE
-            and cls._is_repository_root(project_name=project_name, workspace=workspace)
+            and cls._is_topology_repository_root(
+                project_name=project_name, workspace=workspace
+            )
         )
 
     @staticmethod

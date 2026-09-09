@@ -779,15 +779,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         transaction: FlextInfraCodegenTransaction,
         lazy_analysis: m.Infra.CodegenPhaseAnalysis,
         docs_analysis: m.Infra.CodegenPhaseAnalysis,
-    ) -> p.Result[m.Infra.CodegenPlan]:
+    ) -> p.Result[bool]:
         """Replan conform against live bytes before the journal can commit."""
         u.Cli.info("stage=verify-fixed-point")
         verified = self.plan(request)
         if verified.failure:
-            return r[m.Infra.CodegenPlan].from_failure(verified)
+            return r[bool].from_failure(verified)
         ancestry = self._validate_ancestry(verified.value)
         if ancestry.failure:
-            return r[m.Infra.CodegenPlan].from_failure(ancestry)
+            return r[bool].from_failure(ancestry)
         residual = tuple(
             file
             for file in verified.value.files
@@ -795,25 +795,25 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if residual:
             paths = ", ".join(str(file.path) for file in residual)
-            return r[m.Infra.CodegenPlan].fail(
+            return r[bool].fail(
                 f"codegen publication did not reach a fixed point: {paths}"
             )
         u.Cli.info("stage=verify-lazy-init-receipt")
         lazy_fixed_point = transaction.validate_phase_analysis_locked(lazy_analysis)
         if lazy_fixed_point.failure:
-            return r[m.Infra.CodegenPlan].from_failure(lazy_fixed_point)
+            return r[bool].from_failure(lazy_fixed_point)
         u.Cli.info("stage=verify-docs-receipt")
         docs_fixed_point = transaction.validate_phase_analysis_locked(docs_analysis)
         if docs_fixed_point.failure:
-            return r[m.Infra.CodegenPlan].from_failure(docs_fixed_point)
+            return r[bool].from_failure(docs_fixed_point)
         mise = FlextInfraCodegenMiseArtifacts(
             repository_root=request.root, apply_changes=False, check_only=True
         )
         for project in session.plan.projects:
             validated = mise.validate_artifacts(project.layout.root)
             if validated.failure:
-                return r[m.Infra.CodegenPlan].from_failure(validated)
-        return r[m.Infra.CodegenPlan].ok(verified.value)
+                return r[bool].from_failure(validated)
+        return r[bool].ok(True)
 
     @staticmethod
     def _mise_config_plans(

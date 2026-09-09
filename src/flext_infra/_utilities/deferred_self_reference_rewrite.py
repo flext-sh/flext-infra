@@ -92,6 +92,12 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
                         and isinstance(node.value, ast.Name)
                         and node.value.id == outer.name
                     ):
+                        if node.attr not in owned_names and not outer.bases:
+                            msg = (
+                                "ambiguous self-qualified annotation "
+                                f"{outer.name}.{node.attr} at line {node.lineno}"
+                            )
+                            raise ValueError(msg)
                         continue
                     if not (
                         isinstance(node, ast.Name)

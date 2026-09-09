@@ -206,3 +206,16 @@ class TestsFlextInfraDeferredSelfReferenceDetector:
             u.Infra.normalize_deferred_self_references(ambiguous)
         with pytest.raises(ValueError, match="model_rebuild is prohibited"):
             u.Infra.normalize_deferred_self_references(rebuild)
+
+    def test_public_normalizer_preserves_inherited_owner_annotations(self) -> None:
+        """An inherited public type need not be redeclared in the local facade."""
+        source = (
+            "from __future__ import annotations\n\n"
+            "class Base:\n"
+            "    class Target:\n"
+            "        pass\n\n"
+            "class Models(Base):\n"
+            "    class Consumer:\n"
+            "        value: Models.Target\n"
+        )
+        tm.that(u.Infra.normalize_deferred_self_references(source), eq=source)

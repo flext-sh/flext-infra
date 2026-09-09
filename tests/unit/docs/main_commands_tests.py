@@ -17,13 +17,13 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def test_auditor_execute_fails_in_strict_mode_on_broken_links(tmp_path: Path) -> None:
+def test_auditor_execute_fails_on_broken_links_by_default(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path)
     (workspace / "docs/README.md").write_text(
         "# Docs\n\n[Broken](missing.md)\n", encoding="utf-8"
     )
 
-    result = FlextInfraDocAuditor(repository_root=workspace, strict_mode=True).execute()
+    result = FlextInfraDocAuditor(repository_root=workspace).execute()
 
     tm.fail(result)
 

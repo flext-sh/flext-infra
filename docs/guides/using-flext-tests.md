@@ -59,8 +59,9 @@ Add `flext_tests` to your project test dependencies and use these fixtures in `c
 ```python
 from __future__ import annotations
 
-from flext_core import FlextSettings
 from flext_tests import FlextTestsSettings
+
+from flext_core import FlextSettings
 
 
 def test_settings_isolation(settings: FlextTestsSettings) -> None:
@@ -73,8 +74,9 @@ def test_settings_isolation(settings: FlextTestsSettings) -> None:
 When a fixture is not enough:
 
 ```python
-from flext_core import FlextContainer, FlextSettings
 from flext_tests import FlextTestsSettings
+
+from flext_core import FlextContainer, FlextSettings
 
 FlextSettings.reset_for_testing()
 FlextTestsSettings.reset_for_testing()

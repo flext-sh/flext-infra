@@ -13,6 +13,7 @@ from ._docs_generate_plan import (
     DocsRenderedArtifactTuple,
     FlextInfraUtilitiesDocsGeneratePlanMixin,
 )
+from ._docs_guides import FlextInfraUtilitiesDocsGuidesMixin
 from .docs_api import FlextInfraUtilitiesDocsApi
 from .docs_contract import FlextInfraUtilitiesDocsContract
 from .docs_render import FlextInfraUtilitiesDocsRender
@@ -36,8 +37,28 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
     @staticmethod
     def docs_project_artifacts(
         scope: m.Infra.DocScope,
+        *,
+        repository_root: Path,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState],
     ) -> p.Result[t.VariadicTuple[DocsRenderedArtifactTuple]]:
         """Render the complete target inventory for one FLEXT project."""
+        guides = FlextInfraUtilitiesDocsGuidesMixin.docs_project_guides_artifacts(
+            scope, repository_root=repository_root, source_states=source_states
+        )
+        if guides.failure:
+            return r[tuple[DocsRenderedArtifactTuple, ...]].from_failure(guides)
+        guide_paths = {
+            state.path
+            for state in source_states
+            if state.path.parent == scope.path / "docs/guides"
+            and state.path.suffix == ".md"
+            and state.path.name != "README.md"
+        }
+        for _project, path, content in guides.value:
+            if content is None:
+                guide_paths.discard(path)
+            else:
+                guide_paths.add(path)
         analyzed_contract = FlextInfraUtilitiesDocsApi.public_contract(
             scope.path, scope.package_name
         )
@@ -56,7 +77,9 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
             ),
             (
                 scope.path / "docs/guides/README.md",
-                FlextInfraUtilitiesDocsRender.docs_guides_index(scope),
+                FlextInfraUtilitiesDocsRender.docs_guides_index(
+                    scope, guide_paths=tuple(sorted(guide_paths))
+                ),
             ),
             (
                 scope.path / "docs/api-reference/README.md",
@@ -102,6 +125,7 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
             return r[tuple[DocsRenderedArtifactTuple, ...]].from_failure(pruned)
         return FlextInfraUtilitiesDocsGenerateProjectMixin.docs_normalize_artifacts((
             *((scope.path, path, content) for path, content in rendered),
+            *guides.value,
             *pruned.value,
         ))
 

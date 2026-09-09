@@ -86,14 +86,14 @@ class TestAuditorCore:
         tm.that(issue.severity, eq="high")
 
     @pytest.mark.parametrize(
-        ("projects", "check", "strict", "output_dir"),
+        ("projects", "check", "output_dir"),
         [
-            (["test-project"], "all", True, ".reports/docs"),
-            (["proj1", "proj2"], "all", True, ".reports/docs"),
-            (None, "links", True, ".reports/docs"),
-            (None, "forbidden-terms", True, ".reports/docs"),
-            (None, "all", True, ".reports/docs"),
-            (None, "all", True, "custom_output"),
+            (["test-project"], "all", ".reports/docs"),
+            (["proj1", "proj2"], "all", ".reports/docs"),
+            (None, "links", ".reports/docs"),
+            (None, "forbidden-terms", ".reports/docs"),
+            (None, "all", ".reports/docs"),
+            (None, "all", "custom_output"),
         ],
     )
     def test_audit_option_variants(
@@ -103,7 +103,6 @@ class TestAuditorCore:
         tmp_path: Path,
         projects: list[str] | None,
         check: str,
-        strict: bool,
         output_dir: str,
     ) -> None:
         output_dir_value = (
@@ -113,7 +112,7 @@ class TestAuditorCore:
             tmp_path,
             projects=projects,
             output_dir=output_dir_value,
-            params=m.Infra.AuditScopeParams(check=check, strict=strict),
+            params=m.Infra.AuditScopeParams(check=check),
         )
         tm.that(result.success or result.failure, eq=True)
 

@@ -289,7 +289,11 @@ class FlextInfraMiseWorkspacePlanner:
                     f"invalid Mise configuration plan: {config_plan.path}"
                 )
             replacement_content = config_plan.desired_content
-        if config_plan is not None and config_plan.before.content is not None:
+        if (
+            config_plan is not None
+            and isinstance(config_plan.before, m.Cli.AtomicFileState)
+            and config_plan.before.content is not None
+        ):
             config_sources = config_plan.source_states
         else:
             # A first publication (scaffold or newly governed project) has no

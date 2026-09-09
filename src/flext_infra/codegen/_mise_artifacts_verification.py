@@ -362,6 +362,17 @@ class FlextInfraMiseArtifactsVerification:
             observed = files.read_state(publication.before.path, required=False)
             if observed.failure:
                 return r[bool].from_failure(observed)
+            current = observed.value
+            before = publication.before
+            if (
+                current.parent_device is None
+                or current.parent_inode is None
+                or before.parent_device is None
+                or before.parent_inode is None
+            ):
+                return r[bool].fail(
+                    f"generation destination parent identity is incomplete: {before.path}"
+                )
             replacement = publication.replacement
             if replacement is None:
                 if (
@@ -374,15 +385,14 @@ class FlextInfraMiseArtifactsVerification:
                         f"{publication.before.path}"
                     )
                 continue
-            current = observed.value
             if cls._file_identity(
                 current,
                 parent_device=current.parent_device,
                 parent_inode=current.parent_inode,
             ) != cls._file_identity(
                 replacement,
-                parent_device=publication.before.parent_device,
-                parent_inode=publication.before.parent_inode,
+                parent_device=before.parent_device,
+                parent_inode=before.parent_inode,
             ):
                 return r[bool].fail(
                     f"live generation destination differs from staged identity: {current.path}"

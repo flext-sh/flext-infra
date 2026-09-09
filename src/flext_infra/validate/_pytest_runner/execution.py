@@ -70,7 +70,7 @@ class FlextInfraPytestRunnerExecution(
 
     def _run_suite(
         self, command: t.VariadicTuple[str], report_dir: Path
-    ) -> m.Cli.ProcessOutcome:
+    ) -> p.Cli.ProcessOutcome:
         """Execute one suite argv under the shared deadline and environment."""
         pytest = config.Infra.tooling.tools.pytest
         u.Cli.atomic_write_text_file(
