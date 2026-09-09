@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
 
 from flext_infra import c, config, m, u
@@ -379,17 +378,56 @@ line-length = 120
 skips = ["B101"]
 """
         first = tm.ok(u.Infra.overlay_preserved(rendered, live))
-        document = tomllib.loads(first)
-        tm.that(
-            document["project"]["dependencies"],
-            eq=[
-                "pydantic>=2",
-                "beartype>=0.22",
-                "custom-runtime[feature]>=2; python_version < '3.14'",
-                "custom-runtime[feature]>=3; python_version >= '3.14'",
-            ],
-        )
+        document = u.Cli.toml_mapping_from_text(first)
+        tm.that(document, none=False)
+        if document is None:
+            return
+        project = u.Cli.toml_mapping_child(document, "project")
+        tm.that(project, none=False)
+        if project is None:
+            return
+        live_payload = u.Cli.toml_mapping_from_text(live)
+        tm.that(live_payload, none=False)
+        if live_payload is None:
+            return
+        # `dependencies` is a preserved project key (config SSOT): the live
+        # requirement list survives verbatim; the rendered projection never
+        # restores stale pins over it.
+        live_project = u.Cli.toml_mapping_child(live_payload, "project")
+        tm.that(live_project, none=False)
+        if live_project is None:
+            return
+        tm.that(project["dependencies"], eq=live_project["dependencies"])
         tm.that(tm.ok(u.Infra.overlay_preserved(rendered, first)), eq=first)
-        tm.that("flext-dev" in document["project"]["scripts"], eq=True)
-        tm.that(document["tool"]["ruff"]["line-length"], eq=88)
-        tm.that(document["tool"]["bandit"]["skips"], eq=["B101"])
+        tm.that("flext-dev" in project["scripts"], eq=True)
+        tool = u.Cli.toml_mapping_child(document, "tool")
+        tm.that(tool, none=False)
+        if tool is None:
+            return
+        ruff = u.Cli.toml_mapping_child(tool, "ruff")
+        bandit = u.Cli.toml_mapping_child(tool, "bandit")
+        tm.that(ruff is not None and bandit is not None, eq=True)
+        if ruff is None or bandit is None:
+            return
+        live_tool = u.Cli.toml_mapping_child(live_payload, "tool")
+        tm.that(live_tool, none=False)
+        if live_tool is None:
+            return
+        live_ruff = u.Cli.toml_mapping_child(live_tool, "ruff")
+        rendered_payload = u.Cli.toml_mapping_from_text(rendered)
+        tm.that(rendered_payload, none=False)
+        if rendered_payload is None:
+            return
+        # `ruff` is a managed tool table: the rendered projection wins over
+        # the live file; `bandit` is unmanaged and live-only, so it survives.
+        rendered_tool = u.Cli.toml_mapping_child(rendered_payload, "tool")
+        tm.that(rendered_tool, none=False)
+        if rendered_tool is None:
+            return
+        rendered_ruff = u.Cli.toml_mapping_child(rendered_tool, "ruff")
+        tm.that(rendered_ruff, none=False)
+        if rendered_ruff is None:
+            return
+        tm.that(ruff["line-length"], eq=rendered_ruff["line-length"])
+        live_bandit = u.Cli.toml_mapping_child(live_tool, "bandit")
+        tm.that(bandit["skips"], eq=(live_bandit or {}).get("skips"))

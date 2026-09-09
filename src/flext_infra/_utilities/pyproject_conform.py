@@ -69,6 +69,20 @@ class FlextInfraUtilitiesPyprojectConform:
         return r[t.Pair[t.Cli.TomlDocument, str]].ok((source, project_name_raw.strip()))
 
     @classmethod
+    def _declared_uv_constraint_dependencies(
+        cls, document: t.Cli.TomlDocument
+    ) -> t.SequenceOf[str]:
+        """Return the document-declared ``[tool.uv] constraint-dependencies``."""
+        tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
+        if tool is None:
+            return ()
+        uv = u.Cli.toml_table_child(tool, "uv")
+        if uv is None:
+            return ()
+        declared = u.Cli.toml_value(uv, "constraint-dependencies")
+        return tuple(u.Cli.toml_as_string_list(declared))
+
+    @classmethod
     def _rendered_conformed_document(
         cls,
         document: t.Cli.TomlDocument,
@@ -190,6 +204,14 @@ class FlextInfraUtilitiesPyprojectConform:
         if parsed.failure:
             return r[str].from_failure(parsed)
         source, project_name = parsed.value
+        provenance_result = cls._validate_dependency_provenance(
+            source,
+            project_name=project_name,
+            workspace=workspace,
+            workspace_mode=workspace_mode,
+        )
+        if provenance_result.failure:
+            return r[str].from_failure(provenance_result)
         workspace_context_root = cls._is_workspace_context_root(
             project_name=project_name,
             workspace=workspace,
@@ -217,6 +239,10 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
+        # On the dependency-only surface the declared document constraints are
+        # the SSOT: they flow through the same uv-pin filter as the toolchain
+        # path so a legacy `uv` cap is removed and every other constraint is
+        # preserved verbatim.
         sources_result = (
             r[bool].ok(True)
             if workspace_context_root
@@ -225,6 +251,9 @@ class FlextInfraUtilitiesPyprojectConform:
                 project_name=project_name,
                 workspace=workspace,
                 workspace_mode=workspace_mode,
+                constraint_dependencies=cls._declared_uv_constraint_dependencies(
+                    source
+                ),
             )
         )
         if sources_result.failure:
@@ -635,7 +664,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 and not constraint_dependencies
             ):
                 return r[bool].ok(True)
-            if not constraint_dependencies and not has_uv:
+            if not constraint_dependencies and not has_uv and not exclude_dependencies:
                 # Empty declared constraints on a document without any uv
                 # table: nothing to remove, so no table is created.
                 return r[bool].ok(True)
@@ -876,10 +905,18 @@ class FlextInfraUtilitiesPyprojectConform:
                     "workspace dependency declares a conflicting direct source: "
                     f"{dependency_name}"
                 )
-            if not workspace_context_root and not has_direct_source:
+            # Standalone provenance is catalog-owned: [tool.uv.sources] is
+            # rendered from the workspace member URL, so the requirement line
+            # stays a plain distribution name and the catalog URL must be
+            # HTTPS (fail-closed against ssh/file:// provenance).
+            member = next(
+                (m for m in workspace.subprojects if m.distribution == dependency_name),
+                None,
+            )
+            if member is not None and not member.url.startswith("https://"):
                 return r[bool].fail(
-                    "publishable dependency lacks configured Git source: "
-                    f"{dependency_name}"
+                    "internal dependency catalog provenance must be HTTPS: "
+                    f"{dependency_name} ({member.url})"
                 )
         return r[bool].ok(True)
 
