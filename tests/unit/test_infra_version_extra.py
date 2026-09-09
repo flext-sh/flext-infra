@@ -6,29 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import TYPE_CHECKING
-
 from flext_tests import tm
 
 import flext_infra as infra_pkg
-from flext_infra import u
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class TestsFlextInfraInfraVersionExtra:
     """Validate public package metadata exports against project SSOT."""
-
-    @staticmethod
-    def _project_root() -> Path:
-        return Path(__file__).resolve().parents[2]
-
-    def _metadata(self) -> p.ProjectMetadata:
-        metadata_result = u.Infra.read_project_metadata_result(self._project_root())
-        tm.ok(metadata_result)
-        return metadata_result.value
 
     def test_public_package_metadata_matches_project_metadata(self) -> None:
         metadata = self._metadata()

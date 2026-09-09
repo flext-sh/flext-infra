@@ -32,7 +32,10 @@ class FlextInfraRuntimeDevDependencyDetector(
     ] = False
     apply_typings: Annotated[
         bool,
-        m.Field(alias="apply-typings", description="Install missing typing packages"),
+        m.Field(
+            alias="apply-typings",
+            description="Declare CUSTOM typings extras and install through UV",
+        ),
     ] = False
     no_pip_check: Annotated[
         bool, m.Field(alias="no-pip-check", description="Skip workspace pip check")

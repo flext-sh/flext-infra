@@ -125,15 +125,13 @@ class FlextInfraMarkdownGate(FlextInfraGate):
                 )
             )
         if not u.Cli.process_succeeded(result.outcome) and not issues:
-            detail = (result.stderr or result.stdout).strip() or "no diagnostics"
             issues.append(
-                m.Infra.Issue(
+                self._command_error_issue(
+                    result,
+                    tool=c.Infra.RUMDL,
                     file=str(project_dir),
                     line=1,
                     column=1,
-                    code="TOOL_ERROR",
-                    message=f"rumdl exited with code {result.outcome.raw_return_code}: {detail}",
-                    severity="ERROR",
                 )
             )
         return u.Cli.process_succeeded(result.outcome), issues

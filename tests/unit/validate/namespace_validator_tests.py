@@ -8,7 +8,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from tests import m, u
+from tests import c, m, t, u
 
 _FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
 
@@ -34,17 +34,22 @@ def _make_project_with_module(
 
 def _make_project_with_module_path(
     tmp_path: Path, *, module_source: str, module_path: str
-) -> Path:
+) -> t.Pair[Path, Path]:
     project_root = tmp_path / "project"
     package_dir = project_root / "src" / "flext_test"
     package_dir.mkdir(parents=True)
     _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
     u.Tests.write_canonical_package_layout(package_dir)
-    target = package_dir / module_path
+    relative = Path(module_path)
+    target = (
+        project_root / relative
+        if relative.parts[0] == c.Infra.DIR_TESTS
+        else package_dir / relative
+    )
     target.parent.mkdir(parents=True, exist_ok=True)
     _ = target.write_text(module_source, encoding="utf-8")
     u.Tests.initialize_git_repo(project_root)
-    return project_root
+    return project_root, target
 
 
 class TestFlextInfraNamespaceValidator:
@@ -379,7 +384,8 @@ class TestFlextInfraNamespaceValidator:
             eq=True,
         )
 
-    def test_exempt_files_skipped(self, tmp_path: Path) -> None:
+    def test_initializer_and_version_roles_are_scanned(self, tmp_path: Path) -> None:
+        """Role-specific validation must not pass because discovery is empty."""
         validator = FlextInfraNamespaceValidator()
         project_root = tmp_path / "project"
         package_dir = project_root / "src" / "flext_test"
@@ -391,6 +397,14 @@ class TestFlextInfraNamespaceValidator:
             _read_fixture("rule0_no_class.py"), encoding="utf-8"
         )
         u.Tests.write_canonical_package_layout(package_dir)
+        u.Tests.initialize_git_repo(project_root)
+        files = tm.ok(
+            u.Infra.iter_python_files(
+                m.Infra.SourceScanRequest(project_roots=(project_root,))
+            )
+        )
+        tm.that(files, has=package_dir / "__init__.py")
+        tm.that(files, has=package_dir / "__version__.py")
         result = validator.validate_project(project_root)
         tm.that(result.success, eq=True)
         tm.that(result.value.passed, eq=True)
@@ -633,10 +647,9 @@ class TestFlextInfraNamespaceValidator:
     ) -> None:
         """Namespace rules key on the module path a project actually declares."""
         validator = FlextInfraNamespaceValidator()
-        root = _make_project_with_module_path(
+        root, target = _make_project_with_module_path(
             tmp_path, module_source=module_source, module_path=module_path
         )
-        target = root / "src" / "flext_test" / module_path
         files = u.Infra.iter_python_files(
             m.Infra.SourceScanRequest(project_roots=(root,))
         )

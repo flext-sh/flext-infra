@@ -46,19 +46,8 @@ class TestScannerHelpers:
         self, tmp_path: Path
     ) -> None:
         """Canonical file selection prefers tracked files when Git is active."""
-        init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
-        tm.ok(init_result)
-        tm.that(u.Cli.process_succeeded(init_result.value.outcome), eq=True)
-        email_result = u.Cli.run_raw(
-            ["git", "config", "user.email", "test@example.com"], cwd=tmp_path
-        )
-        tm.ok(email_result)
-        tm.that(u.Cli.process_succeeded(email_result.value.outcome), eq=True)
-        name_result = u.Cli.run_raw(
-            ["git", "config", "user.name", "Test User"], cwd=tmp_path
-        )
-        tm.ok(name_result)
-        tm.that(u.Cli.process_succeeded(name_result.value.outcome), eq=True)
+        u.Tests.git_bootstrap(tmp_path, ("init",))
+        u.Tests.configure_git_identity(tmp_path)
         tracked_file = tmp_path / "tracked.py"
         tracked_file.write_text("")
         untracked_file = tmp_path / "untracked.py"

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
@@ -12,20 +11,6 @@ from flext_tests import tm
 from flext_infra import main as infra_main
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from tests import t, u
-
-
-@pytest.fixture(autouse=True)
-def _census_gate_tools_on_path(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Expose the running venv's gate tools to the census subprocess gates.
-
-    Why: the census candidate gates execute ``ruff``/``pyrefly`` by name and
-    the declared test invocation (``.venv/bin/python -m pytest``) does not put
-    the venv's ``bin`` on ``PATH``, so the real gate tools would be invisible
-    to the subprocesses.
-    """
-    venv_bin = Path(sys.executable).parent
-    monkeypatch.setenv("PATH", f"{venv_bin}{os.pathsep}{os.environ['PATH']}")
-
 
 _FUTURE_INIT = "from __future__ import annotations\n"
 

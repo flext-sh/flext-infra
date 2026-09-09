@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -104,7 +105,6 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         return self._run_project_typings(
             project_path,
             typing_deps=typing_deps,
-            venv_bin=venv_bin,
             limits_path=limits_path,
             params=params,
             projects_report=projects_report,
@@ -115,12 +115,11 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         project_path: Path,
         *,
         typing_deps: p.Infra.TypingsDepsService | None,
-        venv_bin: Path,
         limits_path: Path,
         params: m.Infra.DetectCommand,
         projects_report: MutableMapping[str, MutableMapping[str, t.Infra.InfraValue]],
     ) -> p.Result[bool]:
-        """Detect required typings for a project and optionally add them via poetry."""
+        """Declare CUSTOM typing extras and install them through UV's source editor."""
         detector = self._detector
         if typing_deps is None:
             return r[bool].fail("typing dependency detection service unavailable")
@@ -137,22 +136,30 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         to_add: t.StrSequence = typings_report.to_add
         if not (params.apply_typings and to_add and params.apply):
             return r[bool].ok(True)
-        env = {"VIRTUAL_ENV": str(venv_bin.parent)}
-        poetry = venv_bin / c.Infra.POETRY
-        for package in to_add:
-            run_outcome = detector.runner.run_raw(
-                [str(poetry), "add", "--group", c.Infra.DIR_TYPINGS, package],
-                cwd=project_path,
-                timeout=c.Infra.TIMEOUT_MEDIUM,
-                env=env,
+        # UV owns the TOML edit, lock, installation and failed-add source recovery.
+        # Inherit Make's UV_PROJECT_ENVIRONMENT; never rebind a parent's runtime.
+        run_outcome = detector.runner.run_raw(
+            [
+                os.environ.get("UV", c.Infra.UV),
+                "add",
+                "--project",
+                str(project_path),
+                "--optional",
+                c.Infra.TYPINGS,
+                "--",
+                *to_add,
+            ],
+            cwd=project_path,
+            timeout=c.Infra.TIMEOUT_MEDIUM,
+        )
+        if run_outcome.failure:
+            return r[bool].from_failure(run_outcome)
+        if not u.Cli.process_succeeded(run_outcome.value.outcome):
+            return r[bool].fail(
+                f"UV typing dependency add failed for {project_name}: "
+                f"exit {run_outcome.value.outcome.raw_return_code}\n"
+                f"{run_outcome.value.stdout}\n{run_outcome.value.stderr}"
             )
-            poetry_failed = run_outcome.failure or not u.Cli.process_succeeded(
-                run_outcome.value.outcome
-            )
-            if poetry_failed:
-                detector.log.warning(
-                    "deps_typings_add_failed", project=project_name, package=package
-                )
         return r[bool].ok(True)
 
     def _run_pip_check(

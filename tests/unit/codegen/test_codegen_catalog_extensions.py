@@ -9,8 +9,8 @@ from flext_tests import tm
 
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from tests import u
 from tests.unit.workspace import WorktreeFixture
-from tests.utilities import u
 
 pytestmark = pytest.mark.slow
 

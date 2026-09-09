@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import override
 
 from flext_core import r
-from flext_infra import c, m, p, t
+from flext_infra import c, m, p, t, u
 
 from ._detection_runners import FlextInfraDependencyDetectionRunnersMixin
 
@@ -67,14 +67,10 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         )
         return mapping
 
-    def _mapping_from_value(self, value: t.Infra.InfraValue | None) -> t.JsonMapping:
-        """Build a mapping from a value."""
-        if not isinstance(value, Mapping):
-            return {}
-        return self._to_toml_config(value)
-
-    def get_current_typings_from_pyproject(self, project_path: Path) -> t.StrSequence:
-        """Extract currently declared typing packages from project pyproject.toml."""
+    def get_current_typings_from_pyproject(
+        self, project_path: Path, *, include_dev: bool = True
+    ) -> t.StrSequence:
+        """Read CUSTOM typing requirements and the canonical development group."""
         pyproject = project_path / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return []
@@ -82,32 +78,24 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         if read_result.failure:
             msg = f"failed to read {pyproject}: {read_result.error}"
             raise RuntimeError(msg)
-        data = self._to_toml_config(read_result.value)
-        if not data:
-            return []
-        names: t.Infra.StrSet = set()
-        tool = self._mapping_from_value(data.get(c.Infra.TOOL))
-        poetry = self._mapping_from_value(tool.get(c.Infra.POETRY))
-        group = self._mapping_from_value(poetry.get(c.Infra.GROUP))
-        typings_group = self._mapping_from_value(group.get(c.Infra.TYPINGS))
-        deps = self._mapping_from_value(typings_group.get(c.Infra.DEPENDENCIES))
-        names.update(key for key in deps)
-        project = self._mapping_from_value(data.get(c.Infra.PROJECT))
-        optional = self._mapping_from_value(project.get(c.Infra.OPTIONAL_DEPENDENCIES))
-        typings = optional.get(c.Infra.TYPINGS)
-        if isinstance(typings, list):
-            for spec in typings:
-                spec_text = str(spec)
-                names.add(
-                    spec_text
-                    .split("[", maxsplit=1)[0]
-                    .split(">=", maxsplit=1)[0]
-                    .split("==", maxsplit=1)[0]
-                    .strip()
-                )
-        elif isinstance(typings, Mapping):
-            names.update(key for key in typings)
-        return sorted(names)
+        data = read_result.value
+        project = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+            data.get(c.Infra.PROJECT, {})
+        )
+        optional = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+            project.get(c.Infra.OPTIONAL_DEPENDENCIES, {})
+        )
+        requirements = list(
+            t.Infra.STR_SEQ_ADAPTER.validate_python(optional.get(c.Infra.TYPINGS, []))
+        )
+        if include_dev:
+            groups = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                data.get(c.Infra.DEPENDENCY_GROUPS, {})
+            )
+            requirements.extend(
+                t.Infra.STR_SEQ_ADAPTER.validate_python(groups.get(c.Infra.DEV, []))
+            )
+        return sorted({u.Infra.dep_name(spec) for spec in requirements})
 
     def get_required_typings(
         self,
@@ -151,7 +139,10 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
             missing_modules=missing_modules,
             current=current,
             to_add=sorted(required_set - current_set),
-            to_remove=sorted(current_set - required_set),
+            to_remove=sorted(
+                set(self.get_current_typings_from_pyproject(project_path, include_dev=False))
+                - required_set
+            ),
             limits_applied=bool(limits),
             python_version=python_version,
         )

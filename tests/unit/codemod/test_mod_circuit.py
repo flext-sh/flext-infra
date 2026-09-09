@@ -2,27 +2,12 @@
 
 from __future__ import annotations
 
-import os
-import sys
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
 from flext_infra import c, m, main as infra_main, u
-
-
-@pytest.fixture(autouse=True)
-def _mod_gate_tools_on_path(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Expose the running venv's gate tools to the mod gate subprocesses.
-
-    Why: the mod zero-finding gate executes ``pyright-langserver`` by name and
-    the declared test invocation (``.venv/bin/python -m pytest``) does not put
-    the venv's ``bin`` on ``PATH``, so the declared dev dependency would be
-    invisible to the subprocess.
-    """
-    venv_bin = Path(sys.executable).parent
-    monkeypatch.setenv("PATH", f"{venv_bin}{os.pathsep}{os.environ['PATH']}")
 
 
 class TestsFlextInfraModCliRoute:

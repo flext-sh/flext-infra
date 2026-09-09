@@ -14,13 +14,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def _publish_docs(workspace: Path) -> None:
-    """Publish one generated docs bundle through the transaction adapter."""
-    _ = u.Tests.publish_docs_bundle(
-        FlextInfraDocGenerator(repository_root=workspace, selected_projects=["flext-a"])
-    )
-
-
 def test_validate_report_model_fields() -> None:
     report = m.Infra.DocsPhaseReport(
         phase="validate",

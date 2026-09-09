@@ -8,27 +8,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import main
 from tests import c, m, p, u
-
-
-def _run_release_main(workspace: Path, *arguments: str) -> int:
-    """Run the public release CLI against one real test workspace."""
-    return main(["release", "run", "--repository-root", str(workspace), *arguments])
-
-
-def _run_release_build(
-    workspace: Path, project_name: str, *, dry_run: bool = False
-) -> int:
-    """Run the release build phase for one project through the public CLI."""
-    return _run_release_main(
-        workspace,
-        "--phase",
-        c.Tests.RELEASE_PHASE_BUILD,
-        "--projects",
-        project_name,
-        "--dry-run" if dry_run else "--apply",
-    )
 
 
 class TestsFlextInfraReleaseHelpers:
@@ -221,7 +201,7 @@ class TestsFlextInfraReleaseHelpers:
             project_name = "flext-a"
             workspace = u.Tests.release_internal_workspace(tmp_path, project_name)
 
-            result = _run_release_main(
+            result = u.Tests.run_release_main(
                 workspace,
                 "--phase",
                 c.Tests.RELEASE_PHASE_BUILD,
@@ -309,7 +289,7 @@ class TestsFlextInfraReleaseHelpers:
             artifact_dir = u.Tests.release_artifact_dir(
                 workspace, c.Tests.RELEASE_VERSION_BASE, project_name
             )
-            first_result = _run_release_build(workspace, project_name)
+            first_result = u.Tests.run_release_build(workspace, project_name)
             original_artifacts = {
                 path.name: path.read_bytes() for path in artifact_dir.iterdir()
             }
@@ -320,7 +300,7 @@ class TestsFlextInfraReleaseHelpers:
                 collided_artifact.name: collision_bytes
             }
 
-            second_result = _run_release_build(workspace, project_name)
+            second_result = u.Tests.run_release_build(workspace, project_name)
 
             current_artifacts = {
                 path.name: path.read_bytes() for path in artifact_dir.iterdir()
@@ -363,7 +343,7 @@ class TestsFlextInfraReleaseHelpers:
             )
             u.Tests.commit_git_changes(project, "emit unexpected build output")
 
-            result = _run_release_build(workspace, project_name)
+            result = u.Tests.run_release_build(workspace, project_name)
 
             build_log = u.Tests.release_build_log_text(workspace, project_name)
             tm.that(result, eq=1)

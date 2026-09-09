@@ -13,6 +13,8 @@ from tests import u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tests import t
+
 
 def test_auditor_main_help_exits_zero() -> None:
     tm.that(main(["docs", "audit", "--help"]), eq=0)
@@ -74,10 +76,11 @@ def test_auditor_cli_medium_finding_is_a_failure(tmp_path: Path) -> None:
     """A policy warning fails the real CLI without requiring strict mode."""
     workspace = u.Tests.create_docs_workspace(tmp_path)
     (workspace / "docs/README.md").write_text("Retired phrase\n", encoding="utf-8")
+    payload: t.JsonDict = {"audit": {"forbidden_terms": ["Retired phrase"]}}
     tm.ok(
         u.Cli.json_write(
             workspace / "docs/docs_config.json",
-            {"audit": {"forbidden_terms": ["Retired phrase"]}},
+            payload,
         )
     )
     tm.that(main(["docs", "audit", "--repository-root", str(workspace)]), eq=1)
