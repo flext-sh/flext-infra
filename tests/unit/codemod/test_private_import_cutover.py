@@ -54,9 +54,11 @@ class TestsFlextInfraPrivateImportCutover:
         if depth:
             for path in tuple(dependency_sources):
                 if path.parent == package and path.name != "__init__.py":
-                    dependency_sources[path] = dependency_sources[path].replace(
-                        "flext_sample._constants.profile", previous_module
-                    ).replace("FlextSampleConstantsProfile", previous_class)
+                    dependency_sources[path] = (
+                        dependency_sources[path]
+                        .replace("flext_sample._constants.profile", previous_module)
+                        .replace("FlextSampleConstantsProfile", previous_class)
+                    )
         for path, source in dependency_sources.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(source, encoding="utf-8")

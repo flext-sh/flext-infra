@@ -39,17 +39,14 @@ class FlextInfraUtilitiesRopeSource:
 
     @staticmethod
     def discover_first_party_namespaces(project_dir: Path) -> t.StrSequence:
-        """Discover first-party namespaces directly under ``src/``."""
+        """Discover live regular, namespace, and stub packages under ``src/``."""
         src_dir = project_dir / c.Infra.DEFAULT_SRC_DIR
-        if not src_dir.is_dir():
-            return []
         return [
-            entry.name
-            for entry in sorted(src_dir.iterdir())
-            if entry.is_dir()
-            and entry.name != c.Infra.DUNDER_PYCACHE
-            and entry.name.isidentifier()
-            and "-" not in entry.name
+            name
+            for name in FlextInfraUtilitiesDiscovery.discover_python_dirs(
+                src_dir, workspace_excluded_top_dirs=frozenset()
+            )
+            if name.isidentifier()
         ]
 
     @staticmethod

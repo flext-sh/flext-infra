@@ -61,8 +61,7 @@ class TestsFlextInfraCodegenPyprojectConform:
             f'[tool.{tool_table}]\nvalue = "rendered"\n'
         )
         live = (
-            f'[project]\n{project_key} = "live"\n'
-            f'[tool.{tool_table}]\nvalue = "live"\n'
+            f'[project]\n{project_key} = "live"\n[tool.{tool_table}]\nvalue = "live"\n'
         )
         project_override = tm.ok(
             u.Infra.overlay_preserved(rendered, live, preserve_project_keys=())

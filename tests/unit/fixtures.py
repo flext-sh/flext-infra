@@ -202,7 +202,9 @@ def cached_runner_project(tmp_path: Path) -> Path:
     # boundary: the Cython provider mapping of dependency_injector is not
     # parseable source and is omitted by every fleet coverage config.
     (project_root / "pyproject.toml").write_text(
-        '[tool.coverage.run]\nomit = ["*/dependency_injector/providers.pyx"]\n',
+        '[tool.coverage.run]\nomit = ["*/dependency_injector/providers.pyx"]\n'
+        "[tool.pytest.ini_options]\n"
+        f'pythonpath = ["{c.Infra.DEFAULT_SRC_DIR}"]\n',
         encoding="utf-8",
     )
     (package_root / "__init__.py").write_text(

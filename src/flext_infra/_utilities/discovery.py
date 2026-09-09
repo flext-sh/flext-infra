@@ -302,7 +302,7 @@ class FlextInfraUtilitiesDiscovery(
                 if name not in skip_dirs and not name.startswith(".")
             ]
             for file_name in file_names:
-                if file_name.endswith(c.Infra.EXT_PYTHON):
+                if file_name.endswith((c.Infra.EXT_PYTHON, ".pyi")):
                     yield parent / file_name
 
     @staticmethod

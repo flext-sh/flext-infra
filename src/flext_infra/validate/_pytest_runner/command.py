@@ -21,7 +21,9 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     plugin, so the two never share a process).
     """
 
-    def build_selection_command(self, *, complete: bool = False) -> t.VariadicTuple[str]:
+    def build_selection_command(
+        self, *, complete: bool = False
+    ) -> t.VariadicTuple[str]:
         """Build the read-only argv that resolves the testmon selection once.
 
         Every xdist worker otherwise resolves the selection itself, and two

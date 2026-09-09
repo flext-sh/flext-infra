@@ -49,15 +49,19 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             for match in c.Infra.PYTEST_DESELECTED_RE.finditer(log_text)
         )
         if not executed and cache_restored:
-            selected = (log.parent / "testmon-selection.txt").read_text(
-                encoding="utf-8"
-            ).strip()
+            selected = (
+                (log.parent / "testmon-selection.txt")
+                .read_text(encoding="utf-8")
+                .strip()
+            )
             if selected:
                 msg = "pytest executed no tests from a nonempty testmon selection"
                 raise RuntimeError(msg)
-            inventory = (log.parent / "testmon-inventory.txt").read_text(
-                encoding="utf-8"
-            ).splitlines()
+            inventory = (
+                (log.parent / "testmon-inventory.txt")
+                .read_text(encoding="utf-8")
+                .splitlines()
+            )
             # Testmon skips stable files before pytest can count deselections.
             # The independent collection-only inventory proves the omitted set.
             deselected = len({node for node in inventory if node})

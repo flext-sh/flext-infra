@@ -72,11 +72,12 @@ class TestsDirenvContractLint:
 class TestsDirenvGate:
     """Fail-closed gate behavior over the two enforcement stages."""
 
-    def test_workspace_without_envrc_skips(self, tmp_path: Path) -> None:
-        """No .envrc means nothing to enforce."""
+    def test_workspace_without_envrc_cannot_pass(self, tmp_path: Path) -> None:
+        """A selected gate with no inputs cannot establish acceptance."""
         gate = FlextInfraDirenvGate(tmp_path)
         execution = gate.check(tmp_path, make_ctx(tmp_path))
-        tm.that(execution.result.passed, eq=True)
+        tm.that(execution.result.passed, eq=False)
+        tm.that(execution.result.errors, eq=["direnv: no check targets were collected"])
 
     def test_contract_violation_fails_before_smoke(self, tmp_path: Path) -> None:
         """The static lint fires without consuming any runner command."""

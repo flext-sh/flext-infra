@@ -282,65 +282,6 @@ class FlextInfraUtilitiesPrivateImportFacades:
         }
 
     @staticmethod
-    def class_bases(
-        sources: t.MappingKV[str, t.Pair[str, bool]],
-    ) -> dict[str, tuple[str, ...]]:
-        """Index static class ancestry, including private intermediate owners."""
-        bases: dict[str, tuple[str, ...]] = {}
-        for module, (source, is_package) in sources.items():
-            tree = ast.parse(source, filename=module)
-            package = module if is_package else module.rpartition(".")[0]
-
-            def collect(
-                statements: list[ast.stmt], scope: str,
-                names: dict[str, str], module: str, package: str,
-            ) -> None:
-                def reference(node: ast.expr) -> str:
-                    expression = ast.unparse(
-                        node.value if isinstance(node, ast.Subscript) else node
-                    )
-                    root, separator, suffix = expression.partition(".")
-                    return names.get(root, f"{module}.{root}") + (
-                        f".{suffix}" if separator else ""
-                    )
-
-                for node in statements:
-                    if isinstance(node, ast.ImportFrom) and node.module:
-                        imported = (
-                            resolve_name(f"{'.' * node.level}{node.module}", package)
-                            if node.level else node.module
-                        )
-                        for alias in node.names:
-                            names[alias.asname or alias.name] = f"{imported}.{alias.name}"
-                    elif isinstance(node, ast.Import):
-                        for alias in node.names:
-                            names[alias.asname or alias.name.split(".")[0]] = (
-                                alias.name if alias.asname else alias.name.split(".")[0]
-                            )
-                    elif isinstance(node, ast.ClassDef):
-                        identity = f"{scope}.{node.name}"
-                        bases[identity] = tuple(
-                            reference(base)
-                            for base in node.bases
-                            if isinstance(base, ast.Name | ast.Attribute | ast.Subscript)
-                        )
-                        collect(node.body, identity, names.copy(), module, package)
-                        names[node.name] = identity
-                    elif isinstance(node, ast.Assign | ast.AnnAssign):
-                        value = node.value
-                        targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-                        for target in targets:
-                            if isinstance(target, ast.Name):
-                                names[target.id] = (
-                                    reference(value)
-                                    if isinstance(value, ast.Name | ast.Attribute)
-                                    else f"{scope}.{target.id}"
-                                )
-
-            collect(tree.body, module, {}, module, package)
-        return bases
-
-    @staticmethod
     def public_reference(
         *,
         owners: t.SequenceOf[t.Quad[ast.Module, str, str, str]],
@@ -400,25 +341,26 @@ class FlextInfraUtilitiesPrivateImportFacades:
                 continue
 
             def collect(
-                node: ast.ClassDef, public_path: str, imports: dict[str, str]
+                node: ast.ClassDef,
+                public_path: str,
+                imports: dict[str, str],
+                module: str,
             ) -> None:
                 if any(
                     isinstance(base, ast.Name)
                     and inherits(
-                        imports.get(
-                            base.id,
-                            f"{package}.{Path(facade_file).stem}.{base.id}",
-                        ),
-                        frozenset(),
+                        imports.get(base.id, f"{module}.{base.id}"), frozenset()
                     )
                     for base in node.bases
                 ):
                     references.add(public_path)
                 for child in node.body:
                     if isinstance(child, ast.ClassDef):
-                        collect(child, f"{public_path}.{child.name}", imports)
+                        collect(child, f"{public_path}.{child.name}", imports, module)
 
-            collect(root_class, facade_alias, imports)
+            collect(
+                root_class, facade_alias, imports, f"{package}.{Path(facade_file).stem}"
+            )
         if not references:
             return None
         deepest = max(reference.count(".") for reference in references)
