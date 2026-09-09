@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
-from flext_infra import c, u
 
 from .base import FlextInfraNamespaceRulesBase
 

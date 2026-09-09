@@ -59,8 +59,8 @@ class FlextInfraUtilitiesPrivateImportCst:
                     updated_node.with_changes(
                         module=destination_module,
                         names=(replacement,),
-                        lpar=(),
-                        rpar=(),
+                        lpar=None,
+                        rpar=None,
                     )
                 )
             return cst.FlattenSentinel(statements)

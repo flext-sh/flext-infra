@@ -162,7 +162,6 @@ class TestsCodegenCatalogExtensions:
             workspace=member.name,
             database=member.name,
             issue_prefix=member.name,
-            beads_owner=False,
         )
         member_head = tm.ok(
             u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=member_source)
@@ -224,13 +223,6 @@ class TestsCodegenCatalogExtensions:
                 [c.Infra.GIT, "config", "remote.origin.skipDefaultUpdate", "true"],
                 cwd=member_checkout,
             )
-        )
-        WorktreeFixture.link_member_beads(
-            member_checkout,
-            repository_root,
-            workspace_name=root.name,
-            database=root.name,
-            issue_prefix=root.name,
         )
         tm.ok(
             u.Cli.run_checked(

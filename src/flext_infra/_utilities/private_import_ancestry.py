@@ -25,6 +25,7 @@ class FlextInfraUtilitiesPrivateImportAncestry:
                 statements: t.SequenceOf[ast.stmt],
                 scope: str,
                 names: t.MutableStrMapping,
+                module_names: t.MutableStrMapping,
                 module: str,
                 package: str,
             ) -> None:
@@ -62,7 +63,16 @@ class FlextInfraUtilitiesPrivateImportAncestry:
                                 base, ast.Name | ast.Attribute | ast.Subscript
                             )
                         )
-                        collect(node.body, identity, dict(names), module, package)
+                        # Bases see the declaration scope; class bodies do not
+                        # close over an enclosing class's local namespace.
+                        collect(
+                            node.body,
+                            identity,
+                            dict(module_names),
+                            module_names,
+                            module,
+                            package,
+                        )
                         names[node.name] = identity
                     elif isinstance(node, ast.Assign | ast.AnnAssign):
                         value = node.value
@@ -79,7 +89,8 @@ class FlextInfraUtilitiesPrivateImportAncestry:
                                     else f"{scope}.{target.id}"
                                 )
 
-            collect(tree.body, module, {}, module, package)
+            module_names: t.MutableStrMapping = {}
+            collect(tree.body, module, module_names, module_names, module, package)
         return bases
 
 

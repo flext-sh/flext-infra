@@ -122,6 +122,7 @@ def _seed_infra_package_tree(root: Path) -> None:
         u.Cli.atomic_write_text_file(
             root / "pyproject.toml",
             f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
+            'description = "Existing repository fixture"\n'
             'requires-python = ">=3.13,<3.14"\n',
         )
     )
@@ -1499,7 +1500,9 @@ class TestScriptDispatchMakefile:
         )
         tm.that(" gen" in public_line, eq=True)
         tm.that(" codegen" in public_line, eq=False)
-        tm.that("_DEFAULT_gen := check" in rendered, eq=True)
+        tm.that("_DEFAULT_gen" in rendered, eq=False)
+        tm.that("_builtin-gen: _builtin_gen_all" in rendered, eq=True)
+        tm.that("_builtin-conform: _builtin_gen_check" in rendered, eq=True)
         tm.that("_builtin_gen_check:" in rendered, eq=True)
         tm.that("_builtin_gen_init:" in rendered, eq=True)
         tm.that("_builtin_gen_apply:" in rendered, eq=True)

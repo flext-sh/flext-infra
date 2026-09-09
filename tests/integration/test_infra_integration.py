@@ -81,6 +81,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         project_dir = tu.Tests.mk_project(tmp_path, "markdown-fmt-contract")
         document = project_dir / "README.md"
         document.write_text("not a heading   \n", encoding="utf-8")
+        tu.Tests.initialize_git_repo(project_dir)
         context = m.Infra.GateContext(
             repository_root=tmp_path, reports_dir=tmp_path, apply_fixes=True
         )
