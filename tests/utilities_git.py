@@ -189,7 +189,9 @@ class TestsFlextInfraUtilitiesGitMixin:
         if existing_origin == declared_origin:
             return
         if existing_origin:
-            bootstrap(repo_root, ("remote", "set-url", c.Infra.GIT_ORIGIN, declared_origin))
+            bootstrap(
+                repo_root, ("remote", "set-url", c.Infra.GIT_ORIGIN, declared_origin)
+            )
         else:
             bootstrap(repo_root, ("remote", "add", c.Infra.GIT_ORIGIN, declared_origin))
         bootstrap(repo_root, ("add", "-A"))
@@ -222,9 +224,7 @@ class TestsFlextInfraUtilitiesGitMixin:
         let the caller choose ``remote add`` instead of ``remote set-url``.
         """
         result = tm.ok(
-            u.Cli.run_raw(
-                [c.Infra.GIT, "remote", "get-url", remote], cwd=repo_root
-            )
+            u.Cli.run_raw([c.Infra.GIT, "remote", "get-url", remote], cwd=repo_root)
         )
         if not u.Cli.process_succeeded(result.outcome):
             return ""

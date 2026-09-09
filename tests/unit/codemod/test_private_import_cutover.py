@@ -116,41 +116,50 @@ class TestsFlextInfraPrivateImportCutover:
         ("declaration", "expected"),
         [
             (
-                "class Facade:\n"
-                "    class Base:\n        pass\n"
-                "    class Leaf(Base):\n        pass\n",
+                (
+                    "class Facade:\n"
+                    "    class Base:\n        pass\n"
+                    "    class Leaf(Base):\n        pass\n"
+                ),
                 "",
             ),
             (
-                "class Facade:\n"
-                "    class Base:\n        pass\n"
-                "    class Branch(Base):\n"
-                "        class Leaf(Base):\n            pass\n",
+                (
+                    "class Facade:\n"
+                    "    class Base:\n        pass\n"
+                    "    class Branch(Base):\n"
+                    "        class Leaf(Base):\n            pass\n"
+                ),
                 "c.Branch.Leaf",
             ),
             (
-                "class Facade:\n"
-                "    class Branch:\n"
-                "        class Base:\n            pass\n"
-                "        class Leaf(Base):\n            pass\n",
+                (
+                    "class Facade:\n"
+                    "    class Branch:\n"
+                    "        class Base:\n            pass\n"
+                    "        class Leaf(Base):\n            pass\n"
+                ),
                 "",
             ),
             (
-                "class Facade:\n"
-                "    class Leaf(private.Target):\n        pass\n",
+                "class Facade:\n    class Leaf(private.Target):\n        pass\n",
                 "c.Leaf",
             ),
             (
-                "class Facade:\n"
-                "    class private:\n"
-                "        class Target:\n            pass\n"
-                "    class Leaf(private.Target):\n        pass\n",
+                (
+                    "class Facade:\n"
+                    "    class private:\n"
+                    "        class Target:\n            pass\n"
+                    "    class Leaf(private.Target):\n        pass\n"
+                ),
                 "",
             ),
             (
-                "class Facade:\n"
-                "    class Left(Base):\n        pass\n"
-                "    class Right(Base):\n        pass\n",
+                (
+                    "class Facade:\n"
+                    "    class Left(Base):\n        pass\n"
+                    "    class Right(Base):\n        pass\n"
+                ),
                 "ambiguous",
             ),
         ],

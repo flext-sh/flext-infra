@@ -753,14 +753,14 @@ class TestsCodegenMakeEnvironment:
         apply_variable = config.Infra.codegen.make.apply_variable
         apply_value = config.Infra.codegen.make.apply_value
         hostile_env = {
-            "MAKEFLAGS": f"FORBIDDEN_VAR=hostile {apply_variable}={apply_value}",
+            "MAKEFLAGS": f"FORBIDDEN_VAR=hostile {apply_variable}={apply_value}"
         }
         process = tm.ok(
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", "test"],
                 cwd=project_root,
                 env=hostile_env,
-                remove_env_keys=(
+                remove_env_keys=tuple(
                     key
                     for key in c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS
                     if key not in hostile_env

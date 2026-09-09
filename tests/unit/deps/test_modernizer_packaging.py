@@ -113,8 +113,7 @@ def test_conform_packages_every_declared_python_root(infra_git_repo: Path) -> No
 @pytest.mark.slow
 @pytest.mark.parametrize("missing_kind", ["module", "package"])
 def test_conform_rejects_missing_declared_python_root(
-    infra_git_repo: Path,
-    missing_kind: Literal["module", "package"],
+    infra_git_repo: Path, missing_kind: Literal["module", "package"]
 ) -> None:
     """A declaration never produces a phantom wheel or sdist path."""
     _ = _prepare_project(

@@ -64,9 +64,9 @@ class TestsFlextInfraDepsDetectorMain:
             has="typings",
             msg=(
                 f"{outcome.outcome}\n{outcome.stdout}\n{outcome.stderr}\n"
-                + (root / ".reports/dependencies/detect-runtime-dev-latest.json").read_text(
-                    encoding="utf-8"
-                )
+                + (
+                    root / ".reports/dependencies/detect-runtime-dev-latest.json"
+                ).read_text(encoding="utf-8")
             ),
         )
         typing_specs = u.Tests.toml_strings(
