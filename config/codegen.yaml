@@ -1053,6 +1053,7 @@ Infra:
         keywords: [clean-architecture, flext, integration, typed]
         dev:
           - actionlint-py>=1.7.12.24
+          - deptry
           # The security gate (flext_infra.gates.bandit) runs unconditionally for
           # every project owning src/, so the tool it shells out to must be a
           # declared dev dependency of every generated project.
