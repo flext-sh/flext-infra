@@ -219,3 +219,61 @@ class TestsFlextInfraDeferredSelfReferenceDetector:
             "        value: Models.Target\n"
         )
         tm.that(u.Infra.normalize_deferred_self_references(source), eq=source)
+
+    @pytest.mark.parametrize(
+        "declaration",
+        [
+            '_Kind = Literal["one", "two"]',
+            '_Kind: TypeAlias = Literal["one", "two"]',
+            'type _Kind = Literal["one", "two"]',
+        ],
+    )
+    def test_public_normalizer_accepts_declared_owner_aliases(
+        self, declaration: str
+    ) -> None:
+        """An existing qualified alias must not block unrelated sibling repairs."""
+        source = (
+            "from __future__ import annotations\n"
+            "from typing import Annotated, Literal, TypeAlias\n\n"
+            "class Models:\n"
+            f"    {declaration}\n"
+            "    class Dependency:\n"
+            "        pass\n"
+            "    class Consumer:\n"
+            "        kind: Annotated[Models._Kind, 'category']\n"
+            "        dependency: Dependency\n"
+        )
+        normalized = u.Infra.normalize_deferred_self_references(source)
+
+        tm.that(normalized, eq=source.replace("dependency: Dependency", "dependency: Models.Dependency"))
+        tm.that(u.Infra.normalize_deferred_self_references(normalized), eq=normalized)
+
+    def test_public_normalizer_does_not_qualify_bare_assignment_bindings(self) -> None:
+        """Recognizing a member does not turn every class attribute into a type."""
+        source = (
+            "from __future__ import annotations\n\n"
+            "class Models:\n"
+            "    int = 1\n"
+            "    class Consumer:\n"
+            "        value: int\n"
+        )
+
+        tm.that(u.Infra.normalize_deferred_self_references(source), eq=source)
+
+    @pytest.mark.parametrize(
+        "declaration", ["_Kind: object", "class Other:\n        _Kind = str"]
+    )
+    def test_public_normalizer_rejects_unbound_or_foreign_owner_members(
+        self, declaration: str
+    ) -> None:
+        """An annotation-only slot or another class's member is not an owner binding."""
+        source = (
+            "from __future__ import annotations\n\n"
+            "class Models:\n"
+            f"    {declaration}\n"
+            "    class Consumer:\n"
+            "        kind: Models._Kind\n"
+        )
+
+        with pytest.raises(ValueError, match="ambiguous self-qualified annotation"):
+            u.Infra.normalize_deferred_self_references(source)

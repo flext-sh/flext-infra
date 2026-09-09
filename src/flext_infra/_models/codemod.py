@@ -17,9 +17,15 @@ class FlextInfraModelsCodemod:
 
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
-        rule_dirs: tuple[Path, ...]
-        util_dirs: tuple[Path, ...]
-        test_dirs: tuple[Path, ...]
+        rule_dirs: tuple[Path, ...] = m.Field(
+            description="Validated rule directories declared by the ast-grep owner"
+        )
+        util_dirs: tuple[Path, ...] = m.Field(
+            description="Validated utility directories declared by the ast-grep owner"
+        )
+        test_dirs: tuple[Path, ...] = m.Field(
+            description="Validated fixture directories declared by the ast-grep owner"
+        )
 
     class ModRuleBatch(m.ArbitraryTypesModel):
         """Validated executable ast-grep documents prepared for one circuit."""
