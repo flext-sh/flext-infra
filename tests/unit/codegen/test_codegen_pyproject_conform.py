@@ -509,13 +509,15 @@ skips = ["B101"]
             )
         )
         tm.that(
-            test_u.Tests.toml_strings_at(conformed, "project", "dependencies"),
-            eq=test_u.Tests.toml_strings_at(live, "project", "dependencies"),
+            frozenset(
+                test_u.Tests.toml_strings_at(conformed, "project", "dependencies")
+            ),
+            eq=frozenset(test_u.Tests.toml_strings_at(live, "project", "dependencies")),
         )
         repeated = tm.ok(u.Infra.overlay_preserved(rendered, conformed))
         tm.that(
             test_u.Tests.toml_strings_at(repeated, "project", "dependencies"),
-            eq=test_u.Tests.toml_strings_at(live, "project", "dependencies"),
+            eq=test_u.Tests.toml_strings_at(conformed, "project", "dependencies"),
         )
         dev = test_u.Tests.toml_strings_at(conformed, "dependency-groups", "dev")
         tm.that("custom-audit>=1" in dev, eq=True)

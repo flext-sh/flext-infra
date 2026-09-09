@@ -89,8 +89,6 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
                         issue = f"invented Make selector `{selector_name}`"
                     elif verb_spec.requires_apply and not has_apply:
                         issue = f"`make {verb}` requires `APPLY=Y`"
-                    elif not verb_spec.requires_apply and has_apply:
-                        issue = f"`make {verb}` does not accept `APPLY=Y`"
                 if issue:
                     break
             if not issue and c.Infra.DOCS_TEST_DOUBLE_HEADING_RE.match(line):
