@@ -508,6 +508,15 @@ skips = ["B101"]
                 required_dev_dependencies=("rumdl>=0.2.45",),
             )
         )
+        tm.that(
+            test_u.Tests.toml_strings_at(conformed, "project", "dependencies"),
+            eq=test_u.Tests.toml_strings_at(live, "project", "dependencies"),
+        )
+        repeated = tm.ok(u.Infra.overlay_preserved(rendered, conformed))
+        tm.that(
+            test_u.Tests.toml_strings_at(repeated, "project", "dependencies"),
+            eq=test_u.Tests.toml_strings_at(live, "project", "dependencies"),
+        )
         dev = test_u.Tests.toml_strings_at(conformed, "dependency-groups", "dev")
         tm.that("custom-audit>=1" in dev, eq=True)
         tm.that("rumdl>=0.2.45" in dev, eq=True)

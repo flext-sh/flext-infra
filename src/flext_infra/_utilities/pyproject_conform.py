@@ -934,7 +934,10 @@ class FlextInfraUtilitiesPyprojectConform:
         """Keep live CUSTOM project keys and unmanaged tool tables."""
         if live is None:
             return r[str].ok(rendered)
-        if preserve_project_keys is None or managed_tool_tables is None:
+        if preserve_project_keys is not None and managed_tool_tables is not None:
+            project_keys = preserve_project_keys
+            tool_tables = managed_tool_tables
+        else:
             from flext_infra import config as infra_config
 
             spec: m.Infra.ManagedFileSpec | None = next(
@@ -947,10 +950,16 @@ class FlextInfraUtilitiesPyprojectConform:
             )
             if spec is None:
                 return r[str].fail("pyproject.toml is missing from managed_files")
-            if preserve_project_keys is None:
-                preserve_project_keys = spec.preserve_project_keys
-            if managed_tool_tables is None:
-                managed_tool_tables = spec.managed_tool_tables
+            project_keys = (
+                spec.preserve_project_keys
+                if preserve_project_keys is None
+                else preserve_project_keys
+            )
+            tool_tables = (
+                spec.managed_tool_tables
+                if managed_tool_tables is None
+                else managed_tool_tables
+            )
         rendered_payload = u.Cli.toml_mapping_from_text(rendered)
         # An absent live file takes the same canonicalization path as a present
         # one: the projection is the parse-merge-dump form, so first publication
@@ -963,7 +972,7 @@ class FlextInfraUtilitiesPyprojectConform:
         merged = dict(rendered_payload)
         project = dict(u.Cli.toml_mapping_child(merged, c.Infra.PROJECT) or {})
         live_project = u.Cli.toml_mapping_child(live_payload, c.Infra.PROJECT) or {}
-        for key in preserve_project_keys:
+        for key in project_keys:
             if key in live_project:
                 project[key] = live_project[key]
         merged[c.Infra.PROJECT] = project
@@ -977,7 +986,7 @@ class FlextInfraUtilitiesPyprojectConform:
             merged[c.Infra.DEPENDENCY_GROUPS] = groups
         tool = dict(u.Cli.toml_mapping_child(merged, c.Infra.TOOL) or {})
         live_tool = u.Cli.toml_mapping_child(live_payload, c.Infra.TOOL) or {}
-        managed = frozenset(managed_tool_tables)
+        managed = frozenset(tool_tables)
         tool.update({
             key: value for key, value in live_tool.items() if key not in managed
         })

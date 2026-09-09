@@ -105,12 +105,13 @@ class TestExtendedRunnerExtras:
 
         tm.that(not result.result.passed, eq=True)
 
-    def test_bandit_skips_without_src_dir(self, tmp_path: Path) -> None:
+    def test_bandit_rejects_missing_source_scope(self, tmp_path: Path) -> None:
         _, project_dir = u.Tests.create_checker_project(tmp_path)
 
         result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
 
-        tm.that(result.result.passed, eq=True)
+        tm.that(result.result.passed, eq=False)
+        tm.that(len(result.result.errors), eq=1)
         tm.that(len(result.issues), eq=0)
 
     def test_bandit_parses_json_output(self, tmp_path: Path) -> None:
