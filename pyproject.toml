@@ -198,7 +198,6 @@ disable_error_code = ["unreachable"]
 init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
-warn_untyped_fields = true
 
 [tool.pyrefly]
 disable-project-excludes-heuristics = true
