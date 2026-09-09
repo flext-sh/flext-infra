@@ -90,6 +90,9 @@ class FlextInfraGate:
         started: float,
     ) -> m.Infra.GateExecution:
         """Build, run, and parse the check command — shared by ``check`` and ``check_files``."""
+        report_path = self._check_report_path(project_dir, ctx)
+        if report_path is not None:
+            report_path.unlink(missing_ok=True)
         cmd = self._build_check_command(project_dir, ctx, targets)
         result = self._run(
             cmd,
@@ -114,6 +117,43 @@ class FlextInfraGate:
             code=self.gate_id,
             message=scan.stderr or f"{self.scanner_binary} execution failed",
             severity=str(c.Infra.GateSeverity.ERROR.value),
+        )
+
+    @staticmethod
+    def _command_error_issue(
+        result: p.Cli.CommandOutput,
+        *,
+        tool: str,
+        file: str,
+        line: int,
+        column: int,
+    ) -> m.Infra.Issue:
+        """Report an unsuccessful command that supplied no structured issues."""
+        detail = (result.stderr or result.stdout).strip() or "no diagnostics"
+        return m.Infra.Issue(
+            file=file,
+            line=line,
+            column=column,
+            code="TOOL_ERROR",
+            message=f"{tool} exited with code {result.outcome.raw_return_code}: {detail}",
+            severity="ERROR",
+        )
+
+    def _checker_stderr_issues(
+        self, result: p.Cli.CommandOutput, project_dir: Path
+    ) -> t.SequenceOf[m.Infra.Issue]:
+        """Retain checker failures while allowing explicitly INFO-level log lines."""
+        return tuple(
+            m.Infra.Issue(
+                file=str(project_dir),
+                line=0,
+                column=0,
+                code=f"{self.gate_id}-stderr",
+                message=line,
+                severity="ERROR",
+            )
+            for line in result.stderr.splitlines()
+            if line.strip() and line.lstrip().partition(" ")[0] != "INFO"
         )
 
     def _parsed_gate_execution(
@@ -165,34 +205,20 @@ class FlextInfraGate:
     ) -> m.Infra.GateExecution:
         """Assemble a gate execution from parsed check output.
 
-        When ``ctx.gate_mode == "warn"`` the gate reports issues but is
-        marked passed so advisory enforcement gates do not fail the check
-        pipeline. ``errors`` overrides the default issue-derived report
+        Diagnostic presentation never overrides acceptance. ``errors``
+        overrides the default issue-derived report
         lines (fix paths report applied changes there).
         """
-        if ctx is not None and getattr(ctx, "gate_mode", None) == "warn" and not passed:
-            warn_issues = [
-                issue.model_copy(update={"severity": "WARNING"})
-                if hasattr(issue, "model_copy")
-                else issue
-                for issue in issues
-            ]
-            return m.Infra.GateExecution(
-                result=m.Infra.GateResult(
-                    gate=self.gate_id,
-                    project=project_dir.name,
-                    passed=True,
-                    errors=[],
-                    duration=round(time.monotonic() - started, 3),
-                ),
-                issues=tuple(warn_issues),
-                raw_output=raw_output,
-            )
+        _ = ctx
         return m.Infra.GateExecution(
             result=m.Infra.GateResult(
                 gate=self.gate_id,
                 project=project_dir.name,
-                passed=passed,
+                passed=passed
+                and not any(
+                    issue.severity.lower() in {"error", "warning", "warn"}
+                    for issue in issues
+                ),
                 errors=(
                     list(errors)
                     if errors is not None
@@ -302,6 +328,13 @@ class FlextInfraGate:
         _ = project_dir, ctx
         timeout: int = c.Infra.TIMEOUT_DEFAULT
         return timeout
+
+    def _check_report_path(
+        self, project_dir: Path, ctx: m.Infra.GateContext
+    ) -> Path | None:
+        """Name the native output replaced by this invocation, when required."""
+        _ = project_dir, ctx
+        return None
 
     def _check_env(
         self, project_dir: Path, ctx: m.Infra.GateContext

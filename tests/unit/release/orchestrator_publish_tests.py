@@ -14,13 +14,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import main
 from tests import TestsFlextInfraUtilities as u, c, m
-
-
-def _run_release_main(workspace: Path, *arguments: str) -> int:
-    """Run the public release CLI against one real test workspace."""
-    return main(["release", "run", "--repository-root", str(workspace), *arguments])
 
 
 def _built_workspace(tmp_path: Path) -> tuple[Path, m.Infra.BuildReport]:
@@ -35,7 +29,7 @@ def _built_workspace(tmp_path: Path) -> tuple[Path, m.Infra.BuildReport]:
     notes.mkdir(parents=True)
     (notes / "v0.1.0.md").write_text("# Release v0.1.0\n", encoding="utf-8")
     tm.that(
-        _run_release_main(
+        u.Tests.run_release_main(
             workspace, "--phase", "build", "--projects", project_name, "--apply"
         ),
         eq=0,
@@ -72,7 +66,7 @@ class TestsFlextInfraReleasePublish:
             workspace, _report = _built_workspace(tmp_path)
             bin_dir = _shim_path(tmp_path, monkeypatch)
 
-            tm.that(_run_release_main(workspace, "--phase", "publish"), eq=0)
+            tm.that(u.Tests.run_release_main(workspace, "--phase", "publish"), eq=0)
             tm.that((bin_dir / f"{c.Infra.GH}.log").exists(), eq=False)
 
         @staticmethod
@@ -85,14 +79,20 @@ class TestsFlextInfraReleasePublish:
             artifact = Path(report.records[0].artifacts[0].path)
             artifact.write_bytes(artifact.read_bytes() + b"\n")
 
-            tm.that(_run_release_main(workspace, "--phase", "publish", "--apply"), ne=0)
+            tm.that(
+                u.Tests.run_release_main(workspace, "--phase", "publish", "--apply"),
+                ne=0,
+            )
 
         @staticmethod
         def test_missing_receipt_is_refused(tmp_path: Path) -> None:
             """Publishing without a build receipt has nothing attested to upload."""
             workspace = u.Tests.create_release_workspace(tmp_path)
 
-            tm.that(_run_release_main(workspace, "--phase", "publish", "--apply"), ne=0)
+            tm.that(
+                u.Tests.run_release_main(workspace, "--phase", "publish", "--apply"),
+                ne=0,
+            )
 
     class TestsApply:
         """Applied publication commands."""
@@ -105,7 +105,9 @@ class TestsFlextInfraReleasePublish:
             workspace, report = _built_workspace(tmp_path)
             bin_dir = _shim_path(tmp_path, monkeypatch)
 
-            result = _run_release_main(workspace, "--phase", "publish", "--apply")
+            result = u.Tests.run_release_main(
+                workspace, "--phase", "publish", "--apply"
+            )
 
             tm.that(result, eq=0)
             recorded = (bin_dir / f"{c.Infra.GH}.log").read_text(encoding="utf-8")
@@ -123,7 +125,7 @@ class TestsFlextInfraReleasePublish:
             workspace, report = _built_workspace(tmp_path)
             bin_dir = _shim_path(tmp_path, monkeypatch)
 
-            result = _run_release_main(
+            result = u.Tests.run_release_main(
                 workspace, "--phase", "publish", "--apply", "--index"
             )
 

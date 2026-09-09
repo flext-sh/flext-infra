@@ -28,6 +28,19 @@ class TestsCodegenRepositoryRootFanout:
         tm.that(makefile_entries, len=1)
         tm.that(makefile_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE)
 
+    def test_repository_root_projection_uses_workspace_profile(
+        self, tmp_path: Path
+    ) -> None:
+        """The workspace projection exposes both gate routes and the CLI owner."""
+        repository_root = _render_root_makefile(tmp_path)
+        rendered = (repository_root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding=c.Infra.ENCODING_DEFAULT
+        )
+        tm.that(rendered, has="$(WORKSPACE_ORCHESTRATE) --verb check")
+        tm.that(rendered, has="$(WORKSPACE_ORCHESTRATE) --verb test")
+        tm.that(rendered, has="MAKE_PROFILE := workspace")
+        tm.that(rendered, has="$(FLEXT_INFRA_PYTHON) -m flext_infra")
+
     def test_repository_root_gate_verbs_fan_out_via_orchestrator(
         self, tmp_path: Path
     ) -> None:

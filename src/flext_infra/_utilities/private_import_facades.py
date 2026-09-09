@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import ast
+from importlib.util import resolve_name
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
+
+from .rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
@@ -16,6 +19,144 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesPrivateImportFacades:
     """Derive public paths from live facade inheritance, never a registry."""
+
+    @staticmethod
+    def declared_exports(
+        sources: t.MappingKV[Path, str],
+    ) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
+        """Index declared public exports and module-scope import identities."""
+        bindings: dict[str, set[str]] = {}
+        exports: dict[str, set[str]] = {}
+        for path, source in sorted(sources.items()):
+            indices = [
+                index
+                for index, part in enumerate(path.parts)
+                if part == c.Infra.DEFAULT_SRC_DIR
+            ]
+            if not indices:
+                continue
+            parts = path.parts[indices[-1] + 1 :]
+            is_package = path.name == c.Infra.INIT_PY
+            module = ".".join(parts[:-1] if is_package else (*parts[:-1], path.stem))
+            if not module:
+                continue
+            package = module if is_package else module.rpartition(".")[0]
+            tree = ast.parse(source, filename=str(path))
+            public_names = (
+                FlextInfraUtilitiesRopeAnalysis.public_export_names_source(source)
+            )
+            lazy_exports, lazy_name = (
+                FlextInfraUtilitiesRopeAnalysis.lazy_public_exports_source(source)
+            )
+
+            def collect(statements: list[ast.stmt]) -> None:
+                for node in statements:
+                    if isinstance(node, ast.ImportFrom):
+                        imported_module = (
+                            resolve_name(
+                                "." * node.level + (node.module or ""), package
+                            )
+                            if node.level
+                            else node.module or ""
+                        )
+                        for imported in node.names:
+                            if imported.name != "*":
+                                bindings.setdefault(
+                                    f"{module}.{imported.asname or imported.name}",
+                                    set(),
+                                ).add(f"{imported_module}.{imported.name}")
+                    elif isinstance(
+                        node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
+                    ):
+                        identity = f"{module}.{node.name}"
+                        bindings.setdefault(identity, set()).add(identity)
+                    elif isinstance(node, ast.Assign | ast.AnnAssign):
+                        targets = (
+                            node.targets
+                            if isinstance(node, ast.Assign)
+                            else [node.target]
+                        )
+                        for target in targets:
+                            if isinstance(target, ast.Name):
+                                identity = f"{module}.{target.id}"
+                                destination = (
+                                    f"{module}.{node.value.id}"
+                                    if isinstance(node.value, ast.Name) else identity
+                                )
+                                bindings.setdefault(identity, set()).add(destination)
+                    elif isinstance(node, ast.If):
+                        type_only = (
+                            isinstance(node.test, ast.Name)
+                            and node.test.id == "TYPE_CHECKING"
+                        )
+                        if not type_only or lazy_exports or lazy_name:
+                            collect(node.body)
+                        collect(node.orelse)
+
+            collect(tree.body)
+            if not any(part.startswith("_") for part in module.split(".")):
+                exports.setdefault(module.split(".")[0], set()).update(
+                    f"{module}.{name}" for name in public_names
+                    if not name.startswith("_") and f"{module}.{name}" in bindings
+                )
+        return bindings, exports
+
+    @staticmethod
+    def declared_public_reference(
+        qualified: str,
+        bindings: t.MappingKV[str, set[str]],
+        exports: t.MappingKV[str, set[str]],
+    ) -> tuple[str, str] | None:
+        """Resolve re-export chains by identity, preferring an explicit root ABI."""
+        def identities(name: str, visiting: frozenset[str]) -> set[str]:
+            if name in visiting:
+                msg = f"cyclic public export identity: {name}"
+                raise ValueError(msg)
+            targets = bindings.get(name, {name})
+            resolved: set[str] = set()
+            for target in targets:
+                if target == name:
+                    resolved.add(name)
+                else:
+                    resolved.update(identities(target, visiting | {name}))
+            return resolved
+
+        expected = identities(qualified, frozenset())
+        if len(expected) != 1:
+            msg = (
+                f"ambiguous private symbol identity for {qualified}: {sorted(expected)}"
+            )
+            raise ValueError(msg)
+        reverse: dict[str, set[str]] = {}
+        for binding, targets in bindings.items():
+            for target in targets:
+                reverse.setdefault(target, set()).add(binding)
+        reachable = set(expected)
+        pending = list(expected)
+        while pending:
+            for binding in reverse.get(pending.pop(), set()):
+                if binding not in reachable:
+                    reachable.add(binding)
+                    pending.append(binding)
+        candidates = exports.get(qualified.split(".")[0], set()) & reachable
+        roots = {candidate for candidate in candidates if candidate.count(".") == 1}
+        canonical = roots or candidates
+        for export in canonical:
+            targets = identities(export, frozenset())
+            if targets != expected:
+                msg = (
+                    f"ambiguous public export identity for {export}: {sorted(targets)}"
+                )
+                raise ValueError(msg)
+        if len(canonical) > 1:
+            msg = (
+                f"ambiguous declared public exports for {qualified}: {sorted(canonical)}"
+            )
+            raise ValueError(msg)
+        if not canonical:
+            return None
+        module, _, name = canonical.pop().rpartition(".")
+        return module, name
 
     @staticmethod
     def private_owner(module: str) -> str | None:

@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 from flext_cli import r, u
 
+from flext_infra import m
 from flext_infra.constants import c
-from flext_infra.models import m
 from flext_infra.typings import t
 
 from .._utilities.dependencies import FlextInfraUtilitiesDependencies
@@ -937,7 +937,7 @@ class FlextInfraUtilitiesPyprojectConform:
         if preserve_project_keys is None or managed_tool_tables is None:
             from flext_infra import config as infra_config
 
-            spec = next(
+            spec: m.Infra.ManagedFileSpec | None = next(
                 (
                     item
                     for item in infra_config.Infra.codegen.managed_files

@@ -264,6 +264,8 @@ class FlextInfraConstantsBase(
     "Canonical ast-grep configuration-file option."
     SG_FILTER_FLAG: Final[str] = "--filter"
     "Canonical ast-grep rule-ID filter option."
+    SG_GLOBS_FLAG: Final[str] = "--globs"
+    "Canonical ast-grep include/exclude glob option."
     SG_UPDATE_ALL: Final[str] = "--update-all"
     "ast-grep fixture and rewrite update flag."
     BANDIT: Final[str] = "bandit"

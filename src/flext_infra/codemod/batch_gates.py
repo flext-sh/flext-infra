@@ -10,7 +10,7 @@ import tempfile
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, m, p, r, settings, t, u
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from flext_infra.detectors.lsp_diagnostics import FlextInfraLspDiagnosticsDetector
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
@@ -44,8 +44,12 @@ class FlextInfraModGateEngine:
             for rule in owner_rules:
                 rule_ids, _fixable_ids = u.Infra.ast_grep_rule_contract(rule)
                 active_rule_ids.update(rule_ids)
+            scratch = settings.work_dir
+            if scratch.resolve().is_relative_to(config_root.resolve()):
+                return r.fail("rule fixture scratch must be outside its source root")
+            scratch.mkdir(parents=True, exist_ok=True)
             with tempfile.TemporaryDirectory(
-                prefix="mod-rule-fixtures-", dir=config_root.parent
+                prefix="mod-rule-fixtures-", dir=scratch
             ) as temp_dir:
                 temp_root = Path(temp_dir) / config_root.name
                 cls.stage_rule_fixture_root(

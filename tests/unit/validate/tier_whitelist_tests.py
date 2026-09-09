@@ -19,6 +19,7 @@ from flext_tests import tf, tm
 
 from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
 from tests import m
+from tests.unit.validate.metadata_discipline_tests import _seed_pkg
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -30,13 +31,6 @@ if TYPE_CHECKING:
 def v() -> FlextInfraValidateTierWhitelist:
     """Shared validator instance."""
     return FlextInfraValidateTierWhitelist()
-
-
-def _seed_pkg(root: Path, name: str = "pkg") -> Path:
-    pkg = root / "src" / name
-    pkg.mkdir(parents=True, exist_ok=True)
-    (pkg / "__init__.py").write_text("", encoding="utf-8")
-    return pkg
 
 
 class TestTierWhitelistAbstractionBoundary:

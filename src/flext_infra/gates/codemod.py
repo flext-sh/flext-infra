@@ -88,15 +88,21 @@ class FlextInfraCodemodGate(FlextInfraGate):
         ruleset: m.Infra.CodemodRuleset, project_dir: Path
     ) -> t.StrSequence:
         """Canonical ast-grep invocation for one composed provider ruleset."""
-        return (
+        globs: t.StrSequence = tuple(
+            f"!{dir_name}/" for dir_name in c.Infra.CHECK_EXCLUDED_DIRS
+        )
+        cmd: list[str] = [
             c.Infra.SG,
             c.Infra.SCAN,
             "--config",
             str(ruleset.config),
             "--filter",
             u.Infra.codemod_rule_filter(ruleset.rule_ids),
-            str(project_dir),
-        )
+        ]
+        for glob in globs:
+            cmd.extend([c.Infra.SG_GLOBS_FLAG, glob])
+        cmd.append(str(project_dir))
+        return tuple(cmd)
 
     @staticmethod
     def _rules(project_dir: Path) -> t.SequenceOf[Path]:

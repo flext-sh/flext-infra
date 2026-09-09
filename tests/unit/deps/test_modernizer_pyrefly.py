@@ -38,8 +38,7 @@ def _pyrefly_document() -> tuple[t.Cli.TomlDocument, MutableMapping[str, t.JsonV
     """Create one fresh TOML document carrying an empty tool.pyrefly table."""
     doc = u.Cli.toml_document()
     doc["tool"] = u.Cli.toml_table()
-    tool = doc["tool"]
-    tm.that(tool, is_=MutableMapping)
+    tool = _live_table(doc["tool"])
     tool["pyrefly"] = u.Cli.toml_table()
     return doc, tool
 
@@ -89,11 +88,8 @@ def _apply_pyrefly_declared_roots(
         declared_python_dirs=declared_python_dirs,
         declared_python_dirs_are_complete=True,
     )
-    tool = doc["tool"]
-    tm.that(tool, is_=MutableMapping)
-    pyrefly = tool["pyrefly"]
-    tm.that(pyrefly, is_=MutableMapping)
-    return pyrefly
+    tool = _live_table(doc["tool"])
+    return _live_table(tool["pyrefly"])
 
 
 class TestsFlextInfraModernizerPyrefly:
@@ -439,8 +435,7 @@ class TestsFlextInfraModernizerPyrefly:
         """Verify stale error keys are removed from TOML documents."""
         doc, _, pyrefly = _pyrefly_section()
         pyrefly["errors"] = u.Cli.toml_table()
-        errors = pyrefly["errors"]
-        tm.that(errors, is_=MutableMapping)
+        errors = _live_table(pyrefly["errors"])
         errors["annotation-mismatch"] = "error"
 
         changes = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(

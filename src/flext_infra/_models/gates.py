@@ -37,7 +37,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         gate_mode: Annotated[
             Literal["error", "warn"],
             m.Field(
-                description="Gate failure mode: error fails the pipeline, warn reports only"
+                description="Diagnostic presentation mode; errors and warnings always fail"
             ),
         ] = "error"
         ruff_args: Annotated[
@@ -46,6 +46,109 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         pyright_args: Annotated[
             t.StrSequence, m.Field(description="Extra arguments for Pyright")
         ] = ()
+
+    class MypyDiagnostic(m.ContractModel):
+        """One complete record from Mypy's native JSON formatter."""
+
+        file: str
+        line: int
+        column: int
+        end_line: int | None
+        end_column: int | None
+        message: t.NonEmptyStr
+        hint: str | None
+        code: str | None
+        severity: Literal["error", "note"]
+
+    class MypyCoverageReport(m.ContractModel):
+        """Native linecoverage report, including files with no covered lines."""
+
+        lines: Annotated[
+            t.MappingKV[str, t.SequenceOf[t.PositiveInt]], m.Field(min_length=1)
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_sources(self) -> Self:
+            if any(not Path(path).is_absolute() for path in self.lines):
+                msg = "Mypy coverage must identify absolute source paths"
+                raise ValueError(msg)
+            return self
+
+    class PyrightPosition(m.ContractModel):
+        """Zero-based native diagnostic position."""
+
+        line: t.NonNegativeInt
+        character: t.NonNegativeInt
+
+    class PyrightRange(m.ContractModel):
+        """Native diagnostic source range."""
+
+        start: FlextInfraModelsGates.PyrightPosition
+        end: FlextInfraModelsGates.PyrightPosition
+
+    class PyrightDiagnostic(m.ContractModel):
+        """Pyright's documented JSON diagnostic, including optional location."""
+
+        file: str
+        severity: Literal["error", "warning", "information"]
+        message: t.NonEmptyStr
+        range: FlextInfraModelsGates.PyrightRange | None = None
+        rule: str | None = None
+
+    class PyrightSummary(m.ContractModel):
+        """Native completed-analysis counters; zero collection is not success."""
+
+        files_analyzed: Annotated[t.PositiveInt, m.Field(alias="filesAnalyzed")]
+        error_count: Annotated[t.NonNegativeInt, m.Field(alias="errorCount")]
+        warning_count: Annotated[t.NonNegativeInt, m.Field(alias="warningCount")]
+        information_count: Annotated[
+            t.NonNegativeInt, m.Field(alias="informationCount")
+        ]
+        time_in_sec: Annotated[float, m.Field(alias="timeInSec", ge=0)]
+
+    class PyrightReport(m.ContractModel):
+        """Complete native Pyright report with reconciled diagnostic counts."""
+
+        version: t.NonEmptyStr
+        time: t.NonEmptyStr
+        general_diagnostics: Annotated[
+            t.SequenceOf[FlextInfraModelsGates.PyrightDiagnostic],
+            m.Field(alias="generalDiagnostics"),
+        ]
+        summary: FlextInfraModelsGates.PyrightSummary
+
+        @u.model_validator(mode="after")
+        def _validate_counts(self) -> Self:
+            for severity, count in (
+                ("error", self.summary.error_count),
+                ("warning", self.summary.warning_count),
+                ("information", self.summary.information_count),
+            ):
+                if sum(
+                    item.severity == severity for item in self.general_diagnostics
+                ) != count:
+                    msg = f"Pyright {severity} count does not match its diagnostics"
+                    raise ValueError(msg)
+            return self
+
+    class PyreflyDiagnostic(m.ContractModel):
+        """Native Pyrefly JSON error entry, without path-based suppression."""
+
+        line: t.NonNegativeInt
+        column: t.NonNegativeInt
+        stop_line: t.NonNegativeInt
+        stop_column: t.NonNegativeInt
+        path: t.NonEmptyStr
+        code: int
+        name: t.NonEmptyStr
+        description: t.NonEmptyStr
+        concise_description: str
+        severity: Literal["error", "warn", "warning", "info"]
+
+    class PyreflyReport(m.ContractModel):
+        """Required native Pyrefly JSON envelope, including a clean empty list."""
+
+        errors: t.SequenceOf[FlextInfraModelsGates.PyreflyDiagnostic]
 
     class GateCommandEvidence(m.ContractModel):
         """One canonical Make invocation covered by an attestation."""

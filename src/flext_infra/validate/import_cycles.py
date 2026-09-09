@@ -23,8 +23,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
-from flext_infra import c, m, u
-from flext_infra.base import s
+from flext_infra import c, m, s, u
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping

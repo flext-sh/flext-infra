@@ -133,6 +133,10 @@ class FlextInfraUtilitiesPrivateImports:
     ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Plan owner-aware relative and binding-aware public import rewrites."""
         facades = FlextInfraUtilitiesPrivateImportFacades.discover(sources)
+        export_bindings, declared_exports = (
+            FlextInfraUtilitiesPrivateImportFacades.declared_exports(sources)
+        )
+        direct_specs: dict[Path, dict[str, tuple[str, str]]] = {}
         specs: dict[Path, list[tuple[str, str, str, str, str]]] = {}
         for finding in findings:
             parsed = ast.parse(finding.text)
@@ -157,6 +161,16 @@ class FlextInfraUtilitiesPrivateImports:
                     raise ValueError(msg)
                 qualified = f"{private_module}.{imported.name}"
                 target_reference = relative_module
+                if target_reference is None:
+                    declared = (
+                        FlextInfraUtilitiesPrivateImportFacades.declared_public_reference(
+                            qualified, export_bindings, declared_exports
+                        )
+                    )
+                    if declared is not None:
+                        direct_specs.setdefault(file_path, {})[qualified] = declared
+                        specs.setdefault(file_path, [])
+                        continue
                 if target_reference is None:
                     target_reference = (
                         FlextInfraUtilitiesPrivateImportFacades.facade_alias_binding(
@@ -269,7 +283,9 @@ class FlextInfraUtilitiesPrivateImports:
             )
             rewritten = (
                 FlextInfraUtilitiesPrivateImportCst.rewrite_private_import_source(
-                    source,
+                    FlextInfraUtilitiesPrivateImportCst.relocate_declared_exports(
+                        source, direct_specs.get(file_path, {})
+                    ),
                     relative_imports=relative_imports,
                     removals={key: frozenset(value) for key, value in removals.items()},
                     obsolete_imports={
@@ -280,6 +296,10 @@ class FlextInfraUtilitiesPrivateImports:
                     runtime_public_imports=runtime_public_imports,
                 )
             )
+            direct_removals: dict[str, set[str]] = {}
+            for qualified in direct_specs.get(file_path, {}):
+                module, _, name = qualified.rpartition(".")
+                direct_removals.setdefault(module, set()).add(name)
             FlextInfraUtilitiesPrivateImportValidation.require_zero_private_import_residue(
                 rewritten,
                 file_path=file_path,
@@ -288,7 +308,10 @@ class FlextInfraUtilitiesPrivateImports:
                 removals={
                     module: removals.get(module, set())
                     | obsolete_imports.get(module, set())
-                    for module in removals.keys() | obsolete_imports.keys()
+                    | direct_removals.get(module, set())
+                    for module in (
+                        removals.keys() | obsolete_imports.keys() | direct_removals.keys()
+                    )
                 },
                 replacements=replacements,
                 public_imports=public_imports,
@@ -300,6 +323,12 @@ class FlextInfraUtilitiesPrivateImports:
                         original_source=source,
                         updated_source=rewritten,
                         changes=(
+                            *(
+                                f"rewired {private} to {module}.{name}"
+                                for private, (module, name) in sorted(
+                                    direct_specs.get(file_path, {}).items()
+                                )
+                            ),
                             *(
                                 f"relativized {absolute} to {relative}"
                                 for absolute, relative in sorted(

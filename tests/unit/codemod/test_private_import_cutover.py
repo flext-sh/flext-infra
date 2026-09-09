@@ -14,6 +14,120 @@ class TestsFlextInfraPrivateImportCutover:
     """Exercise private-import automation only through ``u.Infra``."""
 
     @staticmethod
+    def _declared_export_case(
+        root: Path, *, package_import: bool = False, root_export: bool = False,
+        renamed: bool = False,
+    ) -> tuple[Path, str, dict[Path, str]]:
+        package = root / "sample/src/sample"
+        public_name = "PublicClient" if renamed else "Client"
+        sources = {
+            package / "_private/client.py": "class Client:\n    pass\n",
+            package / "_private/__init__.py": (
+                "from typing import TYPE_CHECKING\n"
+                "from flext_core.lazy import build_lazy_import_map, install_lazy_exports\n"
+                "if TYPE_CHECKING:\n    from .client import Client\n"
+                "__all__ = ('Client',)\n"
+                "_LAZY_IMPORTS = build_lazy_import_map({'.client': ('Client',)})\n"
+                "install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)\n"
+            ),
+            package / "api.py": (
+                f"from ._private.client import Client as {public_name}\n"
+                f"__all__ = ('{public_name}',)\n"
+            ),
+        }
+        if root_export:
+            sources[package / "__init__.py"] = (
+                f"from .api import {public_name}\n__all__ = ('{public_name}',)\n"
+            )
+        module = "sample._private" if package_import else "sample._private.client"
+        statement = f"from {module} import Client as BoundClient"
+        consumer = root / "consumer/src/consumer/service.py"
+        sources[consumer] = (
+            f"{statement}\ninstance = BoundClient()\n"
+            "def local(BoundClient: str) -> str:\n    return BoundClient\n"
+        )
+        return consumer, statement, sources
+
+    @pytest.mark.parametrize("package_import", [False, True])
+    @pytest.mark.parametrize("root_export", [False, True])
+    @pytest.mark.parametrize("renamed", [False, True])
+    def test_declared_reexports_preserve_identity_binding_and_shadowing(
+        self, tmp_path: Path, package_import: bool, root_export: bool, renamed: bool
+    ) -> None:
+        consumer, statement, sources = self._declared_export_case(
+            tmp_path, package_import=package_import, root_export=root_export,
+            renamed=renamed,
+        )
+
+        updated = self._updated_source(tmp_path, sources, consumer, statement)
+
+        module = "sample" if root_export else "sample.api"
+        public_name = "PublicClient" if renamed else "Client"
+        tm.that(updated, has=f"from {module} import {public_name} as BoundClient")
+        tm.that(updated, has="instance = BoundClient()")
+        tm.that(updated, has="def local(BoundClient: str) -> str:\n    return BoundClient")
+        tm.that(updated, lacks=statement)
+
+    def test_declared_reexport_rename_keeps_an_unaliased_consumer_binding(
+        self, tmp_path: Path
+    ) -> None:
+        consumer, statement, sources = self._declared_export_case(tmp_path, renamed=True)
+        unaliased = statement.replace(" as BoundClient", "")
+        sources[consumer] = f"{unaliased}\ninstance = Client()\n"
+
+        updated = self._updated_source(tmp_path, sources, consumer, unaliased)
+
+        tm.that(updated, has="from sample.api import PublicClient as Client")
+        tm.that(updated, has="instance = Client()")
+
+    def test_declared_reexport_retains_type_checking_boundary(self, tmp_path: Path) -> None:
+        consumer, statement, sources = self._declared_export_case(tmp_path)
+        sources[consumer] = (
+            "from __future__ import annotations\nfrom typing import TYPE_CHECKING\n"
+            f"if TYPE_CHECKING:\n    {statement}\nvalue: BoundClient\n"
+        )
+
+        updated = self._updated_source(tmp_path, sources, consumer, statement)
+
+        tm.that(updated, has="if TYPE_CHECKING:\n    from sample.api import Client as BoundClient")
+        tm.that(updated, has="value: BoundClient")
+
+    def test_unrelated_export_cycle_does_not_block_a_proven_public_import(
+        self, tmp_path: Path
+    ) -> None:
+        consumer, statement, sources = self._declared_export_case(tmp_path)
+        package = tmp_path / "sample/src/sample"
+        sources[package / "left.py"] = (
+            "from .right import Loop\n__all__ = ('Loop',)\n"
+        )
+        sources[package / "right.py"] = (
+            "from .left import Loop\n__all__ = ('Loop',)\n"
+        )
+
+        updated = self._updated_source(tmp_path, sources, consumer, statement)
+
+        tm.that(updated, has="from sample.api import Client as BoundClient")
+
+    @pytest.mark.parametrize("case", ["unexposed", "homonym", "ambiguous", "shadowed"])
+    def test_declared_export_resolution_rejects_unproven_or_ambiguous_targets(
+        self, tmp_path: Path, case: str
+    ) -> None:
+        consumer, statement, sources = self._declared_export_case(tmp_path)
+        package = tmp_path / "sample/src/sample"
+        if case == "unexposed":
+            sources[package / "api.py"] = "from ._private.client import Client\n"
+        elif case == "homonym":
+            sources[package / "api.py"] = "class Client:\n    pass\n__all__ = ('Client',)\n"
+        elif case == "ambiguous":
+            sources[package / "other.py"] = sources[package / "api.py"]
+        else:
+            sources[package / "api.py"] += "Client = object\n"
+        expected = "no public facade exposes" if case in {"unexposed", "homonym"} else "ambiguous"
+
+        with pytest.raises(ValueError, match=expected):
+            self._plan(tmp_path, sources, consumer, statement)
+
+    @staticmethod
     def _finding(file_path: Path, text: str) -> m.Infra.ModScanFinding:
         """Build one authenticated-shape semantic finding."""
         return m.Infra.ModScanFinding(

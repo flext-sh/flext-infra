@@ -1996,7 +1996,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         block verbatim and never interprets it, so a project extends its own
         pipeline without the generator learning that project's concerns.
         """
-        source = repository_root / c.Infra.CUSTOM_CI_STEPS_FILENAME
+        source: Path = repository_root / c.Infra.CUSTOM_CI_STEPS_FILENAME
         if not source.is_file():
             return ""
         return source.read_text(encoding=c.DEFAULT_ENCODING).rstrip("\n")

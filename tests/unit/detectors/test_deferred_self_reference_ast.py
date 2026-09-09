@@ -245,7 +245,12 @@ class TestsFlextInfraDeferredSelfReferenceDetector:
         )
         normalized = u.Infra.normalize_deferred_self_references(source)
 
-        tm.that(normalized, eq=source.replace("dependency: Dependency", "dependency: Models.Dependency"))
+        tm.that(
+            normalized,
+            eq=source.replace(
+                "dependency: Dependency", "dependency: Models.Dependency"
+            ),
+        )
         tm.that(u.Infra.normalize_deferred_self_references(normalized), eq=normalized)
 
     def test_public_normalizer_does_not_qualify_bare_assignment_bindings(self) -> None:

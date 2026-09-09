@@ -91,34 +91,13 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(document.read_text(encoding="utf-8"), eq="not a heading\n")
 
     @pytest.mark.integration
-    def test_output_singleton_has_expected_methods(self) -> None:
-        """Test that reporting/output methods are exposed through u.Infra.
-
-        Validates u.Infra FLEXT output methods are available:
-        - status, summary, error, warning, info, header, progress
-        """
-        tm.that(callable(u.Cli.status), eq=True)
-        tm.that(callable(u.Cli.summary), eq=True)
-        tm.that(callable(u.Cli.error), eq=True)
-        tm.that(callable(u.Cli.warning), eq=True)
-        tm.that(callable(u.Cli.info), eq=True)
-        tm.that(callable(u.Cli.header), eq=True)
-        tm.that(callable(u.Cli.progress), eq=True)
-
-    @pytest.mark.integration
-    def test_output_methods_are_callable_via_u_infra(self) -> None:
-        """Test that reporting methods are callable through the real facade.
-
-        Validates:
-        - All methods are callable through u.Infra
-        """
-        tm.that(callable(u.Cli.status), eq=True)
-        tm.that(callable(u.Cli.summary), eq=True)
-        tm.that(callable(u.Cli.error), eq=True)
-        tm.that(callable(u.Cli.warning), eq=True)
-        tm.that(callable(u.Cli.info), eq=True)
-        tm.that(callable(u.Cli.header), eq=True)
-        tm.that(callable(u.Cli.progress), eq=True)
+    @pytest.mark.parametrize(
+        "method_name",
+        ["status", "summary", "error", "warning", "info", "header", "progress"],
+    )
+    def test_output_singleton_has_expected_methods(self, method_name: str) -> None:
+        """Every public output operation is callable on the real CLI facade."""
+        tm.that(callable(getattr(u.Cli, method_name)), eq=True)
 
     @pytest.mark.integration
     def test_service_result_chaining_with_map(self) -> None:

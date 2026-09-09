@@ -41,15 +41,6 @@ def _tool_version_field(description: str) -> object:
 
 
 class FlextInfraConfigModels:
-    class _ConfigContract(m.ContractModel):
-        """Private declarative base for schema-loaded codegen records."""
-
-        # Rendered file payloads are
-        # byte contracts; Pydantic must never trim their final newline.
-        model_config = m.ConfigDict(
-            strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
-        )
-
     """Field-only models for config loading and codegen plans."""
 
     # These models replace the former model-less workspace/make dictionaries.

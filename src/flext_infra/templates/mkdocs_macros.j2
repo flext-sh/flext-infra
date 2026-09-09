@@ -1,6 +1,16 @@
 {# Shared mkdocs.yml macros — single source of truth for theme, plugins, validation. #}
 {# Imported by mkdocs_project.yml.j2 and mkdocs_root.yml.j2 — DO NOT INLINE THESE. #}
 {# All loop/conditional logic is pre-formatted in Python and passed as ready strings. #}
+{%- macro site_components(exclude_docs_block, exclude_plugin_block, mkdocstrings_paths_block) -%}
+docs_dir: docs
+site_dir: .reports/docs/site
+
+{{ exclude_docs_block }}{{ material_theme() }}
+
+{{ plugins_block(exclude_plugin_block, mkdocstrings_paths_block) }}
+
+{{ markdown_extensions_block() }}
+{%- endmacro %}
 {%- macro material_theme() -%}
 theme:
   name: material

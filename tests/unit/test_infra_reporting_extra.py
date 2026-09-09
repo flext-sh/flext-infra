@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
 
 from tests import u
@@ -15,12 +14,6 @@ from tests import u
 
 class TestsFlextInfraInfraReportingExtra:
     """Test suite for FlextInfraReportingService extra operations."""
-
-    @pytest.fixture
-    def service(self) -> type[u.Cli]:
-        """Create a reporting service instance."""
-        service_cls: type[u.Cli] = u.Cli
-        return service_cls
 
     def test_resolve_report_dir_returns_path(
         self, service: type[u.Cli], tmp_path: Path

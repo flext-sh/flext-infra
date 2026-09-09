@@ -248,6 +248,9 @@ Infra:
         boolean-settings:
           namespace_packages: true
           explicit_package_bases: true
+          # Analyze installed implementations without py.typed; do not ignore them.
+          # https://mypy.readthedocs.io/en/stable/config_file.html#confval-follow_untyped_imports
+          follow_untyped_imports: true
           check_untyped_defs: true
           # disallow_untyped_defs, Noisier flags
           # disallow_any_unimported, Noisier flags

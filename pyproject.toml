@@ -64,7 +64,18 @@ dev = [
   "bandit>=1.9.4",
   "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
   "mkdocs",
+  "mkdocs-autorefs",
+  "mkdocs-exclude>=1.0.2",
+  "mkdocs-git-revision-date-localized-plugin>=1.5.4",
+  "mkdocs-material>=9.7.7",
+  "mkdocs-mermaid2-plugin>=1.2.3",
+  "mkdocs-minify-plugin>=0.8.0",
+  "mkdocs-redirects>=1.2.3",
+  "mkdocs-section-index>=0.3.12",
+  "mkdocstrings>=1.0.6",
+  "mkdocstrings-python>=2.0.8",
   "mypy>=2.3.1",
+  "pymdown-extensions",
   "pyrefly>=1.2.0",
   "pyright>=1.1.411",
   "pytest>=9.1.1",
@@ -162,6 +173,7 @@ python_version = "3.13"
 check_untyped_defs = true
 explicit_package_bases = true
 extra_checks = true
+follow_untyped_imports = true
 local_partial_types = true
 namespace_packages = true
 no_implicit_reexport = true
