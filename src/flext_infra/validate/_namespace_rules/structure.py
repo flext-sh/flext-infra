@@ -64,11 +64,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
                     f"{filepath}:{cls.line(node)} — top-level function is forbidden; "
                     "nest behavior in the module class"
                 )
-            if kind in {
-                "Assign",
-                "AnnAssign",
-                "TypeAlias",
-            } and not (
+            if kind in {"Assign", "AnnAssign", "TypeAlias"} and not (
                 cls._dunder_assignment(node)
                 or cls._canonical_facade_alias(
                     node,

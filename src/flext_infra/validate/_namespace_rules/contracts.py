@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
-from flext_infra import c, u
 
 from .base import FlextInfraNamespaceRulesBase
 
@@ -154,8 +153,7 @@ class FlextInfraNamespaceRulesContracts(FlextInfraNamespaceRulesBase):
                 name.rpartition(".")[2]
                 for name in names
                 if name.startswith("pydantic.")
-                and name.rpartition(".")[2]
-                in c.Infra.NAMESPACE_PYDANTIC_V1_DECORATORS
+                and name.rpartition(".")[2] in c.Infra.NAMESPACE_PYDANTIC_V1_DECORATORS
             })
         )
 
@@ -165,7 +163,13 @@ class FlextInfraNamespaceRulesContracts(FlextInfraNamespaceRulesBase):
 
         Config/settings modules define canonical singletons at module level.
         """
-        if filepath.name in {"api.py", "settings.py", "_settings.py", "config.py", "_config.py"}:
+        if filepath.name in {
+            "api.py",
+            "settings.py",
+            "_settings.py",
+            "config.py",
+            "_config.py",
+        }:
             return ()
         messages: list[str] = []
         for node in getattr(tree, "body", ()) or ():

@@ -34,11 +34,13 @@ Infra:
       # requirement owners derived from the build and dev tables; runtime
       # dependency profiles never enter it.
       additional_python_tool_distributions: [actionlint-py, bandit, deptry, flext-tests, hatchling, mypy, pip-audit, pre-commit, pyrefly, pyright, pytest, pytest-testmon, ruff, rumdl, vulture, yamlfix]
-      # [tool.uv] constraint-dependencies rendered from this SSOT only. Empty
-      # removes the key from every projection: an orphan cap (e.g. the retired
-      # structlog<26, which no upstream contract required) can never survive
-      # without a declared owner (operator directive 2026-09-08).
-      uv_constraint_dependencies: []
+      # Global compatibility exceptions become [tool.uv] constraint-dependencies
+      # in every project, including projects using the dependency transitively.
+      # Keep reasons here; an empty list removes constraints from all projections.
+      # flext-y3qpq.4: Meltano's published metadata requires structlog<26.
+      # Operator authorized this fleet-wide exception on 2026-09-09. Revalidate
+      # the upstream contract before removing it; deps derives the compatible floor.
+      uv_constraint_dependencies: ["structlog<26"]
       # Moving selectors consumed by generated .mise.toml and CI. The fleet
       # runs unlocked: setup converges on the newest published release.
       # Override these YAML keys only. Never edit .mise.toml. Never run
@@ -1077,6 +1079,7 @@ Infra:
           - pyrefly>=1.2.0
           - pyright>=1.1.411
           - pytest>=9.1.1
+          - hypothesis
           - pytest-asyncio
           - pytest-benchmark
           - pytest-cov
@@ -1127,7 +1130,7 @@ Infra:
               - pydantic>=2.13.5
               - pydantic-settings>=2.15.0
               - pyyaml>=6.0.3
-              - structlog>=26.1.0
+              - structlog>=25.5.0
               - typing-extensions>=4.16.0
             codegen: [flext-infra]
           - upstream: flext_cli
@@ -1142,10 +1145,94 @@ Infra:
           # are resolved by deps; its floor writer updates this same owner.
           - upstream: flext_core
             project: flext-api
-            runtime: [flext-web, httpx, msgpack]
+            runtime: [flext-web, httpx>=0.28.1, msgpack>=1.2.2]
+          - upstream: flext_core
+            project: flext-auth
+            runtime: [flext-api, bcrypt>=5.0.0, PyJWT>=2.13.0]
+          - upstream: flext_core
+            project: flext-cli
+            runtime: [click>=8.3.3, typer>=0.27.2, jinja2>=3.1.6, jsonschema>=4.26.0, tomlkit>=0.15.1, ruamel.yaml>=0.19.1, defusedxml>=0.7.1, openpyxl>=3.1.5, python-docx>=1.2.0, python-pptx>=1.0.2]
+          - upstream: flext_cli
+            project: flext-infra
+            runtime: [flext-cli, defusedxml>=0.7.1, filelock>=3.32.6, GitPython>=3.1.62, jinja2>=3.1.6, libcst>=1.9.0, Markdown>=3.10.3, rope>=1.14.0, pytest>=9.1.1, mkdocs>=1.6.1]
+          - upstream: flext_cli
+            project: flext-tests
+            runtime: [flext-cli, flext-infra, pytest>=9.1.1, pytest-timeout>=2.4.0, docker>=7.2.0, python-on-whales>=0.81.0]
+          - upstream: flext_cli
+            project: flext-grpc
+            runtime: [flext-cli, grpcio>=1.83.1]
+          - upstream: flext_cli
+            project: flext-observability
+            runtime: [flext-cli, flask>=3.1.3, starlette>=1.6.0, psutil>=7.2.2]
+          - upstream: flext_cli
+            project: flext-plugin
+            runtime: [flext-cli]
+          - upstream: flext_cli
+            project: flext-quality
+            runtime: [flext-cli, flext-infra, flext-web, flext-api, fastmcp>=4.0.3, requests>=2.34.2, aiohttp>=3.14.3, flask>=3.1.3, jinja2>=3.1.6, schedule>=1.2.2, pytest>=9.1.1]
           - upstream: flext_cli
             project: flext-web
-            runtime: [flext-cli, flask, uvicorn, fastapi, starlette, werkzeug]
+            runtime: [flext-cli, flask>=3.1.3, uvicorn>=0.52.4, fastapi>=0.141.1, starlette>=1.6.0, werkzeug>=3.1.8]
+          - upstream: flext_cli
+            project: flext-db-oracle
+            runtime: [flext-cli, oracledb>=4.0.2, sqlalchemy>=2.0.52]
+          - upstream: flext_cli
+            project: flext-ldif
+            runtime: [flext-cli]
+          - upstream: flext_core
+            project: flext-ldap
+            runtime: [flext-ldif, ldap3>=2.9.1]
+          - upstream: flext_cli
+            project: flext-meltano
+            runtime: [flext-cli, meltano>=4.2.2, singer-sdk>=0.54.5, sqlalchemy>=2.0.52]
+          - upstream: flext_cli
+            project: flext-oracle-oic
+            runtime: [flext-cli, flext-auth, flext-api]
+          - upstream: flext_cli
+            project: flext-oracle-wms
+            runtime: [flext-cli, flext-api]
+          - upstream: flext_core
+            project: flext-dbt-ldap
+            runtime: [flext-meltano, flext-ldap, flext-cli, flext-ldif]
+          - upstream: flext_core
+            project: flext-dbt-ldif
+            runtime: [flext-meltano, flext-ldif]
+          - upstream: flext_core
+            project: flext-dbt-oracle
+            runtime: [flext-meltano, flext-db-oracle]
+          - upstream: flext_core
+            project: flext-dbt-oracle-wms
+            runtime: [flext-meltano, flext-oracle-wms]
+          - upstream: flext_core
+            project: flext-tap-ldap
+            runtime: [flext-meltano, flext-ldap]
+          - upstream: flext_core
+            project: flext-tap-ldif
+            runtime: [flext-meltano, flext-ldif]
+          - upstream: flext_core
+            project: flext-tap-oracle
+            runtime: [flext-meltano, flext-db-oracle]
+          - upstream: flext_core
+            project: flext-tap-oracle-oic
+            runtime: [flext-meltano, flext-oracle-oic, flext-api]
+          - upstream: flext_core
+            project: flext-tap-oracle-wms
+            runtime: [flext-meltano, flext-oracle-wms, singer-sdk>=0.54.5]
+          - upstream: flext_core
+            project: flext-target-ldap
+            runtime: [flext-meltano, flext-ldap]
+          - upstream: flext_core
+            project: flext-target-ldif
+            runtime: [flext-meltano, flext-ldif]
+          - upstream: flext_core
+            project: flext-target-oracle
+            runtime: [flext-meltano, flext-db-oracle, flext-cli]
+          - upstream: flext_core
+            project: flext-target-oracle-oic
+            runtime: [flext-meltano, flext-oracle-oic, flext-api]
+          - upstream: flext_core
+            project: flext-target-oracle-wms
+            runtime: [flext-meltano, flext-oracle-wms, flext-cli]
       ping_example:
         command_name: ping
         help_text: Return the configured health response.

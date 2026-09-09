@@ -3,6 +3,8 @@
 
 # flext-infra - FLEXT Make Commands
 
+> Project profile: `flext-infra`
+
 <!-- TOC START -->
 - [Discover commands](#discover-commands)
 - [Canonical workflow](#canonical-workflow)
@@ -11,8 +13,6 @@
 - [Scope and generation](#scope-and-generation)
 - [Related guides](#related-guides)
 <!-- TOC END -->
-
-> Project profile: `flext-infra`
 
 `make help` at the workspace root is the executable authority for command
 grammar. This guide records the invariants that every declared verb must keep.

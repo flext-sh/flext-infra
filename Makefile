@@ -135,12 +135,12 @@ CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 
 # === SECTION: profile routing (managed) ===
 # Source: repository topology. workspace has .gitmodules; standalone does not.
-# Both own their runtime in PROJECT_ROOT.
+# Attached members share their Git superproject runtime; standalone owns itself.
 ifneq ($(filter $(MAKE_PROFILE),workspace standalone),$(MAKE_PROFILE))
 $(error Invalid MAKE_PROFILE '$(MAKE_PROFILE)')
 endif
 
-RUNTIME_ROOT := $(PROJECT_ROOT)
+RUNTIME_ROOT := $(REPOSITORY_ROOT)
 # End SECTION: profile routing
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv

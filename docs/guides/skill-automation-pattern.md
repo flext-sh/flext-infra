@@ -3,13 +3,13 @@
 
 # flext-infra - Skill Automation Pattern
 
+> Project profile: `flext-infra`
+
 <!-- TOC START -->
 - [Ownership](#ownership)
 - [Required change shape](#required-change-shape)
 - [Canonical execution](#canonical-execution)
 <!-- TOC END -->
-
-> Project profile: `flext-infra`
 
 Skills document intent and route execution to canonical owners. They do not
 create parallel rule engines, registries, scripts, command grammars, or manual

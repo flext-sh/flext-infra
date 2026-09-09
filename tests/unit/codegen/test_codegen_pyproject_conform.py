@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import c, config, m, u
@@ -47,6 +48,44 @@ def _workspace() -> m.Infra.WorkspaceSpec:
 
 
 class TestsFlextInfraCodegenPyprojectConform:
+    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    def test_global_constraints_apply_without_direct_runtime_requirements(
+        self, profile: c.Infra.MakeProfile
+    ) -> None:
+        """Every profile receives SSOT constraints even for indirect dependencies."""
+        content = (
+            '[project]\nname = "workspace"\nversion = "1.2.3"\ndependencies = []\n'
+        )
+        first = tm.ok(
+            u.Infra.pyproject_conform(
+                content,
+                providers=config.Infra.codegen.providers,
+                workspace=_workspace(),
+                workspace_mode=profile,
+                toolchain=config.Infra.codegen.toolchain,
+                required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
+            )
+        )
+        uv_config = test_u.Tests.toml_table_at(first, "tool", "uv")
+        expected = [
+            requirement
+            for requirement in config.Infra.codegen.toolchain.uv_constraint_dependencies
+            if u.Infra.dep_name(requirement) != "uv"
+        ]
+        tm.that(uv_config.get("constraint-dependencies", []), eq=expected)
+        tm.that(test_u.Tests.toml_strings_at(first, "project", "dependencies"), eq=())
+        second = tm.ok(
+            u.Infra.pyproject_conform(
+                first,
+                providers=config.Infra.codegen.providers,
+                workspace=_workspace(),
+                workspace_mode=profile,
+                toolchain=config.Infra.codegen.toolchain,
+                required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
+            )
+        )
+        tm.that(second, eq=first)
+
     def test_custom_entry_point_groups_survive_conformance(self) -> None:
         """Plugin registrations remain owned by their declaring distribution."""
         rendered = '[project]\nname = "sample"\n'
@@ -509,7 +548,9 @@ skips = ["B101"]
             )
         )
         tm.that(
-            frozenset(test_u.Tests.toml_strings_at(conformed, "project", "dependencies")),
+            frozenset(
+                test_u.Tests.toml_strings_at(conformed, "project", "dependencies")
+            ),
             eq=frozenset(test_u.Tests.toml_strings_at(live, "project", "dependencies")),
         )
         repeated = tm.ok(u.Infra.overlay_preserved(rendered, conformed))
