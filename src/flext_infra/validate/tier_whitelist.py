@@ -70,7 +70,7 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
         top = self._top_module(_module_name)
         if (
             top in c.Infra.TIER_WHITELIST_SETTINGS_MODULE_LIBRARIES
-            and _file_path.name == "settings.py"
+            and _file_path.name.endswith("settings.py")
         ):
             return True
         owner = c.ENFORCEMENT_LIBRARY_OWNERS.get(top)

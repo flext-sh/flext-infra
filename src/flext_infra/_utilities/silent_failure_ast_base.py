@@ -124,7 +124,7 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
             or (
                 isinstance(child, ast.Call)
                 and isinstance(child.func, ast.Attribute)
-                and child.func.attr == "fail"
+                and child.func.attr.startswith("fail")
             )
             for statement in body
             for child in ast.walk(statement)

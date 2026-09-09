@@ -55,6 +55,226 @@ def _make_project_with_module_path(
 class TestFlextInfraNamespaceValidator:
     """Test suite for namespace validator rules 0-3."""
 
+    @pytest.mark.parametrize("family", tuple(c.Infra.FAMILY_SUFFIXES))
+    def test_required_public_facade_alias_passes(
+        self, tmp_path: Path, family: str
+    ) -> None:
+        root = _make_project_with_module(
+            tmp_path,
+            module_source=_read_fixture("rule0_valid.py"),
+            module_name="models.py",
+        )
+        layout = tm.not_none(u.Infra.layout(root))
+        facade = layout.package_dir / c.Infra.FAMILY_FILES[family].lstrip("*")
+        alias, suffix = c.Infra.NAMESPACE_FAMILY_EXPECTED_ALIAS[facade.name]
+        class_name = f"{layout.class_stem}{suffix}"
+        if family != "m":
+            facade.write_text(
+                facade.read_text(encoding="utf-8")
+                + f"\n{alias} = {class_name}\n"
+                + f"__all__ = [{class_name!r}, {alias!r}]\n",
+                encoding="utf-8",
+            )
+
+        report = tm.ok(FlextInfraNamespaceValidator().validate_project(root))
+
+        tm.that(report.passed, eq=True, msg=str(report.violations))
+        tm.that(report.violations, empty=True)
+
+    @pytest.mark.parametrize(
+        ("module_path", "assignment"),
+        [
+            ("models.py", "other = FlextTestModels"),
+            ("models.py", "m = FlextTestModelsBase"),
+            ("models.py", "m = FlextTestModels.Test"),
+            ("models.py", "m = other = FlextTestModels"),
+            ("models.py", "m, other = FlextTestModels, FlextTestModels"),
+            ("models.py", "VALUE = 42"),
+            ("models.py", "m = FlextTestModels\nother = FlextTestModels"),
+            ("models.py", "m = FlextTestModels\nm = FlextTestModels"),
+            ("_models/models.py", "m = FlextTestModels"),
+            ("services/models.py", "m = FlextTestModels"),
+        ],
+    )
+    def test_noncanonical_facade_assignments_still_fail(
+        self, tmp_path: Path, module_path: str, assignment: str
+    ) -> None:
+        source = _read_fixture("rule0_valid.py").replace(
+            "m = FlextTestModels", assignment
+        )
+        root, target = _make_project_with_module_path(
+            tmp_path, module_source=source, module_path=module_path
+        )
+
+        report = tm.ok(FlextInfraNamespaceValidator().validate_project(root))
+
+        tm.that(report.passed, eq=False)
+        tm.that(
+            any(
+                str(target.relative_to(root)) in violation
+                and "module alias/data declaration is forbidden" in violation
+                for violation in report.violations
+            ),
+            eq=True,
+        )
+
+    def test_facade_alias_before_class_is_not_canonical(self, tmp_path: Path) -> None:
+        source = _read_fixture("rule0_valid.py").replace("m = FlextTestModels", "")
+        source = source.replace(
+            "class FlextTestModels(m):",
+            "m = FlextTestModels\n\nclass FlextTestModels(m):",
+        )
+        root = _make_project_with_module(
+            tmp_path, module_source=source, module_name="models.py"
+        )
+
+        report = tm.ok(FlextInfraNamespaceValidator().validate_project(root))
+
+        tm.that(report.passed, eq=False)
+        tm.that(
+            any("module alias/data declaration" in item for item in report.violations),
+            eq=True,
+        )
+
+    @pytest.mark.parametrize(
+        ("imports", "body", "legacy"),
+        [
+            (
+                "from collections.abc import Callable\n",
+                "    def execute(self, validator: Callable[[], None]) -> None:\n"
+                "        validator()\n",
+                False,
+            ),
+            (
+                "from collections.abc import Callable\n"
+                "from pydantic import validator\n",
+                "    def execute(self, validator: Callable[[], None]) -> None:\n"
+                "        validator()\n",
+                False,
+            ),
+            (
+                "from collections.abc import Callable\n"
+                "from pydantic import root_validator as validate\n",
+                "    def execute(self, validate: Callable[[], None]) -> None:\n"
+                "        validate()\n",
+                False,
+            ),
+            (
+                "from collections.abc import Callable\n"
+                "from pydantic import validator\n",
+                "    def execute(self, callback: Callable[[], None]) -> None:\n"
+                "        validator = callback\n"
+                "        validator()\n",
+                False,
+            ),
+            (
+                "from pydantic import validator\n",
+                "    def execute(self) -> None:\n"
+                "        def validator() -> None:\n"
+                "            pass\n"
+                "        validator()\n",
+                False,
+            ),
+            (
+                "from unrelated import validator\n",
+                "    @validator('value')\n"
+                "    def validate(cls, value: str) -> str:\n"
+                "        return value\n",
+                False,
+            ),
+            (
+                "import unrelated as pd\n",
+                "    @pd.root_validator()\n"
+                "    def validate(cls, value: str) -> str:\n"
+                "        return value\n",
+                False,
+            ),
+            (
+                "from pydantic import validator\n",
+                "    @validator('value')\n"
+                "    def validate(cls, value: str) -> str:\n"
+                "        return value\n",
+                True,
+            ),
+            (
+                "from pydantic import validator as validate_field\n",
+                "    @validate_field('value')\n"
+                "    def validate(cls, value: str) -> str:\n"
+                "        return value\n",
+                True,
+            ),
+            (
+                "from pydantic.v1 import root_validator as validate_root\n",
+                "    @validate_root()\n"
+                "    def validate(cls, value: str) -> str:\n"
+                "        return value\n",
+                True,
+            ),
+            (
+                "from pydantic import root_validator as validate_root\n",
+                "    @validate_root\n"
+                "    def validate(cls, value: str) -> str:\n"
+                "        return value\n",
+                True,
+            ),
+            (
+                "import pydantic as pd\n",
+                "    @pd.validator('value')\n"
+                "    def validate(cls, value: str) -> str:\n"
+                "        return value\n",
+                True,
+            ),
+            (
+                "import pydantic.v1 as pd\n",
+                "    @pd.root_validator()\n"
+                "    def validate(cls, value: str) -> str:\n"
+                "        return value\n",
+                True,
+            ),
+            (
+                "",
+                "    def execute(self) -> None:\n"
+                "        from pydantic.v1 import validator as validate\n"
+                "        validate('value')\n",
+                True,
+            ),
+            (
+                "from pydantic import validator as validate\n",
+                "    def execute(self) -> None:\n"
+                "        label = 'caf\u00e9'; validate('value')\n",
+                True,
+            ),
+            (
+                "from pydantic import field_validator as validator\n",
+                "    @validator('value')\n"
+                "    def validate(cls, value: str) -> str:\n"
+                "        return value\n",
+                False,
+            ),
+        ],
+    )
+    def test_pydantic_decorator_binding_provenance(
+        self, tmp_path: Path, imports: str, body: str, *, legacy: bool
+    ) -> None:
+        root = _make_project_with_module(
+            tmp_path,
+            module_source=(
+                "from __future__ import annotations\n"
+                + imports
+                + "\nclass FlextTestValidation:\n"
+                + body
+            ),
+            module_name="validation.py",
+        )
+
+        report = tm.ok(FlextInfraNamespaceValidator().validate_project(root))
+
+        tm.that(report.passed, eq=not legacy, msg=str(report.violations))
+        tm.that(
+            sum("legacy Pydantic member" in item for item in report.violations),
+            eq=int(legacy),
+        )
+
     def test_public_project_layout_uses_flext_for_core_exception(
         self, tmp_path: Path
     ) -> None:

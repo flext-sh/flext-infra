@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c
@@ -9,8 +10,6 @@ from flext_infra import c
 from .base import FlextInfraNamespaceRulesBase
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import t
 
 
@@ -19,7 +18,13 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
 
     @classmethod
     def check_structure(
-        cls, tree: object, filepath: Path, *, class_stem: str, is_test_file: bool
+        cls,
+        tree: object,
+        filepath: Path,
+        *,
+        class_stem: str,
+        package_name: str,
+        is_test_file: bool,
     ) -> t.StrSequence:
         """Return structural and logical-size violations for one module."""
         if filepath.name in {"__init__.py", "__version__.py"}:
@@ -27,18 +32,31 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         messages: list[str] = []
         classes = cls.outer_classes(tree)
         expected = f"Tests{class_stem}" if is_test_file else class_stem
-        if len(classes) != 1:
+        if len(classes) < 1:
             messages.append(
-                f"{filepath}:1 — module must declare exactly one top-level class; "
+                f"{filepath}:1 — module must declare at least one top-level class; "
                 f"found {len(classes)}"
             )
-        for node in classes:
+        facade_classes = [
+            node
+            for node in classes
+            if isinstance(getattr(node, "name", ""), str)
+            and getattr(node, "name", "").startswith(expected)
+        ]
+        if not facade_classes:
+            messages.append(
+                f"{filepath}:1 — module must declare at least one class starting with "
+                f"{expected!r} (the facade class)"
+            )
+        for node in facade_classes:
             name = getattr(node, "name", "")
             if expected and isinstance(name, str) and not name.startswith(expected):
                 messages.append(
                     f"{filepath}:{cls.line(node)} — class {name!r} must start with "
                     f"{expected!r}"
                 )
+        # Secondary support classes at module level are allowed in facade modules;
+        # only the facade class must satisfy the naming and nesting rules.
         for node in getattr(tree, "body", ()) or ():
             kind = cls.kind(node)
             if kind in {"FunctionDef", "AsyncFunctionDef"}:
@@ -50,7 +68,16 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
                 "Assign",
                 "AnnAssign",
                 "TypeAlias",
-            } and not cls._dunder_assignment(node):
+            } and not (
+                cls._dunder_assignment(node)
+                or cls._canonical_facade_alias(
+                    node,
+                    tree,
+                    filepath,
+                    class_stem=class_stem,
+                    package_name=package_name,
+                )
+            ):
                 messages.append(
                     f"{filepath}:{cls.line(node)} — module alias/data declaration is "
                     "forbidden; use the canonical facade class"
@@ -115,6 +142,46 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
                 "compose its private family through multiple inheritance"
             )
         return tuple(messages)
+
+    @classmethod
+    def _canonical_facade_alias(
+        cls,
+        node: object,
+        tree: object,
+        filepath: Path,
+        *,
+        class_stem: str,
+        package_name: str,
+    ) -> bool:
+        """Recognize the required bottom alias only at its discovered public owner."""
+        spec = c.Infra.NAMESPACE_FAMILY_EXPECTED_ALIAS.get(filepath.name)
+        if spec is None or filepath.parent != Path(c.Infra.DEFAULT_SRC_DIR).joinpath(
+            *package_name.split(".")
+        ):
+            return False
+        alias, suffix = spec
+        classes = cls.outer_classes(tree)
+        if len(classes) != 1 or getattr(classes[0], "name", "") != (
+            class_name := f"{class_stem}{suffix}"
+        ):
+            return False
+        targets = getattr(node, "targets", ())
+        value = getattr(node, "value", None)
+        if not (
+            cls.kind(node) == "Assign"
+            and len(targets) == 1
+            and cls.kind(targets[0]) == "Name"
+            and cls.name_of(targets[0]) == alias
+            and cls.kind(value) == "Name"
+            and cls.name_of(value) == class_name
+            and cls.line(node) > cls.line(classes[0])
+        ):
+            return False
+        return all(
+            cls._dunder_assignment(statement)
+            for statement in (getattr(tree, "body", ()) or ())
+            if cls.line(statement) > cls.line(node)
+        )
 
     @classmethod
     def _dunder_assignment(cls, node: object) -> bool:

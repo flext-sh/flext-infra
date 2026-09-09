@@ -20,7 +20,11 @@ class FlextInfraMypyGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.MYPY
     gate_name: ClassVar[str] = "Mypy"
     can_fix: ClassVar[bool] = False
-    checker_info_prefixes: ClassVar[t.StrSequence] = ("LOG:", "TRACE:")
+    checker_info_prefixes: ClassVar[t.StrSequence] = (
+        "LOG:",
+        "TRACE:",
+        "[pydantic-mypy]:",
+    )
 
     @staticmethod
     def _config_exclude(config_path: Path) -> re.Pattern[str] | None:
