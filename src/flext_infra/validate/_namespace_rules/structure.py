@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c
@@ -18,6 +19,13 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
 
     @classmethod
     def check_structure(
+        cls,
+        tree: object,
+        filepath: Path,
+        *,
+        class_stem: str,
+        package_name: str,
+        is_test_file: bool,
         cls,
         tree: object,
         filepath: Path,

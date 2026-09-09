@@ -974,7 +974,35 @@ class FlextInfraUtilitiesPyprojectConform:
         live_project = u.Cli.toml_mapping_child(live_payload, c.Infra.PROJECT) or {}
         for key in project_keys:
             if key in live_project:
-                project[key] = live_project[key]
+                if key == c.Infra.DEPENDENCIES:
+                    try:
+                        required = t.Infra.STR_SEQ_ADAPTER.validate_python(
+                            project.get(key, []), strict=True
+                        )
+                        custom = t.Infra.STR_SEQ_ADAPTER.validate_python(
+                            live_project[key], strict=True
+                        )
+                    except c.ValidationError as exc:
+                        return r[str].fail_op("validate runtime dependencies", exc)
+                    owned_names = {
+                        FlextInfraUtilitiesDependencies.dep_name(item)
+                        for item in required
+                    }
+                    # Profiles own same-name requirements. CUSTOM requirements
+                    # retain full specs, including distinct markers for one name.
+                    project[key] = list(
+                        dict.fromkeys((
+                            *required,
+                            *(
+                                item
+                                for item in custom
+                                if FlextInfraUtilitiesDependencies.dep_name(item)
+                                not in owned_names
+                            ),
+                        ))
+                    )
+                else:
+                    project[key] = live_project[key]
         merged[c.Infra.PROJECT] = project
         # Preserve project dev additions before conformance reapplies fleet floors.
         groups = dict(u.Cli.toml_mapping_child(merged, c.Infra.DEPENDENCY_GROUPS) or {})

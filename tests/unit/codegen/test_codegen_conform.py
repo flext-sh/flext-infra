@@ -178,7 +178,7 @@ class TestCodegenConform:
         pyproject = tmp_path / c.Infra.PYPROJECT_FILENAME
         source = pyproject.read_text(encoding="utf-8")
         pyproject.write_text(
-            source + 'dependencies = ["beartype>=0.22", '
+            source + 'dependencies = ["custom-runtime>=0.22", '
             '"flext-custom @ ../flext-custom"]\n',
             encoding="utf-8",
         )
@@ -197,7 +197,7 @@ class TestCodegenConform:
             )
         )
         dependencies = u.Tests.toml_strings_at(rendered, "project", "dependencies")
-        tm.that("beartype>=0.22" in dependencies, eq=True)
+        tm.that("custom-runtime>=0.22" in dependencies, eq=True)
         tm.that(
             set(u.Tests.toml_strings_at(canonical, "project", "dependencies"))
             <= set(dependencies),
