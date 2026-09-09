@@ -255,7 +255,6 @@ class TestsCodegenMakeEnvironment:
             "PATH": f"{hostile_bin}:{os.environ['PATH']}",
             "UV": str(hostile_uv),
             "UV_BIN": str(hostile_uv),
-            "MAKEFLAGS": f"-- UV={hostile_uv}",
             "UV_PROJECT": str(hostile_venv.parent),
             "UV_PROJECT_ENVIRONMENT": str(hostile_venv),
             "FLEXT_INFRA_PYTHON": str(hostile_bin / "python"),
