@@ -15,7 +15,11 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import config, main
-from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenProjectNew
+from flext_infra.codegen import (
+    FlextInfraCodegenConform,
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenProjectNew,
+)
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -863,6 +867,9 @@ class TestCodegenConform:
         tm.that((root / ".gitignore").is_file(), eq=True)
         tm.that((root / ".env.example").exists(), eq=False)
         tm.that(root / ".env.example" in applied.value.written_files, eq=False)
+        for name, mode in (("mise", 0o755), ("mise.cmd", 0o644)):
+            tm.that((root / "bin" / name).stat().st_mode & 0o777, eq=mode)
+        tm.ok(FlextInfraCodegenMiseArtifacts.validate_launchers(root))
 
         fixed_point = FlextInfraCodegenConform.execute_request(
             u.Tests.conform_request(
