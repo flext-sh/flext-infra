@@ -278,6 +278,53 @@ class TestsCodegenMakeEnvironment:
         tm.that((hostile_venv / "pyvenv.cfg").exists(), eq=False)
         tm.that((hostile_venv.parent / "uv.lock").exists(), eq=False)
 
+        # A current lock is accepted in CI; a new runtime declaration must fail
+        # before post-setup, not provision the previous graph via --frozen.
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                project_root / "custom.mk",
+                ".PHONY: post-setup\npost-setup:\n"
+                "\t@printf '%s\\n' 'ci-runtime-provisioned'\n",
+            )
+        )
+        ci_env = {**active_env, "CI": "Y"}
+        locked = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["--no-print-directory", "setup", "APPLY=Y"],
+                cwd=project_root,
+                env=ci_env,
+            )
+        )
+        tm.that(
+            u.Cli.process_succeeded(locked.outcome),
+            eq=True,
+            msg=locked.stdout + locked.stderr,
+        )
+        tm.that(locked.stdout, has="ci-runtime-provisioned")
+        lock_path = project_root / "uv.lock"
+        lock_before = lock_path.read_bytes()
+        dependency_root = tmp_path / "external-runtime"
+        WorktreeFixture.write_python_project(dependency_root, "external-runtime")
+        pyproject_path = project_root / c.Infra.PYPROJECT_FILENAME
+        document = test_u.Tests.toml_doc(pyproject_path.read_text(encoding="utf-8"))
+        project = tm.not_none(u.Cli.toml_table_child(document, "project"))
+        project["dependencies"] = [
+            *u.Cli.toml_as_string_list(u.Cli.toml_value(project, "dependencies")),
+            f"external-runtime @ {dependency_root.as_uri()}",
+        ]
+        tm.ok(u.Cli.atomic_write_text_file(pyproject_path, u.Cli.toml_dumps(document)))
+        stale = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["--no-print-directory", "setup", "APPLY=Y"],
+                cwd=project_root,
+                env=ci_env,
+            )
+        )
+        tm.that(u.Cli.process_succeeded(stale.outcome), eq=False)
+        tm.that(stale.stdout + stale.stderr, has="--locked")
+        tm.that(stale.stdout, lacks="ci-runtime-provisioned")
+        tm.that(lock_path.read_bytes(), eq=lock_before)
+
     def test_setup_fails_when_the_tracked_mise_launcher_is_missing(
         self, tmp_path: Path
     ) -> None:
