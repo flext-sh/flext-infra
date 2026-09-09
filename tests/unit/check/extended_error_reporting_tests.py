@@ -34,6 +34,7 @@ class TestGateErrorReportingPublicBehavior:
         """Run the markdown gate once through the checker with one runner."""
         project_dir = u.Tests.mk_project(tmp_path, "p1")
         _ = (project_dir / "README.md").write_text("# Project\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(project_dir)
         return FlextInfraWorkspaceChecker(
             repository_root=tmp_path, gate_runners={c.Infra.MARKDOWN: runner}
         ).run_projects(["p1"], ["markdown"], reports_dir=tmp_path / "reports")

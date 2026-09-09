@@ -57,6 +57,18 @@ class TestsFlextInfraDepsDetectorMain:
             "pyyaml": "types-pyyaml",
         }
         requirements = u.Infra.project_dependency_names_from_payload(before)
+        tm.that(
+            u.Tests.toml_mapping(
+                u.Tests.toml_mapping(after["project"])["optional-dependencies"]
+            ),
+            has="typings",
+            msg=(
+                f"{outcome.outcome}\n{outcome.stdout}\n{outcome.stderr}\n"
+                + (root / ".reports/dependencies/detect-runtime-dev-latest.json").read_text(
+                    encoding="utf-8"
+                )
+            ),
+        )
         typing_specs = u.Tests.toml_strings(
             u.Tests.toml_mapping(
                 u.Tests.toml_mapping(after["project"])["optional-dependencies"]
@@ -128,7 +140,11 @@ class TestsFlextInfraDepsDetectorMain:
                 root, "--apply-typings", "--apply", "--no-fail", "--no-pip-check"
             )
         )
-        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=False)
+        tm.that(
+            u.Cli.process_succeeded(outcome.outcome),
+            eq=False,
+            msg=f"{outcome.outcome}\n{outcome.stdout}\n{outcome.stderr}",
+        )
         tm.that(outcome.stdout + outcome.stderr, has="UV typing dependency add failed")
         tm.that((root / "pyproject.toml").read_bytes(), eq=before)
         tm.that(

@@ -112,6 +112,97 @@ class TestsFlextInfraPrivateImportCutover:
         for path, source in dependency_sources.items():
             tm.that(path.read_text(encoding="utf-8"), eq=source)
 
+    @pytest.mark.parametrize(
+        ("declaration", "expected"),
+        [
+            (
+                "class Facade:\n"
+                "    class Base:\n        pass\n"
+                "    class Leaf(Base):\n        pass\n",
+                "",
+            ),
+            (
+                "class Facade:\n"
+                "    class Base:\n        pass\n"
+                "    class Branch(Base):\n"
+                "        class Leaf(Base):\n            pass\n",
+                "c.Branch.Leaf",
+            ),
+            (
+                "class Facade:\n"
+                "    class Branch:\n"
+                "        class Base:\n            pass\n"
+                "        class Leaf(Base):\n            pass\n",
+                "",
+            ),
+            (
+                "class Facade:\n"
+                "    class Leaf(private.Target):\n        pass\n",
+                "c.Leaf",
+            ),
+            (
+                "class Facade:\n"
+                "    class private:\n"
+                "        class Target:\n            pass\n"
+                "    class Leaf(private.Target):\n        pass\n",
+                "",
+            ),
+            (
+                "class Facade:\n"
+                "    class Left(Base):\n        pass\n"
+                "    class Right(Base):\n        pass\n",
+                "ambiguous",
+            ),
+        ],
+        ids=[
+            "sibling-shadow",
+            "grandchild-module-binding",
+            "grandchild-local-shadow",
+            "qualified-module-base",
+            "qualified-local-shadow",
+            "ambiguous-siblings",
+        ],
+    )
+    def test_installed_facade_bases_follow_declaration_scope(
+        self,
+        tmp_path: Path,
+        installed_dependency_path: Path,
+        declaration: str,
+        expected: str,
+    ) -> None:
+        package = installed_dependency_path / "lexical_sample"
+        dependency_sources = {
+            package / "__init__.py": (
+                "raise RuntimeError('discovery must not execute dependency code')\n"
+            ),
+            package / "_private.py": "class Target:\n    Value = str\n",
+            package / "constants.py": (
+                "from lexical_sample._private import Target as Base\n"
+                "import lexical_sample._private as private\n"
+                f"{declaration}\nc = Facade\n"
+            ),
+        }
+        for path, source in dependency_sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(source, encoding="utf-8")
+        consumer = tmp_path / "consumer/src/consumer/service.py"
+        statement = "from lexical_sample._private import Target"
+        sources = {consumer: f"{statement}\nvalue = Target.Value\n"}
+
+        if expected.startswith("c."):
+            edits = self._plan(tmp_path, sources, consumer, statement)
+            tm.that(tuple(edit.file_path for edit in edits), eq=(consumer,))
+            tm.that(edits[0].updated_source, has="from lexical_sample import c")
+            tm.that(edits[0].updated_source, has=f"value = {expected}.Value")
+            tm.that(edits[0].updated_source, lacks=statement)
+        else:
+            with pytest.raises(
+                ValueError, match=expected or "no public facade exposes"
+            ):
+                self._plan(tmp_path, sources, consumer, statement)
+        for path, source in dependency_sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=source)
+
     @staticmethod
     def _declared_export_case(
         root: Path,

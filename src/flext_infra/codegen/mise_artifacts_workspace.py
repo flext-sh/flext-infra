@@ -382,7 +382,7 @@ class FlextInfraMiseWorkspacePlanner:
         for part in files.STATE_DIRECTORY.parts:
             cursor /= part
             if not cursor.exists() and not cursor.is_symlink():
-                cursor.mkdir(mode=0o700, exist_ok=True)
+                continue
             physical = self._physical_directory(cursor)
             if physical.failure:
                 return r[Path].from_failure(physical)

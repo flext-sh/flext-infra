@@ -317,18 +317,6 @@ class FlextInfraUtilitiesPrivateImportFacades:
             )
 
         for tree, facade_alias, root_name, facade_file in owners:
-            imports: dict[str, str] = {}
-            for node in tree.body:
-                if not isinstance(node, ast.ImportFrom) or not node.module:
-                    continue
-                if node.level > 1:
-                    msg = f"ambiguous relative facade import in {package}.{facade_file}"
-                    raise ValueError(msg)
-                module = f"{package}.{node.module}" if node.level else node.module
-                imports.update({
-                    imported.asname or imported.name: f"{module}.{imported.name}"
-                    for imported in node.names
-                })
             root_class = next(
                 (
                     node
@@ -343,23 +331,25 @@ class FlextInfraUtilitiesPrivateImportFacades:
             def collect(
                 node: ast.ClassDef,
                 public_path: str,
-                imports: dict[str, str],
-                module: str,
+                identity: str,
             ) -> None:
                 if any(
-                    isinstance(base, ast.Name)
-                    and inherits(
-                        imports.get(base.id, f"{module}.{base.id}"), frozenset()
-                    )
-                    for base in node.bases
+                    inherits(base, frozenset())
+                    for base in class_bases[identity]
                 ):
                     references.add(public_path)
                 for child in node.body:
                     if isinstance(child, ast.ClassDef):
-                        collect(child, f"{public_path}.{child.name}", imports, module)
+                        collect(
+                            child,
+                            f"{public_path}.{child.name}",
+                            f"{identity}.{child.name}",
+                        )
 
             collect(
-                root_class, facade_alias, imports, f"{package}.{Path(facade_file).stem}"
+                root_class,
+                facade_alias,
+                f"{package}.{Path(facade_file).stem}.{root_name}",
             )
         if not references:
             return None

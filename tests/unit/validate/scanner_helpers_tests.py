@@ -24,6 +24,7 @@ class TestScannerHelpers:
 
     def test_iter_matching_files_glob_patterns(self, tmp_path: Path) -> None:
         """Canonical file selection respects include/exclude glob patterns."""
+        u.Tests.git_bootstrap(tmp_path, ("init",))
         (tmp_path / "file1.py").write_text("")
         (tmp_path / "file2.txt").write_text("")
         (tmp_path / "file3.py").write_text("")
@@ -37,6 +38,7 @@ class TestScannerHelpers:
 
     def test_iter_matching_files_skips_directories(self, tmp_path: Path) -> None:
         """Canonical file selection skips directories."""
+        u.Tests.git_bootstrap(tmp_path, ("init",))
         (tmp_path / "file.txt").write_text("")
         (tmp_path / "subdir").mkdir()
         files = u.Infra.iter_matching_files(tmp_path, includes=["*"])

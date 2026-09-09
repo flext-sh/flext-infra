@@ -488,14 +488,10 @@ class FlextInfraMiseArtifactsVerification:
         authorized_files = set(file_specs.value)
         for entry in additions:
             if entry.kind == "directory":
-                if allow_registered_additions:
-                    continue
                 if not any(entry.path in path.parents for path in authorized_files):
                     return r[bool].fail(
                         f"unregistered temporary-tree directory exists: {entry.path}"
                     )
-                continue
-            if allow_registered_additions:
                 continue
             spec = file_specs.value.get(entry.path)
             if spec is None or not cls._matches_journal_file(entry, *spec):

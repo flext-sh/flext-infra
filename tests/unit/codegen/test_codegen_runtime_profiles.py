@@ -126,7 +126,7 @@ class TestCodegenRuntimeProfiles:
         expected = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 '[project]\nname = "sample-member"\ndependencies = '
-                + tm.ok(u.Cli.json_dumps(list(profile.runtime)))
+                + tm.ok(u.Cli.json_dumps([*profile.runtime]))
                 + "\n",
                 providers=config.Infra.codegen.providers,
                 workspace=tm.ok(
