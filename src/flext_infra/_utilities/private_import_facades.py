@@ -328,15 +328,8 @@ class FlextInfraUtilitiesPrivateImportFacades:
             if root_class is None:
                 continue
 
-            def collect(
-                node: ast.ClassDef,
-                public_path: str,
-                identity: str,
-            ) -> None:
-                if any(
-                    inherits(base, frozenset())
-                    for base in class_bases[identity]
-                ):
+            def collect(node: ast.ClassDef, public_path: str, identity: str) -> None:
+                if any(inherits(base, frozenset()) for base in class_bases[identity]):
                     references.add(public_path)
                 for child in node.body:
                     if isinstance(child, ast.ClassDef):

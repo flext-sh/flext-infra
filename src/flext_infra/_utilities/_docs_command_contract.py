@@ -72,12 +72,7 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
                     )
                     verb = make_match.group("verb").lower()
                     verb_spec = next(
-                        (
-                            spec
-                            for spec in effective_verbs
-                            if spec.name == verb
-                        ),
-                        None,
+                        (spec for spec in effective_verbs if spec.name == verb), None
                     )
                     has_apply = (
                         c.Infra.DOCS_APPLY_RE.search(make_match.group("args"))

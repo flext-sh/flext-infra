@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 import pytest
-import re
 from flext_tests import tm
 
 from flext_infra import config
