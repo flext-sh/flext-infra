@@ -21,6 +21,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenProjectNew,
 )
 from flext_infra.deps import FlextInfraPyprojectModernizer
+from flext_infra.docs import FlextInfraDocGenerator
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, u
@@ -625,6 +626,26 @@ class TestCodegenConform:
         first = service.execute()
         first_result = tm.ok(first)
         tm.that(bool(first_result.written_files), eq=True)
+        tm.that(first_result.written_files.count(root / "README.md"), eq=1)
+        tm.that(
+            (root / "README.md").read_text(encoding="utf-8"),
+            has=c.Infra.GENERATED_HEADER,
+        )
+        tm.that(
+            (root / "docs/api-reference/generated/public-api.md").read_text(
+                encoding="utf-8"
+            ),
+            has=f"::: {u.Infra.project_package_name(root)}\n",
+        )
+        tm.that(
+            (root / "docs/api-reference/generated/modules/index.md").is_file(), eq=True
+        )
+        docs = tm.ok(
+            FlextInfraDocGenerator(repository_root=root).generate(
+                m.Infra.DocsGenerateRequest(repository_root=root, apply=False)
+            )
+        )
+        tm.that(all(report.changed_files == 0 for report in docs), eq=True)
         tm.that(
             tuple(
                 file.path

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import m
+from flext_infra import m, p, u
 from flext_infra.codegen import codegen_transaction as transaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
@@ -19,6 +19,78 @@ class TestsTransactionDirectoryJournal:
     """Exercise creation and cleanup against real physical filesystem state."""
 
     _TRANSACTION_ID = "a" * 32
+
+    @pytest.mark.parametrize("foreign_change", [False, True])
+    def test_duplicate_phase_recovers_only_its_new_generated_files(
+        self, tmp_path: Path, *, foreign_change: bool
+    ) -> None:
+        """Undo exact new publications, never a foreign replacement at their path."""
+        root = test_u.Tests.git_repository(tmp_path)
+        test_u.Tests.copy_tracked_mise_seeds(root)
+        owner = transaction.FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root)
+        )
+        target = root / "docs/generated/readme.md"
+
+        def conflict(scope_root: Path) -> p.Result[m.Infra.CodegenTransactionSession]:
+            config_path = root / ".mise.toml"
+            before = tm.ok(
+                u.Cli.atomic_read_binary_file_state(config_path, required=True)
+            )
+            config_plan = tm.ok(
+                u.Infra.planned_file(
+                    root,
+                    config_path,
+                    required=True,
+                    desired_content=before.content,
+                    desired_mode=before.mode,
+                    owner="mise",
+                )
+            )
+            session = tm.ok(
+                owner.begin_locked(scope_root, (config_plan,), (config_plan,))
+            )
+            session = tm.ok(
+                owner.append_directories_locked(session, "docs", (target.parent,))
+            )
+            first = tm.ok(
+                u.Infra.planned_file(
+                    root,
+                    target,
+                    required=False,
+                    desired_content=b"first phase\n",
+                    desired_mode=before.mode,
+                    owner="conform",
+                )
+            )
+            session = tm.ok(owner.append_phase_locked(session, "conform", (first,)))
+            if foreign_change:
+                target.write_bytes(b"foreign content\n")
+            duplicate = tm.ok(
+                u.Infra.planned_file(
+                    root,
+                    target,
+                    required=True,
+                    desired_content=b"docs phase\n",
+                    desired_mode=before.mode,
+                    owner="docs",
+                )
+            )
+            return owner.append_phase_locked(session, "docs", (duplicate,))
+
+        failed = owner.run_locked(prepare=True, operation=conflict)
+
+        tm.fail(failed, has="multiple generation phases own one destination")
+        identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
+        journal = FlextInfraMiseWorkspacePlanner.journal_path(identity)
+        tm.that(journal.exists(), eq=foreign_change)
+        if foreign_change:
+            tm.that(failed.error, has="new generated file changed before recovery")
+            tm.that(target.read_bytes(), eq=b"foreign content\n")
+        else:
+            tm.that(failed.error, lacks="recovery failed")
+            tm.that((root / "docs").exists(), eq=False)
+            tm.that((root / ".state").exists(), eq=False)
 
     @staticmethod
     def _layout(root: Path) -> m.Infra.MiseToolchainWorkspaceLayout:

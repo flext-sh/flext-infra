@@ -1701,11 +1701,6 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        - source: base/README.md.j2
-          destination: README.md
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: false
         - source: base/LICENSE.j2
           destination: LICENSE
           profiles: [workspace, standalone]

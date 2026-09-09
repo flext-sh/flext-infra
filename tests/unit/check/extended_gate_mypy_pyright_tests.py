@@ -146,14 +146,24 @@ class TestTypeGates:
     ) -> None:
         project = checker_context.repository_root
         package = project / "src" / "test_pkg"
-        (package / "unselected.py").write_text(
-            'value: int = "incorrect"\n', encoding="utf-8"
-        )
-        result = gate_class(project).check_files(
-            [package / "identity.py"], project, checker_context
-        )
+        unselected = package / "unselected.py"
+        unselected.write_text('value: int = "incorrect"\n', encoding="utf-8")
+        gate = gate_class(project)
+        result = gate.check_files([package / "identity.py"], project, checker_context)
         assert result.result.passed, result
         assert not result.issues
+
+        selected_error = gate.check_files([unselected], project, checker_context)
+        assert not selected_error.result.passed, selected_error
+        assert any(
+            issue.file.endswith(unselected.name) for issue in selected_error.issues
+        )
+
+        full_project = gate.check(project, checker_context)
+        assert not full_project.result.passed, full_project
+        assert any(
+            issue.file.endswith(unselected.name) for issue in full_project.issues
+        )
 
     @pytest.mark.parametrize(
         "gate_class", [FlextInfraMypyGate, FlextInfraPyrightGate, FlextInfraPyreflyGate]
