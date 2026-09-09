@@ -21,10 +21,14 @@ class FlextInfraDocGeneratorBundleMixin:
 
     @staticmethod
     def _is_collocated_workspace_project(
-        scope: m.Infra.DocScope, *, repository_root: Path
+        scope: m.Infra.DocScope, *, root_scope: m.Infra.DocScope
     ) -> bool:
         """Return whether a project scope shares the aggregate root path."""
-        return scope.name != c.Infra.RK_ROOT and scope.path == repository_root
+        return (
+            root_scope.name == c.Infra.RK_ROOT
+            and scope.name != c.Infra.RK_ROOT
+            and scope.path == root_scope.path
+        )
 
     @staticmethod
     def _validate_scope_targets(
@@ -87,7 +91,7 @@ class FlextInfraDocGeneratorBundleMixin:
         rendered: list[_DocsScopeArtifacts] = []
         for scope in selected.value:
             if cls._is_collocated_workspace_project(
-                scope, repository_root=repository_root
+                scope, root_scope=selected.value[0]
             ):
                 rendered.append((scope, ()))
                 continue

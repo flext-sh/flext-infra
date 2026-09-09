@@ -35,6 +35,35 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
         return [f"{scope.package_name}.{module}" for module in declared]
 
     @staticmethod
+    def docs_project_api_artifacts(scope: m.Infra.DocScope) -> list[t.Pair[Path, str]]:
+        """Render package API pages before their owning tree is pruned."""
+        module_names = FlextInfraUtilitiesDocsGenerateProjectMixin._module_names(scope)
+        api_root = scope.path / "docs/api-reference/generated"
+        rendered = [
+            (
+                api_root / "public-api.md",
+                FlextInfraUtilitiesDocsRender.docs_directive_page(
+                    f"{scope.name} Public API", scope.package_name
+                ),
+            ),
+            (
+                api_root / "modules/index.md",
+                FlextInfraUtilitiesDocsRender.docs_modules_index(scope, module_names),
+            ),
+        ]
+        for module_name in module_names:
+            relative = module_name.removeprefix(f"{scope.package_name}.").replace(
+                ".", "/"
+            )
+            rendered.append((
+                api_root / "modules" / f"{relative}.md",
+                FlextInfraUtilitiesDocsRender.docs_directive_page(
+                    module_name, module_name
+                ),
+            ))
+        return rendered
+
+    @staticmethod
     def docs_project_artifacts(
         scope: m.Infra.DocScope,
         *,
@@ -92,30 +121,13 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
                 ),
             ),
             (
-                scope.path / "docs/api-reference/generated/modules/index.md",
-                FlextInfraUtilitiesDocsRender.docs_modules_index(scope, module_names),
-            ),
-            (
                 scope.path / "docs/api-reference/generated/overview.md",
                 FlextInfraUtilitiesDocsRender.docs_overview_page(scope, contract),
             ),
-            (
-                scope.path / "docs/api-reference/generated/public-api.md",
-                FlextInfraUtilitiesDocsRender.docs_directive_page(
-                    f"{scope.name} Public API", scope.package_name
-                ),
+            *FlextInfraUtilitiesDocsGenerateProjectMixin.docs_project_api_artifacts(
+                scope
             ),
         ]
-        for module_name in module_names:
-            relative = module_name.removeprefix(f"{scope.package_name}.").replace(
-                ".", "/"
-            )
-            rendered.append((
-                scope.path / "docs/api-reference/generated/modules" / f"{relative}.md",
-                FlextInfraUtilitiesDocsRender.docs_directive_page(
-                    module_name, module_name
-                ),
-            ))
         pruned = (
             FlextInfraUtilitiesDocsGenerateProjectMixin._prune_generated_tree_artifacts(
                 scope.path, scope.path / "docs/api-reference/generated", rendered

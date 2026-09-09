@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from flext_cli import u
+from markdown.extensions.toc import slugify
 
 from flext_core import r
 from flext_infra.constants import c
@@ -97,14 +97,8 @@ class FlextInfraUtilitiesDocsContract:
 
     @staticmethod
     def docs_anchorize(text: str) -> str:
-        """Convert a heading title to a GitHub-compatible anchor slug."""
-        normalized: str = u.norm_str(text, case="lower")
-        alnum_only: str = c.Infra.ANCHOR_NON_ALNUM_RE.sub("", normalized)
-        collapsed_whitespace: str = c.Infra.ANCHOR_WHITESPACE_RE.sub("-", alnum_only)
-        slug: str = c.Infra.ANCHOR_DASH_COLLAPSE_RE.sub(
-            "-", collapsed_whitespace
-        ).strip("-")
-        return slug
+        """Use the Python-Markdown anchor algorithm consumed by MkDocs."""
+        return slugify(text, "-")
 
     @staticmethod
     def docs_build_toc(content: str) -> str:

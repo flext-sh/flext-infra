@@ -127,11 +127,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         if not u.Cli.process_succeeded(result.outcome) and not issues:
             issues.append(
                 self._command_error_issue(
-                    result,
-                    tool=c.Infra.RUMDL,
-                    file=str(project_dir),
-                    line=1,
-                    column=1,
+                    result, tool=c.Infra.RUMDL, file=str(project_dir), line=1, column=1
                 )
             )
         return u.Cli.process_succeeded(result.outcome), issues

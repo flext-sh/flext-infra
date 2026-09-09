@@ -27,6 +27,7 @@ class FlextInfraGate:
     check_module_command_suffix: ClassVar[t.StrSequence] = ()
     # Name of the external scanner a gate provisions on PATH, when it uses one.
     scanner_binary: ClassVar[str] = ""
+    checker_info_prefixes: ClassVar[t.StrSequence] = ()
 
     def __init__(
         self, repository_root: Path, *, runner: p.Cli.CommandRunner | None = None
@@ -101,6 +102,8 @@ class FlextInfraGate:
             env=self._check_env(project_dir, ctx),
             remove_env_keys=self._check_remove_env_keys(project_dir, ctx),
         )
+        if u.Cli.process_succeeded(result.outcome):
+            self._validate_check_report(project_dir, ctx, targets)
         return self._parsed_gate_execution(project_dir, ctx, result, started)
 
     @classmethod
@@ -121,12 +124,7 @@ class FlextInfraGate:
 
     @staticmethod
     def _command_error_issue(
-        result: p.Cli.CommandOutput,
-        *,
-        tool: str,
-        file: str,
-        line: int,
-        column: int,
+        result: p.Cli.CommandOutput, *, tool: str, file: str, line: int, column: int
     ) -> m.Infra.Issue:
         """Report an unsuccessful command that supplied no structured issues."""
         detail = (result.stderr or result.stdout).strip() or "no diagnostics"
@@ -142,7 +140,7 @@ class FlextInfraGate:
     def _checker_stderr_issues(
         self, result: p.Cli.CommandOutput, project_dir: Path
     ) -> t.SequenceOf[m.Infra.Issue]:
-        """Retain checker failures while allowing explicitly INFO-level log lines."""
+        """Retain checker failures while accounting for native informational logs."""
         return tuple(
             m.Infra.Issue(
                 file=str(project_dir),
@@ -153,7 +151,8 @@ class FlextInfraGate:
                 severity="ERROR",
             )
             for line in result.stderr.splitlines()
-            if line.strip() and line.lstrip().partition(" ")[0] != "INFO"
+            if line.strip()
+            and line.lstrip().split(maxsplit=1)[0] not in self.checker_info_prefixes
         )
 
     def _parsed_gate_execution(
@@ -336,6 +335,12 @@ class FlextInfraGate:
         _ = project_dir, ctx
         return None
 
+    def _validate_check_report(
+        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
+    ) -> None:
+        """Validate native execution evidence against the exact submitted targets."""
+        _ = project_dir, ctx, targets
+
     def _check_env(
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrMapping | None:
@@ -457,9 +462,15 @@ class FlextInfraGate:
         return out
 
     def _skip_result(self, project_dir: Path, started: float) -> m.Infra.GateExecution:
-        """Skip result."""
+        """A selected gate with no inputs did not establish acceptance."""
+        message = f"{self.gate_id}: no check targets were collected"
         return self._build_check_gate_execution(
-            project_dir, passed=True, issues=(), raw_output="", started=started
+            project_dir,
+            passed=False,
+            issues=(),
+            errors=(message,),
+            raw_output=message,
+            started=started,
         )
 
 

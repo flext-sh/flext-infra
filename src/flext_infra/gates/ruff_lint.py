@@ -48,15 +48,10 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Build the explicit Ruff fix command."""
         _ = project_dir
-        return self._lint_command(
-            ctx, targets, config.Infra.codegen.make.ruff.lint_fix
-        )
+        return self._lint_command(ctx, targets, config.Infra.codegen.make.ruff.lint_fix)
 
     def _lint_command(
-        self,
-        ctx: m.Infra.GateContext,
-        targets: t.StrSequence,
-        mode_args: t.StrSequence,
+        self, ctx: m.Infra.GateContext, targets: t.StrSequence, mode_args: t.StrSequence
     ) -> t.StrSequence:
         """Keep check and fix on the same Ruff lint invocation contract."""
         return self._python_module_command(

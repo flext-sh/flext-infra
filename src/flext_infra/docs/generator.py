@@ -33,13 +33,13 @@ class FlextInfraDocGenerator(
         if planned.failure:
             return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(planned)
         reports: list[m.Infra.DocsPhaseReport] = []
-        repository_root = prepared.value.scopes[0].scope.path
+        root_scope = prepared.value.scopes[0].scope
         for scope, plans in planned.value:
             changed = tuple(
                 plan for plan in plans if u.Infra.codegen_file_requires_effect(plan)
             )
             collocated = self._is_collocated_workspace_project(
-                scope, repository_root=repository_root
+                scope, root_scope=root_scope
             )
             report = m.Infra.DocsPhaseReport(
                 phase="generate",

@@ -21,6 +21,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.PYREFLY
     gate_name: ClassVar[str] = "Pyrefly"
     can_fix: ClassVar[bool] = False
+    checker_info_prefixes: ClassVar[t.StrSequence] = ("INFO",)
 
     @override
     def _get_check_dirs(
@@ -47,15 +48,15 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             sys.executable,
             "--output-format",
             c.Infra.OUTPUT_JSON,
+            "--min-severity",
+            "warn",
             "-o",
             str(json_file),
             "--summary=none",
         )
 
     @override
-    def _check_report_path(
-        self, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> Path:
+    def _check_report_path(self, project_dir: Path, ctx: m.Infra.GateContext) -> Path:
         """Use the existing native report owner, freshly replaced for every run."""
         return ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
 
@@ -73,6 +74,12 @@ class FlextInfraPyreflyGate(FlextInfraGate):
     ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
         json_file = self._check_report_path(project_dir, ctx)
+        if not u.Cli.process_succeeded(result.outcome) and not json_file.exists():
+            return False, (
+                self._command_error_issue(
+                    result, tool=c.Infra.PYREFLY, file=str(json_file), line=0, column=0
+                ),
+            )
         report = m.Infra.PyreflyReport.model_validate_json(
             json_file.read_text(encoding="utf-8"), strict=True
         )

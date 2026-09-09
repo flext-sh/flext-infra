@@ -54,7 +54,11 @@ def tool_config_document() -> m.Infra.ToolConfigDocument:
 def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
     """Provision a real isolated detector consumer through generated Make setup."""
     modules = t.Infra.STR_SEQ_ADAPTER.validate_python(request.param)
-    distributions = {"requests": "requests", "dateutil": "python-dateutil", "yaml": "pyyaml"}
+    distributions = {
+        "requests": "requests",
+        "dateutil": "python-dateutil",
+        "yaml": "pyyaml",
+    }
     dependencies = ", ".join(f'"{distributions[name]}"' for name in modules)
     root = u.Tests.mk_project(
         tmp_path,
@@ -64,11 +68,11 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
             '[build-system]\nrequires = ["hatchling"]\nbuild-backend = "hatchling.build"\n'
             '[project]\nname = "detector-fixture"\nversion = "0.1.0"\n'
             f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
-            f'dependencies = [{dependencies}]\n'
+            f"dependencies = [{dependencies}]\n"
             '[project.optional-dependencies]\nfeature = ["requests"]\n'
             '[dependency-groups]\ndev = ["deptry", "mypy", "pip", '
             f'"flext-infra @ {_PROJECT_ROOT.as_uri()}"]\n'
-            '[tool.mypy]\n'
+            "[tool.mypy]\n"
             '[tool.deptry]\npep621_dev_dependency_groups = ["dev"]\n'
         ),
     )
@@ -86,19 +90,33 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
         repository=repository,
         project=u.Tests.project_spec(root.name),
     )
-    conform_request = u.Tests.conform_request(root, what=c.Infra.CodegenConformSurface.MAKEFILE)
-    plan = tm.ok(FlextInfraCodegenConform(
-        repository_root=root, initial_workspace=workspace, request=conform_request
-    ).plan(conform_request))
-    makefile = next(item for item in plan.files if item.path.name == c.Infra.MAKEFILE_FILENAME)
-    tm.ok(u.Cli.atomic_write_text_file(root / c.Infra.MAKEFILE_FILENAME, u.Tests.codegen_file_text(makefile)))
-    tm.ok(infra.sync_environment_files(
-        m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=root, apply=True)
-    ))
+    conform_request = u.Tests.conform_request(
+        root, what=c.Infra.CodegenConformSurface.MAKEFILE
+    )
+    plan = tm.ok(
+        FlextInfraCodegenConform(
+            repository_root=root, initial_workspace=workspace, request=conform_request
+        ).plan(conform_request)
+    )
+    makefile = next(
+        item for item in plan.files if item.path.name == c.Infra.MAKEFILE_FILENAME
+    )
+    tm.ok(
+        u.Cli.atomic_write_text_file(
+            root / c.Infra.MAKEFILE_FILENAME, u.Tests.codegen_file_text(makefile)
+        )
+    )
+    tm.ok(
+        infra.sync_environment_files(
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=root, apply=True)
+        )
+    )
     setup = tm.ok(u.Tests.run_isolated_make(["setup", "APPLY=Y"], cwd=root))
     tm.that(u.Cli.process_succeeded(setup.outcome), eq=True, msg=setup.stderr)
     tm.that((root / c.Infra.VENV_BIN_REL / c.Infra.DEPTRY).is_file(), eq=True)
-    (root / "limits.toml").write_text("[typing_libraries]\nexclude = []\n", encoding="utf-8")
+    (root / "limits.toml").write_text(
+        "[typing_libraries]\nexclude = []\n", encoding="utf-8"
+    )
     return root
 
 

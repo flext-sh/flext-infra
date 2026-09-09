@@ -77,12 +77,7 @@ def test_auditor_cli_medium_finding_is_a_failure(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path)
     (workspace / "docs/README.md").write_text("Retired phrase\n", encoding="utf-8")
     payload: t.JsonDict = {"audit": {"forbidden_terms": ["Retired phrase"]}}
-    tm.ok(
-        u.Cli.json_write(
-            workspace / "docs/docs_config.json",
-            payload,
-        )
-    )
+    tm.ok(u.Cli.json_write(workspace / "docs/docs_config.json", payload))
     tm.that(main(["docs", "audit", "--repository-root", str(workspace)]), eq=1)
     markdown = (workspace / ".reports/docs/audit-report.md").read_text(encoding="utf-8")
     tm.that(markdown, has="forbidden_term")

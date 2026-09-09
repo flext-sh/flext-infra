@@ -18,7 +18,9 @@ class TestsFlextInfraInfraVersionCore:
     """Validate public package metadata against canonical public utilities."""
 
     def test_package_version_matches_project_metadata(self) -> None:
-        metadata = self._metadata()
+        metadata = tm.ok(
+            u.Infra.read_project_metadata_result(Path(__file__).resolve().parents[2])
+        )
 
         tm.that(infra_pkg.__version__, eq=metadata.project.version)
 

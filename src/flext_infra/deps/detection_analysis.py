@@ -140,7 +140,11 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
             current=current,
             to_add=sorted(required_set - current_set),
             to_remove=sorted(
-                set(self.get_current_typings_from_pyproject(project_path, include_dev=False))
+                set(
+                    self.get_current_typings_from_pyproject(
+                        project_path, include_dev=False
+                    )
+                )
                 - required_set
             ),
             limits_applied=bool(limits),

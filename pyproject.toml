@@ -25,6 +25,7 @@ dependencies = [
   "gitpython>=3.1.61",
   "jinja2>=3.1.6",
   "libcst>=1.9.0",
+  "markdown",
   "packaging>=26.3",
   "pydantic>=2.13.4",
   "pydantic-settings>=2.15.0",

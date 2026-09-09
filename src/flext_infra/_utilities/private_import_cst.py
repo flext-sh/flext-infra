@@ -55,9 +55,14 @@ class FlextInfraUtilitiesPrivateImportCst:
                         name=cst.Name(public_name), asname=asname
                     )
                     destination_module = cst.parse_expression(public_module)
-                statements.append(updated_node.with_changes(
-                    module=destination_module, names=(replacement,), lpar=(), rpar=()
-                ))
+                statements.append(
+                    updated_node.with_changes(
+                        module=destination_module,
+                        names=(replacement,),
+                        lpar=(),
+                        rpar=(),
+                    )
+                )
             return cst.FlattenSentinel(statements)
 
     @classmethod

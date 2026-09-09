@@ -52,24 +52,35 @@ class TestsFlextInfraCodegenPyprojectConform:
         live = (
             '[project]\nname = "workspace"\nversion = "1.2.3"\n'
             'description = "custom project"\ndependencies = []\n'
-            '[project.optional-dependencies]\n'
+            "[project.optional-dependencies]\n"
             'typings = ["types-requests>=2.0"]\nfeature = ["requests"]\n'
         )
         rendered = '[project]\nname = "workspace"\nversion = "0.0.0"\n'
         overlaid = tm.ok(u.Infra.overlay_preserved(rendered, live))
-        conformed = tm.ok(u.Infra.pyproject_conform(
-            overlaid, providers=config.Infra.codegen.providers, workspace=_workspace(),
-            workspace_mode=c.Infra.MakeProfile.WORKSPACE,
-            toolchain=config.Infra.codegen.toolchain,
-            required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
-        ))
+        conformed = tm.ok(
+            u.Infra.pyproject_conform(
+                overlaid,
+                providers=config.Infra.codegen.providers,
+                workspace=_workspace(),
+                workspace_mode=c.Infra.MakeProfile.WORKSPACE,
+                toolchain=config.Infra.codegen.toolchain,
+                required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
+            )
+        )
         original = test_u.Tests.toml_mapping(test_u.Tests.toml_payload(live)["project"])
-        project = test_u.Tests.toml_mapping(test_u.Tests.toml_payload(conformed)["project"])
+        project = test_u.Tests.toml_mapping(
+            test_u.Tests.toml_payload(conformed)["project"]
+        )
         tm.that(project["optional-dependencies"], eq=original["optional-dependencies"])
         tm.that(project["version"], eq=original["version"])
         tm.that(project["description"], eq=original["description"])
         repeated = tm.ok(u.Infra.overlay_preserved(rendered, conformed))
-        tm.that(test_u.Tests.toml_mapping(test_u.Tests.toml_payload(repeated)["project"])["optional-dependencies"], eq=original["optional-dependencies"])
+        tm.that(
+            test_u.Tests.toml_mapping(test_u.Tests.toml_payload(repeated)["project"])[
+                "optional-dependencies"
+            ],
+            eq=original["optional-dependencies"],
+        )
 
     def test_repository_root_uses_workspace_provenance(self) -> None:
         workspace = _workspace()

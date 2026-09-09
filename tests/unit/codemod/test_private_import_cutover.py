@@ -13,9 +13,91 @@ from flext_infra import c, m, t, u
 class TestsFlextInfraPrivateImportCutover:
     """Exercise private-import automation only through ``u.Infra``."""
 
+    @pytest.mark.parametrize("case", ["unique", "ambiguous", "shadowed"])
+    def test_installed_facades_are_read_only_discovery_inputs(
+        self, tmp_path: Path, installed_dependency_path: Path, case: str
+    ) -> None:
+        consumer, statement, facade_sources = self._facade_case(
+            tmp_path, "constants", "profile", "Profile", "c"
+        )
+        package = installed_dependency_path / "flext_sample"
+        package.mkdir()
+        dependency_sources = {
+            package / path.name: source for path, source in facade_sources.items()
+        }
+        dependency_sources[package / "__init__.py"] = (
+            "raise RuntimeError('discovery must not execute dependency code')\n"
+        )
+        dependency_sources[package / "_constants/profile.py"] = (
+            "class FlextSampleConstantsProfile:\n    Value = str\n"
+        )
+        if case == "ambiguous":
+            dependency_sources[package / "other.py"] = self._facade_source(
+                private_module="flext_sample._constants.profile",
+                private_class="FlextSampleConstantsProfile",
+                root_class="OtherConstants",
+                nested_class="Other",
+                alias="c",
+            )
+        for path, source in dependency_sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(source, encoding="utf-8")
+        sources = {
+            consumer: f"{statement}\nprofile = FlextSampleConstantsProfile.Value\n"
+        }
+        if case == "shadowed":
+            sources[consumer] += "c = 1\n"
+        if case == "unique":
+            edits = self._plan(tmp_path, sources, consumer, statement)
+            tm.that(tuple(edit.file_path for edit in edits), eq=(consumer,))
+            tm.that(edits[0].updated_source, has="from flext_sample import c")
+            tm.that(edits[0].updated_source, has="profile = c.Profile.Value")
+        else:
+            with pytest.raises(ValueError, match=case):
+                self._plan(tmp_path, sources, consumer, statement)
+        for path, source in dependency_sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=source)
+        tm.that(tuple(sources), eq=(consumer,))
+
+    @pytest.mark.parametrize("root_export", [False, True])
+    def test_installed_declared_reexports_preserve_binding(
+        self, tmp_path: Path, installed_dependency_path: Path, *, root_export: bool
+    ) -> None:
+        consumer, statement, sources = self._declared_export_case(
+            tmp_path, package_import=True, root_export=root_export, renamed=True
+        )
+        consumer_sources = {consumer: sources.pop(consumer)}
+        dependency_sources = {
+            installed_dependency_path
+            / path.relative_to(tmp_path / "sample/src"): source
+            for path, source in sources.items()
+        }
+        package_init = installed_dependency_path / "sample/__init__.py"
+        dependency_sources[package_init] = dependency_sources.get(package_init, "") + (
+            "raise RuntimeError('discovery must not execute dependency code')\n"
+        )
+        for path, source in dependency_sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(source, encoding="utf-8")
+
+        edits = self._plan(tmp_path, consumer_sources, consumer, statement)
+
+        module = "sample" if root_export else "sample.api"
+        tm.that(tuple(edit.file_path for edit in edits), eq=(consumer,))
+        tm.that(
+            edits[0].updated_source,
+            has=f"from {module} import PublicClient as BoundClient",
+        )
+        tm.that(edits[0].updated_source, has="instance = BoundClient()")
+        for path, source in dependency_sources.items():
+            tm.that(path.read_text(encoding="utf-8"), eq=source)
+
     @staticmethod
     def _declared_export_case(
-        root: Path, *, package_import: bool = False, root_export: bool = False,
+        root: Path,
+        *,
+        package_import: bool = False,
+        root_export: bool = False,
         renamed: bool = False,
     ) -> tuple[Path, str, dict[Path, str]]:
         package = root / "sample/src/sample"
@@ -52,10 +134,12 @@ class TestsFlextInfraPrivateImportCutover:
     @pytest.mark.parametrize("root_export", [False, True])
     @pytest.mark.parametrize("renamed", [False, True])
     def test_declared_reexports_preserve_identity_binding_and_shadowing(
-        self, tmp_path: Path, package_import: bool, root_export: bool, renamed: bool
+        self, tmp_path: Path, *, package_import: bool, root_export: bool, renamed: bool
     ) -> None:
         consumer, statement, sources = self._declared_export_case(
-            tmp_path, package_import=package_import, root_export=root_export,
+            tmp_path,
+            package_import=package_import,
+            root_export=root_export,
             renamed=renamed,
         )
 
@@ -65,13 +149,17 @@ class TestsFlextInfraPrivateImportCutover:
         public_name = "PublicClient" if renamed else "Client"
         tm.that(updated, has=f"from {module} import {public_name} as BoundClient")
         tm.that(updated, has="instance = BoundClient()")
-        tm.that(updated, has="def local(BoundClient: str) -> str:\n    return BoundClient")
+        tm.that(
+            updated, has="def local(BoundClient: str) -> str:\n    return BoundClient"
+        )
         tm.that(updated, lacks=statement)
 
     def test_declared_reexport_rename_keeps_an_unaliased_consumer_binding(
         self, tmp_path: Path
     ) -> None:
-        consumer, statement, sources = self._declared_export_case(tmp_path, renamed=True)
+        consumer, statement, sources = self._declared_export_case(
+            tmp_path, renamed=True
+        )
         unaliased = statement.replace(" as BoundClient", "")
         sources[consumer] = f"{unaliased}\ninstance = Client()\n"
 
@@ -80,7 +168,9 @@ class TestsFlextInfraPrivateImportCutover:
         tm.that(updated, has="from sample.api import PublicClient as Client")
         tm.that(updated, has="instance = Client()")
 
-    def test_declared_reexport_retains_type_checking_boundary(self, tmp_path: Path) -> None:
+    def test_declared_reexport_retains_type_checking_boundary(
+        self, tmp_path: Path
+    ) -> None:
         consumer, statement, sources = self._declared_export_case(tmp_path)
         sources[consumer] = (
             "from __future__ import annotations\nfrom typing import TYPE_CHECKING\n"
@@ -89,7 +179,10 @@ class TestsFlextInfraPrivateImportCutover:
 
         updated = self._updated_source(tmp_path, sources, consumer, statement)
 
-        tm.that(updated, has="if TYPE_CHECKING:\n    from sample.api import Client as BoundClient")
+        tm.that(
+            updated,
+            has="if TYPE_CHECKING:\n    from sample.api import Client as BoundClient",
+        )
         tm.that(updated, has="value: BoundClient")
 
     def test_unrelated_export_cycle_does_not_block_a_proven_public_import(
@@ -97,12 +190,8 @@ class TestsFlextInfraPrivateImportCutover:
     ) -> None:
         consumer, statement, sources = self._declared_export_case(tmp_path)
         package = tmp_path / "sample/src/sample"
-        sources[package / "left.py"] = (
-            "from .right import Loop\n__all__ = ('Loop',)\n"
-        )
-        sources[package / "right.py"] = (
-            "from .left import Loop\n__all__ = ('Loop',)\n"
-        )
+        sources[package / "left.py"] = "from .right import Loop\n__all__ = ('Loop',)\n"
+        sources[package / "right.py"] = "from .left import Loop\n__all__ = ('Loop',)\n"
 
         updated = self._updated_source(tmp_path, sources, consumer, statement)
 
@@ -117,12 +206,18 @@ class TestsFlextInfraPrivateImportCutover:
         if case == "unexposed":
             sources[package / "api.py"] = "from ._private.client import Client\n"
         elif case == "homonym":
-            sources[package / "api.py"] = "class Client:\n    pass\n__all__ = ('Client',)\n"
+            sources[package / "api.py"] = (
+                "class Client:\n    pass\n__all__ = ('Client',)\n"
+            )
         elif case == "ambiguous":
             sources[package / "other.py"] = sources[package / "api.py"]
         else:
             sources[package / "api.py"] += "Client = object\n"
-        expected = "no public facade exposes" if case in {"unexposed", "homonym"} else "ambiguous"
+        expected = (
+            "no public facade exposes"
+            if case in {"unexposed", "homonym"}
+            else "ambiguous"
+        )
 
         with pytest.raises(ValueError, match=expected):
             self._plan(tmp_path, sources, consumer, statement)

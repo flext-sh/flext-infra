@@ -21,6 +21,20 @@ pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
 
 
 @pytest.fixture
+def installed_dependency_path(tmp_path: Path) -> Iterator[Path]:
+    """Expose real non-src package files through the selected import environment."""
+    location = tmp_path / "installed"
+    location.mkdir()
+    sys.path.insert(0, str(location))
+    importlib.invalidate_caches()
+    try:
+        yield location
+    finally:
+        sys.path.remove(str(location))
+        importlib.invalidate_caches()
+
+
+@pytest.fixture
 def isolate_github_trigger_sha() -> Iterator[None]:
     """Remove the outer checkout identity for explicit conform test consumers."""
     with u.Tests.env_vars_context(vars_to_clear=(c.Infra.ENV_VAR_GITHUB_SHA,)):

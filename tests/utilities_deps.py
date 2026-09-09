@@ -19,19 +19,32 @@ class TestsFlextInfraUtilitiesDepsMixin:
 
     @staticmethod
     def run_real_detector(
-        root: Path, *arguments: str, env: t.StrMapping | None = None,
+        root: Path,
+        *arguments: str,
+        env: t.StrMapping | None = None,
         repository_root: Path | None = None,
     ) -> p.Result[p.Cli.CommandOutput]:
         """Run the public detector in its provisioned interpreter, without overrides."""
         runtime = root / Path(c.Infra.VENV_BIN_REL).parent
-        environment = {"UV_PROJECT_ENVIRONMENT": str(runtime), "VIRTUAL_ENV": str(runtime)}
+        environment = {
+            "UV_PROJECT_ENVIRONMENT": str(runtime),
+            "VIRTUAL_ENV": str(runtime),
+        }
         if env is not None:
             environment.update(env)
         return u.Cli.run_raw(
-            [str(runtime / "bin" / "python"), "-m", "flext_infra", "deps", "detect",
-             "--repository-root", str(repository_root if repository_root is not None else root),
-             "--limits", str(root / "limits.toml"),
-             *arguments],
+            [
+                str(runtime / "bin" / "python"),
+                "-m",
+                "flext_infra",
+                "deps",
+                "detect",
+                "--repository-root",
+                str(repository_root if repository_root is not None else root),
+                "--limits",
+                str(root / "limits.toml"),
+                *arguments,
+            ],
             cwd=root,
             env=environment,
         )

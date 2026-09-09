@@ -72,6 +72,16 @@ class FlextInfraPyrightGate(FlextInfraGate):
     ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
         _ = ctx
+        if not u.Cli.process_succeeded(result.outcome) and not result.stdout.strip():
+            return False, (
+                self._command_error_issue(
+                    result,
+                    tool=c.Infra.PYRIGHT,
+                    file=str(project_dir),
+                    line=0,
+                    column=0,
+                ),
+            )
         report = m.Infra.PyrightReport.model_validate_json(result.stdout, strict=True)
         issues: t.MutableSequenceOf[m.Infra.Issue] = [
             m.Infra.Issue(

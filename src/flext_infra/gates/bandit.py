@@ -49,11 +49,7 @@ class FlextInfraBanditGate(FlextInfraGate):
         if not u.Cli.process_succeeded(result.outcome) and not result.stdout.strip():
             issues.append(
                 self._command_error_issue(
-                    result,
-                    tool=c.Infra.BANDIT,
-                    file="<bandit>",
-                    line=0,
-                    column=0,
+                    result, tool=c.Infra.BANDIT, file="<bandit>", line=0, column=0
                 )
             )
             return False, issues
@@ -80,11 +76,7 @@ class FlextInfraBanditGate(FlextInfraGate):
         if not issues and not u.Cli.process_succeeded(result.outcome):
             issues.append(
                 self._command_error_issue(
-                    result,
-                    tool=c.Infra.BANDIT,
-                    file="<bandit>",
-                    line=0,
-                    column=0,
+                    result, tool=c.Infra.BANDIT, file="<bandit>", line=0, column=0
                 )
             )
         return u.Cli.process_succeeded(result.outcome), issues

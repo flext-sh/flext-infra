@@ -107,7 +107,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
 
     @staticmethod
     def anchorize(text: str) -> str:
-        """Convert a heading title to a GitHub-compatible anchor slug."""
+        """Convert heading text to the anchor consumed by MkDocs."""
         return FlextInfraUtilitiesDocsContract.docs_anchorize(text)
 
     @staticmethod

@@ -132,9 +132,12 @@ class FlextInfraUtilitiesPrivateImports:
         findings: t.SequenceOf[m.Infra.ModScanFinding],
     ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Plan owner-aware relative and binding-aware public import rewrites."""
-        facades = FlextInfraUtilitiesPrivateImportFacades.discover(sources)
+        discovery_sources = FlextInfraUtilitiesPrivateImportFacades.source_modules(
+            sources, tuple(finding.text for finding in findings)
+        )
+        facades = FlextInfraUtilitiesPrivateImportFacades.discover(discovery_sources)
         export_bindings, declared_exports = (
-            FlextInfraUtilitiesPrivateImportFacades.declared_exports(sources)
+            FlextInfraUtilitiesPrivateImportFacades.declared_exports(discovery_sources)
         )
         direct_specs: dict[Path, dict[str, tuple[str, str]]] = {}
         specs: dict[Path, list[tuple[str, str, str, str, str]]] = {}
@@ -162,10 +165,8 @@ class FlextInfraUtilitiesPrivateImports:
                 qualified = f"{private_module}.{imported.name}"
                 target_reference = relative_module
                 if target_reference is None:
-                    declared = (
-                        FlextInfraUtilitiesPrivateImportFacades.declared_public_reference(
-                            qualified, export_bindings, declared_exports
-                        )
+                    declared = FlextInfraUtilitiesPrivateImportFacades.declared_public_reference(
+                        qualified, export_bindings, declared_exports
                     )
                     if declared is not None:
                         direct_specs.setdefault(file_path, {})[qualified] = declared
@@ -310,7 +311,9 @@ class FlextInfraUtilitiesPrivateImports:
                     | obsolete_imports.get(module, set())
                     | direct_removals.get(module, set())
                     for module in (
-                        removals.keys() | obsolete_imports.keys() | direct_removals.keys()
+                        removals.keys()
+                        | obsolete_imports.keys()
+                        | direct_removals.keys()
                     )
                 },
                 replacements=replacements,

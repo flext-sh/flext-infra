@@ -966,9 +966,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 project[key] = live_project[key]
         merged[c.Infra.PROJECT] = project
         # Preserve project dev additions before conformance reapplies fleet floors.
-        groups = dict(
-            u.Cli.toml_mapping_child(merged, c.Infra.DEPENDENCY_GROUPS) or {}
-        )
+        groups = dict(u.Cli.toml_mapping_child(merged, c.Infra.DEPENDENCY_GROUPS) or {})
         live_groups = (
             u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
         )

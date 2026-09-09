@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
+from markdown import Markdown
 
 from tests import m, u
 
@@ -16,6 +18,23 @@ def test_anchorize_normalizes_headings() -> None:
     tm.that(u.Infra.anchorize("Hello World"), eq="hello-world")
     tm.that(u.Infra.anchorize("Test-Case"), eq="test-case")
     tm.that(u.Infra.anchorize(""), eq="")
+
+
+@pytest.mark.parametrize(
+    "heading",
+    [
+        "Contrato p\u00fablico",
+        "Composi\u00e7\u00e3o de servi\u00e7os",
+        "\u017dlut\u00fd k\u016f\u0148",
+        "Test--Case",
+    ],
+)
+def test_anchorize_matches_rendered_markdown(heading: str) -> None:
+    """Generated links target the renderer's real Unicode-normalized heading ID."""
+    rendered = Markdown(extensions=["toc"]).convert(f"## {heading}")
+    anchor = u.Infra.anchorize(heading)
+    tm.that(rendered, has=f'id="{anchor}"')
+    tm.that(u.Infra.build_toc(f"# API\n\n## {heading}\n"), has=f"](#{anchor})")
 
 
 def test_anchorize_keeps_underscores_like_python_markdown() -> None:
