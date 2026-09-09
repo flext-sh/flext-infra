@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -187,6 +188,29 @@ class TestCodegenCiMatrix:
         steps_index = workflow.index("    steps:")
         setup_index = workflow.index("run: CI=Y make setup")
         tm.that(steps_index < setup_index, eq=True)
+
+    def test_rendered_workflow_python_commands_compile(self, tmp_path: Path) -> None:
+        """YAML block indentation must preserve executable Python command bodies."""
+        root = self._render_project(tmp_path / "external")
+        workflow = root / ".github" / "workflows" / "ci.yml"
+        document = u.Cli.yaml_load_mapping(workflow)
+        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(document["jobs"])
+        compiled = 0
+        for raw_job in jobs.values():
+            job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_job)
+            steps = job["steps"]
+            if not isinstance(steps, list):
+                msg = "workflow job steps must be a sequence"
+                raise TypeError(msg)
+            for raw_step in steps:
+                step = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_step)
+                script = step.get("run")
+                if not isinstance(script, str):
+                    continue
+                for source in re.findall(r"python3 -c '([^']*)'", script):
+                    compile(source, str(workflow), "exec")
+                    compiled += 1
+        tm.that(compiled, gt=0)
 
     def test_rendered_pre_commit_uses_typed_hook_contexts(self, tmp_path: Path) -> None:
         """The generated staged hooks render the configured workflow partitions."""
@@ -383,7 +407,7 @@ class TestCodegenCiMatrix:
             u.Cli.run_checked([
                 "git",
                 "-C",
-                root,
+                str(root),
                 "update-ref",
                 f"refs/remotes/{c.Infra.GIT_ORIGIN}/{provider.branch}",
                 c.Infra.GIT_HEAD,

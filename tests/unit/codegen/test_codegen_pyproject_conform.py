@@ -399,7 +399,7 @@ skips = ["B101"]
             return
         tm.that(project["dependencies"], eq=live_project["dependencies"])
         tm.that(tm.ok(u.Infra.overlay_preserved(rendered, first)), eq=first)
-        tm.that("flext-dev" in project["scripts"], eq=True)
+        tm.that("flext-dev" in test_u.Tests.toml_mapping(project["scripts"]), eq=True)
         tool = u.Cli.toml_mapping_child(document, "tool")
         tm.that(tool, none=False)
         if tool is None:

@@ -85,7 +85,32 @@ class FlextInfraRefactorCensusObjectsMixin:
             and item.references_count == 0
             and not item.name.startswith("_")
             and not FlextInfraRefactorCensusObjectsMixin._is_pytest_entry_point(item)
+            and not FlextInfraRefactorCensusObjectsMixin._is_published_export(item)
         )
+
+    @staticmethod
+    def _is_published_export(item: m.Infra.Census.Object) -> bool:
+        """Keep package ABI bindings even when Rope sees only typing imports."""
+        if item.scope_path != item.name:
+            return False
+        package_name = item.module_name.rpartition(".")[0]
+        package_dir = Path(item.file_path).parent
+        while package_name:
+            init_path = package_dir / c.Infra.INIT_PY
+            if init_path.is_file():
+                source = init_path.read_text(encoding="utf-8")
+                for export_name in u.Infra.public_export_names_source(source):
+                    module_name, original_name = u.Infra.imported_symbol_binding_source(
+                        source,
+                        current_module=package_name,
+                        symbol_name=export_name,
+                        package_module=True,
+                    )
+                    if module_name == item.module_name and original_name == item.name:
+                        return True
+            package_name = package_name.rpartition(".")[0]
+            package_dir = package_dir.parent
+        return False
 
     @staticmethod
     def _is_pytest_entry_point(item: m.Infra.Census.Object) -> bool:
@@ -166,7 +191,7 @@ class FlextInfraRefactorCensusObjectsMixin:
 
     @staticmethod
     def _append_impact_change(
-        changes_by_file: t.MappingKV[Path, t.SequenceOf[str]],
+        changes_by_file: t.MappingKV[Path, t.MutableSequenceOf[str]],
         file_path: Path,
         change: str,
     ) -> None:

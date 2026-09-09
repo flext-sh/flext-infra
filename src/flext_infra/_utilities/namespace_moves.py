@@ -21,6 +21,7 @@ from .rope_core import FlextInfraUtilitiesRopeCore
 from .rope_imports import FlextInfraUtilitiesRopeImports
 from .rope_runtime import FlextInfraUtilitiesRopeRuntime
 from .rope_source import FlextInfraUtilitiesRopeSource
+from .transformer_header import FlextInfraUtilitiesTransformerHeader
 
 
 class FlextInfraUtilitiesRefactorNamespaceMoves:
@@ -739,7 +740,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             )
             # Why: u here is flext_cli's plain facade (no nested Infra); call
             # the owning class directly, matching the sibling Rope* calls.
-            if not u.Infra.alias_locally_bound(target_source, bound)
+            if not FlextInfraUtilitiesTransformerHeader.alias_locally_bound(
+                target_source, bound
+            )
         ]
         if not kept:
             return ""

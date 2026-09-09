@@ -424,11 +424,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def mise_version(self) -> str:
-            """Exact mise binary version."""
-            ...
-
-        @property
         def suspended_mise_selector_patterns(self) -> t.StrSequence:
             """Selector families rejected while their capabilities are suspended."""
             ...

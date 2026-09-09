@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Final, override
+from typing import Final
 
 from flext_infra import c, config, t
 
@@ -50,7 +50,6 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             "--no-cov",
         )
 
-    @override
     def build_command(
         self,
         report_dir: Path,

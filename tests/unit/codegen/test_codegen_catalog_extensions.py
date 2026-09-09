@@ -112,7 +112,8 @@ class TestsCodegenCatalogExtensions:
         tm.that(bootstrap, lacks="self-update")
         tm.that("mise launcher version mismatch" in bootstrap, eq=False)
         verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
-        tm.that("conform" in verb_names, eq=False)
+        tm.that(verb_names, has="setup")
+        tm.that(verb_names, has="gen")
 
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(

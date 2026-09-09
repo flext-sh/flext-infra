@@ -183,7 +183,7 @@ def mod_workspace(tmp_path: Path) -> Path:
             "u.Infra.serialization_lock_execute(paths, timeout)\n",
         )
     )
-    package_dir = workspace / "src" / str(project.project.name).replace("-", "_")
+    package_dir = workspace / "src" / project.project.name.replace("-", "_")
     tm.ok(u.Cli.ensure_dir(package_dir))
     tm.ok(
         u.Cli.atomic_write_text_file(

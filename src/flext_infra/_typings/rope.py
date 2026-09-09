@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from ast import Import, ImportFrom
 from collections.abc import Callable
 
 from flext_core import t
@@ -15,6 +16,8 @@ from .._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
 
 class FlextInfraTypesRope:
     """Rope type aliases — accessed via t.Infra.*."""
+
+    type PythonImportNode = Import | ImportFrom
 
     type RopeProject = FlextInfraProtocolsRopeRuntime.RopeProject
     type RopeResource = FlextInfraProtocolsRopeRuntime.RopeResource

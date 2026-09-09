@@ -68,7 +68,7 @@ class FlextInfraRefactorLazyImportFixer(FlextInfraRopeTransformer):
         stripped_line: str,
         line: str,
         body_indent: int,
-        scan_state: t.Pair[set[str], t.SequenceOf[str]],
+        scan_state: t.Pair[set[str], t.MutableSequenceOf[str]],
     ) -> t.Pair[bool, bool]:
         """Process one line inside a body and return (consumed, still_in_body)."""
         existing_imports, hoisted = scan_state

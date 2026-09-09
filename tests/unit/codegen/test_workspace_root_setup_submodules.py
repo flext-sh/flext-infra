@@ -19,7 +19,7 @@ pytestmark = pytest.mark.slow
 
 def _git_stdout(repository: Path, *args: str) -> str:
     process = tm.ok(u.Cli.run_raw([c.Infra.GIT, *args], cwd=repository))
-    tm.that(process.outcome.raw_return_code, eq=0)
+    tm.that(u.Cli.process_succeeded(process.outcome), eq=True)
     return process.stdout.strip()
 
 
@@ -179,7 +179,7 @@ class TestsWorkspaceRootSetupSubmodules:
             start = rendered.index("_builtin_setup_environment:")
             excerpt = rendered[start : rendered.index("_builtin_deps_check:", start)]
             pytest.fail(f"{process.stdout}{process.stderr}\n{excerpt}")
-        tm.that(process.outcome.raw_return_code, eq=0)
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=True)
         tm.that(process.stdout + process.stderr, has="Submodule path 'flext-core'")
         tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
         child = workspace / "flext-core"
@@ -188,7 +188,7 @@ class TestsWorkspaceRootSetupSubmodules:
         tm.that(state, eq=("", gitlink))
 
         second = _run_setup(workspace, env)
-        tm.that(second.outcome.raw_return_code, eq=0)
+        tm.that(u.Cli.process_succeeded(second.outcome), eq=True)
         tm.that(_git_state(child), eq=state)
         tm.ok(u.Cli.run_checked([c.Infra.GIT, "switch", "-c", "conflict"], cwd=child))
         process = _run_setup(workspace, env)
@@ -196,7 +196,7 @@ class TestsWorkspaceRootSetupSubmodules:
         # A present checkout on its own named change lane is validated, never
         # repaired: containment of the recorded gitlink is the boundary, so the
         # branch name is preserved untouched by a green setup.
-        tm.that(process.outcome.raw_return_code, eq=0)
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=True)
         tm.that(_git_state(child), eq=("conflict", state[1]))
 
     def test_unexpected_git_probe_failure_preserves_cause(self, tmp_path: Path) -> None:

@@ -610,6 +610,7 @@ class TestsFlextInfraRefactorMainCli:
         )
         test_file = workspace / "tests" / "test_operations.py"
 
+        self._assert_no_unused_functions(workspace)
         self._apply_census(workspace, rules="unused", kinds="function")
 
         init_source = init_path.read_text(encoding="utf-8")
@@ -631,6 +632,22 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(_parse_source_ast(test_source), none=False)
 
         self._assert_no_unused_functions(workspace)
+
+        probe = tm.ok(
+            u.Cli.run(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "import sample_pkg; "
+                        "print(sample_pkg.only_for_tests(1)); "
+                        "print(sample_pkg.helper_used(2))"
+                    ),
+                ],
+                cwd=workspace / "src",
+            )
+        )
+        tm.that(probe.stdout.splitlines(), eq=["2", "4"])
 
     def test_refactor_census_apply_removes_decorated_unused_function(
         self, tmp_path: Path

@@ -54,7 +54,11 @@ def _assert_direct_source(rendered: str, ref: m.Infra.RepositoryRef) -> None:
     tm.that(dependencies, eq=(_inline_requirement(ref),))
     parsed = tu.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
     tool = parsed.get("tool")
-    uv_sources = tu.Tests.toml_mapping(tool.get("uv")).get("sources") if tool else None
+    uv_sources = (
+        tu.Tests.toml_mapping(tu.Tests.toml_mapping(tool).get("uv")).get("sources")
+        if tool
+        else None
+    )
     tm.that(not uv_sources, eq=True)
 
 
@@ -85,11 +89,10 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         group = tu.Tests.toml_strings_at(rendered, "dependency-groups", "workspace")
         runtime = tu.Tests.toml_strings_at(rendered, "project", "dependencies")
-        sources = tu.Tests.toml_mapping(
-            tu.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))["tool"]["uv"][
-                "sources"
-            ]
-        )
+        parsed = tu.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
+        tool = tu.Tests.toml_mapping(parsed["tool"])
+        uv = tu.Tests.toml_mapping(tool["uv"])
+        sources = tu.Tests.toml_mapping(uv["sources"])
 
         tm.that(group, eq=("flext-core",))
         tm.that(runtime, eq=("flext-core",))
@@ -287,7 +290,9 @@ workspace = true
         parsed = tu.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
         tool = parsed.get("tool")
         uv_sources = (
-            tu.Tests.toml_mapping(tool.get("uv")).get("sources") if tool else None
+            tu.Tests.toml_mapping(tu.Tests.toml_mapping(tool).get("uv")).get("sources")
+            if tool
+            else None
         )
 
         tm.that(group, eq=(_inline_requirement(core),))

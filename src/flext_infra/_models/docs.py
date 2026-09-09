@@ -180,19 +180,14 @@ class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContra
         )
 
     class AuditScopeParams(m.ContractModel):
-        """Bundled parameters for a single audit scope run."""
+        """Audit checks and an additional coverage floor; every finding fails."""
 
         check: Annotated[str, m.Field(description="Comma-separated checks")] = "all"
-        strict: Annotated[bool, m.Field(description="Strict mode")] = True
         docstring_min: Annotated[
             float | None,
             m.Field(
                 description="Minimum docstring coverage percent; breach fails the scope"
             ),
-        ] = None
-        budgets: Annotated[
-            t.Pair[int | None, t.IntMapping] | None,
-            m.Field(description="Budget tuple (default, by_scope)"),
         ] = None
 
     class DocsPhaseReport(m.ContractModel):

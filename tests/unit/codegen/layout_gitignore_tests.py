@@ -42,7 +42,6 @@ def test_apply_adds_gitignore_entries_exactly_once(tmp_path: Path) -> None:
 def test_apply_uses_git_mv_for_tracked_files(tmp_path: Path) -> None:
     """Tracked sources move through git so history follows the rename."""
     project = build_loose_project(tmp_path)
-    u.Tests.initialize_git_repo(project)
     engine = layout_engine(tmp_path, apply_changes=True)
 
     result = engine.execute()

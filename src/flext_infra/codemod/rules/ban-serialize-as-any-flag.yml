@@ -16,11 +16,16 @@ ignores:
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
 rule:
-  any:
-    - pattern: $$$OBJ.model_dump($$$BEFORE, serialize_as_any = true, $$$AFTER)
-    - pattern: $$$OBJ.model_dump_json($$$BEFORE, serialize_as_any = true, $$$AFTER)
-    - pattern: $$$OBJ.dump_python($$$BEFORE, serialize_as_any = true, $$$AFTER)
-    - pattern: $$$OBJ.dump_json($$$BEFORE, serialize_as_any = true, $$$AFTER)
+  kind: keyword_argument
+  regex: '^serialize_as_any\s*=\s*True$'
+  inside:
+    kind: argument_list
+    inside:
+      any:
+        - pattern: $OBJ.model_dump($$$ARGS)
+        - pattern: $OBJ.model_dump_json($$$ARGS)
+        - pattern: $OBJ.dump_python($$$ARGS)
+        - pattern: $OBJ.dump_json($$$ARGS)
 message: >-
   The `serialize_as_any=True` call flag applies to every value. Use
   `polymorphic_serialization=True` for model subclasses or the per-field

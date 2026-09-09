@@ -815,10 +815,10 @@ class FlextInfraUtilitiesRopeAnalysis:
 
     @staticmethod
     def symbol_has_docstring_source(source: str, symbol_name: str) -> bool:
-        """Return whether ``symbol_name`` in ``source`` carries a docstring (rope-parsed)."""
+        """Check a locally defined symbol; imported docs need module context."""
         pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
         pyname = pymodule.get_attributes().get(symbol_name)
-        if pyname is None:
+        if pyname is None or not FlextInfraUtilitiesRopeRuntime.is_defined_name(pyname):
             return False
         obj = pyname.get_object()
         get_doc = getattr(obj, "get_doc", None)
