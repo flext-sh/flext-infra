@@ -139,7 +139,7 @@
 	printf 'mise setup receipt=%s storage=%s\n' "$$runtime_release" "$$mise_storage_root"
 {%- endmacro %}
 
-{% macro tool_bootstrap_recipe(target, project_root, mise, uv_version, lifecycle, bootstrap) -%}
+{% macro tool_bootstrap_recipe(target, project_root, mise, uv_version, lifecycle, bootstrap, make) -%}
 .PHONY: {{ target }}
 
 {{ target }}:
@@ -176,6 +176,6 @@
 		printf '%s\n' "$$mise_storage_root{% if relative != "." %}/{{ relative }}{% endif %}" >> "$$GITHUB_PATH"; \
 {% endfor -%}
 	fi; \
-	printf 'setup: entering lifecycle (submodules, environment, hooks)\n'; \
-	env "MISE_DATA_DIR=$$mise_storage_root" "$$latest_mise" -C "$$project_root" exec -- env "SETUP_DIRENV=$$direnv_executable" "SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" {{ lifecycle }}
+	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
+	mise_exec project "$$latest_mise" -C "$$project_root" exec -- env "SETUP_DIRENV=$$direnv_executable" "SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" "{{ make.ci.variable }}=$({{ make.ci.variable }})" "{{ make.apply_variable }}=$({{ make.apply_variable }})" {{ lifecycle }}
 {%- endmacro %}

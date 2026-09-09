@@ -13,6 +13,16 @@
 # End SECTION: header
 
 SHELL := /bin/sh
+# GNU MAKE_COMMAND may be a bare name. Resolve it before changing PATH so
+# recursive lifecycle calls keep this invoker instead of selecting a Mise shim.
+SELF_MAKE_EXECUTABLE := $(shell command -v "$(MAKE_COMMAND)")
+ifneq ($(.SHELLSTATUS),0)
+$(error Cannot resolve current Make executable: $(MAKE_COMMAND))
+endif
+SELF_MAKE_EXECUTABLE := $(realpath $(SELF_MAKE_EXECUTABLE))
+ifeq ($(strip $(SELF_MAKE_EXECUTABLE)),)
+$(error Current Make executable has no physical path: $(MAKE_COMMAND))
+endif
 .DEFAULT_GOAL := help
 ifeq ($(filter command line override,$(origin SETUP_BOOTSTRAP_ONLY)),)
 ifneq ($(filter setup,$(MAKECMDGOALS)),)
@@ -194,7 +204,7 @@ override VIRTUAL_ENV := $(RUNTIME_VENV)
 override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
 export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
-{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(PROJECT_ROOT)", "$(SETUP_MISE)", uv_version, "$(SELF_MAKE) _setup_lifecycle", mise_bootstrap) }}
+{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(PROJECT_ROOT)", "$(SETUP_MISE)", uv_version, "$(SELF_MAKE) _setup_lifecycle", mise_bootstrap, make) }}
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
@@ -264,10 +274,10 @@ PROJECT_FLEXT_INFRA := if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: 
 SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(WORKSPACE_SUBPROJECTS)),1,))
 # CI must verify the committed lock against declared metadata before syncing.
 # --frozen bypasses that check and can omit newly declared runtime dependencies.
-UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups $(if $(CI),--locked ,)
+UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups $(if $({{ make.ci.variable }}),--locked ,)
 
 {{ makefile_custom_include }}
-SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
+SELF_MAKE := "$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define RUN_PUBLIC
 	$(if $(filter pre-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) pre-$(1))

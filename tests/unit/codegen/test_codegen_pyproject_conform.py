@@ -524,18 +524,16 @@ skips = ["B101"]
         tm.that(project, none=False)
         if project is None:
             return
-        live_payload = u.Cli.toml_mapping_from_text(live)
-        tm.that(live_payload, none=False)
-        if live_payload is None:
-            return
-        # `dependencies` is a preserved project key (config SSOT): the live
-        # requirement list survives verbatim; the rendered projection never
-        # restores stale pins over it.
-        live_project = u.Cli.toml_mapping_child(live_payload, "project")
-        tm.that(live_project, none=False)
-        if live_project is None:
-            return
-        tm.that(project["dependencies"], eq=live_project["dependencies"])
+        expected_requirements = frozenset({
+            "pydantic>=2",
+            "beartype>=0.22",
+            "custom-runtime[feature]>=2; python_version < '3.14'",
+            "custom-runtime[feature]>=3; python_version >= '3.14'",
+        })
+        tm.that(
+            frozenset(test_u.Tests.toml_strings_at(first, "project", "dependencies")),
+            eq=expected_requirements,
+        )
         tm.that(tm.ok(u.Infra.overlay_preserved(rendered, first)), eq=first)
         conformed = tm.ok(
             u.Infra.pyproject_conform(
@@ -551,7 +549,7 @@ skips = ["B101"]
             frozenset(
                 test_u.Tests.toml_strings_at(conformed, "project", "dependencies")
             ),
-            eq=frozenset(test_u.Tests.toml_strings_at(live, "project", "dependencies")),
+            eq=expected_requirements,
         )
         repeated = tm.ok(u.Infra.overlay_preserved(rendered, conformed))
         tm.that(
@@ -576,10 +574,7 @@ skips = ["B101"]
         tm.that(ruff is not None and bandit is not None, eq=True)
         if ruff is None or bandit is None:
             return
-        live_tool = u.Cli.toml_mapping_child(live_payload, "tool")
-        tm.that(live_tool, none=False)
-        if live_tool is None:
-            return
+        live_tool = test_u.Tests.toml_table_at(live, "tool")
         rendered_payload = u.Cli.toml_mapping_from_text(rendered)
         tm.that(rendered_payload, none=False)
         if rendered_payload is None:
