@@ -599,6 +599,68 @@ class TestFlextInfraNamespaceValidator:
         tm.ok(result)
         tm.that(result.value.passed, eq=True)
 
+    def test_rule3_settings_owner_declaration_facade_runtime_imports_allowed(
+        self, tmp_path: Path
+    ) -> None:
+        """D1 carve-out: settings/config owners may runtime-import m/t/u.
+
+        Nested Pydantic namespace-models in ``_settings.py`` require
+        ``BaseModel``/``Field``/``MappingKV``/``model_validator``/``JsonValue``
+        from the declaration facades at runtime; the fleet's canonical pattern
+        (flext-auth/_settings.py, flext-api/_settings.py) depends on this.
+        """
+        validator = FlextInfraNamespaceValidator()
+        module_source = (
+            "from __future__ import annotations\n\n"
+            "from flext_test import m, t, u\n\n"
+            "class FlextTestSettings(FlextTestSettingsBase):\n"
+            "    class _Test(m.BaseModel):\n"
+            "        bag: t.MappingKV[str, str] = m.Field(default_factory=dict)\n"
+            "    @u.model_validator(mode=\"before\")\n"
+            "    @classmethod\n"
+            "    def _lift(cls, data: t.JsonValue) -> t.JsonValue:\n"
+            "        return data\n"
+        )
+        root = _make_project_with_module(
+            tmp_path, module_source=module_source, module_name="_settings.py"
+        )
+
+        result = validator.validate_project(root)
+
+        tm.ok(result)
+        tm.that(
+            result.value.passed,
+            eq=True,
+            msg=str(result.value),
+        )
+
+    def test_rule3_settings_owner_c_import_still_flagged(
+        self, tmp_path: Path
+    ) -> None:
+        """D1 is bounded: ``c`` and operational facades are not covered."""
+        validator = FlextInfraNamespaceValidator()
+        module_source = (
+            "from __future__ import annotations\n\n"
+            "from flext_test import c\n\n"
+            "class FlextTestSettings(FlextTestSettingsBase):\n"
+            "    pass\n"
+        )
+        root = _make_project_with_module(
+            tmp_path, module_source=module_source, module_name="_settings.py"
+        )
+
+        result = validator.validate_project(root)
+
+        tm.ok(result)
+        tm.that(
+            any(
+                "reverse runtime import" in violation
+                for violation in result.value.violations
+            ),
+            eq=True,
+            msg=str(result.value),
+        )
+
     def test_rule0_does_not_flag_non_namespace_runtime_module(
         self, tmp_path: Path
     ) -> None:

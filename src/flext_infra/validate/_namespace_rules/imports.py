@@ -151,8 +151,20 @@ class FlextInfraNamespaceRulesImports(FlextInfraNamespaceRulesBase):
     def _reverse_import(
         owner: str | None, imported: str | None, *, type_only: bool
     ) -> str | None:
-        """Describe a backward runtime edge, allowing it only for type checking."""
+        """Describe a backward runtime edge, allowing it only for type checking.
+
+        Settings/config owners legitimately declare nested Pydantic namespace
+        models and so require the declaration facades ``m``/``t``/``u`` at
+        runtime (BaseModel, Field, MappingKV, model_validator, JsonValue).
+        Direct ``pydantic`` remains prohibited (ENFORCE-070); only the project
+        facades are permitted. The forward chain still applies to ``c``/``p``
+        and to every operational facade ``r/e/x/h/d/s``.
+        """
         if owner is None or imported is None or type_only:
+            return None
+        if owner in c.Infra.NAMESPACE_SETTINGS_IMPORT_ALLOWED_OWNERS and imported in (
+            *c.Infra.NAMESPACE_SETTINGS_IMPORT_ALLOWED_FACADES,
+        ):
             return None
         order = c.Infra.NAMESPACE_LAYER_ORDER
         owner_rank = order.index(owner) if owner in order else len(order)
