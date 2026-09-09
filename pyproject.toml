@@ -20,6 +20,7 @@ dependencies = [
   "beartype>=0.22.9",
   "defusedxml>=0.7.1",
   "dependency-injector>=4.49.1",
+  "filelock>=3.30.0",
   "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
   "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
   "gitpython>=3.1.61",
@@ -58,6 +59,9 @@ flext-infra = "flext_infra.cli:main"
 Documentation = "https://github.com/flext-sh/flext-infra/blob/main/README.md"
 Homepage = "https://github.com/flext-sh/flext-infra"
 Repository = "https://github.com/flext-sh/flext-infra"
+
+[project.optional-dependencies]
+typings = ["types-Markdown"]
 
 [dependency-groups]
 dev = [

@@ -374,10 +374,13 @@ class TestCodegenCiMatrix:
             tm.that(content, has="cp -R /source/. /workspace/")
             tm.that(content, lacks="COPY")
             tm.that(content, lacks="chmod -R a+rwX")
-            # The credential rides only as a declared build-arg consumed by
-            # Mise's GitHub reads: no literal secret, no baked default.
-            tm.that(content, has="ARG GITHUB_TOKEN")
-            tm.that(content, has="ENV MISE_GITHUB_TOKEN=${GITHUB_TOKEN}")
+            # BuildKit exposes the credential only for the setup instruction.
+            tm.that(content, lacks="ARG GITHUB_TOKEN")
+            tm.that(content, lacks="ENV MISE_GITHUB_TOKEN=")
+            tm.that(
+                content,
+                has="--mount=type=secret,id=github_token,env=MISE_GITHUB_TOKEN,required=true",
+            )
             tm.that(content, lacks='GITHUB_TOKEN="')
 
     def test_fedora_dockerfile_installs_libatomic_only_for_fedora(
@@ -557,7 +560,8 @@ class TestCodegenCiMatrix:
         for dockerfile in dockerfiles:
             body = dockerfile.read_text(encoding="utf-8")
             tm.that(body, has="ENV CI=Y")
-            tm.that(body, has="RUN make setup")
+            tm.that(body, has="make setup")
+            tm.that(body, has="RUN --mount=type=secret")
 
     def test_makefile_normalizes_windows_runtime_paths(self, tmp_path: Path) -> None:
         """Generated POSIX Make resolves Windows uv and virtualenv executables."""

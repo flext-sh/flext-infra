@@ -54,10 +54,12 @@ jobs:
           # token into .git/config would expose it to every later command.
           persist-credentials: false
       - name: Build {% raw %}${{ matrix.distro }}{% endraw %} image
+        env:
+          GITHUB_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
         run: >-
           docker build
           -f tests/fixtures/ci/docker/{% raw %}${{ matrix.distro }}{% endraw %}.Dockerfile
-          --build-arg GITHUB_TOKEN={% raw %}${{ env.GITHUB_TOKEN }}{% endraw %}
+          --secret id=github_token,env=GITHUB_TOKEN
           -t ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %}
           .
       - name: Bootstrap + verb smoke ({% raw %}${{ matrix.distro }}{% endraw %})

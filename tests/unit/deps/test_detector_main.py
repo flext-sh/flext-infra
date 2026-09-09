@@ -56,9 +56,7 @@ class TestsFlextInfraDepsDetectorMain:
             "python-dateutil": "types-python-dateutil",
             "pyyaml": "types-pyyaml",
         }
-        requirements = u.Tests.toml_strings(
-            u.Tests.toml_mapping(before["project"])["dependencies"]
-        )
+        requirements = u.Infra.project_dependency_names_from_payload(before)
         typing_specs = u.Tests.toml_strings(
             u.Tests.toml_mapping(
                 u.Tests.toml_mapping(after["project"])["optional-dependencies"]
@@ -66,7 +64,7 @@ class TestsFlextInfraDepsDetectorMain:
         )
         tm.that(
             {u.Infra.dep_name(item) for item in typing_specs},
-            eq={expected[u.Infra.dep_name(item)] for item in requirements},
+            eq={expected[item] for item in requirements},
         )
         tm.that(after["dependency-groups"], eq=before["dependency-groups"])
         original_project = u.Tests.toml_mapping(before["project"])
@@ -89,7 +87,7 @@ class TestsFlextInfraDepsDetectorMain:
                         "import importlib.metadata,sys; "
                         "[print(importlib.metadata.version(name)) for name in sys.argv[1:]]"
                     ),
-                    *sorted(expected[u.Infra.dep_name(item)] for item in requirements),
+                    *sorted(expected[item] for item in requirements),
                 ],
                 cwd=root,
             )

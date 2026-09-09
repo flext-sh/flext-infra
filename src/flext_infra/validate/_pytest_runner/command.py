@@ -21,7 +21,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     plugin, so the two never share a process).
     """
 
-    def build_selection_command(self) -> t.VariadicTuple[str]:
+    def build_selection_command(self, *, complete: bool = False) -> t.VariadicTuple[str]:
         """Build the read-only argv that resolves the testmon selection once.
 
         Every xdist worker otherwise resolves the selection itself, and two
@@ -37,6 +37,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             str(self.target),
             "--testmon",
             "--testmon-nocollect",
+            *(("--testmon-noselect",) if complete else ()),
             "--collect-only",
             "-q",
             "-p",
@@ -72,7 +73,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             report_dir,
             targets=(tuple(selection) if selection else (str(self.target),)),
             workers=workers,
-            trailing=_NO_COVERAGE,
+            trailing=(
+                "--testmon",
+                *(("--testmon-noselect",) if selection else ()),
+                *_NO_COVERAGE,
+            ),
         )
 
     def build_coverage_command(

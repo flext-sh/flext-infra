@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
+import pytest
+
 from flext_core import r
 from flext_infra import c, config, m, t, u
 from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
@@ -43,10 +45,12 @@ class FlextInfraPytestRunnerExecution(
             },
         )
 
-    def _resolve_selection(self, report_dir: Path) -> t.StrSequence:
+    def _resolve_selection(
+        self, report_dir: Path, *, complete: bool = False
+    ) -> t.StrSequence:
         """Return the node ids testmon selects, resolved in one process."""
         pytest = config.Infra.tooling.tools.pytest
-        command = self.build_selection_command()
+        command = self.build_selection_command(complete=complete)
         outcome = u.Cli.run_raw(
             command,
             cwd=self.root,
@@ -63,9 +67,15 @@ class FlextInfraPytestRunnerExecution(
             for line in (outcome.stdout or "").splitlines()
             if "::" in line and not line.startswith(" ")
         )
+        artifact = "testmon-inventory" if complete else "testmon-selection"
         u.Cli.atomic_write_text_file(
-            report_dir / "testmon-selection.txt", "\n".join(node_ids) + "\n"
+            report_dir / f"{artifact}.txt", "\n".join(node_ids) + "\n"
         ).unwrap()
+        u.Cli.atomic_write_text_file(
+            report_dir / f"{artifact}.log", outcome.stdout or ""
+        ).unwrap()
+        if not node_ids and not complete:
+            self._resolve_selection(report_dir, complete=True)
         return node_ids
 
     def _run_suite(
@@ -143,7 +153,12 @@ class FlextInfraPytestRunnerExecution(
         # seeding run; parallel distribution is a warm-cache path.
         command = self.build_command(report_dir, selection, serialize=cold_cache)
         outcome = self._run_suite(command, report_dir)
-        if not u.Cli.process_succeeded(outcome):
+        cache_hit = (
+            outcome.raw_return_code == pytest.ExitCode.NO_TESTS_COLLECTED
+            and not selection
+            and cache_restored
+        )
+        if not u.Cli.process_succeeded(outcome) and not cache_hit:
             return r.ok(outcome.raw_return_code)
         state = self._inspect_cache(digest=pre_digest).unwrap()
         if not state.restored_accepted and not state.saveable:

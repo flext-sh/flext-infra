@@ -95,7 +95,14 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
             requirements.extend(
                 t.Infra.STR_SEQ_ADAPTER.validate_python(groups.get(c.Infra.DEV, []))
             )
-        return sorted({u.Infra.dep_name(spec) for spec in requirements})
+        names: set[str] = set()
+        for spec in requirements:
+            name = u.Infra.dep_name(spec)
+            if name is None:
+                msg = f"Dependency requirement must not be blank in {pyproject}"
+                raise ValueError(msg)
+            names.add(name)
+        return sorted(names)
 
     def get_required_typings(
         self,

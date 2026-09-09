@@ -36,7 +36,10 @@ class FlextInfraModelsTestmon:
         ]
         deselected_count: Annotated[
             int,
-            m.Field(ge=0, description="Testmon-deselected count reported by pytest."),
+            m.Field(
+                ge=0,
+                description="Deselections reported by pytest or proven by complete collection inventory.",
+            ),
         ]
         cache_restored: Annotated[
             bool, m.Field(description="Input database passed SQLite integrity checks.")

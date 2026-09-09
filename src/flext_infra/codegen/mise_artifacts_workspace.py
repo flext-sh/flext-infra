@@ -115,6 +115,11 @@ class FlextInfraMiseWorkspacePlanner:
         """Build the no-effect journal layout from the descriptor-locked identity."""
         return self._layout_from_identity(identity, (".",), transaction_id=None)
 
+    @staticmethod
+    def journal_path(identity: m.Infra.GitIdentityReport) -> Path:
+        """Return the shared journal anchor without materializing layout state."""
+        return identity.git_dir / files.JOURNAL_NAME
+
     def _layout_from_identity(
         self,
         identity: m.Infra.GitIdentityReport,
@@ -143,7 +148,7 @@ class FlextInfraMiseWorkspacePlanner:
             m.Infra.MiseToolchainWorkspaceLayout(
                 scope_root=scope_root,
                 state_root=state_root.value,
-                journal_path=identity.git_dir / files.JOURNAL_NAME,
+                journal_path=self.journal_path(identity),
                 transaction_id=transaction_id,
                 projects=tuple(projects),
             )
