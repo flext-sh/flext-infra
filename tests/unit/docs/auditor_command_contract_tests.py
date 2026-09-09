@@ -75,21 +75,20 @@ make test PROJECT=flext-demo MATCH=unit
         tm.that(issues[0].message, has="requires `APPLY=Y`")
 
     @staticmethod
-    def test_rejects_apply_on_a_read_only_verb() -> None:
-        """A read-only verb documented with the apply token is rejected."""
-        read_only = next(
-            spec.name
+    def test_accepts_optional_apply_for_declared_verbs() -> None:
+        """An optional effect token is not a forbidden token at the Make boundary."""
+        lines = "\n".join(
+            f"make {spec.name} APPLY=Y"
             for spec in config.Infra.codegen.make.verbs
             if not spec.requires_apply
         )
-        content = f"```bash\nmake {read_only} APPLY=Y\n```\n"
+        content = f"```bash\n{lines}\n```\n"
 
         issues = u.Infra.docs_command_contract_content_issues(
             content, relative_path="docs/guides/getting-started.md"
         )
 
-        tm.that(len(issues), eq=1)
-        tm.that(issues[0].message, has="does not accept `APPLY=Y`")
+        tm.that(issues, eq=[])
 
     @staticmethod
     def test_rejects_raw_pytest_execution() -> None:

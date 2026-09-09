@@ -78,6 +78,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
                         rel,
                         class_stem=prefix,
                         package_name=package_name,
+                        source=filepath.read_text(encoding=c.Cli.ENCODING_DEFAULT),
                         is_test_file=self._is_test_file(rel),
                     )
                 )
