@@ -965,6 +965,16 @@ class FlextInfraUtilitiesPyprojectConform:
             if key in live_project:
                 project[key] = live_project[key]
         merged[c.Infra.PROJECT] = project
+        # Preserve project dev additions before conformance reapplies fleet floors.
+        groups = dict(
+            u.Cli.toml_mapping_child(merged, c.Infra.DEPENDENCY_GROUPS) or {}
+        )
+        live_groups = (
+            u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
+        )
+        if str(c.Infra.DEV) in live_groups:
+            groups[str(c.Infra.DEV)] = live_groups[str(c.Infra.DEV)]
+            merged[c.Infra.DEPENDENCY_GROUPS] = groups
         tool = dict(u.Cli.toml_mapping_child(merged, c.Infra.TOOL) or {})
         live_tool = u.Cli.toml_mapping_child(live_payload, c.Infra.TOOL) or {}
         managed = frozenset(managed_tool_tables)

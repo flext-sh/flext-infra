@@ -358,6 +358,10 @@ name = "flext"
 dependencies = ["pydantic>=2"]
 scripts = {flext = "flext.cli:main"}
 
+[dependency-groups]
+codegen = ["flext-infra"]
+dev = ["rumdl>=0.2.45"]
+
 [tool.ruff]
 line-length = 88
 """
@@ -370,6 +374,10 @@ dependencies = [
     "custom-runtime[feature]>=3; python_version >= '3.14'",
 ]
 scripts = {flext = "flext.workspace:main", flext-dev = "flext.dev:main"}
+
+[dependency-groups]
+codegen = ["obsolete-codegen"]
+dev = ["rumdl>=0.2.40", "custom-audit>=1"]
 
 [tool.ruff]
 line-length = 120
@@ -399,6 +407,24 @@ skips = ["B101"]
             return
         tm.that(project["dependencies"], eq=live_project["dependencies"])
         tm.that(tm.ok(u.Infra.overlay_preserved(rendered, first)), eq=first)
+        conformed = tm.ok(
+            u.Infra.pyproject_conform(
+                first,
+                providers=config.Infra.codegen.providers,
+                workspace=_workspace(),
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
+                toolchain=config.Infra.codegen.toolchain,
+                required_dev_dependencies=("rumdl>=0.2.45",),
+            )
+        )
+        dev = test_u.Tests.toml_strings_at(conformed, "dependency-groups", "dev")
+        tm.that("custom-audit>=1" in dev, eq=True)
+        tm.that("rumdl>=0.2.45" in dev, eq=True)
+        tm.that("rumdl>=0.2.40" not in dev, eq=True)
+        tm.that(
+            tuple(test_u.Tests.toml_strings_at(first, "dependency-groups", "codegen")),
+            eq=("flext-infra",),
+        )
         tm.that("flext-dev" in test_u.Tests.toml_mapping(project["scripts"]), eq=True)
         tool = u.Cli.toml_mapping_child(document, "tool")
         tm.that(tool, none=False)
