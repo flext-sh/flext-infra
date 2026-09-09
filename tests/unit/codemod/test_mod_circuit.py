@@ -37,12 +37,7 @@ class TestsFlextInfraModCliRoute:
         tm.ok(u.Cli.ensure_dir(generated_hook.parent))
         tm.ok(u.Cli.atomic_write_text_file(generated_hook, "value = 1\n"))
 
-        first_exit = infra_main([
-            "refactor",
-            "mod",
-            "--workspace",
-            str(mod_workspace),
-        ])
+        first_exit = infra_main(["refactor", "mod", "--workspace", str(mod_workspace)])
         first_console_capture = capsys.readouterr()
         first_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(report_path, required=True)
@@ -86,16 +81,10 @@ class TestsFlextInfraModCliRoute:
 
         tm.ok(
             u.Cli.atomic_write_text_file(
-                sample_path,
-                "from __future__ import annotations\n\nvalue = 1\n",
+                sample_path, "from __future__ import annotations\n\nvalue = 1\n"
             )
         )
-        second_exit = infra_main([
-            "refactor",
-            "mod",
-            "--workspace",
-            str(mod_workspace),
-        ])
+        second_exit = infra_main(["refactor", "mod", "--workspace", str(mod_workspace)])
         second_console_capture = capsys.readouterr()
         second_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(report_path, required=True)
@@ -161,7 +150,9 @@ class TestsFlextInfraModCliRoute:
         second_rule = rules_root / "rewire-first-message.yml"
 
         tm.ok(u.Cli.ensure_dir(rules_root))
-        tm.ok(u.Cli.atomic_write_text_file(config_path, "ruleDirs:\n  - codemod/rules\n"))
+        tm.ok(
+            u.Cli.atomic_write_text_file(config_path, "ruleDirs:\n  - codemod/rules\n")
+        )
         tm.ok(
             u.Cli.atomic_write_text_file(
                 first_rule,
@@ -203,12 +194,7 @@ class TestsFlextInfraModCliRoute:
             )
         )
 
-        exit_code = infra_main([
-            "refactor",
-            "mod",
-            "--workspace",
-            str(mod_workspace),
-        ])
+        exit_code = infra_main(["refactor", "mod", "--workspace", str(mod_workspace)])
         report_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(
                 mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH, required=True

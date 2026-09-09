@@ -43,9 +43,7 @@ class FlextInfraMiseArtifactsFiles:
         return u.Cli.sha256_bytes(content)
 
     @classmethod
-    def packaged_launchers(
-        cls,
-    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+    def packaged_launchers(cls) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         """Load the packaged unlocked bootstrap launcher pair for fresh seeding."""
         seed_directory = (
             Path(__file__).resolve().parents[1] / c.Infra.MISE_BOOTSTRAP_SEED_DIRECTORY

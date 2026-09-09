@@ -358,9 +358,7 @@ class TestsFlextInfraReleaseProtocol:
                 # holding the pre-stamp document must not leak into the projections.
                 tm.ok(u.Infra.read_project_metadata_result(workspace))
 
-                result = _run_release_main(
-                    workspace, "--phase", "version", "--apply"
-                )
+                result = _run_release_main(workspace, "--phase", "version", "--apply")
 
                 tm.that(result, eq=0)
                 tm.ok(
@@ -442,9 +440,7 @@ class TestsFlextInfraReleaseProtocol:
                 integration = u.Tests.integration_branch(workspace)
                 _apply_release_version(workspace, integration)
 
-                result = _run_release_main(
-                    workspace, "--phase", "version", "--apply"
-                )
+                result = _run_release_main(workspace, "--phase", "version", "--apply")
 
                 tm.that(result, eq=0)
                 lane_commits = tm.ok(
@@ -484,10 +480,7 @@ class TestsFlextInfraReleaseProtocol:
             workspace = _release_lane_workspace(tmp_path)
             (workspace / "stray.txt").write_text("wip\n", encoding="utf-8")
 
-            tm.that(
-                _run_release_main(workspace, "--phase", "version", "--apply"),
-                ne=0,
-            )
+            tm.that(_run_release_main(workspace, "--phase", "version", "--apply"), ne=0)
 
         @staticmethod
         def test_non_integration_branch_is_refused(tmp_path: Path) -> None:
@@ -496,10 +489,7 @@ class TestsFlextInfraReleaseProtocol:
                 tmp_path, version=c.Tests.RELEASE_VERSION_PRERELEASE
             )
 
-            tm.that(
-                _run_release_main(workspace, "--phase", "version", "--apply"),
-                ne=0,
-            )
+            tm.that(_run_release_main(workspace, "--phase", "version", "--apply"), ne=0)
 
         @staticmethod
         def test_nothing_to_release_is_a_clean_no_op(tmp_path: Path) -> None:
@@ -507,10 +497,7 @@ class TestsFlextInfraReleaseProtocol:
             workspace = _released_workspace(tmp_path)
             u.Tests.merge_pull_request(workspace, "docs: nothing to ship")
 
-            tm.that(
-                _run_release_main(workspace, "--phase", "version", "--apply"),
-                eq=0,
-            )
+            tm.that(_run_release_main(workspace, "--phase", "version", "--apply"), eq=0)
             tm.that(
                 tm.ok(
                     cli.capture(
@@ -553,9 +540,7 @@ class TestsFlextInfraReleaseProtocol:
                 )
 
                 first = _run_release_main(workspace, "--phase", "tag", "--apply")
-                second = _run_release_main(
-                    workspace, "--phase", "tag", "--apply"
-                )
+                second = _run_release_main(workspace, "--phase", "tag", "--apply")
 
                 tm.that(first, eq=0)
                 tm.that(second, eq=0)
@@ -581,6 +566,4 @@ class TestsFlextInfraReleaseProtocol:
             workspace = _released_workspace(tmp_path)
             u.Tests.merge_pull_request(workspace, "feat: not a release commit")
 
-            tm.that(
-                _run_release_main(workspace, "--phase", "tag", "--apply"), ne=0
-            )
+            tm.that(_run_release_main(workspace, "--phase", "tag", "--apply"), ne=0)

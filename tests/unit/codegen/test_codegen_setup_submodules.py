@@ -40,9 +40,7 @@ class TestsCodegenSetupSubmodules:
         # root (conform provisions an unpublished repository); a scenario
         # model re-initializes its own topology, so it must not inherit the
         # template's origin.
-        shutil.copytree(
-            template, root, ignore=shutil.ignore_patterns(c.Infra.GIT_DIR)
-        )
+        shutil.copytree(template, root, ignore=shutil.ignore_patterns(c.Infra.GIT_DIR))
         test_u.Tests.initialize_git_repo(root)
 
     @staticmethod

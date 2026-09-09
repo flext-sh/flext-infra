@@ -260,14 +260,7 @@ class TestsFlextInfraRefactorMainCli:
         cls, workspace: Path, *, rules: str, kinds: str | None = None
     ) -> None:
         """Run one applying census through the CLI, asserting a clean exit."""
-        args = [
-            "census",
-            "--workspace",
-            str(workspace),
-            "--apply",
-            "--rules",
-            rules,
-        ]
+        args = ["census", "--workspace", str(workspace), "--apply", "--rules", rules]
         if kinds is not None:
             args = [*args, "--kinds", kinds]
         tm.that(cls._refactor_main(*args), eq=0)

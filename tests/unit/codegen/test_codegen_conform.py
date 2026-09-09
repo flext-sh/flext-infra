@@ -173,8 +173,7 @@ class TestCodegenConform:
         pyproject = tmp_path / c.Infra.PYPROJECT_FILENAME
         source = pyproject.read_text(encoding="utf-8")
         pyproject.write_text(
-            source
-            + 'dependencies = ["beartype>=0.22", '
+            source + 'dependencies = ["beartype>=0.22", '
             '"flext-custom @ ../flext-custom"]\n',
             encoding="utf-8",
         )
@@ -344,9 +343,9 @@ class TestCodegenConform:
         tm.ok(applied)
         rendered = (root / "pyproject.toml").read_text(encoding="utf-8")
         tm.that(rendered, lacks="<<<<<<<")
-        addopts = u.Tests.toml_table_at(
-            rendered, "tool", "pytest", "ini_options"
-        )["addopts"]
+        addopts = u.Tests.toml_table_at(rendered, "tool", "pytest", "ini_options")[
+            "addopts"
+        ]
         tm.that(
             addopts,
             has=f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}",
@@ -798,17 +797,13 @@ class TestCodegenConform:
         tm.ok(result)
         tm.that(
             u.Tests.toml_table_at(
-                (root / "pyproject.toml").read_text(encoding="utf-8"),
-                "tool",
-                "pyrefly",
+                (root / "pyproject.toml").read_text(encoding="utf-8"), "tool", "pyrefly"
             )["project-includes"],
             lacks="scripts/**/*.py*",
         )
         tm.that(
             u.Tests.toml_table_at(
-                (root / "pyproject.toml").read_text(encoding="utf-8"),
-                "tool",
-                "pyright",
+                (root / "pyproject.toml").read_text(encoding="utf-8"), "tool", "pyright"
             )["include"],
             lacks="scripts",
         )
@@ -1228,21 +1223,15 @@ class TestCodegenConform:
                 "_custom-check-myscan:\n\t@true\n",
             )
         )
-        outcome = u.Cli.run_raw(["make", "-C", str(root), "help"], remove_env_keys=("MAKEFLAGS",))
+        outcome = u.Cli.run_raw(
+            ["make", "-C", str(root), "help"], remove_env_keys=("MAKEFLAGS",)
+        )
         output = tm.ok(outcome)
         tm.that(output.stderr, eq="")
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
         tm.that(
             output.stdout,
-            has=[
-                "help",
-                "setup",
-                "check",
-                "test",
-                "fmt",
-                "conform",
-                "docs",
-            ],
+            has=["help", "setup", "check", "test", "fmt", "conform", "docs"],
         )
         tm.that(output.stdout, lacks="Custom hooks (custom.mk):")
         tm.that(output.stdout, lacks="WHAT")

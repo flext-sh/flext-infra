@@ -69,6 +69,20 @@ class FlextInfraUtilitiesPyprojectConform:
         return r[t.Pair[t.Cli.TomlDocument, str]].ok((source, project_name_raw.strip()))
 
     @classmethod
+    def _declared_uv_constraint_dependencies(
+        cls, document: t.Cli.TomlDocument
+    ) -> t.SequenceOf[str]:
+        """Return the document-declared ``[tool.uv] constraint-dependencies``."""
+        tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
+        if tool is None:
+            return ()
+        uv = u.Cli.toml_table_child(tool, "uv")
+        if uv is None:
+            return ()
+        declared = u.Cli.toml_value(uv, "constraint-dependencies")
+        return tuple(u.Cli.toml_as_string_list(declared))
+
+    @classmethod
     def _rendered_conformed_document(
         cls,
         document: t.Cli.TomlDocument,
@@ -146,10 +160,12 @@ class FlextInfraUtilitiesPyprojectConform:
             link_mode=uv_link_mode or toolchain.uv_link_mode,
             exclude_newer=uv_exclude_newer or toolchain.uv_exclude_newer,
             exclude_newer_packages=(
-                tuple(dict.fromkeys((
-                    *toolchain.dependency_cooldown_exclusions,
-                    *toolchain.additional_python_tool_distributions,
-                )))
+                tuple(
+                    dict.fromkeys((
+                        *toolchain.dependency_cooldown_exclusions,
+                        *toolchain.additional_python_tool_distributions,
+                    ))
+                )
                 if dependency_cooldown_exclusions is None
                 else dependency_cooldown_exclusions
             ),
@@ -188,6 +204,14 @@ class FlextInfraUtilitiesPyprojectConform:
         if parsed.failure:
             return r[str].from_failure(parsed)
         source, project_name = parsed.value
+        provenance_result = cls._validate_dependency_provenance(
+            source,
+            project_name=project_name,
+            workspace=workspace,
+            workspace_mode=workspace_mode,
+        )
+        if provenance_result.failure:
+            return r[str].from_failure(provenance_result)
         workspace_context_root = cls._is_workspace_context_root(
             project_name=project_name,
             workspace=workspace,
@@ -215,6 +239,10 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
+        # On the dependency-only surface the declared document constraints are
+        # the SSOT: they flow through the same uv-pin filter as the toolchain
+        # path so a legacy `uv` cap is removed and every other constraint is
+        # preserved verbatim.
         sources_result = (
             r[bool].ok(True)
             if workspace_context_root
@@ -223,6 +251,9 @@ class FlextInfraUtilitiesPyprojectConform:
                 project_name=project_name,
                 workspace=workspace,
                 workspace_mode=workspace_mode,
+                constraint_dependencies=cls._declared_uv_constraint_dependencies(
+                    source
+                ),
             )
         )
         if sources_result.failure:
@@ -360,12 +391,24 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if reference_result.failure:
             return r[str].from_failure(reference_result)
-        # Internal distributions render as plain names: within the fleet
-        # workspace uv resolves them through the root's workspace overlay, and
-        # an inline PEP 508 ``@<branch>`` URL would freeze the first resolved
-        # commit in uv.lock forever (flext-62fbu).
+        reference = reference_result.value
+        provider = FlextInfraUtilitiesRepository.repository_provider(
+            reference, providers
+        )
+        if provider.failure:
+            return r[str].from_failure(provider)
+        # Publishable members keep the direct Git requirement with the
+        # configured branch: uv accepts the same metadata standalone and, under
+        # a workspace root, the root ``workspace = true`` source overlay
+        # replaces it at resolution time. A member ``[tool.uv.sources]`` git
+        # entry is rejected by uv itself ("workspace member ... references a
+        # Git in tool.uv.sources"), so the inline form is the only valid
+        # dual-context declaration; branch refs re-resolve on every upgrade
+        # (root and member locks resolve the same branch at different tips).
+        branch = provider.value.branch
+        inline = f"{head} @ git+{reference.url}@{branch}"
         return r[str].ok(
-            f"{head}; {marker_text}" if separator and marker_text else head
+            f"{inline}; {marker_text}" if separator and marker_text else inline
         )
 
     @staticmethod
@@ -621,7 +664,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 and not constraint_dependencies
             ):
                 return r[bool].ok(True)
-            if not constraint_dependencies and not has_uv:
+            if not constraint_dependencies and not has_uv and not exclude_dependencies:
                 # Empty declared constraints on a document without any uv
                 # table: nothing to remove, so no table is created.
                 return r[bool].ok(True)
@@ -714,14 +757,13 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[bool].ok(True)
         workspace_names = {member.distribution for member in workspace.subprojects}
         for source_name in tuple(sources):
-            # Preserve resolved
-            # TOML tables in place so conformance cannot accumulate blank trivia.
+            # Member documents resolve internal siblings through the direct
+            # Git requirement; a git [tool.uv.sources] entry on a workspace
+            # member is rejected by uv itself, and only the root carries the
+            # workspace overlay.
             if source_name.startswith("flext-") and (
                 not repository_root or source_name not in workspace_names
             ):
-                # The fleet resolves internal dependencies through the single
-                # uv workspace at the fleet root: a member carries no source
-                # entries, and the root keeps only the workspace overlay.
                 u.Cli.toml_remove_key_if_present(sources, source_name)
         if repository_root:
             for member in workspace.subprojects:
@@ -833,7 +875,7 @@ class FlextInfraUtilitiesPyprojectConform:
         project = payload.get(c.Infra.PROJECT)
         if not isinstance(project, Mapping):
             return r[bool].fail("pyproject content must define [project]")
-        cls._is_workspace_context_root(
+        workspace_context_root = cls._is_workspace_context_root(
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
@@ -853,14 +895,28 @@ class FlextInfraUtilitiesPyprojectConform:
             dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
             if dependency_name not in member_names:
                 continue
+            # Root documents express the workspace overlay; publishable
+            # members keep the direct Git requirement so the same metadata
+            # resolves standalone. uv replaces it with the root workspace
+            # source when resolving the composed tree.
             has_direct_source = "@" in requirement.partition(";")[0]
-            if has_direct_source:
-                # An inline PEP 508 ``@<branch>`` URL freezes the first
-                # resolved commit in uv.lock forever (flext-62fbu). Internal
-                # dependencies resolve through the fleet workspace overlay.
+            if workspace_context_root and has_direct_source:
                 return r[bool].fail(
-                    "dependency declares a frozen inline Git URL; "
-                    f"declare the plain distribution only: {dependency_name}"
+                    "workspace dependency declares a conflicting direct source: "
+                    f"{dependency_name}"
+                )
+            # Standalone provenance is catalog-owned: [tool.uv.sources] is
+            # rendered from the workspace member URL, so the requirement line
+            # stays a plain distribution name and the catalog URL must be
+            # HTTPS (fail-closed against ssh/file:// provenance).
+            member = next(
+                (m for m in workspace.subprojects if m.distribution == dependency_name),
+                None,
+            )
+            if member is not None and not member.url.startswith("https://"):
+                return r[bool].fail(
+                    "internal dependency catalog provenance must be HTTPS: "
+                    f"{dependency_name} ({member.url})"
                 )
         return r[bool].ok(True)
 
@@ -874,6 +930,8 @@ class FlextInfraUtilitiesPyprojectConform:
         managed_tool_tables: t.StrSequence | None = None,
     ) -> p.Result[str]:
         """Keep live CUSTOM project keys and unmanaged tool tables."""
+        if live is None:
+            return r[str].ok(rendered)
         if preserve_project_keys is None or managed_tool_tables is None:
             from flext_infra import config as infra_config
 
@@ -887,53 +945,23 @@ class FlextInfraUtilitiesPyprojectConform:
             )
             if spec is None:
                 return r[str].fail("pyproject.toml is missing from managed_files")
-            project_keys = spec.preserve_project_keys
+            preserve_project_keys = spec.preserve_project_keys
             managed_tool_tables = spec.managed_tool_tables
-        else:
-            project_keys = preserve_project_keys
         rendered_payload = u.Cli.toml_mapping_from_text(rendered)
-        if rendered_payload is None:
-            return r[str].fail("rendered pyproject is not valid TOML")
         # An absent live file takes the same canonicalization path as a present
         # one: the projection is the parse-merge-dump form, so first publication
         # and every later conform produce byte-identical output (fixed point).
-        live_payload: t.JsonMapping | None = (
-            u.Cli.toml_mapping_from_text(live) if live is not None else {}
-        )
+        live_payload = u.Cli.toml_mapping_from_text(live)
+        if rendered_payload is None:
+            return r[str].fail("rendered pyproject is not valid TOML")
         if live_payload is None:
             return r[str].fail("live pyproject is not valid TOML")
         merged = dict(rendered_payload)
         project = dict(u.Cli.toml_mapping_child(merged, c.Infra.PROJECT) or {})
         live_project = u.Cli.toml_mapping_child(live_payload, c.Infra.PROJECT) or {}
-        for key in project_keys:
+        for key in preserve_project_keys:
             if key in live_project:
-                if key == c.Infra.DEPENDENCIES:
-                    try:
-                        required = t.Infra.STR_SEQ_ADAPTER.validate_python(
-                            project.get(key, []), strict=True
-                        )
-                        declared = t.Infra.STR_SEQ_ADAPTER.validate_python(
-                            live_project[key], strict=True
-                        )
-                    except c.ValidationError as exc:
-                        return r[str].fail_op("validate runtime dependencies", exc)
-                    # Profile requirements supersede stale pins; retain every
-                    # other declaration, including separate environment markers.
-                    required_names = {
-                        FlextInfraUtilitiesDependencies.dep_name(item)
-                        for item in required
-                    }
-                    project[key] = [
-                        *required,
-                        *(
-                            item
-                            for item in declared
-                            if FlextInfraUtilitiesDependencies.dep_name(item)
-                            not in required_names
-                        ),
-                    ]
-                else:
-                    project[key] = live_project[key]
+                project[key] = live_project[key]
         merged[c.Infra.PROJECT] = project
         tool = dict(u.Cli.toml_mapping_child(merged, c.Infra.TOOL) or {})
         live_tool = u.Cli.toml_mapping_child(live_payload, c.Infra.TOOL) or {}

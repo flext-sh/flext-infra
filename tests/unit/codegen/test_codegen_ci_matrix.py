@@ -544,7 +544,10 @@ class TestCodegenCiMatrix:
         tm.that(content, has="RUNTIME_BIN := $(RUNTIME_VENV)/Scripts")
         tm.that(content, has="RUNTIME_PYTHON := $(RUNTIME_BIN)/python.exe")
         tm.that(content, has="override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)")
-        tm.that(content, has="_builtin-help:\n\t@printf '%s\\n' 'flext-demo [standalone]' '';")
+        tm.that(
+            content,
+            has="_builtin-help:\n\t@printf '%s\\n' 'flext-demo [standalone]' '';",
+        )
 
     def test_root_dockerignore_reincludes_bootstrap_surface(self) -> None:
         """Root hand-maintained .dockerignore lets clean-machine bootstrap files into the context."""

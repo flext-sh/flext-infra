@@ -467,7 +467,8 @@ class FlextInfraConfigModels:
             ),
         ]
         qlty_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Moving qlty release selector, e.g. 'latest'")
+            t.NonEmptyStr,
+            _tool_version_field("Moving qlty release selector, e.g. 'latest'"),
         ]
         node_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Compatible Node.js major.minor line")
@@ -482,7 +483,8 @@ class FlextInfraConfigModels:
             ),
         ]
         jscpd_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Moving jscpd release selector, e.g. 'latest'")
+            t.NonEmptyStr,
+            _tool_version_field("Moving jscpd release selector, e.g. 'latest'"),
         ]
         waza_selector: Annotated[
             t.NonEmptyStr,
@@ -494,7 +496,8 @@ class FlextInfraConfigModels:
             ),
         ]
         waza_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Moving Waza release selector, e.g. 'latest'")
+            t.NonEmptyStr,
+            _tool_version_field("Moving Waza release selector, e.g. 'latest'"),
         ]
         taplo_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
@@ -2888,16 +2891,19 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, _tool_version_field("Compatible uv major.minor line")
         ]
         qlty_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Moving qlty release selector, e.g. 'latest'")
+            t.NonEmptyStr,
+            _tool_version_field("Moving qlty release selector, e.g. 'latest'"),
         ]
         node_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Compatible Node.js major.minor line")
         ]
         jscpd_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Moving jscpd release selector, e.g. 'latest'")
+            t.NonEmptyStr,
+            _tool_version_field("Moving jscpd release selector, e.g. 'latest'"),
         ]
         waza_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Moving Waza release selector, e.g. 'latest'")
+            t.NonEmptyStr,
+            _tool_version_field("Moving Waza release selector, e.g. 'latest'"),
         ]
         taplo_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
@@ -3407,9 +3413,12 @@ class FlextInfraConfigModels:
             ):
                 if (name := self._distribution_name(requirement)) is not None:
                     scaffold_owners.add(name)
-            return tuple(sorted(scaffold_owners | set(
-                self.toolchain.additional_python_tool_distributions
-            )))
+            return tuple(
+                sorted(
+                    scaffold_owners
+                    | set(self.toolchain.additional_python_tool_distributions)
+                )
+            )
 
         @staticmethod
         def _distribution_name(requirement: str) -> str | None:

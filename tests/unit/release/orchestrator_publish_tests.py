@@ -85,20 +85,14 @@ class TestsFlextInfraReleasePublish:
             artifact = Path(report.records[0].artifacts[0].path)
             artifact.write_bytes(artifact.read_bytes() + b"\n")
 
-            tm.that(
-                _run_release_main(workspace, "--phase", "publish", "--apply"),
-                ne=0,
-            )
+            tm.that(_run_release_main(workspace, "--phase", "publish", "--apply"), ne=0)
 
         @staticmethod
         def test_missing_receipt_is_refused(tmp_path: Path) -> None:
             """Publishing without a build receipt has nothing attested to upload."""
             workspace = u.Tests.create_release_workspace(tmp_path)
 
-            tm.that(
-                _run_release_main(workspace, "--phase", "publish", "--apply"),
-                ne=0,
-            )
+            tm.that(_run_release_main(workspace, "--phase", "publish", "--apply"), ne=0)
 
     class TestsApply:
         """Applied publication commands."""
@@ -111,9 +105,7 @@ class TestsFlextInfraReleasePublish:
             workspace, report = _built_workspace(tmp_path)
             bin_dir = _shim_path(tmp_path, monkeypatch)
 
-            result = _run_release_main(
-                workspace, "--phase", "publish", "--apply"
-            )
+            result = _run_release_main(workspace, "--phase", "publish", "--apply")
 
             tm.that(result, eq=0)
             recorded = (bin_dir / f"{c.Infra.GH}.log").read_text(encoding="utf-8")

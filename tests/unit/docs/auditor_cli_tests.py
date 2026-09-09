@@ -47,6 +47,4 @@ def test_auditor_main_strict_failure_returns_one(tmp_path: Path) -> None:
         "# Docs\n\n[Broken](missing.md)\n", encoding="utf-8"
     )
 
-    tm.that(
-        main(["docs", "audit", "--workspace", str(workspace), "--strict"]), eq=1
-    )
+    tm.that(main(["docs", "audit", "--workspace", str(workspace), "--strict"]), eq=1)

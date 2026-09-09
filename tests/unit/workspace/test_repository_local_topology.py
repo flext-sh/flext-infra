@@ -75,8 +75,7 @@ class TestsRepositoryLocalTopology:
         }
         tm.ok(
             u.Cli.yaml_dump(
-                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
-                cooldown_manifest,
+                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME, cooldown_manifest
             )
         )
 

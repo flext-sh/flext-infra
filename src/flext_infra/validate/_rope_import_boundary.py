@@ -121,9 +121,7 @@ class FlextInfraRopeImportBoundaryBase(s[bool]):
         if report.failure:
             return r[bool].from_failure(report)
         validated = report.unwrap()
-        return (
-            r[bool].ok(True) if validated.passed else r[bool].fail(validated.summary)
-        )
+        return r[bool].ok(True) if validated.passed else r[bool].fail(validated.summary)
 
 
 __all__: t.StrSequence = ("FlextInfraRopeImportBoundaryBase",)
