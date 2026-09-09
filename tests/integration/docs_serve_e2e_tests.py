@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra import config
 from flext_infra.docs.server import FlextInfraDocServer
 
@@ -43,19 +44,17 @@ def _free_local_port() -> int:
         return int(probe.getsockname()[1])
 
 
-def _http_get_body(host: str, port: int) -> str | None:
-    """Return the response body when the dev server answers HTTP 200, else None."""
+def _http_get_body(host: str, port: int) -> r[str]:
+    """Return the response body when the dev server answers HTTP 200, else fail."""
     connection = http.client.HTTPConnection(host, port, timeout=0.25)
     try:
         connection.request("GET", "/")
         response = connection.getresponse()
-        return (
-            response.read().decode("utf-8", errors="replace")
-            if response.status == _HTTP_OK
-            else None
-        )
-    except (OSError, http.client.HTTPException):
-        return None
+        if response.status != _HTTP_OK:
+            return r[str].fail(f"server responded HTTP {response.status}")
+        return r[str].ok(response.read().decode("utf-8", errors="replace"))
+    except (OSError, http.client.HTTPException) as exc:
+        return r[str].fail(f"GET {host}:{port} failed: {exc}", exception=exc)
     finally:
         connection.close()
 
@@ -80,13 +79,17 @@ class TestsFlextInfraIntegrationDocsServeE2e:
         try:
             process.start()
             deadline = time.monotonic() + _DEADLINE_SECONDS
-            body: str | None = None
-            while body is None and process.is_alive() and time.monotonic() < deadline:
-                body = _http_get_body("127.0.0.1", port)
-                if body is None:
-                    time.sleep(_POLL_INTERVAL_SECONDS)
+            body_result = _http_get_body("127.0.0.1", port)
+            while (
+                body_result.failure
+                and process.is_alive()
+                and time.monotonic() < deadline
+            ):
+                time.sleep(_POLL_INTERVAL_SECONDS)
+                body_result = _http_get_body("127.0.0.1", port)
 
-            tm.that(body, none=False, msg=f"child exit code: {process.exitcode}")
+            tm.that(body_result, ok=True, msg=f"child exit code: {process.exitcode}")
+            body = tm.ok(body_result)
             tm.that(body, has="Flext Demo Docs")
             tm.that(body, has="Hello from the real dev server.")
         finally:

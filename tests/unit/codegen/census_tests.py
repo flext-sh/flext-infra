@@ -24,16 +24,20 @@ if TYPE_CHECKING:
     from tests import t
 
 
-def _parse_violation(violation: str) -> m.Infra.CensusViolation | None:
+def _parse_violation(violation: str) -> r[m.Infra.CensusViolation]:
     parsed = u.Infra.parse_namespace_validation(
         r[m.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(passed=True, violations=[violation])
         )
     )
     if parsed.failure:
-        return None
+        return r[m.Infra.CensusViolation].fail(
+            parsed.error or "namespace validation parse failed"
+        )
     violations = parsed.unwrap()
-    return violations[0] if violations else None
+    if not violations:
+        return r[m.Infra.CensusViolation].fail("no violations parsed from report")
+    return r[m.Infra.CensusViolation].ok(violations[0])
 
 
 class TestParseViolationValid:
@@ -86,14 +90,12 @@ class TestParseViolationValid:
         expected_msg: str,
     ) -> None:
         result = _parse_violation(violation_str)
-        tm.that(result, none=False)
-        tm.that(result, is_=m.Infra.CensusViolation)
-        if result is None:
-            pytest.fail("valid census violation was not parsed")
-        tm.that(result.rule, eq=expected_rule)
-        tm.that(result.module, eq=expected_module)
-        tm.that(result.line, eq=expected_line)
-        tm.that(result.message, eq=expected_msg)
+        violation = tm.ok(result)
+        tm.that(violation, is_=m.Infra.CensusViolation)
+        tm.that(violation.rule, eq=expected_rule)
+        tm.that(violation.module, eq=expected_module)
+        tm.that(violation.line, eq=expected_line)
+        tm.that(violation.message, eq=expected_msg)
 
 
 class TestParseViolationInvalid:
@@ -119,38 +121,30 @@ class TestParseViolationInvalid:
         ],
     )
     def test_returns_none(self, violation_str: str) -> None:
-        tm.that(_parse_violation(violation_str), none=True)
+        tm.that(_parse_violation(violation_str), ok=False)
 
 
 class TestFixabilityClassification:
     def test_ns000_not_fixable(self) -> None:
         result = _parse_violation("[NS-000-001] src/file.py:1 — Structure violation")
-        tm.that(result, none=False)
-        if result is None:
-            pytest.fail("NS-000 census violation was not parsed")
-        tm.that(not result.fixable, eq=True)
+        violation = tm.ok(result)
+        tm.that(not violation.fixable, eq=True)
 
     def test_ns001_fixable(self) -> None:
         result = _parse_violation("[NS-001-001] src/file.py:1 — Constant violation")
-        tm.that(result, none=False)
-        if result is None:
-            pytest.fail("NS-001 census violation was not parsed")
-        tm.that(result.fixable, eq=True)
+        violation = tm.ok(result)
+        tm.that(violation.fixable, eq=True)
 
     def test_ns002_fixable(self) -> None:
         result = _parse_violation("[NS-002-001] src/file.py:1 — TypeVar violation")
-        tm.that(result, none=False)
-        if result is None:
-            pytest.fail("NS-002 census violation was not parsed")
-        tm.that(result.fixable, eq=True)
+        violation = tm.ok(result)
+        tm.that(violation.fixable, eq=True)
 
     def test_ns000_multiple_sub_rules_not_fixable(self) -> None:
         for sub in ("001", "002", "099"):
             result = _parse_violation(f"[NS-000-{sub}] src/x.py:1 — msg")
-            tm.that(result, none=False)
-            if result is None:
-                pytest.fail(f"NS-000-{sub} census violation was not parsed")
-            tm.that(not result.fixable, eq=True)
+            violation = tm.ok(result)
+            tm.that(not violation.fixable, eq=True)
 
 
 class TestCensusExecute:

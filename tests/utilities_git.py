@@ -169,16 +169,31 @@ class TestsFlextInfraUtilitiesGitMixin:
         provider config production reads. ``origin_url`` defaults to the
         repository itself; fixtures that must be recognised as
         provider-governed pass their declared provider URL instead.
+
+        ``initialize_git_repo`` is idempotent: a fixture that already
+        initialized the same repository must not fail on a second call.
+        The declared origin is rewritten in place when it already exists,
+        so callers may pass a different provider URL without a duplicate
+        remote error. This is the single owner of fixture Git identity;
+        callers must not add ``origin`` themselves.
         """
         baseline_branch = TestsFlextInfraUtilitiesProjectFixtureMixin.provider().branch
         bootstrap = TestsFlextInfraUtilitiesGitMixin.git_bootstrap
         bootstrap(repo_root, ("init", "-b", c.Infra.GIT_MAIN))
         bootstrap(repo_root, ("config", "user.email", "tests@flext.local"))
         bootstrap(repo_root, ("config", "user.name", "Flext Tests"))
-        bootstrap(
-            repo_root,
-            ("remote", "add", c.Infra.GIT_ORIGIN, origin_url or str(repo_root)),
+        declared_origin = origin_url or str(repo_root)
+        existing_origin = TestsFlextInfraUtilitiesGitMixin._read_origin_url(
+            repo_root, c.Infra.GIT_ORIGIN
         )
+        if existing_origin == declared_origin:
+            return
+        if existing_origin:
+            bootstrap(
+                repo_root, ("remote", "set-url", c.Infra.GIT_ORIGIN, declared_origin)
+            )
+        else:
+            bootstrap(repo_root, ("remote", "add", c.Infra.GIT_ORIGIN, declared_origin))
         bootstrap(repo_root, ("add", "-A"))
         bootstrap(repo_root, ("commit", "--allow-empty", "-m", "init"))
         bootstrap(
@@ -197,6 +212,23 @@ class TestsFlextInfraUtilitiesGitMixin:
         root.mkdir(parents=True)
         TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(root)
         return root
+
+    @staticmethod
+    def _read_origin_url(repo_root: Path, remote: str) -> str:
+        """Return the configured URL for ``remote`` or "" when it is absent.
+
+        ``git remote get-url`` exits 2 when the remote does not exist, which
+        the fail-closed ``git_capture`` turns into a hard failure. Reading the
+        origin URL is a probe, not an assertion: a freshly initialized fixture
+        has no remote yet, so the probe must tolerate the negative case and
+        let the caller choose ``remote add`` instead of ``remote set-url``.
+        """
+        result = tm.ok(
+            u.Cli.run_raw([c.Infra.GIT, "remote", "get-url", remote], cwd=repo_root)
+        )
+        if not u.Cli.process_succeeded(result.outcome):
+            return ""
+        return result.stdout.strip()
 
     @staticmethod
     def git_run(repo_root: Path, *args: str) -> bool:

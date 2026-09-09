@@ -37,9 +37,13 @@ Infra:
       # Global compatibility exceptions become [tool.uv] constraint-dependencies
       # in every project, including projects using the dependency transitively.
       # Keep reasons here; an empty list removes constraints from all projections.
-      # flext-y3qpq.4: Meltano's published metadata requires structlog<26.
-      # Operator authorized this fleet-wide exception on 2026-09-09. Revalidate
-      # the upstream contract before removing it; deps derives the compatible floor.
+      # flext-y3qpq.4: meltano 4.2.2 (latest) still declares structlog<26,>=25.5.0
+      # upstream (revalidated on PyPI 2026-09-09) and the fleet member
+      # flext-meltano resolves meltano in the shared fleet lock, so the fleet
+      # floor for structlog stays capped at <26: one fleet lock cannot carry
+      # both structlog<26 and >=26.1.0 for the same dependency. Do not lift
+      # this cap unless meltano upstream drops its own cap; floors derive
+      # from deps against this same contract (operator 2026-09-09).
       uv_constraint_dependencies: ["structlog<26"]
       # Moving selectors consumed by generated .mise.toml and CI. The fleet
       # runs unlocked: setup converges on the newest published release.
