@@ -43,15 +43,23 @@ UV_LINK_MODE := copy
 # End SECTION: project identity
 
 # === SECTION: public boundary (managed) ===
-PUBLIC_INPUTS := APPLY
-COMMAND_LINE_INPUTS := $(foreach name,$(.VARIABLES),$(if $(filter command line override,$(origin $(name))),$(name)))
+# GNU Make built-ins are dot-prefixed; .SHELLSTATUS carries origin "override"
+# on Make >= 4.4, so they are excluded from caller-input detection.
+PUBLIC_INPUTS := APPLY INDEX
+COMMAND_LINE_INPUTS := $(foreach name,$(filter-out .%,$(.VARIABLES)),$(if $(filter command line override,$(origin $(name))),$(name)))
 UNKNOWN_INPUTS := $(filter-out $(PUBLIC_INPUTS),$(COMMAND_LINE_INPUTS))
 ifneq ($(strip $(UNKNOWN_INPUTS)),)
-$(error Unsupported Make input(s): $(UNKNOWN_INPUTS); public operations accept only APPLY=Y)
+$(error Unsupported Make input(s): $(UNKNOWN_INPUTS); public operations accept only APPLY=Y and INDEX=Y)
 endif
 APPLY ?= N
 ifneq ($(filter $(APPLY),N Y),$(APPLY))
 $(error APPLY must be Y when enabled)
+endif
+# INDEX refines receipt-attested publication: Y uploads to the package index,
+# N publishes GitHub assets only. Publication itself stays APPLY-gated.
+INDEX ?=
+ifneq ($(filter-out Y N N,$(strip $(INDEX))),)
+$(error INDEX must be Y, N, or unset)
 endif
 APPLYING := $(if $(filter Y,$(APPLY)),Y)
 PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
@@ -477,6 +485,9 @@ BORROW_RUNTIME_VENV_RECIPE = set -eu; \
 	fi
 
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra workspace orchestrate
+# Workspace runs include the root project itself: `.` maps to the
+# _builtin-self-* targets, so all 32 distributions execute their own gates
+# (plan contract: no member of the fleet is excluded from required cycles).
 DEFAULT_PROJECTS := $(WORKSPACE_SUBPROJECTS) .
 SELECTED_PROJECTS := $(DEFAULT_PROJECTS)
 WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
@@ -943,6 +954,51 @@ _builtin_fix_apply: _builtin_fix_all
 _builtin_fix_enforcement: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) check fix-enforcement --repository-root "$(PROJECT_ROOT)" --safe-only --apply
+
+# _builtin-self-* targets serve the workspace root itself (project selector
+# `.` from the orchestrator). They apply the same member-style gate recipes to
+# PROJECT_ROOT without recursing into submodules, so the root distribution
+# runs its own evidence in the global cycles.
+_builtin-self-test: _builtin_require_environment
+
+	@set -eu; \
+		test_tmp_parent="$(PROJECT_SCRATCH_ROOT)/pytest"; \
+		mkdir -p "$$test_tmp_parent"; \
+		test_tmp=$$(mktemp -d "$$test_tmp_parent/invocation.XXXXXX"); \
+		cleanup_test_tmp() { rm -rf "$$test_tmp"; }; \
+		trap cleanup_test_tmp EXIT INT TERM; \
+		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
+
+_builtin-self-check: _builtin_require_environment
+	@set -eu; \
+		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication"; \
+		if [ "$(strip $(CI))" = "Y" ]; then \
+			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication"; \
+			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells codemod layout canonical-alias direnv duplication\n'; \
+		fi; \
+		if [ -z "$$gates" ]; then \
+		printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
+		exit 2; \
+	fi; \
+	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects .
+
+_builtin-self-fmt: _builtin_require_environment
+	$(call _require_apply)
+	@$(UV_RUN) ruff format --preview $(RUFF_PATHS)
+	@$(UV_RUN) ruff check --preview --fix --unsafe-fixes $(RUFF_PATHS)
+
+_builtin-self-fix: _builtin_require_environment
+	$(call _require_apply)
+	@$(UV_RUN) ruff check --preview --fix --unsafe-fixes $(RUFF_PATHS)
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,canonical-alias,smells" --projects . --apply
+
+_builtin-self-build:
+	@$(UV) build --project "$(PROJECT_ROOT)"
+
+_builtin-self-clean: _builtin_clean_generated
+
+_builtin-self-docs: _builtin_docs_all
+
 
 
 _builtin_run_default: _builtin_require_environment
