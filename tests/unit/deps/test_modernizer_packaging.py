@@ -88,6 +88,7 @@ def test_conform_packages_every_declared_python_root(infra_git_repo: Path) -> No
     }
     module_path = f"{c.Infra.DEFAULT_SRC_DIR}/{root_module}.py"
     tm.that(set(u.Tests.toml_list(wheel["packages"])), eq=package_paths)
+    tm.that(u.Tests.toml_mapping(wheel["force-include"]), has=module_path, msg=manifest)
     tm.that(
         u.Tests.toml_mapping(wheel["force-include"])[module_path],
         eq=f"{root_module}.py",
@@ -114,7 +115,6 @@ def test_conform_packages_every_declared_python_root(infra_git_repo: Path) -> No
 def test_conform_rejects_missing_declared_python_root(
     infra_git_repo: Path,
     missing_kind: Literal["module", "package"],
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """A declaration never produces a phantom wheel or sdist path."""
     _ = _prepare_project(
@@ -124,11 +124,8 @@ def test_conform_rejects_missing_declared_python_root(
     )
     before = (infra_git_repo / c.Infra.PYPROJECT_FILENAME).read_bytes()
 
-    exit_code = _conform_self(infra_git_repo)
-
-    output = capsys.readouterr()
-    tm.that(exit_code, ne=0)
-    tm.that(output.out + output.err, has=f"root {missing_kind}")
+    with pytest.raises(FileNotFoundError, match=f"root {missing_kind}"):
+        _conform_self(infra_git_repo)
     tm.that((infra_git_repo / c.Infra.PYPROJECT_FILENAME).read_bytes(), eq=before)
 
 

@@ -54,6 +54,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
             (
                 "[project]\n"
                 'name = "workspace"\n'
+                'description = "Release workflow fixture"\n'
                 f'version = "{version}"\n'
                 "dependencies = []\n"
             ),
@@ -99,6 +100,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
                     "\n"
                     "[project]\n"
                     f'name = "{name}"\n'
+                    'description = "Release member fixture"\n'
                     'version = "0.1.0"\n'
                     'license = "MIT"\n'
                     'dependencies = ["flext-core @ '

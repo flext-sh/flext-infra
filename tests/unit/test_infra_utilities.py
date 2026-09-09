@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from flext_tests import tm
@@ -50,5 +51,8 @@ class TestsFlextInfraInfraUtilities:
 
         tm.that(command, has=c.Infra.SG_CONFIG_FLAG)
         tm.that(command, has=c.Infra.SG_FILTER_FLAG)
-        tm.that(command, has="config-dict-type-from-typings")
+        rule_filter = command[command.index(c.Infra.SG_FILTER_FLAG) + 1]
+        tm.that(re.fullmatch(rule_filter, rule.stem) is not None, eq=True)
+        tm.that(re.fullmatch(rule_filter, f"{rule.stem}-other") is None, eq=True)
+        tm.that(re.fullmatch(rule_filter, f"other-{rule.stem}") is None, eq=True)
         tm.that(command, lacks="--rule")

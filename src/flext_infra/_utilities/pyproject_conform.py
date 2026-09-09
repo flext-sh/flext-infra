@@ -647,7 +647,6 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace_mode=workspace_mode,
         )
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
-        has_uv = tool is not None and u.Cli.toml_table_child(tool, "uv") is not None
         if tool is None:
             if (
                 not repository_root
@@ -665,10 +664,6 @@ class FlextInfraUtilitiesPyprojectConform:
                 and not exclude_dependencies
                 and not constraint_dependencies
             ):
-                return r[bool].ok(True)
-            if not constraint_dependencies and not has_uv and not exclude_dependencies:
-                # Empty declared constraints on a document without any uv
-                # table: nothing to remove, so no table is created.
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
         u.Cli.toml_remove_key_if_present(uv, "required-version")
@@ -990,8 +985,8 @@ class FlextInfraUtilitiesPyprojectConform:
                     }
                     # Profiles own same-name requirements. CUSTOM requirements
                     # retain full specs, including distinct markers for one name.
-                    project[key] = list(
-                        dict.fromkeys((
+                    project[key] = [
+                        *dict.fromkeys((
                             *required,
                             *(
                                 item
@@ -1000,7 +995,7 @@ class FlextInfraUtilitiesPyprojectConform:
                                 not in owned_names
                             ),
                         ))
-                    )
+                    ]
                 else:
                     project[key] = live_project[key]
         merged[c.Infra.PROJECT] = project
