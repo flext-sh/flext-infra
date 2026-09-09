@@ -24,6 +24,10 @@ class FlextInfraEnsurePytestConfigPhase:
             # flext-j47u (codex): no pytest policy literal survives outside config.
             .value(c.Infra.MINVERSION, pytest.min_version)
             .value(c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS, str(pytest.slow_timeout_seconds))
+            .value(
+                c.Infra.ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE,
+                pytest.asyncio_default_fixture_loop_scope,
+            )
             .list(
                 c.Infra.PYTHON_CLASSES,
                 pytest.python_classes,

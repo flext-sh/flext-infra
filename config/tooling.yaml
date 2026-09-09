@@ -574,6 +574,7 @@ Infra:
         # it wastes runtime and obscures the causal failure.
         max-failures: 1
         enforcement-plugin: flext_tests_enforcement
+        asyncio-default-fixture-loop-scope: function
         progress-args: [--verbose]
         report-args: [-ra, --durations=25, --durations-min=0.001, --tb=short]
         diagnostic-args: [-rA, --durations=0, --tb=long, --showlocals]

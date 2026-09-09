@@ -1076,6 +1076,7 @@ Infra:
           - pyrefly>=1.2.0
           - pyright>=1.1.411
           - pytest>=9.1.1
+          - pytest-asyncio
           - pytest-benchmark
           - pytest-cov
           - pytest-markdown-docs

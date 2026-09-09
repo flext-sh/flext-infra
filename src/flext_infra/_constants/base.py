@@ -119,6 +119,10 @@ class FlextInfraConstantsBase(
     "Pytest minversion settings key."
     FLEXT_SLOW_TIMEOUT_SECONDS: Final[str] = "flext_slow_timeout_seconds"
     "Enforcement-plugin ini key carrying the config-owned slow-item budget."
+    ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE: Final[str] = (
+        "asyncio_default_fixture_loop_scope"
+    )
+    "Pytest-asyncio ini key selecting the asynchronous fixture event-loop scope."
     PYTHON_CLASSES: Final[str] = "python_classes"
     "Pytest python_classes settings key."
     PYTHON_FILES: Final[str] = "python_files"

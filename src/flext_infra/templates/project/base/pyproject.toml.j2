@@ -266,6 +266,7 @@ addopts = [
   "--timeout={{ tooling.tools.pytest.case_timeout_seconds }}",
 ]
 flext_slow_timeout_seconds = "{{ tooling.tools.pytest.slow_timeout_seconds }}"
+asyncio_default_fixture_loop_scope = {{ tooling.tools.pytest.asyncio_default_fixture_loop_scope | tojson }}
 {# Deterministic tracked-root collection, warning fail-closed. #}
 filterwarnings = [
 {% for item in tooling.tools.pytest.filter_warnings %}
