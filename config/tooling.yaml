@@ -42,6 +42,9 @@ Infra:
             "docs/architecture/communities/README.md": [MD058]
             "docs/architecture/crg-reports/large-functions.md": [MD075, MD013]
         exclude:
+          # AGENTS.md is a tool-managed projection (beads integration + codex
+          # setup blocks): gating generated output is a projection defect.
+          - AGENTS.md
           - .kilo/**
           - .omo/**
           - .tmp/**
