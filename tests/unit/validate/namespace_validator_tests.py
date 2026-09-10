@@ -719,6 +719,37 @@ class TestFlextInfraNamespaceValidator:
             msg=str(result.value),
         )
 
+    def test_rule4_canonical_singleton_with_trailing_docstring_allowed(
+        self, tmp_path: Path
+    ) -> None:
+        """D1-precision: canonical `api: Class = Class.fetch_global()` allows a trailing docstring.
+
+        Mirrors the generated api.py.j2:20 singleton plus a hand-placed docstring
+        (the flext-api api.py / _settings.py shape). A trailing module-alias
+        declaration is still forbidden; only a docstring or ``__all__`` may follow.
+        """
+        validator = FlextInfraNamespaceValidator()
+        module_source = (
+            "from __future__ import annotations\n\n"
+            "class FlextTest:\n"
+            "    pass\n\n"
+            "api: FlextTest = FlextTest.fetch_global()\n"
+            '"""Global FlextTest facade instance."""\n'
+            '__all__: list[str] = ["FlextTest", "api"]\n'
+        )
+        root = _make_project_with_module(
+            tmp_path, module_source=module_source, module_name="api.py"
+        )
+
+        result = validator.validate_project(root)
+
+        tm.ok(result)
+        tm.that(
+            not any("module alias/data declaration" in v for v in result.value.violations),
+            eq=True,
+            msg=str(result.value),
+        )
+
     def test_rule0_does_not_flag_non_namespace_runtime_module(
         self, tmp_path: Path
     ) -> None:

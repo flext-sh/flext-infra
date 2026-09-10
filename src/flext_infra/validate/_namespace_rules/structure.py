@@ -195,7 +195,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         ):
             return False
         return all(
-            cls._dunder_assignment(statement)
+            cls._dunder_assignment(statement) or cls._module_docstring(statement)
             for statement in (getattr(tree, "body", ()) or ())
             if cls.line(statement) > cls.line(node)
         )
