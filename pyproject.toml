@@ -552,6 +552,7 @@ split-on-trailing-comma = false
   "undocumented-public-method",
 ]
 "src/flext_infra/_utilities/_rope/**/*.py" = ["private-member-access"]
+"src/flext_infra/_utilities/_mypy_supervisor.py" = ["subprocess-without-shell-equals-true", "suspicious-subprocess-import"]
 
 [tool.tomlsort]
 all = true

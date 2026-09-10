@@ -221,6 +221,30 @@ def cached_runner_project(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
+def policy_violation_project(tmp_path: Path) -> Path:
+    """Create a real consumer whose suite violates the slow-timeout policy."""
+    project_root = tmp_path / "policy_violation_project"
+    policy = config.Infra.codegen.make.testmon_cache
+    tests_root = project_root / policy.target_directory
+    tests_root.mkdir(parents=True)
+    # The ini value is an arbitrary non-production budget owned by this probe.
+    (project_root / "pyproject.toml").write_text(
+        "[tool.pytest.ini_options]\nflext_slow_timeout_seconds = \"30\"\n",
+        encoding="utf-8",
+    )
+    (tests_root / "test_policy.py").write_text(
+        "import pytest\n"
+        "\n"
+        "\n"
+        "@pytest.mark.timeout(1)\n"
+        "def test_breaks_policy() -> None:\n"
+        "    pass\n",
+        encoding="utf-8",
+    )
+    return project_root
+
+
+@pytest.fixture
 def mod_workspace(tmp_path: Path) -> Path:
     """Create the shared real workspace for the public refactor-mod CLI."""
     project_document = u.read_project_document_cached(_PROJECT_ROOT)
@@ -413,6 +437,7 @@ __all__: list[str] = [
     "models_resource",
     "modernizer_workspace",
     "modernizer_workspace_with_projects",
+    "policy_violation_project",
     "real_docs_project",
     "real_makefile_project",
     "real_python_package",

@@ -146,7 +146,7 @@
 	@set -eu; \
 	uv_selector="{{ uv_version }}"; \
 	if [ ! -f "{{ mise }}" ]; then \
-		printf 'ERROR: missing generated mise launcher: %s; run make gen APPLY=Y\n' "{{ mise }}" >&2; \
+		printf 'ERROR: missing generated mise launcher: %s; run make gen\n' "{{ mise }}" >&2; \
 		exit 2; \
 	fi; \
 	{{ mise_runtime_bootstrap(project_root, mise, bootstrap) }}; \
