@@ -149,8 +149,21 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         class_stem: str,
         package_name: str,
     ) -> bool:
-        """Recognize the required bottom alias only at its discovered public owner."""
+        """Recognize the required bottom alias only at its discovered public owner.
+
+        Canonical facade singletons come in two codegen-emitted forms:
+        a plain ``alias = Class`` (e.g. ``s = FlextApiServiceBase``) and the
+        typed global-fetcher ``alias: Class = Class.fetch_global()`` (e.g.
+        ``api = FlextApi.fetch_global()``). Both are permitted only on the
+        canonical facade files registered in NAMESPACE_FAMILY_EXPECTED_ALIAS
+        (constants/typings/protocols/models/utilities) and on the platform
+        service-facade files in NAMESPACE_PLATFORM_FACADE_SINGLETONS
+        (api.py, base.py, config.py, settings.py). Anything else remains a
+        banned module alias.
+        """
         spec = c.Infra.NAMESPACE_FAMILY_EXPECTED_ALIAS.get(filepath.name)
+        if spec is None:
+            spec = c.Infra.NAMESPACE_PLATFORM_FACADE_SINGLETONS.get(filepath.name)
         if spec is None or filepath.parent != Path(c.Infra.DEFAULT_SRC_DIR).joinpath(
             *package_name.split(".")
         ):
@@ -161,15 +174,23 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             class_name := f"{class_stem}{suffix}"
         ):
             return False
-        targets = getattr(node, "targets", ())
+        targets = getattr(node, "targets", ()) or (getattr(node, "target", None),)
         value = getattr(node, "value", None)
+        value_is_class = (
+            cls.kind(value) == "Name"
+            and cls.name_of(value) == class_name
+        )
+        value_is_global_singleton = (
+            cls.kind(value) == "Call"
+            and cls.dotted_name(getattr(value, "func", None))
+            == f"{class_name}.fetch_global"
+        )
         if not (
-            cls.kind(node) == "Assign"
+            cls.kind(node) in {"Assign", "AnnAssign"}
             and len(targets) == 1
             and cls.kind(targets[0]) == "Name"
             and cls.name_of(targets[0]) == alias
-            and cls.kind(value) == "Name"
-            and cls.name_of(value) == class_name
+            and (value_is_class or value_is_global_singleton)
             and cls.line(node) > cls.line(classes[0])
         ):
             return False

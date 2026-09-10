@@ -73,6 +73,24 @@ class FlextInfraConstantsNamespace:
     NAMESPACE_SETTINGS_IMPORT_ALLOWED_FACADES_SET: Final[frozenset[str]] = frozenset(
         NAMESPACE_SETTINGS_IMPORT_ALLOWED_FACADES
     )
+    # Platform service-facade singletons emitted by codegen (api.py.j2:20
+    # ``{{ alias }} = {{ class_stem }}.fetch_global()``) and the canonical
+    # base/services/config/settings layers. These expose a bottom singleton
+    # ``alias = Class.fetch_global()`` (plain Assign or typed AnnAssign) which
+    # the structure rule must recognize as canonical, not a banned module alias.
+    # Handoff §1.2 layer order: ...base->services->api->cli; settings/config are
+    # the rank-0/1 layers (rank-0/1 layers that declare the Flext<X>Settings).
+    NAMESPACE_PLATFORM_FACADE_SINGLETONS: Final[t.MappingKV[str, t.StrPair]] = (
+        MappingProxyType({
+            "api.py": ("api", ""),
+            "base.py": ("s", "ServiceBase"),
+            "_config.py": ("config", "Config"),
+            "config.py": ("config", "Config"),
+            "_settings.py": ("settings", "Settings"),
+            "settings.py": ("settings", "Settings"),
+        })
+    )
+    "Canonical platform facade file name -> (alias, class-name suffix)."
     NAMESPACE_LAYER_BY_FILE: Final[MappingProxyType[str, str]] = MappingProxyType({
         "settings.py": "settings",
         "_settings.py": "settings",
