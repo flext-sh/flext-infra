@@ -1796,7 +1796,9 @@ Infra:
         # clean-machine images validating bootstrap and make verbs everywhere.
         - source: base/.github/workflows/ci-matrix.yml.j2
           destination: .github/workflows/ci-matrix.yml
-          # Workspace members are covered by the root matrix; do not duplicate.
+          # Operator rule: the manual dispatch matrix is projected to EVERY
+          # repository (root and members alike); dispatch-only, never bound
+          # to the integration line.
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
