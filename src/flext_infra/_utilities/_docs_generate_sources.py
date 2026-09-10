@@ -165,9 +165,10 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
             return r[bool].from_failure(current)
         for expected, observed in zip(source_states, current.value, strict=True):
             if observed != expected:
+                model_fields = type(expected).model_fields
                 differing = tuple(
                     field
-                    for field in expected.model_fields
+                    for field in model_fields
                     if getattr(expected, field) != getattr(observed, field)
                 )
                 return r[bool].fail(
