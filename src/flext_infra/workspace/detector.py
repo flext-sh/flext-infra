@@ -491,7 +491,29 @@ class FlextInfraWorkspaceDetector(
         )
         if repository.failure:
             return result_type.fail(repository.error)
-        return result_type.ok(repository.value)
+        if not cls._workspace_manifest_path(subproject_root).is_file():
+            return result_type.ok(repository.value)
+        member_beads = cls.load_beads_spec(subproject_root)
+        if member_beads.failure:
+            return result_type.fail(member_beads.error)
+        manifest = cls._manifest_repository_ref(
+            subproject_root,
+            observed=repository.value.model_copy(update={"path": Path()}),
+            beads=member_beads.value,
+        )
+        if manifest.failure:
+            return result_type.fail(manifest.error)
+        # The member owns its commands. Git still owns its composed path,
+        # topology and editability; do not import a second member registry.
+        commands = manifest.value[0]
+        return result_type.ok(
+            repository.value.model_copy(
+                update={
+                    "extra_verbs": commands.extra_verbs,
+                    "script_dispatch": commands.script_dispatch,
+                }
+            )
+        )
 
     @classmethod
     def load_workspace_spec(
