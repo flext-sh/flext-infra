@@ -92,11 +92,7 @@ class FlextInfraNamespaceRulesContracts(FlextInfraNamespaceRulesBase):
         for annotation in annotations:
             if annotation is None:
                 continue
-            names = {
-                cls.name_of(candidate)
-                for candidate in cls.walk(annotation)
-                if cls.name_of(candidate)
-            }
+            names = cls._annotation_type_names(annotation)
             banned = sorted(names & c.Infra.NAMESPACE_BANNED_ANNOTATIONS)
             if banned:
                 messages.append(
@@ -104,6 +100,29 @@ class FlextInfraNamespaceRulesContracts(FlextInfraNamespaceRulesBase):
                     + ", ".join(banned)
                 )
         return tuple(messages)
+
+    @classmethod
+    def _annotation_type_names(cls, annotation: object) -> frozenset[str]:
+        """Collect identifier names from an annotation, skipping call subtrees.
+
+        Pydantic field metadata such as
+        ``Annotated[t.MappingKV[str, str], m.Field(default_factory=dict)]``
+        embeds a runtime value (the field factory) inside the annotation AST.
+        Names living inside any ``Call`` (e.g. ``default_factory=dict``) are
+        construction values, not type declarations, so they are excluded.
+        Genuine ``dict``/``Any``/``object`` annotations are still reported for
+        codemod migration (NS-CONTRACT codemod plan, handoff §1.4).
+        """
+        nodes = cls.walk(annotation)
+        call_descendants: set[int] = set()
+        for node in nodes:
+            if cls.kind(node) == "Call":
+                call_descendants.update(id(d) for d in cls.walk(node))
+        return frozenset(
+            cls.name_of(candidate)
+            for candidate in nodes
+            if cls.name_of(candidate) and id(candidate) not in call_descendants
+        )
 
     @classmethod
     def _call_contract(

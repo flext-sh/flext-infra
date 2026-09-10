@@ -647,7 +647,7 @@ class TestFlextInfraNamespaceValidator:
         )
         root = _make_project_with_module(
             tmp_path, module_source=module_source, module_name="_settings.py"
-        )
+         )
 
         result = validator.validate_project(root)
 
@@ -655,6 +655,64 @@ class TestFlextInfraNamespaceValidator:
         tm.that(
             any(
                 "reverse runtime import" in violation
+                for violation in result.value.violations
+            ),
+            eq=True,
+            msg=str(result.value),
+        )
+
+    def test_rule4_annotated_field_factory_not_flagged_as_banned(
+        self, tmp_path: Path
+    ) -> None:
+        """D1-precision: Annotated metadata factory values are not annotations.
+
+        The canonical Flext<X>Settings pattern embeds the Pydantic field factory
+        in the annotation metadata:
+        ``Annotated[t.MappingKV[str, str], m.Field(default_factory=dict)]``.
+        The ``dict`` there is a runtime factory value, not a type declaration,
+        so NS-CONTRACT must not flag it.
+        """
+        validator = FlextInfraNamespaceValidator()
+        module_source = (
+            "from __future__ import annotations\n\n"
+            "import typing\n\n"
+            "from flext_test import m, t\n\n"
+            "class FlextTestSettings:\n"
+            "    default_headers: typing.Annotated["
+            "t.MappingKV[str, str], m.Field(default_factory=dict)] = None\n"
+        )
+        root = _make_project_with_module(
+            tmp_path, module_source=module_source, module_name="_settings.py"
+        )
+
+        result = validator.validate_project(root)
+
+        tm.ok(result)
+        tm.that(
+            [v for v in result.value.violations if "NS-CONTRACT" in v],
+            eq=[],
+            msg=str(result.value),
+        )
+
+    def test_rule4_banned_annotation_still_flagged(self, tmp_path: Path) -> None:
+        """D1-precision non-regression: genuine banned annotations are flagged."""
+        validator = FlextInfraNamespaceValidator()
+        module_source = (
+            "from __future__ import annotations\n\n"
+            "class FlextTestServices:\n"
+            "    def transform(self, data: dict) -> object:\n"
+            "        return data\n"
+        )
+        root = _make_project_with_module(
+            tmp_path, module_source=module_source, module_name="services.py"
+        )
+
+        result = validator.validate_project(root)
+
+        tm.ok(result)
+        tm.that(
+            any(
+                "banned annotation" in violation
                 for violation in result.value.violations
             ),
             eq=True,
