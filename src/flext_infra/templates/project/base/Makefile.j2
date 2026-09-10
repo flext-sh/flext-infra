@@ -4,7 +4,7 @@
 # @flext-generated: continuous
 # @flext-owner: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
 # @flext-adjust: edit the owner configuration or template; never this projection
-# @flext-regenerate: make gen APPLY=Y
+# @flext-regenerate: make gen
 # {{ dist }} — selector-free generated project interface.
 # Managed by flext-infra codegen conform for new and existing repositories.
 # === SECTION: header (managed) ===
@@ -48,18 +48,24 @@ UV_LINK_MODE := {{ uv_link_mode }}
 # === SECTION: public boundary (managed) ===
 # GNU Make built-ins are dot-prefixed; .SHELLSTATUS carries origin "override"
 # on Make >= 4.4, so they are excluded from caller-input detection.
+# Operator decision 2026-09-10: unknown command-line inputs no longer fail the
+# run. The Makefile ignores them and prints a warning, so ordinary invocations
+# like `make test` or `make setup` always start with zero variables.
 PUBLIC_INPUTS := {{ make.apply_variable }} INDEX
 COMMAND_LINE_INPUTS := $(foreach name,$(filter-out .%,$(.VARIABLES)),$(if $(filter command line override,$(origin $(name))),$(name)))
 UNKNOWN_INPUTS := $(filter-out $(PUBLIC_INPUTS),$(COMMAND_LINE_INPUTS))
 ifneq ($(strip $(UNKNOWN_INPUTS)),)
-$(error Unsupported Make input(s): $(UNKNOWN_INPUTS); public operations accept only {{ make.apply_variable }}={{ make.apply_value }} and INDEX=Y)
+$(warning Ignoring unsupported Make input(s): $(UNKNOWN_INPUTS); declared public inputs are {{ make.apply_variable }} and INDEX)
 endif
 {{ make.apply_variable }} ?= {{ make.apply_absent_value }}
-ifneq ($(filter $({{ make.apply_variable }}),{{ make.apply_absent_value }} {{ make.apply_value }}),$({{ make.apply_variable }}))
+# filter-out keeps the guard true independent of argument order: a guard that
+# passed $(APPLY) as the filter *pattern* turned a valid APPLY=Y into the
+# pattern "Y Y" and returned two words, so the guard failed on every run.
+ifneq ($(filter-out {{ make.apply_absent_value }} {{ make.apply_value }},$(strip $({{ make.apply_variable }}))),)
 $(error {{ make.apply_variable }} must be {{ make.apply_value }} when enabled)
 endif
 # INDEX refines receipt-attested publication: Y uploads to the package index,
-# N publishes GitHub assets only. Publication itself stays APPLY-gated.
+# N publishes GitHub assets only. APPLY gates remain for explicit opt-out
 INDEX ?=
 ifneq ($(filter-out {{ make.apply_value }} {{ make.apply_absent_value }} N,$(strip $(INDEX))),)
 $(error INDEX must be {{ make.apply_value }}, N, or unset)
@@ -283,9 +289,14 @@ PROJECT_FLEXT_INFRA := if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: 
 # `uv sync --check` permanently divergent. A standalone project owns its venv
 # alone and has no workspace packages to include.
 SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(WORKSPACE_SUBPROJECTS)),1,))
-# CI must verify the committed lock against declared metadata before syncing.
+# CI must verify the committed lock against declared metadata before syncing;
 # --frozen bypasses that check and can omit newly declared runtime dependencies.
-UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups $(if $({{ make.ci.variable }}),--locked ,)
+# Locally, --refresh re-resolves branch-tracked git dependencies (flext-* pinned
+# to the integration branch are moving sources by declaration, flext-62fbu), so
+# `make setup` always provisions the current package tips. Deleting uv.lock is
+# never needed: setup reconciles the stale-git-ref case itself (operator
+# request 2026-09-10).
+UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups $(if $({{ make.ci.variable }}),--locked ,--refresh)
 
 {{ makefile_custom_include }}
 SELF_MAKE := "$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(SELF_MAKEFILE)"
@@ -348,10 +359,11 @@ _setup_lifecycle:
 _builtin-help:
 	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' '';
 {% for verb in make.verbs %}
-	@printf '  %-16s %s{% if verb.requires_apply %} ({{ make.apply_variable }}={{ make.apply_value }}){% endif %}\n' '{{ verb.name }}' '{{ verb.description | replace("\n", " ") | trim }}';
+	@printf '  %-16s %s\n' '{{ verb.name }}' '{{ verb.description | replace("\n", " ") | trim }}';
 {% endfor %}{% for verb in extra_verbs %}
-	@printf '  %-16s %s{% if verb.requires_apply %} ({{ make.apply_variable }}={{ make.apply_value }}){% endif %}\n' '{{ verb.name }}' '{{ verb.description | replace("\n", " ") | trim }}';
+	@printf '  %-16s %s\n' '{{ verb.name }}' '{{ verb.description | replace("\n", " ") | trim }}';
 {% endfor %}
+	@printf '%s\n' 'Verbs apply by default; pass {{ make.apply_variable }}=N where the verb supports a check mode.';
 
 # A project owns the sources declared by its manifest. The generated setup
 # reconciler validates every initialized checkout before mutation, initializes
@@ -373,7 +385,7 @@ endif
 # === SECTION: setup environment (managed) ===
 # Source: computed (MAKE_PROFILE routing) + operator contract (mro-e9j0.6 C7)
 # Operator contract: setup PROVISIONS tooling only — mise, venv, dependencies.
-# It never generates, conforms, or mutates project code; `make gen` (APPLY=Y)
+# It never generates, conforms, or mutates project code; `make gen` is the
 # is the single public conformance/generation surface.
 # Setup always reconciles directly from the lock. The venv is created when
 # missing and is never cleared while present, because a concurrent lane may be
@@ -456,8 +468,8 @@ _builtin-self-docs: _builtin_docs_all
 _builtin_build_artifacts:
 	@$(WORKSPACE_ORCHESTRATE) --verb build $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
-# Read-only by contract in every profile: mutation belongs to `make fix
-# APPLY=Y` / `make fmt APPLY=Y`, which run BEFORE check. CI={{ make.ci.value }}
+# Read-only by contract in every profile: mutation belongs to `make fix`
+# and `make fmt`, which run BEFORE check. CI={{ make.ci.value }}
 # keeps make.ci.check_gates before orchestrating members (same contract as
 # standalone/member Makefiles and flext_infra check run).
 _builtin_check_all: _builtin_require_environment
@@ -486,8 +498,8 @@ _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
 
 # `check` is read-only by contract: it never mutates the tree. Fixing is owned
-# by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
-# check. APPLY here made the same tools run twice with conflicting intents,
+# by `make fix` and formatting by `make fmt`, both run BEFORE check. APPLY here
+# made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
 # CI={{ make.ci.value }} keeps make.ci.check_gates, the strict complement of
 # make.ci.local_check_gates.

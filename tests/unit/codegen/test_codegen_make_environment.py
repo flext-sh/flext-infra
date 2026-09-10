@@ -610,20 +610,27 @@ class TestsCodegenMakeEnvironment:
             msg=process.stdout + process.stderr,
         )
         commands = uv_log.read_text(encoding="utf-8").splitlines()
-        # The upgrade scope is exactly the declared project locks: one pass with
-        # the upgrade flag, then one plain lock verification of the same root.
+        # The upgrade scope is exactly the declared project locks: one pass
+        # with the upgrade and refresh flags (branch-tracked git dependencies
+        # are moving sources by declaration), then one plain lock verification
+        # of the same root.
         tm.that(
             [line for line in commands if line.startswith("lock")],
             eq=(
-                f"lock --project {project_root} --upgrade",
-                f"lock --project {project_root}",
+                f"lock --project {project_root} --upgrade --refresh",
+                f"lock --project {project_root} --check",
             ),
         )
 
     def test_dependency_upgrade_requires_the_write_enable_token(
         self, tmp_path: Path
     ) -> None:
-        """Fail before uv when the write-enable token is absent."""
+        """Deps applies with zero inputs; APPLY=N remains the explicit opt-out.
+
+        Operator law 2026-09-10 seeds the write-enable token to its apply
+        value, so the plain `make deps` invocation must reach uv. Only the
+        explicit APPLY=N run keeps the fail-closed write-enable diagnostic.
+        """
         project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
@@ -634,24 +641,43 @@ class TestsCodegenMakeEnvironment:
         test_u.Tests.write_executable(
             uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\nexit 0\n"
         )
+        env = {"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"}
 
-        process = tm.ok(
+        plain = tm.ok(
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", "deps"],
                 cwd=project_root,
-                env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
+                env=env,
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            )
+        )
+        authenticated = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "deps",
+                    f"{config.Infra.codegen.make.apply_variable}=N",
+                ],
+                cwd=project_root,
+                env=env,
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
 
-        tm.that(process.outcome.raw_return_code, ne=0)
+        tm.that(u.Cli.process_succeeded(plain.outcome), eq=True)
+        tm.that(uv_log.exists(), eq=True)
         apply_variable = config.Infra.codegen.make.apply_variable
         apply_value = config.Infra.codegen.make.apply_value
+        # APPLY is binary now: the apply value is the only valid token, so the
+        # explicit opt-out attempt fails at the generated public boundary
+        # before any recipe runs, keeping uv off the mutation path.
+        tm.that(authenticated.outcome.raw_return_code, ne=0)
         tm.that(
-            process.stdout + process.stderr,
-            has=f"this action requires {apply_variable}={apply_value}",
+            authenticated.stdout + authenticated.stderr,
+            has=f"{apply_variable} must be {apply_value} when enabled",
         )
-        tm.that(uv_log.exists(), eq=False)
+        tm.that(authenticated.stdout + authenticated.stderr, has="Makefile")
 
     def test_public_gate_fails_closed_before_managed_environment_exists(
         self, tmp_path: Path
@@ -693,8 +719,7 @@ class TestsCodegenMakeEnvironment:
             # and nothing hand-assembles a managed PATH any more.
             ('mise_exec project "$$latest_mise" -C "$$project_root" install --yes'),
             (
-                'mise_checked "$$scratch/lifecycle.log" mise_exec project '
-                '"$$latest_mise" -C "$$project_root" exec -- env '
+                'mise_exec project "$$latest_mise" -C "$$project_root" exec -- env '
                 '"SETUP_DIRENV=$$direnv_executable"'
             ),
             '$(UV) venv "$(RUNTIME_VENV)"',
@@ -738,13 +763,13 @@ class TestsCodegenMakeEnvironment:
     def test_generated_boundary_rejects_forbidden_makeflags_overrides(
         self, tmp_path: Path
     ) -> None:
-        """Hostile MAKEFLAGS assignments are rejected by the public boundary.
+        """Hostile MAKEFLAGS assignments are ignored, never fatal.
 
         GNU Make propagates any variable on MAKEFLAGS (or the command line) as
-        ``command line override`` to every child process. The generated guard
-        rejects every override that is not the declared public input, so inherited
-        hostile assignments from a parent Make cannot smuggle selectors into the
-        child.
+        ``command line override`` to every child process. Since operator law
+        2026-09-10 ordinary usage must always start with zero variables, so
+        the boundary warns about every override that is not a declared public
+        input and continues; it can no longer block a run.
         """
         project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
@@ -757,7 +782,7 @@ class TestsCodegenMakeEnvironment:
         }
         process = tm.ok(
             u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "test"],
+                [c.Infra.MAKE, "--no-print-directory", "help"],
                 cwd=project_root,
                 env=hostile_env,
                 remove_env_keys=tuple(
@@ -768,12 +793,8 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=True)
         tm.that(
             process.stdout + process.stderr,
-            has="Unsupported Make input(s): FORBIDDEN_VAR",
-        )
-        tm.that(
-            process.stdout + process.stderr,
-            has=f"public operations accept only {apply_variable}={apply_value}",
+            has="Ignoring unsupported Make input(s): FORBIDDEN_VAR",
         )

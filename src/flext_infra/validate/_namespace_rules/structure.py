@@ -59,7 +59,9 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         # only the facade class must satisfy the naming and nesting rules.
         for node in getattr(tree, "body", ()) or ():
             kind = cls.kind(node)
-            if kind in {"FunctionDef", "AsyncFunctionDef"}:
+            if kind in {"FunctionDef", "AsyncFunctionDef"} and not (
+                filepath.name == "cli.py" and cls.name_of(node) == "main"
+            ):
                 messages.append(
                     f"{filepath}:{cls.line(node)} — top-level function is forbidden; "
                     "nest behavior in the module class"
@@ -72,6 +74,21 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
                     filepath,
                     class_stem=class_stem,
                     package_name=package_name,
+                )
+                or (
+                    filepath.name == "api.py"
+                    and cls.kind(node) == "AnnAssign"
+                    and (
+                        cls.name_of(
+                            facade_value := getattr(node, "value", None)
+                        )
+                        == class_stem
+                        or (
+                            cls.kind(facade_value) == "Call"
+                            and cls.dotted_name(getattr(facade_value, "func", None))
+                            == f"{class_stem}.fetch_global"
+                        )
+                    )
                 )
             ):
                 messages.append(

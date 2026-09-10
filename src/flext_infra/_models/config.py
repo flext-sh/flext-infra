@@ -1463,15 +1463,16 @@ class FlextInfraConfigModels:
         apply_absent_value: Annotated[
             t.NonEmptyStr,
             m.Field(
-                default="N",
+                default="Y",
                 description=(
-                    "Value the generated Makefile seeds when the caller enables "
-                    "nothing. It is forwarded verbatim on every read-only run, "
-                    "so the boundary must read it as 'not applying' instead of "
-                    "as an invalid write-enable token"
+                    "Value the generated Makefile seeds when the caller passes "
+                    "no inputs. The operator elected apply-by-default for "
+                    "0.12.0-dev: every public verb mutates through its declared "
+                    "owner with zero variables; APPLY=N is the explicit "
+                    "check-mode opt-out where the verb supports one"
                 ),
             ),
-        ]
+        ] = "Y"
         # Why (operator law 2026-08-24): git-hook stages are OFF by default and
         # re-enabled case by case via these config gates. The workflow keeps
         # owning WHICH steps belong to each stage; the booleans only govern

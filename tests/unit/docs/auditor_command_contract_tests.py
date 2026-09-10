@@ -285,7 +285,7 @@ ruff check src
         tm.fail(loaded)
         tm.that(loaded.error, has=str(manifest))
 
-        with pytest.raises(ValueError, match=re.escape(loaded.error)) as caught:
+        with pytest.raises(ValueError, match=re.escape(loaded.error or "")) as caught:
             u.Infra.docs_command_contract_issues(scope)
 
         tm.that(str(caught.value), eq=loaded.error)

@@ -37,10 +37,6 @@ Infra:
           MD057: false
           MD060: false
           MD076: false
-          per-file-ignores:
-            "docs/knowledge-index.md": [MD058]
-            "docs/architecture/communities/README.md": [MD058]
-            "docs/architecture/crg-reports/large-functions.md": [MD075, MD013]
         exclude:
           - .kilo/**
           - .omo/**

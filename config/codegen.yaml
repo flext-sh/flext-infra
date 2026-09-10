@@ -337,7 +337,11 @@ Infra:
         key_prefix: testmon-v1
       apply_variable: APPLY
       apply_value: Y
-      apply_absent_value: N
+      # Operator decision 2026-09-10 (0.12.0-dev): public verbs APPLY by
+      # default. `make gen`, `make test`, and every other declared verb runs
+      # with no variables at all; APPLY=N is the explicit opt-out for check
+      # mode where the verb supports one (docs fix, conform, audit).
+      apply_absent_value: Y
       ci:
         variable: CI
         value: Y
@@ -1155,7 +1159,7 @@ Infra:
             runtime: [flext-api, bcrypt>=5.0.0, PyJWT>=2.13.0]
           - upstream: flext_core
             project: flext-cli
-            runtime: [click>=8.3.3, typer>=0.27.2, jinja2>=3.1.6, jsonschema>=4.26.0, tomlkit>=0.15.1, ruamel.yaml>=0.19.1, defusedxml>=0.7.1, openpyxl>=3.1.5, python-docx>=1.2.0, python-pptx>=1.0.2]
+            runtime: [click>=8.5.0, typer>=0.27.2, jinja2>=3.1.6, jsonschema>=4.26.0, tomlkit>=0.15.1, ruamel.yaml>=0.19.1, defusedxml>=0.7.1, openpyxl>=3.1.5, python-docx>=1.2.0, python-pptx>=1.0.2]
           - upstream: flext_cli
             project: flext-infra
             runtime: [flext-cli, defusedxml>=0.7.1, filelock>=3.32.6, GitPython>=3.1.62, jinja2>=3.1.6, libcst>=1.9.0, Markdown>=3.10.3, rope>=1.14.0, pytest>=9.1.1, mkdocs>=1.6.1]
