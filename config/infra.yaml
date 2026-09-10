@@ -10,6 +10,7 @@ Infra:
   release:
     publishable_prefixes:
       - flext-
+      - ai-hub
     # Hash-pinned build backend for the isolated release build
     # (`uv build --build-constraints … --require-hashes`); projected into every
     # repository as config/build-constraints.txt (flext-to3n7).

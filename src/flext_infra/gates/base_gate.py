@@ -473,6 +473,20 @@ class FlextInfraGate:
             started=started,
         )
 
+    def _neutral_skip_result(
+        self, project_dir: Path, started: float, *, message: str = ""
+    ) -> m.Infra.GateExecution:
+        """An intentional skip (e.g. source package) that passes by design."""
+        detail = message or f"{self.gate_id}: intentionally skipped"
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=True,
+            issues=(),
+            errors=(),
+            raw_output=detail,
+            started=started,
+        )
+
 
 class FlextInfraScannerGateMixin(FlextInfraGate):
     """Mixin for gates that detect per-file issues via a rope-backed scanner.

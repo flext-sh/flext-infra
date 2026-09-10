@@ -76,7 +76,10 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         _ = ctx
         started = time.monotonic()
         if self._normalized_project_name(project_dir) in self._ALIAS_SOURCE_PACKAGES:
-            return self._skip_result(project_dir, started)
+            return self._neutral_skip_result(
+                project_dir, started,
+                message=f"{self.gate_id}: source package ({c.Infra.PKG_CORE_UNDERSCORE}) excluded from rewrite",
+            )
         files_result = self._alias_files(project_dir)
         if files_result.failure:
             file_path_str = files_result.error or "canonical-alias scan failed"
@@ -140,7 +143,10 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
             return self._check_only_fix_result(project_dir)
         started = time.monotonic()
         if self._normalized_project_name(project_dir) in self._ALIAS_SOURCE_PACKAGES:
-            return self._skip_result(project_dir, started)
+            return self._neutral_skip_result(
+                project_dir, started,
+                message=f"{self.gate_id}: source package ({c.Infra.PKG_CORE_UNDERSCORE}) excluded from rewrite",
+            )
         files_result = self._alias_files(project_dir)
         if files_result.failure:
             message = files_result.error or "canonical-alias fix failed"

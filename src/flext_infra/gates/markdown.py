@@ -131,12 +131,14 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
-        """Parse check output."""
+        """Parse rumdl output, discarding lines marking already-applied fixes."""
         _ = ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
             match = c.Infra.MARKDOWN_RE.match(line.strip())
             if not match:
+                continue
+            if match.group("msg").strip().endswith("[fixed]"):
                 continue
             issues.append(
                 m.Infra.Issue(
