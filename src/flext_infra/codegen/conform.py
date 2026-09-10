@@ -803,6 +803,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             Path(c.Infra.BEADS_CONFIG_RELPATH).name,
             Path(c.Infra.BEADS_METADATA_RELPATH).name,
             c.Infra.BEADS_LOCAL_VERSION_FILENAME,
+            c.Infra.BEADS_LAST_TOUCHED_FILENAME,
         })
         route = root / c.Infra.BEADS_DIRNAME
         if route.is_symlink():
@@ -818,7 +819,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"composed project Beads route is not a directory: {route}"
             )
         unexpected = sorted(
-            entry.name for entry in route.iterdir() if entry.name not in allowed_entries
+            entry.name
+            for entry in route.iterdir()
+            if entry.name not in allowed_entries
+            and not FlextInfraCodegenConform._is_dry_run_config_backup(entry.name)
         )
         if unexpected:
             return r[bool].fail(
@@ -826,6 +830,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 + ", ".join(unexpected)
             )
         return r[bool].ok(True)
+
+    @staticmethod
+    def _is_dry_run_config_backup(name: str) -> bool:
+        """Return whether ``name`` is a dry-run ``config.yaml`` backup snapshot.
+
+        Why (cosmos-3flk9): the bd client rewrites ``last-touched`` on every
+        write, and a dry-run ``make gen`` leaves ``config.yaml.<ts>.bak``
+        snapshots behind — both are ephemeral tooling state, not unmerged
+        ledger state, so they must not fail the composed-project verify.
+        """
+        return name.startswith(
+            f"{Path(c.Infra.BEADS_CONFIG_RELPATH).name}."
+        ) and name.endswith(".bak")
 
     def _validate_managed_fixed_point(
         self,
