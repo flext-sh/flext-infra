@@ -969,6 +969,15 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.MiseBootstrapEnvironmentSpec,
             m.Field(description="Strict persistent Mise storage contract"),
         ]
+        gascity: Annotated[
+            FlextInfraConfigModels.BeadsWorkspaceEnvironmentSpec | None,
+            m.Field(
+                description=(
+                    "Gas City Beads projection present only when the repository "
+                    "declares gascity_enabled"
+                )
+            ),
+        ] = None
 
     class UvPackageSelectorSpec(_ConfigContract):
         """Package selector for one official uv scoped dependency exclusion."""

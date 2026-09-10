@@ -2178,6 +2178,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     mise_bootstrap=(
                         FlextInfraCodegenConform._mise_bootstrap_environment()
                     ),
+                    gascity=(
+                        m.Infra.BeadsWorkspaceEnvironmentSpec()
+                        if target.gascity_enabled
+                        else None
+                    ),
                 )
             )
         if destination in {".mise.toml", ".python-version"}:
