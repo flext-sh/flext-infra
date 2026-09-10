@@ -66,6 +66,29 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             overrides[package] = cutoff
         return tuple(exclusions), overrides
 
+    @staticmethod
+    def _discover_script_verbs(
+        repository_root: Path,
+    ) -> tuple[m.Infra.MakeVerbSpec, ...]:
+        """Discover script verbs from scripts/<verb>/all.sh in the repository root.
+
+        The filesystem is the SSOT: a verb is emitted only when its all.sh
+        entrypoint exists. No manual list is required.
+        """
+        scripts_dir = repository_root / "scripts"
+        if not scripts_dir.is_dir():
+            return ()
+        discovered = [
+            m.Infra.MakeVerbSpec(
+                name=entry.name,
+                description=f"Script command: {entry.name}",
+                requires_apply=True,
+            )
+            for entry in sorted(scripts_dir.iterdir())
+            if entry.is_dir() and (entry / "all.sh").is_file()
+        ]
+        return tuple(discovered)
+
     @classmethod
     def _surface_contract(
         cls, surface: c.Infra.CodegenConformSurface
@@ -2348,7 +2371,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     dependency_cooldown_exclusions=cooldown_exclusions,
                     dependency_cooldown_overrides=cooldown_overrides,
                     make=codegen.make,
-                    extra_verbs=repository.extra_verbs,
+                    extra_verbs=(
+                        repository.extra_verbs
+                        if repository.script_dispatch is None
+                        else tuple(
+                            dict.fromkeys((
+                                *repository.extra_verbs,
+                                *FlextInfraCodegenConform._discover_script_verbs(
+                                    repository_root
+                                ),
+                            ))
+                        )
+                    ),
                     script_dispatch=repository.script_dispatch,
                     workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
@@ -2369,7 +2403,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Make contract as Makefile; they do not require scaffold-only
             # project metadata.
             make_context = FlextInfraCodegenConform.make_render_context(
-                repository, target, workspace, codegen, tooling_runtime=tooling_runtime
+                repository,
+                target,
+                workspace,
+                codegen,
+                tooling_runtime=tooling_runtime,
+                repository_root=repository_root,
             )
             if make_context.failure:
                 return r[p.Model].from_failure(make_context)
@@ -2404,6 +2443,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         codegen: m.Infra.CodegenConfigSpec,
         *,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
+        repository_root: Path,
     ) -> p.Result[m.Infra.MakeRenderContext]:
         """Build the typed context consumed by the generated Makefile."""
         profile = target.make_profile
@@ -2420,6 +2460,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 repository, codegen.toolchain
             )
         )
+        extra_verbs = repository.extra_verbs
+        if repository.script_dispatch is not None:
+            discovered = FlextInfraCodegenConform._discover_script_verbs(
+                repository_root
+            )
+            extra_verbs = tuple(
+                dict.fromkeys((*extra_verbs, *discovered))
+            )
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=config.Infra.tooling.tools.pytest,
@@ -2458,7 +2506,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 workspace_repositories=subprojects,
                 workspace_gitlinks=gitlinks.value,
-                extra_verbs=repository.extra_verbs,
+                extra_verbs=extra_verbs,
                 script_dispatch=repository.script_dispatch,
             )
         )
@@ -2627,7 +2675,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         profile = target.make_profile
         make_context = FlextInfraCodegenConform.make_render_context(
-            repository, target, workspace, codegen, tooling_runtime=tooling_runtime
+            repository,
+            target,
+            workspace,
+            codegen,
+            tooling_runtime=tooling_runtime,
+            repository_root=repository_root,
         )
         if make_context.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(make_context)
