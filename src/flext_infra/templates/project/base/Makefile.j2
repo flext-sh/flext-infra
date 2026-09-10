@@ -51,11 +51,14 @@ UV_LINK_MODE := {{ uv_link_mode }}
 # Operator decision 2026-09-10: unknown command-line inputs no longer fail the
 # run. The Makefile ignores them and prints a warning, so ordinary invocations
 # like `make test` or `make setup` always start with zero variables.
-PUBLIC_INPUTS := {{ make.apply_variable }} INDEX
+# WHAT is a declared public input whenever script dispatch is active: the
+# generated `_dispatch` reads it and every promoted script verb's own help
+# documents `make <verb> WHAT=<action>` (cosmos-3flk9).
+PUBLIC_INPUTS := {{ make.apply_variable }} INDEX{% if script_dispatch %} WHAT{% endif %}
 COMMAND_LINE_INPUTS := $(foreach name,$(filter-out .%,$(.VARIABLES)),$(if $(filter command line override,$(origin $(name))),$(name)))
 UNKNOWN_INPUTS := $(filter-out $(PUBLIC_INPUTS),$(COMMAND_LINE_INPUTS))
 ifneq ($(strip $(UNKNOWN_INPUTS)),)
-$(warning Ignoring unsupported Make input(s): $(UNKNOWN_INPUTS); declared public inputs are {{ make.apply_variable }} and INDEX)
+$(warning Ignoring unsupported Make input(s): $(UNKNOWN_INPUTS); declared public inputs are $(PUBLIC_INPUTS))
 endif
 {{ make.apply_variable }} ?= {{ make.apply_absent_value }}
 # filter-out keeps the guard true independent of argument order: a guard that
