@@ -94,6 +94,8 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
             issues: list[m.Infra.Issue] = []
             for file_path in files_result.value:
                 migration_context = u.Infra.alias_migration_context(file_path)
+                if migration_context.policy_owner in self._ALIAS_SOURCE_PACKAGES:
+                    continue
                 for violation in FlextInfraCompatibilityAliasDetector.detect_file(
                     m.Infra.DetectorContext(
                         file_path=file_path,
