@@ -148,6 +148,7 @@ class FlextInfraUtilitiesDocsBuild:
                     str(site_dir),
                 ],
                 cwd=scope.path,
+                env={"DISABLE_MKDOCS_2_WARNING": "true"},
             )
             if completed.failure:
                 return m.Infra.DocsPhaseReport(
