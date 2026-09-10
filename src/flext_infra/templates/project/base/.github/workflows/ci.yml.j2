@@ -49,6 +49,14 @@ jobs:
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
 {%- include "_fragments/cross_repo_dependency_credential.j2" %}
+
+      # Why: GitHub runners expose umask 002, so git checkout materializes
+      # group-writable modes (0664) for tracked files. Canonical Mise
+      # artifacts demand exact modes (0o644) and the conform gate fails loud
+      # on any drift, so checkout content is normalized to canonical modes
+      # once, before any gate runs.
+      - name: Normalize checkout modes
+        run: chmod -R go-w .
 {%- if custom_steps %}
 
       # Project-owned steps, the CI counterpart of custom.mk: the generator

@@ -687,7 +687,10 @@ class FlextInfraMiseArtifactsVerification:
                     )
                 if current.value.mode != required_mode:
                     return r[tuple[m.Cli.AtomicFileState, ...]].fail(
-                        f"published Mise artifact mode is noncanonical: {expected.path}"
+                        "published Mise artifact mode is noncanonical:"
+                        f" {expected.path}"
+                        f" (observed {oct(current.value.mode)},"
+                        f" canonical {oct(required_mode)})"
                     )
                 observed.append(current.value.content)
                 states.append(current.value)
