@@ -52,7 +52,7 @@ command -v pre-commit >/dev/null 2>&1 || fail "pre-commit is not installed; inst
 # The config is a codegen projection, so installing without it would leave a
 # shim pointing at a file `make gen` never wrote.
 [ -f "${REPOSITORY_ROOT}/.pre-commit-config.yaml" ] \
-	|| fail ".pre-commit-config.yaml is missing; run 'make gen APPLY=Y' before provisioning hooks"
+	|| fail ".pre-commit-config.yaml is missing; run 'make gen' before provisioning hooks"
 
 _log "Installing enabled git-hook stages at ${REPOSITORY_ROOT}"
 pre-commit install{% if make.pre_commit %} -t pre-commit{% endif %}{% if make.pre_push %} -t pre-push{% endif %} >/dev/null \
