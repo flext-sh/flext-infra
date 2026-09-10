@@ -21,8 +21,9 @@ _PYTHON: Final = Path(sys.executable)
 _NONZERO_EXIT: Final = 37
 # The child imports flext_infra before it can reach a barrier, so the wait
 # has to cover a cold interpreter start on a loaded machine, not an idle one.
-# Sized under the suite's own per-test timeout so a genuine hang still fails as
-# a hang rather than as a barrier that was never reached.
+# Sized under the config-owned slow budget (60s) these barrier tests declare,
+# so a genuine hang still fails as a hang rather than as a barrier that was
+# never reached.
 _BARRIER_TIMEOUT: Final = 25.0
 _PROBE: Final = """\
 import sys
@@ -117,6 +118,7 @@ def _spawn_probe(
     return os.posix_spawn(_PYTHON, argv, env, file_actions=file_actions)
 
 
+@pytest.mark.slow
 def test_run_streams_stdout_and_stderr_before_child_completion(tmp_path: Path) -> None:
     """Expose both streams while the child remains blocked before completion."""
     ready_fifo = tmp_path / "ready.fifo"
@@ -177,6 +179,7 @@ def test_run_returns_exact_nonzero_exit_status(tmp_path: Path) -> None:
         pytest.fail(f"expected {_NONZERO_EXIT}, got {exit_code}")
 
 
+@pytest.mark.slow
 def test_run_sigint_terminates_child_without_residual_process(tmp_path: Path) -> None:
     """Propagate terminal SIGINT and reap the promoted child process."""
     child_pid = tmp_path / "child.pid"

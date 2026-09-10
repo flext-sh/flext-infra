@@ -125,5 +125,28 @@ class TestsFlextInfraPytestRunner:
         tm.that(command, has="--cov")
         tm.that("--testmon" in command, eq=False)
 
+    @pytest.mark.slow
+    def test_collection_policy_error_fails_loud_and_names_the_offender(
+        self, policy_violation_project: Path
+    ) -> None:
+        """A collection-time policy error rejects the run and names the offender."""
+        runner = self._runner_for(policy_violation_project)
+
+        with pytest.raises(RuntimeError) as raised:
+            runner.execute()
+
+        tm.that(str(raised.value), has=["FLEXT slow timeout policy", "test_policy.py"])
+
+    @pytest.mark.slow
+    def test_coverage_pass_fails_loud_on_collection_policy_error(
+        self, policy_violation_project: Path
+    ) -> None:
+        """The coverage pass also exits non-zero on the same policy violation."""
+        runner = self._runner_for(policy_violation_project)
+
+        exit_code = tm.ok(runner.execute_coverage())
+
+        tm.that(exit_code, ne=0)
+
 
 __all__: list[str] = []
