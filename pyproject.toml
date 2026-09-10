@@ -70,7 +70,7 @@ dev = [
   "actionlint-py>=1.7.12.24",
   "bandit>=1.9.4",
   "deptry",
-  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@dd11d7b",
+  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@a44a822",
   "hypothesis",
   "mkdocs",
   "mkdocs-autorefs",
