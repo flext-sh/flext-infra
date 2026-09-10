@@ -44,10 +44,31 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     def _resolve_config_args(self, project_dir: Path) -> t.StrSequence:
         """Resolve only the repository-local markdown settings owner."""
-        config_path = project_dir / ".markdownlint.json"
+        config_path = project_dir / c.Infra.MARKDOWNLINT_CONFIG_FILENAME
         if not config_path.is_file():
             return ["--no-config"]
         return ["--config", str(config_path.resolve())]
+
+    def _resolve_exclude_args(self, project_dir: Path) -> t.StrSequence:
+        """Build ``--exclude`` from .markdownlintignore patterns.
+
+        ``rumdl`` only applies ignore patterns when scanning directories,
+        not when files are passed explicitly on the command line. The gate
+        collects files explicitly, so we read the ignore file and forward
+        its patterns via ``--exclude`` to replicate standard tool behavior.
+        """
+        ignore_path = project_dir / c.Infra.MARKDOWNLINT_IGNORE_FILENAME
+        if not ignore_path.is_file():
+            return ()
+        patterns: list[str] = []
+        for line in ignore_path.read_text(c.Cli.ENCODING_DEFAULT).splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            patterns.append(stripped)
+        if not patterns:
+            return ()
+        return ["--exclude", ",".join(patterns)]
 
     @override
     def _get_check_dirs(
@@ -76,6 +97,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
             "text",
             "--deny-config-warnings",
             *self._resolve_config_args(project_dir),
+            *self._resolve_exclude_args(project_dir),
             *check_dirs,
         )
 
@@ -101,6 +123,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
             "--color",
             "never",
             *self._resolve_config_args(project_dir),
+            *self._resolve_exclude_args(project_dir),
             *targets,
         )
 
