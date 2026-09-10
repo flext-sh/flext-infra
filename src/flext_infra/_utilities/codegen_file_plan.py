@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import difflib
 from collections.abc import Generator
 from contextlib import contextmanager
+from itertools import islice
 from typing import TYPE_CHECKING, Literal
 
 from filelock import FileLock
@@ -117,6 +119,49 @@ class FlextInfraUtilitiesCodegenFilePlan:
             desired_content=plan.desired_content,
             desired_mode=plan.desired_mode,
         )
+
+    @staticmethod
+    def codegen_file_drift_report(
+        plans: t.SequenceOf[m.Infra.CodegenFilePlan], *, limit: int = 40
+    ) -> str:
+        """Bounded unified diff per drifted plan, for fail-loud drift diagnosis.
+
+        The committed (before) side is compared against the rendered
+        (desired) side so a red gate names the exact delta instead of a bare
+        path list; mode-only drift is stated explicitly.
+        """
+        parts: list[str] = []
+        for plan in plans:
+            if isinstance(plan.before, cli_m.Cli.AtomicDirectoryChainPlan):
+                parts.append(f"{plan.path}: absent parent chain gains content")
+                continue
+            raw_before = plan.before.content
+            old_text = (
+                raw_before
+                if isinstance(raw_before, str)
+                else (raw_before or b"").decode("utf-8", errors="replace")
+            )
+            new_text = (plan.desired_content or b"").decode("utf-8", errors="replace")
+            header = (
+                f"--- {plan.path} (committed mode={oct(plan.before.mode)})"
+                f"\n+++ {plan.path} (rendered mode={oct(plan.desired_mode or 0)})"
+            )
+            diff = tuple(
+                islice(
+                    difflib.unified_diff(
+                        old_text.splitlines(),
+                        new_text.splitlines(),
+                        lineterm="",
+                    ),
+                    limit,
+                )
+            )
+            parts.append(
+                "\n".join((header, *diff))
+                if diff
+                else f"{header}\n(content equal: mode-only drift)"
+            )
+        return "\n----\n".join(parts)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesCodegenFilePlan"]

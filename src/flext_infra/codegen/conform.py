@@ -643,7 +643,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenResult].from_failure(reality)
             if changed:
                 paths = ", ".join(str(file.path) for file in changed)
-                return r[m.Infra.CodegenResult].fail(f"codegen drift detected: {paths}")
+                report = u.Infra.codegen_file_drift_report(changed)
+                return r[m.Infra.CodegenResult].fail(
+                    f"codegen drift detected: {paths}\n{report}"
+                )
             lazy_analysis = FlextInfraCodegenLazyInit(
                 repository_root=request.root
             ).plan_files()
@@ -656,8 +659,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if lazy_changed:
                 paths = ", ".join(str(file.path) for file in lazy_changed)
+                report = u.Infra.codegen_file_drift_report(lazy_changed)
                 return r[m.Infra.CodegenResult].fail(
-                    f"lazy-init drift detected: {paths}"
+                    f"lazy-init drift detected: {paths}\n{report}"
                 )
             docs_generator = FlextInfraDocGenerator(
                 repository_root=request.root,
