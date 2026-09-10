@@ -89,6 +89,38 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         ]
         return tuple(discovered)
 
+    @staticmethod
+    def _merge_extra_verbs(
+        declared: tuple[m.Infra.MakeVerbSpec, ...],
+        discovered: tuple[m.Infra.MakeVerbSpec, ...],
+        canonical_names: frozenset[str],
+    ) -> tuple[m.Infra.MakeVerbSpec, ...]:
+        """Union declared and discovered script verbs deduplicated by name.
+
+        Why (cosmos-3flk9): object-level dedup never converges because declared
+        verbs carry their canonical config descriptions while discoveries carry
+        ``Script command: <name>``, so every verb entered ``extra_verbs`` twice
+        and the generated Makefile emitted colliding ``_builtin-<verb>``
+        recipes. The declared config verb is the writable authority and wins;
+        a discovery is dropped when it would shadow a canonical ``make.verbs``
+        builtin, whose native ``_builtin-<verb>`` implementation is the only
+        owner of that name in the generated Makefile.
+        """
+        merged: dict[str, m.Infra.MakeVerbSpec] = {}
+        for verb in discovered:
+            if verb.name in canonical_names:
+                continue
+            merged.setdefault(verb.name, verb)
+        for verb in declared:
+            if verb.name in canonical_names:
+                msg = (
+                    f"config extra_verbs declares canonical verb {verb.name!r}; "
+                    "extra verbs must never shadow canonical make.verbs builtins"
+                )
+                raise ValueError(msg)
+            merged[verb.name] = verb
+        return tuple(merged.values())
+
     @classmethod
     def _surface_contract(
         cls, surface: c.Infra.CodegenConformSurface
@@ -2372,15 +2404,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     dependency_cooldown_overrides=cooldown_overrides,
                     make=codegen.make,
                     extra_verbs=(
-                        repository.extra_verbs
-                        if repository.script_dispatch is None
-                        else tuple(
-                            dict.fromkeys((
-                                *repository.extra_verbs,
-                                *FlextInfraCodegenConform._discover_script_verbs(
+                        FlextInfraCodegenConform._merge_extra_verbs(
+                            repository.extra_verbs,
+                            (
+                                ()
+                                if repository.script_dispatch is None
+                                else FlextInfraCodegenConform._discover_script_verbs(
                                     repository_root
-                                ),
-                            ))
+                                )
+                            ),
+                            frozenset(verb.name for verb in codegen.make.verbs),
                         )
                     ),
                     script_dispatch=repository.script_dispatch,
@@ -2460,14 +2493,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 repository, codegen.toolchain
             )
         )
-        extra_verbs = repository.extra_verbs
-        if repository.script_dispatch is not None:
-            discovered = FlextInfraCodegenConform._discover_script_verbs(
-                repository_root
-            )
-            extra_verbs = tuple(
-                dict.fromkeys((*extra_verbs, *discovered))
-            )
+        extra_verbs = FlextInfraCodegenConform._merge_extra_verbs(
+            repository.extra_verbs,
+            (
+                ()
+                if repository.script_dispatch is None
+                else FlextInfraCodegenConform._discover_script_verbs(repository_root)
+            ),
+            frozenset(verb.name for verb in codegen.make.verbs),
+        )
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=config.Infra.tooling.tools.pytest,
