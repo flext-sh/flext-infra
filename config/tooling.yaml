@@ -60,6 +60,14 @@ Infra:
           - legado/**
           - .github/**
           - site/**
+          # Gen-emitted table projections whose emitter lives outside the
+          # codegen surface; MD058 (blank lines around tables) is upstream of
+          # the projection and cannot be repaired at the projection itself.
+          - docs/knowledge-index.md
+          - docs/architecture/communities/README.md
+          # External CRG tool output: pipe-separated rows (MD075) and long JSON
+          # lines (MD013) originate from code-review-graph, not hand-authored docs.
+          - docs/architecture/crg-reports/**
       ruff:
         # P0 law: lint covers every tracked Python surface. No excludes over
         # legado, examples, tests, or scripts code anywhere in this config.
