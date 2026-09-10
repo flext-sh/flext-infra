@@ -628,15 +628,9 @@ class TestFlextInfraNamespaceValidator:
         result = validator.validate_project(root)
 
         tm.ok(result)
-        tm.that(
-            result.value.passed,
-            eq=True,
-            msg=str(result.value),
-        )
+        tm.that(result.value.passed, eq=True, msg=str(result.value))
 
-    def test_rule3_settings_owner_c_import_still_flagged(
-        self, tmp_path: Path
-    ) -> None:
+    def test_rule3_settings_owner_c_import_still_flagged(self, tmp_path: Path) -> None:
         """D1 is bounded: ``c`` and operational facades are not covered."""
         validator = FlextInfraNamespaceValidator()
         module_source = (
@@ -647,7 +641,7 @@ class TestFlextInfraNamespaceValidator:
         )
         root = _make_project_with_module(
             tmp_path, module_source=module_source, module_name="_settings.py"
-         )
+        )
 
         result = validator.validate_project(root)
 
@@ -745,7 +739,9 @@ class TestFlextInfraNamespaceValidator:
 
         tm.ok(result)
         tm.that(
-            not any("module alias/data declaration" in v for v in result.value.violations),
+            not any(
+                "module alias/data declaration" in v for v in result.value.violations
+            ),
             eq=True,
             msg=str(result.value),
         )

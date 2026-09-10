@@ -176,10 +176,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             return False
         targets = getattr(node, "targets", ()) or (getattr(node, "target", None),)
         value = getattr(node, "value", None)
-        value_is_class = (
-            cls.kind(value) == "Name"
-            and cls.name_of(value) == class_name
-        )
+        value_is_class = cls.kind(value) == "Name" and cls.name_of(value) == class_name
         value_is_global_singleton = (
             cls.kind(value) == "Call"
             and cls.dotted_name(getattr(value, "func", None))
