@@ -38,6 +38,9 @@ Infra:
           MD060: false
           MD076: false
         exclude:
+          # AGENTS.md is a tool-managed projection (beads integration + codex
+          # setup blocks): gating generated output is a projection defect.
+          - AGENTS.md
           - .kilo/**
           - .omo/**
           - .tmp/**
