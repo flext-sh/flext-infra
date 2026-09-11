@@ -1,11 +1,10 @@
-"""Codegen, check, basemk, and dependency CLI route ownership."""
+"""Codegen, check, and dependency CLI route ownership."""
 
 from __future__ import annotations
 
 from typing import ClassVar
 
 from flext_infra import c, m
-from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.conform import FlextInfraCodegenConform
@@ -14,6 +13,7 @@ from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityG
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.pipeline import FlextInfraCodegenPipeline
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
@@ -28,46 +28,27 @@ from flext_infra.services.cli_route_base import CliRouteBase
 
 
 class CodegenRoutes(CliRouteBase):
-    """Own basemk, check, codegen, and dependency command routes."""
+    """Own check, codegen, and dependency command routes."""
 
     codegen_routes: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
-        c.Infra.CLI_GROUP_BASEMK: (
-            m.Cli.ResultCommandRoute(
-                name="generate",
-                help_text="Generate base.mk content from the canonical template",
-                model_cls=FlextInfraBaseMkGenerator,
-                handler=lambda params: params.execute().map(
-                    lambda content: True if params.output is not None else content
-                ),
-                success_message="base.mk generation complete",
-            ),
-        ),
         c.Infra.CLI_GROUP_CHECK: (
             m.Cli.ResultCommandRoute(
                 name=c.Infra.VERB_RUN,
                 help_text="Run workspace quality gates",
                 model_cls=m.Infra.RunCommand,
-                handler=lambda params: FlextInfraWorkspaceChecker.execute_payload(
-                    params
-                ).map(CliRouteBase.as_route_value),
+                handler=FlextInfraWorkspaceChecker.execute_payload,
             ),
             m.Cli.ResultCommandRoute(
                 name="fix-pyrefly-settings",
                 help_text="Repair [tool.pyrefly] blocks",
                 model_cls=m.Infra.FixPyreflyConfigCommand,
-                handler=lambda params: FlextInfraConfigFixer.execute_payload(
-                    params
-                ).map(CliRouteBase.as_route_value),
+                handler=FlextInfraConfigFixer.execute_payload,
             ),
             m.Cli.ResultCommandRoute(
                 name="fix-enforcement",
                 help_text="Auto-fix enforcement-catalog violations",
                 model_cls=m.Infra.FixEnforcementCommand,
-                handler=lambda params: (
-                    FlextInfraEnforcementFixerOrchestrator.execute_payload(params).map(
-                        CliRouteBase.as_route_value
-                    )
-                ),
+                handler=FlextInfraEnforcementFixerOrchestrator.execute_payload,
             ),
         ),
         c.Infra.CLI_GROUP_CODEGEN: (
@@ -83,7 +64,7 @@ class CodegenRoutes(CliRouteBase):
                     name=route_name,
                     help_text=help_text,
                     model_cls=model_cls,
-                    handler=lambda params, mc=model_cls: mc.execute_command(params),
+                    handler=model_cls.execute_command,
                     success_message=success_message,
                 )
                 for route_name, help_text, model_cls, success_message in (
@@ -148,6 +129,12 @@ class CodegenRoutes(CliRouteBase):
                         "layout conformance complete",
                     ),
                     (
+                        "mise-artifacts",
+                        "Validate generated Mise launchers and lock metadata offline",
+                        FlextInfraCodegenMiseArtifacts,
+                        "Mise artifact validation complete",
+                    ),
+                    (
                         "version-file",
                         "Generate __version__.py from project-metadata SSOT",
                         FlextInfraCodegenVersionFile,
@@ -161,7 +148,7 @@ class CodegenRoutes(CliRouteBase):
                 name=route_name,
                 help_text=help_text,
                 model_cls=model_cls,
-                handler=lambda params, mc=model_cls: mc.execute_command(params),
+                handler=model_cls.execute_command,
             )
             for route_name, help_text, model_cls in (
                 (

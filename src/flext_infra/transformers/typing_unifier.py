@@ -62,8 +62,12 @@ class FlextInfraRefactorTypingUnifier(
         """Apply unions, built-in canonicalization, TypeAlias and t import."""
         if self._is_definition_file:
             return source, list(self.changes)
+
+        def union_size(item: tuple[frozenset[str], str]) -> int:
+            return len(item[0])
+
         for member_set, canonical in sorted(
-            self._canonical_map.items(), key=lambda i: len(i[0]), reverse=True
+            self._canonical_map.items(), key=union_size, reverse=True
         ):
             pattern = self._union_pattern(member_set)
             if pattern is None:

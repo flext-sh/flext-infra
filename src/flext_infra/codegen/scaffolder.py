@@ -85,6 +85,10 @@ class FlextInfraCodegenScaffolder(s[str]):
 
         """
         project_path = project.path
+        if not (project_path / c.Infra.DEFAULT_SRC_DIR).is_dir():
+            return m.Infra.ScaffoldResult(
+                project=project_path.name, files_created=[], files_skipped=[]
+            )
         project_layout = u.Infra.layout(project_path)
         if project_layout is None or not project_layout.class_stem:
             return m.Infra.ScaffoldResult(
@@ -185,7 +189,7 @@ class FlextInfraCodegenScaffolder(s[str]):
             if request.dry_run:
                 files_created.append(str(filepath))
                 continue
-            # mro-j47u (codex): templates own final source shape; codegen never fixes it.
+            # flext-j47u (codex): templates own final source shape; codegen never fixes it.
             written = u.Cli.atomic_write_text_file(filepath, content)
             if written.failure:
                 message = f"writing scaffold {filepath}: {written.error}"

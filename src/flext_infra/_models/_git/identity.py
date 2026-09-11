@@ -1,4 +1,4 @@
-"""Git identity report models — nested container for MRO composition."""
+"""Git identity report models — nested container for FLEXT composition."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from flext_infra import t
 
 
 class FlextInfraModelsGitIdentity:
-    """Git identity report, composed into m.Infra via MRO."""
+    """Git identity report, composed into m.Infra via FLEXT."""
 
     class GitIdentityReport(m.ContractModel):
         """Consolidated Git identity snapshot for one repository path."""

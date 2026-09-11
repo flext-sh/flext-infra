@@ -42,8 +42,10 @@ class FlextInfraClassNestingPostCheckGate:
         )
         if c.Infra.RK_IMPORTS_RESOLVE in post_checks:
             errors.extend(self._validate_imports(file_path))
-        if source_symbol and expected_chain and c.Infra.RK_MRO_VALID in post_checks:
-            errors.extend(self._validate_mro(file_path, source_symbol, expected_chain))
+        if source_symbol and expected_chain and c.Infra.RK_FLEXT_VALID in post_checks:
+            errors.extend(
+                self._validate_flext(file_path, source_symbol, expected_chain)
+            )
         if c.Infra.RK_LSP_DIAGNOSTICS_CLEAN in quality_gates:
             errors.extend(self._validate_types(file_path))
         return (not errors, errors)
@@ -60,20 +62,20 @@ class FlextInfraClassNestingPostCheckGate:
             if c.Infra.BARE_IMPORT_FROM_RE.match(line)
         ]
 
-    def _validate_mro(
+    def _validate_flext(
         self, file_path: Path, class_name: str, expected_bases: t.StrSequence
     ) -> t.StrSequence:
-        """Validate mro."""
+        """Validate flext."""
         read = u.Cli.files_read_text(file_path)
         if read.failure:
-            return [f"mro_parse_error:{file_path}:parse_failed"]
+            return [f"flext_parse_error:{file_path}:parse_failed"]
         actual_clean = list(u.Infra.parse_class_bases(read.value, class_name))
         if not actual_clean:
             return [f"class_not_found:{class_name}"]
         expected_prefix = list(expected_bases)[: len(actual_clean)]
         if actual_clean != expected_prefix:
             return [
-                f"mro_mismatch:{class_name}:expected={expected_prefix}:actual={actual_clean}"
+                f"flext_mismatch:{class_name}:expected={expected_prefix}:actual={actual_clean}"
             ]
         return list[str]()
 

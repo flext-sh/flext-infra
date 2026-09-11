@@ -14,7 +14,6 @@ if TYPE_CHECKING:
     from .bandit import FlextInfraBanditGate
     from .base_gate import FlextInfraGate
     from .canonical_alias import FlextInfraCanonicalAliasGate
-    from .codemod import FlextInfraCodemodGate
     from .deferred_self_reference import FlextInfraDeferredSelfReferenceGate
     from .layout import FlextInfraLayoutGate
     from .loc_cap import FlextInfraLocCapGate
@@ -33,7 +32,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraAbstractionBoundaryGate",
     "FlextInfraBanditGate",
     "FlextInfraCanonicalAliasGate",
-    "FlextInfraCodemodGate",
     "FlextInfraDeferredSelfReferenceGate",
     "FlextInfraGate",
     "FlextInfraLayoutGate",
@@ -58,7 +56,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".bandit": ("FlextInfraBanditGate",),
             ".base_gate": ("FlextInfraGate",),
             ".canonical_alias": ("FlextInfraCanonicalAliasGate",),
-            ".codemod": ("FlextInfraCodemodGate",),
             ".deferred_self_reference": ("FlextInfraDeferredSelfReferenceGate",),
             ".layout": ("FlextInfraLayoutGate",),
             ".loc_cap": ("FlextInfraLocCapGate",),

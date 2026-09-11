@@ -111,7 +111,7 @@ class TestsFlextInfraDepsModernizerComments:
 
     def test_inject_comments_normalizes_leading_parse_trivia(self) -> None:
         """Keep the managed banner byte-identical after TOML parse/render."""
-        # NOTE (multi-agent, mro-wkii.17.9.2.1): the banner owns exactly one
+        # NOTE (multi-agent, flext-wkii.17.9.2.1): the banner owns exactly one
         # separator regardless of leading whitespace supplied by the parser.
         phase = FlextInfraInjectCommentsPhase()
         with_trivia, _changes = phase.apply('\n[project]\nname = "test"\n')

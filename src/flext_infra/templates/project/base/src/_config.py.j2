@@ -1,4 +1,4 @@
-{# NOTE (codex, mro-j47u): precompute exact compact/multiline source with zero render whitespace. -#}
+{# NOTE (codex, flext-j47u): precompute exact compact/multiline source with zero render whitespace. -#}
 {%- set config_model_line = "from " ~ package_name ~ "._models.config import " ~ class_stem ~ "ConfigModels" -%}
 {%- set config_model_import = config_model_line if config_model_line | length <= tooling.tools.ruff.line_length else "from " ~ package_name ~ "._models.config import (\n    " ~ class_stem ~ "ConfigModels,\n)" -%}
 {%- set config_protocol_line = "    from " ~ package_name ~ "._protocols.config import " ~ class_stem ~ "ProtocolsConfig" -%}
@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-# NOTE (codex, mro-j47u): measure rendered lines so every project is Ruff-native.
+# NOTE (codex, flext-j47u): measure rendered lines so every project is Ruff-native.
 from flext_core import FlextConfig
 {{ config_model_import }}
 

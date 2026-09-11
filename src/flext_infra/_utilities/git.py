@@ -1,4 +1,4 @@
-"""Public Git utilities facet for ``u.Infra`` (composed into utilities MRO).
+"""Public Git utilities facet for ``u.Infra`` (composed into utilities FLEXT).
 
 Private GitPython parts live under ``_utilities/_git/``. Consumers use
 ``from flext_infra import u`` only — never import this module or ``_git``.

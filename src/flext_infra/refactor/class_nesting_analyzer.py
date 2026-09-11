@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraRefactorClassNestingAnalyzer:
-    """Detect class nesting violations and report MRO hierarchy issues."""
+    """Detect class nesting violations and report FLEXT hierarchy issues."""
 
     @classmethod
     def analyze_files(cls, files: t.SequenceOf[Path]) -> m.Infra.ClassNestingReport:

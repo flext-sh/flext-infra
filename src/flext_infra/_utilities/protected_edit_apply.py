@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import difflib
+import operator
 import shutil
 from collections.abc import MutableMapping
 from pathlib import Path
@@ -313,7 +314,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
 
         normalized_updates = {
             path.resolve(): content
-            for path, content in sorted(updates.items(), key=lambda item: str(item[0]))
+            for path, content in sorted(updates.items(), key=operator.itemgetter(0))
         }
         expected_sources = {
             path.resolve(): content

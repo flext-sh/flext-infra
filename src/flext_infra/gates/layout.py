@@ -1,4 +1,4 @@
-"""Project-layout quality gate (mro-0wuz, epic mro-hzox).
+"""Project-layout quality gate (flext-0wuz, epic flext-hzox).
 
 Reports layout-SSOT violations per project. Severity is config-driven
 (``codegen.yaml layout.severity``): ``warning`` reports without failing the

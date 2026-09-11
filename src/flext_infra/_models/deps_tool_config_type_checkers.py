@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
+from flext_infra._models._defaults import ImmutableEmptyMapping
 
 
 class FlextInfraModelsDepsToolConfigTypeCheckers:
@@ -104,7 +104,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 t.StrSequence,
                 m.Field(
                     alias="root-typings-paths",
-                    description="Typings paths used in workspace-root settings.",
+                    description="Typings paths used in workspace settings.",
                 ),
             ]
             project_typings_paths: Annotated[
@@ -172,35 +172,35 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 alias="extended-settings",
                 description="Pyright extended settings options.",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         lazy_import_suppressions: Annotated[
             t.StrMapping,
             m.Field(
                 alias="lazy-import-suppressions",
                 description="Pyright rules suppressed in ALL envs due to lazy import pattern.",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         global_suppression_rationales: Annotated[
             t.StrMapping,
             m.Field(
                 alias="global-suppression-rationales",
-                description="Global Pyright exclusions mapped to verified facade-MRO rationales.",
+                description="Global Pyright exclusions mapped to verified facade-FLEXT rationales.",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         source_env_suppressions: Annotated[
             t.StrMapping,
             m.Field(
                 alias="source-env-suppressions",
                 description="Additional pyright rules suppressed in source env only.",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         test_like_env_suppressions: Annotated[
             t.StrMapping,
             m.Field(
                 alias="test-like-env-suppressions",
                 description="Additional pyright rules suppressed in test-like envs.",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         path_rules: Annotated[
             FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.PathRulesConfig,
             m.Field(
@@ -232,7 +232,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 t.StrSequence,
                 m.Field(
                     alias="root-typings-paths",
-                    description="Typings paths used in workspace-root settings.",
+                    description="Typings paths used in workspace settings.",
                 ),
             ]
             project_typings_paths: Annotated[
@@ -277,13 +277,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 alias="python-version", description="Pyrefly python-version baseline."
             ),
         ]
-        ignore_errors_in_generated_code: Annotated[
-            bool,
-            m.Field(
-                alias="ignore-errors-in-generated-code",
-                description="Enable ignoring errors in generated code.",
-            ),
-        ]
         disable_project_excludes_heuristics: Annotated[
             bool,
             m.Field(
@@ -303,13 +296,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
             m.Field(
                 alias="strict-errors",
                 description="Pyrefly errors enabled as strict defaults.",
-            ),
-        ]
-        disabled_errors: Annotated[
-            t.StrSequence,
-            m.Field(
-                alias="disabled-errors",
-                description="Pyrefly errors disabled by default.",
             ),
         ]
         project_exclude_globs: Annotated[

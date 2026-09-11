@@ -1,4 +1,4 @@
-"""Release reporting utilities for the u.Infra MRO chain."""
+"""Release reporting utilities for the u.Infra FLEXT chain."""
 
 from __future__ import annotations
 

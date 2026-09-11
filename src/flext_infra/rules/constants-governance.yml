@@ -15,7 +15,7 @@ rules:
     fixable: true
     fixable_exclusion: "typings.py"
   - id: NS-003
-    description: "Hardcoded canonical value should use parent MRO reference"
+    description: "Hardcoded canonical value should use parent FLEXT reference"
     fixable: true
   - id: NS-004
     description: "Unused constant can be removed"
@@ -97,13 +97,6 @@ canonical_values:
       - TYPEVAR_CALLABLES
 
   # tuple canonical values
-  - value: ["src", "tests", "scripts", "examples"]
-    type: tuple
-    canonical_ref: "MRO_SCAN_DIRECTORIES"
-    semantic_names:
-      - SCAN_DIRECTORIES
-      - KNOWN_DIRS
-      - SCOPE_DIRS
   - value: ["constants.py", "typings.py", "protocols.py"]
     type: tuple
     canonical_ref: "TIER0_MODULE_FILES"
@@ -130,6 +123,5 @@ canonical_values:
     semantic_names:
       - CONSTANT_PATTERN
       - CONSTANT_NAME_RE
-      - MRO_SCAN_CONSTANT_PATTERN
 
 constants_class_pattern: 'Flext\w+Constants'

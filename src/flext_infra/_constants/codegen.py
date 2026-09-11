@@ -46,9 +46,9 @@ class FlextInfraConstantsCodegen(
         ("utilities.py", "Utilities", "FlextTestsUtilities", "Test utilities"),
     )
     "Base module definitions for tests/: (filename, class_suffix, base_class, docstring)."
-    # mro-wkii.14 (agent: codegen) — canonical root config/settings pair: a
+    # flext-wkii.14 (agent: codegen) — canonical root config/settings pair: a
     # private `_config.py`/`_settings.py` module exporting the singleton.
-    # Consumed by the scaffold generator (mro-wkii.10).
+    # Consumed by the scaffold generator (flext-wkii.10).
     RUNTIME_MODULES: Final[t.VariadicTuple[t.Quad[str, str, str, str]]] = (
         ("_config.py", "Config", "FlextConfig", "Runtime config"),
         ("_settings.py", "Settings", "FlextSettings", "Runtime settings"),
@@ -93,7 +93,7 @@ class FlextInfraConstantsCodegen(
     QG_REPORT_DIR: Final[str] = ".reports/codegen/constants-quality-gate"
     "Report directory for constants quality gate."
     QG_CHECK_NAMESPACE_COMPLIANCE: Final[str] = "namespace_compliance"
-    QG_CHECK_MRO_VALIDITY: Final[str] = "mro_validity"
+    QG_CHECK_FLEXT_VALIDITY: Final[str] = "flext_validity"
     QG_CHECK_IMPORT_RESOLUTION: Final[str] = "import_resolution"
     QG_CHECK_LAYER_COMPLIANCE: Final[str] = "layer_compliance"
     QG_CHECK_DUPLICATION_REDUCTION: Final[str] = "duplication_reduction"

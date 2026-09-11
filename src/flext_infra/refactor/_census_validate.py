@@ -18,7 +18,7 @@ class FlextInfraRefactorCensusValidateMixin:
 
     Parent of FlextInfraRefactorCensusCollectMixin (its ``_assemble_report``
     calls ``_validated_project_reports``); borrows root + dry-run flags + the
-    raw-violation builder from the facade and sibling mixins via MRO.
+    raw-violation builder from the facade and sibling mixins via FLEXT.
     """
 
     if TYPE_CHECKING:

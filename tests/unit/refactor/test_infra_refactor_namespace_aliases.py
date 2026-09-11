@@ -71,7 +71,14 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceAliases:
     def test_namespace_rewriter_only_rewrites_runtime_alias_imports(
         self, tmp_path: Path
     ) -> None:
-        sample_file = tmp_path / "sample.py"
+        project_root = tmp_path / "flext-core"
+        package_root = project_root / "src" / "flext_core"
+        package_root.mkdir(parents=True)
+        (package_root / "__init__.py").write_text("", encoding="utf-8")
+        (project_root / "pyproject.toml").write_text(
+            "[project]\nname = 'flext-core'\n", encoding="utf-8"
+        )
+        sample_file = package_root / "sample.py"
         source = (
             "from __future__ import annotations\n\nfrom collections.abc import Mapping, Sequence\n"
             "from flext_core import FlextModelsBase\n"
@@ -92,7 +99,14 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceAliases:
     def test_namespace_rewriter_keeps_contextual_alias_subset(
         self, tmp_path: Path
     ) -> None:
-        sample_file = tmp_path / "sample.py"
+        project_root = tmp_path / "flext-core"
+        package_root = project_root / "src" / "flext_core"
+        package_root.mkdir(parents=True)
+        (package_root / "__init__.py").write_text("", encoding="utf-8")
+        (project_root / "pyproject.toml").write_text(
+            "[project]\nname = 'flext-core'\n", encoding="utf-8"
+        )
+        sample_file = package_root / "sample.py"
         source = "from __future__ import annotations\nfrom flext_core import u\n"
         sample_file.write_text(source, encoding="utf-8")
 
@@ -107,7 +121,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceAliases:
     def test_namespace_rewriter_skips_facade_and_subclass_files(
         self, tmp_path: Path
     ) -> None:
-        sample_file = tmp_path / "models.py"
+        (tmp_path / "pyproject.toml").write_text(
+            "[project]\nname = 'flext-core'\n", encoding="utf-8"
+        )
+        package_root = tmp_path / "src" / "flext_core"
+        package_root.mkdir(parents=True)
+        (package_root / "__init__.py").write_text("", encoding="utf-8")
+        sample_file = package_root / "models.py"
         source = (
             "from __future__ import annotations\n"
             "from flext_core import u\n"
@@ -130,7 +150,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceAliases:
     def test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates(
         self, tmp_path: Path
     ) -> None:
-        sample_file = tmp_path / "sample.py"
+        (tmp_path / "pyproject.toml").write_text(
+            "[project]\nname = 'flext-core'\n", encoding="utf-8"
+        )
+        package_root = tmp_path / "src" / "flext_core"
+        package_root.mkdir(parents=True)
+        (package_root / "__init__.py").write_text("", encoding="utf-8")
+        sample_file = package_root / "sample.py"
         source = (
             "from __future__ import annotations\n"
             "from flext_core import c, m, r, p, t, u, p\n"

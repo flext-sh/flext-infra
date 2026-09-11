@@ -100,28 +100,44 @@ def test_recipe_bodies_are_actually_parsed() -> None:
 
 
 def test_gen_has_one_codegen_owner() -> None:
-    """The gen recipe delegates every projection to codegen conform once."""
+    """The gen recipe delegates apply and fixed-point check to one owner."""
     text = _template_text()
     assert "CODEGEN_PROJECT_ARGS" not in text
 
     bodies = _recipe_bodies()
-    for target in ("_builtin_gen_check", "_builtin_gen_all"):
+    expected_modes = {
+        "_builtin_gen_check": ("check",),
+        "_builtin_gen_all": ("apply", "check"),
+    }
+    for target, modes in expected_modes.items():
         conform_lines = [line for line in bodies[target] if "codegen conform" in line]
-        assert len(conform_lines) == 1
+        assert len(conform_lines) == len(modes)
+        assert all(
+            f"--mode {mode}" in line
+            for line, mode in zip(conform_lines, modes, strict=True)
+        )
         assert all('--root "$(PROJECT_ROOT)"' in line for line in conform_lines)
         assert all('--scope "$(CODEGEN_SCOPE)"' in line for line in conform_lines)
         assert all("deps modernize" not in line for line in bodies[target])
         assert all("deps extra-paths" not in line for line in bodies[target])
 
 
-def test_gen_routes_through_project_root() -> None:
-    bodies = _recipe_bodies()
-    for target in ("_builtin_gen_check", "_builtin_gen_all"):
-        generation_lines = [
-            line for line in bodies[target] if "$(PROJECT_FLEXT_INFRA)" in line
-        ]
-        assert len(generation_lines) == 1
-        assert all('--root "$(PROJECT_ROOT)"' in line for line in generation_lines)
+def test_gen_init_is_a_direct_hermetic_owner_route() -> None:
+    """The narrow init selector never enters conform, hooks, or topology."""
+    text = _template_text()
+    init_lines = _recipe_bodies()["_builtin_gen_init"]
+    init_commands = [line for line in init_lines if "codegen init" in line]
+
+    assert len(init_commands) == 2
+    assert all('--workspace "$(PROJECT_ROOT)"' in line for line in init_commands)
+    assert all("codegen conform" not in line for line in init_lines)
+    assert "$(filter-out setup gen,$(PUBLIC_VERBS)):" in text
+    public_init = text.split("gen:\n", 1)[1].split("\n\n", 1)[0]
+    init_branch = public_init.split("else", 1)[0]
+    assert "_builtin_gen_init" in init_branch
+    assert "_dispatch" not in init_branch
+    assert "WORKSPACE_ROOT := $(PROJECT_ROOT)" in text
+    assert "INIT_FLEXT_INFRA" not in text
 
 
 def test_project_selector_resolves_members_from_workspace_root() -> None:

@@ -2,7 +2,7 @@
 
 Every qlty smell type (identical/similar-code, function/file-complexity,
 function-parameters, return-statements, nested-control-flow, boolean-logic)
-is reported per project and ALSO emitted as a ``FlextMroViolation`` warning on
+is reported per project and ALSO emitted as a ``FlextSmellViolation`` warning on
 every run — warnings fire for all findings, always, regardless of gate mode.
 ``c.Infra.SMELLS_GATE_MODE`` only decides pass/fail: WARN is report-only.
 """
@@ -19,7 +19,7 @@ from flext_core import e as core_e
 from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
 
-# mro-0ftd.3.5: the empty package initializer is not a compatibility export;
+# flext-0ftd.3.5: the empty package initializer is not a compatibility export;
 # consume the declaration at its canonical owner after the lazy-init cutover.
 from flext_infra.transformers.smells.base import smell_fixer_for
 from flext_infra.transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
@@ -43,7 +43,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["smells"][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["smells"][1]
 
-    # mro-pulj: process results stay structural outside the Pydantic boundary.
+    # flext-pulj: process results stay structural outside the Pydantic boundary.
     _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
 
     @override

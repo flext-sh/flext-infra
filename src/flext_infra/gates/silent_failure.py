@@ -1,9 +1,8 @@
 """Silent failure quality gate.
 
 Enforces silent-failure detection across every Python project the workspace
-discovers. Per-project opt-out is expressed via the absence of Python
-sources (``iter_python_files`` returning empty), not via a hand-curated
-project-name allowlist.
+discovers. Projects without Python sources provide an empty scan input; no
+project-name allowlist exists.
 """
 
 from __future__ import annotations

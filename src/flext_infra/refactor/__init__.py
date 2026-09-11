@@ -14,18 +14,13 @@ if TYPE_CHECKING:
     from .census import FlextInfraRefactorCensus
     from .class_nesting_analyzer import FlextInfraRefactorClassNestingAnalyzer
     from .classvar_constant_autofix import FlextInfraRefactorClassvarConstantAutofix
-    from .declarative_enforcement import FlextInfraRefactorDeclarativeEnforcement
     from .file_executor import (
         FlextInfraClassNestingPostCheckGate,
         FlextInfraRefactorFileExecutor,
     )
     from .legacy_text_ops import FlextInfraRefactorLegacyTextOps
     from .loader import FlextInfraRefactorRuleLoader
-    from .migrate_to_class_mro import FlextInfraRefactorMigrateToClassMRO
     from .modernize_orchestrator import FlextInfraModernizeOrchestrator
-    from .mro_import_rewriter import FlextInfraRefactorMROImportRewriter
-    from .mro_migration_validator import FlextInfraRefactorMROMigrationValidator
-    from .mro_resolver import FlextInfraRefactorMROResolver
     from .namespace_enforcer import FlextInfraNamespaceEnforcer
     from .namespace_enforcer_phases import FlextInfraNamespaceEnforcerPhasesMixin
     from .orchestrator import FlextInfraRefactorOrchestrator
@@ -46,14 +41,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorCensus",
     "FlextInfraRefactorClassNestingAnalyzer",
     "FlextInfraRefactorClassvarConstantAutofix",
-    "FlextInfraRefactorDeclarativeEnforcement",
     "FlextInfraRefactorFileExecutor",
     "FlextInfraRefactorLegacyTextOps",
     "FlextInfraRefactorLooseClassScanner",
-    "FlextInfraRefactorMROImportRewriter",
-    "FlextInfraRefactorMROMigrationValidator",
-    "FlextInfraRefactorMROResolver",
-    "FlextInfraRefactorMigrateToClassMRO",
     "FlextInfraRefactorOrchestrator",
     "FlextInfraRefactorRuleLoader",
     "FlextInfraRefactorSafetyManager",
@@ -72,18 +62,13 @@ _LAZY_IMPORTS = MappingProxyType(
             ".classvar_constant_autofix": (
                 "FlextInfraRefactorClassvarConstantAutofix",
             ),
-            ".declarative_enforcement": ("FlextInfraRefactorDeclarativeEnforcement",),
             ".file_executor": (
                 "FlextInfraClassNestingPostCheckGate",
                 "FlextInfraRefactorFileExecutor",
             ),
             ".legacy_text_ops": ("FlextInfraRefactorLegacyTextOps",),
             ".loader": ("FlextInfraRefactorRuleLoader",),
-            ".migrate_to_class_mro": ("FlextInfraRefactorMigrateToClassMRO",),
             ".modernize_orchestrator": ("FlextInfraModernizeOrchestrator",),
-            ".mro_import_rewriter": ("FlextInfraRefactorMROImportRewriter",),
-            ".mro_migration_validator": ("FlextInfraRefactorMROMigrationValidator",),
-            ".mro_resolver": ("FlextInfraRefactorMROResolver",),
             ".namespace_enforcer": ("FlextInfraNamespaceEnforcer",),
             ".namespace_enforcer_phases": ("FlextInfraNamespaceEnforcerPhasesMixin",),
             ".orchestrator": ("FlextInfraRefactorOrchestrator",),

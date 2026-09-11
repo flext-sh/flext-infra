@@ -17,7 +17,7 @@ class FlextInfraRefactorCensusInventoryMixin:
     """Governed-parent facade-alias inventory + workspace collision cross-ref.
 
     Composed into FlextInfraRefactorCensus via inheritance; ``_is_flext_owned``
-    is provided by the sibling objects mixin through MRO.
+    is provided by the sibling objects mixin through FLEXT.
     """
 
     if TYPE_CHECKING:
@@ -114,6 +114,12 @@ class FlextInfraRefactorCensusInventoryMixin:
         """
         inventory = cls._build_parent_inventory(workspace_root)
         collisions: list[tuple[m.Infra.Census.Object, t.StrSequence]] = []
+
+        def collision_breadth(
+            entry: tuple[m.Infra.Census.Object, t.StrSequence],
+        ) -> int:
+            return -len(entry[1])
+
         for project_report in report.projects:
             self_pkg_prefix = f"{project_report.project.replace('-', '_')}."
             for obj in project_report.objects:
@@ -130,7 +136,7 @@ class FlextInfraRefactorCensusInventoryMixin:
                 if not foreign_paths:
                     continue
                 collisions.append((obj, foreign_paths))
-        collisions.sort(key=lambda entry: -len(entry[1]))
+        collisions.sort(key=collision_breadth)
         return tuple(collisions)
 
 

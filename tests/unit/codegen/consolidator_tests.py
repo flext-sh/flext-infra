@@ -64,6 +64,7 @@ def test_execute_scans_real_package_layout(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     (package_dir / "module.py").write_text("VALUE = 1\n", encoding="utf-8")
+    u.Tests.declare_workspace_projects(workspace_root, ("flext-demo",))
 
     result = u.Tests.consolidate_codegen(workspace_root=workspace_root, dry_run=True)
 
@@ -105,6 +106,7 @@ def _build_consolidator_workspace(tmp_path: Path) -> Path:
     (package_dir / "consumer.py").write_text(
         'from __future__ import annotations\n\nVALUE = "demo"\n', encoding="utf-8"
     )
+    u.Tests.declare_workspace_projects(workspace_root, ("flext-demo",))
     return workspace_root
 
 

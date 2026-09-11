@@ -30,9 +30,7 @@ class FlextInfraWorkspaceOrchestratorDiscoveryMixin:
         self: _WorkspaceOrchestratorProtocol,
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
         """Resolve selected projects using workspace discovery."""
-        return u.Infra.resolve_projects(
-            self.root, self.project_names or (), include_attached=True
-        )
+        return u.Infra.resolve_projects(self.root, self.project_names or ())
 
     @staticmethod
     def _project_target(project: m.Infra.ProjectInfo, *, workspace_root: Path) -> str:

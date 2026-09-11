@@ -110,7 +110,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
                 projects, verb, fail_fast=fail_fast, make_args=make_args
             )
         except c.EXC_OS_RUNTIME_TYPE as exc:
-            # mro-wkii.17 (Codex): keep type-only protocols out of runtime factories.
+            # flext-wkii.17 (Codex): keep type-only protocols out of runtime factories.
             return r.fail_op("Orchestration", exc)
 
     @staticmethod
@@ -146,7 +146,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         failed = 0
         skipped = 0
         started_total = time.monotonic()
-        # mro-9v0d: emit a deterministic, machine-parseable orchestration report
+        # flext-9v0d: emit a deterministic, machine-parseable orchestration report
         # so a caller can attribute every project outcome and the child exit code.
         u.Cli.emit_raw(
             f"scope={c.Infra.RK_WORKSPACE} verb={verb} "
@@ -226,7 +226,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             else ""
         )
         return_code: int = proc_result.unwrap() if proc_result.success else 1
-        # mro-9v0d: GNU make exits 2 for any failed recipe, so recover the
+        # flext-9v0d: GNU make exits 2 for any failed recipe, so recover the
         # child's real exit code from make's own error line in the log.
         if return_code != 0:
             child_code = u.Infra.extract_make_child_exit_code(log_path)

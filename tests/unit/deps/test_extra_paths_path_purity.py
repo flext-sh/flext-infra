@@ -5,7 +5,7 @@ describes that project forever. ``../<sibling>/src`` describes the *host* the
 generator happened to run on: it is wrong in any clone whose siblings sit
 elsewhere, it is absent in a worktree that materializes one project alone, and
 it makes the same generator emit different content per checkout. Cross-checkout
-dependencies resolve through their installed distributions instead (mro-c6di).
+dependencies resolve through their installed distributions instead (flext-c6di).
 """
 
 from __future__ import annotations
@@ -35,10 +35,10 @@ def _project(root: Path, name: str, package: str) -> Path:
 class TestsFlextInfraExtraPathsArePure:
     """No emitted entry may address another project on the filesystem."""
 
-    def test_workspace_member_source_roots_are_not_emitted_at_the_root(
+    def test_workspace_project_source_roots_are_not_emitted_at_the_root(
         self, tmp_path: Path
     ) -> None:
-        """A uv workspace member is a distribution, not a search path."""
+        """A UV workspace project is a distribution, not a search path."""
         (tmp_path / ".git").mkdir()
         (tmp_path / "src").mkdir()
         (tmp_path / "pyproject.toml").write_text(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import operator
 from collections import defaultdict
 from collections.abc import MutableMapping
 from pathlib import Path
@@ -19,7 +20,7 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-# mro-j47u (codex): annotation-only stdlib types are safe runtime imports;
+# flext-j47u (codex): annotation-only stdlib types are safe runtime imports;
 # TYPE_CHECKING is reserved for real reverse-dependency cycle boundaries.
 
 
@@ -116,7 +117,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             msg = f"refusing facade write outside package: {file_path}"
             raise ValueError(msg)
         content = (
-            '"""Auto-generated facade to enforce MRO namespace contracts."""\n\n'
+            '"""Auto-generated facade to enforce FLEXT namespace contracts."""\n\n'
             "from __future__ import annotations\n\n"
             f"{FlextInfraUtilitiesRefactorNamespaceFacades._base_import_for_family(family=family, base_chains=base_chains)}\n\n"
             f"class {class_name}({FlextInfraUtilitiesRefactorNamespaceFacades._base_class_for_family(family=family, base_chains=base_chains)}):\n"
@@ -142,7 +143,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             return
         package_dirs = [
             entry
-            for entry in sorted(src_dir.iterdir(), key=lambda item: item.name)
+            for entry in sorted(src_dir.iterdir(), key=operator.attrgetter("name"))
             if entry.is_dir() and (entry / c.Infra.INIT_PY).is_file()
         ]
         layout = FlextInfraUtilitiesCodegenNamespace.layout(project_root)

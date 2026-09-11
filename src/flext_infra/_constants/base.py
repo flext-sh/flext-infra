@@ -113,8 +113,6 @@ class FlextInfraConstantsBase(
     "Ruff isort known-first-party key (hyphenated)."
     KNOWN_FIRST_PARTY_UNDERSCORE: Final[str] = "known_first_party"
     "Ruff isort known_first_party key (underscored)."
-    IGNORE_ERRORS_IN_GENERATED: Final[str] = "ignore-errors-in-generated-code"
-    "Pyrefly ignore-errors-in-generated-code key."
     MINVERSION: Final[str] = "minversion"
     "Pytest minversion settings key."
     FLEXT_SLOW_TIMEOUT_SECONDS: Final[str] = "flext_slow_timeout_seconds"

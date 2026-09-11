@@ -23,12 +23,6 @@ name: CI
     types: [opened, synchronize, reopened, ready_for_review]
 # End SECTION: triggers
 
-# === SECTION: permissions (managed) ===
-# Source: template (minimal read-only permissions)
-permissions:
-  contents: read
-# End SECTION: permissions
-
 # Why: one active run per workflow and branch prevents obsolete CI from consuming runners.
 concurrency:
   group: {% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
@@ -39,6 +33,9 @@ jobs:
   # Source: template + config:github_actions.*
   ci:
     name: ci
+    # Only the checkout job needs repository contents.
+    permissions:
+      contents: read
     if: {% raw %}${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}{% endraw %}
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -54,18 +51,14 @@ jobs:
 
       - name: Install mise toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
-
-      - name: Install uv
-        uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
         with:
-          enable-cache: true
-          prune-cache: false
+          version: {{ mise_version }}
 
 {%- include "_fragments/testmon_cache.j2" %}
 
 {%- for step in make.workflow if "ci" in step.contexts %}
       - name: {{ step.verb }} (blocking)
-        # Why (mro-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
+        # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
         run: {{ make.ci.variable }}={{ make.ci.value }} make {{ step.verb }}{% if step.apply %} WHAT=apply {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
 {%- if step.verb == "check" %}
 
@@ -88,15 +81,21 @@ jobs:
           set -eu
           # Structured reports only — same allowlist as Upload reports (no raw
           # pytest/tool logs: those may carry connection strings / env secrets).
-          while IFS= read -r -d '' f; do
-            echo "::group::$f"
-            tail -n 200 "$f"
-            echo "::endgroup::"
-          done < <(
-            find .reports apps \
+          report_roots=()
+          for candidate in .reports apps; do
+            if [ -e "$candidate" ]; then report_roots+=("$candidate"); fi
+          done
+          {% raw %}if [ "${#report_roots[@]}" -gt 0 ]; then{% endraw %}
+            report_list="$(mktemp "${RUNNER_TEMP:?}/flext-ci-reports.XXXXXX")"
+            find "${report_roots[@]}" \
               \( -path '*/junit.xml' -o -path '*/coverage.xml' -o -path '*/coverage.json' \) \
-              -type f -print0 2>/dev/null || true
-          )
+              -type f -print0 >"$report_list"
+            while IFS= read -r -d '' f; do
+              echo "::group::$f"
+              tail -n 200 "$f"
+              echo "::endgroup::"
+            done <"$report_list"
+          fi
       - name: Upload reports on failure
         if: {% raw %}${{ failure() }}{% endraw %}
         uses: {{ github_actions["upload-artifact"].repository }}@{{ github_actions["upload-artifact"].sha }}  # {{ github_actions["upload-artifact"].version }}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import operator
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
@@ -85,7 +86,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                 )
         except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
             return result
-        return sorted(result, key=lambda symbol: symbol.line)
+        return sorted(result, key=operator.attrgetter("line"))
 
     @staticmethod
     def _module_symbols_from_node(

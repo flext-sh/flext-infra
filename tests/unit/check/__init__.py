@@ -10,20 +10,6 @@ from types import MappingProxyType
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import abstraction_boundary_gate_tests as abstraction_boundary_gate_tests
-    from . import (
-        extended_gate_bandit_markdown_tests as extended_gate_bandit_markdown_tests,
-    )
-    from . import extended_gate_mypy_pyright_tests as extended_gate_mypy_pyright_tests
-    from . import extended_runners_ruff_tests as extended_runners_ruff_tests
-    from . import extended_workspace_init_tests as extended_workspace_init_tests
-    from . import fix_pyrefly_config_tests as fix_pyrefly_config_tests
-    from . import gate_registry_tests as gate_registry_tests
-    from . import loc_cap_gate_tests as loc_cap_gate_tests
-    from . import main_tests as main_tests
-    from . import silent_failure_gate_tests as silent_failure_gate_tests
-    from . import smells_gate_tests as smells_gate_tests
-    from . import tests_workspace_check as tests_workspace_check
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
     from .enforcement_fixer_orchestrator_tests import TestsEnforcementFixerOrchestrator
@@ -50,9 +36,16 @@ if TYPE_CHECKING:
     from .extended_run_projects_tests import TestRunProjectsPublicBehavior
     from .extended_runners_extra_tests import TestExtendedRunnerExtras
     from .extended_runners_tests import TestRunnerPublicBehavior
+    from .fix_pyrefly_config_tests import (
+        test_fix_pyrefly_config_main_executes_real_cli_help,
+    )
     from .init_tests import TestFlextInfraCheck
+    from .main_tests import test_check_main_executes_real_cli
     from .pyrefly_tests import TestFlextInfraConfigFixer
     from .test_cli import TestWorkspaceCheckCli
+    from .tests_workspace_check import (
+        test_workspace_check_main_returns_error_without_projects,
+    )
     from .workspace_tests import TestFlextInfraWorkspaceChecker
 __all__: tuple[str, ...] = (
     "TestCheckIssueFormatted",
@@ -77,28 +70,19 @@ __all__: tuple[str, ...] = (
     "TestWorkspaceCheckerResolveGates",
     "TestsEnforcementFixerOrchestrator",
     "TestsExtendedProjectRunners",
-    "abstraction_boundary_gate_tests",
     "c",
     "d",
     "e",
-    "extended_gate_bandit_markdown_tests",
-    "extended_gate_mypy_pyright_tests",
-    "extended_runners_ruff_tests",
-    "extended_workspace_init_tests",
-    "fix_pyrefly_config_tests",
-    "gate_registry_tests",
     "h",
-    "loc_cap_gate_tests",
     "m",
-    "main_tests",
     "p",
     "r",
     "s",
-    "silent_failure_gate_tests",
-    "smells_gate_tests",
     "t",
     "td",
-    "tests_workspace_check",
+    "test_check_main_executes_real_cli",
+    "test_fix_pyrefly_config_main_executes_real_cli_help",
+    "test_workspace_check_main_returns_error_without_projects",
     "tf",
     "tk",
     "tm",
@@ -110,7 +94,6 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
-            ".abstraction_boundary_gate_tests": ("abstraction_boundary_gate_tests",),
             ".enforcement_fixer_orchestrator_tests": (
                 "TestsEnforcementFixerOrchestrator",
             ),
@@ -125,10 +108,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".extended_error_reporting_tests": (
                 "TestGateErrorReportingPublicBehavior",
             ),
-            ".extended_gate_bandit_markdown_tests": (
-                "extended_gate_bandit_markdown_tests",
-            ),
-            ".extended_gate_mypy_pyright_tests": ("extended_gate_mypy_pyright_tests",),
             ".extended_models_tests": (
                 "TestCheckIssueFormatted",
                 "TestProjectResultProperties",
@@ -142,19 +121,17 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".extended_run_projects_tests": ("TestRunProjectsPublicBehavior",),
             ".extended_runners_extra_tests": ("TestExtendedRunnerExtras",),
-            ".extended_runners_ruff_tests": ("extended_runners_ruff_tests",),
             ".extended_runners_tests": ("TestRunnerPublicBehavior",),
-            ".extended_workspace_init_tests": ("extended_workspace_init_tests",),
-            ".fix_pyrefly_config_tests": ("fix_pyrefly_config_tests",),
-            ".gate_registry_tests": ("gate_registry_tests",),
+            ".fix_pyrefly_config_tests": (
+                "test_fix_pyrefly_config_main_executes_real_cli_help",
+            ),
             ".init_tests": ("TestFlextInfraCheck",),
-            ".loc_cap_gate_tests": ("loc_cap_gate_tests",),
-            ".main_tests": ("main_tests",),
+            ".main_tests": ("test_check_main_executes_real_cli",),
             ".pyrefly_tests": ("TestFlextInfraConfigFixer",),
-            ".silent_failure_gate_tests": ("silent_failure_gate_tests",),
-            ".smells_gate_tests": ("smells_gate_tests",),
             ".test_cli": ("TestWorkspaceCheckCli",),
-            ".tests_workspace_check": ("tests_workspace_check",),
+            ".tests_workspace_check": (
+                "test_workspace_check_main_returns_error_without_projects",
+            ),
             ".workspace_tests": ("TestFlextInfraWorkspaceChecker",),
             "flext_tests": (
                 "c",

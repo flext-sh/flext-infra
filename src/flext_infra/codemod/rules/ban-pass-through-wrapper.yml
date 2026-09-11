@@ -1,6 +1,6 @@
 # Ban pass-through wrapper functions (epic i2h4 flext-core refactor).
 #
-# FLEXT law: deduplicate via MRO / facade projections. A function whose entire
+# FLEXT law: deduplicate via FLEXT / facade projections. A function whose entire
 # body is `return other.fn(<the exact same args>)` adds an indirection layer
 # with zero behavior — it hides the real owner, breaks rename/refactor
 # chains, and violates "root cause, one owner".

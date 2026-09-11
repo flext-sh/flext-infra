@@ -168,7 +168,6 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
                     "dev_suffix": release_config.dev_suffix,
                 },
             ),
-            fail_fast=True,
             logger=self.logger,
         )
         if pipeline_result.failure:

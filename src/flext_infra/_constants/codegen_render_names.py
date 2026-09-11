@@ -17,7 +17,7 @@ class FlextInfraConstantsCodegenRenderNames:
     TEMPLATE_MKDOCS_PROJECT: Final[str] = "mkdocs_project.yml.j2"
     "Per-project ``mkdocs.yml`` template."
     TEMPLATE_MKDOCS_ROOT: Final[str] = "mkdocs_root.yml.j2"
-    "Workspace-root ``mkdocs.yml`` template."
+    "Workspace ``mkdocs.yml`` template."
 
 
 __all__: list[str] = ["FlextInfraConstantsCodegenRenderNames"]

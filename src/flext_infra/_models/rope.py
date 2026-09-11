@@ -7,11 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from types import MappingProxyType
 from typing import Annotated
 
 from flext_core import m
 from flext_infra import c, p, t
+from flext_infra._models._defaults import ImmutableEmptyMapping
 from flext_infra._models.codegen import FlextInfraModelsCodegen
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
@@ -19,7 +19,7 @@ from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 class FlextInfraModelsRope:
     """Rope operation result models — accessed via m.Infra.Rope.*."""
 
-    # NOTE (multi-agent, mro-wkii.17.24 / agent: codex): callers resolve project
+    # NOTE (multi-agent, flext-wkii.17.24 / agent: codex): callers resolve project
     # selection once; source iteration has one exact, branch-free request shape.
     class SourceScanRequest(m.ContractModel):
         """Exact project roots selected for one production-source scan."""
@@ -89,7 +89,7 @@ class FlextInfraModelsRope:
         indent: Annotated[
             int, m.Field(ge=0, description="Leading-whitespace column of the statement")
         ]
-        # mro-j47u (codex): Rope owns both boundaries so multiline consumers
+        # flext-j47u (codex): Rope owns both boundaries so multiline consumers
         # never reconstruct statement ranges from source text.
         end_line: Annotated[
             int, m.Field(ge=1, description="Final line in the Rope logical region")
@@ -106,7 +106,7 @@ class FlextInfraModelsRope:
             str,
             m.Field(description="Name of the nearest enclosing def/class, or empty"),
         ] = ""
-        # mro-j47u (codex): consumers share this Rope-derived guard fact instead
+        # flext-j47u (codex): consumers share this Rope-derived guard fact instead
         # of rebuilding TYPE_CHECKING control flow with stdlib AST visitors.
         type_checking_guarded: Annotated[
             bool, m.Field(description="Whether the statement is inside TYPE_CHECKING")
@@ -115,7 +115,7 @@ class FlextInfraModelsRope:
             str, m.Field(description="Rope-owned source slice for the statement")
         ] = ""
 
-    # mro-j47u (codex): normalize Rope payloads before enforcement consumes them.
+    # flext-j47u (codex): normalize Rope payloads before enforcement consumes them.
     class ImportFact(mm.PositiveLineMixin, m.ContractModel):
         """One normalized binding emitted by Rope import-info semantics."""
 
@@ -159,17 +159,17 @@ class FlextInfraModelsRope:
         declared_imports: Annotated[
             t.StrMapping,
             m.Field(
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=ImmutableEmptyMapping,
                 description="Declared import targets by name",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         semantic_imports: Annotated[
             t.StrMapping,
             m.Field(
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=ImmutableEmptyMapping,
                 description="Resolved import targets by name",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
 
     class RopeModuleIndexEntry(m.ContractModel):
         """Generic Rope-backed index entry for one Python module resource."""
@@ -261,31 +261,31 @@ class FlextInfraModelsRope:
         packages_by_dir: Annotated[
             t.MappingKV[str, FlextInfraModelsRope.RopePackageIndexEntry],
             m.Field(
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=ImmutableEmptyMapping,
                 description="Package entries keyed by absolute directory path",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         modules_by_path: Annotated[
             t.MappingKV[str, FlextInfraModelsRope.RopeModuleIndexEntry],
             m.Field(
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=ImmutableEmptyMapping,
                 description="Module entries keyed by absolute file path",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         package_dir_by_name: Annotated[
             t.MappingKV[str, Path],
             m.Field(
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=ImmutableEmptyMapping,
                 description="Importable package directory keyed by package name",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         project_package_by_root: Annotated[
             t.StrMapping,
             m.Field(
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=ImmutableEmptyMapping,
                 description="Canonical source package name keyed by project root path",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
 
     class RopeProjectLayout(m.ContractModel):
         """Canonical project layout derived once for Rope-backed codegen flows."""
@@ -401,7 +401,7 @@ class FlextInfraModelsRope:
             Path,
             m.Field(description="Canonical root used to open the shared Rope project"),
         ]
-        # NOTE (multi-agent, mro-wkii.17.24): policy stays in config.Infra;
+        # NOTE (multi-agent, flext-wkii.17.24): policy stays in config.Infra;
         # this field-only model retains only materialized session state.
         workspace_index: Annotated[
             FlextInfraModelsRope.RopeWorkspaceIndex,

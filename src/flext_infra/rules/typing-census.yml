@@ -22,7 +22,7 @@ rules:
 - id: remove-unused-models
   name: "Remove unused model classes"
   description: >
-    Detect model classes with zero references across workspace and remove them. Uses two-pass CST analysis: ModelDefinitionCollector + ModelReferenceCollector. MRO base classes and exported models are never removed.
+    Detect model classes with zero references across workspace and remove them. Uses two-pass CST analysis: ModelDefinitionCollector + ModelReferenceCollector. FLEXT base classes and exported models are never removed.
   enabled: true
   severity: warning
   fix_action: remove_unused_models

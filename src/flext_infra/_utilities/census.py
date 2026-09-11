@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 from flext_core import r
 from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus as mrc
+from flext_infra._utilities._sort_keys import path_depth
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
@@ -42,24 +43,24 @@ class FlextInfraUtilitiesRefactorCensus:
         if not matching_roots:
             unknown: str = c.Infra.DEFAULT_UNKNOWN
             return unknown
-        best = max(matching_roots, key=lambda root: len(root.parts))
+        best = max(matching_roots, key=path_depth)
         name: str = best.name
         return name
 
     @staticmethod
-    def build_mro_target(
+    def build_flext_target(
         family: str, core_project: str = c.Infra.PKG_CORE
-    ) -> mrc.MROFamilyTarget:
+    ) -> mrc.FLEXTFamilyTarget:
         """Create a generic target settings from a family code."""
-        if family not in c.Infra.MRO_FAMILIES:
-            msg = f"Invalid MRO family {family}"
+        if family not in c.Infra.FLEXT_FAMILIES:
+            msg = f"Invalid FLEXT family {family}"
             raise ValueError(msg)
         sf = c.Infra.FAMILY_SUFFIXES[family]
-        return mrc.MROFamilyTarget(
+        return mrc.FLEXTFamilyTarget(
             family=family,
             class_suffix=sf,
-            package_dir=c.Infra.MRO_FAMILY_PACKAGE_DIRS[family],
-            facade_module=c.Infra.MRO_FAMILY_FACADE_MODULES[family],
+            package_dir=c.Infra.FLEXT_FAMILY_PACKAGE_DIRS[family],
+            facade_module=c.Infra.FLEXT_FAMILY_FACADE_MODULES[family],
             facade_class_prefix=f"Flext{sf}",
             core_project=core_project,
         )

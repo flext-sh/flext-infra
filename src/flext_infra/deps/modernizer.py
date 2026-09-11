@@ -91,7 +91,7 @@ class FlextInfraPyprojectModernizer(
         state = m.Infra.PyprojectDocumentState(
             pyproject_path=path, original_rendered=source, payload=payload
         )
-        # mro-j47u (codex): atomic scaffolds provide validated future roots;
+        # flext-j47u (codex): atomic scaffolds provide validated future roots;
         # existing repositories keep filesystem discovery through the empty default.
         changes = self._process_document_state(
             state,
@@ -123,7 +123,7 @@ class FlextInfraPyprojectModernizer(
         analysis_exclusions: t.StrSequence = (),
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Resolve typed project/workspace values for the complete Jinja template."""
-        # mro-j47u (codex): resolve values only; template retains the full structure.
+        # flext-j47u (codex): resolve values only; template retains the full structure.
         seed = u.Cli.toml_document()
         project = u.Cli.toml_table()
         project.add(c.Infra.NAME, project_name)
@@ -135,7 +135,7 @@ class FlextInfraPyprojectModernizer(
         flext.add("docs", docs)
         tool.add("flext", flext)
         seed.add(c.Infra.TOOL, tool)
-        # NOTE(mro-p68a.5, agent codex): resolve from the declared future roots
+        # NOTE(flext-p68a.5, agent codex): resolve from the declared future roots
         # so first generation and post-write conformance are the same fixed point.
         conformed = self.conform_source(
             u.Cli.toml_dumps(seed),
@@ -256,15 +256,7 @@ class FlextInfraPyprojectModernizer(
         derived_search_path = declared_roots or discovered_search
         derived_extra_paths = discovered_extra or declared_roots
         resolved_project_kind = project_kind or "core"
-        child_result = self._project_is_flext_child(path.parent)
-        if child_result.failure:
-            return r[m.Infra.ToolingRuntimeContext].fail(
-                child_result.error or f"failed to resolve Git topology: {path.parent}"
-            )
-        is_child = child_result.value
-        if project_kind is None and (
-            path.parent.resolve() != self.root.resolve() or is_child
-        ):
+        if project_kind is None and path.parent.resolve() != self.root.resolve():
             classified = self._classify_project(path.parent, payload=payload)
             if classified.failure:
                 return r[m.Infra.ToolingRuntimeContext].fail(
@@ -332,7 +324,7 @@ class FlextInfraPyprojectModernizer(
         raw_environments: t.SequenceOf[t.JsonValue],
     ) -> t.SequenceOf[m.Infra.ToolingPyrightEnvironment]:
         """Validate Pyright environments once into their canonical models."""
-        # mro-j47u: nested tooling data crosses the TOML boundary as models, not dicts.
+        # flext-j47u: nested tooling data crosses the TOML boundary as models, not dicts.
         environments: t.MutableSequenceOf[m.Infra.ToolingPyrightEnvironment] = []
         excluded = frozenset({"root", c.Infra.EXTRA_PATHS})
         for raw_environment in raw_environments:

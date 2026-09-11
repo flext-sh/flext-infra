@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from operator import itemgetter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, u
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
@@ -20,15 +20,15 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
 
     Composed into FlextInfraWrapperRootNamespaceRefactor via inheritance;
     borrows workspace_root + the include-init / dry-run flags + the wrapper
-    package set from the facade via MRO. ``module_ast`` is typed ``object`` to
+    package set from the facade via FLEXT. ``module_ast`` is typed ``object`` to
     mirror the rope-AST abstraction (FlextInfraUtilitiesRopeAnalysis), which
-    deliberately avoids ``import ast`` at the consumer layer (tracked: mro-6flt).
+    deliberately avoids ``import ast`` at the consumer layer (tracked: flext-6flt).
     """
 
     if TYPE_CHECKING:
         workspace_root: Path
         include_init: bool
-        _WRAPPER_PACKAGES: t.StrSequence
+        _WRAPPER_PACKAGES: ClassVar[t.StrSequence]
 
         @property
         def effective_dry_run(self) -> bool: ...

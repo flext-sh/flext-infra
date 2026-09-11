@@ -124,9 +124,7 @@ class TestWorkspaceCheckCli:
     ) -> None:
         monkeypatch.delenv("CI", raising=False)
         workspace = self._create_workspace(tmp_path)
-        module_path = self._write_module(
-            workspace, "flext-core", "import os\n\nvalue = 1\n"
-        )
+        module_path = self._write_module(workspace, "flext-core", "def broken(:\n")
 
         exit_code = main([
             "check",
@@ -143,7 +141,7 @@ class TestWorkspaceCheckCli:
         ])
 
         tm.that(exit_code, eq=1)
-        tm.that(module_path.read_text(encoding="utf-8"), eq="import os\n\nvalue = 1\n")
+        tm.that(module_path.read_text(encoding="utf-8"), eq="def broken(:\n")
 
     def test_run_cli_check_only_preserves_source(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

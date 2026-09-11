@@ -156,7 +156,7 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
                 encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
             )
             for index, match in enumerate(c.Infra.PYTHON_FENCE_RE.finditer(content)):
-                # mro-o6h5 (agent: kimi) — ruff via running interpreter (venv SSOT);
+                # flext-o6h5 (agent: kimi) — ruff via running interpreter (venv SSOT);
                 # bare "ruff" breaks when .venv/bin is not on PATH (CI docs audit).
                 outcome = u.Cli.run_raw(
                     [
@@ -178,7 +178,7 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
                 elif outcome.value.exit_code == 0:
                     continue
                 else:
-                    # mro-o6h5 (agent: kimi) — ruff reports parse errors on stderr
+                    # flext-o6h5 (agent: kimi) — ruff reports parse errors on stderr
                     # only; indexing an empty stdout crashes with IndexError.
                     stdout_lines = outcome.value.stdout.strip().splitlines()
                     stderr_lines = outcome.value.stderr.strip().splitlines()

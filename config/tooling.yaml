@@ -1,11 +1,11 @@
 Infra:
   tooling:
-    # mro-j47u (codex): canonical validated tooling and suppression-policy SSOT.
+    # flext-j47u (codex): canonical validated tooling and suppression-policy SSOT.
     tools:
       codespell:
         check-filenames: true
         ignore-words-list: crate,nd
-      # mro-j47u (codex): non-linter tool sections are config-owned as well.
+      # flext-j47u (codex): non-linter tool sections are config-owned as well.
       deptry:
         known-first-party: [flext_core]
         pep621-dev-dependency-groups: [dev]
@@ -39,7 +39,6 @@ Infra:
           MD076: false
         exclude:
           - .omo/**
-          - .beads/**
           - .tmp/**
           - .claude/**
           - .vscode/**
@@ -115,7 +114,7 @@ Infra:
         lint:
           select:
             - ALL
-          # mro-j47u (codex): banned API messages are policy data, never template literals.
+          # flext-j47u (codex): banned API messages are policy data, never template literals.
           banned-api:
             argparse: "Use cli.register_result_command + Pydantic model from flext_cli."
             click:
@@ -233,7 +232,7 @@ Infra:
 
       mypy:
         plugins: [pydantic.mypy]
-        # mro-j47u: every retained global exclusion carries its tested rationale;
+        # flext-j47u: every retained global exclusion carries its tested rationale;
         # generated pyprojects receive this evidence as managed comments.
         boolean-settings:
           namespace_packages: true
@@ -252,30 +251,16 @@ Infra:
           warn_unreachable: true
           warn_unused_ignores: true
         disabled-error-codes:
-          assignment: Dependency-injector descriptors lose their MRO-bound type only in Mypy.
-          attr-defined: PEP 562 facade members inherited through MRO are invisible to Mypy.
-          call-arg: Pydantic v2 init signatures behind facade MRO are incomplete in Mypy.
+          assignment: Dependency-injector descriptors lose their FLEXT-bound type only in Mypy.
+          attr-defined: PEP 562 facade members installed by FLEXT composition are invisible to Mypy.
+          call-arg: Pydantic v2 init signatures behind facade FLEXT are incomplete in Mypy.
           misc: Valid PEP 695 nested facade aliases are rejected under Mypy's misc bucket.
           name-defined: Generated PEP 562 exports are installed at runtime but absent to Mypy.
-          prop-decorator: Mypy loses Pydantic computed-field descriptors across composed MRO.
+          prop-decorator: Mypy loses Pydantic computed-field descriptors across composed FLEXT.
           valid-type: Mypy rejects facade namespaces used as owners in valid PEP 695 aliases.
         string-settings:
           follow_imports: normal
         overrides:
-          # CLI registration modules: flext-cli ResultCommandRoute is an
-          # intentionally type-erased contract for heterogeneous batch
-          # registration; Mypy arg-type rejects precise handler signatures
-          # (Callable[[InputModel], r[OutputModel]]) at registration although
-          # the dispatcher validates input models at runtime. Documented
-          # checker disagreement at the facade-CLI boundary (documented in
-          # the consumer's own governance). Scoped to CLI registration modules only.
-          - modules: ["*.cli"]
-            disable-error-codes: [arg-type]
-            justification: >-
-              Type-erased ResultCommandRoute batch registration (flext-cli)
-              rejects precise handler signatures under Mypy arg-type; the
-              dispatcher enforces input models at runtime. Documented
-              facade-CLI boundary disagreement, scoped to CLI modules.
           # Fail-loud exhaustive enum dispatch (ADR-001): Mypy over-narrows
           # the enum through the branch chain and flags the live defensive
           # guard as unreachable; the guard is the required runtime contract
@@ -342,9 +327,9 @@ Infra:
         global-suppression-rationales:
           reportAssignmentType:
             Pyright rejects the canonical class-alias rebind after
-            MRO facade composition although runtime and the other analyzers resolve it.
+            FLEXT facade composition although runtime and the other analyzers resolve it.
           reportGeneralTypeIssues:
-            Pyright groups the same valid MRO facade alias rebind
+            Pyright groups the same valid FLEXT facade alias rebind
             under its broad general diagnostic in every execution environment.
         source-env-suppressions:
           reportReturnType: "none"
@@ -352,7 +337,7 @@ Infra:
           reportArgumentType: "none"
           reportReturnType: "none"
         path-rules:
-          # mro-wkii.17 (codex): source and tracked consumer surfaces are all
+          # flext-wkii.17 (codex): source and tracked consumer surfaces are all
           # first-class environments so no analyzer can hide their diagnostics.
           source-dir: src
           project-root: .
@@ -383,7 +368,7 @@ Infra:
           root-typings-paths: []
           project-typings-paths: []
           ignored-diagnostic-globs: []
-          # mro-j47u (codex): Rope 1.14/latest has no public PEP 695 walker
+          # flext-j47u (codex): Rope 1.14/latest has no public PEP 695 walker
           # registration API. This existing-path-only environment is the tested
           # vendor boundary; broad src code keeps reportPrivateUsage=error.
           diagnostic-path-overrides:
@@ -418,7 +403,6 @@ Infra:
           - "*/_protocols/*"
       pyrefly:
         disable-project-excludes-heuristics: true
-        ignore-errors-in-generated-code: true
         python-version: "3.13"
         use-ignore-files: false
         strict-errors:
@@ -503,11 +487,6 @@ Infra:
           - unused-ignore
           - variance-mismatch
           - inconsistent-overload-default
-        disabled-errors:
-          - abstract-method-call
-          - bad-override
-          - non-convergent-recursion
-          - non-exhaustive-match
         project-exclude-globs:
           - "**/__pycache__"
           - "**/__pyrefly_virtual__/**"
@@ -532,8 +511,8 @@ Infra:
           workspace-include-child-env-dirs: []
           project-shared-search-paths: ["."]
       pytest:
-        # mro-j47u (codex): scaffold/modernizer consume one complete pytest model.
-        # OPERATOR LAW mro-38p39 (2026-08-13), reaffirmed by mro-09686
+        # flext-j47u (codex): scaffold/modernizer consume one complete pytest model.
+        # OPERATOR LAW flext-38p39 (2026-08-13), reaffirmed by flext-09686
         # measurement. 10s per case, 60s for an explicitly slow case, 120s for
         # the complete suite. A case that does not fit is a TEST DEFECT and is
         # OPTIMIZED; raising the ceiling to accommodate it is forbidden and is
@@ -542,7 +521,7 @@ Infra:
         # rule let the suite run 30 minutes, so make test never aborted on
         # overrun and a push could be attempted without a full green suite.
         case-timeout-seconds: 10
-        # The 60s arm of OPERATOR LAW mro-38p39, made executable. The law
+        # The 60s arm of OPERATOR LAW flext-38p39, made executable. The law
         # already granted an explicitly slow case 60s, but no key projected it,
         # so `flext_slow_timeout_seconds` stayed empty and every `@pytest.mark.slow`
         # item was still judged at 10s. A nested `pytester.runpytest_subprocess()`
@@ -560,17 +539,10 @@ Infra:
         progress-args: [--verbose]
         report-args: [-ra, --durations=25, --durations-min=0.001, --tb=short]
         diagnostic-args: [-rA, --durations=0, --tb=long, --showlocals]
-        # Direct pytest completed 76% with four workers and 90% with eight
-        # before the immutable 120s wall. Fourteen and sixteen workers
-        # oversubscribed the subprocess-heavy cases and breached their 10s item
-        # budgets. Twelve leaves eight of the host's 20 CPUs for child work.
-        # BUMP 2026-08-20: the 12-worker xdist pool crashes under loaded
-        # multi-lane hosts (12 subprocesses importing the full module graph +
-        # fixtures exhaust memory/cgroup limits → "Unexpectedly no active
-        # workers available"). The lifecycle cutover removed 34 subprocess-heavy
-        # modules and their fixtures. Four workers remains the stable full-suite
-        # pool for CI; pre-push uses impact selection instead of repeating full.
-        parallel-workers: 4
+        # Subprocess-heavy generation tests exhausted memory repeatedly with
+        # four workers on a loaded multi-lane host. Two keeps parallel coverage
+        # while bounding concurrent imports and nested interpreters.
+        parallel-workers: 2
         # Work stealing drains uneven codegen/subprocess tails without the
         # serialized 99% tail measured under loadscope.
         parallel-distribution: worksteal
@@ -589,12 +561,12 @@ Infra:
         # tomlsort alpha-sort filterwarnings, so any override MUST sort AFTER
         # "error" to survive re-conform. Only module::/once:: sort after 'error'
         # ('m'/'o' > 'e'); default::/always::/ignore:: get reordered before it and
-        # lose. module:: keeps FlextMroViolation (and its FlextSmellViolation
+        # lose. module:: keeps FlextSmellViolation (and its FlextSmellViolation
         # subclass) VISIBLE-but-non-fatal, matching the non-strict enforcement
         # policy (flext-tests registers default::{category}); all other warnings
         # stay fatal. See flext-core test_enforcement_warning_visibility.
         filter-warnings:
-          [error, "module::flext_core._constants.enforcement.FlextMroViolation"]
+          [error, "module::flext_core._constants.enforcement.FlextSmellViolation"]
         standard-markers:
           - "smoke: public-interface smoke tests"
           - "unit: unit tests"
@@ -612,9 +584,9 @@ Infra:
           - --strict-markers
           - --markdown-docs
           - --durations=10
-          # mro-99ae: --timeout/--session-timeout are runner-owned and derived
+          # flext-99ae: --timeout/--session-timeout are runner-owned and derived
           # from case-timeout-seconds/run-timeout-seconds; never restate them here.
-        # mro-99ae: hard process boundary independent of pytest hook progress.
+        # flext-99ae: hard process boundary independent of pytest hook progress.
         # Must exceed run-timeout-seconds (120) by a small grace only: this caps
         # the whole Make/pytest process (shell `timeout`), not a single session
         # hook. A wide outer wall is itself an escape hatch — it would let an
@@ -626,7 +598,7 @@ Infra:
         in_place: true
         sort_first: [project, build-system, tool, dependency-groups]
       vulture:
-        # NOTE (multi-agent, mro-j47u): Vulture 2.16 reports keyword-bearing
+        # NOTE (multi-agent, flext-j47u): Vulture 2.16 reports keyword-bearing
         # Protocol signature parameters as unused variables at 100% confidence,
         # even with --ignore-decorators @runtime_checkable. The declaration-only
         # protocol facet is excluded; production models and runtime code remain scanned.

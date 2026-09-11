@@ -50,7 +50,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         """The root profile permits the public targets it actually ships."""
         policy: m.Infra.CustomHandlerPolicy = (
             config.Infra.codegen.make.custom_handler_policies[
-                c.Infra.MakeProfile.WORKSPACE_ROOT
+                c.Infra.MakeProfile.WORKSPACE
             ]
         )
 
@@ -81,7 +81,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         )
         permissive: m.Infra.CustomHandlerPolicy = (
             config.Infra.codegen.make.custom_handler_policies[
-                c.Infra.MakeProfile.WORKSPACE_ROOT
+                c.Infra.MakeProfile.WORKSPACE
             ]
         )
         validate = FlextInfraCodegenConform.validate_custom_make
@@ -101,7 +101,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         policies: dict[str, m.Infra.CustomHandlerPolicy] = dict(
             config.Infra.codegen.make.custom_handler_policies
         )
-        profile: c.Infra.MakeProfile = c.Infra.MakeProfile.WORKSPACE_ROOT
+        profile: c.Infra.MakeProfile = c.Infra.MakeProfile.WORKSPACE
 
         tm.that(set(policies), eq={member.value for member in c.Infra.MakeProfile})
         tm.that(policies[profile] is policies[profile.value], eq=True)

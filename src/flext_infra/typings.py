@@ -20,12 +20,12 @@ from flext_infra._typings.rope import FlextInfraTypesRope
 
 
 class FlextInfraTypes(t):
-    """Type namespace for flext-infra; extends FlextTypes via MRO.
+    """Type namespace for flext-infra; extends FlextTypes via FLEXT.
 
     Infra-specific types are nested under the ``Infra`` inner class to
     keep the namespace explicit (``t.Infra.Payload``, ``t.JsonMapping``).
     Parent types (``t.Scalar``, ``t.StrMapping``, etc.) are inherited
-    transparently from ``FlextTypes`` via MRO.
+    transparently from ``FlextTypes`` via FLEXT.
     """
 
     class Infra(FlextInfraTypesAdapters, FlextInfraTypesRope, FlextInfraTypesBase):

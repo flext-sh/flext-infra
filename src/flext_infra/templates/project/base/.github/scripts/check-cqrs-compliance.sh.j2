@@ -24,6 +24,24 @@ set -euo pipefail
 VERBOSE="${1:-}"
 WORKSPACE_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 VIOLATIONS=0
+SOURCE_ROOTS=()
+TEST_ROOTS=()
+cd "${WORKSPACE_ROOT}"
+shopt -s nullglob
+for path in ./*/src; do
+	if [[ -L "${path}" || ! -d "${path}" ]]; then
+		printf 'ERROR: invalid workspace source root: %s\n' "${path}" >&2
+		exit 2
+	fi
+	SOURCE_ROOTS+=("${path}")
+done
+for path in ./*/tests; do
+	if [[ -L "${path}" || ! -d "${path}" ]]; then
+		printf 'ERROR: invalid workspace test root: %s\n' "${path}" >&2
+		exit 2
+	fi
+	TEST_ROOTS+=("${path}")
+done
 
 _log() {
 	if [[ "${VERBOSE}" == "--verbose" ]]; then
@@ -37,6 +55,21 @@ _fail() {
 	VIOLATIONS=$((VIOLATIONS + 1))
 }
 
+_capture_rg() {
+	local pattern="$1"
+	shift
+	if [[ "$#" -eq 0 ]]; then return 0; fi
+	local output status
+	if output=$(rg -n --glob '*.py' --glob '!**/__pycache__/**' "${pattern}" "$@"); then
+		printf '%s\n' "${output}"
+		return 0
+	else
+		status=$?
+	fi
+	if [[ "${status}" -eq 1 ]]; then return 0; fi
+	return "${status}"
+}
+
 _check() {
 	local check="$1" pattern="$2" description="$3"
 	shift 3
@@ -45,15 +78,15 @@ _check() {
 	_log "Checking: ${description}"
 
 	local matches
-	matches=$(cd "${WORKSPACE_ROOT}" && grep -rn "${pattern}" --include="*.py" --exclude-dir="__pycache__" ./*/src/ 2>/dev/null || true)
-
-	# Filter out excluded paths
-	for excl in "${exclude_patterns[@]}"; do
-		matches=$(echo "${matches}" | grep -v "^\./${excl}/" || true)
-	done
+	matches=$(_capture_rg "${pattern}" "${SOURCE_ROOTS[@]}")
 
 	if [[ -n "${matches}" ]]; then
 		while IFS= read -r match; do
+			local excluded=0
+			for excl in "${exclude_patterns[@]}"; do
+				if [[ "${match}" == "./${excl}/"* ]]; then excluded=1; break; fi
+			done
+			if [[ "${excluded}" -eq 1 ]]; then continue; fi
 			local file line_content
 			file=$(echo "${match}" | cut -d: -f1)
 			local line_num
@@ -83,10 +116,12 @@ _check "EVT-BASEMODEL" \
 
 # 3. No setattr hacks for message_type (prod AND test code)
 _log "Checking: setattr hacks for message_type (prod + tests)"
-matches=$(cd "${WORKSPACE_ROOT}" && grep -rn 'setattr.*message_type' --include="*.py" --exclude-dir="__pycache__" ./*/src/ ./*/tests/ 2>/dev/null || true)
-matches=$(echo "${matches}" | grep -v '^flext-ldif/' | grep -v '^examples/' || true)
+matches=$(_capture_rg 'setattr.*message_type' "${SOURCE_ROOTS[@]}" "${TEST_ROOTS[@]}")
 if [[ -n "${matches}" ]]; then
 	while IFS= read -r match; do
+		if [[ "${match}" == "./flext-ldif/"* || "${match}" == "./examples/"* ]]; then
+			continue
+		fi
 		file=$(echo "${match}" | cut -d: -f1)
 		line_num=$(echo "${match}" | cut -d: -f2)
 		line_content=$(echo "${match}" | cut -d: -f3-)
@@ -98,10 +133,12 @@ fi
 
 # 4. No direct FlextDispatcher() instantiation (except container registration)
 _log "Checking: Direct FlextDispatcher() instantiation"
-matches=$(cd "${WORKSPACE_ROOT}" && grep -rn '= FlextDispatcher()' --include="*.py" --exclude-dir="__pycache__" ./*/src/ 2>/dev/null || true)
-matches=$(echo "${matches}" | grep -v '^flext-ldif/' | grep -v '^examples/' | grep -v 'container\|register' || true)
+matches=$(_capture_rg '= FlextDispatcher\(\)' "${SOURCE_ROOTS[@]}")
 if [[ -n "${matches}" ]]; then
 	while IFS= read -r match; do
+		if [[ "${match}" == "./flext-ldif/"* || "${match}" == "./examples/"* || "${match}" == *container* || "${match}" == *register* ]]; then
+			continue
+		fi
 		file=$(echo "${match}" | cut -d: -f1)
 		line_num=$(echo "${match}" | cut -d: -f2)
 		line_content=$(echo "${match}" | cut -d: -f3-)

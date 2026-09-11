@@ -362,10 +362,10 @@ select = ["E501"]
 
         tm.that(second_changes, eq=[])
 
-    def test_ruff_phase_skips_attached_workspace_namespaces(
+    def test_ruff_phase_skips_nonmember_workspace_namespaces(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
-        """Exclude attached consumer namespaces from FLEXT first-party names."""
+        """Exclude nonmember consumer namespaces from FLEXT first-party names."""
         workspace_root = tmp_path / "workspace"
         project_dir = workspace_root / "demo-migration-tool"
         internal_project = workspace_root / "flext-core"

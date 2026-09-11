@@ -10,6 +10,7 @@ the public gate boundary.
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 
 import pytest
@@ -221,7 +222,7 @@ class TestSmellsGate:
         fallback_dir.mkdir(parents=True)
         fallback = fallback_dir / c.Infra.QLTY_BINARY
         fallback.write_text(
-            "#!/usr/bin/env python3\nimport sys\nsys.stdout.write('{}')\n",
+            f"#!{sys.executable}\nimport sys\nsys.stdout.write('{{}}')\n",
             encoding="utf-8",
         )
         fallback.chmod(0o755)

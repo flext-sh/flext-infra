@@ -15,7 +15,7 @@ class FlextInfraProjectClassifierDepsMixin:
     """Collect + normalize a project's declared dependency names.
 
     Composed into FlextInfraProjectClassifier via inheritance; borrows
-    ``_as_mapping`` from the facade via MRO.
+    ``_as_mapping`` from the facade via FLEXT.
     """
 
     if TYPE_CHECKING:

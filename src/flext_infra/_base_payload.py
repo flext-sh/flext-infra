@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCommandPayloadMixin:
-    """Private MRO payload builder for shared command services."""
+    """Private FLEXT payload builder for shared command services."""
 
     if TYPE_CHECKING:
         workspace_root: Path

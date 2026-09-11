@@ -13,10 +13,10 @@ from tests.unit.workspace.worktree_fixture import WorktreeFixture
 class TestsWorktreeTopology(WorktreeFixture):
     """Group cohesive worktree behavior."""
 
-    def test_update_fast_forwards_a_lane_to_the_requested_base(
+    def test_update_merges_the_requested_base_with_an_explicit_merge_commit(
         self, tmp_path: Path
     ) -> None:
-        """Update advances an existing lane only through a fast-forward."""
+        """Update preserves lane ancestry through the canonical no-ff merge."""
         repository = self._repository(tmp_path)
         branch = "feature/update"
         lane = self._lane(repository, repository, branch)
@@ -63,14 +63,14 @@ class TestsWorktreeTopology(WorktreeFixture):
         updated_head = tm.ok(
             u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=lane))
         ).oid
-        tm.that(updated_head, ne=base)
+        tm.that(updated_head == base, eq=False)
         parents = tm.ok(
             u.Cli.capture(
-                [c.Infra.GIT, "rev-list", "--parents", "-n", "1", updated_head],
-                cwd=lane,
+                [c.Infra.GIT, "rev-list", "--parents", "-n", "1", "HEAD"], cwd=lane
             )
         ).split()
-        tm.that(len(parents), eq=3)
+        tm.that(parents, length=3)
+        tm.that(parents, has=base)
 
     def test_child_lane_nests_under_its_epic_container(self, tmp_path: Path) -> None:
         """A child lane is namespaced by the epic lane that owns it."""

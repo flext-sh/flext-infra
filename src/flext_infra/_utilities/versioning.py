@@ -1,6 +1,6 @@
 """Versioning utilities for semantic version management.
 
-All methods are static — exposed via u.Infra.parse_semver() etc. through MRO.
+All methods are static — exposed via u.Infra.parse_semver() etc. through FLEXT.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -22,7 +22,7 @@ class FlextInfraUtilitiesVersioning:
     """Static versioning utilities for semantic version management.
 
     All methods are ``@staticmethod`` — no instantiation required.
-    Exposed via ``u.Infra.parse_semver()`` etc. through MRO.
+    Exposed via ``u.Infra.parse_semver()`` etc. through FLEXT.
     """
 
     @staticmethod

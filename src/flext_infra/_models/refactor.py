@@ -34,16 +34,6 @@ class FlextInfraModelsRefactor(
     - ``ArbitraryTypesModel`` for mutable report/result payloads.
     """
 
-    class RefactorMigrateMroInput(mm.WriteMixin, m.ContractModel):
-        """CLI/service request for MRO migration."""
-
-        target: Annotated[
-            str,
-            m.Field(
-                description="Migration target scope (constants/typings/protocols/models/utilities/all)"
-            ),
-        ] = "all"
-
     class RefactorNamespaceEnforceInput(mm.WriteMixin, m.ContractModel):
         """CLI/service request for namespace enforcement."""
 
@@ -169,24 +159,6 @@ class FlextInfraModelsRefactor(
         confidence: Annotated[str, m.Field(description="Confidence level")]
         score: Annotated[t.DecimalFraction, m.Field(description="Confidence score")]
 
-    class FamilyMROResolution(m.ArbitraryTypesModel):
-        """Resolution payload for one facade family MRO."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-
-        family: Annotated[t.NonEmptyStr, m.Field(description="Facade family letter")]
-        expected_bases: Annotated[
-            t.VariadicTuple[str],
-            m.Field(description="Expected base class names in order"),
-        ]
-        resolved_mro: Annotated[
-            t.VariadicTuple[str], m.Field(description="Resolved MRO class names")
-        ]
-        accessible_namespaces: Annotated[
-            t.VariadicTuple[str],
-            m.Field(description="Namespaces accessible through the MRO"),
-        ]
-
     class ProjectClassification(m.ArbitraryTypesModel):
         """Result of classifying a project by kind and family chains."""
 
@@ -200,7 +172,7 @@ class FlextInfraModelsRefactor(
         ]
         family_chains: Annotated[
             t.MappingKV[str, t.StrSequence],
-            m.Field(description="Family letter to MRO chain mapping"),
+            m.Field(description="Family letter to FLEXT chain mapping"),
         ]
 
     # NOTE (multi-agent): the two models below replace the

@@ -15,7 +15,7 @@ rules:
       ImportModernizerRule: "FlextInfraRefactorImportModernizerRule"
       EnsureFutureAnnotationsRule: "FlextInfraRefactorEnsureFutureAnnotationsRule"
       ClassReconstructorRule: "FlextInfraRefactorClassReconstructorRule"
-      MRORedundancyChecker: "FlextInfraRefactorMRORedundancyChecker"
+      FLEXTRedundancyChecker: "FlextInfraRefactorFLEXTRedundancyChecker"
       FlextRefactorService: "FlextInfraRefactorService"
       RefactorResult: "FlextInfraRefactorResult"
       RefactorRule: "FlextInfraRefactorRule"

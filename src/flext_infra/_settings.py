@@ -1,6 +1,6 @@
 """Runtime settings for flext-infra — namespaced under ``settings.Infra``.
 
-Layer-0 style: universal fields via MRO; all project fields in the ``Infra``
+Layer-0 style: universal fields via FLEXT; all project fields in the ``Infra``
 namespace group with simple scalar types (env-settable).
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -19,7 +19,7 @@ from flext_infra._models.settings import FlextInfraSettingsModels
 
 
 # NOTE (multi-agent): migrated base FlextCliSettings->FlextSettings to
-# complete the workspace settings migration (mro-d421); flext_cli dropped its
+# complete the workspace settings migration (flext-d421); flext_cli dropped its
 # public FlextCliSettings export. Canonical pattern per flext-api/flext-auth.
 class _FlextInfraSettings(FlextSettings):
     """Environment-backed infra settings; fields under ``settings.Infra.*``."""
@@ -31,7 +31,7 @@ class _FlextInfraSettings(FlextSettings):
         frozen=True,
     )
 
-    # mro-wkii.4.15: composition only; declaration and env validation stay private.
+    # flext-wkii.4.15: composition only; declaration and env validation stay private.
     Infra: FlextInfraSettingsModels.Infra = m.Field(
         default_factory=FlextInfraSettingsModels.Infra,
         description="Namespaced infra settings.",

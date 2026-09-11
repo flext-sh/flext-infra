@@ -102,7 +102,7 @@ class TestsFlextInfraExtraPathsSearchPaths:
     def test_pyrefly_search_paths_omit_workspace_dependency_src_dirs_at_root(
         self, tmp_path: Path
     ) -> None:
-        """Keep declared workspace members out of the root's search path."""
+        """Keep declared workspace projects out of the root's search path."""
         (tmp_path / ".git").mkdir()
         (tmp_path / "src").mkdir()
         (tmp_path / "tests").mkdir()

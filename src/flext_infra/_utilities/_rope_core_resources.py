@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import operator
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -105,7 +106,7 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
                     for resource in rope_project.get_python_files()
                     if FlextInfraUtilitiesRopeRuntime.is_resource(resource)
                 ),
-                key=lambda resource: resource.path,
+                key=operator.attrgetter("path"),
             )
         )
 
@@ -128,7 +129,7 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
                     )
                     is not None
                 ),
-                key=lambda file_path: file_path.as_posix(),
+                key=Path.as_posix,
             )
         )
 

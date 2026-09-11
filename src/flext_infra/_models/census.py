@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
+from flext_infra._models._defaults import ImmutableEmptyMapping
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
@@ -61,7 +61,7 @@ class FlextInfraModelsCensus:
                 str, m.Field(description="Tier determined by classifier")
             ] = ""
             is_facade_member: Annotated[
-                bool, m.Field(description="Whether object is exposed via facade MRO")
+                bool, m.Field(description="Whether object is exposed via facade FLEXT")
             ] = False
             references_count: Annotated[
                 t.NonNegativeInt,
@@ -140,7 +140,7 @@ class FlextInfraModelsCensus:
             kind: Annotated[
                 str,
                 m.Field(
-                    description="Violation kind (misplaced/duplicate/unused/missing_mro_base/flat_alias/wrong_tier)"
+                    description="Violation kind (misplaced/duplicate/unused/missing_flext_base/flat_alias/wrong_tier)"
                 ),
             ]
             severity: Annotated[str, m.Field(description="Severity level")] = (
@@ -253,7 +253,7 @@ class FlextInfraModelsCensus:
             ] = 0
             objects_by_kind: Annotated[
                 t.IntMapping, m.Field(description="Object count per kind")
-            ] = m.Field(default_factory=lambda: MappingProxyType({}))
+            ] = m.Field(default_factory=ImmutableEmptyMapping)
             violations: tuple[FlextInfraModelsCensus.Census.Violation, ...] = m.Field(
                 default_factory=tuple, description="Detected violations"
             )

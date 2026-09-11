@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    # mro-j47u (codex): retained only until the remaining get_ast consumers are
+    # flext-j47u (codex): retained only until the remaining get_ast consumers are
     # converted atomically; this import never enters the runtime dependency graph.
     import ast
 
@@ -122,7 +122,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
 
         def get_doc(self) -> str | None: ...
 
-        # NOTE (multi-agent, mro-f8vk / kimi): rope returns None for
+        # NOTE (multi-agent, flext-f8vk / kimi): rope returns None for
         # string-parsed modules (pycore.get_string_module(resource=None));
         # the widened contract keeps every consumer None guard live.
         def get_resource(
@@ -177,7 +177,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
     class RopeLocation(Protocol):
         """Rope occurrence location shape."""
 
-        # mro-j47u (codex): detectors consume Rope's semantic occurrence
+        # flext-j47u (codex): detectors consume Rope's semantic occurrence
         # coordinates directly instead of rediscovering references textually.
         resource: FlextInfraProtocolsRopeRuntime.RopeResource | None
         offset: int

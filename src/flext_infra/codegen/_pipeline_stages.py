@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 class FlextInfraCodegenPipelineStagesMixin:
     """Seven linear codegen stage handlers, each a single fail-fast boundary.
 
-    Composed into FlextInfraCodegenPipeline via MRO; every handler runs through
+    Composed into FlextInfraCodegenPipeline via FLEXT; every handler runs through
     the facade's ``_run_stage`` harness and caches its output in ``self._state``.
     """
 

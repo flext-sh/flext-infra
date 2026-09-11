@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import Annotated
 
 from flext_core import m
 from flext_infra import t
+from flext_infra._models._defaults import ImmutableEmptyMapping
 from flext_infra._models.deps_tool_config_project import (
     FlextInfraModelsDepsToolConfigProject,
 )
@@ -112,7 +112,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 alias="ignored-rule-rationales",
                 description="Global Ruff exclusions mapped to verified architecture rationales.",
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         banned_api: Annotated[
             t.StrMapping,
             m.Field(
@@ -222,7 +222,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             m.Field(
                 alias="disabled-error-codes",
                 description=(
-                    "Mypy error codes mapped to their tested facade-MRO rationale."
+                    "Mypy error codes mapped to their tested facade-FLEXT rationale."
                 ),
             ),
         ]
@@ -242,7 +242,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                     "(e.g. follow_imports='normal')."
                 ),
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         overrides: Annotated[
             tuple[FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig, ...],
             m.Field(

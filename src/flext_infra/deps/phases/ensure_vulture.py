@@ -15,7 +15,7 @@ class FlextInfraEnsureVultureConfigPhase:
 
     def _phase(self) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the config-owned Vulture TOML phase."""
-        # mro-j47u: reachability policy is data; projects receive no local branch.
+        # flext-j47u: reachability policy is data; projects receive no local branch.
         vulture = self._tool_config.tools.vulture
         return (
             m.Infra.Deps.Toml.PhaseConfig
@@ -23,7 +23,7 @@ class FlextInfraEnsureVultureConfigPhase:
             .table("vulture")
             .deprecated("min-confidence")
             .list("exclude", vulture.exclude)
-            # mro-j47u (codex): Vulture TOML uses parser keys, not CLI flags.
+            # flext-j47u (codex): Vulture TOML uses parser keys, not CLI flags.
             .value("min_confidence", vulture.min_confidence)
             .list("paths", vulture.paths)
             .value("verbose", vulture.verbose)

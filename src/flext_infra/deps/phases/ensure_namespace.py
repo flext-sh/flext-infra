@@ -26,7 +26,7 @@ class FlextInfraEnsureNamespaceToolingPhase:
         detected = sorted({
             *config.Infra.tooling.tools.deptry.known_first_party,
             *u.Infra.discover_first_party_namespaces(path.parent),
-            # mro-j47u (codex): declared FLEXT dependencies are first-party.
+            # flext-j47u (codex): declared FLEXT dependencies are first-party.
             *u.Infra.flext_dependency_namespaces(doc),
         })
         if not detected:

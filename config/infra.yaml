@@ -5,10 +5,10 @@ Infra:
     roots:
       - src
       - scripts
-    # NOTE (mro-jnm1.1 / mro-jnm1.4): ignored_resources was removed; the names
+    # NOTE (flext-jnm1.1 / flext-jnm1.4): ignored_resources was removed; the names
     # now derive from the codegen artifact SSOT (config/codegen.yaml artifacts
     # with source_scan_ignore=true) via CodegenConfigSpec.source_scan_ignored.
-  # mro-j47u (codex): every static rule is validated data; the detector owns no policy.
+  # flext-j47u (codex): every static rule is validated data; the detector owns no policy.
   enforcement:
     rules:
       - {operator: import_module, module: pydantic, owner_project: flext-core,

@@ -31,7 +31,7 @@ class FlextInfraEnsureCoverageConfigPhase:
             .Builder("coverage-report")
             .table("coverage", "report")
             .value("fail_under", fail_under)
-            # mro-j47u (codex): policy values come only from config.Infra.tooling.
+            # flext-j47u (codex): policy values come only from config.Infra.tooling.
             .value("show_missing", cov_config.show_missing)
             .value("skip_covered", cov_config.skip_covered)
             .value("precision", cov_config.precision)

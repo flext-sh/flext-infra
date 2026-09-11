@@ -62,6 +62,12 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
         return groups
 
     @staticmethod
+    def _import_item_sort_key(item: t.StrPair) -> tuple[str, bool]:
+        """Order an imported symbol by source name, then alias status."""
+        export_name, imported_name = item
+        return imported_name or export_name, export_name != imported_name
+
+    @staticmethod
     def _generate_import_lines(
         groups: t.MappingKV[str, t.StrPairSequence], *, indent: str = ""
     ) -> t.StrSequence:
@@ -76,7 +82,8 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
                 (item for item in items if not item[1]), key=operator.itemgetter(0)
             )
             sorted_items = sorted(
-                (item for item in items if item[1]), key=lambda x: (x[1], x[0] != x[1])
+                (item for item in items if item[1]),
+                key=FlextInfraCodegenGenerationImportsMixin._import_item_sort_key,
             )
             for export_name, _ in alias_items:
                 lines.append(

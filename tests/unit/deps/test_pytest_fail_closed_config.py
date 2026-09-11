@@ -39,23 +39,13 @@ testpaths = ["architecture", "guides", "tests"]
             has=(
                 "filterwarnings = [\n"
                 '    "error",\n'
-                '    "module::flext_core._constants.enforcement.FlextMroViolation",\n'
+                '    "module::flext_core._constants.enforcement.FlextSmellViolation",\n'
                 "]"
             ),
         )
-        tm.that(
-            rendered,
-            has=(
-                "testpaths = [\n"
-                '    ".",\n'
-                '    "docs",\n'
-                '    "examples",\n'
-                '    "scripts",\n'
-                '    "src",\n'
-                '    "tests",\n'
-                "]"
-            ),
-        )
+        tm.that(rendered, has="testpaths = [")
+        for test_path in config.Infra.tooling.tools.pytest.test_paths:
+            tm.that(rendered, has=f'    "{test_path}",')
         for preserved_value in ("custom: stale local marker", "Spec*", "spec_*.py"):
             tm.that(rendered, has=preserved_value)
         for stale_value in (

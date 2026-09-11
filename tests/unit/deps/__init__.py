@@ -10,12 +10,6 @@ from types import MappingProxyType
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import test_detection_pip_check as test_detection_pip_check
-    from . import test_extra_paths_path_purity as test_extra_paths_path_purity
-    from . import test_modernizer_packaging as test_modernizer_packaging
-    from . import (
-        test_ruff_blanket_mask_is_unrepresentable as test_ruff_blanket_mask_is_unrepresentable,
-    )
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
     from .test_detection_classify import TestsFlextInfraDepsDetectionClassify
@@ -34,13 +28,16 @@ if TYPE_CHECKING:
     from .test_detector_report_flags import TestsFlextInfraDepsDetectorReportFlags
     from .test_extra_paths_manager import TestsFlextInfraExtraPathsManager
     from .test_extra_paths_search_paths import TestsFlextInfraExtraPathsSearchPaths
-    from .test_extra_paths_sync import TestsFlextInfraDepsExtraPathsSync
+    from .test_extra_paths_sync import (
+        TestsFlextInfraDepsExtraPathsSync,
+        pyright_content,
+    )
     from .test_init import TestsFlextInfraDepsInit
     from .test_main_dispatch import TestsFlextInfraDepsMainDispatch
     from .test_modernizer_comments import TestsFlextInfraDepsModernizerComments
     from .test_modernizer_consolidate import TestsFlextInfraDepsModernizerConsolidate
     from .test_modernizer_coverage import TestsFlextInfraDepsModernizerCoverage
-    from .test_modernizer_helpers import TestsFlextInfraDepsModernizerHelpers
+    from .test_modernizer_helpers import TestsFlextInfraDepsModernizerHelpers, doc
     from .test_modernizer_main import TestsFlextInfraDepsModernizerMain
     from .test_modernizer_main_extra import TestsFlextInfraDepsModernizerMainExtra
     from .test_modernizer_mypy import TestsFlextInfraDepsModernizerMypy
@@ -87,18 +84,16 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraPytestTimeoutConfig",
     "c",
     "d",
+    "doc",
     "e",
     "h",
     "m",
     "p",
+    "pyright_content",
     "r",
     "s",
     "t",
     "td",
-    "test_detection_pip_check",
-    "test_extra_paths_path_purity",
-    "test_modernizer_packaging",
-    "test_ruff_blanket_mask_is_unrepresentable",
     "tf",
     "tk",
     "tm",
@@ -114,7 +109,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_detection_deptry": ("TestsFlextInfraDepsDetectionDeptry",),
             ".test_detection_discover": ("TestsFlextInfraDepsDetectionDiscover",),
             ".test_detection_models": ("TestsFlextInfraDepsDetectionModels",),
-            ".test_detection_pip_check": ("test_detection_pip_check",),
             ".test_detection_typings": ("TestsFlextInfraDepsDetectionTypings",),
             ".test_detection_typings_flow": (
                 "TestsFlextInfraDepsDetectionTypingsFlow",
@@ -130,9 +124,11 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_detector_report": ("TestsFlextInfraDepsDetectorReport",),
             ".test_detector_report_flags": ("TestsFlextInfraDepsDetectorReportFlags",),
             ".test_extra_paths_manager": ("TestsFlextInfraExtraPathsManager",),
-            ".test_extra_paths_path_purity": ("test_extra_paths_path_purity",),
             ".test_extra_paths_search_paths": ("TestsFlextInfraExtraPathsSearchPaths",),
-            ".test_extra_paths_sync": ("TestsFlextInfraDepsExtraPathsSync",),
+            ".test_extra_paths_sync": (
+                "TestsFlextInfraDepsExtraPathsSync",
+                "pyright_content",
+            ),
             ".test_init": ("TestsFlextInfraDepsInit",),
             ".test_main_dispatch": ("TestsFlextInfraDepsMainDispatch",),
             ".test_modernizer_comments": ("TestsFlextInfraDepsModernizerComments",),
@@ -140,11 +136,10 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraDepsModernizerConsolidate",
             ),
             ".test_modernizer_coverage": ("TestsFlextInfraDepsModernizerCoverage",),
-            ".test_modernizer_helpers": ("TestsFlextInfraDepsModernizerHelpers",),
+            ".test_modernizer_helpers": ("TestsFlextInfraDepsModernizerHelpers", "doc"),
             ".test_modernizer_main": ("TestsFlextInfraDepsModernizerMain",),
             ".test_modernizer_main_extra": ("TestsFlextInfraDepsModernizerMainExtra",),
             ".test_modernizer_mypy": ("TestsFlextInfraDepsModernizerMypy",),
-            ".test_modernizer_packaging": ("test_modernizer_packaging",),
             ".test_modernizer_pyrefly": ("TestsFlextInfraModernizerPyrefly",),
             ".test_modernizer_pyright": ("TestsFlextInfraDepsModernizerPyright",),
             ".test_modernizer_pytest": ("TestsFlextInfraDepsModernizerPytest",),
@@ -154,9 +149,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraPytestFailClosedConfig",
             ),
             ".test_pytest_timeout_config": ("TestsFlextInfraPytestTimeoutConfig",),
-            ".test_ruff_blanket_mask_is_unrepresentable": (
-                "test_ruff_blanket_mask_is_unrepresentable",
-            ),
             "flext_tests": (
                 "c",
                 "d",

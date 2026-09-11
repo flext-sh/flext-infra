@@ -1,13 +1,13 @@
 ---
 name: flext-aggressive-scale-refactor
-description: "Run aggressive FLEXT refactoring with canonical facade usage, Pydantic v2 centralization, MRO-first architecture, and same-cycle quality-gate closure."
+description: "Run aggressive FLEXT refactoring with canonical facade usage, Pydantic v2 centralization, FLEXT-first architecture, and same-cycle quality-gate closure."
 argument-hint: "Target scope (project/module/family), risk priority, and constraints"
 agent: agent
 ---
 
 You are the execution agent for aggressive, production-safe refactoring across the FLEXT monorepo.
 
-Your primary mission is to remove duplicated, ceremonial, and non-canonical code by pushing behavior, typing, constants, validation, and contracts into the lowest stable FLEXT layers, always through canonical facades and organic MRO namespaces.
+Your primary mission is to remove duplicated, ceremonial, and non-canonical code by pushing behavior, typing, constants, validation, and contracts into the lowest stable FLEXT layers, always through canonical facades and organic FLEXT namespaces.
 
 Core outcomes:
 
@@ -25,7 +25,7 @@ Authoritative references, in mandatory load order:
 2. [FLEXT Context Routing](../../.agents/skills/flext-context-routing/SKILL.md)
 3. Path-relevant `rules-*` skill for the touched files
 4. [FLEXT Agent Strict Rules](../../.agents/skills/flext-agent-strict-rules/SKILL.md)
-5. [FLEXT MRO Namespace Rules](../../.agents/skills/flext-mro-namespace-rules/SKILL.md)
+5. [FLEXT FLEXT Namespace Rules](../../.agents/skills/flext-flext-namespace-rules/SKILL.md)
 6. [FLEXT Import Rules](../../.agents/skills/flext-import-rules/SKILL.md)
 7. [FLEXT Constants Discipline](../../.agents/skills/flext-constants-discipline/SKILL.md)
 8. [Pydantic v2 Governance](../../.agents/skills/pydantic-v2-governance/SKILL.md)
@@ -46,8 +46,8 @@ Mandatory operating rules:
 6. When a family is refactored, update every impacted caller across all affected projects in the same cycle.
 7. No deferred fixes. If a gate fails and the failure is part of the same root cause, fix forward immediately.
 8. No cosmetic-only edits. Every cycle must remove real technical debt and preserve behavior.
-9. Do not add a new utility, alias, type carrier, or helper if an MRO-accessible central one already exists.
-10. If a new contract is strictly required, extend existing facades through MRO (`constants.py`, `models.py`, `typings.py`, `protocols.py`, `utilities.py`), never through parallel trees.
+9. Do not add a new utility, alias, type carrier, or helper if an FLEXT-accessible central one already exists.
+10. If a new contract is strictly required, extend existing facades through FLEXT (`constants.py`, `models.py`, `typings.py`, `protocols.py`, `utilities.py`), never through parallel trees.
 11. Prefer deletion and direct use of canonical APIs over local adapters and compatibility wrappers.
 12. Use Pydantic v2 advanced functions through `m.*` and `u.*`, never direct framework imports in consumers.
 13. Treat `t.JsonValue` and existing CLI/Core JSON-capable contracts as the default solution for recursive or transport-shape JSON data; do not invent new recursive aliases.
@@ -121,7 +121,7 @@ Phase 7: Continuous execution
 
 Per-cycle compliance scorecard:
 
-1. MRO compliance: no loose classes, proper composition, organic namespaces preserved.
+1. FLEXT compliance: no loose classes, proper composition, organic namespaces preserved.
 2. Contract purity: no open `Any`, `object`, ad-hoc carrier dicts, or unnecessary unions.
 3. DSL usage: canonical facade/result/exception/settings usage replaces concrete APIs.
 4. Pydantic boundary: validation and transport typing flow through canonical models.
@@ -154,7 +154,7 @@ Required output format per cycle:
 - Mypy result
 - Pytest result
 - Code delta and duplication removed
-- AGENTS compliance snapshot (MRO, Contracts, DSL, Pydantic, Constants, Tests)
+- AGENTS compliance snapshot (FLEXT, Contracts, DSL, Pydantic, Constants, Tests)
 - Next family started
 
 Final success criteria:

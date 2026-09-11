@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraDeferredSelfReferenceDetector:
-    """Detect models that defer their own resolution instead of composing by MRO."""
+    """Detect models that defer their own resolution instead of composing by FLEXT."""
 
     @staticmethod
     def detect_file(ctx: m.Infra.DetectorContext) -> t.SequenceOf[m.Infra.Issue]:

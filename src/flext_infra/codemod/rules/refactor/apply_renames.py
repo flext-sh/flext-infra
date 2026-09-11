@@ -48,6 +48,10 @@ class FlextInfraApplyRenames:
     @staticmethod
     def _pairs(csv_path: Path) -> p.Result[t.SequenceOf[tuple[str, str]]]:
         """Load validated rename pairs longest source name first."""
+
+        def source_name_length(pair: tuple[str, str]) -> int:
+            return len(pair[0])
+
         read_result = u.Cli.files_read_text(csv_path)
         if read_result.failure:
             return r[t.SequenceOf[tuple[str, str]]].fail(
@@ -71,7 +75,7 @@ class FlextInfraApplyRenames:
                 )
             pairs.append((row[0].strip(), row[1].strip()))
         return r[t.SequenceOf[tuple[str, str]]].ok(
-            tuple(sorted(pairs, key=lambda pair: len(pair[0]), reverse=True))
+            tuple(sorted(pairs, key=source_name_length, reverse=True))
         )
 
     @staticmethod

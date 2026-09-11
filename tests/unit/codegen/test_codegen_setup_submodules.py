@@ -11,6 +11,7 @@ import pytest
 from flext_infra import c, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
+from tests import u as test_u
 
 # Why (suite budget): every scenario provisions a real scaffolded project
 # template plus live git submodule topologies; the per-case wall only holds
@@ -58,6 +59,7 @@ class TestsCodegenSetupSubmodules:
             encoding="utf-8",
         )
         (bin_dir / "uv").chmod(0o755)
+        test_u.Tests.write_mise_stub(root / "bin" / "mise")
         environment = {
             **os.environ,
             "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
@@ -126,42 +128,30 @@ class TestsCodegenSetupSubmodules:
             cls._git(project / "vendor/source", "switch", "-q", "-c", member_branch)
         return project, cls._fake_uv(project)
 
-    def test_virgin_recursive_submodules_initialize_before_environment(
+    def test_virgin_managed_submodule_initializes_before_environment(
         self, tmp_path: Path, generated_project_template: Path
     ) -> None:
-        nested = tmp_path / "nested"
-        child = tmp_path / "child"
-        self._commit_repository(nested, "nested-dev", "nested")
-        self._commit_repository(child, "child-dev", "child")
-        self._add_submodule(child, nested, "nested", "nested-dev")
-
         source = tmp_path / "source"
         self._commit_repository(source, "source-dev", "source")
-        self._add_submodule(source, child, "child", "child-dev")
 
         project = tmp_path / "project"
         self._generated_project(project, generated_project_template)
         self._add_submodule(project, source, "vendor/source", "source-dev")
         self._git(project, "submodule", "deinit", "-q", "-f", "--all")
-        nested_marker = project / "vendor/source/child/nested/marker.txt"
+        source_marker = project / "vendor/source/marker.txt"
 
         tm.ok(
             u.Cli.capture(
                 ["make", "setup"],
                 cwd=project,
-                env=self._fake_uv(project, nested_marker),
+                env=self._fake_uv(project, source_marker),
             )
         )
 
+        tm.that(self._git(project / "vendor/source", "branch", "--show-current"), eq="")
         tm.that(
-            self._git(project / "vendor/source", "branch", "--show-current"),
-            eq="source-dev",
-        )
-        tm.that(
-            self._git(
-                project / "vendor/source/child/nested", "branch", "--show-current"
-            ),
-            eq="nested-dev",
+            self._git(project / "vendor/source", "rev-parse", "HEAD"),
+            eq=self._git(source, "rev-parse", "HEAD"),
         )
 
     def test_setup_is_repeatable_with_managed_submodule(
@@ -177,23 +167,6 @@ class TestsCodegenSetupSubmodules:
 
         tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=environment))
         tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=environment))
-
-    def test_submodule_setup_uses_conditional_fetch(self) -> None:
-        """Generated setup skips fetch when cached origin refs already validate."""
-        template = (
-            Path(__file__).resolve().parents[3]
-            / "src"
-            / "flext_infra"
-            / "templates"
-            / "project"
-            / "base"
-            / "submodule_setup_recipe.j2"
-        )
-        content = template.read_text(encoding="utf-8")
-
-        tm.that(content, has="need_fetch=1")
-        tm.that(content, has='if [ "$$need_fetch" -eq 1 ]')
-        tm.that(content, has='merge-base --is-ancestor "$$remote_ref" HEAD')
 
     def test_setup_is_repeatable_without_gitmodules(
         self, tmp_path: Path, generated_project_template: Path
@@ -347,7 +320,7 @@ class TestsCodegenSetupSubmodules:
         result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
 
         tm.that(result.exit_code, eq=2)
-        tm.that(result.stderr, has="diverges from recorded gitlink")
+        tm.that(result.stderr, has="does not contain recorded gitlink")
         tm.that(result.stderr, lacks="fetch origin")
         tm.that(self._git(checkout, "branch", "--show-current"), eq="feature/lane")
         tm.that((project / "uv.log").exists(), eq=False)
@@ -413,7 +386,7 @@ class TestsCodegenSetupSubmodules:
         tm.that(self._git(checkout, "rev-parse", "HEAD"), eq=head)
         tm.that(marker.read_text(encoding="utf-8"), eq="third-party wip")
 
-    def test_same_branch_declaration_uses_superproject_branch(
+    def test_same_branch_declaration_accepts_detached_recorded_gitlink(
         self, tmp_path: Path, generated_project_template: Path
     ) -> None:
         source = tmp_path / "source"
@@ -435,8 +408,10 @@ class TestsCodegenSetupSubmodules:
 
         tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=self._fake_uv(project)))
 
+        tm.that(self._git(project / "vendor/source", "branch", "--show-current"), eq="")
         tm.that(
-            self._git(project / "vendor/source", "branch", "--show-current"), eq="main"
+            self._git(project / "vendor/source", "rev-parse", "HEAD"),
+            eq=self._git(source, "rev-parse", "HEAD"),
         )
 
     def test_setup_succeeds_when_gitlink_is_ahead_of_origin(
@@ -476,6 +451,9 @@ def generated_project_template(tmp_path_factory: pytest.TempPathFactory) -> Path
             kind=c.Infra.ProjectKind.EXTERNAL,
             output_root=root,
             provider="flext-sh",
+            beads_workspace="flext-demo",
+            beads_database="flext_demo",
+            beads_issue_prefix="flext-demo",
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
@@ -484,6 +462,7 @@ def generated_project_template(tmp_path_factory: pytest.TempPathFactory) -> Path
             apply_changes=True,
         ).execute()
     )
+    (root / "mise.lock").touch()
     return root
 
 

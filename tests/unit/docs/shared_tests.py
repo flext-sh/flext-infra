@@ -74,7 +74,7 @@ def test_build_scopes_treats_non_flext_project_as_its_own_root(tmp_path: Path) -
     )
 
 
-def test_build_scopes_preserves_declared_workspace_root_and_members(
+def test_build_scopes_preserves_declared_workspace_root_and_projects(
     tmp_path: Path,
 ) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
@@ -94,13 +94,18 @@ def test_build_scopes_preserves_declared_workspace_root_and_members(
     )
 
 
-def test_build_scopes_preserves_declared_workspace_without_materialized_members(
+def test_build_scopes_skips_declared_workspace_without_materialized_projects(
     tmp_path: Path,
 ) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
         "[project]\nname='workspace'\n\n[tool.uv.workspace]\nmembers=['flext-a']\n",
+        encoding="utf-8",
+    )
+    (workspace / ".gitmodules").write_text(
+        '[submodule "flext-a"]\n\tpath = flext-a\n'
+        "\turl = https://github.com/flext-sh/flext-a.git\n",
         encoding="utf-8",
     )
 
@@ -121,7 +126,6 @@ def test_build_scopes_preserves_disabled_root_policy(tmp_path: Path) -> None:
         "[project]\nname='acme-content'\n\n[tool.flext.docs]\nenabled=false\n",
         encoding="utf-8",
     )
-
     result = u.Infra.build_scopes(
         project_root, projects=None, output_dir=c.Infra.DEFAULT_DOCS_OUTPUT_DIR
     )
@@ -176,6 +180,7 @@ def test_build_scopes_preserves_discovered_package_name(tmp_path: Path) -> None:
         "packages=['src/demo_pkg']\n",
         encoding="utf-8",
     )
+    u.Tests.declare_workspace_projects(workspace, ("flext-demo",))
 
     result = u.Infra.build_scopes(
         workspace, projects=["flext-demo"], output_dir=c.Infra.DEFAULT_DOCS_OUTPUT_DIR

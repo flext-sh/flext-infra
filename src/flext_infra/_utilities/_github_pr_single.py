@@ -21,7 +21,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin(FlextInfraUtilitiesGithubPrExecutio
 
     Composed into FlextInfraUtilitiesGithubPr via inheritance; the workspace
     orchestrator resolves ``_run_github_pull_request_for_repo`` through ``cls``
-    MRO.
+    FLEXT.
     """
 
     @classmethod

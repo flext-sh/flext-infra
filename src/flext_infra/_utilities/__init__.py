@@ -17,7 +17,12 @@ if TYPE_CHECKING:
     from ._docs_scope_build import FlextInfraUtilitiesDocsScopeBuildMixin
     from ._docs_scope_selection import FlextInfraUtilitiesDocsScopeSelectionMixin
     from ._git.remote import redact_origin_remote
-    from ._git.repo import FlextInfraUtilitiesGitRepo
+    from ._git.repo import (
+        FlextInfraUtilitiesGitRepo,
+        git_open_repo,
+        git_refresh_binary,
+        git_repo,
+    )
     from ._git.scope import FlextInfraUtilitiesGitScopeMixin
     from ._git.semantic import FlextInfraUtilitiesGitSemanticMixin
     from ._git.semantic_identity import FlextInfraUtilitiesGitSemanticIdentityMixin
@@ -73,11 +78,8 @@ if TYPE_CHECKING:
     from .github import FlextInfraUtilitiesGithub
     from .github_pr import FlextInfraUtilitiesGithubPr
     from .log_parser import FlextInfraUtilitiesLogParser
-    from .mro_scan import FlextInfraUtilitiesRefactorMroScan
-    from .mro_scan_catalog import FlextInfraUtilitiesMroScanCatalog
-    from .mro_scan_source import FlextInfraUtilitiesMroScanSource
     from .namespace import FlextInfraUtilitiesCodegenNamespace
-    from .namespace_analysis import FlextInfraUtilitiesRefactorNamespaceMro
+    from .namespace_analysis import FlextInfraUtilitiesRefactorNamespaceFlext
     from .namespace_common import FlextInfraUtilitiesRefactorNamespaceCommon
     from .namespace_config import FlextInfraUtilitiesNamespaceConfig
     from .namespace_facades import FlextInfraUtilitiesRefactorNamespaceFacades
@@ -85,6 +87,7 @@ if TYPE_CHECKING:
     from .policy import FlextInfraUtilitiesRefactorPolicy
     from .process import FlextInfraUtilitiesProcess
     from .project_discovery import FlextInfraUtilitiesProjectDiscovery
+    from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
     from .protected_edit import FlextInfraUtilitiesProtectedEdit
     from .protected_edit_apply import FlextInfraUtilitiesProtectedEditApply
     from .protected_edit_linting import FlextInfraUtilitiesProtectedEditLinting
@@ -107,7 +110,6 @@ if TYPE_CHECKING:
     from .rope_imports import FlextInfraUtilitiesRopeImports
     from .rope_inventory import FlextInfraUtilitiesRopeInventory
     from .rope_module_patch import FlextInfraUtilitiesRopeModulePatch
-    from .rope_mro_transform import FlextInfraUtilitiesRopeMroTransform
     from .rope_runtime import FlextInfraUtilitiesRopeRuntime
     from .rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
     from .rope_runtime_modules import FlextInfraUtilitiesRopeRuntimeModules
@@ -171,13 +173,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGithubPrSingleMixin",
     "FlextInfraUtilitiesGithubSyncMixin",
     "FlextInfraUtilitiesLogParser",
-    "FlextInfraUtilitiesMroScanCatalog",
-    "FlextInfraUtilitiesMroScanSource",
     "FlextInfraUtilitiesNamespaceConfig",
     "FlextInfraUtilitiesProcess",
     "FlextInfraUtilitiesProjectDiscovery",
     "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
     "FlextInfraUtilitiesProjectDiscoveryShapeMixin",
+    "FlextInfraUtilitiesProjectManagedArtifacts",
     "FlextInfraUtilitiesProtectedEdit",
     "FlextInfraUtilitiesProtectedEditApply",
     "FlextInfraUtilitiesProtectedEditLinting",
@@ -188,11 +189,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRefactor",
     "FlextInfraUtilitiesRefactorCensus",
     "FlextInfraUtilitiesRefactorDiscovery",
-    "FlextInfraUtilitiesRefactorMroScan",
     "FlextInfraUtilitiesRefactorNamespaceCommon",
     "FlextInfraUtilitiesRefactorNamespaceFacades",
+    "FlextInfraUtilitiesRefactorNamespaceFlext",
     "FlextInfraUtilitiesRefactorNamespaceMoves",
-    "FlextInfraUtilitiesRefactorNamespaceMro",
     "FlextInfraUtilitiesRefactorPolicy",
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesRepository",
@@ -209,7 +209,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeInventory",
     "FlextInfraUtilitiesRopeMethodOrderMixin",
     "FlextInfraUtilitiesRopeModulePatch",
-    "FlextInfraUtilitiesRopeMroTransform",
     "FlextInfraUtilitiesRopePep695Patch",
     "FlextInfraUtilitiesRopeRuntime",
     "FlextInfraUtilitiesRopeRuntimeBase",
@@ -229,6 +228,9 @@ __all__: tuple[str, ...] = (
     "collect_deferred_self_reference_findings",
     "collect_silent_failure_findings",
     "collect_silent_failure_fixes",
+    "git_open_repo",
+    "git_refresh_binary",
+    "git_repo",
     "git_stdin",
     "redact_origin_remote",
 )
@@ -242,7 +244,12 @@ _LAZY_IMPORTS = MappingProxyType(
             "._docs_scope_selection": ("FlextInfraUtilitiesDocsScopeSelectionMixin",),
             "._git": ("_git",),
             "._git.remote": ("redact_origin_remote",),
-            "._git.repo": ("FlextInfraUtilitiesGitRepo",),
+            "._git.repo": (
+                "FlextInfraUtilitiesGitRepo",
+                "git_open_repo",
+                "git_refresh_binary",
+                "git_repo",
+            ),
             "._git.scope": ("FlextInfraUtilitiesGitScopeMixin",),
             "._git.semantic": ("FlextInfraUtilitiesGitSemanticMixin",),
             "._git.semantic_identity": ("FlextInfraUtilitiesGitSemanticIdentityMixin",),
@@ -307,11 +314,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".github": ("FlextInfraUtilitiesGithub",),
             ".github_pr": ("FlextInfraUtilitiesGithubPr",),
             ".log_parser": ("FlextInfraUtilitiesLogParser",),
-            ".mro_scan": ("FlextInfraUtilitiesRefactorMroScan",),
-            ".mro_scan_catalog": ("FlextInfraUtilitiesMroScanCatalog",),
-            ".mro_scan_source": ("FlextInfraUtilitiesMroScanSource",),
             ".namespace": ("FlextInfraUtilitiesCodegenNamespace",),
-            ".namespace_analysis": ("FlextInfraUtilitiesRefactorNamespaceMro",),
+            ".namespace_analysis": ("FlextInfraUtilitiesRefactorNamespaceFlext",),
             ".namespace_common": ("FlextInfraUtilitiesRefactorNamespaceCommon",),
             ".namespace_config": ("FlextInfraUtilitiesNamespaceConfig",),
             ".namespace_facades": ("FlextInfraUtilitiesRefactorNamespaceFacades",),
@@ -319,6 +323,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".policy": ("FlextInfraUtilitiesRefactorPolicy",),
             ".process": ("FlextInfraUtilitiesProcess",),
             ".project_discovery": ("FlextInfraUtilitiesProjectDiscovery",),
+            ".project_managed_artifacts": (
+                "FlextInfraUtilitiesProjectManagedArtifacts",
+            ),
             ".protected_edit": ("FlextInfraUtilitiesProtectedEdit",),
             ".protected_edit_apply": ("FlextInfraUtilitiesProtectedEditApply",),
             ".protected_edit_linting": ("FlextInfraUtilitiesProtectedEditLinting",),
@@ -341,7 +348,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".rope_imports": ("FlextInfraUtilitiesRopeImports",),
             ".rope_inventory": ("FlextInfraUtilitiesRopeInventory",),
             ".rope_module_patch": ("FlextInfraUtilitiesRopeModulePatch",),
-            ".rope_mro_transform": ("FlextInfraUtilitiesRopeMroTransform",),
             ".rope_runtime": ("FlextInfraUtilitiesRopeRuntime",),
             ".rope_runtime_base": ("FlextInfraUtilitiesRopeRuntimeBase",),
             ".rope_runtime_modules": ("FlextInfraUtilitiesRopeRuntimeModules",),

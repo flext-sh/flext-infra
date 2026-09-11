@@ -108,7 +108,7 @@ class FlextInfraUtilitiesDocsApi:
         values = cls._assignment_strings(source, symbol_name)
         if values:
             return values
-        # mro-o6h5 (agent: kimi): resolve through import aliases to the
+        # flext-o6h5 (agent: kimi): resolve through import aliases to the
         # ORIGINAL symbol — lazy __unit__ contracts bind PUBLIC_EXPORTS as
         # _PUBLIC_EXPORTS; resolving the alias in the target module yielded
         # an empty contract (root cause of the flext-infra validate FAIL).
@@ -250,7 +250,7 @@ class FlextInfraUtilitiesDocsApi:
             local_values = cls._assignment_strings(source, export_name)
             if local_values:
                 return local_values
-            # mro-o6h5 (agent: kimi): alias-aware binding — see
+            # flext-o6h5 (agent: kimi): alias-aware binding — see
             # _resolve_assignment_strings for the root-cause note.
             imported_module, original_name = cls._imported_symbol_binding(
                 source,
@@ -293,7 +293,7 @@ class FlextInfraUtilitiesDocsApi:
         return symbol_name in FlextInfraUtilitiesDocsApi._assignment_docstrings(source)
 
     @classmethod
-    def _has_mro_docstring(
+    def _has_flext_docstring(
         cls,
         project_root: Path,
         *,
@@ -302,7 +302,7 @@ class FlextInfraUtilitiesDocsApi:
         symbol_name: str,
         visited: frozenset[str],
     ) -> bool:
-        """Return whether one class inherits documentation through its MRO chain."""
+        """Return whether one class inherits documentation through its FLEXT chain."""
         if not FlextInfraUtilitiesRopeAnalysis.class_declared_source(
             source, symbol_name
         ):
@@ -357,7 +357,7 @@ class FlextInfraUtilitiesDocsApi:
         source = module_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         if cls._has_symbol_docstring(source, symbol_name):
             return True
-        if cls._has_mro_docstring(
+        if cls._has_flext_docstring(
             project_root,
             module_name=module_name,
             source=source,
@@ -408,7 +408,7 @@ class FlextInfraUtilitiesDocsApi:
     @staticmethod
     def public_contract(project_root: Path, package_name: str) -> t.JsonMapping:
         """Build the public API contract from pyproject, exports, and Rope validation."""
-        # mro-j47u: retain flext-core's validated metadata object; no shadow DTO.
+        # flext-j47u: retain flext-core's validated metadata object; no shadow DTO.
         metadata_result = u.read_project_metadata(project_root)
         if metadata_result.failure:
             msg = (

@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class FlextInfraInternalImportDetector:
     """Detect private module/symbol imports via rope semantic resolution.
 
-    Same-package facade assembly is the sanctioned FLEXT MRO-composition
+    Same-package facade assembly is the sanctioned FLEXT FLEXT-composition
     pattern: a facade module (or any module of the owning package subtree)
     importing a private ``_x`` module/subpackage that hangs off one of its
     own ancestor packages is NOT a violation. Cross-package private module

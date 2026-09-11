@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
+from flext_infra._utilities._sort_keys import path_depth
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,7 +24,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
     ) -> int:
         """Remove generated files outside the canonical package artifact set."""
         try:
-            # mro-wkii.17.26 (codex): __unit__.py is obsolete on every surface.
+            # flext-wkii.17.26 (codex): __unit__.py is obsolete on every surface.
             self._remove_obsolete_generated_files(plan, check_only=check_only)
             self._remove_obsolete_root_support(plan, check_only=check_only)
             self._remove_generated_export_sidecars(plan, check_only=check_only)
@@ -94,7 +95,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
                 for child in stale_dir.rglob("*")
                 if child.is_dir()
             ),
-            key=lambda child: len(child.parts),
+            key=path_depth,
             reverse=True,
         ):
             path.rmdir()
@@ -108,7 +109,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         for filename in c.Infra.OBSOLETE_GENERATED_INIT_FILES:
             path = plan.context.pkg_dir / filename
             previous = self._read_generated_file(path)
-            if previous is None or not previous.startswith(c.Infra.AUTOGEN_HEADER):
+            if previous is None or not previous.startswith(c.Infra.AUTOGEN_HEADERS):
                 continue
             if check_only:
                 self._modified_files.add(str(path))
@@ -122,7 +123,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         """Remove stale codegen-owned ``__init__.pyi`` files."""
         stub_path = plan.context.pkg_dir / c.Infra.INIT_PYI
         previous = self._read_generated_file(stub_path)
-        if previous is None or not previous.startswith(c.Infra.AUTOGEN_HEADER):
+        if previous is None or not previous.startswith(c.Infra.AUTOGEN_HEADERS):
             return
         if check_only:
             self._modified_files.add(str(stub_path))
@@ -164,7 +165,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         if remaining_modules:
             return
         content = self._read_generated_file(constants_init)
-        if content is None or not content.startswith(c.Infra.AUTOGEN_HEADER):
+        if content is None or not content.startswith(c.Infra.AUTOGEN_HEADERS):
             return
         if check_only:
             self._modified_files.add(str(constants_init))

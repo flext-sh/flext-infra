@@ -14,7 +14,6 @@ from flext_infra.docs.server import FlextInfraDocServer
 from flext_infra.docs.validator import FlextInfraDocValidator
 from flext_infra.maintenance.clean import FlextInfraCleanService
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
-from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_validate_commands import ValidationCommandRoutes
 
 
@@ -30,13 +29,22 @@ class ValidationRoutes(ValidationCommandRoutes):
             return r.fail(report.message)
         return r.ok(report)
 
+    @staticmethod
+    def _run_github_workspace_pull_requests(
+        params: m.Infra.GithubPullRequestWorkspaceRequest,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Run the workspace PR owner and reject a report containing failures."""
+        return u.Infra.run_github_workspace_pull_requests(params).flat_map(
+            ValidationRoutes._require_successful_pull_request_workspace
+        )
+
     validation_routes: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
         c.Infra.CLI_GROUP_DOCS: tuple(
             m.Cli.ResultCommandRoute(
                 name=route_name,
                 help_text=help_text,
                 model_cls=model_cls,
-                handler=lambda params, mc=model_cls: mc.execute_command(params),
+                handler=model_cls.execute_command,
                 success_message=success_message,
             )
             for route_name, help_text, model_cls, success_message in (
@@ -83,33 +91,25 @@ class ValidationRoutes(ValidationCommandRoutes):
                 name="workflows",
                 help_text="Sync GitHub workflow files across workspace",
                 model_cls=m.Infra.GithubWorkflowSyncRequest,
-                handler=lambda params: u.Infra.sync_github_workflows(params).map(
-                    CliRouteBase.as_route_value
-                ),
+                handler=u.Infra.sync_github_workflows,
             ),
             m.Cli.ResultCommandRoute(
                 name=c.Infra.LINT_SECTION,
                 help_text="Lint GitHub workflow files",
                 model_cls=m.Infra.GithubWorkflowLintRequest,
-                handler=lambda params: u.Infra.lint_github_workflows(params).map(
-                    CliRouteBase.as_route_value
-                ),
+                handler=u.Infra.lint_github_workflows,
             ),
             m.Cli.ResultCommandRoute(
                 name=c.Infra.PR,
                 help_text="Manage pull requests for a single project",
                 model_cls=m.Infra.GithubPullRequestRequest,
-                handler=lambda params: u.Infra.run_github_pull_request(params).map(
-                    CliRouteBase.as_route_value
-                ),
+                handler=u.Infra.run_github_pull_request,
             ),
             m.Cli.ResultCommandRoute(
                 name="pr-workspace",
                 help_text="Manage pull requests across workspace projects",
                 model_cls=m.Infra.GithubPullRequestWorkspaceRequest,
-                handler=lambda params: u.Infra.run_github_workspace_pull_requests(
-                    params
-                ).flat_map(ValidationRoutes._require_successful_pull_request_workspace),
+                handler=_run_github_workspace_pull_requests,
             ),
         ),
         c.Infra.CLI_GROUP_MAINTENANCE: (

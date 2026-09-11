@@ -6,7 +6,7 @@ class — that name is still unbound. The previous code hid this with a
 ``default_factory=lambda: Outer.Sibling()`` deferral, which turned a
 structural defect into a runtime one.
 
-The fix is the workspace's diamond-MRO composition: each layer declares the
+The fix is the workspace's diamond-FLEXT composition: each layer declares the
 model it owns and inherits the layer below, so every referenced model is a
 resolved base-class attribute at definition time. Defaults stay direct
 callables; no deferred-resolution lambda, no self-referential model.
@@ -14,11 +14,13 @@ callables; no deferred-resolution lambda, no self-referential model.
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated
 
 from flext_cli import m
 from flext_infra import t
+from flext_infra._models._defaults import ImmutableEmptyMapping
 
 
 class FlextInfraModelsDepsToolConfigProjectRuff:
@@ -32,11 +34,25 @@ class FlextInfraModelsDepsToolConfigProjectRuff:
             m.Field(
                 description="Project-local per-file rules merged with global policy."
             ),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
+
+
+class FlextInfraModelsDepsToolConfigProjectMise(
+    FlextInfraModelsDepsToolConfigProjectRuff
+):
+    """Project-local Mise tools that extend, but never replace, fleet tools."""
+
+    class ProjectMiseConfig(m.ArbitraryTypesModel):
+        """Exact project-owned Mise selector and version pairs."""
+
+        tools: Annotated[
+            t.MappingKV[t.NonEmptyStr, t.NonEmptyStr],
+            m.Field(description="Project-local Mise tools added to generated config."),
+        ]
 
 
 class FlextInfraModelsDepsToolConfigProjectArtifacts(
-    FlextInfraModelsDepsToolConfigProjectRuff
+    FlextInfraModelsDepsToolConfigProjectMise
 ):
     """Managed-artifact layer; ``ProjectRuffConfig`` is an inherited attribute."""
 
@@ -49,6 +65,28 @@ class FlextInfraModelsDepsToolConfigProjectArtifacts(
         ] = m.Field(
             default_factory=FlextInfraModelsDepsToolConfigProjectRuff.ProjectRuffConfig
         )
+        Mise: Annotated[
+            FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseConfig,
+            m.Field(description="Mise additions owned by the current project."),
+        ] = m.Field(
+            default_factory=lambda: (
+                FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseConfig(
+                    tools=MappingProxyType({})
+                )
+            )
+        )
+
+    class ProjectManagedArtifactsResolution(m.ArbitraryTypesModel):
+        """Composed project configuration plus selector provenance."""
+
+        artifacts: Annotated[
+            FlextInfraModelsDepsToolConfigProjectArtifacts.ProjectManagedArtifactsConfig,
+            m.Field(description="Composed managed-artifact configuration."),
+        ]
+        mise_tool_sources: Annotated[
+            t.MappingKV[t.NonEmptyStr, Path],
+            m.Field(description="Source YAML path for every local Mise selector."),
+        ]
 
 
 class FlextInfraModelsDepsToolConfigProject(
@@ -72,5 +110,6 @@ class FlextInfraModelsDepsToolConfigProject(
 __all__: list[str] = [
     "FlextInfraModelsDepsToolConfigProject",
     "FlextInfraModelsDepsToolConfigProjectArtifacts",
+    "FlextInfraModelsDepsToolConfigProjectMise",
     "FlextInfraModelsDepsToolConfigProjectRuff",
 ]

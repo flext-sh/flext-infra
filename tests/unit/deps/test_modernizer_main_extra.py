@@ -84,51 +84,6 @@ class TestsFlextInfraDepsModernizerMainExtra:
 
         tm.that(modernizer.run(), eq=2)
 
-    def test_run_rewrite_constraints_rejects_member_local_uv_lock(
-        self, modernizer_workspace: Path
-    ) -> None:
-        """Reject a competing lock from a regular workspace member directory."""
-        (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-            (
-                '[project]\nname = "workspace"\nversion = "0.1.0"\n'
-                'dependencies = ["requests>=2.0"]\n\n'
-                "[tool.uv.workspace]\n"
-                'members = ["flext-core"]\n'
-            ),
-            encoding="utf-8",
-        )
-        (modernizer_workspace / "uv.lock").write_text(
-            (
-                "version = 1\n"
-                "[manifest]\n"
-                'members = ["workspace", "flext-core"]\n'
-                "[[package]]\n"
-                'name = "requests"\n'
-                'version = "2.32.4"\n'
-                'source = { registry = "https://pypi.org/simple" }\n'
-            ),
-            encoding="utf-8",
-        )
-        member = modernizer_workspace / "flext-core"
-        member.mkdir()
-        (member / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname = "flext-core"\nversion = "0.12.0-dev"\n', encoding="utf-8"
-        )
-        (member / "uv.lock").write_text(
-            "version = 1\n[manifest]\nmembers = []\n", encoding="utf-8"
-        )
-        u.Tests.initialize_git_repo(modernizer_workspace)
-
-        modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=modernizer_workspace,
-            apply_changes=True,
-            rewrite_constraints=True,
-            skip_comments=True,
-            skip_check=True,
-        )
-
-        tm.that(modernizer.run(), eq=2)
-
     def test_run_rewrite_constraints_preserves_attached_submodule_lock(
         self, modernizer_workspace: Path
     ) -> None:

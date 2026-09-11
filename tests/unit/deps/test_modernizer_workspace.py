@@ -238,55 +238,6 @@ class TestsFlextInfraDepsModernizerWorkspace:
         tm.that(u.Cli.json_as_sequence(groups.get(c.Infra.DEV)), eq=["pytest"])
         tm.that(list(payload)[: len(expected_order)], eq=list(expected_order))
 
-    def test_modernizer_uses_git_topology_for_child_detection(
-        self, tmp_path: Path
-    ) -> None:
-        source_repository = tmp_path / "source-repository"
-        source_repository.mkdir()
-        pyproject = source_repository / c.Infra.PYPROJECT_FILENAME
-        source = '[project]\nname = "flext-demo"\nversion = "0.1.0"\n'
-        pyproject.write_text(source, encoding="utf-8")
-        package_init = source_repository / "src" / "flext_demo" / "__init__.py"
-        package_init.parent.mkdir(parents=True)
-        package_init.write_text("", encoding="utf-8")
-        (source_repository / "Makefile").write_text(
-            "MAKE_PROFILE := workspace-member\nWORKSPACE_ROOT_REL := ..\n",
-            encoding="utf-8",
-        )
-        u.Tests.initialize_git_repo(source_repository)
-        standalone = tm.ok(
-            FlextInfraPyprojectModernizer(
-                workspace_root=source_repository, skip_check=True, skip_comments=True
-            ).conform_source(source, path=pyproject)
-        )
-
-        superproject = tmp_path / "superproject"
-        superproject.mkdir()
-        (superproject / "README.md").write_text("workspace\n", encoding="utf-8")
-        u.Tests.initialize_git_repo(superproject)
-        u.Tests.git_bootstrap(
-            superproject,
-            (
-                "-c",
-                "protocol.file.allow=always",
-                "submodule",
-                "add",
-                str(source_repository),
-                "member",
-            ),
-        )
-        member = superproject / "member"
-        attached = tm.ok(
-            FlextInfraPyprojectModernizer(
-                workspace_root=member, skip_check=True, skip_comments=True
-            ).conform_source(
-                (member / c.Infra.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
-                path=member / c.Infra.PYPROJECT_FILENAME,
-            )
-        )
-
-        tm.that(attached, ne=standalone)
-
     def test_main_applies_only_selected_projects(
         self, modernizer_workspace_with_projects: Path
     ) -> None:
@@ -324,8 +275,11 @@ class TestsFlextInfraDepsModernizerWorkspace:
         member = workspace / "member-dir"
         member.mkdir(parents=True)
         (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname = "workspace"\nversion = "0.1.0"\n'
-            '\n[tool.uv.workspace]\nmembers = ["member-dir"]\n',
+            '[project]\nname = "workspace"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        (workspace / ".gitmodules").write_text(
+            '[submodule "declared-name"]\n\tpath = member-dir\n'
+            "\turl = https://github.com/flext-sh/declared-name.git\n",
             encoding="utf-8",
         )
         (member / c.Infra.PYPROJECT_FILENAME).write_text(
@@ -350,7 +304,12 @@ class TestsFlextInfraDepsModernizerWorkspace:
         member = workspace / "member"
         member.mkdir(parents=True)
         (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[tool.uv.workspace]\nmembers = ["member"]\n', encoding="utf-8"
+            '[project]\nname = "workspace"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        (workspace / ".gitmodules").write_text(
+            '[submodule "member"]\n\tpath = member\n'
+            "\turl = https://github.com/flext-sh/member.git\n",
+            encoding="utf-8",
         )
         (member / c.Infra.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "member"\nversion = "0.1.0"\n', encoding="utf-8"
@@ -375,8 +334,13 @@ class TestsFlextInfraDepsModernizerWorkspace:
         (workspace / "first-dir").mkdir(parents=True)
         (workspace / "second-dir").mkdir()
         (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname = "workspace"\nversion = "0.1.0"\n'
-            '\n[tool.uv.workspace]\nmembers = ["first-dir", "second-dir"]\n',
+            '[project]\nname = "workspace"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        (workspace / ".gitmodules").write_text(
+            '[submodule "first"]\n\tpath = first-dir\n'
+            "\turl = https://github.com/flext-sh/first.git\n"
+            '[submodule "second"]\n\tpath = second-dir\n'
+            "\turl = https://github.com/flext-sh/second.git\n",
             encoding="utf-8",
         )
         for member_name in ("first-dir", "second-dir"):
@@ -442,7 +406,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
     def test_modernizer_rejects_undeclared_project_paths(
         self, modernizer_workspace: Path, selector_kind: str
     ) -> None:
-        """Reject selectors outside declared workspace members without mutation."""
+        """Reject selectors outside declared workspace projects without mutation."""
         external_project = modernizer_workspace.parent / "external"
         external_project.mkdir()
         external_pyproject = external_project / c.Infra.PYPROJECT_FILENAME

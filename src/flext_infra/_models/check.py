@@ -97,7 +97,7 @@ class FlextInfraModelsCheck:
             ),
         ] = c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def memory_limit_bytes(self) -> int:
             """Validated limit converted to bytes for prlimit."""
@@ -176,7 +176,7 @@ class FlextInfraModelsCheck:
             c.Infra.ERROR
         )
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def formatted(self) -> str:
             """Format issue as ``file:line:col [code] message``."""
@@ -210,7 +210,7 @@ class FlextInfraModelsCheck:
             "", description="Raw tool output", validate_default=True
         )
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def error_count(self) -> int:
             """Number of diagnostics with error severity."""
@@ -230,13 +230,13 @@ class FlextInfraModelsCheck:
             default_factory=dict, description="Gate name to execution mapping"
         )
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def passed(self) -> bool:
             """Whether every gate passed."""
             return all(v.result.passed for v in self.gates.values())
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def total_errors(self) -> int:
             """Total error-severity diagnostic count across all gates."""
@@ -274,7 +274,7 @@ class FlextInfraModelsCheck:
         id: Annotated[str, m.Field(description="Rule identifier")]
         short_description: Annotated[str, m.Field(description="Rule short description")]
 
-        @u.model_serializer(mode="plain")
+        @u.model_serializer
         def _serialize(self) -> t.JsonMapping:
             """Serialize."""
             return {"id": self.id, "shortDescription": {"text": self.short_description}}
@@ -289,7 +289,7 @@ class FlextInfraModelsCheck:
             "%SRCROOT%", description="URI base identifier", validate_default=True
         )
 
-        @u.model_serializer(mode="plain")
+        @u.model_serializer
         def _serialize(self) -> t.JsonMapping:
             """Serialize."""
             return {
@@ -315,7 +315,7 @@ class FlextInfraModelsCheck:
             description="Result locations"
         )
 
-        @u.model_serializer(mode="plain")
+        @u.model_serializer
         def _serialize(self) -> t.JsonMapping:
             """Serialize."""
             return {
@@ -341,7 +341,7 @@ class FlextInfraModelsCheck:
             default_factory=tuple, description="Run results"
         )
 
-        @u.model_serializer(mode="plain")
+        @u.model_serializer
         def _serialize(self) -> t.JsonMapping:
             """Serialize."""
             return {

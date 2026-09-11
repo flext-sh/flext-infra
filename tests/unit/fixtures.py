@@ -153,6 +153,13 @@ def modernizer_workspace_with_projects(modernizer_workspace: Path) -> Path:
     _ = u.Tests.mk_project(
         modernizer_workspace, "ignored", pyproject=_modernizer_pyproject("ignored")
     )
+    (modernizer_workspace / ".gitmodules").write_text(
+        '[submodule "selected"]\n\tpath = selected\n'
+        "\turl = https://github.com/flext-sh/selected.git\n"
+        '[submodule "ignored"]\n\tpath = ignored\n'
+        "\turl = https://github.com/flext-sh/ignored.git\n",
+        encoding="utf-8",
+    )
     # FLEXT: public modernizer commands fail loud outside a real Git workspace.
     u.Tests.initialize_git_repo(modernizer_workspace)
     return modernizer_workspace

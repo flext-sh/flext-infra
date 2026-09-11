@@ -24,6 +24,7 @@ class TestWorkspaceCheckCLI:
             pyproject='[project]\nname = "p1"\nversion = "0.1.0"\n',
             with_src=True,
         )
+        u.Tests.declare_workspace_projects(workspace, ("p1",))
         return workspace
 
     def test_empty_workspace_errors(self, tmp_path: Path) -> None:

@@ -5,7 +5,7 @@
 # public facades (c/t/p/m/u + r/e/x/h/d/s), never reach into the private
 # `_constants` / `_exceptions` / `_models` / `_typings` / `_utilities`
 # implementation modules of another layer. A private import bypasses the
-# facade MRO and freezes an internal layout that the owner must stay free
+# facade FLEXT and freezes an internal layout that the owner must stay free
 # to refactor.
 #
 # Detection-only: the correct replacement is the public facade symbol the

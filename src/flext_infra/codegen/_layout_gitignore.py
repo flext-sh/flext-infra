@@ -1,4 +1,4 @@
-"""Gitignore ownership for the layout engine apply path (mro-0wuz).
+"""Gitignore ownership for the layout engine apply path (flext-0wuz).
 
 Codegen-managed projects converge through the canonical conform render (one
 owner, one template); unmanaged or external projects receive idempotent
@@ -95,7 +95,7 @@ class FlextInfraCodegenLayoutGitignoreMixin:
 
     @staticmethod
     def _managed_profile(project_dir: Path) -> c.Infra.MakeProfile | None:
-        """Make profile when the project is a governed workspace member."""
+        """Make profile when the project is governed by a workspace."""
         workspace_root = FlextInfraWorkspaceDetector.resolve_workspace_root(project_dir)
         if workspace_root.failure:
             return None

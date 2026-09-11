@@ -1,4 +1,4 @@
-{# NOTE (codex, mro-j47u): precompute compact/multiline Protocol declarations from line length. -#}
+{# NOTE (codex, flext-j47u): precompute compact/multiline Protocol declarations from line length. -#}
 {%- set config_property_line = "        def " ~ ns ~ "(self) -> m." ~ ns ~ ".ConfigRoot.ConfigNamespace:" -%}
 {%- set config_property_declaration = config_property_line if config_property_line | length <= tooling.tools.ruff.line_length else "        def " ~ ns ~ "(\n            self,\n        ) -> m." ~ ns ~ ".ConfigRoot.ConfigNamespace:" -%}
 """Structural config declarations for {{ package_name }}.
@@ -7,7 +7,7 @@ Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-{# NOTE (multi-agent, mro-wkii.19.1): field-only protocols describe direct singleton data without forwarding properties. -#}
+{# NOTE (multi-agent, flext-wkii.19.1): field-only protocols describe direct singleton data without forwarding properties. -#}
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable

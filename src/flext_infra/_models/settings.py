@@ -16,7 +16,7 @@ class FlextInfraSettingsModels:
     class Infra(BaseSettings):
         """Validated process-start settings owned by flext-infra."""
 
-        # mro-wkii.4.15: validate every external alias before singleton export.
+        # flext-wkii.4.15: validate every external alias before singleton export.
         model_config = SettingsConfigDict(
             env_prefix="",
             env_ignore_empty=True,

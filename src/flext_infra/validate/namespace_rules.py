@@ -367,7 +367,7 @@ class FlextInfraNamespaceRules:
     def check_rule_3(
         self, tree: object, filepath: Path, *, class_stem: str, package_name: str
     ) -> t.StrSequence:
-        """Rule 3 — Runtime modules use namespaced MRO aliases (c/m/p/t/u)."""
+        """Rule 3 — Runtime modules use namespaced FLEXT aliases (c/m/p/t/u)."""
         owner_rules = self._owner_direct_facade_rules(class_stem)
         messages: list[str] = []
         owner = self._facade_owner(filepath)
@@ -435,7 +435,7 @@ class FlextInfraNamespaceRules:
                     continue
                 messages.append(
                     f"{filepath}:{getattr(node, 'lineno', 0)} — Runtime module must "
-                    f"use namespaced MRO aliases (c/m/p/t/u) instead of direct "
+                    f"use namespaced FLEXT aliases (c/m/p/t/u) instead of direct "
                     f"import {alias_name!r}"
                 )
         return self._accumulate_violations("NS-003", messages)

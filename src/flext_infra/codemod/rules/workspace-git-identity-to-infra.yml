@@ -10,7 +10,7 @@
 # left to pyrefly-driven hand-edit: after the type swap the type checker
 # pinpoints every stale attribute access. ast-grep cannot track data flow.
 #
-# Bead: mro-sb3q (codemod-only governance P0).
+# Bead: flext-sb3q (codemod-only governance P0).
 
 ---
 id: workspace-git-identity-call-to-infra-u

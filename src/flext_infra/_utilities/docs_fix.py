@@ -60,7 +60,7 @@ class FlextInfraUtilitiesDocsFix:
             ) -> str:
                 body = match.group("body")
                 rel = source_file.relative_to(scope.path).as_posix()
-                # mro-o6h5 (agent: kimi) — ruff via running interpreter (venv SSOT);
+                # flext-o6h5 (agent: kimi) — ruff via running interpreter (venv SSOT);
                 # bare "ruff" breaks when .venv/bin is not on PATH (CI docs fix).
                 outcome = u.Cli.run_raw(
                     [

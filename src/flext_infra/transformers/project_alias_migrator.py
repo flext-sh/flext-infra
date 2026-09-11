@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 class _CstImportHelpers:
     """Static libcst helpers for reading and building import statements."""
 
-    # mro-j47u: keep CST rendering typed; Rope remains the semantic source.
+    # flext-j47u: keep CST rendering typed; Rope remains the semantic source.
     @staticmethod
     def dotted_name(module: cst.BaseExpression | None) -> str | None:
         """Return a dotted name for a libcst import expression."""

@@ -20,9 +20,6 @@ from flext_infra.detectors.inline_import_detector import FlextInfraInlineImportD
 from flext_infra.detectors.manual_typing_alias_detector import (
     FlextInfraManualTypingAliasDetector,
 )
-from flext_infra.detectors.mro_completeness_detector import (
-    FlextInfraMROCompletenessDetector,
-)
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
@@ -44,7 +41,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
 
     Composed into FlextInfraRefactorCensus via inheritance; borrows the
     detector-context / fix-key / runtime-alias-rewrite helpers + root +
-    dry_run_gate_names from the facade and sibling mixins via MRO.
+    dry_run_gate_names from the facade and sibling mixins via FLEXT.
     """
 
     if TYPE_CHECKING:
@@ -87,7 +84,10 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             changed = False
             if action == "rewrite_runtime_alias":
                 convention = rope.convention(file_path)
-                alias = convention.module_policy.expected_alias or ""
+                alias = (
+                    convention.module_policy.expected_alias
+                    or c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name, "")
+                )
                 target_name = next(iter(sorted(object_names)), "")
                 if not alias or not target_name:
                     continue
@@ -158,18 +158,6 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                     parse_failures=parse_failures,
                 )
                 changed = True
-            elif action == "rewrite_mro_completeness":
-                mro_violations: tuple[m.Infra.MROCompletenessViolation, ...] = tuple(
-                    violation
-                    for violation in FlextInfraMROCompletenessDetector.detect_file(ctx)
-                    if violation.facade_class in object_names
-                )
-                if not mro_violations:
-                    continue
-                u.Infra.rewrite_mro_completeness_violations(
-                    violations=mro_violations, parse_failures=parse_failures
-                )
-                changed = True
             elif action in {"hoist_inline_import", "rewrite_library_abstraction"}:
                 changed = self._apply_hoist_inline_imports(
                     rope=rope,
@@ -223,7 +211,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                     kinds=frozenset(object_names) if object_names else None,
                 )
                 changed = len(changes) > 0
-            elif action in {"deep_namespace_refactor", "rewrite_mro_shape", "manual"}:
+            elif action in {"deep_namespace_refactor", "manual"}:
                 # Manual-only actions: reported in dry-run, no-op during apply.
                 pass
             if not changed:

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from collections.abc import MutableSet
 from pathlib import Path
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from flext_infra import c, t
+from flext_infra._models._defaults import ImmutableEmptyMapping
 from flext_infra._models.codegen_render import FlextInfraModelsCodegenRender
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
@@ -238,18 +238,18 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             description="Public exports for generated __init__.py.",
         )
         lazy_map: t.LazyAliasMap = m.Field(
-            default_factory=lambda: MappingProxyType({}),
+            default_factory=ImmutableEmptyMapping,
             description="Lazy import map: export name to module/attribute target.",
         )
         type_checking_map: t.LazyAliasMap = m.Field(
-            default_factory=lambda: MappingProxyType({}),
+            default_factory=ImmutableEmptyMapping,
             description=(
                 "Type-checking import map used to publish static package attributes "
                 "without widening the runtime/public lazy export surface."
             ),
         )
         eager_dunders: t.LazyAliasMap = m.Field(
-            default_factory=lambda: MappingProxyType({}),
+            default_factory=ImmutableEmptyMapping,
             description=(
                 "Dunder exports that must be eagerly imported at __init__.py "
                 "load time. Required for the ``__version__.py`` submodule case "
@@ -259,7 +259,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             ),
         )
         inline_constants: t.StrMapping = m.Field(
-            default_factory=lambda: MappingProxyType({}),
+            default_factory=ImmutableEmptyMapping,
             description="Inline constants emitted directly into __init__.py.",
         )
         wildcard_runtime_modules: t.StrSequence = m.Field(
@@ -294,8 +294,8 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         validator_passed: Annotated[
             bool, m.Field(description="Whether validator passed")
         ]
-        mro_failures: Annotated[
-            t.NonNegativeInt, m.Field(description="MRO failure count")
+        flext_failures: Annotated[
+            t.NonNegativeInt, m.Field(description="FLEXT failure count")
         ]
         layer_violations: Annotated[
             t.NonNegativeInt, m.Field(description="Layer violation count")

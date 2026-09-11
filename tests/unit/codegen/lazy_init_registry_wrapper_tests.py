@@ -8,7 +8,7 @@ from flext_tests import tm
 from tests import c, u
 
 
-# mro-i6nq.10: Cleanup is proven through the real generator, not private mixins.
+# flext-i6nq.10: Cleanup is proven through the real generator, not private mixins.
 class TestsFlextInfraLazyInitCleanup:
     """Validate stale generated sidecars are reported or removed truthfully."""
 

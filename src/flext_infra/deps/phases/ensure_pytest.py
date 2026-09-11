@@ -21,7 +21,7 @@ class FlextInfraEnsurePytestConfigPhase:
             m.Infra.Deps.Toml.PhaseConfig
             .Builder("pytest")
             .table(c.Infra.PYTEST, c.Infra.INI_OPTIONS)
-            # mro-j47u (codex): no pytest policy literal survives outside config.
+            # flext-j47u (codex): no pytest policy literal survives outside config.
             .value(c.Infra.MINVERSION, pytest.min_version)
             .value(c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS, str(pytest.slow_timeout_seconds))
             .list(
@@ -34,14 +34,14 @@ class FlextInfraEnsurePytestConfigPhase:
                 pytest.python_files,
                 strategy=c.Infra.TomlMergeMode.MERGE,
             )
-            # mro-wkii.17 (codex): replace stale collection roots and warning bypasses.
+            # flext-wkii.17 (codex): replace stale collection roots and warning bypasses.
             .list(
                 "testpaths", pytest.test_paths, strategy=c.Infra.TomlMergeMode.REPLACE
             )
             .list(
                 c.Infra.ADDOPTS,
                 addopts,
-                # mro-pulj (codex): replace stale coverage, collection, and bypass flags.
+                # flext-pulj (codex): replace stale coverage, collection, and bypass flags.
                 strategy=c.Infra.TomlMergeMode.REPLACE,
             )
             .list(

@@ -21,9 +21,9 @@ class FlextInfraWorkspaceChecker(
 ):
     """Run workspace quality gates and generate reports."""
 
-    _workspace_root: Path = u.PrivateAttr()
-    _registry: FlextInfraGateRegistry = u.PrivateAttr()
-    _default_reports_dir: Path = u.PrivateAttr()
+    _workspace_root: Path
+    _registry: FlextInfraGateRegistry
+    _default_reports_dir: Path
 
     def __init__(
         self, workspace_root: Path | None = None, *, workspace: Path | None = None

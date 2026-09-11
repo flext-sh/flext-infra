@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import hashlib
-from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -231,13 +230,6 @@ class FlextInfraReleaseOrchestratorPhases(
         parse_result = u.Infra.parse_semver(target)
         if parse_result.failure:
             return r[bool].fail(parse_result.error or "invalid version")
-        manifest_result = self._version_workspace_manifest_plan(
-            ctx.workspace_root, target
-        )
-        if manifest_result.failure:
-            return r[bool].fail(
-                manifest_result.error or "workspace manifest version update failed"
-            )
         files_result = self._version_files(ctx.workspace_root, ctx.project_names)
         if files_result.failure:
             return r[bool].fail(
@@ -248,80 +240,10 @@ class FlextInfraReleaseOrchestratorPhases(
         )
         if changed_result.failure:
             return r[bool].fail(changed_result.error or "release version update failed")
-        manifest_changed = False
-        for manifest_path, current_manifest, updated_manifest in manifest_result.value:
-            manifest_changed = current_manifest != updated_manifest
-            if manifest_changed and not ctx.dry_run:
-                write_result = u.Cli.atomic_write_text_file(
-                    manifest_path, updated_manifest
-                )
-                if write_result.failure:
-                    return r[bool].fail(
-                        write_result.error
-                        or f"write workspace manifest version failed: {manifest_path}"
-                    )
-            if manifest_changed:
-                logger.info(
-                    "release_workspace_manifest_version_updated",
-                    path=str(manifest_path),
-                    target=target,
-                )
         if ctx.dry_run:
             logger.info("release_phase_version_checked", checked_version=target)
-        logger.info(
-            "release_phase_version_summary",
-            files_changed=changed_result.value,
-            manifest_changed=manifest_changed,
-        )
+        logger.info("release_phase_version_summary", files_changed=changed_result.value)
         return r[bool].ok(True)
-
-    @staticmethod
-    def _version_workspace_manifest_plan(
-        workspace_root: Path, target: str
-    ) -> p.Result[t.SequenceOf[t.Triple[Path, str, str]]]:
-        """Render a validated round-trip manifest version update when declared."""
-        manifest_path = (
-            workspace_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME
-        )
-        if not manifest_path.is_file():
-            return r[t.SequenceOf[t.Triple[Path, str, str]]].ok(())
-        current_result = u.Cli.files_read_text(manifest_path)
-        if current_result.failure:
-            return r[t.SequenceOf[t.Triple[Path, str, str]]].fail(
-                current_result.error
-                or f"read workspace manifest failed: {manifest_path}"
-            )
-        loaded = u.Cli.yaml_roundtrip_load_map(manifest_path)
-        if loaded.failure:
-            return r[t.SequenceOf[t.Triple[Path, str, str]]].fail(
-                loaded.error or f"parse workspace manifest failed: {manifest_path}"
-            )
-        document = loaded.value
-        project = document.get(c.Infra.PROJECT)
-        if not isinstance(project, MutableMapping):
-            return r[t.SequenceOf[t.Triple[Path, str, str]]].fail(
-                f"workspace manifest project must be a mapping: {manifest_path}"
-            )
-        current_version = project.get(c.Infra.VERSION)
-        if not isinstance(current_version, str) or not current_version:
-            return r[t.SequenceOf[t.Triple[Path, str, str]]].fail(
-                f"workspace manifest project.version is missing: {manifest_path}"
-            )
-        project[c.Infra.VERSION] = target
-        try:
-            _ = m.Infra.WorkspaceSpec.model_validate(u.Cli.yaml_to_plain(document))
-        except c.ValidationError as exc:
-            return r[t.SequenceOf[t.Triple[Path, str, str]]].fail_op(
-                f"validate workspace manifest version ({manifest_path})", exc
-            )
-        rendered = u.Cli.yaml_roundtrip_dump_text(document)
-        if rendered.failure:
-            return r[t.SequenceOf[t.Triple[Path, str, str]]].fail(
-                rendered.error or f"render workspace manifest failed: {manifest_path}"
-            )
-        return r[t.SequenceOf[t.Triple[Path, str, str]]].ok((
-            (manifest_path, current_result.value, rendered.value),
-        ))
 
     def _version_update_files(
         self, files: t.SequenceOf[Path], target: str, *, dry_run: bool
@@ -353,7 +275,7 @@ class FlextInfraReleaseOrchestratorPhases(
         return r[int].ok(len(updates))
 
     # These methods are defined in the main orchestrator class and
-    # will be resolved via MRO when the main class inherits this mixin.
+    # is supplied by the composed release orchestrator.
     def _build_targets(
         self, workspace_root: Path, project_names: t.StrSequence
     ) -> p.Result[t.SequenceOf[t.Pair[str, Path]]]:

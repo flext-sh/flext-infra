@@ -13,7 +13,7 @@ what it depends on at class-body execution time.
    directly or through the outer namespace. Instantiation then depends on a
    type that is not finished being defined.
 
-The canonical repair for both is the workspace's diamond-MRO composition:
+The canonical repair for both is the workspace's diamond-FLEXT composition:
 hoist the referenced model into its own namespace class, inherit that
 namespace, and reference the model as a resolved base-class attribute. Every
 default then stays a direct callable.
@@ -128,7 +128,7 @@ def collect_deferred_self_reference_findings(
                                 "through a lambda because the enclosing class is "
                                 "still unbound. Hoist the referenced model into "
                                 "its own namespace class, inherit it (diamond "
-                                "MRO), and pass the model itself as the factory."
+                                "FLEXT), and pass the model itself as the factory."
                             ),
                         )
                     )
@@ -152,7 +152,7 @@ def collect_deferred_self_reference_findings(
                             f"model {owner!r} annotates a field with itself. A "
                             "recursive model cannot be instantiated while its own "
                             "definition is incomplete; split the recursive leg "
-                            "into a separate namespace class composed by MRO."
+                            "into a separate namespace class composed by FLEXT."
                         ),
                     )
                 )

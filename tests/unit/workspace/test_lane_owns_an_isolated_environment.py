@@ -154,29 +154,6 @@ def test_existing_real_lane_environment_is_preserved(tmp_path: Path) -> None:
     assert sentinel.read_text(encoding="utf-8") == "local\n"
 
 
-def test_beads_symlink_fails_without_altering_target(tmp_path: Path) -> None:
-    repository = _repository(tmp_path)
-    lane = _lane(repository, "feature/beads-link")
-    target = tmp_path / "foreign-ledger"
-    target.mkdir(mode=0o755)
-    (lane / ".beads").symlink_to(target, target_is_directory=True)
-
-    result = FlextInfraWorktreeService.setup_lane(lane)
-
-    tm.fail(result, has=".beads")
-    assert target.stat().st_mode & 0o777 == 0o755
-
-
-def test_beads_regular_file_fails_through_result(tmp_path: Path) -> None:
-    repository = _repository(tmp_path)
-    lane = _lane(repository, "feature/beads-file")
-    (lane / ".beads").write_text("not a directory\n", encoding="utf-8")
-
-    result = FlextInfraWorktreeService.setup_lane(lane)
-
-    tm.fail(result, has=".beads")
-
-
 def test_add_only_creates_git_lane_without_setup(tmp_path: Path) -> None:
     repository = _repository(tmp_path)
 

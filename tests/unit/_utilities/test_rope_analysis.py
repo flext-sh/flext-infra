@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra import u
 from flext_infra.detectors.facade_scanner import FlextInfraScanner
 from flext_tests import tm
@@ -11,9 +13,34 @@ from flext_tests import tm
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tests import t
+
 
 class TestsFlextInfraRopeAnalysis:
     """Behavior contract for Rope-backed semantic analysis."""
+
+    def test_semantic_state_propagates_rope_failure(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A Rope failure cannot be converted into a successful empty snapshot."""
+        module_path = tmp_path / "consumer.py"
+        module_path.write_text("class PublicModel:\n    pass\n", encoding="utf-8")
+        resource = u.Infra.get_resource_from_path(rope_project, module_path)
+        if resource is None:
+            pytest.fail("Rope did not expose the test module")
+
+        def _explode(selected_resource: t.Infra.RopeResource) -> t.Infra.RopePyModule:
+            del selected_resource
+            msg = "semantic-state-boom"
+            raise AttributeError(msg)
+
+        monkeypatch.setattr(rope_project, "get_pymodule", _explode)
+
+        with pytest.raises(AttributeError, match="semantic-state-boom"):
+            u.Infra.get_module_semantic_state(rope_project, resource)
 
     def test_facade_scanner_reads_facade_with_imported_superclass(
         self, tmp_path: Path
@@ -76,7 +103,7 @@ class TestsFlextInfraRopeAnalysis:
             encoding="utf-8",
         )
 
-        parent_packages = u.Infra.resolve_parent_constants_mro(
+        parent_packages = u.Infra.resolve_parent_constants_flext(
             package_dir, return_module=True
         )
         model_context = u.Infra.contextual_runtime_alias_sources(
@@ -94,6 +121,8 @@ class TestsFlextInfraRopeAnalysis:
         self, tmp_path: Path
     ) -> None:
         workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        _ = (workspace / ".gitmodules").write_text("", encoding="utf-8")
         grandparent_pkg = workspace / "demo-grandparent" / "src" / "demo_grandparent"
         parent_pkg = workspace / "demo-parent" / "src" / "demo_parent"
         child_project = workspace / "demo-child"

@@ -35,13 +35,13 @@ class FlextInfraCodegenVersionFile(s[bool]):
     via ``u.derive_class_stem`` from installed generated lazy exports.
 
     Project discovery uses ``u.Infra.discover_projects`` — the canonical
-    workspace member list.  No manual directory iteration.
+    workspace project list. No manual directory iteration.
     """
 
     @override
     def execute(self) -> p.Result[bool]:
         """Generate __version__.py for each discovered project."""
-        # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): the exact
+        # NOTE (multi-agent, flext-p4s3.2 / agent: uv_overlay_owner): the exact
         # source metadata model crosses the sole CLI rendering boundary.
         template_path = (
             Path(__file__).resolve().parent.parent

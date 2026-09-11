@@ -20,7 +20,7 @@ class FlextInfraRefactorCensusRulesAliasMixin:
     """Runtime-alias + manual-typing-alias rule scanners for one module.
 
     Composed into FlextInfraRefactorCensus via inheritance; borrows the
-    detector-context + violation/fix builders from sibling mixins via MRO.
+    detector-context + violation/fix builders from sibling mixins via FLEXT.
     """
 
     if TYPE_CHECKING:

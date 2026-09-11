@@ -13,7 +13,7 @@ Mandatory load order:
 2. [FLEXT Context Routing](../../.agents/skills/flext-context-routing/SKILL.md)
 3. Path-relevant `rules-*` skill for the touched files
 4. [FLEXT Agent Strict Rules](../../.agents/skills/flext-agent-strict-rules/SKILL.md)
-5. [FLEXT MRO Namespace Rules](../../.agents/skills/flext-mro-namespace-rules/SKILL.md)
+5. [FLEXT FLEXT Namespace Rules](../../.agents/skills/flext-flext-namespace-rules/SKILL.md)
 6. [FLEXT Import Rules](../../.agents/skills/flext-import-rules/SKILL.md)
 7. [Pydantic v2 Governance](../../.agents/skills/pydantic-v2-governance/SKILL.md)
 8. [Pydantic v2 Patterns](../../.agents/skills/pydantic-v2-patterns/SKILL.md)
@@ -42,7 +42,7 @@ Primary priorities in strict order:
 7. Prefer `Sequence` and `Mapping` in parameters. Only use mutable concrete forms when mutation is part of the actual public contract.
 8. Remove local JSON carriers, ad-hoc recursive aliases, raw `dict[str, Any]`, and helper families such as `as_dict`, `as_list`, `as_map`, `to_dict`, `normalize_*`, and trivial `ensure_*` wrappers when canonical validation can absorb the work.
 9. Remove `cast`, `Any`, bare `object`, `model_rebuild()`, direct consumer-side `pydantic` imports, and compatibility shims.
-10. Preserve canonical aliases and organic MRO namespaces: `c`, `m`, `p`, `t`, `u`, `r`, `e`, `h`, `s`, `d`, `x`.
+10. Preserve canonical aliases and organic FLEXT namespaces: `c`, `m`, `p`, `t`, `u`, `r`, `e`, `h`, `s`, `d`, `x`.
 
 Implementation rules:
 

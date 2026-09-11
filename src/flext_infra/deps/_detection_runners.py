@@ -20,7 +20,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
 
     if TYPE_CHECKING:
         # Conversion helper provided by the concrete analyzer; declared for static
-        # resolution only (runtime impl lives on the concrete via MRO).
+        # resolution only (runtime impl lives on the concrete via FLEXT).
         def _to_toml_config(
             self, payload: t.MappingKV[str, t.Infra.InfraValue]
         ) -> t.JsonMapping: ...

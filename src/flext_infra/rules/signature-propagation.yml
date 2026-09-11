@@ -11,7 +11,7 @@ rules:
       # Backported from 0.20.0-dev, DISABLED: it targets
       # flext_infra.workspace.migrator.FlextInfraProjectMigrator, which does not
       # exist on this branch. Flip enabled: true only after that module lands.
-      - id: migrate-project-root-to-workspace-root
+      - id: migrate-project-root-to-workspace
         enabled: false
         target_qualified_names:
           - "flext_infra.workspace.migrator.FlextInfraProjectMigrator.migrate"
