@@ -680,7 +680,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if docs_changed:
                 paths = ", ".join(str(file.path) for file in docs_changed)
-                return r[m.Infra.CodegenResult].fail(f"docs drift detected: {paths}")
+                report = u.Infra.codegen_file_drift_report(docs_changed)
+                return r[m.Infra.CodegenResult].fail(
+                    f"docs drift detected: {paths}\n{report}"
+                )
             return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
         session = transaction.begin_locked(scope_root, config_plans.value, plan.files)
         if session.failure:
