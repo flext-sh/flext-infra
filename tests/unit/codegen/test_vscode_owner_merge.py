@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_tests import tm
+
 from flext_infra import c, config, t, u
 from flext_infra.services.codegen import FlextInfraCodegen
-from flext_tests import tm
+from tests import TestsFlextInfraUtilities as test_utilities
 
 
 class TestsVscodeOwnerMerge:
@@ -29,19 +31,13 @@ class TestsVscodeOwnerMerge:
         doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             tm.ok(u.Cli.json_parse(result.value))
         )
-        tm.that(doc["python.languageServer"], eq="None")
-        tm.that(doc["python.analysis.typeCheckingMode"], eq="strict")
+        for key, expected_value in config.Infra.codegen.vscode.scalar_settings.items():
+            tm.that(doc[key], eq=expected_value)
         search_paths = t.Cli.JSON_LIST_ADAPTER.validate_python(
             doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         )
-        tm.that(
-            search_paths,
-            eq=list(
-                config.Infra.codegen.vscode.list_settings[
-                    c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
-                ]
-            ),
-        )
+        expected = test_utilities.Tests.vscode_declared_search_paths()
+        tm.that(search_paths, eq=expected)
         tm.that("./apps/*/.venv" in search_paths, eq=False)
 
     def test_merge_reaches_fixed_point_after_apply(self, tmp_path: Path) -> None:
@@ -58,3 +54,26 @@ class TestsVscodeOwnerMerge:
 
         tm.ok(second)
         tm.that(second.value, eq=first.value)
+
+    def test_merge_removes_keys_absent_from_artifact_authority(
+        self, tmp_path: Path
+    ) -> None:
+        """Artifact exclude maps are exact projections, not append-only unions."""
+        root = tmp_path / "project"
+        settings_path = root / ".vscode" / "settings.json"
+        settings_path.parent.mkdir(parents=True)
+        stale_key = "**/.retired-runtime"
+        _ = settings_path.write_text(
+            tm.ok(u.Cli.json_dumps({"files.exclude": {stale_key: True}})),
+            encoding="utf-8",
+        )
+
+        result = FlextInfraCodegen.render_vscode_settings(root)
+
+        tm.ok(result)
+        doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            tm.ok(u.Cli.json_parse(result.value))
+        )
+        tm.that(
+            doc["files.exclude"], eq=dict(config.Infra.codegen.vscode_files_exclude_map)
+        )

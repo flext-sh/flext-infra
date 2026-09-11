@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
-from tests.unit.workspace.worktree_fixture import WorktreeFixture
+from flext_infra import config
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from tests import u
+from tests.unit.workspace import WorktreeFixture
 
 
 def _standalone(root: Path, *, name: str) -> Path:
@@ -41,6 +42,8 @@ class TestsDetectorOwnsNoProjectRegistry:
         spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
         tm.that(spec.repository.name, eq="totally-unknown")
+        tm.that(spec.name, eq="totally-unknown")
         tm.that(spec.repository.path, eq=Path())
         tm.that(spec.subprojects, empty=True)
-        tm.that(spec.beads.workspace, eq="totally-unknown-workspace")
+        tm.that(u.Tests.required_beads(spec).workspace, eq="totally-unknown-workspace")
+        tm.that(spec.beads, none=True)

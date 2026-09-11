@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import FlextTestsSettings, tm
 
 import flext_infra as infra_pkg
-from flext_tests import FlextTestsSettings, tm
 from tests import c
 from tests.base import s
 
@@ -78,7 +78,9 @@ class TestsFlextInfraPublicApi:
         self, infra_public_root: ModuleType
     ) -> None:
         root = infra_public_root
-        metadata_result = root.u.read_project_metadata(self._project_root())
+        metadata_result = root.u.Infra.read_project_metadata_result(
+            self._project_root()
+        )
         tm.ok(metadata_result)
         metadata = metadata_result.value
 

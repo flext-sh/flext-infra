@@ -6,10 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import ClassVar
 
 from flext_cli.config import FlextCliConfig
-from flext_infra._models.config import FlextInfraConfigModels
+
+from ._models.config import FlextInfraConfigModels
 
 
 class _FlextInfraConfig(FlextCliConfig):
@@ -23,6 +25,11 @@ class _FlextInfraConfig(FlextCliConfig):
     # An absolute parents[2] value broke every git-dep/wheel consumer (config poison).
     CONFIG_DIR: ClassVar[str] = "config"
     Infra: FlextInfraConfigModels.Infra
+
+    @classmethod
+    def ssot_config_dir(cls) -> Path:
+        """Public resolution of the packaged/workspace ``config/`` directory."""
+        return cls._config_dir()
 
 
 config: _FlextInfraConfig = _FlextInfraConfig()

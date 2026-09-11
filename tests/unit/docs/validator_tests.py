@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
-from flext_tests import tm
 from tests import m, u
 
 if TYPE_CHECKING:
@@ -33,7 +34,7 @@ def test_validate_workspace_fails_before_generated_files_exist(tmp_path: Path) -
 
     result = FlextInfraDocValidator().validate_workspace(
         m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=False
+            repository_root=workspace, projects=["flext-a"], apply=False
         )
     )
 
@@ -42,17 +43,18 @@ def test_validate_workspace_fails_before_generated_files_exist(tmp_path: Path) -
 
 
 def test_validate_workspace_passes_after_generate_apply(tmp_path: Path) -> None:
+    """Validation passes once the generated bundle is published."""
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 
-    generated = FlextInfraDocGenerator().generate(
-        m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=True
-        )
-    )
+    prepared = FlextInfraDocGenerator(
+        repository_root=workspace, selected_projects=["flext-a"]
+    ).prepare_bundle()
+    tm.ok(prepared)
+    generated = u.Tests.materialize_docs_bundle(prepared.value)
     tm.ok(generated)
     result = FlextInfraDocValidator().validate_workspace(
         m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=True
+            repository_root=workspace, projects=["flext-a"], apply=True
         )
     )
 
@@ -61,16 +63,17 @@ def test_validate_workspace_passes_after_generate_apply(tmp_path: Path) -> None:
 
 
 def test_validate_workspace_apply_writes_project_todo(tmp_path: Path) -> None:
+    """Applied validation writes the project TODO ledger."""
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 
-    FlextInfraDocGenerator().generate(
-        m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=True
-        )
-    )
+    prepared = FlextInfraDocGenerator(
+        repository_root=workspace, selected_projects=["flext-a"]
+    ).prepare_bundle()
+    tm.ok(prepared)
+    tm.ok(u.Tests.materialize_docs_bundle(prepared.value))
     result = FlextInfraDocValidator().validate_workspace(
         m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=True
+            repository_root=workspace, projects=["flext-a"], apply=True
         )
     )
 

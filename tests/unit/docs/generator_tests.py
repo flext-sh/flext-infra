@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config
+import pytest
+from flext_tests import tm
+
+from flext_core import r
+from flext_infra import c, config, t
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
-from flext_tests import tm
 from tests import m, u
 
 if TYPE_CHECKING:
@@ -16,13 +19,13 @@ if TYPE_CHECKING:
 
 def test_generate_returns_reports_for_root_and_selected_project(tmp_path: Path) -> None:
     """Return reports for the workspace root and selected project."""
-    workspace = u.Tests.create_docs_workspace(
-        tmp_path, project_names=("flext-a", "flext-b")
+    workspace, generator = u.Tests.docs_workspace_generator(
+        tmp_path, project_names=("flext-a", "flext-b"), selected_projects=["flext-a"]
     )
-
-    result = FlextInfraDocGenerator().generate(
+    _ = u.Tests.plan_docs_bundle(generator)
+    result = generator.generate(
         m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=False
+            repository_root=workspace, projects=["flext-a"], apply=False
         )
     )
 
@@ -30,20 +33,95 @@ def test_generate_returns_reports_for_root_and_selected_project(tmp_path: Path) 
     tm.that([report.scope for report in result.value], eq=["root", "flext-a"])
 
 
-def test_generate_apply_writes_summary_and_report(tmp_path: Path) -> None:
-    """Write summary and report artifacts during applied generation."""
-    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+def test_bundle_plans_root_and_selected_project_artifacts(tmp_path: Path) -> None:
+    """Keep all selected artifacts in one transaction-owned bundle."""
+    workspace, generator = u.Tests.docs_workspace_generator(
+        tmp_path, project_names=("flext-a",), selected_projects=["flext-a"]
+    )
+    plans = u.Tests.plan_docs_bundle(generator)
 
-    result = FlextInfraDocGenerator().generate(
-        m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=True
-        )
+    paths = {plan.path for plan in plans}
+    tm.that(workspace / "docs/projects/generated/catalog.md" in paths, eq=True)
+    tm.that(workspace / "flext-a/README.md" in paths, eq=True)
+    tm.that(all(plan.owner == "docs" for plan in plans), eq=True)
+
+
+@pytest.mark.parametrize("selected_projects", [None, (".",), ("flext-a",)])
+@pytest.mark.parametrize("project_name", ["workspace", config.Infra.name])
+def test_workspace_package_api_and_member_docs_share_one_transaction(
+    tmp_path: Path, selected_projects: t.StrSequence | None, project_name: str
+) -> None:
+    """Publish root API and member aggregates together for every selection."""
+    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+    (workspace / "pyproject.toml").write_text(
+        f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n', encoding="utf-8"
+    )
+    package = workspace / "src/workspace_runtime"
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text(
+        '"""Workspace fixture package."""\n', encoding="utf-8"
+    )
+    declared = config.Infra.codegen.make.docs.api_modules.get(project_name, ())
+    for module in declared:
+        source = package / f"{module.replace('.', '/')}.py"
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_text('"""Public fixture module."""\n', encoding="utf-8")
+    request = m.Infra.DocsGenerateRequest(
+        repository_root=workspace, projects=selected_projects, apply=False
+    )
+    generator = FlextInfraDocGenerator(
+        repository_root=workspace, selected_projects=selected_projects
     )
 
-    tm.ok(result)
-    tm.that((workspace / ".reports/docs/generate-summary.json").exists(), eq=True)
-    tm.that((workspace / ".reports/docs/generate-report.md").exists(), eq=True)
-    tm.that((workspace / "flext-a/.reports/docs/generate-report.md").exists(), eq=True)
+    plans = u.Tests.publish_docs_bundle(generator)
+    tm.that(len({plan.path for plan in plans}), eq=len(plans))
+    generated = workspace / "docs/api-reference/generated"
+    tm.that(
+        (generated / "public-api.md").read_text(encoding="utf-8"),
+        has=f"::: {package.name}\n",
+    )
+    modules = generated / "modules"
+    tm.that((modules / "index.md").exists(), eq=True)
+    tm.that(
+        {path.relative_to(modules).as_posix() for path in modules.rglob("*.md")},
+        eq={"index.md", *(f"{module.replace('.', '/')}.md" for module in declared)},
+    )
+    for module in declared:
+        tm.that(
+            (modules / f"{module.replace('.', '/')}.md").read_text(encoding="utf-8"),
+            has=f"::: {package.name}.{module}\n",
+        )
+    preserved = {
+        path: path.read_bytes()
+        for path in (
+            generated / "public-api.md",
+            modules / "index.md",
+            generated / "flext-a.md",
+            generated / "projects/flext-a/modules/index.md",
+            workspace / "docs/projects/generated/catalog.md",
+        )
+    }
+    mkdocs = (workspace / "mkdocs.yml").read_text(encoding="utf-8")
+    tm.that(mkdocs, has="- src\n")
+    tm.that(mkdocs, has="- flext-a/src\n")
+    stale = generated / "stale.md"
+    stale.write_text("# Stale generated page\n", encoding="utf-8")
+
+    _ = u.Tests.publish_docs_bundle(generator)
+    tm.that(stale.exists(), eq=False)
+    for path, content in preserved.items():
+        tm.that(path.read_bytes(), eq=content)
+
+    fixed_point = generator.generate(request)
+
+    tm.ok(fixed_point)
+    tm.that(all(report.changed_files == 0 for report in fixed_point.value), eq=True)
+
+    bundle = u.Tests.prepare_docs_bundle(generator)
+    (package / "__init__.py").write_text(
+        '"""Root source changed after rendering."""\n', encoding="utf-8"
+    )
+    tm.fail(generator.plan_files(bundle))
 
 
 def test_root_generated_catalog_survives_project_pass_and_required_indexes_validate(
@@ -52,17 +130,17 @@ def test_root_generated_catalog_survives_project_pass_and_required_indexes_valid
     """Preserve root output while leaving optional curated indexes unowned."""
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
     request = m.Infra.DocsGenerateRequest(
-        workspace_root=workspace, projects=["flext-a"], apply=True
+        repository_root=workspace, projects=["flext-a"], apply=False
     )
-    generator = FlextInfraDocGenerator()
+    generator = FlextInfraDocGenerator(
+        repository_root=workspace, selected_projects=["flext-a"]
+    )
 
-    first = generator.generate(request)
-    tm.ok(first)
+    _ = u.Tests.publish_docs_bundle(generator)
     catalog = workspace / "docs/projects/generated/catalog.md"
     tm.that(catalog.exists(), eq=True)
 
-    second = generator.generate(request)
-    tm.ok(second)
+    _ = u.Tests.publish_docs_bundle(generator)
     tm.that(catalog.exists(), eq=True)
 
     for relative_path in (
@@ -81,15 +159,11 @@ def test_generated_collection_rules_pointer_stays_within_consumer_limit(
     tmp_path: Path,
 ) -> None:
     """Keep the generated Collection Rules pointer within the Markdown limit."""
-    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
-
-    result = FlextInfraDocGenerator().generate(
-        m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=True
-        )
+    workspace, generator = u.Tests.docs_workspace_generator(
+        tmp_path, project_names=("flext-a",), selected_projects=["flext-a"]
     )
+    _ = u.Tests.publish_docs_bundle(generator)
 
-    tm.ok(result)
     lines = (
         (workspace / "flext-a/docs/index.md").read_text(encoding="utf-8").splitlines()
     )
@@ -106,65 +180,42 @@ def test_generated_collection_rules_pointer_stays_within_consumer_limit(
 def test_governed_api_survives_generation_and_curated_paths_are_unowned(
     tmp_path: Path,
 ) -> None:
-    """Keep colocated root output stable without owning curated indexes."""
-    workspace = tmp_path
-    (workspace / "src/flext_infra_fixture").mkdir(parents=True)
-    (workspace / "src/flext_infra_fixture/__init__.py").write_text(
-        'def fixture_entry() -> str:\n    return "fixture"\n\n__all__ = ["fixture_entry"]\n',
-        encoding="utf-8",
+    """Publish standalone API without treating the sole scope as an aggregate."""
+    workspace = (
+        u.Tests.create_docs_workspace(tmp_path, project_names=("flext-infra-fixture",))
+        / "flext-infra-fixture"
     )
-    (workspace / "pyproject.toml").write_text(
-        '[project]\nname = "flext-infra-fixture"\nversion = "0.1.0"\n', encoding="utf-8"
-    )
-    (workspace / "Makefile").write_text("test:\n\t@true\n", encoding="utf-8")
-    for relative_path in (
-        "README.md",
-        "docs/README.md",
-        "docs/index.md",
-        "docs/architecture/README.md",
-        "docs/guides/README.md",
-        "docs/projects/README.md",
-        "docs/api-reference/README.md",
-    ):
-        path = workspace / relative_path
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("# Docs\n", encoding="utf-8")
+    curated = workspace / "docs/README.md"
+    curated_content = curated.read_bytes()
     request = m.Infra.DocsGenerateRequest(
-        workspace_root=workspace, projects=["flext-infra-fixture"], apply=True
+        repository_root=workspace, projects=["flext-infra-fixture"], apply=False
     )
-    generator = FlextInfraDocGenerator()
-
-    scopes = u.Infra.build_scopes(workspace, None, c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
-    tm.ok(scopes)
-    tm.that([scope.name for scope in scopes.value], eq=["flext-infra-fixture"])
-    tm.that(scopes.value[0].path.resolve(), eq=workspace.resolve())
-
-    generated = generator.generate(request)
-    tm.ok(generated)
-    api_readme = (workspace / "docs/api-reference/README.md").read_text(
-        encoding="utf-8"
+    generator = FlextInfraDocGenerator(
+        repository_root=workspace, selected_projects=["flext-infra-fixture"]
     )
-    tm.that(api_readme, has="Back to [project docs](../index.md).")
-    public_api = workspace / "docs/api-reference/generated/public-api.md"
-    tm.that(public_api.exists(), eq=True)
-    stale = workspace / "docs/api-reference/generated/stale.md"
-    stale.write_text("stale\n", encoding="utf-8")
-    generator.generate(request)
-    tm.that(stale.exists(), eq=False)
-    first_output = public_api.read_bytes()
 
-    for relative_path in (
-        "docs/README.md",
-        "docs/architecture/README.md",
-        "docs/projects/README.md",
-    ):
-        (workspace / relative_path).unlink()
-    validation = FlextInfraDocValidator().validate_workspace(request)
-    tm.ok(validation)
-    for report in validation.value:
-        tm.that(report.result, eq="OK")
-    generator.generate(request)
-    tm.that(public_api.read_bytes(), eq=first_output)
+    plans = u.Tests.publish_docs_bundle(generator)
+    tm.that(plans, empty=False)
+    tm.that(len({plan.path for plan in plans}), eq=len(plans))
+    tm.that(curated in {plan.path for plan in plans}, eq=False)
+
+    result = generator.generate(request)
+    tm.ok(result)
+    tm.that([report.scope for report in result.value], eq=["flext-infra-fixture"])
+    for report in result.value:
+        tm.that(report.changed_files, eq=0)
+        tm.that(report.passed, eq=True)
+
+    tm.that(curated.read_bytes(), eq=curated_content)
+    tm.that(
+        (workspace / "docs/api-reference/generated/public-api.md").read_text(
+            encoding="utf-8"
+        ),
+        has=f"::: {u.Infra.project_package_name(workspace)}\n",
+    )
+    tm.that(
+        (workspace / "docs/api-reference/generated/modules/index.md").exists(), eq=True
+    )
 
 
 def test_generate_preserves_declared_export_order_and_is_idempotent(
@@ -188,30 +239,28 @@ def test_generate_preserves_declared_export_order_and_is_idempotent(
         '__all__ = ["FlextAAlpha", "FlextABeta"]\n',
         encoding="utf-8",
     )
-    request = m.Infra.DocsGenerateRequest(
-        workspace_root=workspace, projects=["flext-a"], apply=True
+    generator = FlextInfraDocGenerator(
+        repository_root=workspace, selected_projects=["flext-a"]
     )
-    generator = FlextInfraDocGenerator()
 
-    first = generator.generate(request)
-    tm.ok(first)
+    _ = u.Tests.publish_docs_bundle(generator)
     first_readme = (project / "README.md").read_text(encoding="utf-8")
     first_index = (project / "docs/index.md").read_text(encoding="utf-8")
     tm.that(first_readme, has=f"{c.Infra.GITHUB_REPO_URL}/blob/")
     tm.that(first_readme, lacks="](../AGENTS.md)")
     for generated_page in (first_readme, first_index):
-        tm.that(
-            generated_page,
-            has=("`config.AiHub.paths.agents_home`/`skills/make-check/SKILL.md`"),
-        )
+        tm.that(generated_page, has="## Governance Pointer")
+        tm.that(generated_page, has="- Skills index:")
+        tm.that(generated_page, has=".agents/skills/")
         tm.that(generated_page, lacks="the agents_home `make-check` skill")
     tm.that(
         first_readme.index("FlextAAlpha") < first_readme.index("FlextABeta"), eq=True
     )
 
-    second = generator.generate(request)
-    tm.ok(second)
-    tm.that([report.generated for report in second.value], eq=[0, 0])
+    second = u.Tests.plan_docs_bundle(generator)
+    tm.that(
+        any(u.Infra.codegen_file_requires_effect(plan) for plan in second), eq=False
+    )
     tm.that((project / "README.md").read_text(encoding="utf-8"), eq=first_readme)
 
 
@@ -232,13 +281,11 @@ def test_configured_api_modules_own_generated_module_pages(tmp_path: Path) -> No
         encoding="utf-8",
     )
 
-    result = FlextInfraDocGenerator().generate(
-        m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=[project_name], apply=True
-        )
+    generator = FlextInfraDocGenerator(
+        repository_root=workspace, selected_projects=[project_name]
     )
+    _ = u.Tests.publish_docs_bundle(generator)
 
-    tm.ok(result)
     modules_root = project / "docs/api-reference/generated/modules"
     generated = {
         path.relative_to(modules_root).as_posix()
@@ -251,12 +298,11 @@ def test_configured_api_modules_own_generated_module_pages(tmp_path: Path) -> No
 
 
 def test_generated_markdown_starts_with_level_one_heading(tmp_path: Path) -> None:
-    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
-    request = m.Infra.DocsGenerateRequest(
-        workspace_root=workspace, projects=["flext-a"], apply=True
+    workspace, generator = u.Tests.docs_workspace_generator(
+        tmp_path, project_names=("flext-a",), selected_projects=["flext-a"]
     )
 
-    tm.ok(FlextInfraDocGenerator().generate(request))
+    _ = u.Tests.publish_docs_bundle(generator)
 
     generated = (
         workspace / "flext-a/README.md",
@@ -282,14 +328,11 @@ def test_generated_mkdocstrings_directive_preserves_indented_options(
     tmp_path: Path,
 ) -> None:
     """Keep Mkdocstrings directives structural across generated pages."""
-    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
-    request = m.Infra.DocsGenerateRequest(
-        workspace_root=workspace, projects=["flext-a"], apply=True
+    workspace, generator = u.Tests.docs_workspace_generator(
+        tmp_path, project_names=("flext-a",), selected_projects=["flext-a"]
     )
 
-    result = FlextInfraDocGenerator().generate(request)
-
-    tm.ok(result)
+    _ = u.Tests.publish_docs_bundle(generator)
     page = (workspace / "flext-a/docs/api-reference/generated/public-api.md").read_text(
         encoding="utf-8"
     )
@@ -340,65 +383,58 @@ def test_generated_prose_wraps_without_reformatting_directive_blocks(
     )
 
 
-def test_generate_dry_run_reports_real_drift(tmp_path: Path) -> None:
-    """Fail a dry-run only when generated content differs from disk."""
+def test_file_plan_reports_real_drift_and_reaches_fixed_point(tmp_path: Path) -> None:
+    """Report drift from one bundle and reach a byte-identical fixed point."""
     workspace = u.Tests.create_docs_workspace(tmp_path)
+    generator = FlextInfraDocGenerator(repository_root=workspace)
 
-    generator = FlextInfraDocGenerator()
-    dry_run = generator.generate(
-        m.Infra.DocsGenerateRequest(workspace_root=workspace, apply=False)
+    initial = u.Tests.plan_docs_bundle(generator)
+    tm.that(
+        any(u.Infra.codegen_file_requires_effect(plan) for plan in initial), eq=True
+    )
+    published = u.Tests.materialize_codegen_plans(
+        r[tuple[m.Infra.CodegenFilePlan, ...]].ok(initial)
+    )
+    tm.ok(published)
+
+    fixed_point = u.Tests.plan_docs_bundle(generator)
+    tm.that(
+        any(u.Infra.codegen_file_requires_effect(plan) for plan in fixed_point),
+        eq=False,
     )
 
-    tm.ok(dry_run)
-    tm.that(dry_run.value[0].result, eq="FAIL")
-    tm.that(dry_run.value[0].changed_files, gt=0)
-    tm.that(dry_run.value[0].generated, eq=0)
 
-    applied = generator.generate(
-        m.Infra.DocsGenerateRequest(workspace_root=workspace, apply=True)
+def test_stale_generated_file_drift_converges_through_file_plans(
+    tmp_path: Path,
+) -> None:
+    """Plan stale removal, publish it through the transaction adapter, and converge."""
+    workspace, generator = u.Tests.docs_workspace_generator(
+        tmp_path, project_names=("flext-a",), selected_projects=["flext-a"]
     )
-    tm.ok(applied)
-    tm.that(applied.value[0].result, eq="OK")
-    tm.that(applied.value[0].generated, gt=0)
-
-    fixed_point = generator.generate(
-        m.Infra.DocsGenerateRequest(workspace_root=workspace, apply=False)
-    )
-    tm.ok(fixed_point)
-    tm.that(fixed_point.value[0].result, eq="OK")
-    tm.that(fixed_point.value[0].changed_files, eq=0)
-    tm.that(fixed_point.value[0].generated, eq=0)
-
-
-def test_stale_generated_file_drift_converges_after_apply(tmp_path: Path) -> None:
-    """Count stale removal in check, apply it, then prove the fixed point."""
-    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
-    generator = FlextInfraDocGenerator()
-    apply_request = m.Infra.DocsGenerateRequest(
-        workspace_root=workspace, projects=["flext-a"], apply=True
-    )
-    check_request = m.Infra.DocsGenerateRequest(
-        workspace_root=workspace, projects=["flext-a"], apply=False
-    )
-    tm.ok(generator.generate(apply_request))
+    _ = u.Tests.publish_docs_bundle(generator)
     stale = workspace / "flext-a/docs/api-reference/generated/stale.md"
     stale.write_text("stale\n", encoding="utf-8")
 
-    check = generator.generate(check_request)
-    tm.ok(check)
+    stale_plans = u.Tests.plan_docs_bundle(generator)
     tm.that(stale.exists(), eq=True)
-    tm.that(sum(report.changed_files for report in check.value), gt=0)
-    tm.that(sum(report.generated for report in check.value), eq=0)
-
-    applied = generator.generate(apply_request)
-    tm.ok(applied)
+    tm.that(
+        any(
+            plan.path == stale and u.Infra.codegen_file_requires_effect(plan)
+            for plan in stale_plans
+        ),
+        eq=True,
+    )
+    published = u.Tests.materialize_codegen_plans(
+        r[tuple[m.Infra.CodegenFilePlan, ...]].ok(stale_plans)
+    )
+    tm.ok(published)
     tm.that(stale.exists(), eq=False)
-    tm.that(sum(report.generated for report in applied.value), gt=0)
 
-    fixed_point = generator.generate(check_request)
-    tm.ok(fixed_point)
-    tm.that(sum(report.changed_files for report in fixed_point.value), eq=0)
-    tm.that(sum(report.generated for report in fixed_point.value), eq=0)
+    fixed_point = u.Tests.plan_docs_bundle(generator)
+    tm.that(
+        any(u.Infra.codegen_file_requires_effect(plan) for plan in fixed_point),
+        eq=False,
+    )
 
 
 def test_generated_file_model_is_frozen() -> None:
@@ -426,3 +462,10 @@ def test_generate_report_tracks_written_files() -> None:
 
     tm.that(report.generated, eq=2)
     tm.that(len(report.items), eq=2)
+
+
+def test_docs_url_scheme_rejects_http() -> None:
+    target = f"{c.Infra.DOCS_INSECURE_WEB_SCHEME}://example.invalid"
+
+    with pytest.raises(ValueError, match="use HTTPS"):
+        u.Infra.docs_url_scheme(target)

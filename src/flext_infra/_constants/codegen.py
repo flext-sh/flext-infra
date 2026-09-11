@@ -13,11 +13,9 @@ import re
 from enum import StrEnum, unique
 from typing import TYPE_CHECKING, Final
 
-from flext_infra._constants.codegen_detection import FlextInfraConstantsCodegenDetection
-from flext_infra._constants.codegen_lazy import FlextInfraConstantsCodegenLazy
-from flext_infra._constants.codegen_render_names import (
-    FlextInfraConstantsCodegenRenderNames,
-)
+from .._constants.codegen_detection import FlextInfraConstantsCodegenDetection
+from .._constants.codegen_lazy import FlextInfraConstantsCodegenLazy
+from .._constants.codegen_render_names import FlextInfraConstantsCodegenRenderNames
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -55,9 +53,127 @@ class FlextInfraConstantsCodegen(
     )
     "Runtime singleton modules for src/: (filename, class_suffix, base_class, docstring)."
     VIOLATION_PATTERN: Final[t.RegexPattern] = re.compile(
-        r"\[(?P<rule>NS-\d{3})-\d{3}\]\s+(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)"
+        r"\[(?P<rule>NS-(?:[A-Z]+|\d{3}))-\d{3}\]\s+"
+        r"(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)"
     )
-    "Regex to parse violation strings: [NS-00X-NNN] path:line — message."
+    "Regex to parse violation strings: [NS-RULE-NNN] path:line — message."
+    MISE_RELEASE_COMPONENT_COUNT: Final[int] = 3
+    "Number of numeric components in a generated Mise release version."
+    MISE_LAUNCHER_DIRECTORY: Final[str] = "bin"
+    "Directory that owns generated runtime Mise launchers."
+    MISE_UNIX_LAUNCHER_FILENAME: Final[str] = "mise"
+    "Canonical Unix Mise launcher filename."
+    MISE_WINDOWS_LAUNCHER_FILENAME: Final[str] = "mise.cmd"
+    "Canonical Windows Mise launcher filename."
+    GEN_BACKUP_UTC_FORMAT: Final[str] = "%Y%m%dT%H%M%SZ"
+    "UTC basic stamp for `{filename}.{stamp}.bak` written before gen apply."
+    CODEGEN_TRANSACTION_LOCK_FILENAME: Final[str] = "flext-infra-codegen.lock"
+    "Worktree-specific administrative lock for complete generation."
+    CODEGEN_TRANSACTION_LOCK_MODE: Final[int] = 0o600
+    "Owner-private mode required for the generation lock."
+    MISE_BOOTSTRAP_SEED_DIRECTORY: Final[str] = "templates/bootstrap"
+    "Package-local bootstrap seed directory for the authenticated launcher."
+    MISE_UNLOCKED_RESOLUTION_URL: Final[str] = (
+        "https://github.com/jdx/mise/releases/latest"
+    )
+    "Upstream resolution endpoint the unlocked launcher must carry."
+    MISE_UNLOCKED_FAIL_LOUD_CLAUSE: Final[str] = (
+        "could not resolve the latest mise release"
+    )
+    "Fail-loud clause emitted when the releases/latest resolution fails."
+    MISE_UNLOCKED_CHECKSUM_URI: Final[str] = "SHASUMS256.txt"
+    "Release checksum payload the unlocked launcher always verifies."
+    MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE: Final[str] = "MISE_DATA_DIR"
+    "Required caller-owned persistent root for generated Mise setup."
+    MISE_BOOTSTRAP_FIXED_ENVIRONMENT: Final[t.StrPairSequence] = (
+        ("GIT_CONFIG_NOSYSTEM", "1"),
+        ("GIT_TERMINAL_PROMPT", "0"),
+        ("LANG", "C"),
+        ("LC_ALL", "C"),
+        ("MISE_SAFE", "1"),
+        ("MISE_PARANOID", "true"),
+        ("MISE_QUIET", "1"),
+        ("MISE_NO_ENV", "1"),
+        ("MISE_NO_HOOKS", "1"),
+        ("MISE_AUTO_ENV", "false"),
+        ("MISE_AUTO_INSTALL", "false"),
+        ("MISE_EXEC_AUTO_INSTALL", "false"),
+        ("MISE_TASK_RUN_AUTO_INSTALL", "false"),
+        ("MISE_AUTO_UPDATE", "false"),
+        ("MISE_HTTP_RETRIES", "0"),
+        ("MISE_NETRC", "false"),
+        ("MISE_NOT_FOUND_AUTO_INSTALL", "false"),
+        ("MISE_NOT_FOUND_SYSTEM_FALLBACK", "false"),
+        ("MISE_OVERRIDE_CONFIG_FILENAMES", ".mise.toml"),
+        ("MISE_OVERRIDE_TOOL_VERSIONS_FILENAMES", "none"),
+        ("MISE_GITHUB_GH_CLI_TOKENS", "false"),
+        ("MISE_GITHUB_USE_GIT_CREDENTIALS", "false"),
+        ("MISE_GITHUB_OAUTH_CLIENT_ID", ""),
+        ("MISE_GITHUB_OAUTH_EXPORT_ENV", ""),
+        ("MISE_GITHUB_OAUTH_OPEN_BROWSER", "false"),
+    )
+    "Fixed fail-closed settings shared by every generated Mise invocation."
+    MISE_BOOTSTRAP_TRANSIENT_ENVIRONMENT: Final[t.StrPairSequence] = (
+        ("HOME", "home"),
+        ("USERPROFILE", "home"),
+        ("APPDATA", "appdata"),
+        ("LOCALAPPDATA", "appdata"),
+        ("XDG_CONFIG_HOME", "xdg-config"),
+        ("XDG_DATA_HOME", "xdg-data"),
+        ("XDG_CACHE_HOME", "xdg-cache"),
+        ("XDG_STATE_HOME", "xdg-state"),
+        ("NETRC", "netrc"),
+        ("GIT_CONFIG_GLOBAL", "gitconfig"),
+        ("MISE_NETRC_FILE", "netrc"),
+        ("MISE_GLOBAL_CONFIG_FILE", "global-config.toml"),
+        ("MISE_CONFIG_DIR", "config"),
+        ("MISE_TMP_DIR", "tmp"),
+        ("MISE_GLOBAL_CONFIG_ROOT", "."),
+        ("MISE_SYSTEM_CONFIG_DIR", "system-config"),
+        ("MISE_SYSTEM_CONFIG_FILE", "system-config/config.toml"),
+        ("MISE_SYSTEM_DATA_DIR", "system-data"),
+        ("MISE_SYSTEM_INSTALLS_DIR", "system-installs"),
+        ("MISE_SYSTEM_SHIMS_DIR", "system-shims"),
+        ("TMPDIR", "tmp"),
+        ("TMP", "tmp"),
+        ("TEMP", "tmp"),
+    )
+    "Environment paths rooted in one invocation-local private directory."
+    MISE_BOOTSTRAP_PERSISTENT_ENVIRONMENT: Final[t.StrPairSequence] = (
+        ("MISE_DATA_DIR", "."),
+        ("MISE_CACHE_DIR", "cache"),
+        ("MISE_STATE_DIR", "state"),
+        ("MISE_INSTALLS_DIR", "installs"),
+        ("MISE_SHIMS_DIR", "shims"),
+    )
+    "Mise paths rooted in the required caller-owned persistent directory."
+    MISE_BOOTSTRAP_EMPTY_FILES: Final[t.StrSequence] = (
+        "global-config.toml",
+        "system-config/config.toml",
+        "gitconfig",
+        "netrc",
+    )
+    "Private empty files that disable ambient configuration and netrc discovery."
+    MISE_BOOTSTRAP_PASSTHROUGH_ENVIRONMENT: Final[t.StrSequence] = (
+        "PATH",
+        "COMSPEC",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "WINDIR",
+        # Credential and network-policy keys the lock-time provenance fetch
+        # requires: without them the shared-host GitHub rate limit fails the
+        # lock generation closed. Reinjection stays explicit (allowlist).
+        "GITHUB_TOKEN",
+        "GH_TOKEN",
+        "MISE_GITHUB_TOKEN",
+        "MISE_GITHUB_CREDENTIAL_COMMAND",
+        "MISE_HTTP_TIMEOUT",
+        # Launcher pin knob: hosts whose curl resolves through Mise shims
+        # cannot resolve "latest" inside the sanitized bootstrap env; an
+        # explicit MISE_VERSION skips that resolution entirely.
+        "MISE_VERSION",
+    )
+    "Only host environment keys eligible for explicit reinjection."
 
     # --- Pipeline stage StrEnum (was: class Pipeline plain strings) ---
     @unique
@@ -74,7 +190,7 @@ class FlextInfraConstantsCodegen(
         LAZY_INIT = "lazy_init"
         CENSUS_AFTER = "census_after"
 
-    PIPELINE_STAGE_ORDER: Final[tuple[PipelineStage, ...]] = (
+    PIPELINE_STAGE_ORDER: Final[t.VariadicTuple[PipelineStage]] = (
         PipelineStage.DISCOVER,
         PipelineStage.TOOLCHAIN,
         PipelineStage.PY_TYPED,

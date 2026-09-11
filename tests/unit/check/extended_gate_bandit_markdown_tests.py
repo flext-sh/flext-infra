@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import m, p, r, t
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
-from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u
 
 if TYPE_CHECKING:
@@ -19,14 +19,6 @@ if TYPE_CHECKING:
 class TestBanditAndMarkdownGates:
     """Declarative public-contract tests for Bandit and Markdown gates."""
 
-    @staticmethod
-    def make_ctx(root: Path) -> m.Infra.GateContext:
-        return m.Infra.GateContext(workspace=root, reports_dir=root)
-
-    @staticmethod
-    def make_runner(*results: p.Result[m.Cli.CommandOutput]) -> u.Tests.SequenceRunner:
-        return u.Tests.SequenceRunner(list(results))
-
     @pytest.mark.parametrize(
         ("with_src", "runner_results", "passed", "issues_len"),
         [
@@ -35,9 +27,9 @@ class TestBanditAndMarkdownGates:
                 True,
                 (
                     r.ok(
-                        u.Tests.stub_run(
+                        u.Tests.create_command_output(
                             stdout='{"results": [{"filename": "a.py", "line_number": 1, "test_id": "B101", "issue_text": "Assert used", "issue_severity": "MEDIUM"}]}',
-                            returncode=1,
+                            exit_code=1,
                         )
                     ),
                 ),
@@ -46,7 +38,13 @@ class TestBanditAndMarkdownGates:
             ),
             (
                 True,
-                (r.ok(u.Tests.stub_run(stdout="invalid json", returncode=1)),),
+                (
+                    r.ok(
+                        u.Tests.create_command_output(
+                            stdout="invalid json", exit_code=1
+                        )
+                    ),
+                ),
                 False,
                 1,
             ),
@@ -68,9 +66,9 @@ class TestBanditAndMarkdownGates:
 
         gate = FlextInfraBanditGate(
             tmp_path,
-            runner=self.make_runner(*runner_results) if runner_results else None,
+            runner=u.Tests.sequence_runner(*runner_results) if runner_results else None,
         )
-        result = gate.check(project_dir, self.make_ctx(tmp_path))
+        result = gate.check(project_dir, u.Tests.gate_context(tmp_path))
 
         tm.that(result.result.passed, eq=passed)
         tm.that(len(result.issues), eq=issues_len)
@@ -90,8 +88,8 @@ class TestBanditAndMarkdownGates:
                 "# Test\n",
                 None,
                 r.ok(
-                    u.Tests.stub_run(
-                        stdout="README.md:1:1: [MD001] Heading level", returncode=1
+                    u.Tests.create_command_output(
+                        stdout="README.md:1:1: [MD001] Heading level", exit_code=1
                     )
                 ),
                 False,
@@ -101,7 +99,7 @@ class TestBanditAndMarkdownGates:
             (
                 "# Test\n",
                 None,
-                r.ok(u.Tests.stub_run(stderr="rumdl failed", returncode=1)),
+                r.ok(u.Tests.create_command_output(stderr="rumdl failed", exit_code=1)),
                 False,
                 1,
                 "rumdl failed",
@@ -127,16 +125,19 @@ class TestBanditAndMarkdownGates:
                 config_text, encoding="utf-8"
             )
 
-        gate = FlextInfraMarkdownGate(
-            tmp_path,
-            runner=self.make_runner(runner_result)
+        runner = (
+            u.Tests.sequence_runner(runner_result)
             if runner_result is not None
-            else None,
+            else None
         )
-        result = gate.check(project_dir, self.make_ctx(tmp_path))
-
-        tm.that(result.result.passed, eq=passed)
-        tm.that(len(result.issues), eq=issues_len)
+        result = u.Tests.check_gate_asserting(
+            FlextInfraMarkdownGate,
+            tmp_path,
+            project_dir,
+            runner=runner,
+            passed=passed,
+            issues_len=issues_len,
+        )
         if raw_output:
             tm.that(result.raw_output, contains=raw_output)
 
@@ -146,10 +147,10 @@ class TestBanditAndMarkdownGates:
         project_dir = u.Tests.mk_project(tmp_path, "markdown-settings-project")
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
         (project_dir / ".markdownlint.json").write_text("{}", encoding="utf-8")
-        runner = self.make_runner(r.ok(u.Tests.stub_run()))
+        runner = u.Tests.sequence_runner(r.ok(u.Tests.create_command_output()))
 
         gate = FlextInfraMarkdownGate(tmp_path, runner=runner)
-        _ = gate.check(project_dir, self.make_ctx(tmp_path))
+        _ = gate.check(project_dir, u.Tests.gate_context(tmp_path))
 
         tm.that(runner.commands[0], has="--config")
 
@@ -161,26 +162,80 @@ class TestBanditAndMarkdownGates:
         local_config = project_dir / ".markdownlint.json"
         local_config.write_text('{"MD013": false}', encoding="utf-8")
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
-        runner = self.make_runner(r.ok(u.Tests.stub_run()))
+        runner = u.Tests.sequence_runner(r.ok(u.Tests.create_command_output()))
 
         _ = FlextInfraMarkdownGate(tmp_path, runner=runner).check(
-            project_dir, self.make_ctx(tmp_path)
+            project_dir, u.Tests.gate_context(tmp_path)
         )
 
         tm.that(runner.commands[0], has=str(local_config.resolve()))
         tm.that(runner.commands[0], lacks=str(parent_config.resolve()))
 
+    def test_markdown_excludes_operational_beads_storage(self, tmp_path: Path) -> None:
+        """Historical tracker records are not live documentation source."""
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-beads-boundary")
+        (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
+        beads_dir = project_dir / ".beads"
+        beads_dir.mkdir()
+        (beads_dir / "historical.md").write_text("broken", encoding="utf-8")
+        runner = u.Tests.sequence_runner(r.ok(u.Tests.create_command_output()))
+
+        _ = FlextInfraMarkdownGate(tmp_path, runner=runner).check(
+            project_dir, u.Tests.gate_context(tmp_path)
+        )
+
+        tm.that(runner.commands[0], has="README.md")
+        tm.that(runner.commands[0], lacks=".beads/historical.md")
+
+    @pytest.mark.parametrize(
+        "provider_root",
+        [".agents", ".claude", ".codex", ".cursor", ".gemini", ".github", ".opencode"],
+    )
+    def test_markdown_excludes_agentsctl_provider_projections(
+        self, tmp_path: Path, provider_root: str
+    ) -> None:
+        """Provider-native projections are validated by agentsctl, not rumdl."""
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-agent-projection")
+        (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
+        projected = project_dir / provider_root / "skills" / "projected.md"
+        projected.parent.mkdir(parents=True)
+        projected.write_text("not project-owned markdown", encoding="utf-8")
+        runner = u.Tests.sequence_runner(r.ok(u.Tests.create_command_output()))
+
+        _ = FlextInfraMarkdownGate(tmp_path, runner=runner).check(
+            project_dir, u.Tests.gate_context(tmp_path)
+        )
+
+        tm.that(runner.commands[0], has="README.md")
+        tm.that(runner.commands[0], lacks=str(projected.relative_to(project_dir)))
+
+    def test_markdown_keeps_project_owned_github_markdown(self, tmp_path: Path) -> None:
+        """Shared GitHub roots retain non-provider Markdown in the native gate."""
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-github-project-owner")
+        (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
+        project_owned = project_dir / ".github" / "prompts" / "project.md"
+        project_owned.parent.mkdir(parents=True)
+        project_owned.write_text("project-owned markdown", encoding="utf-8")
+        runner = u.Tests.sequence_runner(r.ok(u.Tests.create_command_output()))
+
+        _ = FlextInfraMarkdownGate(tmp_path, runner=runner).check(
+            project_dir, u.Tests.gate_context(tmp_path)
+        )
+
+        tm.that(runner.commands[0], has=str(project_owned.relative_to(project_dir)))
+
     def test_markdown_uses_uv_managed_tool_with_sanitized_path(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
         """Prove the real gate cannot bind a host or mise-provided executable."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-managed-tool")
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
-        monkeypatch.setenv("PATH", "/usr/bin:/bin")
-
-        result = FlextInfraMarkdownGate(tmp_path).check(
-            project_dir, self.make_ctx(tmp_path)
-        )
+        empty_path = tmp_path / "empty-path"
+        empty_path.mkdir()
+        with tm.scope(env={"PATH": str(empty_path)}):
+            result = FlextInfraMarkdownGate(tmp_path).check(
+                project_dir, u.Tests.gate_context(tmp_path)
+            )
 
         tm.that(result.result.passed, eq=True)
         tm.that(result.issues, eq=())
@@ -199,7 +254,7 @@ class TestBanditAndMarkdownGates:
         (target_dir / "overview.md").write_text("# Overview\n", encoding="utf-8")
 
         result = FlextInfraMarkdownGate(tmp_path).check(
-            project_dir, self.make_ctx(tmp_path)
+            project_dir, u.Tests.gate_context(tmp_path)
         )
 
         tm.that(result.result.passed, eq=True)
@@ -222,7 +277,7 @@ class TestBanditAndMarkdownGates:
         )
 
         result = FlextInfraMarkdownGate(tmp_path).check(
-            project_dir, self.make_ctx(tmp_path)
+            project_dir, u.Tests.gate_context(tmp_path)
         )
 
         tm.that(result.result.passed, eq=False)
@@ -241,9 +296,9 @@ class TestBanditAndMarkdownGates:
         target.write_text("# Target\n", encoding="utf-8")
         gate = FlextInfraMarkdownGate(tmp_path)
 
-        first = gate.check(project_dir, self.make_ctx(tmp_path))
+        first = gate.check(project_dir, u.Tests.gate_context(tmp_path))
         target.unlink()
-        second = gate.check(project_dir, self.make_ctx(tmp_path))
+        second = gate.check(project_dir, u.Tests.gate_context(tmp_path))
 
         tm.that(first.result.passed, eq=True)
         tm.that(second.result.passed, eq=False)
@@ -264,9 +319,38 @@ class TestBanditAndMarkdownGates:
         """
         project_dir = u.Tests.mk_project(tmp_path, "markdown-fix-project")
         (project_dir / "README.md").write_text("# Title   \n", encoding="utf-8")
-        runner = self.make_runner(r.ok(u.Tests.stub_run()))
+        # Gates select scopes through the canonical git-aware path. Tests run
+        # with TMPDIR inside this repository, so an uncommitted tmp file is
+        # invisible to selection; the fixture must model production reality by
+        # tracking the project files it writes.
+        tm.ok(u.Cli.run_checked(["git", "init", "-q", str(tmp_path)]))
+        tm.ok(
+            u.Cli.run_checked([
+                "git",
+                "-C",
+                str(tmp_path),
+                "add",
+                "markdown-fix-project/README.md",
+            ])
+        )
+        tm.ok(
+            u.Cli.run_checked([
+                "git",
+                "-C",
+                str(tmp_path),
+                "-c",
+                "user.name=fixture",
+                "-c",
+                "user.email=fixture@example.test",
+                "commit",
+                "-q",
+                "-m",
+                "fixture: tracked markdown scope",
+            ])
+        )
+        runner = u.Tests.sequence_runner(r.ok(u.Tests.create_command_output()))
         context = m.Infra.GateContext(
-            workspace=tmp_path, reports_dir=tmp_path, apply_fixes=True
+            repository_root=tmp_path, reports_dir=tmp_path, apply_fixes=True
         )
 
         gate = FlextInfraMarkdownGate(tmp_path, runner=runner)

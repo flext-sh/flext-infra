@@ -15,6 +15,18 @@ class FlextInfraConstantsCheck:
     """Check infrastructure constants."""
 
     @unique
+    class SarifSchema(StrEnum):
+        """Supported SARIF schema identities."""
+
+        V2_1_0 = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json"
+
+    @unique
+    class SarifVersion(StrEnum):
+        """Supported SARIF format versions."""
+
+        V2_1_0 = "2.1.0"
+
+    @unique
     class GateSeverity(StrEnum):
         """Severity levels accepted by gate output parsers."""
 
@@ -22,13 +34,13 @@ class FlextInfraConstantsCheck:
         WARNING = "warning"
         NOTE = "note"
 
-    @unique
-    class GateMode(StrEnum):
-        """Gate enforcement posture — WARN reports without failing; STRICT fails."""
-
-        WARN = "warn"
-        STRICT = "strict"
-
+    AST_GREP_DOCS_URL: Final[str] = "https://ast-grep.github.io/"
+    "Canonical ast-grep documentation URL for gate metadata."
+    # Quality gate identifiers shared with the tool-name vocabulary.
+    LINT: Final[str] = "lint"
+    FORMAT: Final[str] = "format"
+    MARKDOWN: Final[str] = "markdown"
+    SILENT_FAILURE: Final[str] = "silent-failure"
     SARIF_TOOL_INFO: Final[t.MappingKV[str, t.StrPair]] = MappingProxyType({
         "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
         "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/"),
@@ -39,9 +51,13 @@ class FlextInfraConstantsCheck:
             "Flext Silent Failure Detector",
             "internal://flext-infra/silent-failure",
         ),
+        "deferred-self-reference": (
+            "Flext Deferred Self Reference Detector",
+            "internal://flext-infra/deferred-self-reference",
+        ),
         "security": ("Bandit", "https://bandit.readthedocs.io/"),
         "markdown": ("rumdl", "https://rumdl.dev/"),
-        "loc-cap": ("Tokei", "https://github.com/XAMPPRocky/tokei"),
+        "loc-cap": ("scc", "https://github.com/boyter/scc"),
         "boundary": (
             "Flext Abstraction Boundary Auditor",
             "internal://flext-infra/abstraction-boundary",
@@ -56,14 +72,22 @@ class FlextInfraConstantsCheck:
             "internal://flext-infra/tier-whitelist",
         ),
         "smells": ("Flext Code Smell Detector", "internal://flext-infra/smells"),
+        "codemod": ("ast-grep", AST_GREP_DOCS_URL),
         "layout": ("Flext Project Layout Gate", "internal://flext-infra/layout"),
         "canonical-alias": (
             "Flext Canonical Alias Detector",
             "internal://flext-infra/canonical-alias",
         ),
+        "direnv": (
+            "Flext Direnv Environment Contract Gate",
+            "internal://flext-infra/direnv",
+        ),
+        "duplication": ("jscpd", "https://github.com/kucherenko/jscpd"),
     })
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
+    MUTATING_GATES: Final[frozenset[str]] = frozenset({FORMAT})
+    "Gates that rewrite files: owned by `fmt`/`fix`, never a read-only `check` vocabulary."
     RUFF_FORMAT_FILE_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$"
     )
@@ -72,14 +96,13 @@ class FlextInfraConstantsCheck:
     )
     VALID_GATE_SEVERITIES: Final[frozenset[str]] = frozenset(GateSeverity)
     "Severity levels accepted by gate output parsers — derived from GateSeverity."
-    GATE_ERROR_OUTPUT_LIMIT: Final[int] = 20
-    "Maximum parsed gate diagnostics emitted inline before the canonical report."
-
     PYRIGHT_DIAGNOSTICS_KEY: Final[str] = "generalDiagnostics"
     PYRIGHT_PROJECT_ARG: Final[str] = "--project"
     PYRIGHT_PROJECT_CONFIG_TARGET: Final[str] = "."
     BANDIT_RESULTS_KEY: Final[str] = "results"
     PYREFLY_ERRORS_KEY: Final[str] = "errors"
+    PYREFLY_ZERO_ERRORS_RECEIPT: Final[str] = "INFO 0 errors"
+    "Exact successful stderr receipt emitted by Pyrefly's per-file check."
     # --- Abstraction-boundary gate (§2.7) detection SSOT ---
     BOUNDARY_SKIP_PROJECTS: Final[frozenset[str]] = frozenset({
         "flext-cli",
@@ -99,8 +122,12 @@ class FlextInfraConstantsCheck:
         "protocols.py",
         "typings.py",
         "utilities.py",
+        "config.py",
         "settings.py",
+        "_config.py",
+        "_settings.py",
     })
+    BOUNDARY_SKIP_PATH_FRAGMENTS: Final[t.StrSequence] = ("/ai_hub_hook_client/",)
     BOUNDARY_BANNED_LIBS: Final[t.MappingKV[str, str]] = MappingProxyType({
         "typer": "cli.create_app_with_common_params / cli.register_command",
         "click": "flext_cli.cli application, registration, execution, and invocation methods",
@@ -117,29 +144,19 @@ class FlextInfraConstantsCheck:
     })
     # Precompiled (lib, regex, replacement) rows — click is exempted at the call
     # site for Singer-SDK boundary files.
-    BOUNDARY_BANNED_RULES: Final[tuple[tuple[str, t.RegexPattern, str], ...]] = tuple(
+    BOUNDARY_BANNED_RULES: Final[
+        t.VariadicTuple[t.Triple[str, t.RegexPattern, str]]
+    ] = tuple(
         (lib, re.compile(rf"^\s*(import|from)\s+{lib}(\s|$|\.)", re.MULTILINE), repl)
         for lib, repl in BOUNDARY_BANNED_LIBS.items()
     )
     # Unconditional (regex, message) catalog — one data-driven loop in the gate.
-    BOUNDARY_SIMPLE_RULES: Final[tuple[tuple[t.RegexPattern, str], ...]] = (
+    BOUNDARY_SIMPLE_RULES: Final[t.VariadicTuple[t.Pair[t.RegexPattern, str]]] = (
         (
             re.compile(
                 rf"^\s*(import|from)\s+{'sub' + 'process'}(\s|$|\.)", re.MULTILINE
             ),
             "imports subprocess — use cli.run / cli.capture",
-        ),
-        (
-            re.compile(r"\bjson\.(load|dump|loads|dumps)\b"),
-            "uses json.load/dump — use cli.*_json_file",
-        ),
-        (
-            re.compile(r"\byaml\.(safe_load|dump|load)\b"),
-            "uses yaml.safe_load/dump — use cli.*_yaml_file",
-        ),
-        (
-            re.compile(r"\bcsv\.(reader|writer|DictReader|DictWriter)\b"),
-            "uses csv.reader/writer — use cli.*_csv_file",
         ),
         (
             re.compile(r"^\s*print\(", re.MULTILINE),
@@ -157,35 +174,57 @@ class FlextInfraConstantsCheck:
         "flext_infra/_constants/check.py",
         "flext_infra/gates/abstraction_boundary.py",
     })
+    BOUNDARY_JSON_ATTRS: Final[frozenset[str]] = frozenset({
+        "dump",
+        "dumps",
+        "load",
+        "loads",
+    })
+    BOUNDARY_YAML_ATTRS: Final[frozenset[str]] = frozenset({
+        "dump",
+        "load",
+        "safe_load",
+    })
+    BOUNDARY_CSV_ATTRS: Final[frozenset[str]] = frozenset({
+        "DictReader",
+        "DictWriter",
+        "reader",
+        "writer",
+    })
+    BOUNDARY_ATTR_RULES: Final[t.VariadicTuple[t.Triple[str, frozenset[str], str]]] = (
+        (
+            "json",
+            BOUNDARY_JSON_ATTRS,
+            "uses json serialization — use u.Cli.json_* / cli.json_*",
+        ),
+        (
+            "yaml",
+            BOUNDARY_YAML_ATTRS,
+            "uses yaml serialization — use u.Cli.yaml_* / cli.yaml_*",
+        ),
+        (
+            "csv",
+            BOUNDARY_CSV_ATTRS,
+            "uses csv serialization — use u.Cli.csv_* / cli.csv_*",
+        ),
+    )
     BOUNDARY_TOML_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*(import|from)\s+(tomllib|tomlkit)(\s|$|\.)", re.MULTILINE
-    )
-    BOUNDARY_CONCRETE_IMPORT_RE: Final[t.RegexPattern] = re.compile(
-        r"^from\s+flext_cli\s+import\s+(?P<imports>.+?)$", re.MULTILINE
     )
     BOUNDARY_FLEXT_CLI_CONCRETE_RE: Final[t.RegexPattern] = re.compile(
         r"\bFlextCli[A-Z]\w*"
     )
 
-    # --- 1000-LOC SUPREME LAW (§3.1) gate SSOT ---
-    # Why (operator 2026-08-07): the 200-LOC ceiling made real modules
-    # unmanageable — enforcing it fragmented cohesive units into artificial
-    # splits. Raised fleet-wide to 1000. Consumers read this constant, never a
-    # literal, so the cap stays a single owned value.
-    LOC_CAP_MAX: Final[int] = 1000
-    "Per-module logical-LOC ceiling (AGENTS.md §3.1 SUPREME LAW)."
-    TOKEI_BINARY: Final[str] = "tokei"
-    TOKEI_TOTAL_KEY: Final[str] = "Total"
-    TOKEI_PYTHON_LANG: Final[str] = "Python"
-    "tokei language key the 1000-LOC cap enforces — §3.1 is a Python-module law; "
+    SCC_BINARY: Final[str] = "scc"
+    CLI_DIRENV: Final[str] = "direnv"
+    SCC_PYTHON_LANG: Final[str] = "Python"
+    "scc language key the 200-LOC cap enforces; "
     "templates (.j2/.mk), schemas (.json), and config (.yml/.toml) are not modules."
 
     # --- qlty smells gate (code-smell architecture violations) SSOT ---
-    SMELLS_GATE_MODE: Final[GateMode] = GateMode.WARN
-    "Report-only posture. FLIP-TO-FAIL = change this one line to GateMode.STRICT."
     QLTY_BINARY: Final[str] = "qlty"
-    QLTY_BINARY_FALLBACK_SUFFIX: Final[str] = ".qlty/bin/qlty"
-    "Joined to Path.home() when the binary is absent from PATH."
+    QLTY_CONFIG_DIRNAME: Final[str] = ".qlty"
+    QLTY_CONFIG_FILENAME: Final[str] = "qlty.toml"
     SMELLS_QLTY_ARGS: Final[t.StrSequence] = (
         "smells",
         "--all",
@@ -208,6 +247,34 @@ class FlextInfraConstantsCheck:
         "similar-code": "smell_similar_code",
     })
     "qlty ruleId suffix -> flext-core enforcement tag (texts SSOT: core ENFORCEMENT_RULES_TEXT)."
+
+    # --- jscpd duplication gate SSOT (operator 2026-09-04: flext-infra owns the
+    # jscpd plugin behind one centralized `make check` verb; its config is
+    # rendered from this typed SSOT at scan time, never a hand-maintained file).
+    JSCPD_BINARY: Final[str] = "jscpd"
+    "Provisioned by mise from codegen.toolchain.jscpd_version; never a runner or a version here."
+    JSCPD_MODE: Final[str] = "strict"
+    JSCPD_MIN_LINES: Final[int] = 8
+    JSCPD_MIN_TOKENS: Final[int] = 50
+    JSCPD_THRESHOLD_PERCENT: Final[int] = 0
+    JSCPD_SCOPE_DIRNAMES: Final[t.StrSequence] = ("src", "tests", "config", "templates")
+    JSCPD_REPORT_DIRNAME: Final[str] = ".reports/jscpd"
+    JSCPD_CONFIG_FILENAME: Final[str] = ".jscpd.generated.json"
+    JSCPD_REPORT_FILENAME: Final[str] = "jscpd-report.json"
+    JSCPD_FORMAT_EXTENSIONS: Final[t.MappingKV[str, t.StrSequence]] = MappingProxyType({
+        "django": ("j2",)
+    })
+    "Parse Jinja projections in place; never duplicate templates into a scan tree."
+    JSCPD_IGNORE_PATTERNS: Final[t.StrSequence] = (
+        "**/__snapshots__/**",
+        "**/__init__.py",
+        "**/api_cases/**",
+        "**/_cases/**",
+        "**/_cov.py",
+        "**/_parts/**",
+    )
+    "Generated Python surfaces and structured test-case parameterization files "
+    "excluded semantically; Git owns artifact visibility."
 
     # --- Manual-command blocker (AGENTS.md `Build & Test`) SSOT ---
     MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset({
@@ -287,7 +354,7 @@ class FlextInfraConstantsCheck:
 # Every hook routes through the canonical `uv run --all-packages python -m flext_infra`
 # workspace monopoly; no standalone scripts and no bare tool invocations
 # (AGENTS.md `Build & Test`).
-# Enable locally with `pre-commit install` from the workspace root.
+# Enable locally with `pre-commit install` from the repository root.
 repos:
   - repo: local
     hooks:
@@ -299,7 +366,7 @@ repos:
         always_run: false
         types: [python]
       - id: flext-loc-cap
-        name: MODULE-LOC SUPREME LAW (§3.1) — module cap via tokei
+        name: MODULE-LOC SUPREME LAW (§3.1) — module cap via scc
         entry: uv run --all-packages python scripts/hooks/check_changed_projects.py loc-cap
         language: system
         pass_filenames: true

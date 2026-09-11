@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_infra._utilities.rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
 from flext_infra.protocols import p
 from flext_infra.typings import t
+
+from .rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
 
 
 class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase):
@@ -72,7 +73,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         return finder
 
     @classmethod
-    def word_primary_range(cls, source: str, offset: int) -> tuple[int, int]:
+    def word_primary_range(cls, source: str, offset: int) -> t.Pair[int, int]:
         word_finder = cls._word_finder(source)
         primary_range = getattr(word_finder, "get_primary_range", None)
         if not callable(primary_range):

@@ -11,9 +11,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tf, tm
 
 from flext_infra import u
-from flext_tests import tf, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -112,7 +112,7 @@ class TestsFlextInfraInfraVersioning:
     def test_current_workspace_version(
         self, tmp_path: Path, content: str | None, expected: str, error: str
     ) -> None:
-        """Read only the declared project version from a workspace root."""
+        """Read only the declared project version from a repository root."""
         if content is not None:
             tf(base_dir=tmp_path).create(content, "pyproject.toml")
         result = u.Infra.current_workspace_version(tmp_path)

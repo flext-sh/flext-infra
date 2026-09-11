@@ -5,13 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
+
 from flext_infra import c, m
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_tests import tm
-
 from tests import u
-from tests.unit.workspace.worktree_fixture import WorktreeFixture
+from tests.unit.workspace import WorktreeFixture
 
 
 # Conform materializes a full managed tree; the real Git scenarios therefore use
@@ -56,31 +56,32 @@ class TestCodegenLinkedWorktreeTopology:
         )
         primary_snapshot = WorktreeFixture.repository_snapshot(primary)
 
-        applied = tm.ok(
-            FlextInfraCodegenConform.execute_request(
-                m.Infra.CodegenConformRequest(
-                    root=lane,
-                    what=c.Infra.CodegenConformSurface.MAKEFILE,
-                    scope=c.Infra.CodegenConformScope.SELF,
-                    mode=c.Infra.CodegenConformMode.APPLY,
-                )
+        request = u.Tests.conform_request(
+            lane,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        plan = tm.ok(
+            FlextInfraCodegenConform(repository_root=lane, request=request).plan(
+                request
             )
         )
 
-        makefile = (lane / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
-        tm.that(makefile, has="MAKE_PROFILE := standalone")
-        tm.that(applied.plan.workspace.beads.workspace, eq="lane-workspace")
-        tm.that(applied.plan.workspace.beads.database, eq="lane-database")
-        tm.that(applied.plan.workspace.beads.issue_prefix, eq="lane-prefix")
-        tm.that(bool(applied.written_files), eq=True)
+        (makefile_plan,) = plan.files
         tm.that(
-            all(path.is_relative_to(lane) for path in applied.written_files), eq=True
+            u.Tests.codegen_file_text(makefile_plan), has="MAKE_PROFILE := standalone"
         )
+        tm.that(plan.workspace.beads.workspace, eq="lane-workspace")
+        tm.that(plan.workspace.beads.database, eq="lane-database")
+        tm.that(plan.workspace.beads.issue_prefix, eq="lane-prefix")
+        tm.that(all(item.path.is_relative_to(lane) for item in plan.files), eq=True)
         tm.that(
-            tm.ok(FlextInfraWorkspaceDetector.resolve_workspace_root(lane)),
+            tm.ok(FlextInfraWorkspaceDetector.resolve_repository_root(lane)),
             eq=lane.resolve(),
         )
         tm.that(lane_beads.read_bytes(), eq=lane_beads_bytes)
+        tm.that((lane / c.Infra.MAKEFILE_FILENAME).exists(), eq=False)
         tm.that((primary / c.Infra.MAKEFILE_FILENAME).exists(), eq=False)
         tm.that(WorktreeFixture.repository_snapshot(primary), eq=primary_snapshot)
 
@@ -117,8 +118,8 @@ class TestCodegenLinkedWorktreeTopology:
         before = WorktreeFixture.repository_snapshot(root)
 
         result = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
+            u.Tests.conform_request(
+                root,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.APPLY,
             )
@@ -127,10 +128,10 @@ class TestCodegenLinkedWorktreeTopology:
         tm.fail(result, has=expected_error)
         tm.that(WorktreeFixture.repository_snapshot(root), eq=before)
 
-    def test_subproject_identities_and_topology_inputs_are_never_rewritten(
+    def test_workspace_members_inherit_identity_and_topology_inputs_are_never_rewritten(
         self, tmp_path: Path
     ) -> None:
-        """Conform distinct subprojects without copying identity from the root."""
+        """Members declare the workspace identity; conform never rewrites inputs."""
         root = tmp_path / "workspace"
         WorktreeFixture.initialize_governed_project(
             root,
@@ -140,49 +141,39 @@ class TestCodegenLinkedWorktreeTopology:
             issue_prefix="root-prefix",
         )
         project_names = ("fixture-alpha", "fixture-beta")
-        expected_identities = {
-            "fixture-alpha": ("alpha-workspace", "alpha-database", "alpha-prefix"),
-            "fixture-beta": ("beta-workspace", "beta-database", "beta-prefix"),
-        }
-        for project_name, identity in expected_identities.items():
+        for project_name in project_names:
             WorktreeFixture.initialize_governed_project(
                 root / project_name,
                 project_name,
-                workspace=identity[0],
-                database=identity[1],
-                issue_prefix=identity[2],
+                workspace="root-workspace",
+                database="root-database",
+                issue_prefix="root-prefix",
             )
         gitmodules = WorktreeFixture.write_gitmodules(root, project_names)
         u.Tests.git_bootstrap(root, ("add", c.Infra.GITMODULES, *project_names))
         u.Tests.git_bootstrap(
-            root, ("commit", "-m", "fixture: declare independent subprojects")
+            root, ("commit", "-m", "fixture: declare workspace subprojects")
         )
-        protected_bytes = {
-            gitmodules: gitmodules.read_bytes(),
-            **{
-                root / project_name / "config" / "beads.yaml": (
-                    root / project_name / "config" / "beads.yaml"
-                ).read_bytes()
-                for project_name in project_names
-            },
-        }
+        protected_bytes = {gitmodules: gitmodules.read_bytes()}
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         tm.that(
             tuple(project.path.as_posix() for project in workspace.subprojects),
             eq=project_names,
         )
-        for project_name, identity in expected_identities.items():
+        for project_name in project_names:
             beads = tm.ok(
                 FlextInfraWorkspaceDetector.load_beads_spec(root / project_name)
             )
-            tm.that((beads.workspace, beads.database, beads.issue_prefix), eq=identity)
+            tm.that(beads.workspace, eq="root-workspace")
+            tm.that(beads.database, eq="root-database")
+            tm.that(beads.issue_prefix, eq="root-prefix")
 
         applied = tm.ok(
             FlextInfraCodegenConform.execute_request(
-                m.Infra.CodegenConformRequest(
-                    root=root,
-                    scope=c.Infra.CodegenConformScope.SUBPROJECTS,
+                u.Tests.conform_request(
+                    root,
+                    scope=c.Infra.CodegenConformScope.DECLARED,
                     mode=c.Infra.CodegenConformMode.APPLY,
                 )
             )
@@ -199,6 +190,13 @@ class TestCodegenLinkedWorktreeTopology:
             ),
             empty=True,
         )
+        # Every member owns a physical ledger route rendered by generation;
+        # the retired cross-project symlink is never recreated.
+        for project_name in project_names:
+            route = root / project_name / ".beads"
+            tm.that(route.is_dir(), eq=True)
+            tm.that(route.is_symlink(), eq=False)
+            tm.that((route / "config.yaml").is_file(), eq=True)
 
     def test_declared_subproject_cannot_escape_through_a_linked_path(
         self, tmp_path: Path
@@ -225,10 +223,10 @@ class TestCodegenLinkedWorktreeTopology:
         outside_snapshot = WorktreeFixture.repository_snapshot(outside)
 
         result = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
+            u.Tests.conform_request(
+                root,
                 what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SUBPROJECTS,
+                scope=c.Infra.CodegenConformScope.DECLARED,
                 mode=c.Infra.CodegenConformMode.CHECK,
             )
         )

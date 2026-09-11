@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_tests import tm
+
 from tests import c
 
 
@@ -43,20 +44,6 @@ class TestsFlextInfraInfraConstantsCore:
         tm.that(c.Infra.PYRIGHT, eq="pyright")
         tm.that(c.Infra.SECURITY, eq="security")
         tm.that(c.Infra.MARKDOWN, eq="markdown")
-
-    def test_default_csv_contains_gates(self) -> None:
-        csv = c.Infra.DEFAULT_CSV
-        tm.that(csv, contains="lint")
-        tm.that(csv, contains="format")
-        tm.that(csv, contains="mypy")
-        tm.that(csv, contains="pyright")
-
-    def test_default_csv_is_comma_separated(self) -> None:
-        csv = c.Infra.DEFAULT_CSV
-        gates = csv.split(",")
-        tm.that(gates, length_gt=0)
-        for g in gates:
-            tm.that(g, is_=str)
 
     def test_pass_status_constant(self) -> None:
         tm.that(c.Infra.ResultStatus.PASSED, eq="PASS")
@@ -113,6 +100,9 @@ class TestsFlextInfraInfraConstantsCore:
         check_excluded = c.Infra.CHECK_EXCLUDED_DIRS
         common = c.Infra.COMMON_EXCLUDED_DIRS
         tm.that(check_excluded.issuperset(common), eq=True)
+
+    def test_check_excluded_dirs_omit_operational_storage(self) -> None:
+        tm.that(c.Infra.CHECK_EXCLUDED_DIRS, has=".beads")
 
     def test_excluded_dirs_are_strings(self) -> None:
         tm.that(c.Infra.DOC_EXCLUDED_DIRS, is_=frozenset)

@@ -6,10 +6,10 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import m
-from flext_core import u
+from flext_core import m, u
 from flext_infra import c, t
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsCheck:
@@ -19,10 +19,16 @@ class FlextInfraModelsCheck:
         """Canonical CLI payload for ``flext-infra check run``.
 
         Inherits canonical ``gates`` (parsed to ``t.StrSequence``),
-        ``apply``/``dry_run``, ``workspace``, ``projects``, ``fail_fast``,
-        ``verbose`` from ``WriteMixin``.
+        ``apply``/``dry_run``, ``projects``, ``fail_fast``, ``verbose`` from
+        ``WriteMixin`` and redeclares the scope root as ``workspace`` — the
+        option name this verb's generated CLI contract uses.
         """
 
+        workspace: Annotated[
+            Path,
+            m.BeforeValidator(lambda value: Path(value).resolve()),
+            m.Field(description="Repository root"),
+        ] = Path()
         reports_dir: Annotated[
             str,
             m.Field(
@@ -61,7 +67,7 @@ class FlextInfraModelsCheck:
     class CheckProjectTarget(m.ArbitraryTypesModel):
         """Resolved project target for workspace gate execution."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             frozen=True, validate_default=False
         )
 
@@ -70,22 +76,22 @@ class FlextInfraModelsCheck:
 
         @classmethod
         def from_workspace_name(
-            cls, workspace_root: Path, project_name: str
+            cls, repository_root: Path, project_name: str
         ) -> FlextInfraModelsCheck.CheckProjectTarget:
             """Build a target from the public run_projects name contract."""
-            return cls(name=project_name, path=workspace_root / project_name)
+            return cls(name=project_name, path=repository_root / project_name)
 
     class MypyResourceLimit(m.ContractModel):
         """Validated memory and wall-time limits for every Mypy process."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         memory_limit_mb: Annotated[
             int,
             m.Field(
                 gt=0,
                 le=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
-                description="Positive Mypy address-space limit in MiB",
+                description="Positive Mypy memory limit in MiB (Linux AS; Darwin RSS)",
             ),
         ] = c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT
         timeout_seconds: Annotated[
@@ -100,7 +106,7 @@ class FlextInfraModelsCheck:
         @m.computed_field
         @property
         def memory_limit_bytes(self) -> int:
-            """Validated limit converted to bytes for prlimit."""
+            """Validated memory limit converted to bytes for the platform owner."""
             return self.memory_limit_mb * 1024 * 1024
 
     class FixPyreflyConfigCommand(mm.WriteMixin, m.ContractModel):
@@ -127,42 +133,6 @@ class FlextInfraModelsCheck:
                 description="Re-run the corresponding check after fixing",
             ),
         ] = True
-
-        @m.field_validator("rules", mode="before")
-        @classmethod
-        def _parse_rules(cls, value: str | t.SequenceOf[str] | None) -> t.StrSequence:
-            """Accept CSV string, sequence, or None; normalize to StrSequence."""
-            if value is None:
-                return ()
-            if isinstance(value, str):
-                return tuple(part.strip() for part in value.split(",") if part.strip())
-            normalized: list[str] = []
-            for part in value:
-                if not part:
-                    continue
-                normalized.extend(
-                    token.strip() for token in part.split(",") if token.strip()
-                )
-            return tuple(normalized)
-
-        @m.field_validator("projects", mode="before")
-        @classmethod
-        def _parse_projects(
-            cls, value: str | t.SequenceOf[str] | None
-        ) -> t.StrSequence | None:
-            """Accept CSV string, sequence, or None; normalize to StrSequence."""
-            if value is None:
-                return None
-            if isinstance(value, str):
-                return tuple(part.strip() for part in value.split(",") if part.strip())
-            normalized: list[str] = []
-            for part in value:
-                if not part:
-                    continue
-                normalized.extend(
-                    token.strip() for token in part.split(",") if token.strip()
-                )
-            return tuple(normalized) or None
 
     class Issue(m.ContractModel):
         """Single issue reported by a quality gate tool."""
@@ -203,7 +173,7 @@ class FlextInfraModelsCheck:
         result: FlextInfraModelsCheck.GateResult = m.Field(
             description="Gate result model"
         )
-        issues: tuple[FlextInfraModelsCheck.Issue, ...] = m.Field(
+        issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
             default_factory=tuple, description="Detected issues"
         )
         raw_output: str = m.Field(
@@ -248,7 +218,7 @@ class FlextInfraModelsCheck:
         # Why: owned by m.Infra; ArbitraryTypesModel keeps protocol field writability.
 
         results: Annotated[
-            tuple[FlextInfraModelsCheck.ProjectResult, ...],
+            t.VariadicTuple[FlextInfraModelsCheck.ProjectResult],
             m.Field(description="Individual project execution results."),
         ]
         failed: Annotated[
@@ -273,11 +243,18 @@ class FlextInfraModelsCheck:
 
         id: Annotated[str, m.Field(description="Rule identifier")]
         short_description: Annotated[str, m.Field(description="Rule short description")]
+        help_uri: Annotated[
+            str, m.Field(description="Documentation URL of the tool behind the gate")
+        ]
 
         @u.model_serializer
         def _serialize(self) -> t.JsonMapping:
             """Serialize."""
-            return {"id": self.id, "shortDescription": {"text": self.short_description}}
+            return {
+                "id": self.id,
+                "shortDescription": {"text": self.short_description},
+                "helpUri": self.help_uri,
+            }
 
     class SarifLocation(m.ContractModel):
         """Compact SARIF location source span."""
@@ -334,10 +311,10 @@ class FlextInfraModelsCheck:
         information_uri: str = m.Field(
             "", description="Tool documentation URL", validate_default=True
         )
-        rules: tuple[FlextInfraModelsCheck.SarifRule, ...] = m.Field(
+        rules: t.VariadicTuple[FlextInfraModelsCheck.SarifRule] = m.Field(
             default_factory=tuple, description="Rule descriptors"
         )
-        results: tuple[FlextInfraModelsCheck.SarifResult, ...] = m.Field(
+        results: t.VariadicTuple[FlextInfraModelsCheck.SarifResult] = m.Field(
             default_factory=tuple, description="Run results"
         )
 
@@ -362,18 +339,20 @@ class FlextInfraModelsCheck:
     class SarifReport(m.ArbitraryTypesModel):
         """Complete SARIF 2.1.0 report."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-        schema_uri: str = m.Field(
-            "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+        schema_uri: c.Infra.SarifSchema = m.Field(
+            c.Infra.SarifSchema.V2_1_0,
             alias="$schema",
             description="SARIF schema URI",
             validate_default=True,
         )
-        version: str = m.Field(
-            "2.1.0", description="SARIF version", validate_default=True
+        version: c.Infra.SarifVersion = m.Field(
+            c.Infra.SarifVersion.V2_1_0,
+            description="SARIF version",
+            validate_default=True,
         )
-        runs: tuple[FlextInfraModelsCheck.SarifRun, ...] = m.Field(
+        runs: t.VariadicTuple[FlextInfraModelsCheck.SarifRun] = m.Field(
             default_factory=tuple, description="SARIF runs"
         )
 

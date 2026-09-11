@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import operator
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -121,12 +120,12 @@ class FlextInfraEnsurePyrightConfigPhase:
         self,
         *,
         is_root: bool,
-        workspace_root: Path | None,
+        repository_root: Path | None,
         project_dir: Path | None,
         project_roots: t.StrSequence,
     ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
         """Return the expected execution environments."""
-        if not is_root or workspace_root is None:
+        if not is_root or repository_root is None:
             rules = self._tool_config.tools.pyright.path_rules
             return (
                 *self._diagnostic_override_envs(
@@ -149,13 +148,13 @@ class FlextInfraEnsurePyrightConfigPhase:
         # Specific roots precede the broad source environment.
         expected_envs.extend(
             self._diagnostic_override_envs(
-                project_dir=workspace_root,
+                project_dir=repository_root,
                 root_prefix=None,
                 source_path=root_source_path,
             )
         )
         for env_dir in project_roots:
-            if (workspace_root / env_dir / c.Infra.PYPROJECT_FILENAME).is_file():
+            if (repository_root / env_dir / c.Infra.PYPROJECT_FILENAME).is_file():
                 continue
             expected_envs.append(
                 self._env_entry(
@@ -170,47 +169,6 @@ class FlextInfraEnsurePyrightConfigPhase:
                     rules=rules,
                 )
             )
-        discovered = u.Infra.discover_projects(workspace_root)
-        child_projects = (
-            sorted(
-                (
-                    project.path
-                    for project in discovered.value
-                    if (
-                        project.workspace_role
-                        == c.Infra.WorkspaceProjectRole.SUBPROJECT
-                    )
-                ),
-                key=operator.attrgetter("name"),
-            )
-            if discovered.success
-            else []
-        )
-        for child_project in child_projects:
-            relative_root = child_project.relative_to(workspace_root)
-            relative_project_root = relative_root.as_posix()
-            child_source_path = self._project_source_path(prefix=relative_project_root)
-            expected_envs.extend(
-                self._diagnostic_override_envs(
-                    project_dir=child_project,
-                    root_prefix=relative_root,
-                    source_path=child_source_path,
-                )
-            )
-            for env_dir in u.Infra.discover_python_dirs(child_project):
-                expected_envs.append(
-                    self._env_entry(
-                        env_dir=env_dir,
-                        root=(relative_root / env_dir).as_posix(),
-                        extra_paths=self._extra_paths_for_env(
-                            env_dir=env_dir,
-                            source_path=child_source_path,
-                            project_root=relative_project_root,
-                            source_dir=rules.source_dir,
-                        ),
-                        rules=rules,
-                    )
-                )
         return expected_envs
 
     def environment_payloads_for_dirs(
@@ -283,12 +241,12 @@ class FlextInfraEnsurePyrightConfigPhase:
         return {c.Infra.VENV_PATH: venv_path, "venv": rules.venv_name}
 
     def _expected_excludes(
-        self, project_root: Path | None, analysis_exclusions: t.StrSequence
+        self, project_root: Path | None, analysis_exclusions: t.StrSequence | None
     ) -> t.StrSequence:
         """Return the complete config-owned Pyright exclude list."""
         rules = self._tool_config.tools.pyright.path_rules
         workspace_excludes: t.StrSequence = ()
-        if project_root is not None:
+        if analysis_exclusions is None and project_root is not None:
             excluded = FlextInfraWorkspaceDetector.analysis_exclusion_paths(
                 project_root
             )
@@ -297,10 +255,11 @@ class FlextInfraEnsurePyrightConfigPhase:
                     excluded.error or "workspace analysis scope is unavailable"
                 )
             workspace_excludes = tuple(path.as_posix() for path in excluded.value)
+        provided_exclusions = () if analysis_exclusions is None else analysis_exclusions
         return sorted({
             *rules.default_excludes,
             *workspace_excludes,
-            *analysis_exclusions,
+            *provided_exclusions,
         })
 
     def _existing_paths(
@@ -317,13 +276,13 @@ class FlextInfraEnsurePyrightConfigPhase:
         return existing
 
     def _expected_ignores(
-        self, *, is_root: bool, workspace_root: Path | None, project_dir: Path | None
+        self, *, is_root: bool, repository_root: Path | None, project_dir: Path | None
     ) -> t.StrSequence:
         """Ignore typings and stub diagnostics."""
         rules = self._tool_config.tools.pyright.path_rules
         ignores: t.MutableSequenceOf[str] = []
         if is_root:
-            root_dir = workspace_root or project_dir
+            root_dir = repository_root or project_dir
             ignores.extend(self._existing_paths(root_dir, rules.root_typings_paths))
         else:
             ignores.extend(
@@ -338,39 +297,23 @@ class FlextInfraEnsurePyrightConfigPhase:
         self,
         *,
         is_root: bool,
-        workspace_root: Path | None,
+        repository_root: Path | None,
         project_roots: t.StrSequence,
     ) -> t.StrSequence:
-        """Return the auto-discovered top-level Python roots that pyright should analyze."""
-        includes: t.MutableSequenceOf[str] = list(project_roots)
-        if not is_root or workspace_root is None:
-            return includes
-        discovered = u.Infra.discover_projects(workspace_root)
-        if discovered.failure:
-            return includes
-        child_projects = sorted(
-            (
-                project.path
-                for project in discovered.value
-                if (project.workspace_role == c.Infra.WorkspaceProjectRole.SUBPROJECT)
-            ),
-            key=operator.attrgetter("name"),
-        )
-        for child_project in child_projects:
-            relative_root = child_project.relative_to(workspace_root)
-            for env_dir in u.Infra.discover_python_dirs(child_project):
-                includes.append((relative_root / env_dir).as_posix())
-        return includes
+        """Return only Python roots owned by the selected project manifest."""
+        _ = is_root, repository_root
+        return list(project_roots)
 
     def _expected_project_roots(
         self,
         *,
         is_root: bool,
-        workspace_root: Path | None,
+        repository_root: Path | None,
         project_dir: Path | None,
         declared_python_dirs: t.StrSequence,
         declared_python_dirs_are_complete: bool,
         generated_roots: t.StrSequence,
+        workspace_excluded_top_dirs: frozenset[str] | None = None,
     ) -> t.StrSequence:
         """Resolve the one analyzer-root set consumed by includes and environments."""
         declared = self._declared_environment_dirs(
@@ -378,14 +321,22 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
         if (
             is_root
-            and workspace_root is not None
-            and (workspace_root / c.Infra.GITMODULES).is_file()
+            and repository_root is not None
+            and (repository_root / c.Infra.GITMODULES).is_file()
         ):
-            return u.Infra.analyzer_python_roots(workspace_root, generated_roots)
+            return u.Infra.analyzer_python_roots(
+                repository_root,
+                generated_roots,
+                workspace_excluded_top_dirs=workspace_excluded_top_dirs,
+            )
         if declared_python_dirs_are_complete:
             return declared
         if project_dir is not None:
-            return u.Infra.analyzer_python_roots(project_dir, declared)
+            return u.Infra.analyzer_python_roots(
+                project_dir,
+                declared,
+                workspace_excluded_top_dirs=workspace_excluded_top_dirs,
+            )
         if declared:
             return declared
         return self._tool_config.tools.pyright.path_rules.env_dirs
@@ -394,33 +345,40 @@ class FlextInfraEnsurePyrightConfigPhase:
         self,
         *,
         is_root: bool,
-        workspace_root: Path | None = None,
+        repository_root: Path | None = None,
         project_dir: Path | None = None,
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
         declared_python_dirs: t.StrSequence = (),
         declared_python_dirs_are_complete: bool = False,
-        analysis_exclusions: t.StrSequence = (),
+        analysis_exclusions: t.StrSequence | None = None,
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the managed pyright phase for one project context."""
-        project_root = workspace_root if is_root else project_dir
+        project_root = repository_root if is_root else project_dir
         expected_excludes = self._expected_excludes(project_root, analysis_exclusions)
         expected_ignores = self._expected_ignores(
-            is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
+            is_root=is_root, repository_root=repository_root, project_dir=project_dir
         )
         generated_roots = (
             paths_manager.generated_python_roots if paths_manager is not None else ()
         )
         expected_roots = self._expected_project_roots(
             is_root=is_root,
-            workspace_root=workspace_root,
+            repository_root=repository_root,
             project_dir=project_dir,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             generated_roots=generated_roots,
+            workspace_excluded_top_dirs=(
+                paths_manager.analysis_excluded_top_dirs
+                if paths_manager is not None
+                else None
+            ),
         )
         expected_includes = self._expected_includes(
-            is_root=is_root, workspace_root=workspace_root, project_roots=expected_roots
+            is_root=is_root,
+            repository_root=repository_root,
+            project_roots=expected_roots,
         )
         stub_rules = self._tool_config.tools.pyright.path_rules
         expected_stub_path: str | None = (
@@ -434,7 +392,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
         expected_envs = self._expected_envs(
             is_root=is_root,
-            workspace_root=workspace_root,
+            repository_root=repository_root,
             project_dir=project_dir,
             project_roots=expected_roots,
         )
@@ -499,20 +457,20 @@ class FlextInfraEnsurePyrightConfigPhase:
         doc: t.Cli.TomlDocument,
         *,
         is_root: bool,
-        workspace_root: Path | None = None,
+        repository_root: Path | None = None,
         project_dir: Path | None = None,
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
         declared_python_dirs: t.StrSequence = (),
         declared_python_dirs_are_complete: bool = False,
-        analysis_exclusions: t.StrSequence = (),
+        analysis_exclusions: t.StrSequence | None = None,
     ) -> t.StrSequence:
         """Apply the managed pyright configuration for one TOML document."""
         return FlextInfraTomlPhaseService.apply_phases(
             doc,
             self._phase(
                 is_root=is_root,
-                workspace_root=workspace_root,
+                repository_root=repository_root,
                 project_dir=project_dir,
                 project_kind=project_kind,
                 paths_manager=paths_manager,
@@ -527,20 +485,20 @@ class FlextInfraEnsurePyrightConfigPhase:
         payload: t.MutableJsonMapping,
         *,
         is_root: bool,
-        workspace_root: Path | None = None,
+        repository_root: Path | None = None,
         project_dir: Path | None = None,
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
         declared_python_dirs: t.StrSequence = (),
         declared_python_dirs_are_complete: bool = False,
-        analysis_exclusions: t.StrSequence = (),
+        analysis_exclusions: t.StrSequence | None = None,
     ) -> t.StrSequence:
         """Apply managed pyright settings directly to one normalized payload."""
         return FlextInfraTomlPhaseService.apply_payload_phases(
             payload,
             self._phase(
                 is_root=is_root,
-                workspace_root=workspace_root,
+                repository_root=repository_root,
                 project_dir=project_dir,
                 project_kind=project_kind,
                 paths_manager=paths_manager,

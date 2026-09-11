@@ -5,15 +5,15 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_tests import tm
 from tests import u
 
 
 class TestsFlextInfraCodegenConformProgress:
-    """Prove conform emits stage and template progress on stdout."""
+    """Prove conform emits stage and repository progress on stdout."""
 
     def test_plan_emits_stage_and_repository_progress(
         self, infra_git_repo: Path, capsys: pytest.CaptureFixture[str]
@@ -49,4 +49,3 @@ class TestsFlextInfraCodegenConformProgress:
             where=bool,
             msg=captured[-3000:],
         )
-        tm.that(" template " in captured, where=bool, msg=captured[-3000:])

@@ -9,25 +9,20 @@ _STARTED_AT_MONOTONIC = time.monotonic()
 
 
 def main() -> int:
-    """Parse the Make boundary and return the exact child process status."""
+    """Parse the Make boundary and return the exact child process status.
+
+    ``coverage`` selects the coverage-only pass (never testmon); the default is
+    the persistent-testmon pass (never the cov plugin).
+    """
     from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
 
-    try:
-        runner = FlextInfraPytestRunner.from_environment(
-            started_at_monotonic=_STARTED_AT_MONOTONIC
-        )
-    except ValueError as exc:
-        sys.stderr.write(f"ERROR: {exc}\n")
-        return 2
-    result = runner.execute()
-    if result.failure:
-        # Prefix every line so workspace extract_errors keeps the full detail
-        # (it only retains lines matching ^ERROR:), not just the first sentence.
-        detail = result.error or "pytest runner failed"
-        for line in detail.splitlines() or [detail]:
-            sys.stderr.write(f"ERROR: {line}\n")
-        return 2
-    return result.value
+    runner = FlextInfraPytestRunner.from_environment(
+        started_at_monotonic=_STARTED_AT_MONOTONIC
+    )
+    mode = sys.argv[1] if len(sys.argv) > 1 else ""
+    if mode == "coverage":
+        return runner.execute_coverage().unwrap()
+    return runner.execute().unwrap()
 
 
 if __name__ == "__main__":

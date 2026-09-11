@@ -10,7 +10,8 @@ from pathlib import Path
 from types import MappingProxyType
 
 from flext_infra import c, m, t, u
-from flext_infra.transformers._tier0_transformer import FlextInfraTier0TransformerMixin
+
+from ._tier0_transformer import FlextInfraTier0TransformerMixin
 
 
 class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):

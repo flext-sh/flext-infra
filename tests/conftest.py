@@ -9,15 +9,36 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
+from flext_tests import tm
 
 import flext_infra as infra_pkg
 from flext_infra import config
-from flext_tests import tm
 from tests import c, t, u
 
 # NOTE(flext-p68a.9.4, agent codex): the installed flext-tests pytest11 plugin is
 # the only fixture owner; conftest must not re-export or shadow its fixtures.
 pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
+
+
+@pytest.fixture
+def installed_dependency_path(tmp_path: Path) -> Iterator[Path]:
+    """Expose real non-src package files through the selected import environment."""
+    location = tmp_path / "installed"
+    location.mkdir()
+    sys.path.insert(0, str(location))
+    importlib.invalidate_caches()
+    try:
+        yield location
+    finally:
+        sys.path.remove(str(location))
+        importlib.invalidate_caches()
+
+
+@pytest.fixture
+def isolate_github_trigger_sha() -> Iterator[None]:
+    """Remove the outer checkout identity for explicit conform test consumers."""
+    with u.Tests.env_vars_context(vars_to_clear=(c.Infra.ENV_VAR_GITHUB_SHA,)):
+        yield
 
 
 @pytest.fixture
@@ -187,12 +208,12 @@ def infra_git_repo(infra_test_workspace: Path) -> Path:
 
     Conformance reads this repository twice and both reads must agree. Detection
     only accepts a remote whose host and organization match the provider, while
-    baseline ancestry resolves the provider branch by fetching that same remote.
+    baseline ancestry resolves the already materialized provider tracking ref.
     Declaring the real upstream URL satisfies detection but grades the fixture
     against the live repository; declaring a local path fails detection outright.
     The fixture therefore declares the provider URL and rewrites it to a local
-    bare origin through Git's own ``url.<base>.insteadOf`` mechanism, so the two
-    reads observe one self-consistent topology without any network access.
+    bare origin through Git's own ``url.<base>.insteadOf`` mechanism. Fixture
+    setup materializes the tracking ref once; conformance itself stays offline.
     """
     repo = infra_test_workspace / "repo"
     repo.mkdir(parents=True, exist_ok=True)

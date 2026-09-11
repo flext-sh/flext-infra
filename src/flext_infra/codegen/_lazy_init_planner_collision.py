@@ -57,6 +57,8 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             score += 15
         if attr == name:
             score += 3
+        if name in c.Infra.ALIAS_NAMES and "." not in module_path:
+            score -= 80
         part_number = module_file.stem.rpartition("_part_")[2]
         if part_number.isdecimal():
             # flext-pulj (codex): the final public facade owns the external
@@ -81,7 +83,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return min(existing, target)
 
     def _add(self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair) -> None:
-        """Insert a name/target pair, resolving collisions via policy scoring."""
+        """Insert a name/target pair and record ambiguous ownership."""
         existing = index.get(name)
         if existing is None or existing == target:
             index[name] = target
@@ -92,9 +94,9 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             index[name] = winner
             return
         self._collision_count += 1
-        u.Cli.warning(
+        u.Cli.error(
             f"export collision for {name!r}: {existing} vs {target}; "
-            f"resolved by canonical policy scorer to {winner}"
+            f"candidate selected for complete inventory: {winner}"
         )
         index[name] = winner
 
@@ -108,11 +110,13 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             return True
         if self._is_declared_public_reexport(a, b):
             return True
+        if self._is_package_root_reexport(a, b):
+            return True
         if self._is_test_collection_collision(a, b):
             return True
         for pub_mod, priv_mod in ((a[0], b[0]), (b[0], a[0])):
             pub_file = f"{pub_mod.rsplit('.', maxsplit=1)[-1]}.py"
-            if not u.Infra.is_public_python_module_file(pub_file):
+            if not u.Infra.matches_root_namespace_file(pub_file):
                 continue
             if "." in priv_mod and priv_mod.split(".")[-2].startswith("_"):
                 return True
@@ -126,6 +130,25 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return (
             a_owner == b or b_owner == a or (a_owner is not None and a_owner == b_owner)
         )
+
+    def _is_package_root_reexport(self, a: t.StrPair, b: t.StrPair) -> bool:
+        """Return whether a package root republishes its direct facade owner."""
+        if a[1] != b[1]:
+            return False
+        for root_target, child_target in ((a, b), (b, a)):
+            root_module, attr = root_target
+            child_module, _ = child_target
+            if child_module.rpartition(".")[0] != root_module:
+                continue
+            root_file = self._module_file(root_module)
+            if root_file is None or root_file.name != "__init__.py":
+                continue
+            declared_exports = self.rope_workspace.exports(
+                root_file, export_options=m.Infra.ExportOptions(allow_assignments=True)
+            )
+            if attr in declared_exports:
+                return True
+        return False
 
     def _declared_export_owner(self, target: t.StrPair) -> t.StrPair | None:
         module_path, attr = target
@@ -157,7 +180,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return None
 
     @staticmethod
-    def _module_parts(module_path: str) -> tuple[str, ...]:
+    def _module_parts(module_path: str) -> t.VariadicTuple[str]:
         """Return normalized dotted module path parts."""
         return tuple(part for part in module_path.split(".") if part)
 
@@ -192,8 +215,8 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         if a_index < 0 and b_index < 0:
             return False
         if a_index >= 0 and b_index >= 0:
-            a_family: tuple[str, ...] = tuple(a_parts[: a_index + 1])
-            b_family: tuple[str, ...] = tuple(b_parts[: b_index + 1])
+            a_family: t.VariadicTuple[str] = tuple(a_parts[: a_index + 1])
+            b_family: t.VariadicTuple[str] = tuple(b_parts[: b_index + 1])
             return a_family == b_family
         part_parts, part_index, facade_parts = (
             (a_parts, a_index, b_parts) if a_index >= 0 else (b_parts, b_index, a_parts)
@@ -203,11 +226,11 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             return True
         if not owner_package or not owner_package[-1].startswith("_"):
             return False
-        expected_facade_parts: tuple[str, ...] = (
+        expected_facade_parts: t.VariadicTuple[str] = (
             *tuple(owner_package[:-1]),
             owner_package[-1].removeprefix("_"),
         )
-        facade_tuple: tuple[str, ...] = tuple(facade_parts)
+        facade_tuple: t.VariadicTuple[str] = tuple(facade_parts)
         return facade_tuple == expected_facade_parts
 
     @classmethod
@@ -231,7 +254,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return False
 
     @classmethod
-    def _private_segments(cls, parts: t.StrSequence) -> frozenset[tuple[int, str]]:
+    def _private_segments(cls, parts: t.StrSequence) -> frozenset[t.Pair[int, str]]:
         """Return private implementation segments with their path positions."""
         return frozenset(
             (index, part)

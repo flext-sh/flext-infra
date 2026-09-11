@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import m, u
 from flext_infra.detectors.loose_object_detector import FlextInfraLooseObjectDetector
-from flext_tests import tm
+from tests import u as test_u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -17,14 +19,7 @@ class TestsFlextInfraLooseObjectDetector:
 
     @staticmethod
     def _project(tmp_path: Path) -> tuple[Path, Path]:
-        project = tmp_path / "demo-project"
-        package_dir = project / "src" / "demo_project"
-        package_dir.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='demo-project'\n", encoding="utf-8"
-        )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        project, package_dir = test_u.Tests.demo_project(tmp_path)
         return project, package_dir
 
     @staticmethod

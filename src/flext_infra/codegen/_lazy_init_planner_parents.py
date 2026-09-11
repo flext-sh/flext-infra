@@ -118,6 +118,8 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
             if canonical_package != current_pkg:
                 return canonical_package
         for package_name in candidate_packages:
+            if package_name == current_pkg:
+                continue
             if alias_name in self._export_names_for_package(package_name):
                 return f"{package_name}"
         for package_name in candidate_packages:
@@ -138,7 +140,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
                 return package_name
         if not parts:
             return ""
-        sibling_project_root = self.rope_workspace.workspace_root.parent / parts[
+        sibling_project_root = self.rope_workspace.repository_root.parent / parts[
             0
         ].replace("_", "-")
         sibling_package_root = sibling_project_root / c.Infra.DEFAULT_SRC_DIR / parts[0]

@@ -6,41 +6,62 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shutil
 from functools import cache, lru_cache
-from hashlib import sha256
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_core import r
-from flext_infra import c, t
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
 
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_core import r
+from flext_infra import c, p, t
+
+from .git import FlextInfraUtilitiesGit
 
 
 class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
 
     @staticmethod
-    def validate_infra_payload(payload: object) -> t.JsonMapping | None:
-        """Validate one plain mapping through the infra adapter.
+    def read_project_metadata_result(project_root: Path) -> p.Result[p.ProjectMetadata]:
+        """Read one project's metadata through the canonical owner chain.
 
-        Centralizes the repeated try/except so callers only decide what sentinel
-        to surface on failure.
+        flext-core retired its Result-returning compatibility wrapper; this is
+        the consuming project's typed ingress, keeping every metadata reader on
+        one failure contract instead of three ad-hoc try/except blocks. The
+        declared contract is the canonical structural protocol (the producer
+        builds the exact model behind it), matching every ``p.ProjectMetadata``
+        consumer.
         """
         try:
-            result: t.JsonMapping | None = (
-                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
+            document = u.read_project_document_cached(project_root)
+            metadata = u.build_project_metadata(project_root, document)
+        except (OSError, ValueError) as exc:
+            return r[p.ProjectMetadata].fail(
+                f"cannot read project metadata from {project_root}: {exc}",
+                exception=exc,
             )
-        except (c.ValidationError, ValueError):
-            return None
+        return r[p.ProjectMetadata].ok(metadata)
+
+    @staticmethod
+    def validate_infra_payload(payload: object) -> t.JsonMapping:
+        """Validate one plain mapping through the infra adapter.
+
+        Centralizes the adapter choice so every caller validates through the
+        same typed boundary; validation failures escape with the precise
+        pydantic error instead of a sentinel.
+        """
+        result: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
         return result
 
     @classmethod
     def format_toml_source(
-        cls, source: str, *, path: Path, toolchain_root: Path, taplo_version: str
+        cls,
+        source: str,
+        *,
+        path: Path,
+        toolchain_root: Path,
+        taplo_version: str,
+        process_timeout_seconds: int = c.Infra.TIMEOUT_DEFAULT,
     ) -> p.Result[str]:
         """Format TOML through the configured workspace Taplo toolchain."""
         config_path = toolchain_root / c.Infra.TAPLO_CONFIG_FILENAME
@@ -61,9 +82,10 @@ class FlextInfraUtilitiesPyproject:
             source,
             relative_path=relative_path,
             config_path=config_path.resolve() if config_content else None,
-            config_digest=sha256(config_content).hexdigest(),
+            config_digest=u.Cli.sha256_bytes(config_content),
             execution_root=execution_root,
             taplo_version=taplo_version,
+            process_timeout_seconds=process_timeout_seconds,
         )
 
     @staticmethod
@@ -76,33 +98,86 @@ class FlextInfraUtilitiesPyproject:
         config_digest: str,
         execution_root: Path,
         taplo_version: str,
+        process_timeout_seconds: int,
     ) -> p.Result[str]:
         del config_digest
-        command = [
-            "mise",
-            "exec",
-            f"taplo@{taplo_version}",
-            "--",
-            "taplo",
-            "format",
-            "-",
-            "--stdin-filepath",
-            relative_path,
-        ]
+        taplo = FlextInfraUtilitiesPyproject._taplo_binary(
+            taplo_version, process_timeout_seconds, execution_root
+        )
+        if taplo.failure:
+            return r[str].from_failure(taplo)
+        command = [str(taplo.value), "format", "-", "--stdin-filepath", relative_path]
         if config_path is not None:
             command.extend(("--config", str(config_path)))
         result = u.Cli.run_raw(
             command,
             cwd=execution_root,
             input_data=source.encode(c.Cli.ENCODING_DEFAULT),
+            timeout=process_timeout_seconds,
         )
         if result.failure:
-            return r[str].fail(result.error or "taplo format failed")
+            return r[str].from_failure(result)
         output = result.value
-        if output.exit_code != 0:
+        if not u.Cli.process_succeeded(output.outcome):
             detail = (output.stderr or output.stdout).strip()
-            return r[str].fail(f"taplo format failed ({output.exit_code}): {detail}")
+            return r[str].fail(
+                f"taplo format failed ({output.outcome.raw_return_code}): {detail}"
+            )
         return r[str].ok(output.stdout)
+
+    @staticmethod
+    @cache
+    def _taplo_binary(
+        taplo_version: str, process_timeout_seconds: int, execution_root: Path
+    ) -> p.Result[Path]:
+        """Resolve and authenticate Make's config-versioned Taplo executable."""
+        u.Cli.info(f"pyproject-tooling: resolve taplo={taplo_version}")
+        resolved = shutil.which("taplo")
+        if resolved is None:
+            return r[Path].fail(
+                "Taplo executable is absent from the Make-provisioned PATH"
+            )
+        # Mise shims are executable symlinks whose basename selects the tool.
+        # Resolving the link turns ``taplo`` into the Mise binary and changes
+        # the invoked program, so preserve the absolute shim path.
+        binary = Path(resolved).absolute()
+        # Probe where the tool will actually run. A version-managed shim
+        # resolves its tool from the working directory's declared toolchain, so
+        # probing in the shim's own directory asks for a version nothing there
+        # declares: on a runner that provisions taplo per project the probe
+        # exits non-zero and the identity check rejects a perfectly good
+        # binary. The format call below uses execution_root; so does this.
+        identified = u.Cli.run_raw(
+            (str(binary), "--version"),
+            cwd=execution_root,
+            timeout=process_timeout_seconds,
+        )
+        if identified.failure:
+            return r[Path].fail(
+                f"Taplo identity check could not run: {binary}: {identified.error}"
+            )
+        if not u.Cli.process_succeeded(identified.value.outcome):
+            # The cause belongs in the message: a shim that resolves but cannot
+            # execute reports the same generic text as a genuine version
+            # mismatch, and the two need opposite repairs.
+            detail = identified.value.stderr.strip() or identified.value.stdout.strip()
+            return r[Path].fail(
+                f"Taplo identity check failed: {binary} exited "
+                f"{identified.value.outcome.raw_return_code}: "
+                f"{detail or 'no diagnostic output'}"
+            )
+        observed = identified.value.stdout.strip()
+        identity_matches = (
+            "taplo" in observed.lower()
+            if taplo_version == "latest"
+            else taplo_version in observed
+        )
+        if not identity_matches:
+            return r[Path].fail(
+                "resolved Taplo executable version differs: "
+                f"expected={taplo_version} observed={observed}"
+            )
+        return r[Path].ok(binary)
 
     @staticmethod
     @cache
@@ -118,11 +193,12 @@ class FlextInfraUtilitiesPyproject:
             return {}
         payload_result = u.Cli.toml_read_json(pyproject_path)
         if payload_result.failure:
-            return {}
-        validated = FlextInfraUtilitiesPyproject.validate_infra_payload(
-            payload_result.value
-        )
-        return validated if validated is not None else {}
+            msg = (
+                f"failed to read pyproject payload at {pyproject_path}: "
+                f"{payload_result.error}"
+            )
+            raise RuntimeError(msg)
+        return FlextInfraUtilitiesPyproject.validate_infra_payload(payload_result.value)
 
     @staticmethod
     def normalized_toml_payload(document: t.Cli.TomlDocument) -> t.JsonMapping:
@@ -130,8 +206,7 @@ class FlextInfraUtilitiesPyproject:
         payload = u.Cli.toml_as_mapping(document)
         if not payload:
             return {}
-        validated = FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
-        return validated if validated is not None else {}
+        return FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
 
     @staticmethod
     def tool_flext_meta(project_root: Path) -> t.JsonMapping:
@@ -189,7 +264,7 @@ class FlextInfraUtilitiesPyproject:
             for item in packages:
                 package_path = Path(str(item).strip())
                 if package_path.parts:
-                    package_parts: tuple[str, ...] = package_path.parts
+                    package_parts: t.VariadicTuple[str] = package_path.parts
                     return package_parts[-1]
         src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
         if src_dir.is_dir():
@@ -222,7 +297,7 @@ class FlextInfraUtilitiesPyproject:
 
     @staticmethod
     @cache
-    def workspace_project_paths(workspace_root: Path) -> t.StrSequence:
+    def workspace_project_paths(repository_root: Path) -> t.StrSequence:
         """Return project paths declared by this directory's own ``.gitmodules``.
 
         A missing file denotes a standalone project and therefore an empty
@@ -230,9 +305,9 @@ class FlextInfraUtilitiesPyproject:
         remains a loud error; no pyproject table or parent directory is used as
         an alternate topology source.
         """
-        declared = FlextInfraUtilitiesGit.git_declared_submodule_paths(workspace_root)
+        declared = FlextInfraUtilitiesGit.git_declared_submodule_paths(repository_root)
         if declared.failure:
-            msg = declared.error or f"invalid workspace topology: {workspace_root}"
+            msg = declared.error or f"invalid workspace topology: {repository_root}"
             raise ValueError(msg)
         return tuple(path.as_posix() for path in declared.value)
 

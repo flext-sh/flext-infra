@@ -5,12 +5,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_cli import u as cli_u
+from flext_tests import tm
+
 from flext_infra import main as infra_main
+from flext_infra import u as infra_u
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
 from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
-from flext_tests import tm
 from tests import m, t, u
 
 if TYPE_CHECKING:
@@ -70,6 +72,51 @@ class TestSilentFailureDetector:
         tm.that(codes, has="silent-failure-except")
         tm.that(codes, has="silent-failure-unwrap-or")
 
+    def test_relaxations_for_collectors_predicates_and_test_teardown(self) -> None:
+        """Only production failure paths are flagged, per cosmos-3flk9 relaxations."""
+        import ast
+
+        source = (
+            "import contextlib\n"
+            "\n"
+            "\n"
+            "def collect_probe_findings(path):\n"
+            "    result = parse(path)\n"
+            "    if result.failure:\n"
+            "        return []\n"
+            "    return []\n"
+            "\n"
+            "\n"
+            "def has_header(path):\n"
+            "    try:\n"
+            "        return parse(path)\n"
+            "    except RegistryError:\n"
+            "        return False\n"
+            "\n"
+            "\n"
+            "def run_guard(validation_result):\n"
+            "    if validation_result.failure:\n"
+            "        return False\n"
+            "    return True\n"
+            "\n"
+            "\n"
+            "def teardown(pid):\n"
+            "    with contextlib.suppress(ProcessLookupError):\n"
+            "        os.kill(pid, 9)\n"
+        )
+        tree = ast.parse(source)
+        production = infra_u.Infra.collect_silent_failure_findings(tree, source)
+        production_kinds = tuple(finding.kind for finding in production)
+        tm.that(production_kinds, has="silent-failure-guard")
+        tm.that(production_kinds, has="silent-failure-suppress")
+        tm.that(production_kinds, excludes="silent-failure-except")
+        test_module = infra_u.Infra.collect_silent_failure_findings(
+            tree, source, is_test_module=True
+        )
+        test_kinds = tuple(finding.kind for finding in test_module)
+        tm.that(test_kinds, excludes="silent-failure-suppress")
+        tm.that(test_kinds, has="silent-failure-guard")
+
     def test_fix_silent_failure_sentinels_rewrites_deterministic_cases(
         self, tmp_path: Path
     ) -> None:
@@ -98,7 +145,7 @@ class TestSilentFailureValidator:
     def test_execute_reports_detected_issues(self, tmp_path: Path) -> None:
         project = _create_silent_failure_project(tmp_path)
         result = FlextInfraSilentFailureValidator(
-            workspace_root=project, project_filter="flext-infra"
+            repository_root=project, project_filter="flext-infra"
         ).execute()
 
         tm.fail(result, has="silent failure validation found 3 issue(s)")
@@ -109,7 +156,7 @@ class TestSilentFailureValidator:
     def test_execute_json_output_format_emits_full_report(self, tmp_path: Path) -> None:
         project = _create_silent_failure_project(tmp_path)
         result = FlextInfraSilentFailureValidator(
-            workspace_root=project, project_filter="flext-infra", output_format="json"
+            repository_root=project, project_filter="flext-infra", output_format="json"
         ).execute()
 
         tm.that(result.failure, eq=True)
@@ -139,7 +186,7 @@ class TestSilentFailureValidator:
             files={"utilities.py": source},
         )
         result = FlextInfraSilentFailureValidator(
-            workspace_root=project, project_filter="flext-infra"
+            repository_root=project, project_filter="flext-infra"
         ).execute()
 
         tm.fail(result, has=f"found {finding_count} issue(s)")
@@ -153,7 +200,7 @@ class TestSilentFailureValidator:
         exit_code = infra_main([
             "validate",
             "silent-failure",
-            "--workspace",
+            "--repository-root",
             str(project),
             "--project-filter",
             "flext-infra",

@@ -85,9 +85,11 @@ class FlextInfraSkillRuleRunnerMixin:
             msg = result_wrapper.error or "ast-grep execution failed"
             raise RuntimeError(msg)
         result: p.Cli.CommandOutput = result_wrapper.value
-        if result.exit_code not in {0, 1}:
+        if result.outcome.raw_return_code not in {0, 1}:
             detail = (result.stderr or result.stdout).strip() or "no diagnostics"
-            msg = f"ast-grep exited with code {result.exit_code}: {detail}"
+            msg = (
+                f"ast-grep exited with code {result.outcome.raw_return_code}: {detail}"
+            )
             raise RuntimeError(msg)
         count = 0
         for raw_line in (result.stdout or "").splitlines():
@@ -138,7 +140,7 @@ class FlextInfraSkillRuleRunnerMixin:
             if script.suffix == c.Infra.EXT_PYTHON
             else [str(script)]
         )
-        cmd.extend(["--workspace", str(project_path)])
+        cmd.extend(["--repository", str(project_path)])
         if bool(rule.get("pass_mode")):
             cmd.extend(["--mode", mode.value])
         result_wrapper = u.Cli.run_raw(
@@ -148,12 +150,12 @@ class FlextInfraSkillRuleRunnerMixin:
             msg = result_wrapper.error or "custom rule execution failed"
             raise RuntimeError(msg)
         result: p.Cli.CommandOutput = result_wrapper.value
-        if result.exit_code not in {0, 1}:
+        if result.outcome.raw_return_code not in {0, 1}:
             detail = (result.stderr or result.stdout).strip() or "no diagnostics"
-            msg = f"custom rule exited with code {result.exit_code}: {detail}"
+            msg = f"custom rule exited with code {result.outcome.raw_return_code}: {detail}"
             raise RuntimeError(msg)
         count = self._parse_violation_count(result.stdout or "")
-        if result.exit_code == 1:
+        if result.outcome.raw_return_code == 1:
             count = max(count, 1)
         return count
 

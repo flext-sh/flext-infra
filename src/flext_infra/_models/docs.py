@@ -7,9 +7,13 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
-from flext_infra._models.config import FlextInfraConfigModels
+
+from .config import FlextInfraConfigModels
+from .docs_generation import FlextInfraModelsDocsGeneration
 
 
+# NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): docs transport
+# retains the exact metadata/config models and declares only analysis deltas.
 class _FlextInfraDocsContracts:
     """Field-only source and rendering contracts for documentation."""
 
@@ -43,9 +47,7 @@ class _FlextInfraDocsContracts:
         count: Annotated[t.NonNegativeInt, m.Field(description="Project count")]
 
 
-# NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): docs transport
-# retains the exact metadata/config models and declares only analysis deltas.
-class FlextInfraModelsDocs(_FlextInfraDocsContracts):
+class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContracts):
     """Models for documentation services."""
 
     class DocsGenerateRequest(m.ContractModel):
@@ -55,8 +57,8 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
         reuse the same validation rules and avoid ad-hoc multi-parameter calls.
         """
 
-        workspace_root: Annotated[
-            Path, m.Field(description="Workspace root for docs generation")
+        repository_root: Annotated[
+            Path, m.Field(description="Repository root for docs generation")
         ]
         projects: Annotated[
             t.StrSequence | None, m.Field(description="Optional selected project names")
@@ -90,21 +92,6 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
             False
         )
 
-    class DocScope(m.ArbitraryTypesModel):
-        """Documentation scope targeting a project or workspace root."""
-
-        name: Annotated[t.NonEmptyStr, m.Field(description="Scope name")]
-        path: Annotated[Path, m.Field(description="Absolute path to scope root")]
-        report_dir: Annotated[
-            Path, m.Field(description="Report output directory for scope")
-        ]
-        project_class: Annotated[
-            str, m.Field(description="Docs scope classification")
-        ] = "root"
-        package_name: Annotated[
-            str, m.Field(description="Primary package name for scope")
-        ] = ""
-
     class DocstringCoverage(m.ContractModel):
         """Docstring coverage metric for one docs scope (declaration only).
 
@@ -136,7 +123,7 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
     class DocsPublicContract(m.ArbitraryTypesModel):
         """Exact project/config objects plus derived public API analysis."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True, extra="forbid", frozen=True
         )
 
@@ -171,7 +158,7 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
             t.StrTuple, m.Field(default=(), description="Rope-resolved public symbols")
         ] = ()
         export_bindings: Annotated[
-            tuple[_FlextInfraDocsContracts.DocsExportBinding, ...],
+            t.VariadicTuple[_FlextInfraDocsContracts.DocsExportBinding],
             m.Field(default=(), description="Export-to-module bindings"),
         ] = ()
         modules: Annotated[
@@ -193,19 +180,14 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
         )
 
     class AuditScopeParams(m.ContractModel):
-        """Bundled parameters for a single audit scope run."""
+        """Audit checks and an additional coverage floor; every finding fails."""
 
         check: Annotated[str, m.Field(description="Comma-separated checks")] = "all"
-        strict: Annotated[bool, m.Field(description="Strict mode")] = True
         docstring_min: Annotated[
             float | None,
             m.Field(
                 description="Minimum docstring coverage percent; breach fails the scope"
             ),
-        ] = None
-        budgets: Annotated[
-            tuple[int | None, t.IntMapping] | None,
-            m.Field(description="Budget tuple (default, by_scope)"),
         ] = None
 
     class DocsPhaseReport(m.ContractModel):

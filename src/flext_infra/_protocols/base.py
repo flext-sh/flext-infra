@@ -15,7 +15,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_cli import p
-    from flext_infra import c, m, t
+
+    from flext_infra import m, t
 
 
 @runtime_checkable
@@ -74,6 +75,19 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def package_name(self) -> str:
             """Primary Python package name."""
+            ...
+
+    @runtime_checkable
+    class MiseArtifactsOwner(Protocol):
+        """Owner contract consumed by the atomic generation transaction."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository whose generated Mise surfaces are transacted."""
+            ...
+
+        def validate_artifacts(self, project_root: Path) -> p.Result[bool]:
+            """Validate one project's committed Mise declaration and launchers."""
             ...
 
     # These declaration-only
@@ -189,8 +203,8 @@ class FlextInfraProtocolsBase(Protocol):
         """Scaffold-only project metadata consumed by initial generation."""
 
         @property
-        def version(self) -> str:
-            """Declared release version, the SSOT for ``[project].version``."""
+        def repository_root_rel(self) -> str:
+            """Declared relative path from the project to its workspace root."""
             ...
 
     @runtime_checkable
@@ -231,8 +245,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def beads(self) -> FlextInfraProtocolsBase.BeadsProjectSpec:
-            """Repository-local Beads identity."""
+        def beads(self) -> FlextInfraProtocolsBase.BeadsProjectSpec | None:
+            """Dormant auxiliary identity, absent from active topology."""
             ...
 
         @property
@@ -275,45 +289,11 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class GithubPullRequestFields(Protocol):
-        """Shared PR execution fields accepted at the transport boundary."""
-
-        @property
-        def action(self) -> c.Infra.PullRequestAction:
-            """Requested PR operation."""
-            ...
-
-        @property
-        def base(self) -> str | None:
-            """Target branch when explicitly selected."""
-            ...
-
-        @property
-        def head(self) -> str | None:
-            """Source branch when explicitly selected."""
-            ...
-
-        @property
-        def title(self) -> str | None:
-            """PR title used for creation."""
-            ...
-
-        @property
-        def body(self) -> str | None:
-            """PR body used for creation."""
-            ...
-
-        @property
-        def draft(self) -> bool:
-            """Whether creation requests a draft PR."""
-            ...
-
-    @runtime_checkable
     class WorkspaceEnvironmentRequest(Protocol):
         """Read-only workspace environment validation request."""
 
         @property
-        def workspace_root(self) -> Path:
+        def repository_root(self) -> Path:
             """Workspace whose active interpreter provenance must be validated."""
             ...
 
@@ -345,7 +325,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def dependency_cooldown_days(self) -> int:
-            """Supply-chain cooldown shared by dependency update tools."""
+            """Supply-chain cooldown for uv-resolved runtime libraries."""
             ...
 
         @property
@@ -354,13 +334,28 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def additional_python_tool_distributions(self) -> t.StrSequence:
+            """Declared tool identities uncapped by the supply-chain cooldown."""
+            ...
+
+        @property
+        def uv_environments(self) -> t.StrSequence:
+            """Marker expressions limiting the uv-resolved lock environments."""
+            ...
+
+        @property
         def dependency_cooldown_overrides(self) -> t.StrMapping:
             """Per-package cooldown cutoffs as RFC 3339 timestamps."""
             ...
 
         @property
+        def uv_constraint_dependencies(self) -> t.StrSequence:
+            """SSOT-declared [tool.uv] constraints; empty exterminates the key."""
+            ...
+
+        @property
         def uv_exclude_newer(self) -> str:
-            """Uv exclude-newer cooldown window for dependency resolution."""
+            """Uv exclude-newer window scoped away from development tools."""
             ...
 
         # `uv_exclude_newer_package` used to sit here, undocumented and with no
@@ -404,8 +399,13 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def tokei_version(self) -> str:
-            """Exact Tokei analyzer version."""
+        def scc_version(self) -> str:
+            """Exact scc code-counter version."""
+            ...
+
+        @property
+        def kubeconform_version(self) -> str:
+            """Compatible kubeconform minor line."""
             ...
 
         @property
@@ -424,23 +424,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def mise_version(self) -> str:
-            """Exact mise binary version."""
-            ...
-
-        @property
-        def mise_lock_platforms(self) -> t.StrSequence:
-            """Platforms materialized into the project mise lockfile."""
-            ...
-
-        @property
-        def beads(self) -> FlextInfraProtocolsBase.BeadsToolSpec:
-            """Official Beads CLI installed through mise."""
-            ...
-
-        @property
-        def protected_mise_tools(self) -> t.StrSequence:
-            """Toolchain field names protected from alternate distributions."""
+        def suspended_mise_selector_patterns(self) -> t.StrSequence:
+            """Selector families rejected while their capabilities are suspended."""
             ...
 
     @runtime_checkable
@@ -515,7 +500,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Contract for project discovery services."""
 
         def discover_projects(
-            self, workspace_root: Path
+            self, repository_root: Path
         ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
             """Discover projects in a workspace root."""
             ...
@@ -592,7 +577,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for dependency detection across projects."""
 
         def discover_project_paths(
-            self, workspace_root: Path, *, projects_filter: t.StrSequence | None = None
+            self, repository_root: Path, *, projects_filter: t.StrSequence | None = None
         ) -> p.Result[t.SequenceOf[Path]]:
             """Discover project paths in workspace root."""
             ...
@@ -634,7 +619,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for pip-based dependency checking."""
 
         def run_pip_check(
-            self, workspace_root: Path, venv_bin: Path
+            self, repository_root: Path, venv_bin: Path
         ) -> p.Result[t.Pair[t.StrSequence, int]]:
             """Run pip check on workspace and return results."""
             ...
@@ -700,7 +685,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def run(
             self,
-            workspace_root: Path | None = None,
+            repository_root: Path | None = None,
             *,
             output_format: str = "json",
             projects: t.SequenceOf[FlextInfraProtocolsBase.ProjectInfo] | None = None,
@@ -793,31 +778,3 @@ class FlextInfraProtocolsBase(Protocol):
         show_diff: bool
         analysis_output: Path | None
         impact_map_output: Path | None
-
-    @runtime_checkable
-    class GithubCliHandlers(Protocol):
-        """Protocol for GitHub CLI handler mixins."""
-
-        def sync_github_workflows(
-            self, params: m.Infra.GithubWorkflowSyncRequest
-        ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:
-            """Sync GitHub workflow files."""
-            ...
-
-        def lint_github_workflows(
-            self, params: m.Infra.GithubWorkflowLintRequest
-        ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
-            """Lint GitHub workflow files."""
-            ...
-
-        def run_github_pull_request(
-            self, params: m.Infra.GithubPullRequestRequest
-        ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
-            """Manage pull request for a single project."""
-            ...
-
-        def run_github_workspace_pull_requests(
-            self, params: m.Infra.GithubPullRequestWorkspaceRequest
-        ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
-            """Manage pull requests across the workspace."""
-            ...

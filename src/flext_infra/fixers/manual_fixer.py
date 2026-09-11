@@ -10,10 +10,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import m
-from flext_infra.fixers.base import FlextInfraFixerAdapter
+
+from .base import FlextInfraFixerAdapter
 
 if TYPE_CHECKING:
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
     from flext_infra import p, t
 
 
@@ -29,7 +29,7 @@ class FlextInfraManualFixerAdapter(FlextInfraFixerAdapter):
     kind: ClassVar[str] = "manual"
 
     @override
-    def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
+    def can_fix(self, fix_action: m.EnforcementFixAction) -> bool:
         """Accept every ``manual`` fix action."""
         return fix_action.kind == self.kind
 
@@ -37,7 +37,7 @@ class FlextInfraManualFixerAdapter(FlextInfraFixerAdapter):
     def fix_project(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[t.Pair[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Return previews for manual fixes; fail if apply was requested."""
@@ -87,7 +87,7 @@ class FlextInfraManualFixerAdapter(FlextInfraFixerAdapter):
 
     @staticmethod
     def _message(
-        rule: me.EnforcementRuleSpec,
+        rule: m.EnforcementRuleSpec,
         *,
         object_name: str,
         literal: str,

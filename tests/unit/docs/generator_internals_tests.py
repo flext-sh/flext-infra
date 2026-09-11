@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.docs.generator import FlextInfraDocGenerator
+import pytest
 from flext_tests import tm
+from markdown import Markdown
+
 from tests import m, u
 
 if TYPE_CHECKING:
@@ -16,6 +18,23 @@ def test_anchorize_normalizes_headings() -> None:
     tm.that(u.Infra.anchorize("Hello World"), eq="hello-world")
     tm.that(u.Infra.anchorize("Test-Case"), eq="test-case")
     tm.that(u.Infra.anchorize(""), eq="")
+
+
+@pytest.mark.parametrize(
+    "heading",
+    [
+        "Contrato p\u00fablico",
+        "Composi\u00e7\u00e3o de servi\u00e7os",
+        "\u017dlut\u00fd k\u016f\u0148",
+        "Test--Case",
+    ],
+)
+def test_anchorize_matches_rendered_markdown(heading: str) -> None:
+    """Generated links target the renderer's real Unicode-normalized heading ID."""
+    rendered = Markdown(extensions=["toc"]).convert(f"## {heading}")
+    anchor = u.Infra.anchorize(heading)
+    tm.that(rendered, has=f'id="{anchor}"')
+    tm.that(u.Infra.build_toc(f"# API\n\n## {heading}\n"), has=f"](#{anchor})")
 
 
 def test_anchorize_keeps_underscores_like_python_markdown() -> None:
@@ -98,13 +117,14 @@ def test_generated_non_markdown_preserves_exact_content(tmp_path: Path) -> None:
 
 
 def test_generate_creates_selected_project_reports(tmp_path: Path) -> None:
-    workspace = u.Tests.create_docs_workspace(
-        tmp_path, project_names=("flext-a", "flext-b")
+    workspace, generator = u.Tests.docs_workspace_generator(
+        tmp_path, project_names=("flext-a", "flext-b"), selected_projects=["flext-a"]
     )
+    _ = u.Tests.prepare_docs_bundle(generator)
 
-    result = FlextInfraDocGenerator().generate(
+    result = generator.generate(
         m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=True
+            repository_root=workspace, projects=["flext-a"], apply=False
         )
     )
 

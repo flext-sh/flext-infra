@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
 from flext_tests import tm
+
+from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
 from tests import c, u
 
 if TYPE_CHECKING:
@@ -64,7 +65,7 @@ def _create_workspace(tmp_path: Path, project_name: str) -> tuple[Path, Path, Pa
 class TestsFlextInfraCodegenVersionFile:
     def test_generates_version_file_for_project(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
-        svc = FlextInfraCodegenVersionFile.model_validate({"workspace_root": ws})
+        svc = FlextInfraCodegenVersionFile.model_validate({"repository_root": ws})
 
         result = svc.execute()
 
@@ -74,7 +75,7 @@ class TestsFlextInfraCodegenVersionFile:
 
     def test_generated_file_contains_class_name(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
-        svc = FlextInfraCodegenVersionFile.model_validate({"workspace_root": ws})
+        svc = FlextInfraCodegenVersionFile.model_validate({"repository_root": ws})
 
         svc.execute()
 
@@ -84,7 +85,7 @@ class TestsFlextInfraCodegenVersionFile:
 
     def test_generated_file_inherits_flext_version(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
-        svc = FlextInfraCodegenVersionFile.model_validate({"workspace_root": ws})
+        svc = FlextInfraCodegenVersionFile.model_validate({"repository_root": ws})
 
         svc.execute()
 
@@ -94,7 +95,7 @@ class TestsFlextInfraCodegenVersionFile:
     def test_check_only_does_not_write_file(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
         svc = FlextInfraCodegenVersionFile.model_validate({
-            "workspace_root": ws,
+            "repository_root": ws,
             "check_only": True,
         })
 
@@ -105,7 +106,7 @@ class TestsFlextInfraCodegenVersionFile:
     def test_dry_run_does_not_write_file(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
         svc = FlextInfraCodegenVersionFile.model_validate({
-            "workspace_root": ws,
+            "repository_root": ws,
             "dry_run": True,
         })
 
@@ -115,7 +116,7 @@ class TestsFlextInfraCodegenVersionFile:
 
     def test_idempotent_when_file_already_correct(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
-        svc = FlextInfraCodegenVersionFile.model_validate({"workspace_root": ws})
+        svc = FlextInfraCodegenVersionFile.model_validate({"repository_root": ws})
 
         svc.execute()
         first_content = (pkg / "__version__.py").read_text(encoding="utf-8")
@@ -157,7 +158,7 @@ class TestsFlextInfraCodegenVersionFile:
             ws, c.Tests.PROJECT_MEMBERS_BY_SCENARIO["filtered"]
         )
         svc = FlextInfraCodegenVersionFile.model_validate({
-            "workspace_root": ws,
+            "repository_root": ws,
             "project_filter": c.Tests.PROJECT_A_NAME,
         })
 
@@ -209,7 +210,7 @@ class TestsFlextInfraCodegenVersionFile:
             ),
             encoding="utf-8",
         )
-        svc = FlextInfraCodegenVersionFile.model_validate({"workspace_root": ws})
+        svc = FlextInfraCodegenVersionFile.model_validate({"repository_root": ws})
 
         result = svc.execute()
 

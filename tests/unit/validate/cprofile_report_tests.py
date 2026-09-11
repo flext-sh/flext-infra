@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-import cProfile
+import sys
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
-from flext_infra import config
+from flext_infra import config, u
 from flext_infra.services.cli_routes_validate_commands import ValidationCommandRoutes
 from flext_infra.validate.cprofile_report import FlextInfraCProfileReport
-from flext_tests import tm
 
 
 class TestsFlextInfraCProfileReport:
@@ -22,14 +22,23 @@ class TestsFlextInfraCProfileReport:
         report_dir.mkdir(parents=True)
         profile_path = report_dir / "profile.pstats"
         output_path = report_dir / "profile.txt"
-        profiler = cProfile.Profile()
-        profiler.enable()
-        _ = sum(range(10))
-        profiler.disable()
-        profiler.dump_stats(profile_path)
+        profile_target = tmp_path / "profile_target.py"
+        profile_target.write_text("_ = sum(range(10))\n", encoding="utf-8")
+        profiled = u.Cli.run_checked(
+            [
+                sys.executable,
+                "-m",
+                "cProfile",
+                "-o",
+                str(profile_path),
+                str(profile_target),
+            ],
+            cwd=tmp_path,
+        )
+        tm.ok(profiled)
 
         result = FlextInfraCProfileReport(
-            workspace_root=tmp_path,
+            repository_root=tmp_path,
             profile=profile_path,
             output=output_path,
             sort=policy.profile_sort,
@@ -54,7 +63,7 @@ class TestsFlextInfraCProfileReport:
 
         with pytest.raises(ValueError, match="cProfile path must stay under"):
             FlextInfraCProfileReport(
-                workspace_root=tmp_path,
+                repository_root=tmp_path,
                 profile=tmp_path / "outside.pstats",
                 output=tmp_path / "outside.txt",
                 sort=policy.profile_sort,

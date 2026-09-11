@@ -5,17 +5,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import m, u
-from flext_infra.refactor._census_rules_dispatch import (
-    FlextInfraRefactorCensusRulesDispatchMixin,
-)
-from flext_infra.refactor._census_validate import FlextInfraRefactorCensusValidateMixin
+
+from ._census_rules_dispatch import FlextInfraRefactorCensusRulesDispatchMixin
+from ._census_validate import FlextInfraRefactorCensusValidateMixin
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import p, t
 
-_ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
+_ROPE_SAFE_EXCEPTIONS: t.VariadicTuple[type[BaseException]] = (
     *u.Infra.rope_runtime_errors(),
     *u.Infra.rope_error_types(),
     RecursionError,
@@ -53,17 +52,17 @@ class FlextInfraRefactorCensusCollectMixin(
         ) -> bool: ...
         @staticmethod
         def _duplicate_groups(
-            project_objects: tuple[list[m.Infra.Census.Object], ...],
-        ) -> tuple[m.Infra.Census.DuplicateGroup, ...]: ...
+            project_objects: t.VariadicTuple[t.SequenceOf[m.Infra.Census.Object]],
+        ) -> t.VariadicTuple[m.Infra.Census.DuplicateGroup]: ...
         @staticmethod
         def _object_key(item: m.Infra.Census.Object) -> str: ...
         def _project_report(
             self,
             project: str,
             *,
-            objects: tuple[m.Infra.Census.Object, ...],
-            seed_violations: tuple[m.Infra.Census.Violation, ...],
-            fixes: tuple[m.Infra.Census.Fix, ...],
+            objects: t.VariadicTuple[m.Infra.Census.Object],
+            seed_violations: t.VariadicTuple[m.Infra.Census.Violation],
+            fixes: t.VariadicTuple[m.Infra.Census.Fix],
             duplicate_keys: frozenset[str],
             rule_names: t.StrSequence | None,
             selected_rules: frozenset[str] | None = None,
@@ -75,9 +74,11 @@ class FlextInfraRefactorCensusCollectMixin(
         module: m.Infra.RopeModuleIndexEntry,
         config: m.Infra.Census.ScanConfig,
         *,
-        project_objects: dict[str, list[m.Infra.Census.Object]],
-        project_violations: dict[str, list[m.Infra.Census.Violation]],
-        project_fixes: dict[str, list[m.Infra.Census.Fix]],
+        project_objects: t.MappingKV[str, t.MutableSequenceOf[m.Infra.Census.Object]],
+        project_violations: t.MappingKV[
+            str, t.MutableSequenceOf[m.Infra.Census.Violation]
+        ],
+        project_fixes: t.MappingKV[str, t.MutableSequenceOf[m.Infra.Census.Fix]],
         report_projects: set[str],
     ) -> None:
         """Scan one module, accumulating objects/violations/fixes per project."""
@@ -85,8 +86,9 @@ class FlextInfraRefactorCensusCollectMixin(
         project = self._project_name_for_module(module, convention)
         if not project:
             return
-        module_objects: tuple[m.Infra.Census.Object, ...] | None = None
-        objects: tuple[m.Infra.Census.Object, ...] = ()
+        module_objects: t.VariadicTuple[m.Infra.Census.Object] | None = None
+        objects: t.VariadicTuple[m.Infra.Census.Object] = ()
+        inventory_failed = False
         if config.collect_object_inventory:
             try:
                 module_objects = tuple(
@@ -100,21 +102,24 @@ class FlextInfraRefactorCensusCollectMixin(
                 self._handle_rope_stage_failure(
                     file_path=module.file_path, stage="inventory", exc=exc
                 )
-                return
-            objects = tuple(
-                item
-                for item in module_objects
-                if self._include_object(
-                    item,
-                    kind_names=config.kind_names,
-                    selected_families=config.selected_families,
-                    selected_kinds=config.selected_kinds,
+                inventory_failed = True
+            else:
+                objects = tuple(
+                    item
+                    for item in module_objects
+                    if self._include_object(
+                        item,
+                        kind_names=config.kind_names,
+                        selected_families=config.selected_families,
+                        selected_kinds=config.selected_kinds,
+                    )
                 )
-            )
-            if objects:
-                project_objects[project].extend(objects)
+                if objects:
+                    project_objects[project].extend(objects)
         if objects:
             report_projects.add(project)
+        if inventory_failed:
+            return
         try:
             violations, fixes = self._module_rules(
                 rope,
@@ -132,20 +137,20 @@ class FlextInfraRefactorCensusCollectMixin(
             self._handle_rope_stage_failure(
                 file_path=module.file_path, stage="rules", exc=exc
             )
-            return
-        report_projects.add(project)
-        if not objects and not violations and not fixes:
-            return
-        project_violations[project].extend(violations)
-        project_fixes[project].extend(fixes)
+        else:
+            report_projects.add(project)
+            if not objects and not violations and not fixes:
+                return
+            project_violations[project].extend(violations)
+            project_fixes[project].extend(fixes)
 
     def _assemble_report(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
         *,
-        project_objects: dict[str, list[m.Infra.Census.Object]],
-        project_violations: dict[str, list[m.Infra.Census.Violation]],
-        project_fixes: dict[str, list[m.Infra.Census.Fix]],
+        project_objects: t.MappingKV[str, t.SequenceOf[m.Infra.Census.Object]],
+        project_violations: t.MappingKV[str, t.SequenceOf[m.Infra.Census.Violation]],
+        project_fixes: t.MappingKV[str, t.SequenceOf[m.Infra.Census.Fix]],
         report_projects: set[str],
         rule_names: t.StrSequence | None,
         selected_rules: frozenset[str] | None,

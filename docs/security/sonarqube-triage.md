@@ -34,7 +34,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Change this code to not construct the path from user-controlled data.
 
-```python
+```text
       157                  continue
       158              rewritten = FlextInfraUtilitiesRefactorNamespaceFlext.insert_import_lines(
       159                  lines=lines, imports=["", c.Infra.FUTURE_ANNOTATIONS, ""]
@@ -53,7 +53,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Change this code to not construct the path from user-controlled data.
 
-```python
+```text
       267                  )
       268                  updated_lines[all_index : end_index + 1] = [all_line]
       269              updated_source = "\n".join(updated_lines).rstrip() + "\n"
@@ -71,7 +71,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Change this code to not construct the path from user-controlled data.
 
-```python
+```text
       933                      backup_path = py_file.with_suffix(
       934                          py_file.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX
       935                      )
@@ -90,7 +90,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Change this code to not construct the path from user-controlled data.
 
-```python
+```text
       444              if (
       445                  file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
       446                  != original_disk_source
@@ -109,7 +109,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Change this code to not construct the path from user-controlled data.
 
-```python
+```text
       108                      return r[str].fail(
       109                          f"immutable release policy collision: {destination}"
       110                      )
@@ -128,7 +128,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Rename method "_banned_modules" to prevent any misunderstanding/clash with field "_BANNED_MODULES" defined on line 35
 
-```python
+```text
        72  
        73          return updated, list(self.changes)
        74  
@@ -147,7 +147,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Rename method "_cli_pkg" to prevent any misunderstanding/clash with field "_CLI_PKG" defined on line 34
 
-```python
+```text
        77          """Return the set of CLI helper modules whose imports are removed."""
        78          return FlextInfraRefactorCliModernizer._BANNED_MODULES
        79  
@@ -166,7 +166,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Rename method "_manual_attrs" to prevent any misunderstanding/clash with field "_MANUAL_ATTRS" defined on line 42
 
-```python
+```text
        82          """Return the canonical FLEXT CLI package name."""
        83          return FlextInfraRefactorCliModernizer._CLI_PKG
        84  
@@ -185,7 +185,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this method to not always return the same value.
 
-```python
+```text
       149      def leave_If(self, original_node: cst.If) -> None:
       150          self._leave_if()
       151  
@@ -489,7 +489,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "cli.read_json_file / cli.write_json_file / u.Cli.json_dumps" 3 times.
 
-```python
+```text
       110          "colorama": "cli.print with c.Cli.MessageStyles",
       111          "prompt_toolkit": "cli.prompt / cli.confirm / cli.prompt_password",
       112          "tqdm": "cli.display_progress",
@@ -508,7 +508,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "{file}" 4 times.
 
-```python
+```text
        78      )
        79      "Regex: malformed ``from import`` statement (missing module name)."
        80  
@@ -527,7 +527,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "Config version" 3 times.
 
-```python
+```text
       394  
       395      class ConstantsGovernanceConfig(m.ArbitraryTypesModel):
       396          """Constants governance config."""
@@ -546,7 +546,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "Generated module docstring." 3 times.
 
-```python
+```text
        22  
        23          class_name: t.NonEmptyStr = m.Field(description="Generated class name.")
        24          base_class: t.NonEmptyStr = m.Field(description="Generated base class name.")
@@ -565,7 +565,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "Operation kind" 3 times.
 
-```python
+```text
        27                  """Set one TOML key to one JSON-compatible value."""
        28  
        29                  kind: Literal[c.Infra.TomlOperationKind.SET] = m.Field(
@@ -584,7 +584,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
       159              m.Field(description="Trusted Gitleaks policy SHA-256"),
       160          ]
       161  
@@ -603,7 +603,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 28 to the 15 allowed.
 
-```python
+```text
        64          return component
        65      return urlencode(out)
        66  
@@ -622,7 +622,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 32 to the 15 allowed.
 
-```python
+```text
       141              return r[Path].fail(str(exc))
       142          return r[Path].ok(Path(top_level).resolve())
       143  
@@ -641,7 +641,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed.
 
-```python
+```text
       431          """Return whether a relative path belongs to an excluded subtree."""
       432          return any(path == prefix or prefix in path.parents for prefix in excluded)
       433  
@@ -660,7 +660,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
       723                  added.append(current)
       724          return tuple(added)
       725  
@@ -679,7 +679,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "invalid pull-request create request" 3 times.
 
-```python
+```text
        65          validation = FlextInfraUtilitiesGithubPrExecutionMixin._validate_github_pr_create_request(
        66              request
        67          )
@@ -698,15 +698,15 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed.
 
-```python
+```text
        27  ):
        28      """Private candidate enumeration for workspace project discovery."""
        29  
        30      @classmethod
->>>    31      def discover_external_workspace_roots(
-       32          cls, workspace_root: Path, *, scan_dirs: frozenset[str] | None = None
+>>>    31      def discover_external_repository_roots(
+       32          cls, repository_root: Path, *, scan_dirs: frozenset[str] | None = None
        33      ) -> t.SequenceOf[Path]:
-       34          """Return explicitly configured workspace roots outside ``workspace_root``.
+       34          """Return explicitly configured workspace roots outside ``repository_root``.
        35  
 ```
 
@@ -717,14 +717,14 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
       117              seen.add(resolved_candidate)
       118          return tuple(roots)
       119  
       120      @classmethod
 >>>   121      def discover_project_candidates(
       122          cls,
-      123          workspace_root: Path,
+      123          repository_root: Path,
       124          *,
       125          scan_dirs: frozenset[str] | None = None,
 ```
@@ -736,7 +736,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 32 to the 15 allowed.
 
-```python
+```text
        48  
        49      _applied: ClassVar[bool] = False
        50  
@@ -755,7 +755,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed.
 
-```python
+```text
        70                  line
        71              )
        72  
@@ -774,7 +774,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
 
-```python
+```text
       177              planned_ranges.append(occurrence_range)
       178          return FlextInfraUtilitiesRefactorCensus.merge_line_ranges(planned_ranges)
       179  
@@ -793,7 +793,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed.
 
-```python
+```text
       325              )
       326          return updates
       327  
@@ -812,7 +812,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
       394          """Return whether ``line`` falls inside any removed range."""
       395          return any(start <= line <= end for start, end in removed_ranges)
       396  
@@ -831,7 +831,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "class " 3 times.
 
-```python
+```text
       477          index = 0
       478          changed = False
       479          while index < len(rewritten_lines):
@@ -850,7 +850,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
       555          ])
       556          return rewritten, True, False
       557  
@@ -869,7 +869,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 52 to the 15 allowed.
 
-```python
+```text
        47          normalized_version = version.strip()
        48          return f">={normalized_version}" if normalized_version else ""
        49  
@@ -888,7 +888,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 29 to the 15 allowed.
 
-```python
+```text
        88                              result = dict(versions)
        89          return result
        90  
@@ -907,7 +907,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
 
-```python
+```text
       124                              result = rewritten if rewritten != raw_text else None
       125          return result
       126  
@@ -926,13 +926,13 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
       272              return project_root
       273          return resolved_root
       274  
       275      @staticmethod
 >>>   276      def find_all_pyproject_files(
-      277          workspace_root: Path,
+      277          repository_root: Path,
       278          *,
       279          skip_dirs: frozenset[str] | None = None,
       280          project_paths: t.SequenceOf[Path] | None = None,
@@ -945,7 +945,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
       134              return f"{package_name}{module_name}"
       135          return module_name
       136  
@@ -964,7 +964,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 33 to the 15 allowed.
 
-```python
+```text
       113              names.update(item for item in value if isinstance(item, str))
       114          return names
       115  
@@ -983,7 +983,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "docs/api-reference/generated/overview.md" 4 times.
 
-```python
+```text
        56              scope.path, scope.package_name
        57          )
        58          module_names = FlextInfraUtilitiesDocsGenerate._module_names(contract)
@@ -1002,7 +1002,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "mkdocs.yml" 3 times.
 
-```python
+```text
        82                  FlextInfraUtilitiesDocsRender.docs_api_readme(scope, contract),
        83                  apply=apply,
        84              ),
@@ -1021,7 +1021,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "docs/api-reference/generated" 4 times.
 
-```python
+```text
       126                  )
       127              )
       128          files.extend(
@@ -1040,7 +1040,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "AGENTS.md" 3 times.
 
-```python
+```text
       212          other boilerplate helpers but is intentionally unused.
       213          """
       214          _ = scope
@@ -1059,7 +1059,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "_not declared_" 3 times.
 
-```python
+```text
       271      def docs_project_index(scope: m.Infra.DocScope, contract: t.JsonMapping) -> str:
       272          """Return the standard ``<project>/docs/index.md`` landing page."""
       273          data = contract
@@ -1078,7 +1078,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed.
 
-```python
+```text
        97          context.outcomes.append(outcome)
        98          return r[m.Infra.GithubPullRequestOutcome].ok(outcome)
        99  
@@ -1097,7 +1097,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
        17  class FlextInfraUtilitiesRefactorFlextScan:
        18      """Scan project sources for declarations movable into FLEXT facade classes."""
        19  
@@ -1105,7 +1105,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 >>>    21      def scan_workspace(
        22          cls,
        23          *,
-       24          workspace_root: Path,
+       24          repository_root: Path,
        25          target: str,
 ```
 
@@ -1116,7 +1116,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
        21  ):
        22      """Helpers for FLEXT completeness and future-import rewrites."""
        23  
@@ -1135,7 +1135,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
        30  class FlextInfraUtilitiesRefactorNamespaceMoves:
        31      """Helpers for block moves and compatibility-alias rewrites."""
        32  
@@ -1154,7 +1154,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "rope import cleanup failed" 5 times.
 
-```python
+```text
        80                      file_paths=(file_path,),
        81                      preserve_canonical_aliases=True,
        82                  )
@@ -1173,7 +1173,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 30 to the 15 allowed.
 
-```python
+```text
       531              raise RuntimeError(msg)
       532          return (source_file, target_file, tuple(moved))
       533  
@@ -1192,7 +1192,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed.
 
-```python
+```text
       827              f"from {c.Infra.PKG_CORE_UNDERSCORE} import {', '.join(missing_aliases)}"
       828          ]
       829  
@@ -1211,7 +1211,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed.
 
-```python
+```text
       869              )
       870          return import_lines
       871  
@@ -1230,7 +1230,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed.
 
-```python
+```text
       139              raise ValueError(msg)
       140          return raw_name.strip()
       141  
@@ -1249,7 +1249,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "pyproject content must define [project]" 3 times.
 
-```python
+```text
        39          if source is None:
        40              return r[str].fail("pyproject content is not valid TOML")
        41          project = u.Cli.toml_table_child(source, c.Infra.PROJECT)
@@ -1268,7 +1268,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "uv source conformance failed" 3 times.
 
-```python
+```text
        78              exclude_newer=toolchain.uv_exclude_newer,
        79              exclude_dependencies=uv_exclude_dependencies,
        80          )
@@ -1287,7 +1287,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
        96              return r[str].fail("canonical pyproject rendering produced invalid TOML")
        97          return r[str].ok(rendered)
        98  
@@ -1306,7 +1306,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
 
-```python
+```text
       273          u.Cli.toml_sync_string_list(container, key, canonical)
       274          return r[bool].ok(True)
       275  
@@ -1325,7 +1325,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 37 to the 15 allowed.
 
-```python
+```text
       544              )
       545          return r[bool].ok(True)
       546  
@@ -1344,7 +1344,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed.
 
-```python
+```text
       739                  )
       740          return r[bool].ok(True)
       741  
@@ -1363,7 +1363,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "# Changelog\n\n" 3 times.
 
-```python
+```text
       111          notes_text = notes_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
       112          existing = (
       113              changelog_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
@@ -1382,7 +1382,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
       177          """Return a superclass name from Rope objects with uneven public APIs."""
       178          return FlextInfraUtilitiesRopeAnalysis._superclass_name(superclass)
       179  
@@ -1401,7 +1401,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
       974                  break
       975          return "\n".join(collected)
       976  
@@ -1420,7 +1420,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed.
 
-```python
+```text
      1002                  depth -= 1
      1003          return depth
      1004  
@@ -1439,7 +1439,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed.
 
-```python
+```text
      1040              parts.append(tail)
      1041          return tuple(parts)
      1042  
@@ -1458,7 +1458,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed.
 
-```python
+```text
      1148                  source[open_index + 1 : close_index]
      1149              )
      1150  
@@ -1477,7 +1477,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed.
 
-```python
+```text
      1195                  return value
      1196          return ""
      1197  
@@ -1496,7 +1496,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal " import " 3 times.
 
-```python
+```text
      1282          lines = source.splitlines()
      1283          bindings: list[tuple[str, int, str, str]] = []
      1284          for index, line in enumerate(lines):
@@ -1515,7 +1515,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 32 to the 15 allowed.
 
-```python
+```text
      1352                  names.append(name)
      1353          return names
      1354  
@@ -1534,7 +1534,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
      1473                      stack.append(value)
      1474          return collected
      1475  
@@ -1553,7 +1553,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed.
 
-```python
+```text
      1835              rope_project.close()
      1836          return target_map
      1837  
@@ -1572,7 +1572,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed.
 
-```python
+```text
        95              )
        96          )
        97  
@@ -1591,16 +1591,16 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed.
 
-```python
+```text
       167              package_dirs,
       168          )
       169  
       170      @classmethod
 >>>   171      def index_rope_workspace(
-      172          cls, rope_project: t.Infra.RopeProject, workspace_root: Path
+      172          cls, rope_project: t.Infra.RopeProject, repository_root: Path
       173      ) -> m.Infra.RopeWorkspaceIndex:
       174          """Build a generic Rope workspace index for package-oriented planning."""
-      175          resolved_root = workspace_root.resolve()
+      175          resolved_root = repository_root.resolve()
 ```
 
 **Decisão**:
@@ -1610,7 +1610,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed.
 
-```python
+```text
        59          if hook not in cls._post_hooks:
        60              cls._post_hooks.append(hook)
        61  
@@ -1629,7 +1629,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
       151          updated_source: str = pattern.sub("", source, count=1)
       152          return updated_source
       153  
@@ -1648,7 +1648,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 27 to the 15 allowed.
 
-```python
+```text
       111              return Path(path)
       112          return None
       113  
@@ -1667,7 +1667,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed.
 
-```python
+```text
       220              rope_project.do(changes)
       221          return r[bool].ok(changed)
       222  
@@ -1686,7 +1686,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 27 to the 15 allowed.
 
-```python
+```text
       286              return r[bool].fail(format_result.error or "ruff format failed")
       287          return r[bool].ok(rope_changed)
       288  
@@ -1705,7 +1705,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 38 to the 15 allowed.
 
-```python
+```text
       368                  )
       369          return r[frozenset[str]].ok(frozenset(referenced))
       370  
@@ -1724,7 +1724,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
 
-```python
+```text
       527              resource.write(updated_source)
       528          return updated_source
       529  
@@ -1743,7 +1743,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 44 to the 15 allowed.
 
-```python
+```text
       638              return source
       639          return rewritten_source
       640  
@@ -1762,7 +1762,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 29 to the 15 allowed.
 
-```python
+```text
       787              resource.write(updated)
       788          return updated
       789  
@@ -1781,7 +1781,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 28 to the 15 allowed.
 
-```python
+```text
       307          validated_scope: p.Infra.RopeScopeDsl = candidate
       308          return validated_scope
       309  
@@ -1800,7 +1800,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 30 to the 15 allowed.
 
-```python
+```text
       351                  result = "assignment"
       352          return result
       353  
@@ -1819,7 +1819,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 28 to the 15 allowed.
 
-```python
+```text
       468              script_reference_sites.extend(fallback_script_reference_sites)
       469          return (tuple(runtime_reference_sites), tuple(script_reference_sites))
       470  
@@ -1838,7 +1838,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
        19  class FlextInfraUtilitiesRopeFlextTransform:
        20      """Move module-level constants into the constants facade class."""
        21  
@@ -1857,7 +1857,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "rope.base.exceptions" 5 times.
 
-```python
+```text
        93      def rope_syntax_errors(cls) -> tuple[type[BaseException], ...]:
        94          """Return exceptions that signal unparseable Python source."""
        95          return (
@@ -1876,7 +1876,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed.
 
-```python
+```text
        50              and "-" not in entry.name
        51          ]
        52  
@@ -1895,7 +1895,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed.
 
-```python
+```text
       107              project_name=ctx.project_name,
       108          )
       109  
@@ -1914,7 +1914,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
       165                          violations = (*violations, violation)
       166          return violations
       167  
@@ -1933,7 +1933,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed.
 
-```python
+```text
       437              else c.Infra.StatementCategory.OTHER
       438          )
       439  
@@ -1952,7 +1952,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
        32          if primary.failure:
        33              return r[Path].fail(primary.error or "failed to resolve primary worktree")
        34          return r[Path].ok(primary.value.primary_root)
@@ -1971,7 +1971,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
        94      @staticmethod
        95      def _branch_name(kind: c.Infra.WorkKind, slug: str) -> str:
        96          return f"{kind.value}/{slug}"
@@ -1990,7 +1990,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 39 to the 15 allowed.
 
-```python
+```text
        18      """Finish step for the public work saga."""
        19  
        20      apply_changes: bool
@@ -2009,7 +2009,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
       118          )
       119          return r.ok(f"FINISHED BRANCH={branch} WORKTREE={worktree}\n{receipt}")
       120  
@@ -2028,7 +2028,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 53 to the 15 allowed.
 
-```python
+```text
        42          if not rows:
        43              return r.fail(f"no open PR for head {branch}")
        44          return r.ok((str(rows[0].get("number", "")), str(rows[0].get("url", ""))))
@@ -2047,7 +2047,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 30 to the 15 allowed.
 
-```python
+```text
        53                  f"{removed.error or 'unknown worktree removal failure'}"
        54              )
        55          return f"{reason}; lane {branch} rolled back"
@@ -2066,7 +2066,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 28 to the 15 allowed.
 
-```python
+```text
       156              f"LANE_ID={bead} BRANCH={branch} WORKTREE={lane} "
       157              f"BASE={base.value} HEAD={head.value}\n{receipt}"
       158          )
@@ -2085,7 +2085,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed.
 
-```python
+```text
        62          except OSError as exc:
        63              return r[bytes].fail(f"workspace fingerprint read failed for {path}: {exc}")
        64  
@@ -2104,14 +2104,14 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 37 to the 15 allowed.
 
-```python
+```text
        81          )
        82          return r[t.SequenceOf[Path]].ok(paths)
        83  
        84      @classmethod
 >>>    85      def _create_complete_worktree(
        86          cls,
-       87          workspace_root: Path,
+       87          repository_root: Path,
        88          worktree_root: Path,
        89          transaction_id: str,
 ```
@@ -2123,7 +2123,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed.
 
-```python
+```text
       739              )
       740          return report_result
       741  
@@ -2142,7 +2142,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
       226      # ------------------------------------------------------------------
       227      # Pipeline stage helpers
       228      # ------------------------------------------------------------------
@@ -2161,9 +2161,9 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed.
 
-```python
+```text
        30      if TYPE_CHECKING:
-       31          workspace_root: Path
+       31          repository_root: Path
        32          _modified_files: t.Infra.StrSet
        33  
 >>>    34      def _generate_all_inits(
@@ -2180,7 +2180,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 32 to the 15 allowed.
 
-```python
+```text
        34              )
        35              return -1
        36          return 0
@@ -2199,7 +2199,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
       103                  # flext-pulj (codex): the generated root TYPE_CHECKING contract
       104                  # makes the public package itself the single inherited owner.
       105                  lazy_map[alias_name] = (package_name, alias_name)
@@ -2218,7 +2218,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
        26  
        27          @staticmethod
        28          def _publish(name: str, *, allow_main: bool) -> bool: ...
@@ -2237,7 +2237,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 27 to the 15 allowed.
 
-```python
+```text
        36  
        37          @staticmethod
        38          def _publish(name: str, *, allow_main: bool) -> bool: ...
@@ -2256,7 +2256,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 35 to the 15 allowed.
 
-```python
+```text
        92          )
        93          return service.execute()
        94  
@@ -2264,7 +2264,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 >>>    96      def execute(self) -> p.Result[m.Infra.CodegenResult]:
        97          """Run check or apply and require a verified fixed point."""
        98          request = self.request or m.Infra.CodegenConformRequest(
-       99              root=self.workspace_root
+       99              root=self.repository_root
       100          )
 ```
 
@@ -2275,7 +2275,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 58 to the 15 allowed.
 
-```python
+```text
       198          return r[m.Infra.CodegenResult].ok(
       199              m.Infra.CodegenResult(plan=verified_plan, written_files=tuple(written))
       200          )
@@ -2294,7 +2294,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 55 to the 15 allowed.
 
-```python
+```text
       475              )
       476          )
       477  
@@ -2313,7 +2313,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal ".github" 3 times.
 
-```python
+```text
       526                  if profile not in allowed:
       527                      # Why: profile-excluded managed workflows must not survive as
       528                      # "keep current" ghosts (ci-matrix on workspace projects).
@@ -2332,7 +2332,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
 
-```python
+```text
       649              codegen, profile=profile, project_name=project_name, workspace=workspace
       650          )
       651  
@@ -2351,7 +2351,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 85 to the 15 allowed.
 
-```python
+```text
       784              for directory in config.Infra.tooling.tools.pyright.path_rules.env_dirs
       785              if directory in generated_roots
       786          )
@@ -2370,7 +2370,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 32 to the 15 allowed.
 
-```python
+```text
      1035              )
      1036          planned.append(pyproject_plan.value)
      1037          return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
@@ -2379,7 +2379,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
      1040          self,
      1041          *,
      1042          root: Path,
-     1043          workspace_root: Path,
+     1043          repository_root: Path,
 ```
 
 **Decisão**:
@@ -2389,7 +2389,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 67 to the 15 allowed.
 
-```python
+```text
      1192                  )
      1193              planned.extend(custom_result.value)
      1194          return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
@@ -2408,7 +2408,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 30 to the 15 allowed.
 
-```python
+```text
      1363              changed=True,
      1364              absent=True,
      1365          )
@@ -2427,10 +2427,10 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 36 to the 15 allowed.
 
-```python
-     1560          workspace_root_rel = FlextInfraCodegenConform._workspace_root_rel(workspace)
+```text
+     1560          repository_root_rel = FlextInfraCodegenConform._repository_root_rel(workspace)
      1561          local_path: Path = local.path
-     1562          return (Path(workspace_root_rel) / local_path).as_posix()
+     1562          return (Path(repository_root_rel) / local_path).as_posix()
      1563  
 >>>  1564      def _artifact_render_context(
      1565          self,
@@ -2446,7 +2446,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "infrastructure CLI repository resolution failed" 3 times.
 
-```python
+```text
      1684              infra_repository = self._infra_repository(workspace)
      1685              if infra_repository.failure:
      1686                  return r[p.Model].fail(
@@ -2465,7 +2465,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "infrastructure provider resolution failed" 3 times.
 
-```python
+```text
      1689                  )
      1690              infra_provider = self._repository_provider(infra_repository.value, codegen)
      1691              if infra_provider.failure:
@@ -2484,7 +2484,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "managed Gitlink resolution failed" 3 times.
 
-```python
+```text
      1694                  )
      1695              gitlinks = self._managed_gitlinks(workspace, codegen)
      1696              if gitlinks.failure:
@@ -2503,7 +2503,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
 
-```python
+```text
      1829              )
      1830          )
      1831  
@@ -2522,7 +2522,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 51 to the 15 allowed.
 
-```python
+```text
      2074              ),
      2075          ))
      2076  
@@ -2541,7 +2541,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 69 to the 15 allowed.
 
-```python
+```text
      2203              for pattern in patterns
      2204          )
      2205  
@@ -2560,7 +2560,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "config.yaml" 3 times.
 
-```python
+```text
      2535          rejecting the declared one inverted the SSOT. The file is parsed at
      2536          this boundary into a validated model — absence and an invalid payload
      2537          are failures the caller decides about, never a substituted string.
@@ -2579,7 +2579,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal ".beads" 4 times.
 
-```python
+```text
      2535          rejecting the declared one inverted the SSOT. The file is parsed at
      2536          this boundary into a validated model — absence and an invalid payload
      2537          are failures the caller decides about, never a substituted string.
@@ -2598,7 +2598,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 27 to the 15 allowed.
 
-```python
+```text
      2571              return prefix.strip()
      2572          return fallback
      2573  
@@ -2617,7 +2617,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 31 to the 15 allowed.
 
-```python
+```text
        22          m.Field(alias="project", description="Single project to consolidate"),
        23      ] = None
        24  
@@ -2636,7 +2636,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
        29          str | None, m.Field(alias="project", description="Single project to conform")
        30      ] = None
        31  
@@ -2655,7 +2655,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed.
 
-```python
+```text
       232          )
       233          return 1
       234  
@@ -2674,7 +2674,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed.
 
-```python
+```text
        12  
        13      _TOML_SECTION_RE = re.compile(r"^\s*\[([^\[\]]+)\]\s*(?:#.*)?$")
        14  
@@ -2693,7 +2693,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed.
 
-```python
+```text
        33          """Execute ``py.typed`` synchronization from the validated CLI model."""
        34          self.run(check_only=self.check_only)
        35          return r[bool].ok(True)
@@ -2712,7 +2712,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 32 to the 15 allowed.
 
-```python
+```text
        38      workspace project list. No manual directory iteration.
        39      """
        40  
@@ -2731,7 +2731,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed.
 
-```python
+```text
       132              tuple(lines),
       133          ))
       134  
@@ -2750,7 +2750,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 34 to the 15 allowed.
 
-```python
+```text
        43          _ = cmd, cwd, timeout, env
        44          msg = "_run_raw must be implemented by the concrete analyzer"
        45          raise NotImplementedError(msg)
@@ -2769,7 +2769,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed.
 
-```python
+```text
       147                      write_result.error or f"failed to write {pyproject_path}"
       148                  )
       149          return r[bool].ok(bool(changes))
@@ -2788,7 +2788,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed.
 
-```python
+```text
        69                  f"{location}.{dependency_name}: {current_value!r} -> {rewritten_value!r}"
        70              )
        71          return tuple(changes)
@@ -2807,7 +2807,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
       185                  value.strip() == c.Infra.MakeProfile.WORKSPACE.value
       186              )
       187          return r[bool].ok(False)
@@ -2826,7 +2826,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 88 to the 15 allowed.
 
-```python
+```text
        72              skip_comments=skip_comments,
        73              rewrite_constraints=False,
        74          )
@@ -2845,7 +2845,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
 
-```python
+```text
        48              return self.runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
        49          return u.Cli.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
        50  
@@ -2864,7 +2864,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed.
 
-```python
+```text
        32              normalized[key] = converted
        33          return normalized
        34  
@@ -2883,7 +2883,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
 
-```python
+```text
        32          self._workspace_report_factory = workspace_report_factory
        33          self._dependency_limits_factory = dependency_limits_factory
        34          self._pip_check_factory = pip_check_factory
@@ -2902,7 +2902,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 28 to the 15 allowed.
 
-```python
+```text
        48          if fix_result.failure:
        49              return r[bool].fail(fix_result.error or "pyrefly config fix failed")
        50          return r[bool].ok(True)
@@ -2921,7 +2921,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed.
 
-```python
+```text
       118                      write_result.error or f"failed to write {path}"
       119                  )
       120          return r[t.StrSequence].ok(all_fixes)
@@ -2940,7 +2940,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 36 to the 15 allowed.
 
-```python
+```text
        97                  changes[0] if changes else f"pyproject tooling render failed: {path}"
        98              )
        99          return r[str].ok(state.rendered)
@@ -2959,7 +2959,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed.
 
-```python
+```text
         7  
         8  class FlextInfraConsolidateGroupsPhase:
         9      """Consolidate optional-dependencies and Poetry groups into single dev group."""
@@ -2978,7 +2978,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed.
 
-```python
+```text
        71              deptry["pep621_dev_dependency_groups"] = u.Cli.toml_array([c.Infra.DEV])
        72              changes.append("tool.deptry.pep621_dev_dependency_groups set to ['dev']")
        73          return changes
@@ -2997,7 +2997,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 32 to the 15 allowed.
 
-```python
+```text
       374              for env_dir in u.Infra.discover_python_dirs(child_project):
       375                  includes.append((relative_root / env_dir).as_posix())
       376          return includes
@@ -3006,7 +3006,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       379          self,
       380          *,
       381          is_root: bool,
-      382          workspace_root: Path | None = None,
+      382          repository_root: Path | None = None,
 ```
 
 **Decisão**:
@@ -3016,7 +3016,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed.
 
-```python
+```text
        85                  return marker
        86          return None
        87  
@@ -3035,7 +3035,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
       317              name=target_name, line=line if isinstance(line, int) and line > 0 else 1
       318          )
       319  
@@ -3054,7 +3054,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 36 to the 15 allowed.
 
-```python
+```text
        38              return "rewrite_foreign_canonical_alias"
        39          return "rewrite_compatibility_alias"
        40  
@@ -3073,7 +3073,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed.
 
-```python
+```text
       137          )
       138          return violations
       139  
@@ -3092,7 +3092,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed.
 
-```python
+```text
        19  class FlextInfraCyclicImportDetector:
        20      """Detect cyclic imports at project level via rope semantic import resolution."""
        21  
@@ -3111,7 +3111,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 57 to the 15 allowed.
 
-```python
+```text
        30              return "rewrite_library_abstraction"
        31          return "manual"
        32  
@@ -3130,7 +3130,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 28 to the 15 allowed.
 
-```python
+```text
        18  class FlextInfraLooseObjectDetector:
        19      """Detect loose top-level objects outside namespace classes via rope."""
        20  
@@ -3149,7 +3149,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed.
 
-```python
+```text
        17  class RetiredCompositionDetector:
        18      """Detect facade classes missing FLEXT bases via rope."""
        19  
@@ -3168,7 +3168,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
       430              if (base_name := u.Infra.class_base_name(base))
       431          )
       432  
@@ -3187,7 +3187,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
       449                      stack.append(value)
       450          return parent_map
       451  
@@ -3206,7 +3206,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 35 to the 15 allowed.
 
-```python
+```text
       496                      return False
       497          return True
       498  
@@ -3225,7 +3225,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 45 to the 15 allowed.
 
-```python
+```text
        17  class FlextInfraNamespaceSourceDetector:
        18      """Detect alias imports from wrong source packages."""
        19  
@@ -3244,7 +3244,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed.
 
-```python
+```text
        17  class FlextInfraRuntimeAliasDetector:
        18      """Detect missing/duplicate runtime aliases (e.g. m = FlextFooModels) via rope."""
        19  
@@ -3263,7 +3263,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed.
 
-```python
+```text
       152              else discovered
       153          )
       154          return r[t.SequenceOf[p.Infra.ProjectInfo]].ok(selected)
@@ -3282,7 +3282,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
       160          module_path = Path(*module_name.split(".")).with_suffix(".py")
       161          return project_root / src_dir / module_path
       162  
@@ -3301,7 +3301,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "no files in violation batch" 3 times.
 
-```python
+```text
       254                  skipped=(
       255                      m.Infra.SkippedViolation(
       256                          rule_id=rule_id,
@@ -3310,7 +3310,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       259                      ),
       260                  ),
       261              )
-      262          with u.Infra.open_project(self._workspace_root) as rope_project:
+      262          with u.Infra.open_project(self._repository_root) as rope_project:
 ```
 
 **Decisão**:
@@ -3320,7 +3320,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "rope resource not found" 3 times.
 
-```python
+```text
       343                      skipped.append(
       344                          m.Infra.SkippedViolation(
       345                              rule_id=rule_id,
@@ -3339,7 +3339,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed.
 
-```python
+```text
       630              target_action="hoist_inline_import",
       631              empty_reason="no hoistable inline imports",
       632          )
@@ -3358,7 +3358,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed.
 
-```python
+```text
       818                  continue
       819              unique.append(import_line)
       820          return unique
@@ -3377,7 +3377,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 33 to the 15 allowed.
 
-```python
+```text
       949              failed=tuple(failed),
       950              files_modified=tuple(files_modified),
       951          )
@@ -3396,7 +3396,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed.
 
-```python
+```text
       128              ctx=ctx,
       129          )
       130  
@@ -3415,7 +3415,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
 
-```python
+```text
        59          issues = self._files_over_cap(result.stdout or "{}", c.Infra.LOC_CAP_MAX)
        60          return len(issues) == 0, issues
        61  
@@ -3434,7 +3434,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
       126          mypy_path = str(typings_generated) + (f":{existing}" if existing else "")
       127          return u.Cli.process_env(overrides={"MYPYPATH": mypy_path})
       128  
@@ -3453,7 +3453,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal `<pyrefly-output>` 3 times.
 
-```python
+```text
        75              read = u.Cli.files_read_json(json_file)
        76              if read.failure:
        77                  issues.append(
@@ -3472,7 +3472,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
        40              c.Infra.RUFF, c.Infra.FORMAT, "--check", *check_dirs, "--quiet"
        41          )
        42  
@@ -3491,7 +3491,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed.
 
-```python
+```text
        38          """Accumulate lint totals."""
        39          for tool, lines in snapshot.items():
        40              totals[tool] = totals.get(tool, 0) + len(tuple(lines))
@@ -3510,7 +3510,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed.
 
-```python
+```text
       140          )
       141          return "".join(diff_lines[:80])
       142  
@@ -3529,7 +3529,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed.
 
-```python
+```text
       114          source_lines = source.splitlines(keepends=True)
       115          line_offset = sum(len(item) for item in source_lines[: line - 1])
       116          return line_offset + column
@@ -3548,7 +3548,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 70 to the 15 allowed.
 
-```python
+```text
        69          def _rewrite_runtime_alias_source(
        70              source: str, *, alias: str, target_name: str
        71          ) -> str: ...
@@ -3567,7 +3567,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed.
 
-```python
+```text
       268                  self._regenerate_inits_via_codegen()
       269              rope.reload()
       270          return frozenset(applied)
@@ -3586,13 +3586,13 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 28 to the 15 allowed.
 
-```python
+```text
        25          @staticmethod
        26          def _is_flext_owned(value: p.ModuleOwned) -> bool: ...
        27  
        28      @classmethod
 >>>    29      def _build_parent_inventory(
-       30          cls, workspace_root: Path
+       30          cls, repository_root: Path
        31      ) -> t.MappingKV[str, t.StrSequence]:
        32          """Inventory governed-package alias top-level facade names.
        33  
@@ -3605,7 +3605,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed.
 
-```python
+```text
        62          def _runtime_alias_target_name(
        63              convention: m.Infra.RopeModuleConvention,
        64          ) -> str: ...
@@ -3624,7 +3624,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
       330      def _declarative_catalog_rules() -> tuple[me.EnforcementRuleSpec, ...]:
       331          """Return enabled catalog rules handled by the declarative engine."""
       332          return FlextInfraEnforcementEngine.declarative_rules()
@@ -3643,7 +3643,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
        43              fixable: bool = False,
        44              fix_action: str = "",
        45          ) -> m.Infra.Census.Violation: ...
@@ -3662,7 +3662,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed.
 
-```python
+```text
       161          else:
       162              result = []
       163          return result
@@ -3681,7 +3681,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
 
-```python
+```text
        41          """Selected lint tool names resolved from gate names."""
        42          return u.Infra.selected_lint_tool_names(self.gate_names)
        43  
@@ -3700,7 +3700,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed.
 
-```python
+```text
        19  class FlextInfraRefactorClassNestingAnalyzer:
        20      """Detect class nesting violations and report FLEXT hierarchy issues."""
        21  
@@ -3719,7 +3719,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
       118                  project, plan, dry_run=dry_run
       119              )
       120  
@@ -3738,7 +3738,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed.
 
-```python
+```text
       288      resource: t.Infra.RopeResource = target_resource
       289      return resource
       290  
@@ -3757,7 +3757,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
 
-```python
+```text
       563      """Return whether an attribute prefix should be rewritten to _constants."""
       564      return prefix in {class_name, "cls"} or prefix.endswith(".__class__")
       565  
@@ -3776,7 +3776,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed.
 
-```python
+```text
       649          break
       650      return last_import
       651  
@@ -3795,7 +3795,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
       321              file_path=str(file_path), line=line, rule_id=rule_id, **kwargs
       322          )
       323  
@@ -3814,7 +3814,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
        90              else (source, list[str]())
        91          )
        92  
@@ -3833,7 +3833,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed.
 
-```python
+```text
       134              return (source, list[str]())
       135          return ("".join(lines).rstrip("\n") + "\n", changes)
       136  
@@ -3852,10 +3852,10 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
-       32      def __init__(self, *, workspace_root: Path) -> None:
+```text
+       32      def __init__(self, *, repository_root: Path) -> None:
        33          """Create migration service bound to a workspace root."""
-       34          self._workspace_root = workspace_root.resolve()
+       34          self._repository_root = repository_root.resolve()
        35  
 >>>    36      def run(
        37          self,
@@ -3871,7 +3871,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
 
-```python
+```text
       185          except (OSError, tarfile.TarError) as exc:
       186              return r[bool].fail_op(f"validate sdist archive {path}", exc)
       187  
@@ -3890,7 +3890,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 29 to the 15 allowed.
 
-```python
+```text
        71          u.Cli.toml_sync_string_list(container, key, rewritten)
        72          return r[bool].ok(True)
        73  
@@ -3909,7 +3909,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed.
 
-```python
+```text
       213          if report_result.value:
       214              return r[bool].fail(f"build failed: {report_result.value} project(s)")
       215          return r[bool].ok(True)
@@ -3928,7 +3928,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
       363          return r[t.SequenceOf[t.Triple[Path, str, str]]].ok((
       364              (manifest_path, current_result.value, rendered.value),
       365          ))
@@ -3947,7 +3947,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 29 to the 15 allowed.
 
-```python
+```text
        72          """Return strict JSON text from VS Code JSONC content."""
        73          return cls._remove_trailing_commas(cls._remove_jsonc_comments(content))
        74  
@@ -3966,7 +3966,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed.
 
-```python
+```text
       124              index += 1
       125          return "".join(output)
       126  
@@ -3985,13 +3985,13 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed.
 
-```python
+```text
       239              changed = True
       240          return changed
       241  
       242      @staticmethod
 >>>   243      def _resolve_list_setting(
-      244          key: str, base_entries: tuple[str, ...], *, workspace_root: Path
+      244          key: str, base_entries: tuple[str, ...], *, repository_root: Path
       245      ) -> tuple[str, ...]:
       246          """Resolve one canonical list, deriving extra globs from the topology."""
       247          if key != c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY:
@@ -4004,7 +4004,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "flext_infra.services.cli_routes_codegen" 4 times.
 
-```python
+```text
        21  # dispatched per invocation. Only the owning module for the RESOLVED group is
        22  # imported now, cutting startup to that one module's cost.
        23  _GROUP_OWNERS: Final[dict[str, tuple[str, str, str]]] = {
@@ -4023,7 +4023,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "flext_infra.services.cli_routes_validate" 4 times.
 
-```python
+```text
        41          "CodegenRoutes",
        42          "codegen_routes",
        43      ),
@@ -4042,7 +4042,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "flext_infra.services.cli_routes_workspace" 3 times.
 
-```python
+```text
        61          "ValidationRoutes",
        62          "validation_routes",
        63      ),
@@ -4061,13 +4061,13 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed.
 
-```python
+```text
       125                  members.append(member_path)
       126          return tuple(members)
       127  
       128      @classmethod
 >>>   129      def transaction_scoped_paths(
-      130          cls, args: t.StrSequence, workspace_root: Path
+      130          cls, args: t.StrSequence, repository_root: Path
       131      ) -> tuple[Path, ...]:
       132          """Derive workspace-relative paths the command can touch.
       133  
@@ -4080,7 +4080,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed.
 
-```python
+```text
       139          lines.append(line)
       140      return "".join(lines)
       141  
@@ -4099,7 +4099,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "tuple[" 4 times.
 
-```python
+```text
        44              content, end_index = self._extract_square_bracket_content(
        45                  text, index + len(prefix) - 1
        46              )
@@ -4118,7 +4118,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "Tuple[" 3 times.
 
-```python
+```text
       113              if cls._matches_type_token(text, index, prefix):
       114                  return prefix, alias_name
       115          if cls._matches_type_token(text, index, "tuple["):
@@ -4137,7 +4137,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
        29          self.facade_class_prefix = facade_class_prefix
        30          self.alias_locals: t.Infra.StrSet = set()
        31          self.direct_imports: dict[str, str] = {}
@@ -4156,7 +4156,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
        71                  f"Removed compatibility alias: {alias_name} = {alias_map[alias_name]}"
        72              )
        73          return updated
@@ -4175,7 +4175,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed.
 
-```python
+```text
        66              expression = cst.Attribute(value=expression, attr=cst.Name(part))
        67          return expression
        68  
@@ -4194,7 +4194,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "mode=" 4 times.
 
-```python
+```text
       205              dec_text = self.node_text(decorator)
       206              new_text = dec_text.replace("validator(", "field_validator(", 1)
       207  
@@ -4213,7 +4213,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed.
 
-```python
+```text
       108              updated = updated[:start] + replacement + updated[end:]
       109          return updated
       110  
@@ -4232,7 +4232,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed.
 
-```python
+```text
       159                      changed = True
       160          return result, changed
       161  
@@ -4251,7 +4251,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
        52                  "ast-grep matches" if rule_type == "ast-grep" else "custom violations"
        53              )
        54              violations.append(f"[{rule_id}] {count} {label}")
@@ -4270,7 +4270,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed.
 
-```python
+```text
       160          resolves relative imports to absolute module names.
       161          """
       162          return u.Infra.imported_module_paths(module_imports)
@@ -4289,7 +4289,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "t.JsonMapping" 3 times.
 
-```python
+```text
        83              "generated_at": now,
        84              "candidates": [],
        85          })
@@ -4308,7 +4308,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
       114              for node in body
       115              if FlextInfraUtilitiesRopeAnalysis.node_kind(node) == "ClassDef"
       116          ]
@@ -4327,7 +4327,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 41 to the 15 allowed.
 
-```python
+```text
       363                  f"{name_str!r} belongs in typings.py"
       364              )
       365          ]
@@ -4346,10 +4346,10 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "pytest.log" 3 times.
 
-```python
+```text
       272          """Compose the existing JUnit/log diagnostic owner in-process."""
       273          extractor = FlextInfraPytestDiagExtractor(
-      274              workspace_root=self.root,
+      274              repository_root=self.root,
       275              junit=report_dir / "junit.xml",
 >>>   276              log_path=report_dir / "pytest.log",
       277          )
@@ -4365,7 +4365,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
 
-```python
+```text
       276              log_path=report_dir / "pytest.log",
       277          )
       278          return extractor.extract(extractor.junit, extractor.log_path)
@@ -4384,7 +4384,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 33 to the 15 allowed.
 
-```python
+```text
       325          )
       326          return r[int].ok(0 if value.reason != "testmon db missing or empty" else 1)
       327  
@@ -4403,7 +4403,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed.
 
-```python
+```text
        79          except Exception as exc:
        80              modules.append(f"{package_name}: walk_packages failed: {exc}")
        81          return modules
@@ -4422,7 +4422,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
        98                  self._reject("testmon schema empty", seed_needed=True)
        99              )
       100          return None
@@ -4441,7 +4441,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
-```python
+```text
       246          """Resolve the declared provider owning ``url``, else the default one."""
       247          return cls._declared_provider_for_url(url) or config.Infra.codegen.providers[0]
       248  
@@ -4460,7 +4460,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "unable to read Git submodule topology" 3 times.
 
-```python
+```text
       253          """Match governed members and external dependencies to live Git topology."""
       254          declared = u.Infra.git_declared_submodule_paths(repository_root)
       255          if declared.failure:
@@ -4479,7 +4479,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 27 to the 15 allowed.
 
-```python
+```text
       415              return r[bool].fail("local repository cannot be read-only")
       416          return r[bool].ok(True)
       417  
@@ -4498,7 +4498,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 30 to the 15 allowed.
 
-```python
+```text
       482              else c.Infra.WorkspaceMode.STANDALONE
       483          )
       484  
@@ -4517,7 +4517,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 35 to the 15 allowed.
 
-```python
+```text
       659              return r[tuple[str, str]].fail(contract.error)
       660          return r[tuple[str, str]].ok((contract.value.url, contract.value.branch))
       661  
@@ -4536,16 +4536,16 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
-```python
+```text
        27          """Validate one CLI request without mutating the environment."""
-       28          return cls.validate(request.workspace_root)
+       28          return cls.validate(request.repository_root)
        29  
        30      @classmethod
 >>>    31      def validate(
-       32          cls, workspace_root: Path, *, metadata_paths: t.StrSequence | None = None
+       32          cls, repository_root: Path, *, metadata_paths: t.StrSequence | None = None
        33      ) -> p.Result[int]:
        34          """Validate PEP 610 and editable path metadata for active members."""
-       35          resolved_root = workspace_root.resolve()
+       35          resolved_root = repository_root.resolve()
 ```
 
 **Decisão**:
@@ -4555,7 +4555,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed.
 
-```python
+```text
       183                      f"{branch_cleanup.error or 'unknown branch cleanup failure'}"
       184                  )
       185          return r.fail(f"worktree setup failed: {setup_error}; clean lane rolled back")
@@ -4574,7 +4574,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Define a constant instead of duplicating this literal "invalid worktree lane path" 3 times.
 
-```python
+```text
       189          if not self.apply_changes:
       190              return r.fail("worktree add requires --apply")
       191          lane_result = self._lane_path(primary_root, branch)
@@ -4593,7 +4593,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
 
-```python
+```text
       261          if removed.failure:
       262              return r.fail(removed.error or f"failed to remove worktree for {branch}")
       263          return r.ok(str(lane))
@@ -4764,7 +4764,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
        27              r"^from\s+flext_core\.\S+\s+import\s+", re.MULTILINE
        28          )
        29          "Detect direct flext_core submodule imports."
@@ -4783,7 +4783,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Remove the '?' from this unnecessarily reluctant quantifier.
 
-```python
+```text
        31              r"^from\s+typing\s+import\s+.*\bMapping\b", re.MULTILINE
        32          )
        33          "Detect legacy ``from typing import Mapping``."
@@ -4802,7 +4802,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
        31              r"^from\s+typing\s+import\s+.*\bMapping\b", re.MULTILINE
        32          )
        33          "Detect legacy ``from typing import Mapping``."
@@ -4821,7 +4821,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
        64      })
        65      ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
        66      "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
@@ -4840,7 +4840,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
        67      RUFF_FORMAT_FILE_RE: Final[t.RegexPattern] = re.compile(
        68          r"^\s*-->\s*(.+?):\d+:\d+\s*$"
        69      )
@@ -4859,7 +4859,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Remove the '?' from this unnecessarily reluctant quantifier.
 
-```python
+```text
       160      BOUNDARY_TOML_RE: Final[t.RegexPattern] = re.compile(
       161          r"^\s*(import|from)\s+(tomllib|tomlkit)(\s|$|\.)", re.MULTILINE
       162      )
@@ -4878,7 +4878,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
       160      BOUNDARY_TOML_RE: Final[t.RegexPattern] = re.compile(
       161          r"^\s*(import|from)\s+(tomllib|tomlkit)(\s|$|\.)", re.MULTILINE
       162      )
@@ -4897,7 +4897,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
        54          ("_settings.py", "Settings", "FlextSettings", "Runtime settings"),
        55      )
        56      "Runtime singleton modules for src/: (filename, class_suffix, base_class, docstring)."
@@ -4916,7 +4916,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
        34          "PLC0415",
        35      )
        36      """Rules ignored for executable docs snippets that are not full modules/tests."""
@@ -4935,7 +4935,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
        39      )
        40      """Regex matching ``python`` fenced blocks; ``body`` group yields contents."""
        41  
@@ -4954,7 +4954,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
        58      MARKDOWN_LINK_RE: Final[t.RegexPattern] = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
        59      """Match markdown links capturing text (group 1) and URL (group 2)."""
        60      MARKDOWN_LINK_URL_RE: Final[t.RegexPattern] = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
@@ -4973,7 +4973,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
        61      """Match markdown links capturing only the URL (group 1)."""
        62      HEADING_RE: Final[t.RegexPattern] = re.compile(r"^#{1,6}\s+(.+?)\s*$", re.MULTILINE)
        63      """Match any markdown heading (h1-h6), capturing the text."""
@@ -4992,7 +4992,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
       118          r"^\s*from\s+__future__\s+import\s"
       119      )
       120      "Regex: future import line."
@@ -5011,7 +5011,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Fix this reluctant quantifier that will only ever match 0 repetitions.
 
-```python
+```text
       135          re.MULTILINE,
       136      )
       137      "Regex: Final-annotated assignment (captures constant name)."
@@ -5030,8 +5030,409 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
-      170          r"<!-- TOC START -->.*?<!-- TOC END -->", re.DOTALL
+```text
+      170          r"<!-- TOC START -->
+- [Resumo](#resumo)
+- [Como usar](#como-usar)
+- [Issues](#issues)
+  - [1 · 🔴 BLOCKER · VULNERABILITY · `pythonsecurity:S2083`](#1-blocker-vulnerability-pythonsecuritys2083)
+  - [2 · 🔴 BLOCKER · VULNERABILITY · `pythonsecurity:S2083`](#2-blocker-vulnerability-pythonsecuritys2083)
+  - [3 · 🔴 BLOCKER · VULNERABILITY · `pythonsecurity:S2083`](#3-blocker-vulnerability-pythonsecuritys2083)
+  - [4 · 🔴 BLOCKER · VULNERABILITY · `pythonsecurity:S2083`](#4-blocker-vulnerability-pythonsecuritys2083)
+  - [5 · 🔴 BLOCKER · VULNERABILITY · `pythonsecurity:S2083`](#5-blocker-vulnerability-pythonsecuritys2083)
+  - [6 · 🔴 BLOCKER · CODE_SMELL · `python:S1845`](#6-blocker-code_smell-pythons1845)
+  - [7 · 🔴 BLOCKER · CODE_SMELL · `python:S1845`](#7-blocker-code_smell-pythons1845)
+  - [8 · 🔴 BLOCKER · CODE_SMELL · `python:S1845`](#8-blocker-code_smell-pythons1845)
+  - [9 · 🔴 BLOCKER · CODE_SMELL · `python:S3516`](#9-blocker-code_smell-pythons3516)
+  - [10 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#10-blocker-vulnerability-dockers8482)
+  - [11 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#11-blocker-vulnerability-dockers8482)
+  - [12 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#12-blocker-vulnerability-dockers8482)
+  - [13 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#13-blocker-vulnerability-dockers8482)
+  - [14 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#14-blocker-vulnerability-dockers8482)
+  - [15 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#15-blocker-vulnerability-dockers8482)
+  - [16 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#16-blocker-vulnerability-dockers8482)
+  - [17 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#17-blocker-vulnerability-dockers8482)
+  - [18 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#18-blocker-vulnerability-dockers8482)
+  - [19 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#19-blocker-vulnerability-dockers8482)
+  - [20 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#20-blocker-vulnerability-dockers8482)
+  - [21 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#21-blocker-vulnerability-dockers8482)
+  - [22 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#22-blocker-vulnerability-dockers8482)
+  - [23 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#23-blocker-vulnerability-dockers8482)
+  - [24 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#24-blocker-vulnerability-dockers8482)
+  - [25 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#25-critical-code_smell-pythons1192)
+  - [26 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#26-critical-code_smell-pythons1192)
+  - [27 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#27-critical-code_smell-pythons1192)
+  - [28 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#28-critical-code_smell-pythons1192)
+  - [29 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#29-critical-code_smell-pythons1192)
+  - [30 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#30-critical-code_smell-pythons3776)
+  - [31 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#31-critical-code_smell-pythons3776)
+  - [32 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#32-critical-code_smell-pythons3776)
+  - [33 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#33-critical-code_smell-pythons3776)
+  - [34 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#34-critical-code_smell-pythons3776)
+  - [35 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#35-critical-code_smell-pythons1192)
+  - [36 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#36-critical-code_smell-pythons3776)
+  - [37 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#37-critical-code_smell-pythons3776)
+  - [38 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#38-critical-code_smell-pythons3776)
+  - [39 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#39-critical-code_smell-pythons3776)
+  - [40 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#40-critical-code_smell-pythons3776)
+  - [41 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#41-critical-code_smell-pythons3776)
+  - [42 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#42-critical-code_smell-pythons3776)
+  - [43 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#43-critical-code_smell-pythons1192)
+  - [44 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#44-critical-code_smell-pythons3776)
+  - [45 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#45-critical-code_smell-pythons3776)
+  - [46 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#46-critical-code_smell-pythons3776)
+  - [47 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#47-critical-code_smell-pythons3776)
+  - [48 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#48-critical-code_smell-pythons3776)
+  - [49 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#49-critical-code_smell-pythons3776)
+  - [50 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#50-critical-code_smell-pythons3776)
+  - [51 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#51-critical-code_smell-pythons1192)
+  - [52 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#52-critical-code_smell-pythons1192)
+  - [53 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#53-critical-code_smell-pythons1192)
+  - [54 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#54-critical-code_smell-pythons1192)
+  - [55 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#55-critical-code_smell-pythons1192)
+  - [56 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#56-critical-code_smell-pythons3776)
+  - [57 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#57-critical-code_smell-pythons3776)
+  - [58 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#58-critical-code_smell-pythons3776)
+  - [59 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#59-critical-code_smell-pythons3776)
+  - [60 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#60-critical-code_smell-pythons1192)
+  - [61 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#61-critical-code_smell-pythons3776)
+  - [62 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#62-critical-code_smell-pythons3776)
+  - [63 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#63-critical-code_smell-pythons3776)
+  - [64 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#64-critical-code_smell-pythons3776)
+  - [65 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#65-critical-code_smell-pythons1192)
+  - [66 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#66-critical-code_smell-pythons1192)
+  - [67 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#67-critical-code_smell-pythons3776)
+  - [68 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#68-critical-code_smell-pythons3776)
+  - [69 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#69-critical-code_smell-pythons3776)
+  - [70 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#70-critical-code_smell-pythons3776)
+  - [71 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#71-critical-code_smell-pythons1192)
+  - [72 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#72-critical-code_smell-pythons3776)
+  - [73 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#73-critical-code_smell-pythons3776)
+  - [74 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#74-critical-code_smell-pythons3776)
+  - [75 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#75-critical-code_smell-pythons3776)
+  - [76 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#76-critical-code_smell-pythons3776)
+  - [77 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#77-critical-code_smell-pythons3776)
+  - [78 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#78-critical-code_smell-pythons1192)
+  - [79 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#79-critical-code_smell-pythons3776)
+  - [80 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#80-critical-code_smell-pythons3776)
+  - [81 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#81-critical-code_smell-pythons3776)
+  - [82 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#82-critical-code_smell-pythons3776)
+  - [83 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#83-critical-code_smell-pythons3776)
+  - [84 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#84-critical-code_smell-pythons3776)
+  - [85 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#85-critical-code_smell-pythons3776)
+  - [86 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#86-critical-code_smell-pythons3776)
+  - [87 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#87-critical-code_smell-pythons3776)
+  - [88 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#88-critical-code_smell-pythons3776)
+  - [89 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#89-critical-code_smell-pythons3776)
+  - [90 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#90-critical-code_smell-pythons3776)
+  - [91 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#91-critical-code_smell-pythons3776)
+  - [92 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#92-critical-code_smell-pythons3776)
+  - [93 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#93-critical-code_smell-pythons3776)
+  - [94 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#94-critical-code_smell-pythons3776)
+  - [95 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#95-critical-code_smell-pythons3776)
+  - [96 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#96-critical-code_smell-pythons3776)
+  - [97 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#97-critical-code_smell-pythons1192)
+  - [98 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#98-critical-code_smell-pythons3776)
+  - [99 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#99-critical-code_smell-pythons3776)
+  - [100 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#100-critical-code_smell-pythons3776)
+  - [101 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#101-critical-code_smell-pythons3776)
+  - [102 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#102-critical-code_smell-pythons3776)
+  - [103 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#103-critical-code_smell-pythons3776)
+  - [104 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#104-critical-code_smell-pythons3776)
+  - [105 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#105-critical-code_smell-pythons3776)
+  - [106 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#106-critical-code_smell-pythons3776)
+  - [107 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#107-critical-code_smell-pythons3776)
+  - [108 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#108-critical-code_smell-pythons3776)
+  - [109 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#109-critical-code_smell-pythons3776)
+  - [110 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#110-critical-code_smell-pythons3776)
+  - [111 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#111-critical-code_smell-pythons3776)
+  - [112 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#112-critical-code_smell-pythons3776)
+  - [113 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#113-critical-code_smell-pythons3776)
+  - [114 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#114-critical-code_smell-pythons3776)
+  - [115 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#115-critical-code_smell-pythons3776)
+  - [116 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#116-critical-code_smell-pythons3776)
+  - [117 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#117-critical-code_smell-pythons3776)
+  - [118 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#118-critical-code_smell-pythons3776)
+  - [119 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#119-critical-code_smell-pythons3776)
+  - [120 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#120-critical-code_smell-pythons3776)
+  - [121 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#121-critical-code_smell-pythons1192)
+  - [122 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#122-critical-code_smell-pythons3776)
+  - [123 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#123-critical-code_smell-pythons3776)
+  - [124 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#124-critical-code_smell-pythons3776)
+  - [125 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#125-critical-code_smell-pythons3776)
+  - [126 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#126-critical-code_smell-pythons3776)
+  - [127 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#127-critical-code_smell-pythons3776)
+  - [128 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#128-critical-code_smell-pythons1192)
+  - [129 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#129-critical-code_smell-pythons1192)
+  - [130 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#130-critical-code_smell-pythons1192)
+  - [131 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#131-critical-code_smell-pythons3776)
+  - [132 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#132-critical-code_smell-pythons3776)
+  - [133 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#133-critical-code_smell-pythons3776)
+  - [134 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#134-critical-code_smell-pythons1192)
+  - [135 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#135-critical-code_smell-pythons1192)
+  - [136 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#136-critical-code_smell-pythons3776)
+  - [137 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#137-critical-code_smell-pythons3776)
+  - [138 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#138-critical-code_smell-pythons3776)
+  - [139 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#139-critical-code_smell-pythons3776)
+  - [140 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#140-critical-code_smell-pythons3776)
+  - [141 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#141-critical-code_smell-pythons3776)
+  - [142 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#142-critical-code_smell-pythons3776)
+  - [143 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#143-critical-code_smell-pythons3776)
+  - [144 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#144-critical-code_smell-pythons3776)
+  - [145 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#145-critical-code_smell-pythons3776)
+  - [146 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#146-critical-code_smell-pythons3776)
+  - [147 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#147-critical-code_smell-pythons3776)
+  - [148 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#148-critical-code_smell-pythons3776)
+  - [149 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#149-critical-code_smell-pythons3776)
+  - [150 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#150-critical-code_smell-pythons3776)
+  - [151 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#151-critical-code_smell-pythons3776)
+  - [152 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#152-critical-code_smell-pythons3776)
+  - [153 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#153-critical-code_smell-pythons3776)
+  - [154 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#154-critical-code_smell-pythons3776)
+  - [155 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#155-critical-code_smell-pythons3776)
+  - [156 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#156-critical-code_smell-pythons3776)
+  - [157 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#157-critical-code_smell-pythons3776)
+  - [158 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#158-critical-code_smell-pythons3776)
+  - [159 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#159-critical-code_smell-pythons3776)
+  - [160 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#160-critical-code_smell-pythons3776)
+  - [161 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#161-critical-code_smell-pythons3776)
+  - [162 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#162-critical-code_smell-pythons3776)
+  - [163 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#163-critical-code_smell-pythons3776)
+  - [164 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#164-critical-code_smell-pythons3776)
+  - [165 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#165-critical-code_smell-pythons3776)
+  - [166 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#166-critical-code_smell-pythons3776)
+  - [167 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#167-critical-code_smell-pythons3776)
+  - [168 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#168-critical-code_smell-pythons3776)
+  - [169 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#169-critical-code_smell-pythons3776)
+  - [170 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#170-critical-code_smell-pythons3776)
+  - [171 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#171-critical-code_smell-pythons3776)
+  - [172 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#172-critical-code_smell-pythons3776)
+  - [173 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#173-critical-code_smell-pythons1192)
+  - [174 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#174-critical-code_smell-pythons1192)
+  - [175 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#175-critical-code_smell-pythons3776)
+  - [176 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#176-critical-code_smell-pythons3776)
+  - [177 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#177-critical-code_smell-pythons3776)
+  - [178 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#178-critical-code_smell-pythons3776)
+  - [179 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#179-critical-code_smell-pythons3776)
+  - [180 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#180-critical-code_smell-pythons3776)
+  - [181 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#181-critical-code_smell-pythons1192)
+  - [182 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#182-critical-code_smell-pythons3776)
+  - [183 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#183-critical-code_smell-pythons3776)
+  - [184 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#184-critical-code_smell-pythons3776)
+  - [185 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#185-critical-code_smell-pythons3776)
+  - [186 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#186-critical-code_smell-pythons3776)
+  - [187 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#187-critical-code_smell-pythons3776)
+  - [188 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#188-critical-code_smell-pythons3776)
+  - [189 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#189-critical-code_smell-pythons3776)
+  - [190 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#190-critical-code_smell-pythons3776)
+  - [191 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#191-critical-code_smell-pythons3776)
+  - [192 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#192-critical-code_smell-pythons3776)
+  - [193 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#193-critical-code_smell-pythons3776)
+  - [194 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#194-critical-code_smell-pythons3776)
+  - [195 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#195-critical-code_smell-pythons3776)
+  - [196 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#196-critical-code_smell-pythons3776)
+  - [197 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#197-critical-code_smell-pythons3776)
+  - [198 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#198-critical-code_smell-pythons3776)
+  - [199 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#199-critical-code_smell-pythons3776)
+  - [200 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#200-critical-code_smell-pythons3776)
+  - [201 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#201-critical-code_smell-pythons3776)
+  - [202 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#202-critical-code_smell-pythons3776)
+  - [203 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#203-critical-code_smell-pythons3776)
+  - [204 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#204-critical-code_smell-pythons3776)
+  - [205 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#205-critical-code_smell-pythons3776)
+  - [206 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#206-critical-code_smell-pythons3776)
+  - [207 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#207-critical-code_smell-pythons3776)
+  - [208 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#208-critical-code_smell-pythons3776)
+  - [209 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#209-critical-code_smell-pythons3776)
+  - [210 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#210-critical-code_smell-pythons1192)
+  - [211 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#211-critical-code_smell-pythons1192)
+  - [212 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#212-critical-code_smell-pythons1192)
+  - [213 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#213-critical-code_smell-pythons3776)
+  - [214 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#214-critical-code_smell-pythons3776)
+  - [215 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#215-critical-code_smell-pythons1192)
+  - [216 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#216-critical-code_smell-pythons1192)
+  - [217 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#217-critical-code_smell-pythons3776)
+  - [218 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#218-critical-code_smell-pythons3776)
+  - [219 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#219-critical-code_smell-pythons3776)
+  - [220 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#220-critical-code_smell-pythons1192)
+  - [221 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#221-critical-code_smell-pythons3776)
+  - [222 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#222-critical-code_smell-pythons3776)
+  - [223 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#223-critical-code_smell-pythons3776)
+  - [224 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#224-critical-code_smell-pythons3776)
+  - [225 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#225-critical-code_smell-pythons1192)
+  - [226 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#226-critical-code_smell-pythons3776)
+  - [227 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#227-critical-code_smell-pythons3776)
+  - [228 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#228-critical-code_smell-pythons1192)
+  - [229 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#229-critical-code_smell-pythons3776)
+  - [230 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#230-critical-code_smell-pythons3776)
+  - [231 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#231-critical-code_smell-pythons3776)
+  - [232 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#232-critical-code_smell-pythons3776)
+  - [233 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#233-critical-code_smell-pythons3776)
+  - [234 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#234-critical-code_smell-pythons1192)
+  - [235 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#235-critical-code_smell-pythons3776)
+  - [236 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#236-critical-code_smell-pythons3776)
+  - [237 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#237-critical-code_smell-pythons3776)
+  - [238 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#238-critical-code_smell-pythons3776)
+  - [239 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#239-critical-code_smell-pythons3776)
+  - [240 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#240-critical-code_smell-pythons1192)
+  - [241 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#241-critical-code_smell-pythons3776)
+  - [242 · 🟠 CRITICAL · VULNERABILITY · `docker:S6470`](#242-critical-vulnerability-dockers6470)
+  - [243 · 🟠 CRITICAL · VULNERABILITY · `docker:S6470`](#243-critical-vulnerability-dockers6470)
+  - [244 · 🟠 CRITICAL · VULNERABILITY · `docker:S6470`](#244-critical-vulnerability-dockers6470)
+  - [245 · 🟠 CRITICAL · VULNERABILITY · `docker:S6470`](#245-critical-vulnerability-dockers6470)
+  - [246 · 🟠 CRITICAL · VULNERABILITY · `docker:S6470`](#246-critical-vulnerability-dockers6470)
+  - [247 · 🟡 MAJOR · VULNERABILITY · `githubactions:S8264`](#247-major-vulnerability-githubactionss8264)
+  - [248 · 🟡 MAJOR · VULNERABILITY · `githubactions:S8233`](#248-major-vulnerability-githubactionss8233)
+  - [249 · 🟡 MAJOR · VULNERABILITY · `githubactions:S8233`](#249-major-vulnerability-githubactionss8233)
+  - [250 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#250-major-code_smell-pythons8786)
+  - [251 · 🟡 MAJOR · CODE_SMELL · `python:S6019`](#251-major-code_smell-pythons6019)
+  - [252 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#252-major-code_smell-pythons8786)
+  - [253 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#253-major-code_smell-pythons8786)
+  - [254 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#254-major-code_smell-pythons8786)
+  - [255 · 🟡 MAJOR · CODE_SMELL · `python:S6019`](#255-major-code_smell-pythons6019)
+  - [256 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#256-major-code_smell-pythons8786)
+  - [257 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#257-major-code_smell-pythons8786)
+  - [258 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#258-major-code_smell-pythons8786)
+  - [259 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#259-major-code_smell-pythons8786)
+  - [260 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#260-major-code_smell-pythons8786)
+  - [261 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#261-major-code_smell-pythons8786)
+  - [262 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#262-major-code_smell-pythons8786)
+  - [263 · 🟡 MAJOR · CODE_SMELL · `python:S6019`](#263-major-code_smell-pythons6019)
+  - [264 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#264-major-code_smell-pythons8786)
+  - [265 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#265-major-code_smell-pythons8786)
+  - [266 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#266-major-code_smell-pythons8786)
+  - [267 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#267-major-code_smell-pythons8786)
+  - [268 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#268-major-code_smell-pythons8786)
+  - [269 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#269-major-code_smell-pythons8786)
+  - [270 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#270-major-code_smell-pythons8786)
+  - [271 · 🟡 MAJOR · CODE_SMELL · `python:S6019`](#271-major-code_smell-pythons6019)
+  - [272 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#272-major-code_smell-pythons8786)
+  - [273 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#273-major-code_smell-pythons8786)
+  - [274 · 🟡 MAJOR · BUG · `python:S5850`](#274-major-bug-pythons5850)
+  - [275 · 🟡 MAJOR · BUG · `python:S5850`](#275-major-bug-pythons5850)
+  - [276 · 🟡 MAJOR · BUG · `python:S5850`](#276-major-bug-pythons5850)
+  - [277 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#277-major-code_smell-pythons8786)
+  - [278 · 🟡 MAJOR · CODE_SMELL · `python:S5843`](#278-major-code_smell-pythons5843)
+  - [279 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#279-major-code_smell-pythons8786)
+  - [280 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#280-major-code_smell-pythons8786)
+  - [281 · 🟡 MAJOR · CODE_SMELL · `python:S108`](#281-major-code_smell-pythons108)
+  - [282 · 🟡 MAJOR · CODE_SMELL · `python:S108`](#282-major-code_smell-pythons108)
+  - [283 · 🟡 MAJOR · CODE_SMELL · `pythonbugs:S2589`](#283-major-code_smell-pythonbugss2589)
+  - [284 · 🟡 MAJOR · CODE_SMELL · `python:S108`](#284-major-code_smell-pythons108)
+  - [285 · 🟡 MAJOR · CODE_SMELL · `python:S108`](#285-major-code_smell-pythons108)
+  - [286 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#286-major-code_smell-pythons3358)
+  - [287 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#287-major-code_smell-pythons3358)
+  - [288 · 🟡 MAJOR · BUG · `pythonbugs:S2259`](#288-major-bug-pythonbugss2259)
+  - [289 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#289-major-code_smell-pythons3358)
+  - [290 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#290-major-code_smell-pythons3358)
+  - [291 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#291-major-code_smell-pythons3358)
+  - [292 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#292-major-code_smell-pythons3358)
+  - [293 · 🟡 MAJOR · CODE_SMELL · `python:S8495`](#293-major-code_smell-pythons8495)
+  - [294 · 🟡 MAJOR · CODE_SMELL · `python:S108`](#294-major-code_smell-pythons108)
+  - [295 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#295-major-code_smell-pythons3358)
+  - [296 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#296-major-code_smell-pythons3358)
+  - [297 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#297-major-code_smell-pythons3358)
+  - [298 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#298-major-code_smell-pythons3358)
+  - [299 · 🟡 MAJOR · CODE_SMELL · `python:S1172`](#299-major-code_smell-pythons1172)
+  - [300 · 🟡 MAJOR · CODE_SMELL · `python:S1172`](#300-major-code_smell-pythons1172)
+  - [301 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#301-major-code_smell-pythons3358)
+  - [302 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#302-major-code_smell-pythons3358)
+  - [303 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#303-major-code_smell-pythons3358)
+  - [304 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#304-major-code_smell-pythons3358)
+  - [305 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#305-major-code_smell-pythons3358)
+  - [306 · 🟡 MAJOR · CODE_SMELL · `python:S8495`](#306-major-code_smell-pythons8495)
+  - [307 · 🟡 MAJOR · CODE_SMELL · `python:S1172`](#307-major-code_smell-pythons1172)
+  - [308 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#308-major-code_smell-pythons3358)
+  - [309 · 🟡 MAJOR · CODE_SMELL · `python:S8500`](#309-major-code_smell-pythons8500)
+  - [310 · 🟡 MAJOR · CODE_SMELL · `python:S1854`](#310-major-code_smell-pythons1854)
+  - [311 · 🟡 MAJOR · CODE_SMELL · `python:S107`](#311-major-code_smell-pythons107)
+  - [312 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#312-major-code_smell-pythons3358)
+  - [313 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#313-major-vulnerability-dockers6506)
+  - [314 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#314-major-vulnerability-dockers6506)
+  - [315 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#315-major-vulnerability-dockers6506)
+  - [316 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#316-major-vulnerability-dockers6506)
+  - [317 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#317-major-vulnerability-dockers6506)
+  - [318 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#318-major-vulnerability-dockers6506)
+  - [319 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#319-major-vulnerability-dockers6506)
+  - [320 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#320-major-vulnerability-dockers6506)
+  - [321 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#321-major-vulnerability-dockers6506)
+  - [322 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#322-major-vulnerability-dockers6506)
+  - [323 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#323-major-vulnerability-dockers6506)
+  - [324 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#324-major-vulnerability-dockers6506)
+  - [325 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#325-major-vulnerability-dockers6506)
+  - [326 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#326-major-vulnerability-dockers6506)
+  - [327 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#327-major-vulnerability-dockers6506)
+  - [328 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#328-major-vulnerability-dockers6506)
+  - [329 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#329-major-vulnerability-dockers6506)
+  - [330 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#330-major-vulnerability-dockers6506)
+  - [331 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#331-major-vulnerability-dockers6506)
+  - [332 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#332-major-vulnerability-dockers6506)
+  - [333 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#333-major-code_smell-pythons5778)
+  - [334 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#334-major-code_smell-pythons5778)
+  - [335 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#335-major-code_smell-pythons5778)
+  - [336 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#336-major-code_smell-pythons5778)
+  - [337 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#337-major-code_smell-pythons5778)
+  - [338 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#338-major-code_smell-pythons5778)
+  - [339 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#339-major-code_smell-pythons5778)
+  - [340 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#340-major-code_smell-pythons5778)
+  - [341 · 🟡 MAJOR · CODE_SMELL · `python:S8997`](#341-major-code_smell-pythons8997)
+  - [342 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#342-major-code_smell-pythons5778)
+  - [343 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#343-major-code_smell-pythons5778)
+  - [344 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#344-major-code_smell-pythons5778)
+  - [345 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#345-major-code_smell-pythons5778)
+  - [346 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#346-major-code_smell-pythons5778)
+  - [347 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#347-major-code_smell-pythons5778)
+  - [348 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#348-major-code_smell-pythons5778)
+  - [349 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#349-major-code_smell-pythons5778)
+  - [350 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#350-major-code_smell-pythons5778)
+  - [351 · ⚪ MINOR · CODE_SMELL · `python:S7504`](#351-minor-code_smell-pythons7504)
+  - [352 · ⚪ MINOR · CODE_SMELL · `python:S6353`](#352-minor-code_smell-pythons6353)
+  - [353 · ⚪ MINOR · CODE_SMELL · `python:S6353`](#353-minor-code_smell-pythons6353)
+  - [354 · ⚪ MINOR · CODE_SMELL · `python:S6353`](#354-minor-code_smell-pythons6353)
+  - [355 · ⚪ MINOR · CODE_SMELL · `python:S6353`](#355-minor-code_smell-pythons6353)
+  - [356 · ⚪ MINOR · CODE_SMELL · `python:S6353`](#356-minor-code_smell-pythons6353)
+  - [357 · ⚪ MINOR · CODE_SMELL · `python:S5857`](#357-minor-code_smell-pythons5857)
+  - [358 · ⚪ MINOR · CODE_SMELL · `python:S6353`](#358-minor-code_smell-pythons6353)
+  - [359 · ⚪ MINOR · CODE_SMELL · `python:S7500`](#359-minor-code_smell-pythons7500)
+  - [360 · ⚪ MINOR · CODE_SMELL · `python:S5713`](#360-minor-code_smell-pythons5713)
+  - [361 · ⚪ MINOR · CODE_SMELL · `python:S5685`](#361-minor-code_smell-pythons5685)
+  - [362 · ⚪ MINOR · CODE_SMELL · `python:S7498`](#362-minor-code_smell-pythons7498)
+  - [363 · ⚪ MINOR · VULNERABILITY · `python:S5332`](#363-minor-vulnerability-pythons5332)
+  - [364 · ⚪ MINOR · VULNERABILITY · `python:S5332`](#364-minor-vulnerability-pythons5332)
+  - [365 · ⚪ MINOR · VULNERABILITY · `python:S5332`](#365-minor-vulnerability-pythons5332)
+  - [366 · ⚪ MINOR · VULNERABILITY · `python:S5332`](#366-minor-vulnerability-pythons5332)
+  - [367 · ⚪ MINOR · CODE_SMELL · `python:S6353`](#367-minor-code_smell-pythons6353)
+  - [368 · ⚪ MINOR · CODE_SMELL · `python:S7498`](#368-minor-code_smell-pythons7498)
+  - [369 · ⚪ MINOR · CODE_SMELL · `python:S7498`](#369-minor-code_smell-pythons7498)
+  - [370 · ⚪ MINOR · CODE_SMELL · `python:S7498`](#370-minor-code_smell-pythons7498)
+  - [371 · ⚪ MINOR · CODE_SMELL · `python:S5685`](#371-minor-code_smell-pythons5685)
+  - [372 · ⚪ MINOR · CODE_SMELL · `python:S7498`](#372-minor-code_smell-pythons7498)
+  - [373 · ⚪ MINOR · CODE_SMELL · `python:S7508`](#373-minor-code_smell-pythons7508)
+  - [374 · ⚪ MINOR · CODE_SMELL · `python:S5685`](#374-minor-code_smell-pythons5685)
+  - [375 · ⚪ MINOR · CODE_SMELL · `python:S7504`](#375-minor-code_smell-pythons7504)
+  - [376 · ⚪ MINOR · CODE_SMELL · `python:S7504`](#376-minor-code_smell-pythons7504)
+  - [377 · ⚪ MINOR · CODE_SMELL · `python:S7504`](#377-minor-code_smell-pythons7504)
+  - [378 · ⚪ MINOR · CODE_SMELL · `python:S7504`](#378-minor-code_smell-pythons7504)
+  - [379 · ⚪ MINOR · CODE_SMELL · `python:S7500`](#379-minor-code_smell-pythons7500)
+  - [380 · ⚪ MINOR · CODE_SMELL · `python:S7500`](#380-minor-code_smell-pythons7500)
+  - [381 · ⚪ MINOR · CODE_SMELL · `python:S7504`](#381-minor-code_smell-pythons7504)
+  - [382 · ⚪ MINOR · CODE_SMELL · `python:S1940`](#382-minor-code_smell-pythons1940)
+  - [383 · ⚪ MINOR · CODE_SMELL · `python:S6659`](#383-minor-code_smell-pythons6659)
+  - [384 · ⚪ MINOR · CODE_SMELL · `python:S7504`](#384-minor-code_smell-pythons7504)
+  - [385 · ⚪ MINOR · VULNERABILITY · `docker:S6471`](#385-minor-vulnerability-dockers6471)
+  - [386 · ⚪ MINOR · CODE_SMELL · `docker:S7031`](#386-minor-code_smell-dockers7031)
+  - [387 · ⚪ MINOR · CODE_SMELL · `docker:S7018`](#387-minor-code_smell-dockers7018)
+  - [388 · ⚪ MINOR · VULNERABILITY · `docker:S6471`](#388-minor-vulnerability-dockers6471)
+  - [389 · ⚪ MINOR · CODE_SMELL · `docker:S7031`](#389-minor-code_smell-dockers7031)
+  - [390 · ⚪ MINOR · VULNERABILITY · `docker:S6471`](#390-minor-vulnerability-dockers6471)
+  - [391 · ⚪ MINOR · CODE_SMELL · `docker:S7031`](#391-minor-code_smell-dockers7031)
+  - [392 · ⚪ MINOR · CODE_SMELL · `docker:S7018`](#392-minor-code_smell-dockers7018)
+  - [393 · ⚪ MINOR · VULNERABILITY · `docker:S6471`](#393-minor-vulnerability-dockers6471)
+  - [394 · ⚪ MINOR · CODE_SMELL · `docker:S7031`](#394-minor-code_smell-dockers7031)
+  - [395 · ⚪ MINOR · VULNERABILITY · `docker:S6471`](#395-minor-vulnerability-dockers6471)
+  - [396 · ⚪ MINOR · CODE_SMELL · `docker:S7031`](#396-minor-code_smell-dockers7031)
+  - [397 · ⚪ MINOR · CODE_SMELL · `docker:S7018`](#397-minor-code_smell-dockers7018)
+<!-- TOC END -->", re.DOTALL
       171      )
       172      "Regex: TOC marker block (start..end), DOTALL."
       173      DUNDER_ALL_SINGLE_LINE_RE: Final[t.RegexPattern] = re.compile(
@@ -5049,7 +5450,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
       175          re.MULTILINE,
       176      )
       177      "Regex: single-line ``__all__ = [...]`` declaration."
@@ -5068,7 +5469,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
       182      "Regex: multi-line ``__all__ = [...]`` declaration (DOTALL body)."
       183      BLANK_LINE_RUN_RE: Final[t.RegexPattern] = re.compile(r"\n{4,}")
       184      "Regex: 4+ consecutive newlines — collapsed to triple newline."
@@ -5087,7 +5488,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
       186          r"^(\w+)\s*:\s*TypeAlias\s*=\s*(.+)$", re.MULTILINE
       187      )
       188      "Regex: legacy ``X: TypeAlias = expr`` (rewritten to PEP 695 ``type X = ...``)."
@@ -5106,7 +5507,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
       190          r"^from\s+\S+\s+import\s+.*\bt\b", re.MULTILINE
       191      )
       192      "Regex: any ``from X import ... t ...`` line (canonical t import detector)."
@@ -5125,7 +5526,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
       464          r"^([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*$"
       465      )
       466      "Regex: module-level ``X = Y`` identity-alias line."
@@ -5144,7 +5545,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
       468          r"^([A-Za-z_]\w*)\s*(?::\s*[^=]+)?=\s*(.+)$"
       469      )
       470      "Regex: module-level ``X [: T] = value`` assignment (captures name, value)."
@@ -5163,7 +5564,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Remove the '?' from this unnecessarily reluctant quantifier.
 
-```python
+```text
       474      "Regex: ``cast(Type, value)`` call — captures the value to retain."
       475      AS_KEYWORD_RE: Final[t.RegexPattern] = re.compile(r"\s+as\s+")
       476      "Regex: ``<sp>as<sp>`` keyword for splitting import-as forms."
@@ -5182,7 +5583,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
       474      "Regex: ``cast(Type, value)`` call — captures the value to retain."
       475      AS_KEYWORD_RE: Final[t.RegexPattern] = re.compile(r"\s+as\s+")
       476      "Regex: ``<sp>as<sp>`` keyword for splitting import-as forms."
@@ -5201,7 +5602,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
       478          r"^from\s+([\w.]+)\s+import\s+(.+?)$", re.MULTILINE
       479      )
       480      "Regex: simple from-import line (no trailing-comment strip)."
@@ -5220,7 +5621,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Group parts of the regex together to make the intended operator precedence explicit.
 
-```python
+```text
       498          r"^-- Docs: https://docs.pytest.org/"
       499      )
       500      "Regex: pytest warnings-section docs footer."
@@ -5239,7 +5640,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Group parts of the regex together to make the intended operator precedence explicit.
 
-```python
+```text
       502          r"(^FAILED |::.* FAILED( |$))"
       503      )
       504      "Regex: pytest FAILED status line."
@@ -5258,7 +5659,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Group parts of the regex together to make the intended operator precedence explicit.
 
-```python
+```text
       506          r"(^ERROR |::.* ERROR( |$))"
       507      )
       508      "Regex: pytest ERROR status line."
@@ -5277,7 +5678,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
       619      "Minimum members for a union type to be normalizable."
       620  
       621      # --- Combined import detection (from + bare import) ---
@@ -5296,7 +5697,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its complexity from 28 to the 20 allowed.
 
-```python
+```text
       619      "Minimum members for a union type to be normalizable."
       620  
       621      # --- Combined import detection (from + bare import) ---
@@ -5315,7 +5716,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
        79      SKILL_OWNER_MARKER_RE: Final[t.RegexPattern] = re.compile(
        80          r"^# Owner-Skill:\s+(.agents/skills/([a-z0-9][-a-z0-9]*)/SKILL\.md)\s*$"
        81      )
@@ -5334,7 +5735,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
-```python
+```text
       146          r'(?m)^\[submodule "[^"]+"\]\s*$'
       147      )
       148      "``.gitmodules`` submodule section header at line start."
@@ -5353,7 +5754,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Either remove or fill this block of code.
 
-```python
+```text
       574          match identity:
       575              case [author_name, author_email] if (
       576                  author_name.strip() and author_email.strip()
@@ -5372,7 +5773,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Either remove or fill this block of code.
 
-```python
+```text
       135                  case (_, package_name):
       136                      resolved_package: str = package_name
       137                      return resolved_package
@@ -5391,7 +5792,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Fix this condition that always evaluates to false.
 
-```python
+```text
       116              return f"[{text}]({fixed})"
       117  
       118          updated = c.Infra.MARKDOWN_LINK_RE.sub(replace_link, original)
@@ -5410,7 +5811,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Either remove or fill this block of code.
 
-```python
+```text
        41          absence as "no override" can collapse with ``unwrap_or(())``.
        42          """
        43          match payload:
@@ -5429,7 +5830,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Either remove or fill this block of code.
 
-```python
+```text
        46              case _:
        47                  return r[t.Infra.InfraSequence].fail("payload is not a mapping")
        48          match outer.get("docs_validation"):
@@ -5448,7 +5849,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Extract this nested conditional expression into an independent statement.
 
-```python
+```text
       164              return None
       165          project_name = (
       166              project.name
@@ -5467,7 +5868,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Extract this nested conditional expression into an independent statement.
 
-```python
+```text
       216          )
       217          family_tokens: t.StrSequence = (
       218              tuple(settings.private_family_tokens.get(family_alias, ()))
@@ -5486,7 +5887,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Fix this call that leads to a attribute access on a value that can be 'None'.
 
-```python
+```text
       165              for child in sorted(src_dir.iterdir()):
       166                  if child.is_dir() and (child / c.Infra.INIT_PY).is_file():
       167                      child_path: Path = child
@@ -5505,7 +5906,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Extract this nested conditional expression into an independent statement.
 
-```python
+```text
       132              )
       133              package_name = (
       134                  cls._package_name_for_dir(package_dir, project_root=project_root)
@@ -5524,7 +5925,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Extract this nested conditional expression into an independent statement.
 
-```python
+```text
       134                  cls._package_name_for_dir(package_dir, project_root=project_root)
       135                  if project_root is not None
       136                  else module_name
@@ -5543,7 +5944,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Extract this nested conditional expression into an independent statement.
 
-```python
+```text
       221              )
       222              package_name = (
       223                  cls._package_name_for_dir(package_dir, project_root=project_root)
@@ -5562,7 +5963,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Extract this nested conditional expression into an independent statement.
 
-```python
+```text
        97  
        98      @staticmethod
        99      def _public_export_order_key(export_name: str) -> tuple[int, str]:
@@ -5581,7 +5982,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Refactor this function to always return tuples of the same length.
 
-```python
+```text
       139                  )
       140              )
       141  
@@ -5610,7 +6011,7 @@ there is no active source block to triage.
 
 > Extract this nested conditional expression into an independent statement.
 
-```python
+```text
        93          empty_action: c.Infra.LazyInitAction = (
        94              c.Infra.LazyInitAction.WRITE
        95              if is_test_child_package
@@ -5629,7 +6030,7 @@ there is no active source block to triage.
 
 > Extract this nested conditional expression into an independent statement.
 
-```python
+```text
       401          expected_stub_path: str | None = (
       402              stub_rules.root_typings_paths[0]
       403              if is_root and stub_rules.root_typings_paths
@@ -5648,7 +6049,7 @@ there is no active source block to triage.
 
 > Extract this nested conditional expression into an independent statement.
 
-```python
+```text
        48          )
        49          result = (
        50              c.Infra.ResultStatus.OK
@@ -5667,7 +6068,7 @@ there is no active source block to triage.
 
 > Extract this nested conditional expression into an independent statement.
 
-```python
+```text
        56          message = (
        57              f"docstring coverage {docstring_coverage.percent}% below minimum "
        58              f"{params.docstring_min}%"
@@ -5686,7 +6087,7 @@ there is no active source block to triage.
 
 > Remove the unused function parameter "project_dir".
 
-```python
+```text
        32          return fix_action.kind == self.kind
        33  
        34      def fix_project(
@@ -5705,7 +6106,7 @@ there is no active source block to triage.
 
 > Remove the unused function parameter "ctx".
 
-```python
+```text
        34      def fix_project(
        35          self,
        36          project_dir: Path,
@@ -5724,7 +6125,7 @@ there is no active source block to triage.
 
 > Extract this nested conditional expression into an independent statement.
 
-```python
+```text
        71          """
        72          kinds = (
        73              selected_kinds
@@ -5743,7 +6144,7 @@ there is no active source block to triage.
 
 > Extract this nested conditional expression into an independent statement.
 
-```python
+```text
       184          resolved_convention = convention or rope.convention(file_path)
       185          resolved_kinds = (
       186              selected_kinds
@@ -5762,7 +6163,7 @@ there is no active source block to triage.
 
 > Extract this nested conditional expression into an independent statement.
 
-```python
+```text
       279                      file_path=file_path,
       280                      line=(
       281                          matched.line
@@ -5781,7 +6182,7 @@ there is no active source block to triage.
 
 > Extract this nested conditional expression into an independent statement.
 
-```python
+```text
       104          module_entry = rope.module(file_path)
       105          project_root = (
       106              layout.project_root
@@ -5800,7 +6201,7 @@ there is no active source block to triage.
 
 > Extract this nested conditional expression into an independent statement.
 
-```python
+```text
       111          )
       112          project_name = (
       113              layout.project_name
@@ -5819,7 +6220,7 @@ there is no active source block to triage.
 
 > Refactor this function to always return tuples of the same length.
 
-```python
+```text
       102          )
       103          raise ValueError(msg)
       104  
@@ -5838,8 +6239,8 @@ there is no active source block to triage.
 
 > Remove the unused function parameter "project_names".
 
-```python
-       20      _workspace_root: Path
+```text
+       20      _repository_root: Path
        21      _rope_project: t.Infra.RopeProject
        22  
        23      def _resolve_project_roots(
@@ -5857,7 +6258,7 @@ there is no active source block to triage.
 
 > Extract this nested conditional expression into an independent statement.
 
-```python
+```text
       122          """Build the canonical JSON payload from the accumulated wrapper run state."""
       123          mode_value = (
       124              "check"
@@ -5876,7 +6277,7 @@ there is no active source block to triage.
 
 > Add the missing comparison methods or use "functools.total_ordering".
 
-```python
+```text
        11  from dataclasses import dataclass
        12  
        13  
@@ -5895,7 +6296,7 @@ there is no active source block to triage.
 
 > Remove this assignment to local variable 'joiner'; the value is never used.
 
-```python
+```text
       183                  cursor += 1
       184              tail = result[cursor:].lstrip()
       185              head = result[:start].rstrip()
@@ -5914,14 +6315,14 @@ there is no active source block to triage.
 
 > Method "**init**" has 18 parameters, which is greater than the 13 authorized.
 
-```python
+```text
        34      ] = False
        35      _runner: p.Cli.CommandRunner | None = m.PrivateAttr(default_factory=lambda: None)
        36  
        37      def __init__(
 >>>    38          self,
        39          *,
-       40          workspace_root: Path | None = None,
+       40          repository_root: Path | None = None,
        41          apply_changes: bool = False,
        42          check_only: bool = False,
 ```
@@ -5933,7 +6334,7 @@ there is no active source block to triage.
 
 > Extract this nested conditional expression into an independent statement.
 
-```python
+```text
       400          )
       401          resolved_rel_path = (
       402              rel_path
@@ -6332,7 +6733,7 @@ there is no active source block to triage.
 
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
-```python
+```text
        82                  )
        83              }
        84          )
@@ -6351,7 +6752,7 @@ there is no active source block to triage.
 
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
-```python
+```text
       102                  )
       103              }
       104          )
@@ -6370,7 +6771,7 @@ there is no active source block to triage.
 
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
-```python
+```text
        58          policy = config.Infra.tooling.tools.pytest
        59          payload = policy.model_dump(by_alias=True)
        60          payload[field] = 0
@@ -6389,7 +6790,7 @@ there is no active source block to triage.
 
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
-```python
+```text
        69          policy = config.Infra.tooling.tools.pytest
        70          payload = policy.model_dump(by_alias=True)
        71          payload["standard-addopts"] = [override]
@@ -6408,7 +6809,7 @@ there is no active source block to triage.
 
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
-```python
+```text
        82          payload["run-timeout-seconds"] = (
        83              policy.case_timeout_seconds + policy.termination_grace_seconds - 1
        84          )
@@ -6427,7 +6828,7 @@ there is no active source block to triage.
 
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
-```python
+```text
        95          payload["process-timeout-seconds"] = (
        96              policy.run_timeout_seconds + policy.termination_grace_seconds
        97          )
@@ -6446,7 +6847,7 @@ there is no active source block to triage.
 
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
-```python
+```text
       106          policy = config.Infra.tooling.tools.pytest
       107          payload = policy.model_dump(by_alias=True)
       108          payload["progress-args"] = ["-q"]
@@ -6465,7 +6866,7 @@ there is no active source block to triage.
 
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
-```python
+```text
       134          policy = config.Infra.tooling.tools.pytest
       135          payload = policy.model_dump(by_alias=True)
       136          payload["report-args"] = [argument]
@@ -6484,7 +6885,7 @@ there is no active source block to triage.
 
 > Use the "monkeypatch" fixture for temporary modifications instead of manually modifying global state.
 
-```python
+```text
        47          tm.that(_Stream(tty=True).isatty(), eq=True)
        48          tm.that(_Stream(tty=False).isatty(), eq=False)
        49  
@@ -6503,7 +6904,7 @@ there is no active source block to triage.
 
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
-```python
+```text
       147  
       148      def test_missing_rope_resource_fails_loud(self, tmp_path: Path) -> None:
       149          """Missing source resources are detector failures, not clean scans."""
@@ -6522,7 +6923,7 @@ there is no active source block to triage.
 
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
-```python
+```text
       170              msg = "class placement exploded"
       171              raise RuntimeError(msg)
       172  
@@ -6541,7 +6942,7 @@ there is no active source block to triage.
 
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
-```python
+```text
       216          )
       217          source = tmp_path / "consumer.py"
       218          source.write_text("", encoding="utf-8")
@@ -6560,7 +6961,7 @@ there is no active source block to triage.
 
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
-```python
+```text
       267                  artifacts=(),
       268              )
       269  
@@ -6579,7 +6980,7 @@ there is no active source block to triage.
 
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
-```python
+```text
       473                  def import_dependents(self, import_target: str) -> str:
       474                      del import_target
       475                      return "invalid"
@@ -6598,13 +6999,13 @@ there is no active source block to triage.
 
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
-```python
+```text
        44              "tests/test_sample.py\n--maxfail=0",
        45          ],
        46      )
        47      def test_file_rejects_non_normalized_or_control_text(self, file: str) -> None:
 >>>    48          with pytest.raises(c.ValidationError, match="file must"):
-       49              FlextInfraPytestSelectorValidator(workspace_root=Path.cwd(), file=file)
+       49              FlextInfraPytestSelectorValidator(repository_root=Path.cwd(), file=file)
        50  
        51      def test_what_accepts_only_canonical_test_modes(self) -> None:
        52          validator = FlextInfraPytestSelectorValidator(
@@ -6617,14 +7018,14 @@ there is no active source block to triage.
 
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
-```python
+```text
        58                  FlextInfraPytestSelectorValidator(
-       59                      workspace_root=Path.cwd(), what=what
+       59                      repository_root=Path.cwd(), what=what
        60                  ).execute()
        61              )
 >>>    62          with pytest.raises(c.ValidationError, match="what must be"):
        63              FlextInfraPytestSelectorValidator(
-       64                  workspace_root=Path.cwd(), what="$(shell touch marker)"
+       64                  repository_root=Path.cwd(), what="$(shell touch marker)"
        65              )
        66          with pytest.raises(c.ValidationError, match="what must be"):
 ```
@@ -6636,13 +7037,13 @@ there is no active source block to triage.
 
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
-```python
+```text
        62          with pytest.raises(c.ValidationError, match="what must be"):
        63              FlextInfraPytestSelectorValidator(
-       64                  workspace_root=Path.cwd(), what="$(shell touch marker)"
+       64                  repository_root=Path.cwd(), what="$(shell touch marker)"
        65              )
 >>>    66          with pytest.raises(c.ValidationError, match="what must be"):
-       67              FlextInfraPytestSelectorValidator(workspace_root=Path.cwd(), what="cov")
+       67              FlextInfraPytestSelectorValidator(repository_root=Path.cwd(), what="cov")
        68          with pytest.raises(
        69              c.ValidationError, match="cache-status rejects FILE and MATCH"
        70          ):
@@ -6655,16 +7056,16 @@ there is no active source block to triage.
 
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
-```python
-       64                  workspace_root=Path.cwd(), what="$(shell touch marker)"
+```text
+       64                  repository_root=Path.cwd(), what="$(shell touch marker)"
        65              )
        66          with pytest.raises(c.ValidationError, match="what must be"):
-       67              FlextInfraPytestSelectorValidator(workspace_root=Path.cwd(), what="cov")
+       67              FlextInfraPytestSelectorValidator(repository_root=Path.cwd(), what="cov")
 >>>    68          with pytest.raises(
        69              c.ValidationError, match="cache-status rejects FILE and MATCH"
        70          ):
        71              FlextInfraPytestSelectorValidator(
-       72                  workspace_root=Path.cwd(), what="cache-status", match="x"
+       72                  repository_root=Path.cwd(), what="cache-status", match="x"
 ```
 
 **Decisão**:
@@ -6674,7 +7075,7 @@ there is no active source block to triage.
 
 > Remove this unnecessary `list()` call on an already iterable object.
 
-```python
+```text
        16      if (
        17          existing_package is None
        18          or Path(getattr(existing_package, "__file__", "")).resolve() != init_file
@@ -6693,7 +7094,7 @@ there is no active source block to triage.
 
 > Use concise character class syntax '\d' instead of '[0-9]'.
 
-```python
+```text
        21      "Root public ABI contract module consumed by lazy-init planning."
        22      ROOT_EXPORTS_DIR: Final[str] = "_constants"
        23      "Directory under each package where lazy-init registries must live."
@@ -6712,7 +7113,7 @@ there is no active source block to triage.
 
 > Use concise character class syntax '\w' instead of '[A-Za-z0-9_]'.
 
-```python
+```text
        42          "install_lazy_exports",
        43      })
        44      "Names bound eagerly by the canonical root initializer template."
@@ -6731,7 +7132,7 @@ there is no active source block to triage.
 
 > Use concise character class syntax '\w' instead of '[A-Za-z0-9_]'.
 
-```python
+```text
        42          "install_lazy_exports",
        43      })
        44      "Names bound eagerly by the canonical root initializer template."
@@ -6750,7 +7151,7 @@ there is no active source block to triage.
 
 > Use concise character class syntax '\w' instead of '[A-Za-z0-9_]'.
 
-```python
+```text
        19  
        20      # Why: conform Makefile policy classifies declarations via these patterns;
        21      # they belong on c.Infra, not as leaf module re.compile copies.
@@ -6769,7 +7170,7 @@ there is no active source block to triage.
 
 > Use concise character class syntax '\w' instead of '[A-Za-z0-9_]'.
 
-```python
+```text
       662      "Public accessor name prefixes that should be renamed (drop the prefix or use a canonical verb)."
       663  
       664      # --- FLEXT scan patterns ---
@@ -6788,7 +7189,7 @@ there is no active source block to triage.
 
 > Replace this use of a reluctant quantifier with `[^\]]*`.
 
-```python
+```text
       130      "Regex: docstring opening (single/triple quote)."
       131      CONSTANT_NAME_RE: Final[t.RegexPattern] = re.compile(r"^_?[A-Z][A-Z0-9_]*$")
       132      "Regex: constant name pattern (UPPER_CASE with optional leading underscore)."
@@ -6807,7 +7208,7 @@ there is no active source block to triage.
 
 > Use concise character class syntax '\w' instead of '[A-Za-z0-9_]'.
 
-```python
+```text
       510          r"(^SKIPPED |::.* SKIPPED( |$))"
       511      )
       512      "Regex: pytest SKIPPED status line."
@@ -6826,7 +7227,7 @@ there is no active source block to triage.
 
 > Replace this comprehension with passing the iterable to the collection constructor call
 
-```python
+```text
       463                  self.inline_import_violations,
       464                  self.silent_failure_violations,
       465                  self.parse_failures,
@@ -6845,7 +7246,7 @@ there is no active source block to triage.
 
 > Remove this redundant Exception class; it derives from another which is already caught.
 
-```python
+```text
        34      if resolved is None:
        35          return r[bool].fail(f"git executable not found on PATH: {c.Infra.GIT}")
        36      try:
@@ -6864,7 +7265,7 @@ there is no active source block to triage.
 
 > Move this assignment out of the argument list; ":=" operator is confusing in this context.
 
-```python
+```text
       120                  (
       121                      file_path
       122                      for resource in resources
@@ -6883,7 +7284,7 @@ there is no active source block to triage.
 
 > Replace this constructor call with a literal.
 
-```python
+```text
       310          """Collect optional dependency groups from one TOML document."""
       311          normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
       312          if not normalized:
@@ -6902,7 +7303,7 @@ there is no active source block to triage.
 
 > Using HTTP protocol is insecure. Use HTTPS instead.
 
-```python
+```text
        25      @staticmethod
        26      def docs_is_external(target: str) -> bool:
        27          """Return whether a docs link target points outside the repository."""
@@ -6921,7 +7322,7 @@ there is no active source block to triage.
 
 > Using HTTP protocol is insecure. Use HTTPS instead.
 
-```python
+```text
        23  
        24      @staticmethod
        25      def docs_maybe_fix_link(md_file: Path, raw_link: str) -> str | None:
@@ -6940,7 +7341,7 @@ there is no active source block to triage.
 
 > Using HTTP protocol is insecure. Use HTTPS instead.
 
-```python
+```text
       456          """Replace local markdown links with plain text while preserving externals."""
       457          sanitized: str = c.Infra.MARKDOWN_LINK_RE.sub(
       458              lambda match: (
@@ -6959,7 +7360,7 @@ there is no active source block to triage.
 
 > Using HTTP protocol is insecure. Use HTTPS instead.
 
-```python
+```text
       110          READMEs render on GitHub and can use relative paths; generated
       111          ``docs/index.md`` pages are built by MkDocs with ``docs_dir`` isolation,
       112          so governance pointers must be absolute GitHub URLs.
@@ -6978,7 +7379,7 @@ there is no active source block to triage.
 
 > Use concise character class syntax '\w' instead of '[A-Za-z0-9_]'.
 
-```python
+```text
        16      """Find facade aliases and movable top-level symbols using Python AST."""
        17  
        18      _CONSTANT_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"^_?[A-Z][A-Z0-9_]*$")
@@ -6997,7 +7398,7 @@ there is no active source block to triage.
 
 > Replace this constructor call with a literal.
 
-```python
+```text
        49      def _compute_base_chains(*, project_root: Path) -> t.StrSequenceMapping:
        50          """Compute base chains."""
        51          pyproject_path = project_root / c.Infra.PYPROJECT_FILENAME
@@ -7016,7 +7417,7 @@ there is no active source block to triage.
 
 > Replace this constructor call with a literal.
 
-```python
+```text
        53              return MappingProxyType(dict[str, tuple[str, ...]]())
        54          try:
        55              raw = pyproject_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
@@ -7035,7 +7436,7 @@ there is no active source block to triage.
 
 > Replace this constructor call with a literal.
 
-```python
+```text
        56          except OSError:
        57              return MappingProxyType(dict[str, tuple[str, ...]]())
        58          payload = u.Cli.toml_mapping_from_text(raw)
@@ -7054,7 +7455,7 @@ there is no active source block to triage.
 
 > Move this assignment out of the argument list; ":=" operator is confusing in this context.
 
-```python
+```text
      1654              line=line if isinstance(line, int) and line > 0 else 1,
      1655              bases=tuple(
      1656                  base_name
@@ -7073,7 +7474,7 @@ there is no active source block to triage.
 
 > Replace this constructor call with a literal.
 
-```python
+```text
       167              if shown.failure:
       168                  lines.append(f"bead: error={shown.error}")
       169              else:
@@ -7092,7 +7493,7 @@ there is no active source block to triage.
 
 > Remove this redundant call.
 
-```python
+```text
        86          """Build root public exports in Ruff's canonical isort-style order."""
        87          # flext-wkii.17.26 (codex): the planner is the sole ABI filter; rendering
        88          # only orders its validated contract and must not reinterpret target paths.
@@ -7111,7 +7512,7 @@ there is no active source block to triage.
 
 > Move this assignment out of the argument list; ":=" operator is confusing in this context.
 
-```python
+```text
       261          )
       262          metric_checks = tuple(
       263              m.Infra.QualityGateCheck(
@@ -7130,7 +7531,7 @@ there is no active source block to triage.
 
 > Remove this unnecessary `list()` call on an already iterable object.
 
-```python
+```text
        53          location: str,
        54      ) -> t.StrSequence:
        55          """Rewrite one Poetry dependency table using the locked version policy."""
@@ -7149,7 +7550,7 @@ there is no active source block to triage.
 
 > Remove this unnecessary `list()` call on an already iterable object.
 
-```python
+```text
        97              if optional_dependencies is not None:
        98                  optional_dependencies = u.Cli.toml_mapping_ensure_table(
        99                      project, c.Infra.OPTIONAL_DEPENDENCIES
@@ -7168,7 +7569,7 @@ there is no active source block to triage.
 
 > Remove this unnecessary `list()` call on an already iterable object.
 
-```python
+```text
       115          if dependency_groups_view is not None:
       116              dependency_groups = u.Cli.toml_mapping_ensure_table(
       117                  payload, c.Infra.DEPENDENCY_GROUPS
@@ -7187,7 +7588,7 @@ there is no active source block to triage.
 
 > Remove this unnecessary `list()` call on an already iterable object.
 
-```python
+```text
       142          poetry_groups = u.Cli.toml_mapping_path(
       143              payload, (c.Infra.TOOL, c.Infra.POETRY, c.Infra.GROUP)
       144          )
@@ -7206,7 +7607,7 @@ there is no active source block to triage.
 
 > Replace this comprehension with passing the iterable to the collection constructor call
 
-```python
+```text
        90          poetry = self._mapping_from_value(tool.get(c.Infra.POETRY))
        91          group = self._mapping_from_value(poetry.get(c.Infra.GROUP))
        92          typings_group = self._mapping_from_value(group.get(c.Infra.TYPINGS))
@@ -7225,7 +7626,7 @@ there is no active source block to triage.
 
 > Replace this comprehension with passing the iterable to the collection constructor call
 
-```python
+```text
       105                      .split("==", maxsplit=1)[0]
       106                      .strip()
       107                  )
@@ -7244,7 +7645,7 @@ there is no active source block to triage.
 
 > Remove this unnecessary `list()` call on an already iterable object.
 
-```python
+```text
       254          )
       255          stale_patterns = (
       256              [
@@ -7263,7 +7664,7 @@ there is no active source block to triage.
 
 > Use the opposite operator (">") instead.
 
-```python
+```text
        88          declarative_rules = cls._declarative_rules_for_selection(rule_names)
        89          declarative_rule_ids = frozenset(rule.id for rule in declarative_rules)
        90          if declarative_rule_ids and selected_rules <= declarative_rule_ids:
@@ -7282,7 +7683,7 @@ there is no active source block to triage.
 
 > Use `not` and `endswith` here.
 
-```python
+```text
       148                      if key not in existing
       149                  ]
       150                  if additions:
@@ -7301,7 +7702,7 @@ there is no active source block to triage.
 
 > Remove this unnecessary `list()` call on an already iterable object.
 
-```python
+```text
       194                      if top == node:
       195                          break
       196                  result.append(scc)

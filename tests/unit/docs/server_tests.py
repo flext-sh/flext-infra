@@ -10,9 +10,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra.docs.server import FlextInfraDocServer
 from flext_infra.utilities import u
-from flext_tests import tm
 from tests import c, m, u as tu
 
 if TYPE_CHECKING:
@@ -60,7 +61,7 @@ class TestsFlextInfraDocServer:
         def test_execute_propagates_selection_failure(self, tmp_path: Path) -> None:
             workspace = tu.Tests.create_docs_workspace(tmp_path)
 
-            result = FlextInfraDocServer(workspace_root=workspace).execute()
+            result = FlextInfraDocServer(repository_root=workspace).execute()
 
             tm.fail(result)
 

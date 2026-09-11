@@ -16,11 +16,18 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
     through FLEXT. Pure syntactic rewriting over text fragments (no facade state).
     """
 
+    # An annotation states the capability required, and the read-only
+    # abstractions are the ones that generalize: Mapping and Sequence are
+    # covariant in their element type, so a concrete dict[str, dict[str, str]]
+    # satisfies MappingKV[str, MappingKV[str, str]]. MutableMapping and
+    # MutableSequence are invariant, so rewriting to them rejected the very
+    # concrete containers callers already pass — every nested case became a
+    # bad-argument-type. Code that needs to mutate keeps its concrete type.
     _CONTAINER_REWRITES: ClassVar[t.StrPairTuple] = (
-        ("dict[", "t.MutableMappingKV"),
-        ("Dict[", "t.MutableMappingKV"),
-        ("list[", "t.MutableSequenceOf"),
-        ("List[", "t.MutableSequenceOf"),
+        ("dict[", "t.MappingKV"),
+        ("Dict[", "t.MappingKV"),
+        ("list[", "t.SequenceOf"),
+        ("List[", "t.SequenceOf"),
     )
     _VARIADIC_TUPLE_PARTS: ClassVar[int] = 2
     _FIXED_TUPLE_ALIASES: ClassVar[t.MappingKV[int, str]] = {
@@ -127,7 +134,9 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
         return not before or not (before.isalnum() or before == "_")
 
     @staticmethod
-    def _match_simple_type_alias(text: str, index: int) -> tuple[str, str, int] | None:
+    def _match_simple_type_alias(
+        text: str, index: int
+    ) -> t.Triple[str, str, int] | None:
         """Return a leaf-type rewrite for ``Any``/``typing.Any``/``object``."""
         for token in ("typing.Any", "Any", "object"):
             if not text.startswith(token, index):
@@ -145,7 +154,7 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
         return None
 
     @staticmethod
-    def _extract_square_bracket_content(text: str, open_index: int) -> tuple[str, int]:
+    def _extract_square_bracket_content(text: str, open_index: int) -> t.Pair[str, int]:
         """Return the content and end offset for a square-bracket type expression."""
         depth = 0
         cursor = open_index

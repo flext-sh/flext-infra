@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from flext_cli import s as cli_service_base
-from flext_infra import FlextInfraServiceBase
 from flext_tests import tm
+
+from flext_infra import FlextInfraServiceBase
 from tests import u
 
 

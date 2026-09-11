@@ -72,15 +72,13 @@ class FlextInfraDependencyDetectionRunnersMixin:
                 cmd.extend(["--extend-exclude", excluded])
         result = self._run_raw(cmd, cwd=project_path, timeout=c.Infra.TIMEOUT_MEDIUM)
         if result.failure:
-            return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail(
-                result.error or "deptry execution failed"
-            )
+            return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].from_failure(result)
         issues: t.SequenceOf[t.JsonMapping] = []
         if out_file.exists():
             loaded_result = u.Cli.files_read_json(out_file)
             if loaded_result.failure:
-                return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail(
-                    loaded_result.error or "deptry JSON output unreadable/invalid"
+                return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].from_failure(
+                    loaded_result
                 )
             if isinstance(loaded_result.value, list):
                 normalized_issues: t.MutableSequenceOf[t.JsonMapping] = []
@@ -100,12 +98,12 @@ class FlextInfraDependencyDetectionRunnersMixin:
                     out_file.unlink()
                 except OSError as exc:
                     return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail(
-                        f"failed to cleanup deptry temp output: {exc}"
+                        f"failed to cleanup deptry temp output: {exc}", exception=exc
                     )
         cmd_result: p.Cli.CommandOutput = result.value
         return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].ok((
             issues,
-            cmd_result.exit_code,
+            cmd_result.outcome.raw_return_code,
         ))
 
     def run_mypy_stub_hints(
@@ -150,7 +148,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
         ))
 
     def run_pip_check(
-        self, workspace_root: Path, venv_bin: Path
+        self, repository_root: Path, venv_bin: Path
     ) -> p.Result[t.Pair[t.StrSequence, int]]:
         """Run pip check to detect dependency conflicts in workspace."""
         pip = venv_bin / "pip"
@@ -159,18 +157,19 @@ class FlextInfraDependencyDetectionRunnersMixin:
         env = {"VIRTUAL_ENV": str(venv_bin.parent)}
         result = self._run_raw(
             [str(pip), c.Infra.VERB_CHECK],
-            cwd=workspace_root,
+            cwd=repository_root,
             timeout=c.Infra.TIMEOUT_SHORT,
             env=env,
         )
         if result.failure:
-            return r[t.Pair[t.StrSequence, int]].fail(
-                result.error or "pip check failed"
-            )
+            return r[t.Pair[t.StrSequence, int]].from_failure(result)
         cmd_result: p.Cli.CommandOutput = result.value
         output = cmd_result.stdout
         lines = output.strip().splitlines() if output else []
-        return r[t.Pair[t.StrSequence, int]].ok((lines, cmd_result.exit_code))
+        return r[t.Pair[t.StrSequence, int]].ok((
+            lines,
+            cmd_result.outcome.raw_return_code,
+        ))
 
 
 __all__: list[str] = ["FlextInfraDependencyDetectionRunnersMixin"]

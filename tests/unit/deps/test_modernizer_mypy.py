@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
 from flext_infra.deps.phases.ensure_pydantic_mypy import (
     FlextInfraEnsurePydanticMypyConfigPhase,
 )
-from flext_tests import tm
-from tests import u
+from tests import t, u
 
 if TYPE_CHECKING:
     from tests import m
@@ -18,17 +19,30 @@ if TYPE_CHECKING:
 class TestsFlextInfraDepsModernizerMypy:
     """Declarative tests for generated mypy and pydantic-mypy settings."""
 
+    @staticmethod
+    def _applied_mypy_document(
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> t.Cli.TomlDocument:
+        """Apply the mypy phase once to a fresh TOML document."""
+        doc = u.Cli.toml_document()
+        _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
+        return doc
+
+    @staticmethod
+    def _mypy_mapping(doc: t.Cli.TomlDocument) -> t.JsonMapping:
+        """Unwrap the canonical tool.mypy table from one document."""
+        return u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
+        )
+
     def test_mypy_phase_sets_expected_state(
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify mypy phase sets expected state."""
-        doc = u.Cli.toml_document()
-
-        _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
-
-        mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
+        doc = TestsFlextInfraDepsModernizerMypy._applied_mypy_document(
+            tool_config_document
         )
+        mypy_mapping = TestsFlextInfraDepsModernizerMypy._mypy_mapping(doc)
         tm.that(mypy_mapping["python_version"], eq="3.13")
         tm.that(
             set(u.Tests.toml_strings(mypy_mapping["plugins"])),
@@ -56,24 +70,19 @@ class TestsFlextInfraDepsModernizerMypy:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify mypy phase keeps misc globally disabled."""
-        doc = u.Cli.toml_document()
-
-        _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
-
-        mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
+        doc = TestsFlextInfraDepsModernizerMypy._applied_mypy_document(
+            tool_config_document
         )
+        mypy_mapping = TestsFlextInfraDepsModernizerMypy._mypy_mapping(doc)
         tm.that(u.Tests.toml_strings(mypy_mapping["disable_error_code"]), has="misc")
 
-    def test_mypy_phase_emits_cli_registration_arg_type_override(
+    def test_mypy_phase_keeps_only_current_scoped_override(
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
-        """Type-erased CLI route registration keeps a scoped arg-type override."""
+        """Strict CLI typing needs no waiver; retained overrides stay justified."""
         overrides = tool_config_document.tools.mypy.overrides
         cli_entries = [entry for entry in overrides if "*.cli" in entry.modules]
-        tm.that(len(cli_entries), eq=1)
-        tm.that("arg-type" in cli_entries[0].disable_error_codes, eq=True)
-        tm.that(len(cli_entries[0].justification) > 0, eq=True)
+        tm.that(cli_entries, eq=[])
         unreachable_entries = [
             entry
             for entry in overrides
@@ -88,13 +97,10 @@ class TestsFlextInfraDepsModernizerMypy:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify mypy phase removes legacy test overrides."""
-        doc = u.Cli.toml_document()
-
-        _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
-
-        mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
+        doc = TestsFlextInfraDepsModernizerMypy._applied_mypy_document(
+            tool_config_document
         )
+        mypy_mapping = TestsFlextInfraDepsModernizerMypy._mypy_mapping(doc)
         override_modules = {
             tuple(u.Tests.toml_strings(u.Tests.toml_mapping(entry)["module"]))
             for entry in u.Tests.toml_list(mypy_mapping["overrides"])
@@ -131,10 +137,7 @@ overrides = [{ module = ["legacy.*"], disable_error_code = ["misc"] }]
         )
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
-
-        mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
-        )
+        mypy_mapping = TestsFlextInfraDepsModernizerMypy._mypy_mapping(doc)
         tm.that(
             list(u.Tests.toml_strings(mypy_mapping["plugins"])),
             eq=list(tool_config_document.tools.mypy.plugins),
@@ -166,10 +169,7 @@ warn_return_any = false
         )
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
-
-        mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
-        )
+        mypy_mapping = TestsFlextInfraDepsModernizerMypy._mypy_mapping(doc)
         tm.that(mypy_mapping, lacks="strict_concatenate")
         tm.that(
             mypy_mapping["warn_return_any"],
@@ -192,13 +192,16 @@ warn_return_any = false
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify pydantic mypy phase sets expected state."""
-        doc = u.Cli.toml_document()
+        doc = u.Cli.toml_document_from_mapping({
+            "tool": {"pydantic-mypy": {"warn_untyped_fields": True}}
+        })
 
         _ = FlextInfraEnsurePydanticMypyConfigPhase(tool_config_document).apply(doc)
 
         pydantic_mypy_mapping = u.Tests.toml_mapping(
             u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["pydantic-mypy"]
         )
+        tm.that("warn_untyped_fields" in pydantic_mypy_mapping, eq=False)
         tm.that(
             pydantic_mypy_mapping["init_forbid_extra"],
             eq=tool_config_document.tools.pydantic_mypy.init_forbid_extra,
@@ -223,3 +226,19 @@ warn_return_any = false
         second_changes = phase.apply(doc)
 
         tm.that(second_changes, eq=[])
+
+    def test_pydantic_mypy_payload_removes_obsolete_option(
+        self, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Migrate persisted plugin options through the payload phase owner."""
+        payload: t.MutableJsonMapping = {
+            "tool": {"pydantic-mypy": {"warn_untyped_fields": True}}
+        }
+        phase = FlextInfraEnsurePydanticMypyConfigPhase(tool_config_document)
+        changes = phase.apply_payload(payload)
+        settings = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(payload["tool"])["pydantic-mypy"]
+        )
+        tm.that("warn_untyped_fields" in settings, eq=False)
+        tm.that(changes, has="tool.pydantic-mypy.warn_untyped_fields removed")
+        tm.that(phase.apply_payload(payload), eq=[])

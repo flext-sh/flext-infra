@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated, Literal, Self
 
 from flext_cli import m, u
+
 from flext_infra import t
-from flext_infra._models._defaults import ImmutableEmptyMapping
-from flext_infra._models.deps_tool_config_linters import (
-    FlextInfraModelsDepsToolConfigLinters,
-)
-from flext_infra._models.deps_tool_config_type_checkers import (
-    FlextInfraModelsDepsToolConfigTypeCheckers,
-)
+
+from ._defaults import ImmutableEmptyMapping
+from .deps_tool_config_linters import FlextInfraModelsDepsToolConfigLinters
+from .deps_tool_config_type_checkers import FlextInfraModelsDepsToolConfigTypeCheckers
 
 
 class FlextInfraModelsDepsToolSettings(
@@ -63,6 +62,42 @@ class FlextInfraModelsDepsToolSettings(
     class PytestConfig(m.ArbitraryTypesModel):
         """Pytest baseline settings loaded from YAML."""
 
+        testmon_state_home_variable: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                alias="testmon-state-home-variable",
+                description="Required environment variable owning persistent test state.",
+            ),
+        ]
+        testmon_datafile_variable: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                alias="testmon-datafile-variable",
+                description="pytest-testmon environment variable selecting its database.",
+            ),
+        ]
+        testmon_namespace: Annotated[
+            Path,
+            m.Field(
+                alias="testmon-namespace",
+                description="Relative namespace below the persistent state home.",
+            ),
+        ]
+        testmon_database_filename: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                alias="testmon-database-filename",
+                description="pytest-testmon SQLite database filename.",
+            ),
+        ]
+        testmon_lock_filename: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                alias="testmon-lock-filename",
+                description="Exclusive writer lock filename beside the database.",
+            ),
+        ]
+
         # flext-j47u (codex): every rendered pytest value is validated config data.
         case_timeout_seconds: Annotated[
             int,
@@ -96,6 +131,12 @@ class FlextInfraModelsDepsToolSettings(
                 description="Grace period reserved inside the invocation deadline.",
             ),
         ]
+        max_failures: Annotated[
+            Literal[1],
+            m.Field(
+                alias="max-failures", description="Fail-fast pytest failure ceiling."
+            ),
+        ]
         enforcement_plugin: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -103,8 +144,15 @@ class FlextInfraModelsDepsToolSettings(
                 description="Required pytest11 enforcement plugin loaded by Make.",
             ),
         ]
+        asyncio_default_fixture_loop_scope: Annotated[
+            Literal["function", "class", "module", "package", "session"],
+            m.Field(
+                alias="asyncio-default-fixture-loop-scope",
+                description="Explicit event-loop lifetime for asynchronous pytest fixtures.",
+            ),
+        ]
         progress_args: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 alias="progress-args",
                 min_length=1,
@@ -112,7 +160,7 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         report_args: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 alias="report-args",
                 min_length=1,
@@ -120,7 +168,7 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         diagnostic_args: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 alias="diagnostic-args",
                 min_length=1,
@@ -133,11 +181,23 @@ class FlextInfraModelsDepsToolSettings(
                 alias="parallel-workers",
                 gt=0,
                 le=16,
-                description="Fixed pytest-xdist worker budget for full runs.",
+                description="Upper pytest-xdist worker ceiling for full runs.",
+            ),
+        ]
+        parallel_worker_memory_gb: Annotated[
+            int,
+            m.Field(
+                alias="parallel-worker-memory-gb",
+                gt=0,
+                le=64,
+                description=(
+                    "Physical-memory reservation per xdist worker; the runner "
+                    "also bounds workers by available CPU."
+                ),
             ),
         ]
         parallel_distribution: Annotated[
-            Literal["worksteal"],
+            Literal["load"],
             m.Field(
                 alias="parallel-distribution",
                 description="Pytest-xdist scheduler for full runs.",
@@ -225,6 +285,23 @@ class FlextInfraModelsDepsToolSettings(
         @u.model_validator(mode="after")
         def _validate_execution_limits(self) -> Self:
             """Keep item and termination budgets inside the hard invocation cap."""
+            if (
+                self.testmon_namespace.is_absolute()
+                or self.testmon_namespace == Path()
+                or ".." in self.testmon_namespace.parts
+            ):
+                msg = "pytest testmon namespace must be a non-empty relative path"
+                raise ValueError(msg)
+            for field_name, filename in (
+                ("database", self.testmon_database_filename),
+                ("lock", self.testmon_lock_filename),
+            ):
+                if Path(filename).name != filename or filename in {".", ".."}:
+                    msg = f"pytest testmon {field_name} filename must be one basename"
+                    raise ValueError(msg)
+            if self.testmon_database_filename == self.testmon_lock_filename:
+                msg = "pytest testmon database and lock filenames must differ"
+                raise ValueError(msg)
             if self.case_timeout_seconds >= self.run_timeout_seconds:
                 msg = "pytest case timeout must be less than run timeout"
                 raise ValueError(msg)
@@ -297,6 +374,15 @@ class FlextInfraModelsDepsToolSettings(
 
         all: Annotated[bool, m.Field(description="Sort all TOML tables and entries.")]
         in_place: Annotated[bool, m.Field(description="Apply TOML sorting in place.")]
+        process_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                alias="process-timeout-seconds",
+                gt=0,
+                le=60,
+                description="Maximum runtime for Taplo resolution or formatting.",
+            ),
+        ]
         sort_first: Annotated[
             t.StrSequence, m.Field(description="Top-level TOML sections ordered first.")
         ]
@@ -519,7 +605,7 @@ class FlextInfraModelsDepsToolSettings(
             t.StrTuple, m.Field(description="Resolved environment import paths")
         ]
         settings: Annotated[
-            tuple[FlextInfraModelsDepsToolSettings.ToolingScalarSetting, ...],
+            t.VariadicTuple[FlextInfraModelsDepsToolSettings.ToolingScalarSetting],
             m.Field(description="Resolved environment diagnostics"),
         ]
 
@@ -558,11 +644,11 @@ class FlextInfraModelsDepsToolSettings(
             t.StrTuple, m.Field(description="Resolved Pyright import paths")
         ]
         pyright_settings: Annotated[
-            tuple[FlextInfraModelsDepsToolSettings.ToolingScalarSetting, ...],
+            t.VariadicTuple[FlextInfraModelsDepsToolSettings.ToolingScalarSetting],
             m.Field(description="Resolved Pyright scalar settings"),
         ]
         pyright_execution_environments: Annotated[
-            tuple[FlextInfraModelsDepsToolSettings.ToolingPyrightEnvironment, ...],
+            t.VariadicTuple[FlextInfraModelsDepsToolSettings.ToolingPyrightEnvironment],
             m.Field(description="Resolved Pyright environments"),
         ]
         ruff_src: Annotated[

@@ -5,10 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c, config, t
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.services.codegen import FlextInfraCodegen
-from flext_tests import tm
 from tests import u
 
 CodegenSpec = type(config.Infra.codegen)
@@ -89,6 +90,43 @@ class TestsCodegenArtifactSsot:
         )
         tm.that(unaccounted, eq=())
 
+    @pytest.mark.parametrize(
+        "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
+    )
+    def test_gitignore_tracks_governed_provider_projections(
+        self, codegen: CodegenSpec, profile: c.Infra.MakeProfile
+    ) -> None:
+        """Version authorization and provider surfaces for every repository role."""
+        rendered = tm.ok(
+            FlextInfraCodegenConform.render_project_gitignore(
+                codegen, profile=profile, project_name="fixture-project"
+            )
+        )
+        tracked = (
+            ".agents/projection.json",
+            ".agents/aihub-hooks/antigravity-preinvocation.py",
+            ".agents/skills/flext-development/SKILL.md",
+            ".claude/settings.json",
+            ".claude/skills/flext-development/SKILL.md",
+            ".codex/hooks.json",
+            ".cursor/hooks.json",
+            ".gemini/settings.json",
+            ".github/skills/flext-development/SKILL.md",
+            ".opencode/skills/flext-development/SKILL.md",
+        )
+        for relative_path in tracked:
+            tm.that(
+                u.Tests.is_tracked_under(rendered, relative_path),
+                eq=True,
+                msg=f"{profile.value}: {relative_path} must be trackable",
+            )
+        tm.that(
+            u.Tests.is_tracked_under(
+                rendered, ".agents/skills/flext-development/report.json"
+            ),
+            eq=False,
+        )
+
     def test_makefile_has_one_owner_for_every_declared_profile(
         self, codegen: CodegenSpec
     ) -> None:
@@ -119,16 +157,23 @@ class TestsCodegenArtifactSsot:
         push_verbs = {step.verb for step in pre_push}
         tm.that(bool(commit_verbs & push_verbs), eq=True)
         tm.that(bool(commit_verbs - push_verbs), eq=True)
-        commit_mutations = {step.verb for step in pre_commit if step.apply}
-        push_mutations = {step.verb for step in pre_push if step.apply}
         shared_steps = tuple(
             step
             for step in workflow
             if {"pre_commit", "pre_push"}.issubset(step.contexts)
         )
 
-        tm.that(commit_mutations.isdisjoint(push_mutations), eq=True)
-        tm.that(all(not step.apply for step in shared_steps), eq=True)
+        # `apply` carries the declared mutation token, which every effecting
+        # verb requires — `check` and `test` publish reports and require it too.
+        # It is therefore not a classification of source rewriting, and a shared
+        # step legitimately carries it. What the partition must prove is that
+        # each hook owns work the other does not, and that both reach the same
+        # validation verb.
+        tm.that(bool(shared_steps), eq=True)
+        tm.that(
+            {step.verb for step in shared_steps}.issubset(commit_verbs & push_verbs),
+            eq=True,
+        )
         tm.that(bool(push_verbs - commit_verbs), eq=True)
         tm.that(
             push_verbs.issubset({verb.name for verb in codegen.make.verbs}), eq=True

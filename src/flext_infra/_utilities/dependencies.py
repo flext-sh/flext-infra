@@ -6,29 +6,53 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from importlib.metadata import requires
+from importlib.resources import files
+from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
+from packaging.requirements import InvalidRequirement, Requirement
+from packaging.utils import canonicalize_name
+from packaging.version import InvalidVersion, Version
+
+from flext_core import r
 from flext_infra.constants import c
 
-if TYPE_CHECKING:
-    from pathlib import Path
+# Why: dependency_waves subscripts r[t.SequenceOf[t.StrSequence]] at runtime, so
+# the typings facade cannot be TYPE_CHECKING-only here. c -> t is a forward
+# facade import and stays cycle-free.
+from flext_infra.typings import t
 
-    from flext_infra.typings import t
+from .pyproject import FlextInfraUtilitiesPyproject
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesDependencies:
     """Static helpers for inspecting dependency declarations in pyproject payloads."""
 
     @staticmethod
-    def dep_name(requirement: str) -> str | None:
-        """Extract normalized dependency name from one requirement spec."""
+    def dep_name(requirement: str, *, active_only: bool = False) -> str | None:
+        """Extract one normalized dependency name, optionally evaluating markers."""
         text = requirement.strip()
         if not text:
             return None
+        try:
+            parsed = Requirement(text)
+        except InvalidRequirement:
+            parsed = None
+        if parsed is not None:
+            if (
+                active_only
+                and parsed.marker is not None
+                and not parsed.marker.evaluate()
+            ):
+                return None
+            return canonicalize_name(parsed.name)
         if ";" in text:
             text = text.split(";", maxsplit=1)[0].strip()
         if " @ " in text:
@@ -41,51 +65,255 @@ class FlextInfraUtilitiesDependencies:
         normalized = text.lower()
         return normalized or None
 
+    @classmethod
+    def project_dependency_names_from_payload(
+        cls, payload: t.JsonMapping
+    ) -> t.StrSequence:
+        """Return strict names from the PEP 621 runtime dependency array."""
+        project = payload.get(c.Infra.PROJECT)
+        if not isinstance(project, Mapping):
+            msg = "pyproject payload must define a [project] mapping"
+            raise TypeError(msg)
+        raw_dependencies = project.get(c.Infra.DEPENDENCIES, [])
+        if not isinstance(raw_dependencies, list):
+            msg = "[project].dependencies must be an array of requirement strings"
+            raise TypeError(msg)
+        names: list[str] = []
+        for raw_requirement in raw_dependencies:
+            if not isinstance(raw_requirement, str):
+                msg = "[project].dependencies entries must be strings"
+                raise TypeError(msg)
+            dependency_name = cls.dep_name(raw_requirement)
+            if dependency_name is None:
+                msg = "[project].dependencies entries must not be blank"
+                raise ValueError(msg)
+            names.append(dependency_name)
+        return tuple(names)
+
     @staticmethod
-    def constraint_specifier(version: str) -> str:
-        """Return the resolved lock version as an open-ended dependency floor."""
-        normalized_version = version.strip()
-        return f">={normalized_version}" if normalized_version else ""
+    def dependency_order(
+        direct_names: t.StrSequence,
+        *,
+        dependencies: Callable[[str], t.StrSequence],
+        prefix: str = "",
+        normalize: Callable[[str], str] = canonicalize_name,
+    ) -> t.StrSequence:
+        """Return a dependency-first order for any named dependency graph."""
+        graph: dict[str, tuple[str, ...]] = {}
+
+        def collect(dependency_name: str) -> None:
+            normalized = normalize(dependency_name)
+            if normalized in graph:
+                return
+            children = tuple(
+                child
+                for raw_child in dependencies(normalized)
+                if (child := normalize(raw_child))
+                and (not prefix or child.startswith(prefix))
+            )
+            graph[normalized] = children
+            for dependency in children:
+                collect(dependency)
+
+        roots = tuple(
+            normalized
+            for name in direct_names
+            if (normalized := normalize(name))
+            and (not prefix or normalized.startswith(prefix))
+        )
+        for root in roots:
+            collect(root)
+        ordered: list[str] = []
+        visited: set[str] = set()
+        active: list[str] = []
+
+        def visit(distribution_name: str) -> None:
+            if distribution_name in visited:
+                return
+            if distribution_name in active:
+                cycle_start = active.index(distribution_name)
+                cycle = " -> ".join((*active[cycle_start:], distribution_name))
+                msg = f"cyclic dependency graph: {cycle}"
+                raise ValueError(msg)
+            active.append(distribution_name)
+            for dependency in graph[distribution_name]:
+                visit(dependency)
+            active.pop()
+            visited.add(distribution_name)
+            ordered.append(distribution_name)
+
+        for root in roots:
+            visit(root)
+        return tuple(ordered)
+
+    @staticmethod
+    def dependency_waves(
+        edges: Mapping[str, t.StrSequence],
+    ) -> p.Result[t.SequenceOf[t.StrSequence]]:
+        """Split a closed named dependency graph into dependency-first waves.
+
+        Wave ``n`` contains only names whose dependencies all live in earlier
+        waves, so each wave may proceed in parallel while the sequence between
+        waves stays strict. The graph is closed: every referenced name must be
+        a key of ``edges``; an unknown reference or a cycle fails the result
+        instead of raising, so callers (release publish ordering, codemod
+        provider ordering) compose it through ``p.Result`` chaining.
+        """
+        unknown = sorted({
+            dependency
+            for deps in edges.values()
+            for dependency in deps
+            if dependency not in edges
+        })
+        if unknown:
+            return r[t.SequenceOf[t.StrSequence]].fail(
+                "dependency graph references names outside the graph: "
+                + ", ".join(unknown)
+            )
+        pending = {name: set(deps) for name, deps in edges.items()}
+        waves: list[t.StrSequence] = []
+        while pending:
+            ready = frozenset(name for name, deps in pending.items() if not deps)
+            if not ready:
+                return r[t.SequenceOf[t.StrSequence]].fail(
+                    "cyclic dependency graph: " + ", ".join(sorted(pending))
+                )
+            waves.append(tuple(sorted(ready)))
+            pending = {
+                name: deps - ready
+                for name, deps in pending.items()
+                if name not in ready
+            }
+        return r[t.SequenceOf[t.StrSequence]].ok(tuple(waves))
 
     @classmethod
-    def locked_dependency_versions(cls, lock_path: Path) -> t.MappingKV[str, str]:
-        """Return normalized registry package versions from one ``uv.lock`` file."""
+    def project_dependency_resource_files(
+        cls,
+        project_root: Path,
+        *,
+        resource_parts: t.StrSequence,
+        distribution_prefix: str = "",
+        suffix: str = "",
+    ) -> t.SequenceOf[Path]:
+        """Resolve runtime, local, and test dependency resources in order."""
+        pyproject = project_root / c.Infra.PYPROJECT_FILENAME
+        payload = u.Cli.toml_read_json(pyproject).unwrap()
+        project_name = canonicalize_name(
+            FlextInfraUtilitiesPyproject.project_name_from_payload(
+                project_root, payload
+            )
+        )
+        declared_names = cls.declared_dependency_names_from_payload(payload)
+
+        def installed_dependencies(name: str) -> t.StrSequence:
+            return tuple(
+                dependency
+                for raw_requirement in requires(name) or ()
+                if (dependency := cls.dep_name(raw_requirement, active_only=True))
+                is not None
+            )
+
+        ordered = list(
+            cls.dependency_order(
+                declared_names,
+                dependencies=installed_dependencies,
+                prefix=distribution_prefix,
+            )
+        )
+        package_names: dict[str, str] = {
+            name: name.replace("-", "_") for name in ordered
+        }
+        if not distribution_prefix or project_name.startswith(distribution_prefix):
+            if project_name not in ordered:
+                ordered.append(project_name)
+            package_names[project_name] = (
+                FlextInfraUtilitiesPyproject.package_name_from_payload(
+                    project_root,
+                    payload,
+                    FlextInfraUtilitiesPyproject.docs_meta_from_payload(payload),
+                )
+            )
+        discovered: list[Path] = []
+        seen: set[Path] = set()
+        for distribution_name in ordered:
+            resource = files(package_names[distribution_name])
+            for part in resource_parts:
+                resource /= part
+            resource_root = Path(str(resource))
+            if not resource_root.is_dir():
+                continue
+            for candidate in sorted(resource_root.rglob(f"*{suffix}")):
+                resolved = candidate.resolve()
+                if resolved not in seen:
+                    seen.add(resolved)
+                    discovered.append(resolved)
+        return tuple(discovered)
+
+    @staticmethod
+    def constraint_specifier(version: str) -> str:
+        """Return the resolved lock version as an open-ended dependency floor.
+
+        PEP 440 permits a local version label only with ``==`` or ``!=``, so a
+        floor built straight from a locally tagged resolution is rejected by
+        every build backend. The public release is what a floor means, and the
+        local build satisfies it.
+
+        A prerelease resolution is not a floor either: publishing ``>=X.Yb1``
+        forces every downstream consumer onto that beta, which is how the fleet
+        ended up pinned to ``pydantic>=2.14.0b1`` from a single local lock. The
+        empty string means "this resolution cannot serve as a public floor", and
+        every caller keeps the declared constraint instead of rewriting it.
+        """
+        public_version = version.strip().partition("+")[0]
+        if not public_version:
+            return ""
+        try:
+            parsed_version = Version(public_version)
+        except InvalidVersion:
+            return ""
+        if parsed_version.is_prerelease:
+            return ""
+        return f">={public_version}"
+
+    @classmethod
+    def locked_dependency_versions(
+        cls, lock_path: Path, *, sources: t.StrSequence = ("registry",)
+    ) -> t.MappingKV[str, str]:
+        """Return normalized package versions from one ``uv.lock`` file.
+
+        ``sources`` selects the lock source kinds to read (``registry`` by
+        default; ``git`` yields the siblings consumed through a pinned ref).
+        """
         result: t.MappingKV[str, str] = {}
         if lock_path.is_file():
-            try:
-                raw_text = lock_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            except OSError:
-                pass
-            else:
-                payload_source = u.Cli.toml_mapping_from_text(raw_text)
-                if payload_source is not None:
-                    payload = FlextInfraUtilitiesPyproject.validate_infra_payload(
-                        payload_source
-                    )
-                    if payload is not None:
-                        raw_packages = payload.get("package")
-                        if isinstance(raw_packages, list):
-                            versions: dict[str, str] = {}
-                            for raw_package in raw_packages:
-                                if not isinstance(raw_package, Mapping):
-                                    continue
-                                raw_source = raw_package.get("source")
-                                if (
-                                    not isinstance(raw_source, Mapping)
-                                    or "registry" not in raw_source
-                                ):
-                                    continue
-                                raw_name = raw_package.get("name")
-                                raw_version = raw_package.get(c.Infra.VERSION)
-                                if not isinstance(raw_name, str) or not isinstance(
-                                    raw_version, str
-                                ):
-                                    continue
-                                dependency_name = cls.dep_name(raw_name)
-                                if dependency_name is None:
-                                    continue
-                                versions[dependency_name] = raw_version.strip()
-                            result = dict(versions)
+            raw_text = lock_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            payload_source = u.Cli.toml_mapping_from_text(raw_text)
+            if payload_source is not None:
+                payload = FlextInfraUtilitiesPyproject.validate_infra_payload(
+                    payload_source
+                )
+                raw_packages = payload.get("package")
+                if isinstance(raw_packages, list):
+                    versions: dict[str, str] = {}
+                    for raw_package in raw_packages:
+                        if not isinstance(raw_package, Mapping):
+                            continue
+                        raw_source = raw_package.get("source")
+                        if not isinstance(raw_source, Mapping) or not any(
+                            kind in raw_source for kind in sources
+                        ):
+                            continue
+                        raw_name = raw_package.get("name")
+                        raw_version = raw_package.get(c.Infra.VERSION)
+                        if not isinstance(raw_name, str) or not isinstance(
+                            raw_version, str
+                        ):
+                            continue
+                        dependency_name = cls.dep_name(raw_name)
+                        if dependency_name is None:
+                            continue
+                        versions[dependency_name] = raw_version.strip()
+                    result = dict(versions)
         return result
 
     @classmethod
@@ -115,49 +343,33 @@ class FlextInfraUtilitiesDependencies:
                     ):
                         locked_version = locked_versions.get(dependency_name)
                         if locked_version is not None:
-                            rewritten = (
-                                f"{head}{cls.constraint_specifier(locked_version)}"
+                            try:
+                                parsed = Requirement(requirement_part.strip())
+                            except InvalidRequirement:
+                                parsed = None
+                            if parsed is not None and not parsed.specifier.contains(
+                                locked_version, prereleases=True
+                            ):
+                                return None
+                            retained = (
+                                ()
+                                if parsed is None
+                                else tuple(
+                                    str(specifier)
+                                    for specifier in parsed.specifier
+                                    if specifier.operator in {"<", "<=", "!="}
+                                )
                             )
+                            constraint = cls.constraint_specifier(locked_version)
+                            if not constraint:
+                                return None
+                            if retained:
+                                constraint = ",".join((constraint, *retained))
+                            rewritten = f"{head}{constraint}"
                             marker_text = marker_part.strip()
                             if marker_separator and marker_text:
                                 rewritten = f"{rewritten}; {marker_text}"
                             result = rewritten if rewritten != raw_text else None
-        return result
-
-    @classmethod
-    def rewrite_poetry_constraint(
-        cls,
-        dependency_name: str,
-        raw_value: t.Infra.InfraValue,
-        *,
-        locked_versions: t.MappingKV[str, str],
-        internal_names: t.StrSequence = (),
-    ) -> t.Infra.InfraValue | None:
-        """Rewrite one Poetry dependency to the resolved uv.lock floor."""
-        result: t.Infra.InfraValue | None = None
-        normalized_name = cls.dep_name(dependency_name)
-        internal_set = set(internal_names)
-        if (
-            normalized_name is not None
-            and normalized_name != "python"
-            and normalized_name not in internal_set
-        ):
-            locked_version = locked_versions.get(normalized_name)
-            if locked_version is not None:
-                rewritten_specifier = cls.constraint_specifier(locked_version)
-                if isinstance(raw_value, str):
-                    result = (
-                        rewritten_specifier
-                        if raw_value != rewritten_specifier
-                        else None
-                    )
-                elif isinstance(raw_value, Mapping) and not any(
-                    key in raw_value for key in (c.Infra.PATH, "git", "url")
-                ):
-                    updated: t.MutableJsonMapping = dict(raw_value)
-                    if updated.get(c.Infra.VERSION) != rewritten_specifier:
-                        updated[c.Infra.VERSION] = rewritten_specifier
-                        result = dict(updated)
         return result
 
     @staticmethod
@@ -350,8 +562,6 @@ class FlextInfraUtilitiesDependencies:
         # flext-j47u (codex): FLEXT dependencies are first-party contracts even
         # when their uv source declaration is owned by an enclosing workspace.
         normalized = FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
-        if normalized is None:
-            return ()
         return tuple(
             sorted(
                 name.replace("-", "_")

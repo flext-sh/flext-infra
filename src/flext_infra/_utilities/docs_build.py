@@ -9,13 +9,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 from flext_cli import u
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
+
 from flext_infra.constants import c
 from flext_infra.models import m
+
+from .docs import FlextInfraUtilitiesDocs
 
 if TYPE_CHECKING:
     from types import ModuleType
 
+    from flext_infra import t
     from flext_infra.protocols import p
 
 
@@ -32,7 +35,9 @@ class FlextInfraUtilitiesDocsBuild:
         raise OSError(msg)
 
     @staticmethod
-    def _mkdocs_exception_types(module: ModuleType) -> tuple[type[BaseException], ...]:
+    def _mkdocs_exception_types(
+        module: ModuleType,
+    ) -> t.VariadicTuple[type[BaseException]]:
         """Return MkDocs exception classes from a lazily loaded module."""
         names = (
             "Abort",
@@ -62,7 +67,7 @@ class FlextInfraUtilitiesDocsBuild:
         return config_raw
 
     @staticmethod
-    def docs_mkdocs_config_files(scope: m.Infra.DocScope) -> tuple[Path, ...]:
+    def docs_mkdocs_config_files(scope: m.Infra.DocScope) -> t.VariadicTuple[Path]:
         """Return primary mkdocs.yml then optional product mkdocs.yaml."""
         configs: list[Path] = []
         primary = scope.path / "mkdocs.yml"
@@ -143,6 +148,7 @@ class FlextInfraUtilitiesDocsBuild:
                     str(site_dir),
                 ],
                 cwd=scope.path,
+                env={"DISABLE_MKDOCS_2_WARNING": "true"},
             )
             if completed.failure:
                 return m.Infra.DocsPhaseReport(
@@ -154,7 +160,7 @@ class FlextInfraUtilitiesDocsBuild:
                     passed=False,
                 )
             output = completed.value
-            if output.exit_code == 0:
+            if u.Cli.process_succeeded(output.outcome):
                 return m.Infra.DocsPhaseReport(
                     phase="build",
                     scope=scope.name,
@@ -171,7 +177,7 @@ class FlextInfraUtilitiesDocsBuild:
                 reason=(
                     reason_lines[-1]
                     if reason_lines
-                    else f"mkdocs exited {output.exit_code} ({settings.name})"
+                    else f"mkdocs exited {output.outcome.raw_return_code} ({settings.name})"
                 ),
                 site_dir=site_dir.as_posix(),
                 passed=False,

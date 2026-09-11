@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraWorktreeService, c
 from flext_tests import tm
+
+from flext_infra import FlextInfraWorktreeService, c
 from tests import u
 
 
@@ -24,7 +25,7 @@ def test_worktree_add_does_not_run_setup(tmp_path: Path) -> None:
     lane = Path(
         tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=repository,
+                repository_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch="feature/unprovisioned",
                 base="HEAD",

@@ -18,10 +18,11 @@ from __future__ import annotations
 import sys
 from typing import Annotated, override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, m, p, r, t, u
+from flext_infra.base import FlextInfraServiceBase
 
 
-class FlextInfraValidateFreshImport(s[bool]):
+class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     """Validates that advertised packages import cleanly in fresh processes.
 
     Guard 7 of the circular-import defense-in-depth suite. Each package
@@ -52,7 +53,7 @@ class FlextInfraValidateFreshImport(s[bool]):
         for package in packages:
             smoke_result = u.Cli.run_raw(
                 [sys.executable, "-c", f"import {package}"],
-                cwd=self.workspace_root,
+                cwd=self.repository_root,
                 env=env,
             )
             if smoke_result.failure:
@@ -61,7 +62,7 @@ class FlextInfraValidateFreshImport(s[bool]):
                 )
                 continue
             output = smoke_result.value
-            rc = output.exit_code
+            rc = output.outcome.raw_return_code
             lines = (output.stderr.strip() or output.stdout.strip()).splitlines()
             last_line = lines[-1] if lines else ""
             if rc != 0:
@@ -84,8 +85,8 @@ class FlextInfraValidateFreshImport(s[bool]):
         """Return subprocess env that can import the selected workspace package."""
         inherited_env = u.Cli.process_env()
         import_roots = (
-            str(self.workspace_root),
-            str(self.workspace_root / c.Infra.DEFAULT_SRC_DIR),
+            str(self.repository_root),
+            str(self.repository_root / c.Infra.DEFAULT_SRC_DIR),
         )
         existing_pythonpath = inherited_env.get(c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, "")
         pythonpath = c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(
@@ -100,7 +101,7 @@ class FlextInfraValidateFreshImport(s[bool]):
         """Execute the fresh-import validation CLI flow."""
         report_result = self.build_report(packages=self.packages)
         if report_result.failure:
-            return r[bool].fail(report_result.error or "fresh-import validation failed")
+            return r[bool].from_failure(report_result)
         report = report_result.unwrap()
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 

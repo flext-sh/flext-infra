@@ -9,8 +9,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 from flext_tests import tm
+
+from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 
 if TYPE_CHECKING:
     from tests import t
@@ -67,7 +68,7 @@ class TestManualCommandValidator:
         tm.that(_V.command_blocked("git status"), eq=False)
 
     def test_make_allowed(self) -> None:
-        tm.that(_V.command_blocked("make check WHAT=lint"), eq=False)
+        tm.that(_V.command_blocked("make check APPLY=Y"), eq=False)
 
     def test_flext_infra_allowed(self) -> None:
         tm.that(

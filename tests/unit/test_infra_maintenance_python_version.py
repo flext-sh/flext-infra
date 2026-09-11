@@ -11,8 +11,9 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING, override
 
-from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 from flext_tests import tm
+
+from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 from tests import u
 
 if TYPE_CHECKING:
@@ -23,7 +24,7 @@ _BAD: int = _MINOR + 1
 
 
 def _ws(root: Path, *, minor: int = _MINOR) -> Path:
-    """Create workspace root with required markers."""
+    """Create repository root with required markers."""
     root.mkdir(exist_ok=True)
     (root / ".git").mkdir(exist_ok=True)
     (root / "Makefile").touch()
@@ -64,7 +65,7 @@ def _svc(ws: Path) -> FlextInfraPythonVersionEnforcer:
 
     class _TestEnforcer(FlextInfraPythonVersionEnforcer):
         @override
-        def _workspace_root_from_file(self, file: str | Path) -> Path:
+        def _repository_root_from_file(self, file: str | Path) -> Path:
             _ = file
             return ws
 

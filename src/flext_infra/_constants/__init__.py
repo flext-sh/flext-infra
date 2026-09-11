@@ -3,9 +3,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
@@ -24,7 +23,6 @@ if TYPE_CHECKING:
     from .detectors import FlextInfraConstantsDetectors
     from .docs import FlextInfraConstantsDocs
     from .git import FlextInfraConstantsGit
-    from .github import FlextInfraConstantsGithub
     from .make import FlextInfraConstantsMake
     from .namespace import FlextInfraConstantsNamespace
     from .refactor import FlextInfraConstantsRefactor
@@ -48,7 +46,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraConstantsDetectors",
     "FlextInfraConstantsDocs",
     "FlextInfraConstantsGit",
-    "FlextInfraConstantsGithub",
     "FlextInfraConstantsMake",
     "FlextInfraConstantsNamespace",
     "FlextInfraConstantsRefactor",
@@ -76,7 +73,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".detectors": ("FlextInfraConstantsDetectors",),
             ".docs": ("FlextInfraConstantsDocs",),
             ".git": ("FlextInfraConstantsGit",),
-            ".github": ("FlextInfraConstantsGithub",),
             ".make": ("FlextInfraConstantsMake",),
             ".namespace": ("FlextInfraConstantsNamespace",),
             ".refactor": ("FlextInfraConstantsRefactor",),

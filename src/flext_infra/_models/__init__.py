@@ -3,20 +3,20 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import _git as _git
+    from . import _git
     from ._git.identity import FlextInfraModelsGitIdentity
     from .base import FlextInfraModelsBase
     from .census import FlextInfraModelsCensus
     from .check import FlextInfraModelsCheck
     from .codegen import FlextInfraModelsCodegen
     from .codegen_render import FlextInfraModelsCodegenRender
+    from .codemod import FlextInfraModelsCodemod
     from .config import FlextInfraConfigModels
     from .deps import FlextInfraModelsDeps
     from .deps_toml import FlextInfraModelsDepsToml
@@ -32,22 +32,25 @@ if TYPE_CHECKING:
         FlextInfraModelsDepsToolConfigTypeCheckers,
     )
     from .docs import FlextInfraModelsDocs
+    from .docs_generation import FlextInfraModelsDocsGeneration
+    from .duplication import FlextInfraModelsDuplication
     from .enforcement import FlextInfraModelsEnforcement
     from .gates import FlextInfraModelsGates
     from .git import FlextInfraModelsGit
-    from .github import FlextInfraModelsGithub
     from .layout import FlextInfraModelsLayout
     from .mixins import FlextInfraModelsMixins
+    from .promoted import FlextInfraModelsPromoted
     from .refactor import FlextInfraModelsRefactor
     from .refactor_ast_grep import FlextInfraModelsRefactorGrep
     from .refactor_census import FlextInfraModelsRefactorCensus
     from .refactor_namespace_enforcer import FlextInfraModelsNamespaceEnforcer
-    from .refactor_renames import FlextInfraModelsRefactorRenames
     from .refactor_violations import FlextInfraModelsRefactorViolations
     from .release import FlextInfraModelsRelease
     from .rope import FlextInfraModelsRope
+    from .rope_move import FlextInfraModelsRopeMove
     from .scan import FlextInfraModelsScan
     from .settings import FlextInfraSettingsModels
+    from .testmon import FlextInfraModelsTestmon
     from .transformers import FlextInfraModelsTransformers
     from .validate import FlextInfraModelsCore
     from .workspace import FlextInfraModelsWorkspace
@@ -59,6 +62,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsCheck",
     "FlextInfraModelsCodegen",
     "FlextInfraModelsCodegenRender",
+    "FlextInfraModelsCodemod",
     "FlextInfraModelsCore",
     "FlextInfraModelsDeps",
     "FlextInfraModelsDepsToml",
@@ -70,22 +74,25 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsDepsToolConfigTypeCheckers",
     "FlextInfraModelsDepsToolSettings",
     "FlextInfraModelsDocs",
+    "FlextInfraModelsDocsGeneration",
+    "FlextInfraModelsDuplication",
     "FlextInfraModelsEnforcement",
     "FlextInfraModelsGates",
     "FlextInfraModelsGit",
     "FlextInfraModelsGitIdentity",
-    "FlextInfraModelsGithub",
     "FlextInfraModelsLayout",
     "FlextInfraModelsMixins",
     "FlextInfraModelsNamespaceEnforcer",
+    "FlextInfraModelsPromoted",
     "FlextInfraModelsRefactor",
     "FlextInfraModelsRefactorCensus",
     "FlextInfraModelsRefactorGrep",
-    "FlextInfraModelsRefactorRenames",
     "FlextInfraModelsRefactorViolations",
     "FlextInfraModelsRelease",
     "FlextInfraModelsRope",
+    "FlextInfraModelsRopeMove",
     "FlextInfraModelsScan",
+    "FlextInfraModelsTestmon",
     "FlextInfraModelsTransformers",
     "FlextInfraModelsWorkspace",
     "FlextInfraModelsWorktree",
@@ -103,6 +110,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".check": ("FlextInfraModelsCheck",),
             ".codegen": ("FlextInfraModelsCodegen",),
             ".codegen_render": ("FlextInfraModelsCodegenRender",),
+            ".codemod": ("FlextInfraModelsCodemod",),
             ".config": ("FlextInfraConfigModels",),
             ".deps": ("FlextInfraModelsDeps",),
             ".deps_toml": ("FlextInfraModelsDepsToml",),
@@ -118,22 +126,25 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraModelsDepsToolConfigTypeCheckers",
             ),
             ".docs": ("FlextInfraModelsDocs",),
+            ".docs_generation": ("FlextInfraModelsDocsGeneration",),
+            ".duplication": ("FlextInfraModelsDuplication",),
             ".enforcement": ("FlextInfraModelsEnforcement",),
             ".gates": ("FlextInfraModelsGates",),
             ".git": ("FlextInfraModelsGit",),
-            ".github": ("FlextInfraModelsGithub",),
             ".layout": ("FlextInfraModelsLayout",),
             ".mixins": ("FlextInfraModelsMixins",),
+            ".promoted": ("FlextInfraModelsPromoted",),
             ".refactor": ("FlextInfraModelsRefactor",),
             ".refactor_ast_grep": ("FlextInfraModelsRefactorGrep",),
             ".refactor_census": ("FlextInfraModelsRefactorCensus",),
             ".refactor_namespace_enforcer": ("FlextInfraModelsNamespaceEnforcer",),
-            ".refactor_renames": ("FlextInfraModelsRefactorRenames",),
             ".refactor_violations": ("FlextInfraModelsRefactorViolations",),
             ".release": ("FlextInfraModelsRelease",),
             ".rope": ("FlextInfraModelsRope",),
+            ".rope_move": ("FlextInfraModelsRopeMove",),
             ".scan": ("FlextInfraModelsScan",),
             ".settings": ("FlextInfraSettingsModels",),
+            ".testmon": ("FlextInfraModelsTestmon",),
             ".transformers": ("FlextInfraModelsTransformers",),
             ".validate": ("FlextInfraModelsCore",),
             ".workspace": ("FlextInfraModelsWorkspace",),

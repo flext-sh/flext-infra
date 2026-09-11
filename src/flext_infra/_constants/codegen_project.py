@@ -33,7 +33,7 @@ class FlextInfraConstantsCodegenProject:
         """Repository selection accepted by ``codegen conform``."""
 
         SELF = "self"
-        SUBPROJECTS = "subprojects"
+        DECLARED = "declared_repositories"
         ALL = "all"
 
     @unique
@@ -53,19 +53,32 @@ class FlextInfraConstantsCodegenProject:
         APPLY = "apply"
 
     @unique
-    class MakeProfile(StrEnum):
-        """Generated Makefile profile for one repository."""
+    class MiseResolutionMode(StrEnum):
+        """How an apply-mode ``codegen conform`` resolves the Mise toolchain.
 
-        WORKSPACE = "workspace"
-        STANDALONE = "standalone"
+        ``AUTO`` probes the declared release endpoint once in preflight and
+        becomes ``ONLINE`` (the newest Mise release and every moving tool
+        selector are resolved and published) or ``OFFLINE`` (the published
+        launchers and lock are kept byte-identical). The explicit values pin
+        one path; none of them is a fallback taken after a failed effect.
+        """
+
+        AUTO = "auto"
+        ONLINE = "online"
+        OFFLINE = "offline"
 
     @unique
-    class RepositoryRole(StrEnum):
-        """Repository role proven by its own topology input."""
+    class MakeProfile(StrEnum):
+        """Generated Makefile profile for one repository.
+
+        Topology is proven by the repository itself: a checkout that declares
+        ``.gitmodules`` is a workspace, and one that does not is standalone.
+        This mirrors ``MakeProfile``, which the detector returns, so the two
+        vocabularies cannot drift.
+        """
 
         WORKSPACE = "workspace"
         STANDALONE = "standalone"
-        EXCLUDED = "excluded"
 
     @unique
     class RepositoryState(StrEnum):
@@ -91,31 +104,49 @@ class FlextInfraConstantsCodegenProject:
         NONE = "none"
 
     @unique
-    class RepositoryClassification(StrEnum):
-        """Governance ownership classification for one repository."""
-
-        MANAGED = "managed"
-        EXTERNAL_FORK = "external-fork"
-        EXTERNAL_VENDOR_REFERENCE = "external-vendor-reference"
-
-    @unique
     class ProjectKind(StrEnum):
-        """New-project kind; drives deps, Makefile mode, and registration."""
+        """Governance kind of one repository; decides who may rewrite it.
 
+        Generation applies to ``INTERNAL_FLEXT`` alone. An ``INTERNAL`` project
+        is owned but not built on FLEXT, so FLEXT layout, facade chain, and
+        typing policy do not apply to it. A ``THIRD_PARTY_FORK`` follows its
+        upstream in everything, and standardizing it would destroy the contract
+        the fork exists to track.
+        """
+
+        INTERNAL_FLEXT = "internal_flext"
         INTERNAL = "internal"
-        EXTERNAL = "external"
+        THIRD_PARTY_FORK = "third_party_fork"
 
     BEADS_CONFIG_FILENAME: Final[str] = "beads.yaml"
+    BEADS_DIRNAME: Final[str] = ".beads"
+    BEADS_LOCAL_VERSION_FILENAME: Final[str] = ".local_version"
+    BEADS_LAST_TOUCHED_FILENAME: Final[str] = "last-touched"
     BEADS_CONFIG_VERSION: Final = 1
+    WORKSPACE_MANIFEST_FILENAME: Final[str] = "workspace.yaml"
+    WORKSPACE_MANIFEST_VERSION: Final[int] = 3
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
+    GIT_URL_SUFFIX: Final[str] = ".git"
+    "Canonical clone-URL suffix every governed RepositoryRef URL carries."
     CUSTOM_MAKE_FILENAME: Final[str] = "custom.mk"
+    CUSTOM_CI_STEPS_FILENAME: Final[str] = ".github/ci-custom-steps.yml"
+    """Project-owned steps injected into generated CI, symmetric to custom.mk.
+
+    It sits beside the workflows rather than inside them: GitHub parses every
+    file under ``.github/workflows`` as a workflow, and a bare step list is not
+    one, so a file placed there would surface as a permanent syntax error.
+    """
     CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"
     TEMPLATE_MODULE_SKELETON: Final[str] = "module_skeleton.py.j2"
     "Scaffold module-skeleton template (replaces the legacy f-string)."
+    CODEGEN_CONFIG_FILENAME: Final[str] = "codegen.yaml"
+    CODEGEN_OVERRIDES_FILENAME: Final[str] = "codegen-overrides.yaml"
+    CODEGEN_GEN_FILENAME: Final[str] = "codegen.gen.yaml"
+    CODEGEN_GEN_SUFFIX: Final[str] = ".gen.yaml"
+    "File suffix for generation requirements contract files managed by conform."
+    CODEGEN_CONFIG_DIR: Final[str] = "config"
+    "Directory name for flext-infra config files relative to package root."
 
-    # Each row: (relpath_template, output_relpath, kinds, delegate, overwrite).
-    # kinds: tuple of ProjectKind the row applies to (BOTH = internal+external).
-    # delegate: "render" (CLI engine) today.
     # One base catalog serves both profiles;
     # workspace topology is read only from each repository's own .gitmodules.
 

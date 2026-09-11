@@ -11,8 +11,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 from flext_tests import tm
+
+from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 from tests import c, u
 
 if TYPE_CHECKING:
@@ -73,7 +74,7 @@ class TestGeneratedFilesAreValidPython:
         project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path, with_all_modules=False
         )
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
         _ = scaffolder.run(projects=[_project_info(project)])
         pkg = project / "src" / "test_project"
         _validate_modules_parse(pkg, u.Tests.src_module_files())
@@ -85,7 +86,7 @@ class TestGeneratedFilesAreValidPython:
         )
         tests_dir = project / "tests"
         tests_dir.mkdir()
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
         _ = scaffolder.run(projects=[_project_info(project)])
         _validate_modules_parse(tests_dir, u.Tests.src_module_files())
 
@@ -98,7 +99,7 @@ class TestGeneratedClassNamingConvention:
         project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path, with_all_modules=False
         )
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
         _ = scaffolder.run(projects=[_project_info(project)])
         pkg = project / "src" / "test_project"
         _validate_class_names(
@@ -119,7 +120,7 @@ class TestGeneratedClassNamingConvention:
         )
         tests_dir = project / "tests"
         tests_dir.mkdir()
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
         _ = scaffolder.run(projects=[_project_info(project)])
         _validate_class_names(
             tests_dir,
@@ -137,7 +138,7 @@ class TestGeneratedClassNamingConvention:
         project = tmp_path / "empty-project"
         project.mkdir()
         (project / "Makefile").touch()
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
         [result] = scaffolder.run(
             projects=[
                 u.Tests.create_project_info(

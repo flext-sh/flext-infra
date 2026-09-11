@@ -12,9 +12,10 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING, override
 
+from flext_tests import tm
+
 from flext_infra import main as infra_main
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
-from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -43,7 +44,7 @@ def _create_workspace(root: Path, *, python_minor: int = 13) -> Path:
 def _make_enforcer(workspace: Path) -> FlextInfraPythonVersionEnforcer:
     class _TestEnforcer(FlextInfraPythonVersionEnforcer):
         @override
-        def _workspace_root_from_file(self, file: str | Path) -> Path:
+        def _repository_root_from_file(self, file: str | Path) -> Path:
             _ = file
             return workspace
 

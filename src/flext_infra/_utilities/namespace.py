@@ -6,51 +6,53 @@ import ast
 import operator
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar, Final
+from typing import ClassVar
 
 from flext_cli import r, u
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
+
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
 
+from .discovery import FlextInfraUtilitiesDiscovery
+from .docs_scope import FlextInfraUtilitiesDocsScope
+from .rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from .rope_core import FlextInfraUtilitiesRopeCore
+from .rope_source import FlextInfraUtilitiesRopeSource
+
 
 class FlextInfraUtilitiesCodegenNamespace:
     """Canonical namespace helpers for codegen discovery, parsing, and fixes."""
 
-    _governance_cache: ClassVar[
-        MutableMapping[str, m.Infra.ConstantsGovernanceConfig]
-    ] = {}
-    _governance_file: Final[Path] = (
-        Path(__file__).parent.parent / "rules" / "constants-governance.yml"
-    )
+    # flext-perf.1 (agent: codex): cache __all__ AST extraction by path+mtime
+    # so the 4-5 redundant _declared_exports calls per policy() hit memory
+    # instead of re-reading + re-parsing the same file from disk each time.
+    _declared_exports_cache: ClassVar[dict[str, tuple[int, t.StrSequence]]] = {}
 
-    @classmethod
-    def _is_rule_fixable(cls, rule_id: str, module: str) -> bool:
-        """Is rule fixable."""
-        cached = cls._governance_cache.get("settings")
-        if cached is None:
-            raw = u.Cli.yaml_load_mapping(cls._governance_file)
-            cached = m.Infra.ConstantsGovernanceConfig.model_validate(raw)
-            cls._governance_cache["settings"] = cached
-        for rule in cached.rules:
-            if rule.id != rule_id:
-                continue
-            if not rule.fixable:
+    @staticmethod
+    def _is_rule_fixable(rule_id: str, module: str) -> bool:
+        """Derive fix support from the implemented namespace-rule contract."""
+        match rule_id:
+            case "NS-000":
                 return False
-            if rule.fixable_exclusion is None:
+            case "NS-001" | "NS-003":
                 return True
-            return not module.endswith(rule.fixable_exclusion)
-        return False
+            case "NS-002":
+                typings_filename: str = c.Infra.TYPINGS_PY
+                return Path(module).name != typings_filename
+            # Validator-reported families with no auto-fix keyed to their
+            # codes: reported as violations, never claimed as fixed.
+            case "NS-STRUCT" | "NS-IMPORT" | "NS-CONTRACT" | "NS-PARSE" | "NS-LAYOUT":
+                return False
+
+            case _:
+                msg = f"unsupported namespace rule: {rule_id}"
+                raise ValueError(msg)
 
     @classmethod
-    def is_public_python_module_file(cls, file_name: str) -> bool:
-        """Return whether *file_name* names a public Python module."""
+    def matches_root_namespace_file(cls, file_name: str) -> bool:
+        """Return whether *file_name* is a governed root-namespace facade file."""
         return file_name.endswith(c.Infra.EXT_PYTHON) and not file_name.startswith("_")
 
     @staticmethod
@@ -84,7 +86,17 @@ class FlextInfraUtilitiesCodegenNamespace:
         parts = tuple(part for part in package_name.split(".") if part)
         if not parts:
             return False
-        return len(parts) == 1
+        if len(parts) == 1:
+            return True
+        # A governed wrapper surface is not itself an importable package: its
+        # namespace root is the directory under it, so `tests.unit` is what
+        # `flext_demo` is under `src/`. Requiring a single part made every such
+        # package publish the inherited test aliases and none of its own
+        # declarations, which is the opposite of the contract above.
+        return (
+            len(parts) == c.Infra.WRAPPER_NAMESPACE_DEPTH
+            and parts[0] in c.Infra.NON_PUBLIC_LAZY_ROOTS
+        )
 
     @staticmethod
     def ordered_namespace_exports(
@@ -179,21 +191,37 @@ class FlextInfraUtilitiesCodegenNamespace:
     def _declared_exports(cls, file_path: Path) -> t.StrSequence:
         if not file_path.is_file():
             return ()
-        tree = ast.parse(file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT))
+        resolved = file_path.resolve()
+        try:
+            mtime_ns = resolved.stat().st_mtime_ns
+        except OSError:
+            mtime_ns = 0
+        cache_key = str(resolved)
+        cached = cls._declared_exports_cache.get(cache_key)
+        if cached is not None and cached[0] == mtime_ns:
+            return cached[1]
+        tree = ast.parse(
+            file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT),
+            filename=str(file_path),
+        )
+        result: t.StrSequence = ()
         for node in tree.body:
             match node:
                 case ast.Assign(targets=targets, value=value) if any(
                     isinstance(target, ast.Name) and target.id == c.Infra.DUNDER_ALL
                     for target in targets
                 ):
-                    return cls._literal_exports(tree, value, file_path)
+                    result = cls._literal_exports(tree, value, file_path)
+                    break
                 case ast.AnnAssign(target=ast.Name(id=name), value=value) if (
                     name == c.Infra.DUNDER_ALL and value is not None
                 ):
-                    return cls._literal_exports(tree, value, file_path)
+                    result = cls._literal_exports(tree, value, file_path)
+                    break
                 case _:
                     continue
-        return ()
+        cls._declared_exports_cache[cache_key] = (mtime_ns, result)
+        return result
 
     @classmethod
     def layout(
@@ -239,7 +267,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     @classmethod
     def _resolve_family(
         cls, file_path: Path
-    ) -> tuple[str | None, str | None, str | None, t.StrSequence]:
+    ) -> t.Quad[str | None, str | None, str | None, t.StrSequence]:
         """Return (family_alias, expected_family, expected_alias, family_tokens)."""
         family_alias = next(
             (
@@ -441,14 +469,14 @@ class FlextInfraUtilitiesCodegenNamespace:
     @classmethod
     def projects(
         cls,
-        workspace_root: Path,
+        repository_root: Path,
         *,
         projects: t.SequenceOf[m.Infra.ProjectInfo] | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
         """Discover only projects that participate in codegen automation."""
         if projects is None:
             projects_result = FlextInfraUtilitiesDocsScope.discover_projects(
-                workspace_root
+                repository_root
             )
             if not projects_result.success:
                 return r[t.SequenceOf[m.Infra.ProjectInfo]].fail(
@@ -467,12 +495,10 @@ class FlextInfraUtilitiesCodegenNamespace:
     @classmethod
     def parse_namespace_validation(
         cls, validation: p.Result[m.Infra.ValidationReport]
-    ) -> p.Result[tuple[m.Infra.CensusViolation, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.CensusViolation]]:
         """Convert validator output into typed census violations."""
         if validation.failure:
-            return r[tuple[m.Infra.CensusViolation, ...]].fail(
-                validation.error or "namespace validation failed"
-            )
+            return r[tuple[m.Infra.CensusViolation, ...]].from_failure(validation)
         report = validation.unwrap()
         parsed: list[m.Infra.CensusViolation] = []
         for violation in report.violations:
@@ -621,8 +647,9 @@ class FlextInfraUtilitiesCodegenNamespace:
         project_path: Path,
         initial_violations: t.SequenceOf[m.Infra.CensusViolation],
         remaining_violations: t.SequenceOf[m.Infra.CensusViolation],
-    ) -> tuple[
-        tuple[m.Infra.CensusViolation, ...], tuple[m.Infra.CensusViolation, ...]
+    ) -> t.Pair[
+        t.VariadicTuple[m.Infra.CensusViolation],
+        t.VariadicTuple[m.Infra.CensusViolation],
     ]:
         """Split initial violations into fixed and still-skipped groups."""
         if not initial_violations:

@@ -6,9 +6,8 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from flext_infra import c
-from flext_infra.codegen._codegen_generation_imports import (
-    FlextInfraCodegenGenerationImportsMixin,
-)
+
+from ._codegen_generation_imports import FlextInfraCodegenGenerationImportsMixin
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -53,6 +52,42 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         return ("1" if mod.startswith(".") else "0", mod.lower())
 
     @staticmethod
+    def _is_root_module_alias_group(mod: str, items: t.StrPairSequence) -> bool:
+        """Return whether ``mod`` is one direct root child reexporting itself."""
+        return (
+            mod.count(".") == 1
+            and bool(items)
+            and all(
+                not attr_name and export_name == mod.rsplit(".", maxsplit=1)[-1]
+                for export_name, attr_name in items
+            )
+        )
+
+    @staticmethod
+    def _merge_root_alias_groups(
+        collapsed: t.MappingKV[str, t.MutableSequenceOf[t.StrPair]],
+    ) -> dict[str, t.StrPairSequence]:
+        """Fold direct root-child module aliases into one root-relative group.
+
+        Ruff renders consecutive ``from . import <child> as <child>`` statements
+        as one root-relative import; separate per-child groups emitted one line
+        each, so every generation diverged from the formatter's canonical form
+        and only a post-generation autofix converged the published initializer.
+        """
+        merged: dict[str, t.StrPairSequence] = {}
+        root_items: t.StrPairSequence = ()
+        for mod, items in collapsed.items():
+            if FlextInfraCodegenGenerationTypeCheckingMixin._is_root_module_alias_group(
+                mod, items
+            ):
+                root_items = (*root_items, *items)
+                continue
+            merged[mod] = items
+        if root_items:
+            merged["."] = (*merged.get(".", ()), *root_items)
+        return merged
+
+    @staticmethod
     def _type_checking_sort_owner(mod: str, items: t.StrPairSequence) -> str:
         """Return the module that owns the emitted import for sorting."""
         module_basename = mod.rsplit(".", maxsplit=1)[-1]
@@ -65,7 +100,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             )
         ):
             # flext-i6nq.10: Module aliases emit from their parent package.
-            return mod.rsplit(".", maxsplit=1)[0]
+            return mod.rsplit(".", maxsplit=1)[0] or "."
         return mod
 
     @staticmethod
@@ -164,6 +199,11 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         collapsed = FlextInfraCodegenGenerationTypeCheckingMixin._collapse_to_children(
             normalized_groups, child_packages
         )
+        merged_groups = (
+            FlextInfraCodegenGenerationTypeCheckingMixin._merge_root_alias_groups(
+                collapsed
+            )
+        )
         root_name = "" if not local_package_root else local_package_root.split(".")[0]
         lines: t.MutableSequenceOf[str] = ["if TYPE_CHECKING:"]
         if include_flext_types and (
@@ -174,21 +214,21 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         def type_checking_module_key(mod: str) -> t.StrPair:
             owner = (
                 FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_owner(
-                    mod, collapsed[mod]
+                    mod, merged_groups[mod]
                 )
             )
             return FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_key(
                 owner
             )
 
-        sorted_mods = sorted(collapsed, key=type_checking_module_key)
+        sorted_mods = sorted(merged_groups, key=type_checking_module_key)
         previous_is_relative: bool | None = False if include_flext_types else None
         for mod in sorted_mods:
             is_relative = mod.startswith(".")
             if previous_is_relative is False and is_relative:
                 lines.append("")
             FlextInfraCodegenGenerationTypeCheckingMixin._emit_type_checking_module(
-                mod, collapsed[mod], root_name, lines
+                mod, merged_groups[mod], root_name, lines
             )
             previous_is_relative = is_relative
         return () if len(lines) == 1 else lines
