@@ -1602,6 +1602,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             tooling_runtime=tooling_result.value,
             repository_root=pyproject.parent,
             managed_artifacts=managed_artifacts.resolution,
+            use_committed_artifacts=False,
         )
         if context_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(context_result)
@@ -2462,6 +2463,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             tooling_runtime=tooling_runtime,
             repository_root=repository_root,
             managed_artifacts=managed_artifacts,
+            use_committed_artifacts=project_context is None,
         )
         if context_result.failure:
             return r[p.Model].from_failure(context_result)
@@ -2646,6 +2648,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         repository_root: Path,
         managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
+        *,
+        use_committed_artifacts: bool = True,
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed context consumed by project templates."""
         if workspace.project is None:
@@ -2682,7 +2686,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 homepage=f"{repository_provider.value.base_url.rstrip('/')}/",
                 documentation=f"{repository_provider.value.base_url.rstrip('/')}/",
                 repository_root_rel=".",
-                year=time.localtime().tm_year,
+                year=codegen.scaffold.project.copyright_year,
                 description=metadata.value.project.description,
             )
         else:
@@ -2799,6 +2803,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if gate_budgets_result.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(gate_budgets_result)
+        catalog_artifacts = managed_artifacts
+        if use_committed_artifacts:
+            committed = u.Infra.load_committed_project_managed_artifacts(
+                repository_root
+            )
+            if committed.failure:
+                return r[m.Infra.ProjectRenderContext].from_failure(committed)
+            catalog_artifacts = committed.value
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 **make_context.value.model_dump(
@@ -2813,16 +2825,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 tooling=config.Infra.tooling,
                 # Why: the fleet policy alone is not the effective Ruff contract.
                 # A repository may carry an operator-authorized exemption in its
-                # own config/*.yaml ManagedArtifacts block, and ensure_ruff
-                # composes the two when it edits a pyproject in place. The
-                # template rendered only the fleet map, so a full render silently
-                # dropped the local overlay -- flext-infra's own _rope exemption
-                # disappeared on every conform and returned 12 SLF001 findings
-                # the operator had already ruled on. Compose here so both paths
-                # produce the same effective map.
+                # committed ``config/*.yaml`` ManagedArtifacts catalog, and
+                # ensure_ruff composes the two when it edits a pyproject in
+                # place. The template rendered only the fleet map, so a full
+                # render silently dropped the local overlay -- flext-infra's
+                # own _rope exemption disappeared on every conform and returned
+                # 12 SLF001 findings the operator had already ruled on. Compose
+                # from the commit catalog so both paths produce the same
+                # effective map and concurrent worktree WIP cannot change a
+                # projection.
                 ruff_per_file_ignores=(
                     FlextInfraEnsureRuffConfigPhase.compose_per_file_ignores(
-                        repository_root, managed_artifacts=managed_artifacts
+                        repository_root,
+                        managed_artifacts=catalog_artifacts
                     )
                 ),
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),

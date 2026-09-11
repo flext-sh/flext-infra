@@ -7,6 +7,13 @@ import stat
 from fnmatch import fnmatchcase
 from pathlib import Path
 
+from git import (
+    GitCommandError,
+    InvalidGitRepositoryError,
+    NoSuchPathError,
+    Repo,
+)
+
 from flext_cli import u
 
 from flext_core import r
@@ -198,11 +205,69 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         )
 
     @classmethod
+    def load_committed_project_managed_artifacts(
+        cls, project_dir: Path
+    ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
+        """Load ManagedArtifacts from the project's committed ``HEAD`` catalog.
+
+        Render inputs are ``f(SSOT, templates, PINS)``. A worktree can carry
+        concurrent WIP, so codegen renders project overlays only from the
+        immutable commit catalog; uncommitted declarations never enter a
+        projection.
+        """
+        resolved = project_dir.expanduser().resolve()
+        try:
+            repo = Repo(resolved, search_parent_directories=True)
+            config_tree = repo.head.commit.tree / c.CONFIG_DIR_NAME
+        except KeyError:
+            return r[m.Infra.ProjectManagedArtifactsResolution].ok(
+                cls.empty_snapshot().resolution
+            )
+        except (
+            GitCommandError,
+            InvalidGitRepositoryError,
+            NoSuchPathError,
+            OSError,
+            ValueError,
+        ) as exc:
+            return r[m.Infra.ProjectManagedArtifactsResolution].fail(
+                f"cannot open committed project config catalog at {resolved}: {exc}",
+                exception=exc,
+            )
+        payloads: dict[Path, bytes] = {}
+        try:
+            for blob in sorted(config_tree.blobs, key=lambda entry: entry.name):
+                if blob.name.endswith(".yaml"):
+                    payloads[resolved / c.CONFIG_DIR_NAME / blob.name] = (
+                        blob.data_stream.read()
+                    )
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.ProjectManagedArtifactsResolution].fail_op(
+                f"read committed project config sources {resolved / c.CONFIG_DIR_NAME}",
+                exc,
+            )
+        return cls._load_project_managed_artifacts_from_payloads(payloads)
+
+    @classmethod
     def load_project_managed_artifacts_from_snapshot(
         cls, source_snapshot: t.VariadicTuple[m.Cli.AtomicFileState]
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Parse one caller-owned immutable project YAML snapshot."""
-        if not source_snapshot:
+        payloads: dict[Path, bytes] = {}
+        for source_state in source_snapshot:
+            if source_state.content is None:
+                return r[m.Infra.ProjectManagedArtifactsResolution].fail(
+                    f"project config snapshot is absent: {source_state.path}"
+                )
+            payloads[source_state.path] = source_state.content
+        return cls._load_project_managed_artifacts_from_payloads(payloads)
+
+    @classmethod
+    def _load_project_managed_artifacts_from_payloads(
+        cls, payloads: dict[Path, bytes]
+    ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
+        """Parse one immutable path-to-bytes project YAML catalog."""
+        if not payloads:
             return r[m.Infra.ProjectManagedArtifactsResolution].ok(
                 cls.empty_snapshot().resolution
             )
@@ -211,14 +276,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         mise_sources: dict[str, Path] = {}
         gitignore_patterns: list[str] = []
 
-        for source_state in source_snapshot:
-            source = source_state.path
-            if source_state.content is None:
-                return r[m.Infra.ProjectManagedArtifactsResolution].fail(
-                    f"project config snapshot is absent: {source}"
-                )
+        for source, content in sorted(payloads.items()):
             try:
-                source_text = source_state.content.decode(c.Cli.ENCODING_DEFAULT)
+                source_text = content.decode(c.Cli.ENCODING_DEFAULT)
             except UnicodeDecodeError as exc:
                 return r[m.Infra.ProjectManagedArtifactsResolution].fail_op(
                     f"decode project config source {source}", exc
