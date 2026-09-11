@@ -942,6 +942,9 @@ Infra:
       - path: .envrc
         owner: codegen
         policy: full
+      - path: .env.example
+        owner: codegen
+        policy: full
       - path: .gitignore
         owner: codegen
         policy: merge
