@@ -26,8 +26,6 @@ from flext_infra import c
 from ._rope_import_boundary import FlextInfraRopeImportBoundaryBase
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import t
 
 
@@ -47,8 +45,8 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
     _VIOLATION_KIND: ClassVar[str] = "abstraction-boundary"
     _SCAN_KIND: ClassVar[str] = "tier-whitelist"
 
-    @override
-    def _is_allowlisted(self, _file_path: Path, _module_name: str) -> bool:
+<<<<<<< HEAD
+=======
         """Return True iff ``file_path`` owns ``module_name`` per OWNERS SSOT.
 
         Ownership comes directly from ``c.ENFORCEMENT_LIBRARY_OWNERS``

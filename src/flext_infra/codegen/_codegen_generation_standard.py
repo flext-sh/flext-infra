@@ -131,15 +131,23 @@ class FlextInfraCodegenGenerationStandardMixin(
         trailing: bool,
         indent: str = "            ",
     ) -> t.StrSequence:
-        """Format one mapping entry exactly as Ruff formats a tuple value."""
+        """Format one mapping entry exactly as Ruff formats a tuple value.
+
+        Why (charts gen↔fmt churn): the compact form previously hardcoded the
+        item-ending comma, while Ruff's magic-trailing-comma rule removes it on
+        a single-entry mapping that stays expanded — the next ``make fmt``
+        rewrote the projection and the following ``make gen`` restored it,
+        looping forever. The item comma belongs to the ``trailing`` decision
+        (multi-entry mapping), exactly like the expanded form below.
+        """
         inner = ", ".join(values)
         if len(values) == 1:
             inner = f"{inner},"
-        compact = f'{indent}"{module}": ({inner}),'
+        separator = "," if trailing else ""
+        compact = f'{indent}"{module}": ({inner}){separator}'
         if len(compact) <= c.Infra.MAX_LINE_LENGTH:
             return (compact,)
         value_indent = f"{indent}    "
-        separator = "," if trailing else ""
         return (
             f'{indent}"{module}": (',
             *(f"{value_indent}{value}," for value in values),
