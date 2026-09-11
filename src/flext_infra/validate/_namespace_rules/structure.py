@@ -131,9 +131,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
                     filepath.name == "api.py"
                     and cls.kind(node) == "AnnAssign"
                     and (
-                        cls.name_of(
-                            facade_value := getattr(node, "value", None)
-                        )
+                        cls.name_of(facade_value := getattr(node, "value", None))
                         == class_stem
                         or (
                             cls.kind(facade_value) == "Call"

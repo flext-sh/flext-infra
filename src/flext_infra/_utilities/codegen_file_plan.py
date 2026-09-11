@@ -149,9 +149,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
             diff = tuple(
                 islice(
                     difflib.unified_diff(
-                        old_text.splitlines(),
-                        new_text.splitlines(),
-                        lineterm="",
+                        old_text.splitlines(), new_text.splitlines(), lineterm=""
                     ),
                     limit,
                 )

@@ -819,8 +819,7 @@ class TestsCodegenMakeEnvironment:
             ),
         )
         script_dispatch = m.Infra.ScriptDispatchSpec(
-            dispatcher="scripts/dispatch.py",
-            roots=("scripts",),
+            dispatcher="scripts/dispatch.py", roots=("scripts",)
         )
         project_root, _repository_root = self._render_makefile(
             tmp_path,
