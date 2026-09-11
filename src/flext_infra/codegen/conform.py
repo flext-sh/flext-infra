@@ -1530,6 +1530,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             dependency_cooldown_exclusions=cooldown_exclusions,
             dependency_cooldown_overrides=cooldown_overrides,
             uv_exclude_dependencies=uv_exclude_dependencies,
+            namespace_scan_dirs=(
+                workspace.project.namespace_scan_dirs
+                if workspace.project is not None
+                else None
+            ),
         )
 
     @staticmethod
