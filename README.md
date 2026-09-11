@@ -63,7 +63,7 @@ slot registry verification).
 ## Quality Gates
 
 Canonical selector-free `make` verbs (`check`, `test`, `fmt`, `conform`, `docs`)
-use `` — see
+use `APPLY=Y` — see
 [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/0.12.0-dev/AGENTS.md)
 `Build & Test` and `Required Python quality gates`.
 

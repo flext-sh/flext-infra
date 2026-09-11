@@ -91,8 +91,8 @@ class TestsFlextInfraWorkspaceMain:
     ) -> None:
         """Unknown verbs fail only after the write-enable gate is satisfied."""
         monkeypatch.setenv(
-            config.Infra.codegen.make.apply_variable,
-            config.Infra.codegen.make.apply_value,
+            "APPLY",
+            "Y",
         )
         tm.that(
             (workspace_main(["orchestrate", "--verb", "legacy-check"]) == 1), eq=True

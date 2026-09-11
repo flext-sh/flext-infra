@@ -67,7 +67,7 @@ class TestsWorkspaceMemberLedgerIdentity:
         member, parent = self._attach_member_to_workspace(tmp_path)
         observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
         verb = m.Infra.MakeVerbSpec(
-            name="charts", description="Render charts", requires_apply=False
+            name="charts", description="Render charts"
         )
         dispatch = m.Infra.ScriptDispatchSpec(
             dispatcher="scripts/dispatch.py", roots=("scripts",)

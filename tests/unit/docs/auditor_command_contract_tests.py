@@ -36,10 +36,10 @@ class TestsDocsCommandContract:
     """Prove canonical Make, Testmon, and public-test documentation policy."""
 
     @staticmethod
-    def test_accepts_every_declared_verb_rendered_from_the_ssot() -> None:
-        """Each declared verb, written exactly as its own spec requires, passes."""
+    def test_accepts_every_declared_verb_rendered_from_the_ssot(self) -> None:
+        """Each declared verb passes without the exterminated apply token."""
         lines = "\n".join(
-            f"make {spec.name}" if spec._apply_flag_exterminated else f"make {spec.name}"
+            f"make {spec.name}"
             for spec in config.Infra.codegen.make.verbs
         )
         content = f"# Commands\n\n```bash\n{lines}\n```\n"
@@ -83,14 +83,11 @@ make test PROJECT=flext-demo MATCH=unit
         tm.that(len(issues), eq=1)
         tm.that(issues[0].issue_type, eq="command_contract")
         tm.that(issues[0].message, has="invented Make selector")
-
     @staticmethod
     def test_reads_apply_requirement_from_config_ssot() -> None:
-        """A mutating verb documented without the apply token is rejected."""
-        mutating = next(
-            spec.name for spec in config.Infra.codegen.make.verbs if spec._apply_flag_exterminated
-        )
-        content = f"```bash\nmake {mutating}\n```\n"
+        """The exterminated `APPLY` flag is rejected in documented commands."""
+        mutating = next(spec.name for spec in config.Infra.codegen.make.verbs)
+        content = f"```bash\nmake {mutating} APPLY=Y\n```\n"
 
         issues = u.Infra.docs_command_contract_content_issues(
             content,
@@ -99,8 +96,7 @@ make test PROJECT=flext-demo MATCH=unit
         )
 
         tm.that(len(issues), eq=1)
-        tm.that(issues[0].message, has="requires ``")
-
+        tm.that(issues[0].message, has="legacy `APPLY` flag is exterminated")
     @staticmethod
     def test_accepts_plain_verbs_and_rejects_legacy_apply() -> None:
         """Plain verbs pass; the exterminated `APPLY` flag is a forbidden token."""
@@ -108,7 +104,7 @@ make test PROJECT=flext-demo MATCH=unit
             f"make {spec.name}" for spec in config.Infra.codegen.make.verbs
         )
         legacy = "\n".join(
-            f"make {spec.name} " for spec in config.Infra.codegen.make.verbs
+            f"make {spec.name} APPLY=Y" for spec in config.Infra.codegen.make.verbs
         )
 
         ok = u.Infra.docs_command_contract_content_issues(
@@ -199,12 +195,11 @@ ruff check src
     @staticmethod
     @pytest.mark.parametrize("verb_name", ["publish-preview", "archive-assets"])
     @pytest.mark.parametrize(
-        ("declared", "requires_apply", "apply", "expected"),
+        ("declared", "legacy_apply", "expected"),
         [
-            (True, True, True, ""),
-            (True, True, False, "requires ``"),
-            (True, False, False, ""),
-            (False, True, True, "not declared"),
+            (True, False, ""),
+            (True, True, "legacy `APPLY` flag is exterminated"),
+            (False, False, "not declared"),
         ],
     )
     def test_audits_repository_declared_verbs(
@@ -212,22 +207,20 @@ ruff check src
         verb_name: str,
         *,
         declared: bool,
-        requires_apply: bool,
-        apply: bool,
+        legacy_apply: bool,
         expected: str,
     ) -> None:
         scope = command_contract_scope
         spec = m.Infra.MakeVerbSpec(
             name=verb_name,
             description="Repository-owned operation",
-            requires_apply=requires_apply,
         )
         u.Tests.write_standalone_workspace_manifest(
             scope.path, scope.name, extra_verbs=(spec,) if declared else ()
         )
         guide = scope.path / "docs/guides/commands.md"
         guide.parent.mkdir(parents=True)
-        token = "" if apply else ""
+        token = " APPLY=Y" if legacy_apply else ""
         u.write_file(guide, f"```bash\nmake {verb_name}{token}\n```\n")
 
         issues = u.Infra.docs_command_contract_issues(scope)
@@ -254,23 +247,19 @@ ruff check src
         u.Tests.write_standalone_workspace_manifest(
             scope.path, scope.name, extra_verbs=(spec,)
         )
-        required = u.Infra.docs_command_contract_issues(scope)
-        tm.that(len(required), eq=1)
-        tm.that(required[0].message, has="requires ``")
-
-        optional = spec.model_copy(update={"requires_apply": False})
-        u.Tests.write_standalone_workspace_manifest(
-            scope.path, scope.name, extra_verbs=(optional,)
-        )
         tm.that(u.Infra.docs_command_contract_issues(scope), eq=[])
 
-        renamed = optional.model_copy(update={"name": "archive-assets"})
+        u.write_file(guide, f"```bash\nmake {spec.name} APPLY=Y\n```\n")
+        legacy = u.Infra.docs_command_contract_issues(scope)
+        tm.that(len(legacy), eq=1)
+        tm.that(legacy[0].message, has="legacy `APPLY` flag is exterminated")
+
+        renamed = m.Infra.MakeVerbSpec(
+            name="archive-assets", description="Repository-owned operation"
+        )
         u.Tests.write_standalone_workspace_manifest(
             scope.path, scope.name, extra_verbs=(renamed,)
         )
-        undeclared = u.Infra.docs_command_contract_issues(scope)
-        tm.that(len(undeclared), eq=1)
-        tm.that(undeclared[0].message, has="not declared")
         u.write_file(guide, f"```bash\nmake {renamed.name}\n```\n")
         tm.that(u.Infra.docs_command_contract_issues(scope), eq=[])
 
