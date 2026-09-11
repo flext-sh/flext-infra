@@ -6,6 +6,7 @@ aliases to their correct sources (core, submodule, or TYPE_CHECKING block).
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from types import MappingProxyType
 
@@ -53,7 +54,7 @@ class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
             source = u.Cli.files_read_text(self._file_path).unwrap()
             self._scan_self_imports(source, pkg_name)
             self._scan_runtime_usage(source)
-            alias_map: dict[str, str] = {
+            alias_map: MutableMapping[str, str] = {
                 alias_name: alias_name
                 for alias_name in u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
             }

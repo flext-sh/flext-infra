@@ -214,8 +214,9 @@ class FlextInfraConstantsBase(
     "Ambient Gitleaks policy variables removed from release scans."
     SOURCE_DATE_EPOCH: Final[str] = "SOURCE_DATE_EPOCH"
     "Reproducible-build timestamp environment variable."
-    RELEASE_BUILD_CONSTRAINTS_PATH: Final[str] = "config/build-constraints.txt"
-    "Workspace-relative hashed build-backend constraint file."
+    # Why (flext-gufl8): RELEASE_BUILD_CONSTRAINTS_PATH was deleted — no
+    # repository carries config/build-constraints.txt anymore; the release
+    # policy phase renders pins from config.Infra.release.build_constraints.
     # Why: restored — deleted declaration with consumers left behind (worktree
     # exclusions and mise-artifact transaction staging).
     TRANSACTION_STATE_DIRNAME: Final[str] = ".state"

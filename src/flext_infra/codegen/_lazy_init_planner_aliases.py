@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -15,7 +16,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
         lazy_init: m.Infra.LazyInitConfig
-        _parent_package_cache: dict[str, t.StrSequence]
+        _parent_package_cache: MutableMapping[str, t.StrSequence]
 
         def _source_package_name(self, pkg_dir: Path, inherited_key: str) -> str: ...
 

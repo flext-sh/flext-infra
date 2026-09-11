@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -239,11 +240,13 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             include_local_scopes=include_local_scopes,
             applied=applied,
         )
-        project_objects: dict[str, list[m.Infra.Census.Object]] = defaultdict(list)
-        project_violations: dict[str, list[m.Infra.Census.Violation]] = defaultdict(
+        project_objects: MutableMapping[str, list[m.Infra.Census.Object]] = defaultdict(
             list
         )
-        project_fixes: dict[str, list[m.Infra.Census.Fix]] = defaultdict(list)
+        project_violations: MutableMapping[str, list[m.Infra.Census.Violation]] = (
+            defaultdict(list)
+        )
+        project_fixes: MutableMapping[str, list[m.Infra.Census.Fix]] = defaultdict(list)
         report_projects: set[str] = set()
         for module in self._modules_for_rules(
             rope, project_names=project_names, rule_names=rule_names

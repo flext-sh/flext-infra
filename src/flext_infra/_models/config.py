@@ -3240,7 +3240,7 @@ class FlextInfraConfigModels:
                     "Per-gate execution budgets projected as the managed "
                     "[tool.flext.project.budget] table; rows must cover "
                     "exactly the gate registry"
-                ),
+                )
             ),
         ]
         toolchain: Annotated[
@@ -3739,14 +3739,6 @@ class FlextInfraConfigModels:
         hashes: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Accepted sha256 digests"),
-        ]
-
-    class ReleasePolicyRenderSpec(_ConfigContract):
-        """Typed input consumed by the generated release policy files."""
-
-        build_constraints: Annotated[
-            t.VariadicTuple[FlextInfraConfigModels.BuildConstraintSpec],
-            m.Field(min_length=1, description="Pins rendered into the constraints"),
         ]
 
     # This

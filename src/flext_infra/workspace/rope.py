@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import MutableMapping
 from pathlib import Path
 from time import perf_counter
 from types import TracebackType
@@ -33,29 +34,29 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     _codegen_projects: t.VariadicTuple[p.Infra.ProjectInfo] | None = u.PrivateAttr(
         default_factory=lambda: None
     )
-    _project_layout_cache: dict[str, m.Infra.RopeProjectLayout | None] = u.PrivateAttr(
-        default_factory=dict
-    )
-    _package_context_cache: dict[str, m.Infra.LazyInitPackageContext] = u.PrivateAttr(
-        default_factory=dict
-    )
-    _module_policy_cache: dict[tuple[str, str, str], m.Infra.NamespaceModulePolicy] = (
+    _project_layout_cache: MutableMapping[str, m.Infra.RopeProjectLayout | None] = (
         u.PrivateAttr(default_factory=dict)
     )
-    _module_convention_cache: dict[str, m.Infra.RopeModuleConvention] = u.PrivateAttr(
-        default_factory=dict
+    _package_context_cache: MutableMapping[str, m.Infra.LazyInitPackageContext] = (
+        u.PrivateAttr(default_factory=dict)
     )
-    _module_object_cache: dict[
+    _module_policy_cache: MutableMapping[
+        tuple[str, str, str], m.Infra.NamespaceModulePolicy
+    ] = u.PrivateAttr(default_factory=dict)
+    _module_convention_cache: MutableMapping[str, m.Infra.RopeModuleConvention] = (
+        u.PrivateAttr(default_factory=dict)
+    )
+    _module_object_cache: MutableMapping[
         tuple[str, bool, bool], tuple[m.Infra.Census.Object, ...]
     ] = u.PrivateAttr(default_factory=dict)
-    _resource_cache: dict[str, t.Infra.RopeResource | None] = u.PrivateAttr(
+    _resource_cache: MutableMapping[str, t.Infra.RopeResource | None] = u.PrivateAttr(
         default_factory=dict
     )
-    _name_index: dict[str, tuple[tuple[Path, str, tuple[int, ...]], ...]] | None = (
+    _name_index: (
+        MutableMapping[str, tuple[tuple[Path, str, tuple[int, ...]], ...]] | None
+    ) = u.PrivateAttr(default_factory=lambda: None)
+    _import_dependents_index: MutableMapping[str, tuple[Path, ...]] | None = (
         u.PrivateAttr(default_factory=lambda: None)
-    )
-    _import_dependents_index: dict[str, tuple[Path, ...]] | None = u.PrivateAttr(
-        default_factory=lambda: None
     )
 
     @override
@@ -226,7 +227,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             return ()
         index = self._import_dependents_index
         if index is None:
-            dependents: dict[str, set[Path]] = defaultdict(set)
+            dependents: MutableMapping[str, set[Path]] = defaultdict(set)
             for module in self.modules():
                 file_path = module.file_path.resolve()
                 for target in self.semantic(file_path).semantic_imports.values():
@@ -251,7 +252,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         """
         if self._name_index is not None:
             return self._name_index
-        index: dict[str, list[tuple[Path, str, list[int]]]] = {}
+        index: MutableMapping[str, list[tuple[Path, str, list[int]]]] = {}
         for entry in self.workspace_index.modules_by_path.values():
             py_file = entry.file_path
             read = u.Cli.files_read_text(py_file)
@@ -260,7 +261,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
                 raise RuntimeError(msg)
             source_text = read.value
             surface = self._reference_surface_for(py_file)
-            lines_by_name: dict[str, list[int]] = {}
+            lines_by_name: MutableMapping[str, list[int]] = {}
             for lineno, source_line in enumerate(source_text.splitlines(), start=1):
                 for match in self._IDENTIFIER_PATTERN.finditer(source_line):
                     name = match.group(0)

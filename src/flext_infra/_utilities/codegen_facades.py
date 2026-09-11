@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -112,7 +113,7 @@ class FlextInfraUtilitiesCodegenFacades:
         t.MappingKV[str, frozenset[str]],
     ]:
         owners: list[tuple[str, str, frozenset[str]]] = []
-        ancestors: dict[str, frozenset[str]] = {}
+        ancestors: MutableMapping[str, frozenset[str]] = {}
         for path in sorted(owners_dir.glob("*.py")):
             if path.name == c.Infra.INIT_PY:
                 continue

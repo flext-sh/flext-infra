@@ -306,11 +306,14 @@ class FlextInfraUtilitiesRopeStructure:
                     )
             elif FlextInfraUtilitiesRopeRuntime.is_from_import(info):
                 for member, alias in info.names_and_aliases:
+                    module_name = info.module_name
+                    if not module_name:
+                        module_name = f"relative.{getattr(info, 'level', 1)}"
                     facts = (
                         *facts,
                         m.Infra.ImportFact(
                             line=line,
-                            module=info.module_name,
+                            module=module_name,
                             member=member,
                             local_name=alias or member,
                             is_from_import=True,

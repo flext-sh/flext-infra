@@ -98,7 +98,7 @@ class TestsFlextInfraBudgetProjection:
             for gate_id, row in config.Infra.codegen.budget.items()
             if gate_id != min(c.Infra.ALLOWED_GATES)
         }
-        result = resolve_gate_budgets(budgets)
+        result = FlextInfraCodegenConform.resolve_gate_budgets(budgets)
 
         tm.fail(result, has="budget configuration diverges from the gate registry")
 
@@ -108,7 +108,7 @@ class TestsFlextInfraBudgetProjection:
 
         unknown = min(c.Infra.ALLOWED_GATES) + "-unknown"
         first_row = next(iter(config.Infra.codegen.budget.values()))
-        result = resolve_gate_budgets({
+        result = FlextInfraCodegenConform.resolve_gate_budgets({
             **config.Infra.codegen.budget,
             unknown: first_row,
         })
