@@ -29,7 +29,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         statements = tuple(getattr(tree, "body", ()) or ())
         if cls.outer_classes(tree):
             return False
-        guard_functions: list[str] = []
+        entry_calls: list[str] = []
         for statement in statements:
             kind = cls.kind(statement)
             if kind in {"Import", "ImportFrom"}:
@@ -41,11 +41,12 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             if kind == "Raise":
                 continue
             if kind == "If":
-                guard_functions.extend(
-                    cls.name_of(node)
+                guard_calls = [
+                    node
                     for node in cls.walk(statement)
                     if cls.kind(node) == "FunctionDef"
-                )
+                ]
+                entry_calls.extend(cls.name_of(node) for node in guard_calls)
                 continue
             if kind == "Expr" and cls.kind(
                 getattr(statement, "value", None)
@@ -53,13 +54,17 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
                 called = cls.dotted_name(
                     getattr(getattr(statement, "value", None), "func", None)
                 )
-                guard_functions.append(called.rsplit(".", 1)[-1])
+                entry_calls.append(called.rsplit(".", 1)[-1])
                 continue
+            # A non-dunder assignment, a type alias or any other statement is
+            # loose data: the module is a data module and stays fully graded.
             return False
         # A guard must terminate the process through the package entrypoint
-        # (``raise SystemExit(main())`` / ``main()``); anything else with a
-        # naked guard is a data module and stays under the class rules.
-        return all(name.endswith("main") for name in guard_functions)
+        # (``raise SystemExit(main())`` / ``main()``); without it the module
+        # is not an entrypoint and stays under the class rules.
+        return bool(entry_calls) and all(
+            name.endswith("main") for name in entry_calls
+        )
 
     @classmethod
     def check_structure(

@@ -75,18 +75,29 @@ class FlextInfraLooseObjectDetector:
         # object by law. Derived from the collected symbols — never a
         # filename list.
         module_symbols = tuple(u.Infra.get_module_symbols(rope_project, res))
-        class_symbols: t.MutableSequenceOf[m.Infra.SymbolInfo] = [
+        facade_class_symbols = [
             symbol
             for symbol in module_symbols
             if symbol.kind == "class"
         ]
-        if not class_symbols and all(
-            symbol.name.endswith("main")
-            or symbol.name in c.Infra.DETECTION_CANONICAL_ALIASES
+        data_symbols = [
+            symbol
             for symbol in module_symbols
-            if symbol.kind == "function"
+            if symbol.kind in {"assignment", "typealias"}
+            and not symbol.name.startswith("_")
+        ]
+        if (
+            not facade_class_symbols
+            and not data_symbols
+            and all(
+                symbol.name.endswith("main")
+                or symbol.name in c.Infra.DETECTION_CANONICAL_ALIASES
+                for symbol in module_symbols
+                if symbol.kind == "function"
+            )
         ):
             return []
+        class_symbols: t.MutableSequenceOf[m.Infra.SymbolInfo] = []
         for symbol in module_symbols:
             if (symbol.line, symbol.name) in logger_keys:
                 continue

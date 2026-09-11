@@ -46,7 +46,6 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
         *,
         skip_protected: bool = False,
         skip_settings: bool = False,
-        skip_alias_modules: bool = False,
         skip_init_py: bool = False,
     ) -> t.Infra.RopeResource | None:
         """Resolve a Python source as a Rope resource, or None when skipped."""
@@ -54,7 +53,6 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
             file_path,
             skip_protected=skip_protected,
             skip_settings=skip_settings,
-            skip_alias_modules=skip_alias_modules,
             skip_init_py=skip_init_py,
         ):
             return None
