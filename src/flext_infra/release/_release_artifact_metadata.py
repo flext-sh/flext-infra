@@ -13,7 +13,7 @@ from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
 from flext_core import r
-from flext_infra import c, t, u
+from flext_infra import c, config, t, u
 
 from ._release_artifact_archive import FlextInfraReleaseArtifactArchiveMixin
 
@@ -59,9 +59,14 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
         name = canonicalize_name(parsed.name)
         if not name.startswith("flext-"):
             if parsed.url is not None:
-                return r[str].fail(
-                    f"external direct reference is not publishable: {requirement}"
-                )
+                if not any(
+                    str(parsed.url).startswith(prefix)
+                    for prefix in config.Infra.release.private_direct_refs
+                ):
+                    return r[str].fail(
+                        f"external direct reference is not publishable: {requirement}"
+                    )
+                return r[str].ok(requirement.strip())
             return r[str].ok(requirement.strip())
         if name not in versions:
             return r[str].fail(

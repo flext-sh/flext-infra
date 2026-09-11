@@ -3716,6 +3716,19 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        private_direct_refs: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Remote URL prefixes authorized as pinned direct references "
+                    "in private-distribution releases. A direct git requirement "
+                    "whose URL starts with one of these passes release metadata "
+                    "unchanged; anything else fails closed. Empty keeps the "
+                    "public-registry contract that forbids every direct ref."
+                ),
+            ),
+        ]
         bump_types: Annotated[
             Mapping[t.NonEmptyStr, FlextInfraConstantsRelease.VersionBump],
             m.Field(
