@@ -9,7 +9,8 @@ from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, config, u
+from flext_infra import config, u
+from flext_infra._utilities._gen_requirements import GenRequirementsLoader
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -27,28 +28,10 @@ class FlextInfraReleaseArtifactArchiveMixin:
         sensitive-path patterns (``.env.example``) while never carrying
         secrets, so the release archive exempts them.
         """
-        package_root = Path(__file__).resolve().parent.parent
-        gen_path = (
-            package_root / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_GEN_FILENAME
-        )
-        if not gen_path.is_file():
-            gen_path = (
-                package_root.parent.parent
-                / c.Infra.CODEGEN_CONFIG_DIR
-                / c.Infra.CODEGEN_GEN_FILENAME
-            )
-        if not gen_path.is_file():
+        requirements = GenRequirementsLoader.load(Path(__file__))
+        if requirements.failure:
             return False
-        loaded = u.Cli.config_load(gen_path, expand_env=False)
-        if loaded.failure:
-            return False
-        try:
-            from flext_infra import m
-
-            requirements = m.Infra.GenRequirementsSpec.model_validate(loaded.value.data)
-        except Exception:  # ruff: ignore[blind-except] — a malformed contract falls back to blocking
-            return False
-        entry = requirements.requirements.externally_managed.get(name)
+        entry = requirements.unwrap().requirements.externally_managed.get(name)
         return entry is not None and entry.validation == "exists_or_absent"
 
     @staticmethod

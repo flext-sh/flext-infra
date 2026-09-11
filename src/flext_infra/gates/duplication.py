@@ -158,7 +158,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             )
         )
 
-    def _read_project_config(self, project_dir: Path) -> dict[str, m.JsonValue]:
+    def _read_project_config(self, project_dir: Path) -> dict[str, t.JsonValue]:
         """Read [tool.flext.project] from project's pyproject.toml.
 
         Why: a malformed manifest is a declared error, never an empty config —
@@ -173,7 +173,8 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             return {}
         tool = u.Cli.json_as_mapping(loaded.value.data).get("tool", {})
         flext = u.Cli.json_as_mapping(tool).get("flext", {})
-        return dict(u.Cli.json_as_mapping(flext).get("project", {}))
+        project = u.Cli.json_as_mapping(flext).get("project", {})
+        return dict(u.Cli.json_as_mapping(project))
 
     def _declared_duplication_trees(self) -> p.Result[t.StrSequence]:
         """Read ``repository.duplication_trees`` from the governed manifest."""

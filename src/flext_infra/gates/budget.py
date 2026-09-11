@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 
 from .base_gate import FlextInfraGate
 
@@ -44,7 +44,7 @@ class FlextInfraBudgetGate(FlextInfraGate):
             started=started,
         )
 
-    def _read_budget_config(self, project_dir: Path) -> dict[str, m.JsonValue]:
+    def _read_budget_config(self, project_dir: Path) -> dict[str, t.JsonValue]:
         """Read ``[tool.flext.project.budget]`` from the project manifest.
 
         Input shapes stay untrusted until the collapse into typed shells
@@ -61,10 +61,11 @@ class FlextInfraBudgetGate(FlextInfraGate):
         tool = u.Cli.json_as_mapping(loaded.value.data).get("tool", {})
         flext = u.Cli.json_as_mapping(tool).get("flext", {})
         project = u.Cli.json_as_mapping(flext).get("project", {})
-        return dict(u.Cli.json_as_mapping(project).get("budget", {}))
+        budget = u.Cli.json_as_mapping(project).get("budget", {})
+        return dict(u.Cli.json_as_mapping(budget))
 
     def _validate_gate_budgets(
-        self, budget_config: dict[str, m.JsonValue]
+        self, budget_config: dict[str, t.JsonValue]
     ) -> tuple[m.Infra.Issue, ...]:
         """Validate one budget row per ``c.Infra.ALLOWED_GATES`` entry."""
         required_fields = c.Infra.BUDGET_REQUIRED_FIELDS
@@ -79,7 +80,7 @@ class FlextInfraBudgetGate(FlextInfraGate):
     @staticmethod
     def _budget_issue(
         gate_id: str,
-        budget_config: dict[str, m.JsonValue],
+        budget_config: dict[str, t.JsonValue],
         *,
         required_fields: tuple[str, ...],
     ) -> m.Infra.Issue | None:

@@ -10,7 +10,6 @@ possible. Linux retains its kernel-enforced address-space limit.
 
 from __future__ import annotations
 
-import contextlib
 import os
 import signal
 import subprocess  # nosec B404 - std-lib-only bootstrap supervisor; must run before fleet imports
@@ -101,8 +100,11 @@ class MypyDarwinSupervisor:
             return exit_code if exit_code >= 0 else 128 - exit_code
         finally:
             # Always clean descendants, even when their leader already exited.
+            # Why ask-first: signaling only a natively-proven-live group keeps
+            # absence out of the cleanup path entirely — no suppression, no
+            # sentinel; a race between proof and signal propagates visibly.
             try:
-                with contextlib.suppress(ProcessGroupAbsentError):
+                if cls._usage(child.pid)[1]:
                     cls._signal_group(child.pid, received_signal or signal.SIGTERM)
                 end = time.monotonic() + kill_after
                 while time.monotonic() < end:
@@ -112,7 +114,7 @@ class MypyDarwinSupervisor:
                     time.sleep(0.05)
             finally:
                 try:
-                    with contextlib.suppress(ProcessGroupAbsentError):
+                    if cls._usage(child.pid)[1]:
                         cls._signal_group(child.pid, signal.SIGKILL)
                     child.wait()
                 finally:
