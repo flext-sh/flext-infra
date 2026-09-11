@@ -159,7 +159,11 @@ class FlextInfraUtilitiesCodegenFilePlan:
             parts.append(
                 "\n".join((header, *diff))
                 if diff
-                else f"{header}\n(content equal: mode-only drift)"
+                else (
+                    f"{header}\n(content equal: mode-only drift "
+                    f"observed={oct(plan.before.mode)} "
+                    f"desired={oct(plan.desired_mode) if plan.desired_mode is not None else 'none'})"
+                )
             )
         return "\n----\n".join(parts)
 
