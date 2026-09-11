@@ -76,9 +76,7 @@ class FlextInfraLooseObjectDetector:
         # filename list.
         module_symbols = tuple(u.Infra.get_module_symbols(rope_project, res))
         facade_class_symbols = [
-            symbol
-            for symbol in module_symbols
-            if symbol.kind == "class"
+            symbol for symbol in module_symbols if symbol.kind == "class"
         ]
         data_symbols = [
             symbol

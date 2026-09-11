@@ -384,8 +384,7 @@ class TestFlextInfraNamespaceValidator:
             pytest.param(
                 "rule0_wrong_prefix.py",
                 "constants.py",
-                "module must declare at least one class starting with"
-                " 'FlextTest'",
+                "module must declare at least one class starting with 'FlextTest'",
                 id="rule0-wrong-prefix",
             ),
             pytest.param(
