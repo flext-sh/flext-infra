@@ -9,7 +9,7 @@ from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, config, u
+from flext_infra import config, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -28,16 +28,8 @@ class FlextInfraReleaseArtifactArchiveMixin:
         secrets, so the release archive exempts them.
         """
         package_root = Path(__file__).resolve().parent.parent
-        gen_path = (
-            package_root / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_GEN_FILENAME
-        )
-        if not gen_path.is_file():
-            gen_path = (
-                package_root.parent.parent
-                / c.Infra.CODEGEN_CONFIG_DIR
-                / c.Infra.CODEGEN_GEN_FILENAME
-            )
-        if not gen_path.is_file():
+        gen_path = u.Infra.resolve_gen_path(package_root)
+        if gen_path is None:
             return False
         loaded = u.Cli.config_load(gen_path, expand_env=False)
         if loaded.failure:

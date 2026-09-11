@@ -10,7 +10,7 @@ from flext_tests import tm
 from flext_infra import c
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import u
-from tests.unit.workspace import WorktreeFixture
+from tests.unit.codegen._helpers import _conformed_root
 
 _TRANSACTION_MARKER = "-transaction-"
 
@@ -26,31 +26,7 @@ def _transaction_worktree_siblings(root: Path) -> tuple[str, ...]:
 
 def _seed_committed_drift(root: Path) -> Path:
     """Materialize the managed tree, then commit one drifted managed Makefile."""
-    WorktreeFixture.initialize_governed_project(
-        root,
-        "fixture-project",
-        workspace="fixture-workspace",
-        database="fixture-database",
-        issue_prefix="fixture-prefix",
-    )
-    pyproject = root / c.Infra.PYPROJECT_FILENAME
-    pyproject.write_text(
-        pyproject.read_text(encoding="utf-8").replace(
-            "\n[project.urls]",
-            '\ndescription = "Fixture governed project"\n\n[project.urls]',
-        ),
-        encoding="utf-8",
-    )
-    u.Tests.commit_git_changes(root, "Declare project identity")
-    tm.ok(
-        FlextInfraCodegenConform.execute_request(
-            u.Tests.conform_request(
-                root,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.APPLY,
-            )
-        )
-    )
+    _conformed_root(root)
     drifted = root / c.Infra.MAKEFILE_FILENAME
     drifted.write_text(
         f"{drifted.read_text(encoding='utf-8')}# managed drift\n", encoding="utf-8"
