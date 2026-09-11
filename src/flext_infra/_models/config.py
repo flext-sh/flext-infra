@@ -513,6 +513,32 @@ class FlextInfraConfigModels:
                 description="Toolchain field names protected from alternate distributions",
             ),
         ]
+        uv_exclude_newer: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="uv [tool.uv] exclude-newer cutoff (exterminated fleet-wide, rendered then conform-stripped)",
+            ),
+        ]
+        dependency_cooldown_exclusions: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Package distributions frozen at their current floor by the "
+                    "fleet-wide dependency cooldown policy; absent frees all packages"
+                ),
+            ),
+        ] = ()
+        dependency_cooldown_overrides: Annotated[
+            t.MappingKV[str, str],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Per-package cooldown cutoff dates overriding the fleet default; "
+                    "maps distribution name to a PEP 440 version cutoff string"
+                ),
+            ),
+        ]
 
         @u.model_validator(mode="after")
         def _validate_protected_mise_tools(self) -> Self:
@@ -1973,6 +1999,26 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
+        dependency_cooldown_exclusions: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Repository-specific package distributions frozen at their "
+                    "current floor by the dependency cooldown policy"
+                ),
+            ),
+        ] = ()
+        dependency_cooldown_overrides: Annotated[
+            t.MappingKV[str, str],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Repository-specific per-package cooldown override cutoff dates; "
+                    "maps distribution name to a PEP 440 version cutoff string"
+                ),
+            ),
+        ]
 
     class BeadsProjectSpec(_ConfigContract):
         """Repository-local Beads identity from ``config/beads.yaml``."""
@@ -2609,6 +2655,30 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ""
+        uv_exclude_newer: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="uv [tool.uv] exclude-newer cutoff rendered into pyproject.toml",
+            ),
+        ]
+        dependency_cooldown_exclusions: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Fleet-wide package distributions frozen at their current floor "
+                    "by the dependency cooldown policy"
+                ),
+            ),
+        ] = ()
+        dependency_cooldown_overrides: Annotated[
+            t.MappingKV[str, str],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Per-package cooldown cutoff dates overriding the fleet default"
+                ),
+            ),
+        ]
 
     class ProjectRenderContext(MakeRenderContext):
         """Complete typed input consumed by project scaffold templates."""

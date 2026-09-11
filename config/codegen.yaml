@@ -40,6 +40,11 @@ Infra:
       # this cap unless meltano upstream drops its own cap; floors derive
       # from deps against this same contract (operator 2026-09-09).
       uv_constraint_dependencies: ["structlog<26"]
+      # The supply-chain cooldown was exterminated fleet-wide (flext-fphyv):
+      # uv resolves every version published up to now. The conform phase
+      # removes the [tool.uv] exclude-newer key; this value is a fleet-wide
+      # constant that must still render for the template pipeline to succeed.
+      uv_exclude_newer: "0 days"
       # Moving selectors consumed by generated .mise.toml and CI. The fleet
       # runs unlocked: setup converges on the newest published release.
       # Override these YAML keys only. Never edit .mise.toml. Never run
