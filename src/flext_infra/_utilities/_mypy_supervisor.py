@@ -10,6 +10,7 @@ possible. Linux retains its kernel-enforced address-space limit.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import signal
 import subprocess  # nosec B404 - std-lib-only bootstrap supervisor; must run before fleet imports
@@ -18,7 +19,7 @@ import time
 from types import FrameType
 
 
-class ProcessGroupAbsent(Exception):
+class ProcessGroupAbsentError(Exception):
     """The target process group has no live member; nothing to signal."""
 
 
@@ -36,13 +37,13 @@ class MypyDarwinSupervisor:
         try:
             os.killpg(pid, signum)
         except ProcessLookupError as err:
-            raise ProcessGroupAbsent from err
+            raise ProcessGroupAbsentError from err
         except PermissionError:
             # Darwin may retain an unsignalable zombie-only process group.
             # Only a native accounting proof of no live member closes it.
             if cls._usage(pid)[1]:
                 raise
-            raise ProcessGroupAbsent from None
+            raise ProcessGroupAbsentError from None
 
     @staticmethod
     def _usage(pid: int) -> tuple[int, bool]:
@@ -101,10 +102,8 @@ class MypyDarwinSupervisor:
         finally:
             # Always clean descendants, even when their leader already exited.
             try:
-                try:
+                with contextlib.suppress(ProcessGroupAbsentError):
                     cls._signal_group(child.pid, received_signal or signal.SIGTERM)
-                except ProcessGroupAbsent:
-                    pass
                 end = time.monotonic() + kill_after
                 while time.monotonic() < end:
                     child.poll()
@@ -113,10 +112,8 @@ class MypyDarwinSupervisor:
                     time.sleep(0.05)
             finally:
                 try:
-                    try:
+                    with contextlib.suppress(ProcessGroupAbsentError):
                         cls._signal_group(child.pid, signal.SIGKILL)
-                    except ProcessGroupAbsent:
-                        pass
                     child.wait()
                 finally:
                     for signum, handler in previous.items():
