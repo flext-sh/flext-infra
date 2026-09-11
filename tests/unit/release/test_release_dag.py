@@ -4,14 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import zipfile
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_tests import tm
 
 from tests import c, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class TestsFlextInfraReleaseDag:
@@ -44,12 +41,13 @@ class TestsFlextInfraReleaseDag:
             """Build only with the complete hashed toolchain and attest its digest."""
             project_name = "flext-a"
             workspace = u.Tests.release_internal_workspace(tmp_path, project_name)
-            constraints_path = workspace / c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH
 
             result = u.Tests.run_release_build(workspace, project_name)
 
             report = u.Tests.release_build_report(workspace)
-            expected_digest = hashlib.sha256(constraints_path.read_bytes()).hexdigest()
+            expected_digest = hashlib.sha256(
+                u.Tests.release_build_constraints_text().encode("utf-8")
+            ).hexdigest()
             gitleaks_path = workspace / c.Infra.RELEASE_GITLEAKS_CONFIG_PATH
             expected_gitleaks_digest = hashlib.sha256(
                 gitleaks_path.read_bytes()
@@ -60,32 +58,31 @@ class TestsFlextInfraReleaseDag:
             tm.that(report.records[0].exit_code, eq=0)
 
         @staticmethod
-        def test_incomplete_hashed_constraints_fail_before_build(
+        def test_policy_snapshot_carries_the_rendered_constraints(
             tmp_path: Path,
         ) -> None:
-            """Reject a valid hash record that omits required toolchain members."""
+            """The policy snapshot bytes equal the config-rendered policy.
+
+            The snapshot is rendered from ``config.Infra.release.build_constraints``
+            (flext-gufl8) — repositories carry no constraints file the protocol
+            could read, so the attested digest can only come from the SSOT
+            render.
+            """
             project_name = "flext-a"
             workspace = u.Tests.release_internal_workspace(tmp_path, project_name)
-            constraints_path = workspace / c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH
-            # Keep exactly the first pin record: comment lines are skipped and a
-            # record spans every line that ends with a continuation.
-            first_record: list[str] = []
-            for line in constraints_path.read_text(encoding="utf-8").splitlines():
-                if not line.strip() or line.lstrip().startswith("#"):
-                    continue
-                first_record.append(line)
-                if not line.rstrip().endswith("\\"):
-                    break
-            constraints_path.write_text(
-                "\n".join(first_record) + "\n", encoding="utf-8"
+
+            result = u.Tests.run_release_build(workspace, project_name, dry_run=True)
+
+            policy_bytes = (
+                u.Tests.release_report_dir(workspace, c.Tests.RELEASE_VERSION_BASE)
+                / "policy"
+                / "build-constraints.txt"
+            ).read_bytes()
+            tm.that(result, eq=0)
+            tm.that(
+                policy_bytes.decode("utf-8"),
+                eq=u.Tests.release_build_constraints_text(),
             )
-
-            result = u.Tests.run_release_build(workspace, project_name)
-
-            build_log = u.Tests.release_build_log_text(workspace, project_name)
-            tm.that(result, eq=1)
-            tm.that(build_log, has="release build toolchain mismatch")
-            tm.that(build_log, has="packaging")
 
     class TestsArchiveBoundary:
         """Publishable archive content policy."""

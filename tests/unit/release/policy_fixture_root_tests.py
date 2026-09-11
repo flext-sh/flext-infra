@@ -1,11 +1,10 @@
 """Contract test for the release policy owner.
 
-The release build phase snapshots ``config/build-constraints.txt`` and
-``config/gitleaks-release.toml`` from the repository before the first artifact
-build. Both are fleet-wide policies owned by flext-infra as codegen templates
-and projected into every generated repository; the release workspace factory
-copies the same template bytes so a test workspace carries exactly what a
-generated repository carries.
+The Gitleaks policy is a codegen template projected into every repository.
+Build constraints are rendered at release time from the typed config SSOT
+(``config.Infra.release.build_constraints``) by the release policy phase —
+no repository carries a ``config/build-constraints.txt`` projection
+(flext-gufl8).
 """
 
 from __future__ import annotations
@@ -19,21 +18,20 @@ from tests import u
 
 
 class TestsReleasePolicyOwner:
-    """Policy sources are the packaged templates, projected to every repository."""
+    """Policy sources: one projected template, one config-rendered policy."""
 
     def test_policy_sources_resolve_from_the_checkout_in_use(self) -> None:
-        """The templates must exist for the current checkout.
+        """The Gitleaks template must exist for the current checkout.
 
         This holds in a plain clone and must equally hold in a linked worktree,
         where the repository sits deeper in the filesystem.
         """
         template_root = u.Tests.release_policy_root()
 
-        for policy_path in (
-            c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
-            c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
-        ):
-            tm.that((template_root / f"{policy_path}.j2").is_file(), eq=True)
+        tm.that(
+            (template_root / f"{c.Infra.RELEASE_GITLEAKS_CONFIG_PATH}.j2").is_file(),
+            eq=True,
+        )
 
     def test_policy_root_is_the_packaged_template_root(self) -> None:
         """The owner is the packaged template tree, not an ambient parent."""
@@ -47,19 +45,14 @@ class TestsReleasePolicyOwner:
         )
         tm.that(u.Tests.release_policy_root(), eq=expected)
 
-    def test_build_constraints_render_every_configured_pin(
-        self, tmp_path: Path
-    ) -> None:
-        """The projected constraints carry each pin exactly as config declares it.
+    def test_build_constraints_render_every_configured_pin(self) -> None:
+        """The rendered constraints carry each pin exactly as config declares.
 
         Every pin appears as ``name==version`` with one ``--hash=sha256:`` line
         per digest, so ``uv build --require-hashes`` accepts precisely the
         declared backend and nothing else.
         """
-        workspace = u.Tests.create_release_workspace(tmp_path)
-        rendered = (workspace / c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH).read_text(
-            encoding="utf-8"
-        )
+        rendered = u.Tests.release_build_constraints_text()
 
         for pin in config.Infra.release.build_constraints:
             tm.that(rendered, has=f"{pin.name}=={pin.version} \\")
@@ -72,19 +65,37 @@ class TestsReleasePolicyOwner:
         tm.that(rendered.endswith("\n"), eq=True)
         tm.that(rendered, lacks="\\\n\n")
 
-    def test_every_repository_receives_both_policies(self) -> None:
-        """Each policy the build phase reads is a fully generated projection.
+    def test_build_constraints_render_is_deterministic(self) -> None:
+        """Identical config pins render byte-identical policy bytes.
 
-        Every profile receives it and codegen owns the bytes (``overwrite``),
-        so no repository can drift from the fleet policy or lack it.
+        The release policy snapshot digest is stable across renders, so
+        reports stay comparable across runs of the same config.
+        """
+        tm.that(
+            u.Tests.release_build_constraints_text(),
+            eq=u.Tests.release_build_constraints_text(),
+        )
+
+    def test_no_template_projects_build_constraints_into_repositories(self) -> None:
+        """Extermination guard: the projection must never come back.
+
+        ``config/build-constraints.txt`` in a repository is residue, not root
+        source (operator law, flext-gufl8); the render path owns the bytes.
+        """
+        destinations = {
+            entry.destination for entry in config.Infra.codegen.templates.entries
+        }
+        tm.that("config/build-constraints.txt" in destinations, eq=False)
+
+    def test_every_repository_receives_the_gitleaks_policy(self) -> None:
+        """The projected policy is fully generated in every profile.
+
+        Codegen owns the bytes (``overwrite``), so no repository can drift
+        from the fleet policy or lack it.
         """
         entries = {
             entry.destination: entry for entry in config.Infra.codegen.templates.entries
         }
-        for policy_path in (
-            c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
-            c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
-        ):
-            entry = entries[policy_path]
-            tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
-            tm.that(entry.overwrite, eq=True)
+        entry = entries[c.Infra.RELEASE_GITLEAKS_CONFIG_PATH]
+        tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
+        tm.that(entry.overwrite, eq=True)

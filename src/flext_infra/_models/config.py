@@ -3741,14 +3741,6 @@ class FlextInfraConfigModels:
             m.Field(min_length=1, description="Accepted sha256 digests"),
         ]
 
-    class ReleasePolicyRenderSpec(_ConfigContract):
-        """Typed input consumed by the generated release policy files."""
-
-        build_constraints: Annotated[
-            t.VariadicTuple[FlextInfraConfigModels.BuildConstraintSpec],
-            m.Field(min_length=1, description="Pins rendered into the constraints"),
-        ]
-
     # This
     # field-only namespace is the sole validated owner exposed as config.Infra.
     class Infra(_ConfigContract):
