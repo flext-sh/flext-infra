@@ -44,7 +44,7 @@ make test
 make conform
 ```
 
-The final generation pass proves the fixed point. `` is the sole mutation
+The final generation pass proves the fixed point. `APPLY=Y` is the sole mutation
 flag. No project, file, pattern, action, phase, fix, or changed-only selector may
 be attached to a standard verb.
 
