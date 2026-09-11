@@ -158,19 +158,22 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             )
         )
 
-    def _read_project_config(self, project_dir: Path) -> dict:
-        """Read [tool.flext.project] from project's pyproject.toml."""
+    def _read_project_config(self, project_dir: Path) -> dict[str, m.JsonValue]:
+        """Read [tool.flext.project] from project's pyproject.toml.
+
+        Why: a malformed manifest is a declared error, never an empty config —
+        returning a sentinel here would silently disable the duplication gate
+        for a broken project (silent-failure law).
+        """
         pyproject_path = project_dir / "pyproject.toml"
         if not pyproject_path.is_file():
             return {}
         loaded = u.Cli.config_load(pyproject_path, expand_env=False)
         if loaded.failure:
             return {}
-        try:
-            data = loaded.value.data
-            return data.get("tool", {}).get("flext", {}).get("project", {})
-        except c.ValidationError:
-            return {}
+        tool = u.Cli.json_as_mapping(loaded.value.data).get("tool", {})
+        flext = u.Cli.json_as_mapping(tool).get("flext", {})
+        return dict(u.Cli.json_as_mapping(flext).get("project", {}))
 
     def _declared_duplication_trees(self) -> p.Result[t.StrSequence]:
         """Read ``repository.duplication_trees`` from the governed manifest."""

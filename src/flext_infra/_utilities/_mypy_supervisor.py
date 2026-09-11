@@ -10,34 +10,44 @@ possible. Linux retains its kernel-enforced address-space limit.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import signal
-import subprocess
+import subprocess  # nosec B404 - std-lib-only bootstrap supervisor; must run before fleet imports
 import sys
 import time
 from types import FrameType
+
+
+class ProcessGroupAbsentError(Exception):
+    """The target process group has no live member; nothing to signal."""
 
 
 class MypyDarwinSupervisor:
     """Own the checker process group and stop it on resource-control failure."""
 
     @classmethod
-    def _signal_group(cls, pid: int, signum: int) -> bool:
+    def _signal_group(cls, pid: int, signum: int) -> None:
+        """Signal one process group, surfacing absence as a typed domain outcome.
+
+        Raises ProcessGroupAbsent when a native accounting proof shows no live
+        member (Darwin may retain an unsignalable zombie-only group): the
+        absence is raised, never returned as a silent sentinel.
+        """
         try:
             os.killpg(pid, signum)
-        except ProcessLookupError:
-            return False
+        except ProcessLookupError as err:
+            raise ProcessGroupAbsentError from err
         except PermissionError:
             # Darwin may retain an unsignalable zombie-only process group.
             # Only a native accounting proof of no live member closes it.
             if cls._usage(pid)[1]:
                 raise
-            return False
-        return True
+            raise ProcessGroupAbsentError from None
 
     @staticmethod
     def _usage(pid: int) -> tuple[int, bool]:
-        snapshot = subprocess.run(
+        snapshot = subprocess.run(  # nosec B603 - constant argv (/bin/ps), no shell, no untrusted input
             ("/bin/ps", "-axo", "pgid=,rss=,stat="),
             capture_output=True,
             text=True,
@@ -64,7 +74,9 @@ class MypyDarwinSupervisor:
         # Probe the native accounting boundary before launching any workload.
         cls._usage(os.getpgrp())
         deadline = time.monotonic() + timeout
-        child = subprocess.Popen(command, start_new_session=True)
+        child = subprocess.Popen(  # nosec B603 - fleet-constructed command; group ownership is the module's purpose
+            command, start_new_session=True
+        )
         received_signal: int = 0
 
         def receive_signal(signum: int, _frame: FrameType | None) -> None:
@@ -90,7 +102,8 @@ class MypyDarwinSupervisor:
         finally:
             # Always clean descendants, even when their leader already exited.
             try:
-                cls._signal_group(child.pid, received_signal or signal.SIGTERM)
+                with contextlib.suppress(ProcessGroupAbsentError):
+                    cls._signal_group(child.pid, received_signal or signal.SIGTERM)
                 end = time.monotonic() + kill_after
                 while time.monotonic() < end:
                     child.poll()
@@ -99,7 +112,8 @@ class MypyDarwinSupervisor:
                     time.sleep(0.05)
             finally:
                 try:
-                    cls._signal_group(child.pid, signal.SIGKILL)
+                    with contextlib.suppress(ProcessGroupAbsentError):
+                        cls._signal_group(child.pid, signal.SIGKILL)
                     child.wait()
                 finally:
                     for signum, handler in previous.items():
