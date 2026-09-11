@@ -467,7 +467,8 @@ class FlextInfraConfigModels:
             ),
         ]
         qlty_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Moving qlty release selector, e.g. 'latest'")
+            t.NonEmptyStr,
+            _tool_version_field("Moving qlty release selector, e.g. 'latest'"),
         ]
         node_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Compatible Node.js major.minor line")
@@ -482,7 +483,8 @@ class FlextInfraConfigModels:
             ),
         ]
         jscpd_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Moving jscpd release selector, e.g. 'latest'")
+            t.NonEmptyStr,
+            _tool_version_field("Moving jscpd release selector, e.g. 'latest'"),
         ]
         waza_selector: Annotated[
             t.NonEmptyStr,
@@ -494,7 +496,8 @@ class FlextInfraConfigModels:
             ),
         ]
         waza_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Moving Waza release selector, e.g. 'latest'")
+            t.NonEmptyStr,
+            _tool_version_field("Moving Waza release selector, e.g. 'latest'"),
         ]
         taplo_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
@@ -1033,7 +1036,7 @@ class FlextInfraConfigModels:
             bool,
             m.Field(
                 description=(
-                    "Whether the public boundary requires the one effect token APPLY=Y"
+                    "Whether the public boundary requires the one effect token"
                 )
             ),
         ]
@@ -1261,7 +1264,7 @@ class FlextInfraConfigModels:
         ]
         mutable_actions: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
-            m.Field(min_length=1, description="Docs actions guarded by APPLY=Y"),
+            m.Field(min_length=1, description="Docs actions guarded by"),
         ]
         reports_dir: Annotated[
             Path, m.Field(description="Repository-relative docs reports directory")
@@ -1414,7 +1417,7 @@ class FlextInfraConfigModels:
         """Ruff CLI contract for generated Make verbs and quality gates.
 
         Operator 2026-09-08: ruff is the style and autofix rule. Every
-        invocation uses preview. ``make fmt APPLY=Y`` also applies unsafe
+        invocation uses preview. ``make gen`` also applies unsafe
         autofixes. Never weaken ruff to keep a file; change the code.
         """
 
@@ -1435,7 +1438,7 @@ class FlextInfraConfigModels:
             m.Field(
                 description=(
                     "Flags for ruff check --fix including unsafe-fixes; used by "
-                    "make fmt APPLY=Y and make fix APPLY=Y"
+                    "make fmt and make fix"
                 )
             ),
         ]
@@ -1656,7 +1659,7 @@ class FlextInfraConfigModels:
         @m.computed_field
         @property
         def check_gates_fixable(self) -> t.VariadicTuple[str]:
-            """Gates ``make fix APPLY=Y`` can actually repair.
+            """Gates ``make gen`` can actually repair.
 
             Asking for a gate that cannot fix anything still pays its full cost;
             a fix pass built from the ALLOWED vocabulary once timed out doing
@@ -2888,16 +2891,19 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, _tool_version_field("Compatible uv major.minor line")
         ]
         qlty_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Moving qlty release selector, e.g. 'latest'")
+            t.NonEmptyStr,
+            _tool_version_field("Moving qlty release selector, e.g. 'latest'"),
         ]
         node_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Compatible Node.js major.minor line")
         ]
         jscpd_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Moving jscpd release selector, e.g. 'latest'")
+            t.NonEmptyStr,
+            _tool_version_field("Moving jscpd release selector, e.g. 'latest'"),
         ]
         waza_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Moving Waza release selector, e.g. 'latest'")
+            t.NonEmptyStr,
+            _tool_version_field("Moving Waza release selector, e.g. 'latest'"),
         ]
         taplo_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
@@ -3407,9 +3413,12 @@ class FlextInfraConfigModels:
             ):
                 if (name := self._distribution_name(requirement)) is not None:
                     scaffold_owners.add(name)
-            return tuple(sorted(scaffold_owners | set(
-                self.toolchain.additional_python_tool_distributions
-            )))
+            return tuple(
+                sorted(
+                    scaffold_owners
+                    | set(self.toolchain.additional_python_tool_distributions)
+                )
+            )
 
         @staticmethod
         def _distribution_name(requirement: str) -> str | None:

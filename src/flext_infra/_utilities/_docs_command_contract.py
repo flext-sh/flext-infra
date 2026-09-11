@@ -60,7 +60,7 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
             ):
                 make_match = c.Infra.DOCS_MAKE_COMMAND_RE.match(candidate)
                 if c.Infra.DOCS_RAW_PYTEST_COMMAND_RE.match(candidate):
-                    issue = "direct pytest command bypasses `make test APPLY=Y`"
+                    issue = "direct pytest command bypasses `make test`"
                 elif c.Infra.DOCS_RAW_TOOL_COMMAND_RE.match(candidate):
                     issue = "direct tool command bypasses the root Make dispatcher"
                 elif make_match is not None:

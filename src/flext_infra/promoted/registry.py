@@ -80,7 +80,7 @@ class Registry:
 
         """
         if "all" not in commands:
-            msg = f"verbo '{verb}' sem WHAT=all"
+            msg = f"verbo '{verb}' sem"
             raise RegistryError(msg)
         domains = {command.domain for command in commands.values()}
         if len(domains) != 1:
@@ -89,7 +89,7 @@ class Registry:
             raise RegistryError(msg)
         for command in commands.values():
             if command.what != "all" and command.aliases:
-                msg = f"{command.path}: aliases devem ser declarados apenas em WHAT=all"
+                msg = f"{command.path}: aliases devem ser declarados apenas em"
                 raise RegistryError(msg)
             validate_command_contract(command)
         validate_all_choices(verb, commands)

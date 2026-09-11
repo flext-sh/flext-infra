@@ -20,7 +20,7 @@ class TestsDocsCommandContract:
     def test_accepts_every_declared_verb_rendered_from_the_ssot() -> None:
         """Each declared verb, written exactly as its own spec requires, passes."""
         lines = "\n".join(
-            f"make {spec.name} APPLY=Y" if spec.requires_apply else f"make {spec.name}"
+            f"make {spec.name}" if spec.requires_apply else f"make {spec.name}"
             for spec in config.Infra.codegen.make.verbs
         )
         content = f"# Commands\n\n```bash\n{lines}\n```\n"
@@ -82,7 +82,7 @@ make test PROJECT=flext-demo MATCH=unit
             for spec in config.Infra.codegen.make.verbs
             if not spec.requires_apply
         )
-        content = f"```bash\nmake {read_only} APPLY=Y\n```\n"
+        content = f"```bash\nmake {read_only}\n```\n"
 
         issues = u.Infra.docs_command_contract_content_issues(
             content, relative_path="docs/guides/getting-started.md"
@@ -103,7 +103,7 @@ PYTHONPATH=src python -m pytest tests/unit
         )
 
         tm.that(len(issues), eq=1)
-        tm.that(issues[0].message, has="bypasses `make test APPLY=Y`")
+        tm.that(issues[0].message, has="bypasses `make test`")
 
     @staticmethod
     def test_rejects_direct_tool_execution() -> None:

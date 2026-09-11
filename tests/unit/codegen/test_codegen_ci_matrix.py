@@ -142,14 +142,14 @@ class TestCodegenCiMatrix:
         )
 
         ci_step_runs = tuple(
-            (f"run: CI=Y make {step.verb}" + (" APPLY=Y" if step.apply else ""))
+            (f"run: CI=Y make {step.verb}" + ("" if step.apply else ""))
             for step in config.Infra.codegen.make.workflow
             if "ci" in step.contexts
         )
         for run_line in ci_step_runs:
             tm.that(workflow, has=run_line)
         tm.that(ci_step_runs, has="run: CI=Y make setup")
-        tm.that(workflow, has="run: CI=Y make conform APPLY=Y")
+        tm.that(workflow, has="run: CI=Y make conform")
         tm.that(workflow, has="run: CI=Y make audit")
         tm.that(workflow, lacks="attest/gates/v1")
         tm.that(workflow, lacks="github verify-gates")
@@ -157,10 +157,10 @@ class TestCodegenCiMatrix:
         step_indices = tuple(workflow.index(run_line) for run_line in ci_step_runs)
         tm.that(step_indices, eq=tuple(sorted(step_indices)))
         setup_index = workflow.index("run: CI=Y make setup")
-        conform_index = workflow.index("run: CI=Y make conform APPLY=Y")
+        conform_index = workflow.index("run: CI=Y make conform")
         audit_index = workflow.index("run: CI=Y make audit")
-        check_index = workflow.index("run: CI=Y make check APPLY=Y")
-        test_index = workflow.index("run: CI=Y make test APPLY=Y")
+        check_index = workflow.index("run: CI=Y make check")
+        test_index = workflow.index("run: CI=Y make test")
         tm.that(
             setup_index < conform_index < audit_index < check_index < test_index,
             eq=True,
@@ -544,7 +544,10 @@ class TestCodegenCiMatrix:
         tm.that(content, has="RUNTIME_BIN := $(RUNTIME_VENV)/Scripts")
         tm.that(content, has="RUNTIME_PYTHON := $(RUNTIME_BIN)/python.exe")
         tm.that(content, has="override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)")
-        tm.that(content, has="_builtin-help:\n\t@printf '%s\\n' 'flext-demo [standalone]' '';")
+        tm.that(
+            content,
+            has="_builtin-help:\n\t@printf '%s\\n' 'flext-demo [standalone]' '';",
+        )
 
     def test_root_dockerignore_reincludes_bootstrap_surface(self) -> None:
         """Root hand-maintained .dockerignore lets clean-machine bootstrap files into the context."""

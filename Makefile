@@ -1,7 +1,7 @@
 # @flext-generated: continuous
 # @flext-owner: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
 # @flext-adjust: edit the owner configuration or template; never this projection
-# @flext-regenerate: make gen APPLY=Y
+# @flext-regenerate: make gen
 # flext-infra — selector-free generated project interface.
 # Managed by flext-infra codegen conform for new and existing repositories.
 # === SECTION: header (managed) ===
@@ -37,7 +37,7 @@ PUBLIC_INPUTS := APPLY
 COMMAND_LINE_INPUTS := $(foreach name,$(.VARIABLES),$(if $(filter command line override,$(origin $(name))),$(name)))
 UNKNOWN_INPUTS := $(filter-out $(PUBLIC_INPUTS),$(COMMAND_LINE_INPUTS))
 ifneq ($(strip $(UNKNOWN_INPUTS)),)
-$(error Unsupported Make input(s): $(UNKNOWN_INPUTS); public operations accept only APPLY=Y)
+$(error Unsupported Make input(s): $(UNKNOWN_INPUTS); public operations accept only)
 endif
 APPLY ?= N
 ifneq ($(filter $(APPLY),N Y),$(APPLY))
@@ -197,7 +197,7 @@ _bootstrap_setup_tools:
 	@set -eu; \
 	uv_selector="latest"; \
 	if [ ! -f "$(SETUP_MISE)" ]; then \
-		printf 'ERROR: missing generated mise launcher: %s; run make gen APPLY=Y\n' "$(SETUP_MISE)" >&2; \
+		printf 'ERROR: missing generated mise launcher: %s; run make gen\n' "$(SETUP_MISE)" >&2; \
 		exit 2; \
 	fi; \
 	project_root="$(PROJECT_ROOT)"; \
@@ -502,7 +502,7 @@ endef
 
 define _require_apply
 	@if [ "$(APPLY)" != "Y" ]; then \
-		printf 'ERROR: this action requires APPLY=Y\n' >&2; \
+		printf 'ERROR: this action requires\n' >&2; \
 		exit 2; \
 	fi
 endef
@@ -873,7 +873,7 @@ _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
 
 # `check` is read-only by contract: it never mutates the tree. Fixing is owned
-# by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
+# by `make gen` and formatting by `make gen`, both run BEFORE
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
 # CI=Y keeps make.ci.check_gates, the strict complement of

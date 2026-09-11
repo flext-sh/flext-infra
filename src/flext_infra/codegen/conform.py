@@ -492,7 +492,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # path supplies the workspace explicitly. Conforming a repository
             # that declares no project block has no scaffold chain to create —
             # nothing to do is not invalid input, and treating it as an error
-            # made `make gen APPLY=Y` unusable in every repository without its
+            # made `make gen` unusable in every repository without its
             # own manifest.
             if scaffolding is not None:
                 return r[tuple[m.Cli.AtomicDirectoryState, ...]].fail(
