@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -29,7 +30,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin(
         @classmethod
         def _lightweight_symbol_index(
             cls, rope: p.Infra.RopeWorkspaceDsl, file_path: Path
-        ) -> dict[str, tuple[str, int]]: ...
+        ) -> MutableMapping[str, tuple[str, int]]: ...
         @staticmethod
         def _include_rule(
             rule: str,

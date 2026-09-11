@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_cli import r, u
@@ -795,7 +795,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         workspace: p.Infra.WorkspaceSpec,
         providers: t.SequenceOf[m.Infra.ProviderSpec],
-    ) -> p.Result[dict[str, dict[str, t.JsonValue]]]:
+    ) -> p.Result[MutableMapping[str, MutableMapping[str, t.JsonValue]]]:
         """Resolve the workspace source overlay from typed metadata."""
         candidates = (workspace.repository, *workspace.subprojects)
         for distribution in dict.fromkeys(item.distribution for item in candidates):

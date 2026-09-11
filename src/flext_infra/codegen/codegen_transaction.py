@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import secrets
-from collections.abc import Callable
+from collections.abc import Callable, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -600,7 +600,7 @@ class FlextInfraCodegenTransaction:
         phase: str, plans: t.VariadicTuple[m.Infra.CodegenFilePlan]
     ) -> p.Result[t.VariadicTuple[t.Pair[str, m.Cli.AtomicFileState]]]:
         result_type = r[tuple[tuple[str, m.Cli.AtomicFileState], ...]]
-        sources: dict[Path, m.Cli.AtomicFileState] = {}
+        sources: MutableMapping[Path, m.Cli.AtomicFileState] = {}
         for plan in plans:
             for source in plan.source_states:
                 previous = sources.get(source.path)
@@ -615,7 +615,7 @@ class FlextInfraCodegenTransaction:
     def _unique_states(
         states: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> t.VariadicTuple[m.Cli.AtomicFileState]:
-        by_path: dict[Path, m.Cli.AtomicFileState] = {}
+        by_path: MutableMapping[Path, m.Cli.AtomicFileState] = {}
         for file_state in states:
             by_path[file_state.path] = file_state
         return tuple(by_path.values())

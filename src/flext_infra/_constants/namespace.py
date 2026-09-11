@@ -152,7 +152,6 @@ class FlextInfraConstantsNamespace:
         "Yield",
         "YieldFrom",
     })
-    NAMESPACE_MAX_LOGICAL_LOC: Final[int] = 200
 
 
 __all__: list[str] = ["FlextInfraConstantsNamespace"]

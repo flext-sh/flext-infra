@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_cli import cli
@@ -116,7 +117,7 @@ class FlextInfraCodemodSemanticApply:
             for finding in preflight.entries
             if (path := (root / finding.file).resolve()).suffix == c.Infra.EXT_PYTHON
         )
-        sources: dict[Path, str] = {}
+        sources: MutableMapping[Path, str] = {}
         for path in sorted(paths):
             state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             content = state.content
@@ -155,7 +156,7 @@ class FlextInfraCodemodSemanticApply:
 
     @staticmethod
     def _apply_plan(
-        sources: dict[Path, str],
+        sources: MutableMapping[Path, str],
         edits: t.SequenceOf[m.Infra.SemanticMigrationEdit],
         changed: set[Path],
     ) -> None:

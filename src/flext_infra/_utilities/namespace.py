@@ -28,7 +28,9 @@ class FlextInfraUtilitiesCodegenNamespace:
     # flext-perf.1 (agent: codex): cache __all__ AST extraction by path+mtime
     # so the 4-5 redundant _declared_exports calls per policy() hit memory
     # instead of re-reading + re-parsing the same file from disk each time.
-    _declared_exports_cache: ClassVar[dict[str, tuple[int, t.StrSequence]]] = {}
+    _declared_exports_cache: ClassVar[
+        MutableMapping[str, tuple[int, t.StrSequence]]
+    ] = {}
 
     @staticmethod
     def _is_rule_fixable(rule_id: str, module: str) -> bool:
@@ -150,7 +152,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         tree: ast.Module, value: ast.expr, file_path: Path
     ) -> t.StrSequence:
         """Resolve a literal ``__all__`` or the former generated tuple alias."""
-        assignments: dict[str, ast.expr] = {}
+        assignments: MutableMapping[str, ast.expr] = {}
         for node in tree.body:
             if isinstance(node, ast.Assign):
                 assignments.update(

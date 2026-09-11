@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import shutil
 from collections import defaultdict
-from collections.abc import Callable as _CensusCallable
+from collections.abc import Callable as _CensusCallable, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
@@ -81,7 +81,7 @@ class FlextInfraUtilitiesRefactorCensus:
         rope: p.Infra.RopeWorkspaceDsl,
         file_path: Path,
         *,
-        source_cache: dict[Path, str] | None = None,
+        source_cache: MutableMapping[Path, str] | None = None,
     ) -> str:
         """Return one original source snapshot, optionally cached by path."""
         resolved_path = file_path.resolve()
@@ -100,7 +100,7 @@ class FlextInfraUtilitiesRefactorCensus:
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
         *,
-        source_cache: dict[Path, str] | None = None,
+        source_cache: MutableMapping[Path, str] | None = None,
     ) -> t.MappingKV[Path, t.VariadicTuple[t.IntPair]] | None:
         """Plan safe line-range removals for simple top-level removal candidates."""
         if candidate.scope_path != candidate.object_name:
@@ -116,10 +116,10 @@ class FlextInfraUtilitiesRefactorCensus:
         )
         if definition_range is None:
             return None
-        ranges_by_file: dict[Path, list[t.IntPair]] = defaultdict(list)
+        ranges_by_file: MutableMapping[Path, list[t.IntPair]] = defaultdict(list)
         ranges_by_file[definition_path].append(definition_range)
-        sites_by_path: dict[Path, list[m.Infra.Census.ReferenceSite]] = defaultdict(
-            list
+        sites_by_path: MutableMapping[Path, list[m.Infra.Census.ReferenceSite]] = (
+            defaultdict(list)
         )
         for site in FlextInfraUtilitiesRefactorCensus._supporting_reference_sites(
             candidate
@@ -244,7 +244,7 @@ class FlextInfraUtilitiesRefactorCensus:
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
         *,
-        source_cache: dict[Path, str] | None = None,
+        source_cache: MutableMapping[Path, str] | None = None,
     ) -> p.Result[t.MappingKV[Path, str]]:
         """Return projected sources or a loud failure for broken planning.
 
@@ -267,7 +267,7 @@ class FlextInfraUtilitiesRefactorCensus:
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
         *,
-        source_cache: dict[Path, str] | None = None,
+        source_cache: MutableMapping[Path, str] | None = None,
     ) -> t.MappingKV[Path, str] | None:
         """Build updated sources for a simple removal candidate without writing."""
         edit_plan = FlextInfraUtilitiesRefactorCensus.plan_simple_removal_edits(
@@ -276,7 +276,7 @@ class FlextInfraUtilitiesRefactorCensus:
         if edit_plan is None:
             return None
         definition_path = Path(candidate.file_path).resolve()
-        updates: dict[Path, str] = {}
+        updates: MutableMapping[Path, str] = {}
         for file_path, ranges in edit_plan.items():
             original_source = FlextInfraUtilitiesRefactorCensus._source_snapshot(
                 rope, file_path, source_cache=source_cache
@@ -397,7 +397,7 @@ class FlextInfraUtilitiesRefactorCensus:
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
         *,
-        source_cache: dict[Path, str] | None = None,
+        source_cache: MutableMapping[Path, str] | None = None,
     ) -> t.MappingKV[Path, str] | None:
         """Drop ``candidate`` from class-base lists in facade modules.
 
@@ -408,7 +408,7 @@ class FlextInfraUtilitiesRefactorCensus:
         """
         target_name = candidate.object_name
         definition_path = Path(candidate.file_path).resolve()
-        updates: dict[Path, str] = {}
+        updates: MutableMapping[Path, str] = {}
         definition_resource = rope.resource(definition_path)
         if definition_resource is None:
             return None
@@ -638,7 +638,7 @@ class FlextInfraUtilitiesRefactorCensus:
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
         *,
-        source_cache: dict[Path, str] | None = None,
+        source_cache: MutableMapping[Path, str] | None = None,
     ) -> p.Result[t.Pair[t.MappingKV[Path, str], _CensusCallable[[], None]]]:
         """Plan one simple removal and bind its post-write Rope cleanup.
 
@@ -682,7 +682,7 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.Census.RemovalCandidate,
         *,
         gates: t.StrSequence,
-        source_cache: dict[Path, str] | None = None,
+        source_cache: MutableMapping[Path, str] | None = None,
     ) -> p.Result[bool]:
         """Preview one simple removal candidate, requiring clean gates.
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -165,7 +166,7 @@ class FlextInfraRefactorCensusObjectsMixin:
         cls, report: m.Infra.Census.WorkspaceReport
     ) -> t.VariadicTuple[m.Infra.Result]:
         """Impact map results."""
-        changes_by_file: dict[Path, list[str]] = defaultdict(list)
+        changes_by_file: MutableMapping[Path, list[str]] = defaultdict(list)
         for candidate in report.removal_candidates:
             source_path = Path(candidate.file_path)
             cls._append_impact_change(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from operator import itemgetter
 from typing import TYPE_CHECKING
 
@@ -23,7 +24,7 @@ class FlextInfraRefactorCensusSymbolsMixin:
     @classmethod
     def _lightweight_symbol_index(
         cls, rope: p.Infra.RopeWorkspaceDsl, file_path: Path
-    ) -> dict[str, tuple[str, int]]:
+    ) -> MutableMapping[str, tuple[str, int]]:
         """Top-level symbol index for detector-only rule sets."""
         resource = rope.resource(file_path)
         if resource is None:
@@ -43,8 +44,8 @@ class FlextInfraRefactorCensusSymbolsMixin:
                 f"{file_path}: {type(exc).__name__}: {exc!s}"
             )
             raise RuntimeError(msg) from exc
-        symbols: dict[str, tuple[str, int]] = {}
-        object_kinds: dict[int, str] = {}
+        symbols: MutableMapping[str, tuple[str, int]] = {}
+        object_kinds: MutableMapping[int, str] = {}
         candidates: list[tuple[int, str, t.Infra.RopePyName]] = []
         for name, pyname in attributes.items():
             if u.Infra.is_imported_name(pyname):
@@ -65,7 +66,10 @@ class FlextInfraRefactorCensusSymbolsMixin:
 
     @staticmethod
     def _lightweight_symbol_kind(
-        *, name: str, obj: t.Infra.RopePyObject | None, object_kinds: dict[int, str]
+        *,
+        name: str,
+        obj: t.Infra.RopePyObject | None,
+        object_kinds: MutableMapping[int, str],
     ) -> str:
         """Infer a detector-only symbol kind from Rope metadata."""
         inherited_kind = object_kinds.get(id(obj))
