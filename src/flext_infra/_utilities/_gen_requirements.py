@@ -8,10 +8,9 @@ helper so the resolution and validation rules cannot drift apart.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, final
 
 from flext_core import r
-
 from flext_infra import c, m, u
 
 if TYPE_CHECKING:
