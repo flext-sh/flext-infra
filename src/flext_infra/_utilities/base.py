@@ -242,10 +242,16 @@ class FlextInfraUtilitiesBase:
         Searches the installed layout (``<pkg>/config/<dir>/<file>.gen``)
         and the source checkout layout (``<repo>/config/<dir>/<file>.gen``).
         """
-        gen_path = package_root / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_GEN_FILENAME
+        gen_path = (
+            package_root / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_GEN_FILENAME
+        )
         if gen_path.is_file():
             return gen_path
-        source_gen = package_root.parent.parent / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_GEN_FILENAME
+        source_gen = (
+            package_root.parent.parent
+            / c.Infra.CODEGEN_CONFIG_DIR
+            / c.Infra.CODEGEN_GEN_FILENAME
+        )
         if source_gen.is_file():
             return source_gen
         return None

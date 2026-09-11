@@ -27,8 +27,6 @@ from flext_infra import c
 from ._rope_import_boundary import FlextInfraRopeImportBoundaryBase
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import t
 
 
@@ -46,41 +44,6 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
     )
     _VIOLATION_KIND: ClassVar[str] = "abstraction-boundary"
     _SCAN_KIND: ClassVar[str] = "tier-whitelist"
-
-    _submodule_cache: dict[Path, frozenset[Path]] = {}
-
-    @classmethod
-    def _submodule_dirs(cls, repository_root: Path) -> frozenset[Path]:
-        """Return cached set of git submodule root directories."""
-        cached = cls._submodule_cache.get(repository_root)
-        if cached is not None:
-            return cached
-        import subprocess
-
-        try:
-            result = subprocess.run(
-                ["git", "submodule", "foreach", "--quiet", "echo $name"],
-                capture_output=True,
-                text=True,
-                cwd=repository_root,
-                timeout=30,
-            )
-            if result.returncode == 0:
-                names = [
-                    line.strip()
-                    for line in result.stdout.strip().split("\n")
-                    if line.strip()
-                ]
-                dirs = frozenset(
-                    repository_root / name for name in names
-                )
-                cls._submodule_cache[repository_root] = dirs
-                return dirs
-        except Exception:
-            pass
-        dirs = frozenset()
-        cls._submodule_cache[repository_root] = dirs
-        return dirs
 
     @override
     def _is_in_scope(self, file_path: Path) -> bool:
