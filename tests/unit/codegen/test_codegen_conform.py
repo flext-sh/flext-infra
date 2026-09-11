@@ -1079,6 +1079,7 @@ class TestCodegenConform:
             workspace,
             config.Infra.codegen,
             tooling_runtime=tooling_runtime,
+            repository_root=tmp_path,
         )
         rendered = tm.ok(context)
         tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)
@@ -1561,7 +1562,7 @@ class TestScriptDispatchMakefile:
         tm.that(gen_init_body.count("codegen init"), eq=2)
         tm.that(gen_init_body, lacks=["codegen conform", "REPOSITORY_ROOT", "bd"])
         # The regeneration contract published on every projection speaks gen.
-        tm.that("# @flext-regenerate: make gen APPLY=Y" in rendered, eq=True)
+        tm.that("# @flext-regenerate: make gen" in rendered, eq=True)
         # The custom-surface policy names gen (not codegen) for hooks/handlers.
         handler_policies: dict[str, m.Infra.CustomHandlerPolicy] = dict(
             config.Infra.codegen.make.custom_handler_policies

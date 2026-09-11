@@ -46,7 +46,7 @@ def _release_lane_workspace(tmp_path: Path) -> Path:
         tmp_path, version=c.Tests.RELEASE_VERSION_PRERELEASE
     )
     local_origin = tmp_path / "remote"
-    u.Tests.configure_local_origin(workspace, local_origin)
+    bare_origin = u.Tests.configure_local_origin(workspace, local_origin)
     provider = u.Tests.provider()
     tm.ok(
         cli.run_checked(
@@ -69,7 +69,10 @@ def _release_lane_workspace(tmp_path: Path) -> Path:
                 "--add",
                 "--push",
                 "origin",
-                local_origin.as_posix(),
+                # Why: the push URL must name the bare repository itself; the
+                # parent directory is not a git repository (git push exit 128).
+                # The bare path is the canonical return of configure_local_origin.
+                bare_origin.as_posix(),
             ],
             cwd=workspace,
         )

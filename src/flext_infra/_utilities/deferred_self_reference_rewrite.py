@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableMapping
 from operator import itemgetter
 
 from flext_infra.typings import t
@@ -97,7 +98,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
                 if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store)
             )
         offsets = cls._line_offsets(source)
-        edits: dict[tuple[int, int], str] = {}
+        edits: MutableMapping[tuple[int, int], str] = {}
         for sibling in siblings:
             for expression in cls._annotation_expressions(sibling):
                 for node in ast.walk(expression):

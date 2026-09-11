@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, override
 
 import libcst as cst
 from libcst.metadata import (
+    CodeRange,
     MetadataWrapper,
     PositionProvider,
     QualifiedNameProvider,
@@ -41,12 +43,15 @@ class FlextInfraUtilitiesQualifiedNames:
 
         def __init__(self, source: str) -> None:
             self.lines = source.splitlines()
-            self.names: dict[tuple[int, int], frozenset[str]] = {}
+            self.names: MutableMapping[tuple[int, int], frozenset[str]] = {}
 
         def _collect(self, node: cst.BaseExpression) -> None:
             if not isinstance(node, (cst.Name, cst.Attribute)):
                 return
-            location = self.get_metadata(PositionProvider, node)
+            location: object = self.get_metadata(PositionProvider, node)
+            if not isinstance(location, CodeRange):
+                msg = "position metadata did not resolve for the visited node"
+                raise TypeError(msg)
             position = location.start
             # Python AST columns count UTF-8 bytes; LibCST columns count characters.
             column = len(self.lines[position.line - 1][: position.column].encode())

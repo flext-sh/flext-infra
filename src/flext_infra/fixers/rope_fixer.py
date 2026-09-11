@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import operator
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -121,7 +122,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
 
     def _target_dispatch(
         self,
-    ) -> dict[
+    ) -> MutableMapping[
         str,
         Callable[
             [

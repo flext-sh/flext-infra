@@ -4,7 +4,7 @@
 # @flext-generated: continuous
 # @flext-owner: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
 # @flext-adjust: edit the owner configuration or template; never this projection
-# @flext-regenerate: make gen APPLY=Y
+# @flext-regenerate: make gen
 # {{ dist }} — selector-free generated project interface.
 # Managed by flext-infra codegen conform for new and existing repositories.
 # === SECTION: header (managed) ===
@@ -62,7 +62,7 @@ $(warning Ignoring unsupported Make input(s): $(UNKNOWN_INPUTS); declared public
 endif
 {{ make.apply_variable }} ?= {{ make.apply_absent_value }}
 # filter-out keeps the guard true independent of argument order: a guard that
-# passed $(APPLY) as the filter *pattern* turned a valid APPLY=Y into the
+# passed $(APPLY) as the filter *pattern* turned a valid into the
 # pattern "Y Y" and returned two words, so the guard failed on every run.
 ifneq ($(filter-out {{ make.apply_absent_value }} {{ make.apply_value }},$(strip $({{ make.apply_variable }}))),)
 $(error {{ make.apply_variable }} must be {{ make.apply_value }} when enabled)

@@ -68,7 +68,7 @@ class TestManualCommandValidator:
         tm.that(_V.command_blocked("git status"), eq=False)
 
     def test_make_allowed(self) -> None:
-        tm.that(_V.command_blocked("make check APPLY=Y"), eq=False)
+        tm.that(_V.command_blocked("make check"), eq=False)
 
     def test_flext_infra_allowed(self) -> None:
         tm.that(

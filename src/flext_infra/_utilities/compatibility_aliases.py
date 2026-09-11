@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -30,8 +31,8 @@ class FlextInfraUtilitiesCompatibilityAliases:
         findings: t.SequenceOf[m.Infra.ModScanFinding],
     ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Plan API alias removals and AST-proven consumer rewrites."""
-        specs_by_file: dict[Path, dict[str, str]] = {}
-        specs_by_module: dict[str, dict[str, str]] = {}
+        specs_by_file: MutableMapping[Path, MutableMapping[str, str]] = {}
+        specs_by_module: MutableMapping[str, MutableMapping[str, str]] = {}
         for finding in findings:
             relative = finding.file
             if finding.rule_id != "ban-compat-alias" or relative.name != c.Infra.API_PY:
@@ -70,8 +71,8 @@ class FlextInfraUtilitiesCompatibilityAliases:
                 continue
             local_aliases = specs_by_file.get(file_path.resolve(), {})
             tree = ast.parse(source, filename=str(file_path))
-            import_aliases: dict[str, dict[str, str]] = {}
-            attribute_aliases: dict[tuple[str, str], str] = {}
+            import_aliases: MutableMapping[str, MutableMapping[str, str]] = {}
+            attribute_aliases: MutableMapping[tuple[str, str], str] = {}
             qualified_aliases = dict(local_aliases)
             target_bindings = cls._bound_names(tree)
             for node in ast.walk(tree):

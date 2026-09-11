@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 import re
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Annotated, override
@@ -54,7 +54,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     @staticmethod
     def _dependency_cooldown_policy(
         repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
-    ) -> tuple[tuple[str, ...], dict[str, str]]:
+    ) -> tuple[tuple[str, ...], MutableMapping[str, str]]:
         """Compose fleet defaults with the repository's narrower policy."""
         exclusions = dict.fromkeys(toolchain.dependency_cooldown_exclusions)
         overrides = dict(toolchain.dependency_cooldown_overrides)
@@ -106,7 +106,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         builtin, whose native ``_builtin-<verb>`` implementation is the only
         owner of that name in the generated Makefile.
         """
-        merged: dict[str, m.Infra.MakeVerbSpec] = {}
+        merged: MutableMapping[str, m.Infra.MakeVerbSpec] = {}
         for verb in discovered:
             if verb.name in canonical_names:
                 continue
@@ -1189,7 +1189,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         governed_by_path = {item.path: item for item in codegen.managed_files}
         completed: list[m.Infra.CodegenFilePlan] = []
         represented: set[Path] = set()
-        represented_indexes: dict[Path, int] = {}
+        represented_indexes: MutableMapping[Path, int] = {}
         for file in planned:
             relative = file.path.relative_to(root)
             governed = governed_by_path.get(relative)

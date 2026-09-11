@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableMapping
 from importlib.util import find_spec, resolve_name
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -23,13 +24,13 @@ class FlextInfraUtilitiesPrivateImportFacades:
     @staticmethod
     def source_modules(
         sources: t.MappingKV[Path, str], statements: t.SequenceOf[str]
-    ) -> dict[str, tuple[str, bool]]:
+    ) -> MutableMapping[str, tuple[str, bool]]:
         """Index editable sources and referenced installed packages without imports.
 
         Installed files are discovery inputs only. Resolving a top-level spec
         never imports its package initializer or dependency business modules.
         """
-        modules: dict[str, tuple[str, bool]] = {}
+        modules: MutableMapping[str, tuple[str, bool]] = {}
         for path, source in sorted(sources.items()):
             indices = [
                 index
@@ -81,10 +82,10 @@ class FlextInfraUtilitiesPrivateImportFacades:
     @staticmethod
     def declared_exports(
         sources: t.MappingKV[str, t.Pair[str, bool]],
-    ) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
+    ) -> tuple[MutableMapping[str, set[str]], MutableMapping[str, set[str]]]:
         """Index declared public exports and module-scope import identities."""
-        bindings: dict[str, set[str]] = {}
-        exports: dict[str, set[str]] = {}
+        bindings: MutableMapping[str, set[str]] = {}
+        exports: MutableMapping[str, set[str]] = {}
         for module, (source, is_package) in sorted(sources.items()):
             package = module if is_package else module.rpartition(".")[0]
             tree = ast.parse(source, filename=module)
@@ -182,7 +183,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
                 f"ambiguous private symbol identity for {qualified}: {sorted(expected)}"
             )
             raise ValueError(msg)
-        reverse: dict[str, set[str]] = {}
+        reverse: MutableMapping[str, set[str]] = {}
         for binding, targets in bindings.items():
             for target in targets:
                 reverse.setdefault(target, set()).add(binding)
@@ -232,7 +233,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
         sources: t.MappingKV[str, t.Pair[str, bool]],
     ) -> t.MappingKV[str, t.VariadicTuple[t.Quad[ast.Module, str, str, str]]]:
         """Discover facade aliases and roots from live source assignments."""
-        discovered: dict[str, list[tuple[ast.Module, str, str, str]]] = {}
+        discovered: MutableMapping[str, list[tuple[ast.Module, str, str, str]]] = {}
         for module, (source, is_package) in sorted(sources.items()):
             if is_package:
                 continue

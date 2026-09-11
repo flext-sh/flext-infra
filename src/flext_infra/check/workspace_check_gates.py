@@ -51,7 +51,7 @@ class FlextInfraGateRegistry:
         never a gate that silently cannot be reached through ``make check``.
         """
         classes = self._gate_classes()
-        self._gates: dict[str, type[FlextInfraGate]] = {
+        self._gates: MutableMapping[str, type[FlextInfraGate]] = {
             gate_cls.gate_id: gate_cls for gate_cls in classes
         }
         if len(self._gates) != len(classes):

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import tokenize
 from collections import defaultdict
+from collections.abc import MutableMapping
 from io import StringIO
 from pathlib import Path
 
@@ -507,7 +508,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         """Collect required import lines using rope-parsed module bodies."""
         source_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
         source_lines = source.splitlines()
-        import_map: dict[str, str] = {}
+        import_map: MutableMapping[str, str] = {}
         for node in getattr(source_pymodule.get_ast(), "body", []) or []:
             kind = FlextInfraUtilitiesRopeAnalysis.node_kind(node)
             if kind not in {"Import", "ImportFrom"}:

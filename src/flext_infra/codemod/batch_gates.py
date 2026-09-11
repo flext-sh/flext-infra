@@ -7,7 +7,7 @@ import shutil
 import stat
 import sys
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from flext_infra import c, m, p, r, settings, t, u
@@ -29,7 +29,7 @@ class FlextInfraModGateEngine:
         governed_roots = frozenset(
             project.resolve() for project in u.Infra.governed_project_roots(root)
         )
-        rules_by_owner: dict[Path, list[Path]] = {}
+        rules_by_owner: MutableMapping[Path, list[Path]] = {}
         for rule in rules:
             owner = FlextInfraCodemodSnapshotReconciler.config_root(rule)
             rules_by_owner.setdefault(owner, []).append(rule)
@@ -133,9 +133,9 @@ class FlextInfraModGateEngine:
     @classmethod
     def _materialize_split_rule_files(
         cls, *, config_root: Path, temp_root: Path, owner_rules: t.SequenceOf[Path]
-    ) -> dict[Path, tuple[Path, ...]]:
+    ) -> MutableMapping[Path, tuple[Path, ...]]:
         """Replace multi-document rule files with single-document temp copies."""
-        split_rules: dict[Path, tuple[Path, ...]] = {}
+        split_rules: MutableMapping[Path, tuple[Path, ...]] = {}
         source_rules = set(owner_rules)
         directories = FlextInfraCodemodSnapshotReconciler.fixture_directories(
             config_root
@@ -165,7 +165,10 @@ class FlextInfraModGateEngine:
 
     @staticmethod
     def _sync_rule_fixture_root(
-        *, config_root: Path, temp_root: Path, split_rules: dict[Path, tuple[Path, ...]]
+        *,
+        config_root: Path,
+        temp_root: Path,
+        split_rules: MutableMapping[Path, tuple[Path, ...]],
     ) -> None:
         """Mirror validated fixture updates from the temp copy back to source."""
         split_temp_paths = {

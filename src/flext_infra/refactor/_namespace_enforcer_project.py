@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra import config, m, u
@@ -321,7 +322,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             rewrite_fn=None,
             apply=apply,
         )
-        smell_buckets: dict[str, list[m.Infra.PatternSmellViolation]] = {
+        smell_buckets: MutableMapping[str, list[m.Infra.PatternSmellViolation]] = {
             "bare_except": [],
             "print": [],
             "breakpoint": [],

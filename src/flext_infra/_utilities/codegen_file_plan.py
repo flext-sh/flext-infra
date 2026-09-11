@@ -143,7 +143,8 @@ class FlextInfraUtilitiesCodegenFilePlan:
             )
             new_text = (plan.desired_content or b"").decode("utf-8", errors="replace")
             header = (
-                f"--- {plan.path} (committed mode={oct(plan.before.mode)})"
+                f"--- {plan.path}"
+                f" (committed mode={oct(plan.before.mode) if plan.before.mode is not None else 'none'})"
                 f"\n+++ {plan.path} (rendered mode={oct(plan.desired_mode or 0)})"
             )
             diff = tuple(
@@ -159,7 +160,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
                 if diff
                 else (
                     f"{header}\n(content equal: mode-only drift "
-                    f"observed={oct(plan.before.mode)} "
+                    f"observed={oct(plan.before.mode) if plan.before.mode is not None else 'none'} "
                     f"desired={oct(plan.desired_mode) if plan.desired_mode is not None else 'none'})"
                 )
             )

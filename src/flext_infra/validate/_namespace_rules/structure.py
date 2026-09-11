@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, config
 
 from .base import FlextInfraNamespaceRulesBase
 
@@ -48,9 +48,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
                 ]
                 entry_calls.extend(cls.name_of(node) for node in guard_calls)
                 continue
-            if kind == "Expr" and cls.kind(
-                getattr(statement, "value", None)
-            ) == "Call":
+            if kind == "Expr" and cls.kind(getattr(statement, "value", None)) == "Call":
                 called = cls.dotted_name(
                     getattr(getattr(statement, "value", None), "func", None)
                 )
@@ -62,9 +60,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         # A guard must terminate the process through the package entrypoint
         # (``raise SystemExit(main())`` / ``main()``); without it the module
         # is not an entrypoint and stays under the class rules.
-        return bool(entry_calls) and all(
-            name.endswith("main") for name in entry_calls
-        )
+        return bool(entry_calls) and all(name.endswith("main") for name in entry_calls)
 
     @classmethod
     def check_structure(
@@ -154,10 +150,13 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             for node in cls.walk(tree)
             if cls.kind(node) in c.Infra.NAMESPACE_LOGICAL_STATEMENT_KINDS
         )
-        if logical > c.Infra.NAMESPACE_MAX_LOGICAL_LOC:
+        # Why (operator 2026-09-07, codegen.yaml loc_cap): the per-module
+        # ceiling is config-owned SSOT — the superseded hardcoded 200 constant
+        # is retired, so this rule and the loc-cap gate share one source.
+        cap = config.Infra.codegen.loc_cap.max_lines
+        if logical > cap:
             messages.append(
-                f"{filepath}:1 — {logical} logical statements exceed the "
-                f"{c.Infra.NAMESPACE_MAX_LOGICAL_LOC} limit"
+                f"{filepath}:1 — {logical} logical statements exceed the {cap} limit"
             )
         messages.extend(cls._facade_shape(tree, filepath))
         return cls.violations("NS-STRUCT", messages)
@@ -242,9 +241,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         # canonical stem+suffix name.
         facade_class_name = f"{class_stem}{suffix}"
         facade_classes = [
-            node
-            for node in classes
-            if getattr(node, "name", "") == facade_class_name
+            node for node in classes if getattr(node, "name", "") == facade_class_name
         ]
         if not facade_classes:
             return False

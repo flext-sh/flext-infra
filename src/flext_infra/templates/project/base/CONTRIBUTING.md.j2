@@ -12,8 +12,8 @@ read it before opening a pull request.
 git clone {{ flext_git_base_url }}/flext.git
 cd flext
 make setup
-make check APPLY=Y
-make test APPLY=Y
+make check
+make test
 ```
 
 ## Development Workflow
@@ -41,7 +41,7 @@ Use conventional commit messages:
 - Tests assert observable behavior, never implementation details.
 
 ```bash
-make test APPLY=Y
+make test
 ```
 
 ## Code Quality
@@ -49,15 +49,15 @@ make test APPLY=Y
 All quality gates run through canonical `make` verbs:
 
 ```bash
-make check APPLY=Y
-make fmt APPLY=Y
-make conform APPLY=Y
+make check
+make fmt
+make conform
 ```
 
-- **Ruff** — lint + format (enforced via `make check APPLY=Y`)
-- **Pyrefly** — fast type checking (enforced via `make check APPLY=Y`)
-- **Mypy** — strict type checking (enforced via `make check APPLY=Y`)
-- **Pyright** — additional type analysis (enforced via `make check APPLY=Y`)
+- **Ruff** — lint + format (enforced via `make gen`)
+- **Pyrefly** — fast type checking (enforced via `make gen`)
+- **Mypy** — strict type checking (enforced via `make gen`)
+- **Pyright** — additional type analysis (enforced via `make gen`)
 
 Never run these tools directly — always use the `make` verbs so guards,
 locks, and evidence are preserved.

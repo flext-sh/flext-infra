@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -66,7 +67,7 @@ class FlextInfraReleaseOrchestratorPhases(
         projects = u.Infra.resolve_projects(repository_root, ())
         if projects.failure:
             return r[t.StrMapping].from_failure(projects)
-        versions: dict[str, str] = dict(
+        versions: MutableMapping[str, str] = dict(
             u.Infra.locked_dependency_versions(
                 repository_root / c.Infra.UV_LOCK_FILENAME, sources=("git",)
             )

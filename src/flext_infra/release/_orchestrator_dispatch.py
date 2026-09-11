@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -61,7 +62,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         self.logger.info(
             "release_phase_started", phase=str(ctx.phase), current=ctx.version
         )
-        handlers: dict[
+        handlers: MutableMapping[
             c.Infra.ReleasePhase,
             Callable[[m.Infra.ReleasePhaseDispatchConfig], p.Result[bool]],
         ] = {
@@ -239,7 +240,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         return r[bool].fail(
             f"{c.Infra.PYPROJECT_FILENAME} version changed outside the release "
             f"protocol: {base_version} -> {version} (HEAD {head_oid.value.strip()[:12]} "
-            f"carries no {release_subject!r}); run `make release WHAT=version APPLY=Y` "
+            f"carries no {release_subject!r}); run `make release WHAT=version` "
             "instead"
         )
 
@@ -350,7 +351,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         if stamped.failure:
             return stamped
         # Why: the lock records the project's own version, so the stamp
-        # refreshes it the way `make deps APPLY=Y` does; otherwise
+        # refreshes it the way `make deps` does; otherwise
         # `make deps` (uv lock --check) is red on the release lane.
         locked = u.Cli.run_checked(
             [c.Infra.UV, "lock", "--project", str(root)], cwd=root

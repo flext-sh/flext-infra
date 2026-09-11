@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from functools import cache
 from importlib import util as importlib_util
 from pathlib import Path
@@ -31,7 +32,9 @@ class FlextInfraUtilitiesDiscovery(
 ):
     """Canonical discovery helpers for path, package, and Rope-backed scans."""
 
-    _PARENT_CONSTANTS_FLEXT_CACHE: ClassVar[dict[tuple[str, bool], t.StrSequence]] = {}
+    _PARENT_CONSTANTS_FLEXT_CACHE: ClassVar[
+        MutableMapping[tuple[str, bool], t.StrSequence]
+    ] = {}
 
     @staticmethod
     def _workspace_project_roots(repository_root: str) -> t.VariadicTuple[Path]:

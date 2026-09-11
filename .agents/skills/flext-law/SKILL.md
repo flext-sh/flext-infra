@@ -92,7 +92,7 @@ Read those skills and root `AGENTS.md`; this file adds only FLEXT domain law.
 - Invoke the standard Make verbs directly. Mutating verbs use only `APPLY=Y`;
   agents never add `WHAT=` or `PROJECT=` to setup, generation, repair,
   formatting, checking, or testing.
-- Structural rewires run through `make mod APPLY=Y`. Its canonical FLEXT engine
+- Structural rewires run through `make mod`. Its canonical FLEXT engine
   composes `ast-grep` rewrites, Rope semantic refactors, and real
   `pyright-langserver` diagnostics before the fixed point is accepted.
   Repetitive manual call-site editing is prohibited; change the codemod or its
@@ -110,7 +110,7 @@ Read those skills and root `AGENTS.md`; this file adds only FLEXT domain law.
   optional host runtime is not a FLEXT error. Once an available integration is
   selected, its first failure remains visible and is never normalized.
 - A detection-only AST finding keeps the final gate red but never blocks safe
-  actionable rewrites in the same `make mod APPLY=Y` invocation. Apply the
+  actionable rewrites in the same `make mod` invocation. Apply the
   mechanical cut, perform the semantic rewire, delete the superseded owner, and
   repeat until both classes are zero. Never stop before apply merely because a
   later semantic finding still requires repair.

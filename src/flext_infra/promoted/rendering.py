@@ -20,7 +20,7 @@ def render_requested_help(registry: Registry, requested: str) -> str:
         The requested help text.
 
     """
-    # "all" is the conventional catalog selector (make help WHAT=all, the
+    # "all" is the conventional catalog selector (make help, the
     # help/all command) and maps to the same global catalog as bare help.
     if requested in {"", "help", "all"}:
         return render_global_help(registry)
@@ -51,7 +51,7 @@ def render_global_help(registry: Registry) -> str:
             "make help WHAT=<verbo>/<acao> ou make <verbo> WHAT=<acao> "
             "OPTIONS=Y mostra uma acao."
         ),
-        "Comandos mutadores exigem APPLY=Y.",
+        "Comandos mutadores exigem.",
         (
             "Novos comandos vivem em scripts/<verbo>/<WHAT>.sh|py com header "
             "cosmos-command."
@@ -120,7 +120,7 @@ def render_command_help(registry: Registry, requested_verb: str, what: str) -> s
         f"Muta: {'sim' if command.mutates else 'nao'}",
     ]
     if command.mutates:
-        lines.append("Dry-run: sem APPLY=Y, o dispatcher nao executa a acao.")
+        lines.append("Dry-run: sem, o dispatcher nao executa a acao.")
     lines.extend(["", command.summary, command.description])
     if command.params:
         lines.extend(["", "Parametros:"])
@@ -150,7 +150,7 @@ def render_dry_run(
         f"Comando: make {requested_verb} WHAT={what}",
         f"Dominio: {command.domain}",
         f"Resumo: {command.summary}",
-        "Regra: comando mutador exige APPLY=Y.",
+        "Regra: comando mutador exige.",
     ]
     if command.rules:
         lines.extend(["", "Regras aplicadas:"])
@@ -175,7 +175,7 @@ def render_dry_run(
         "",
         "Execucao canonica:",
         f"  {example_for(command, requested_verb)}",
-        ("  # repita com APPLY=Y somente depois de conferir dominio, escopo e bead."),
+        ("  # repita com somente depois de conferir dominio, escopo e bead."),
     ])
     return "\n".join(lines)
 

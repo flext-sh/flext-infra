@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config
@@ -39,7 +40,7 @@ class FlextInfraUtilitiesProcess:
         color-forcing signal. No list is repeated here.
         """
         make = config.Infra.codegen.make
-        ordered: dict[str, None] = dict.fromkeys((
+        ordered: MutableMapping[str, None] = dict.fromkeys((
             *c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             make.apply_variable,
             c.Infra.ENV_VAR_STANDALONE,

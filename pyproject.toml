@@ -94,6 +94,7 @@ dev = [
   "pytest-markdown-docs",
   "pytest-randomly>=4.1.0",
   "pytest-testmon>=2.2.0",
+  "types-Markdown",
   "pytest-timeout",
   "pytest-xdist",
   "ruff>=0.16.5",

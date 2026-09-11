@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_cli import u as cli_u
@@ -189,8 +190,8 @@ class FlextInfraUtilitiesBase:
         """Return every strongly connected component in one directed graph."""
         next_index = 0
         stack: list[str] = []
-        indexes: dict[str, int] = {}
-        lowlinks: dict[str, int] = {}
+        indexes: MutableMapping[str, int] = {}
+        lowlinks: MutableMapping[str, int] = {}
         on_stack: set[str] = set()
         components: list[t.StrSequence] = []
 

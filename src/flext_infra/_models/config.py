@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
@@ -1036,7 +1036,7 @@ class FlextInfraConfigModels:
             bool,
             m.Field(
                 description=(
-                    "Whether the public boundary requires the one effect token APPLY=Y"
+                    "Whether the public boundary requires the one effect token"
                 )
             ),
         ]
@@ -1264,7 +1264,7 @@ class FlextInfraConfigModels:
         ]
         mutable_actions: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
-            m.Field(min_length=1, description="Docs actions guarded by APPLY=Y"),
+            m.Field(min_length=1, description="Docs actions guarded by"),
         ]
         reports_dir: Annotated[
             Path, m.Field(description="Repository-relative docs reports directory")
@@ -1417,7 +1417,7 @@ class FlextInfraConfigModels:
         """Ruff CLI contract for generated Make verbs and quality gates.
 
         Operator 2026-09-08: ruff is the style and autofix rule. Every
-        invocation uses preview. ``make fmt APPLY=Y`` also applies unsafe
+        invocation uses preview. ``make gen`` also applies unsafe
         autofixes. Never weaken ruff to keep a file; change the code.
         """
 
@@ -1438,7 +1438,7 @@ class FlextInfraConfigModels:
             m.Field(
                 description=(
                     "Flags for ruff check --fix including unsafe-fixes; used by "
-                    "make fmt APPLY=Y and make fix APPLY=Y"
+                    "make fmt and make fix"
                 )
             ),
         ]
@@ -1660,7 +1660,7 @@ class FlextInfraConfigModels:
         @m.computed_field
         @property
         def check_gates_fixable(self) -> t.VariadicTuple[str]:
-            """Gates ``make fix APPLY=Y`` can actually repair.
+            """Gates ``make gen`` can actually repair.
 
             Asking for a gate that cannot fix anything still pays its full cost;
             a fix pass built from the ALLOWED vocabulary once timed out doing
@@ -2097,7 +2097,7 @@ class FlextInfraConfigModels:
         @u.field_serializer("dependency_cooldown_overrides", when_used="json")
         def _serialize_dependency_cooldown_overrides(
             self, value: t.StrMapping
-        ) -> dict[str, str]:
+        ) -> MutableMapping[str, str]:
             """Project the immutable mapping through JSON/template boundaries."""
             return dict(value)
 
