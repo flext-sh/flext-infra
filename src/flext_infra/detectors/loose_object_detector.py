@@ -36,7 +36,6 @@ class FlextInfraLooseObjectDetector:
             ctx.file_path,
             skip_protected=True,
             skip_settings=True,
-            skip_alias_modules=True,
             skip_init_py=True,
         )
         if res is None:
@@ -70,8 +69,25 @@ class FlextInfraLooseObjectDetector:
                 )
             )
 
-        class_symbols: t.MutableSequenceOf[m.Infra.SymbolInfo] = []
-        for symbol in u.Infra.get_module_symbols(rope_project, res):
+        # Why (cosmos-3flk9): a module whose top level holds only imports,
+        # the export manifest and the package entrypoint call (operational
+        # r/e/x/h/d/s re-exports, ``__main__`` stubs) carries no loose
+        # object by law. Derived from the collected symbols — never a
+        # filename list.
+        module_symbols = tuple(u.Infra.get_module_symbols(rope_project, res))
+        class_symbols: t.MutableSequenceOf[m.Infra.SymbolInfo] = [
+            symbol
+            for symbol in module_symbols
+            if symbol.kind == "class"
+        ]
+        if not class_symbols and all(
+            symbol.name.endswith("main")
+            or symbol.name in c.Infra.DETECTION_CANONICAL_ALIASES
+            for symbol in module_symbols
+            if symbol.kind == "function"
+        ):
+            return []
+        for symbol in module_symbols:
             if (symbol.line, symbol.name) in logger_keys:
                 continue
             if symbol.name in c.Infra.SCAN_ALLOWED_TOP_LEVEL:

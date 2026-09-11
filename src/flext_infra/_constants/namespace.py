@@ -27,11 +27,6 @@ class FlextInfraConstantsNamespace:
         "conftest.py",
         "py.typed",
     })
-    NAMESPACE_CANONICAL_ALIAS_MODULE_STEMS: Final[frozenset[str]] = frozenset({
-        "ldif",
-        "cli",
-        "main",
-    })
     NAMESPACE_LAYER_ORDER: Final[t.VariadicTuple[str]] = (
         "settings",
         "config",
@@ -65,14 +60,6 @@ class FlextInfraConstantsNamespace:
         "settings",
         "config",
     )
-    NAMESPACE_SETTINGS_IMPORT_ALLOWED_FACADES: Final[t.VariadicTuple[str]] = (
-        "t",
-        "m",
-        "u",
-    )
-    NAMESPACE_SETTINGS_IMPORT_ALLOWED_FACADES_SET: Final[frozenset[str]] = frozenset(
-        NAMESPACE_SETTINGS_IMPORT_ALLOWED_FACADES
-    )
     # Platform service-facade singletons emitted by codegen (api.py.j2:20
     # ``{{ alias }} = {{ class_stem }}.fetch_global()``) and the canonical
     # base/services/config/settings layers. These expose a bottom singleton
@@ -91,14 +78,6 @@ class FlextInfraConstantsNamespace:
         })
     )
     "Canonical platform facade file name -> (alias, class-name suffix)."
-    # Operational r/e/x/h/d/s re-export modules and the ``__main__`` entrypoint
-    # stub carry no class by law; the one-class and facade-naming rules skip
-    # them (cosmos-3flk9). The filenames derive from the canonical operation
-    # facades tuple above — the letters are declared once, never re-listed.
-    NAMESPACE_OPERATIONAL_MODULES: Final[frozenset[str]] = frozenset({
-        *(f"{letter}.py" for letter in NAMESPACE_OPERATION_FACADES),
-        "__main__.py",
-    })
     NAMESPACE_LAYER_BY_FILE: Final[MappingProxyType[str, str]] = MappingProxyType({
         "settings.py": "settings",
         "_settings.py": "settings",

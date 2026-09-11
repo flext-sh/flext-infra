@@ -17,6 +17,51 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
     """Enforce one-class modules and explicit facade composition."""
 
     @classmethod
+    def _is_functional_module(cls, tree: object) -> bool:
+        """Return whether a module only re-exports symbols or runs an entry.
+
+        Why (cosmos-3flk9): the operational ``r/e/x/h/d/s`` re-export modules
+        and the ``python -m`` entrypoint stub carry no class by law. The shape
+        is derived from the AST — imports, the export manifest, the ``__main__``
+        guard and one exit call — so the exemption follows what the module IS,
+        never a hardcoded list of file names.
+        """
+        statements = tuple(getattr(tree, "body", ()) or ())
+        if cls.outer_classes(tree):
+            return False
+        guard_functions: list[str] = []
+        for statement in statements:
+            kind = cls.kind(statement)
+            if kind in {"Import", "ImportFrom"}:
+                continue
+            if cls._module_docstring(statement):
+                continue
+            if kind == "Assign" and cls._dunder_assignment(statement):
+                continue
+            if kind == "Raise":
+                continue
+            if kind == "If":
+                guard_functions.extend(
+                    cls.name_of(node)
+                    for node in cls.walk(statement)
+                    if cls.kind(node) == "FunctionDef"
+                )
+                continue
+            if kind == "Expr" and cls.kind(
+                getattr(statement, "value", None)
+            ) == "Call":
+                called = cls.dotted_name(
+                    getattr(getattr(statement, "value", None), "func", None)
+                )
+                guard_functions.append(called.rsplit(".", 1)[-1])
+                continue
+            return False
+        # A guard must terminate the process through the package entrypoint
+        # (``raise SystemExit(main())`` / ``main()``); anything else with a
+        # naked guard is a data module and stays under the class rules.
+        return all(name.endswith("main") for name in guard_functions)
+
+    @classmethod
     def check_structure(
         cls,
         tree: object,
@@ -28,6 +73,8 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
     ) -> t.StrSequence:
         """Return structural and logical-size violations for one module."""
         if filepath.name in {"__init__.py", "__version__.py"}:
+            return ()
+        if cls._is_functional_module(tree):
             return ()
         messages: list[str] = []
         classes = cls.outer_classes(tree)
@@ -66,7 +113,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
                     f"{filepath}:{cls.line(node)} — top-level function is forbidden; "
                     "nest behavior in the module class"
                 )
-            if kind in {"Assign", "AnnAssign", "TypeAlias"} and not (
+            if kind in {"Assign", "AnnAssign"} and not (
                 cls._dunder_assignment(node)
                 or cls._canonical_facade_alias(
                     node,
@@ -185,17 +232,27 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             return False
         alias, suffix = spec
         classes = cls.outer_classes(tree)
-        if len(classes) != 1 or getattr(classes[0], "name", "") != (
-            class_name := f"{class_stem}{suffix}"
-        ):
+        # Secondary support classes at module level are allowed (see the loop
+        # in check_structure); only the facade class itself must exist with the
+        # canonical stem+suffix name.
+        facade_class_name = f"{class_stem}{suffix}"
+        facade_classes = [
+            node
+            for node in classes
+            if getattr(node, "name", "") == facade_class_name
+        ]
+        if not facade_classes:
             return False
+        facade = facade_classes[0]
         targets = getattr(node, "targets", ()) or (getattr(node, "target", None),)
         value = getattr(node, "value", None)
-        value_is_class = cls.kind(value) == "Name" and cls.name_of(value) == class_name
+        value_is_class = (
+            cls.kind(value) == "Name" and cls.name_of(value) == facade_class_name
+        )
         value_is_global_singleton = (
             cls.kind(value) == "Call"
             and cls.dotted_name(getattr(value, "func", None))
-            == f"{class_name}.fetch_global"
+            == f"{facade_class_name}.fetch_global"
         )
         if not (
             cls.kind(node) in {"Assign", "AnnAssign"}
@@ -203,7 +260,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             and cls.kind(targets[0]) == "Name"
             and cls.name_of(targets[0]) == alias
             and (value_is_class or value_is_global_singleton)
-            and cls.line(node) > cls.line(classes[0])
+            and cls.line(node) > cls.line(facade)
         ):
             return False
         return all(
