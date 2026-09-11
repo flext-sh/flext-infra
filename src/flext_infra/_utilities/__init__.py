@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from ._git.worktree_removal import FlextInfraUtilitiesGitWorktreeRemovalMixin
     from ._git.worktree_roots import FlextInfraUtilitiesGitWorktreeRootsMixin
     from ._git.worktree_status import FlextInfraUtilitiesGitWorktreeStatusMixin
-    from ._mypy_supervisor import MypyDarwinSupervisor
+    from ._mypy_supervisor import MypyDarwinSupervisor, ProcessGroupAbsentError
     from ._project_discovery_candidates import (
         FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
     )
@@ -286,6 +286,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorktreeLifecycle",
     "FlextInfraWorktreeProvisioning",
     "MypyDarwinSupervisor",
+    "ProcessGroupAbsentError",
     "_git",
     "_rope",
     "git_stdin",
@@ -337,7 +338,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._git.worktree_removal": ("FlextInfraUtilitiesGitWorktreeRemovalMixin",),
             "._git.worktree_roots": ("FlextInfraUtilitiesGitWorktreeRootsMixin",),
             "._git.worktree_status": ("FlextInfraUtilitiesGitWorktreeStatusMixin",),
-            "._mypy_supervisor": ("MypyDarwinSupervisor",),
+            "._mypy_supervisor": ("MypyDarwinSupervisor", "ProcessGroupAbsentError"),
             "._project_discovery_candidates": (
                 "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
             ),

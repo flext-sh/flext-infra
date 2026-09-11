@@ -188,6 +188,7 @@ if TYPE_CHECKING:
     from .refactor.wrapper_root_namespace import FlextInfraWrapperRootNamespaceRefactor
     from .release.orchestrator import FlextInfraReleaseOrchestrator
     from .release.orchestrator_phases import FlextInfraReleaseOrchestratorPhases
+    from .release.policy_render import FlextInfraReleasePolicyRender
     from .services.cli_dispatch import CliDispatchService
     from .services.cli_route_base import CliRouteBase
     from .services.cli_routes import CliRouteService
@@ -411,6 +412,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorViolationAnalyzer",
     "FlextInfraReleaseOrchestrator",
     "FlextInfraReleaseOrchestratorPhases",
+    "FlextInfraReleasePolicyRender",
     "FlextInfraRopeWorkspace",
     "FlextInfraRuffFormatGate",
     "FlextInfraRuffLintGate",
@@ -676,6 +678,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".release": ("release",),
             ".release.orchestrator": ("FlextInfraReleaseOrchestrator",),
             ".release.orchestrator_phases": ("FlextInfraReleaseOrchestratorPhases",),
+            ".release.policy_render": ("FlextInfraReleasePolicyRender",),
             ".services": ("services",),
             ".services.cli_dispatch": ("CliDispatchService",),
             ".services.cli_route_base": ("CliRouteBase",),

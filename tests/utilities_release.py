@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import config, main, u
+from flext_infra.release import FlextInfraReleasePolicyRender
 from tests import c, m, t
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
@@ -17,10 +18,9 @@ class TestsFlextInfraUtilitiesReleaseMixin:
     def release_policy_root() -> Path:
         """Return the packaged template root that owns the release policies.
 
-        The build-constraints and Gitleaks policies are codegen templates
-        projected into every repository; the release fixtures copy the same
-        bytes so the test workspace carries exactly what a generated
-        repository carries.
+        The Gitleaks policy is a codegen template projected into every
+        repository; build constraints are rendered at release time from the
+        typed config SSOT (flext-gufl8) and have no repository projection.
         """
         return (
             Path(__file__).resolve().parents[1]
@@ -29,6 +29,18 @@ class TestsFlextInfraUtilitiesReleaseMixin:
             / "templates"
             / "project"
             / "base"
+        )
+
+    @staticmethod
+    def release_build_constraints_text() -> str:
+        """Return the release-time constraints bytes for the current config.
+
+        Mirrors exactly what the release policy phase renders from
+        ``config.Infra.release.build_constraints`` — the single owner — so
+        tests derive digests from the same SSOT the protocol consumes.
+        """
+        return FlextInfraReleasePolicyRender.build_constraints(
+            config.Infra.release.build_constraints
         )
 
     @staticmethod
@@ -63,27 +75,28 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         # Generated repositories ignore their report tree; the protocol's
         # plan receipt must never count as a dirty checkout.
         (workspace / ".gitignore").write_text(".reports/\n", encoding="utf-8")
-        policy_paths = (
-            c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
-            c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
+        # Gitleaks is projected by codegen; build constraints are rendered
+        # from the typed config SSOT exactly as the release policy phase
+        # renders them (flext-gufl8) — no repository projection exists.
+        gitleaks_source = (
+            TestsFlextInfraUtilitiesReleaseMixin.release_policy_root()
+            / f"{c.Infra.RELEASE_GITLEAKS_CONFIG_PATH}.j2"
         )
-        # The policies are rendered exactly as codegen projects them into
-        # a generated repository: same template, same typed pins.
-        policy_context = m.Infra.ReleasePolicyRenderSpec(
-            build_constraints=config.Infra.release.build_constraints
-        )
-        for policy_path in policy_paths:
-            policy_source = (
-                TestsFlextInfraUtilitiesReleaseMixin.release_policy_root()
-                / (f"{policy_path}.j2")
+        rendered_gitleaks = u.Cli.template_render(gitleaks_source, config.Infra.release)
+        if rendered_gitleaks.failure:
+            raise RuntimeError(
+                rendered_gitleaks.error or "release policy render failed: gitleaks"
             )
-            rendered = u.Cli.template_render(policy_source, policy_context)
-            if rendered.failure:
-                msg = rendered.error or f"release policy render failed: {policy_path}"
-                raise RuntimeError(msg)
+        for policy_path, policy_text in (
+            (
+                "config/build-constraints.txt",
+                TestsFlextInfraUtilitiesReleaseMixin.release_build_constraints_text(),
+            ),
+            (c.Infra.RELEASE_GITLEAKS_CONFIG_PATH, rendered_gitleaks.value),
+        ):
             policy_target = workspace / policy_path
             policy_target.parent.mkdir(parents=True, exist_ok=True)
-            policy_target.write_text(rendered.value, encoding="utf-8")
+            policy_target.write_text(policy_text, encoding="utf-8")
         for name in project_names:
             project = workspace / name
             project.mkdir(parents=True, exist_ok=True)

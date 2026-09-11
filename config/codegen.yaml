@@ -998,9 +998,9 @@ Infra:
         owner: vscode
         policy: merge
     # Release build policies (flext-to3n7): fully generated fleet-wide bytes.
-      - path: config/build-constraints.txt
-        owner: codegen
-        policy: full
+    # config/build-constraints.txt is NO LONGER projected into repositories
+    # (flext-gufl8): the release policy phase renders the pins at build time
+    # from config.Infra.release.build_constraints; no repository copy exists.
       - path: config/gitleaks-release.toml
         owner: codegen
         policy: full
@@ -1499,6 +1499,18 @@ Infra:
           patterns:
             - "/.aihub/"
             - "/.cursor/mcp.json"
+      # Residue extermination (flext-gufl8): none of these are root source.
+      # config/build-constraints.txt is rendered by the release policy phase
+      # from config.Infra.release.build_constraints — repositories never
+      # carry it. *.bak are safety-cycle backup residue (cleaned by design;
+      # ignore guards against interrupted runs). *aihub-prior* are ai-hub
+      # sync prior-state backups that must never land in git.
+        - name: "RESIDUE: never track backups or repo-local policy copies"
+          profiles: [workspace, standalone]
+          patterns:
+            - "*.bak"
+            - "config/build-constraints.txt"
+            - "*aihub-prior*"
         - name: "Aider AI data"
           patterns:
             - ".aider/"
@@ -1820,16 +1832,10 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-      # Why (flext-to3n7): the release build phase snapshots these two policy
-      # files before the first artifact build (hash-pinned build backend for
-      # `uv build --require-hashes`, and the Gitleaks policy). They are one
-      # fleet-wide policy owned here and projected into every repository;
-      # a repository never hand-writes its own (overwrite: true).
-        - source: base/config/build-constraints.txt.j2
-          destination: config/build-constraints.txt
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: true
+      # Why (flext-to3n7/flext-gufl8): the release build phase snapshots the
+      # Gitleaks policy before the first artifact build, and renders the
+      # hash-pinned build backend for `uv build --require-hashes` directly
+      # from config.Infra.release.build_constraints (no repository copy).
         - source: base/config/gitleaks-release.toml.j2
           destination: config/gitleaks-release.toml
           profiles: [workspace, standalone]
