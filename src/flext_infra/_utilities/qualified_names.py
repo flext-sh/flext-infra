@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, override
 
 import libcst as cst
 from libcst.metadata import (
-    CodeRange,
     CodePosition,
+    CodeRange,
     MetadataWrapper,
     PositionProvider,
     QualifiedNameProvider,

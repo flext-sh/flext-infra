@@ -46,7 +46,7 @@ class FlextInfraReleaseArtifactArchiveMixin:
             from flext_infra import m
 
             requirements = m.Infra.GenRequirementsSpec.model_validate(loaded.value.data)
-        except Exception:  # noqa: BLE001 — a malformed contract falls back to blocking
+        except Exception:  # ruff: ignore[blind-except] — a malformed contract falls back to blocking
             return False
         entry = requirements.requirements.externally_managed.get(name)
         return entry is not None and entry.validation == "exists_or_absent"
