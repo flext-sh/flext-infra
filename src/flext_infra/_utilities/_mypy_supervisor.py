@@ -18,12 +18,11 @@ import time
 from types import FrameType
 
 
-class ProcessGroupAbsentError(Exception):
-    """The target process group has no live member; nothing to signal."""
-
-
 class MypyDarwinSupervisor:
     """Own the checker process group and stop it on resource-control failure."""
+
+    class ProcessGroupAbsentError(Exception):
+        """The target process group has no live member; nothing to signal."""
 
     @classmethod
     def _signal_group(cls, pid: int, signum: int) -> None:
@@ -36,13 +35,13 @@ class MypyDarwinSupervisor:
         try:
             os.killpg(pid, signum)
         except ProcessLookupError as err:
-            raise ProcessGroupAbsentError from err
+            raise MypyDarwinSupervisor.ProcessGroupAbsentError from err
         except PermissionError:
             # Darwin may retain an unsignalable zombie-only process group.
             # Only a native accounting proof of no live member closes it.
             if cls._usage(pid)[1]:
                 raise
-            raise ProcessGroupAbsentError from None
+            raise MypyDarwinSupervisor.ProcessGroupAbsentError from None
 
     @staticmethod
     def _usage(pid: int) -> tuple[int, bool]:

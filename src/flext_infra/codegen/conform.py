@@ -16,7 +16,6 @@ from typing import Annotated, override
 
 from flext_core import r
 from flext_infra import config, p, u
-from flext_infra._utilities._gen_requirements import GenRequirementsLoader
 from flext_infra.base import s
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
@@ -373,11 +372,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         Returns failure if any requirement is violated, or if the ``.gen`` file
         itself is absent or malformed.
         """
-        requirements_result = GenRequirementsLoader.load(
+        requirements_result = u.Infra.load_gen_requirements(
             Path(__file__).resolve().parent
         )
         if requirements_result.failure:
-            return r[bool].fail(requirements_result.error or "invalid .gen contract")
+            return r[bool].from_failure(requirements_result)
         requirements = requirements_result.unwrap()
         bypass_policies = c.Infra.MANAGED_FILE_POLICIES_BYPASS
         forbidden_in_contract = frozenset(

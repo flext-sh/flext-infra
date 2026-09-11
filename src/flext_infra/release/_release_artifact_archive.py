@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import config, u
-from flext_infra._utilities._gen_requirements import GenRequirementsLoader
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -28,7 +27,7 @@ class FlextInfraReleaseArtifactArchiveMixin:
         sensitive-path patterns (``.env.example``) while never carrying
         secrets, so the release archive exempts them.
         """
-        requirements = GenRequirementsLoader.load(Path(__file__))
+        requirements = u.Infra.load_gen_requirements(Path(__file__))
         if requirements.failure:
             return False
         entry = requirements.unwrap().requirements.externally_managed.get(name)

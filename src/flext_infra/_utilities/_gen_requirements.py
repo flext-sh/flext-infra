@@ -8,17 +8,15 @@ helper so the resolution and validation rules cannot drift apart.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, final
+from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, u
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import m, p
 
 
-@final
-class GenRequirementsLoader:
+class FlextInfraUtilitiesGenRequirements:
     """Load and validate the ``.gen`` requirements contract exactly once."""
 
     @classmethod
@@ -28,6 +26,10 @@ class GenRequirementsLoader:
         Installed (wheel) layout ships config inside the package; the source
         checkout keeps it at the repository root next to ``src/``.
         """
+        from flext_infra import (
+            c,  # method-point import: the utility facade assembles here
+        )
+
         package_root = anchor.resolve().parent.parent
         gen_path = (
             package_root / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_GEN_FILENAME
@@ -41,8 +43,10 @@ class GenRequirementsLoader:
         return gen_path
 
     @classmethod
-    def load(cls, anchor: Path) -> p.Result[m.Infra.GenRequirementsSpec]:
+    def load_gen_requirements(cls, anchor: Path) -> p.Result[m.Infra.GenRequirementsSpec]:
         """Locate, load, and validate the contract relative to ``anchor``."""
+        from flext_infra import c, m, u  # method-point import: facade assembly
+
         gen_path = cls._contract_path(anchor)
         if not gen_path.is_file():
             return r[m.Infra.GenRequirementsSpec].fail(
@@ -64,4 +68,4 @@ class GenRequirementsLoader:
         return r[m.Infra.GenRequirementsSpec].ok(requirements)
 
 
-__all__: list[str] = ["GenRequirementsLoader"]
+__all__: list[str] = ["FlextInfraUtilitiesGenRequirements"]
