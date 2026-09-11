@@ -10,7 +10,7 @@ from flext_tests import tm
 from flext_infra import main as infra_main
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, u
-from tests.unit import WorktreeFixture
+from tests.unit.workspace import WorktreeFixture
 
 
 def _write_project(project_root: Path, name: str) -> None:
