@@ -550,7 +550,7 @@ Infra:
         # Custom behavior is one private whole-verb replacement or one lifecycle
         # hook. Selector-specific handlers are prohibited because public verbs are
         # already the complete operation and APPLY=Y is their sole mutation input.
-        target_pattern: "^((pre|post)-[a-z][a-z0-9-]*|_custom-[a-z][a-z0-9-]*)$"
+        target_pattern: "^((pre|post)-[a-z][a-z0-9-]*|gen|_custom-[a-z][a-z0-9-]*)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
 
