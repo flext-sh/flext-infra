@@ -22,7 +22,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     # flext-38p39: the linter flags MD009/MD012 and friends with its own `[*]`
     # auto-fixable marker, so `make check` blocked on findings that no canonical
     # verb could repair -- `make fmt` covers Python only and `make fix
-    # APPLY=Y` skipped this gate, both exiting 0. The tool supports `--fix`, so
+    # ` skipped this gate, both exiting 0. The tool supports `--fix`, so
     # the gate offers it and the canonical sequence can reach green.
     can_fix: ClassVar[bool] = True
 
