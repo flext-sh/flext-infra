@@ -17,6 +17,9 @@ from flext_infra.detectors.class_placement_detector import (
 from flext_infra.detectors.compatibility_alias_detector import (
     FlextInfraCompatibilityAliasDetector,
 )
+from flext_infra.detectors.consumer_import_violations_detector import (
+    FlextInfraConsumerImportViolationsDetector,
+)
 from flext_infra.detectors.loose_test_function_detector import (
     FlextInfraLooseTestFunctionDetector,
 )
@@ -45,6 +48,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
         "stub_file_violations",
         "foreign_canonical_alias_violations",
         "loose_test_function_violations",
+        "consumer_import_violations",
     })
     _BEARTYPE_PREDICATES: ClassVar[frozenset[str]] = frozenset({"classvar_constant"})
 
@@ -79,6 +83,8 @@ class FlextInfraRefactorDeclarativeEnforcement:
                 return cls._detect_foreign_canonical_aliases(ctx, rule_id=rule_id)
             if violation_field == "loose_test_function_violations":
                 return cls._detect_loose_test_functions(ctx, rule_id=rule_id)
+            if violation_field == "consumer_import_violations":
+                return cls._detect_consumer_import_violations(ctx, rule_id=rule_id)
         elif source.kind == "beartype":
             predicate_kind = getattr(source, "predicate_kind", None)
             predicate_value = getattr(predicate_kind, "value", predicate_kind)
@@ -167,6 +173,32 @@ class FlextInfraRefactorDeclarativeEnforcement:
             )
             for v in violations
             if v.action == "classvar_relocation"
+        )
+
+    @classmethod
+    def _detect_consumer_import_violations(
+        cls, ctx: m.Infra.DetectorContext, *, rule_id: str
+    ) -> t.SequenceOf[p.AttributeProbe]:
+        """Delegate consumer import violations detection to the canonical scanner."""
+        try:
+            violations = FlextInfraConsumerImportViolationsDetector.detect_file(ctx)
+        except c.EXC_BROAD_RUNTIME as exc:
+            msg = (
+                f"declarative enforcement {ctx.file_path} failed: "
+                f"consumer import violations detector failed: {type(exc).__name__}: {exc}"
+            )
+            raise RuntimeError(msg) from exc
+        return tuple(
+            cls._probe(
+                Path(v.file),
+                line=v.line,
+                rule_id=rule_id,
+                object_name=v.imported_symbol,
+                target_package=v.target_package,
+                imported_path=v.imported_path,
+                legal_symbols=list(v.legal_symbols),
+            )
+            for v in violations
         )
 
     @classmethod
