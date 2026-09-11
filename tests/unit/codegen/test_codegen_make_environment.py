@@ -413,12 +413,7 @@ class TestsCodegenMakeEnvironment:
         # mutates by default with zero variables.
         process = tm.ok(
             u.Cli.run_raw(
-                [
-                    c.Infra.MAKE,
-                    "--no-print-directory",
-                    "test",
-                    "APPLY=Y",
-                ],
+                [c.Infra.MAKE, "--no-print-directory", "test", "APPLY=Y"],
                 cwd=project_root,
                 env=active_env,
                 remove_env_keys=(*c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, "UV"),
@@ -559,12 +554,7 @@ class TestsCodegenMakeEnvironment:
         # used to ride on the command line is supplied through the environment.
         process = tm.ok(
             u.Cli.run_raw(
-                [
-                    c.Infra.MAKE,
-                    "--no-print-directory",
-                    "check",
-                    "APPLY=Y",
-                ],
+                [c.Infra.MAKE, "--no-print-directory", "check", "APPLY=Y"],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
@@ -657,12 +647,7 @@ class TestsCodegenMakeEnvironment:
         )
         authenticated = tm.ok(
             u.Cli.run_raw(
-                [
-                    c.Infra.MAKE,
-                    "--no-print-directory",
-                    "deps",
-                    "APPLY=N",
-                ],
+                [c.Infra.MAKE, "--no-print-directory", "deps", "APPLY=N"],
                 cwd=project_root,
                 env=env,
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
@@ -675,7 +660,10 @@ class TestsCodegenMakeEnvironment:
         # explicit opt-out attempt fails at the generated public boundary
         # before any recipe runs, keeping uv off the mutation path.
         tm.that(authenticated.outcome.raw_return_code, ne=0)
-        tm.that(authenticated.stdout + authenticated.stderr, has="APPLY must be Y when enabled")
+        tm.that(
+            authenticated.stdout + authenticated.stderr,
+            has="ERROR: this action requires APPLY=Y",
+        )
         tm.that(authenticated.stdout + authenticated.stderr, has="Makefile")
 
     def test_public_gate_fails_closed_before_managed_environment_exists(
@@ -774,9 +762,7 @@ class TestsCodegenMakeEnvironment:
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
 
-        hostile_env = {
-            "MAKEFLAGS": "FORBIDDEN_VAR=hostile APPLY=Y"
-        }
+        hostile_env = {"MAKEFLAGS": "FORBIDDEN_VAR=hostile APPLY=Y"}
         process = tm.ok(
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", "help"],
@@ -793,7 +779,7 @@ class TestsCodegenMakeEnvironment:
         tm.that(u.Cli.process_succeeded(process.outcome), eq=True)
         tm.that(
             process.stdout + process.stderr,
-            has="Ignoring unsupported Make input(s): FORBIDDEN_VAR",
+            has="Ignoring unsupported Make input(s): APPLY FORBIDDEN_VAR",
         )
 
     def test_generated_make_dispatches_script_verbs_to_builtin_targets(
@@ -804,7 +790,6 @@ class TestsCodegenMakeEnvironment:
             m.Infra.MakeVerbSpec(
                 name="sync",
                 description="Dispatch sync through the declared script dispatcher.",
-
             ),
         )
         script_dispatch = m.Infra.ScriptDispatchSpec(

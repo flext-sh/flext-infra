@@ -236,11 +236,7 @@ class TestCodegenConform:
         u.Tests.write_standalone_workspace_manifest(
             root,
             config.Infra.name,
-            extra_verbs=(
-                m.Infra.MakeVerbSpec(
-                    name="probe", description=help_text, 
-                ),
-            ),
+            extra_verbs=(m.Infra.MakeVerbSpec(name="probe", description=help_text),),
         )
         return FlextInfraCodegenConform.execute_request(
             u.Tests.conform_request(
@@ -1412,13 +1408,11 @@ class TestScriptDispatchMakefile:
             extra_verbs=(
                 m.Infra.MakeVerbSpec(
                     name="incidente",
-                    description="Dispatch incidente through the declared script dispatcher."
-                    
+                    description="Dispatch incidente through the declared script dispatcher.",
                 ),
                 m.Infra.MakeVerbSpec(
                     name="charts",
-                    description="Dispatch charts through the declared script dispatcher."
-                    
+                    description="Dispatch charts through the declared script dispatcher.",
                 ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
@@ -1665,18 +1659,15 @@ class TestScriptDispatchMakefile:
             extra_verbs=(
                 m.Infra.MakeVerbSpec(
                     name="charts",
-                    description="Dispatch charts through the declared script dispatcher."
-                    
+                    description="Dispatch charts through the declared script dispatcher.",
                 ),
                 m.Infra.MakeVerbSpec(
                     name="chart-release",
-                    description="Dispatch chart-release through the declared script dispatcher."
-                    
+                    description="Dispatch chart-release through the declared script dispatcher.",
                 ),
                 m.Infra.MakeVerbSpec(
                     name="bead",
-                    description="Dispatch bead through the declared script dispatcher."
-                    
+                    description="Dispatch bead through the declared script dispatcher.",
                 ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(

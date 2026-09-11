@@ -7,10 +7,10 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import config, main as infra_main
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra import main as infra_main
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, u
-from tests.unit.workspace import WorktreeFixture
+from tests.unit import WorktreeFixture
 
 
 def _write_project(project_root: Path, name: str) -> None:
@@ -90,10 +90,7 @@ class TestsFlextInfraWorkspaceMain:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Unknown verbs fail only after the write-enable gate is satisfied."""
-        monkeypatch.setenv(
-            "APPLY",
-            "Y",
-        )
+        monkeypatch.setenv("APPLY", "Y")
         tm.that(
             (workspace_main(["orchestrate", "--verb", "legacy-check"]) == 1), eq=True
         )

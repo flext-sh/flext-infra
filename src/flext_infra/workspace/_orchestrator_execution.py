@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, config, m, t, u
+from flext_infra import c, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -128,12 +128,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             else verb
         )
         proc_result = u.Cli.run_to_file(
-            [
-                c.Infra.MAKE,
-                "-C",
-                project,
-                target,
-            ],
+            [c.Infra.MAKE, "-C", project, target],
             log_path,
             env=self._project_child_env(),
             remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,

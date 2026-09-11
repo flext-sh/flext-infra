@@ -36,11 +36,10 @@ class TestsDocsCommandContract:
     """Prove canonical Make, Testmon, and public-test documentation policy."""
 
     @staticmethod
-    def test_accepts_every_declared_verb_rendered_from_the_ssot(self) -> None:
+    def test_accepts_every_declared_verb_rendered_from_the_ssot() -> None:
         """Each declared verb passes without the exterminated apply token."""
         lines = "\n".join(
-            f"make {spec.name}"
-            for spec in config.Infra.codegen.make.verbs
+            f"make {spec.name}" for spec in config.Infra.codegen.make.verbs
         )
         content = f"# Commands\n\n```bash\n{lines}\n```\n"
 
@@ -83,6 +82,7 @@ make test PROJECT=flext-demo MATCH=unit
         tm.that(len(issues), eq=1)
         tm.that(issues[0].issue_type, eq="command_contract")
         tm.that(issues[0].message, has="invented Make selector")
+
     @staticmethod
     def test_reads_apply_requirement_from_config_ssot() -> None:
         """The exterminated `APPLY` flag is rejected in documented commands."""
@@ -97,6 +97,7 @@ make test PROJECT=flext-demo MATCH=unit
 
         tm.that(len(issues), eq=1)
         tm.that(issues[0].message, has="legacy `APPLY` flag is exterminated")
+
     @staticmethod
     def test_accepts_plain_verbs_and_rejects_legacy_apply() -> None:
         """Plain verbs pass; the exterminated `APPLY` flag is a forbidden token."""
@@ -212,8 +213,7 @@ ruff check src
     ) -> None:
         scope = command_contract_scope
         spec = m.Infra.MakeVerbSpec(
-            name=verb_name,
-            description="Repository-owned operation",
+            name=verb_name, description="Repository-owned operation"
         )
         u.Tests.write_standalone_workspace_manifest(
             scope.path, scope.name, extra_verbs=(spec,) if declared else ()
@@ -237,9 +237,7 @@ ruff check src
     ) -> None:
         scope = command_contract_scope
         spec = m.Infra.MakeVerbSpec(
-            name="publish-preview",
-            description="Repository-owned operation"
-            
+            name="publish-preview", description="Repository-owned operation"
         )
         guide = scope.path / "docs/guides/commands.md"
         guide.parent.mkdir(parents=True)
@@ -291,9 +289,7 @@ ruff check src
     ) -> None:
         source_scope = command_contract_scope
         spec = m.Infra.MakeVerbSpec(
-            name="publish-preview",
-            description="Source repository operation"
-            
+            name="publish-preview", description="Source repository operation"
         )
         manifest = u.Tests.write_standalone_workspace_manifest(
             source_scope.path, source_scope.name, extra_verbs=(spec,)

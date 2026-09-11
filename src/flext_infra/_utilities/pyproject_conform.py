@@ -584,8 +584,7 @@ class FlextInfraUtilitiesPyprojectConform:
 
     @staticmethod
     def _sync_namespace_scope(
-        document: t.Cli.TomlDocument,
-        namespace_scan_dirs: t.StrSequence | None,
+        document: t.Cli.TomlDocument, namespace_scan_dirs: t.StrSequence | None
     ) -> p.Result[bool]:
         """Sync ``[tool.flext.namespace].scan_dirs`` from the project SSOT.
 
@@ -596,9 +595,7 @@ class FlextInfraUtilitiesPyprojectConform:
         if namespace_scan_dirs is None:
             return r[bool].ok(True)
         namespace = u.Cli.toml_ensure_path(document, ("tool", "flext", "namespace"))
-        u.Cli.toml_sync_string_list(
-            namespace, "scan_dirs", list(namespace_scan_dirs)
-        )
+        u.Cli.toml_sync_string_list(namespace, "scan_dirs", list(namespace_scan_dirs))
         return r[bool].ok(True)
 
     @staticmethod

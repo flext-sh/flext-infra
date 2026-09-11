@@ -230,9 +230,7 @@ class TestCodegenCiMatrix:
                     if step.verb == "check"
                     else f"make {step.verb}"
                 )
-                + (
-                    " APPLY=Y"
-                )
+                + (" APPLY=Y")
                 for step in workflow
                 if context in step.contexts
             )
