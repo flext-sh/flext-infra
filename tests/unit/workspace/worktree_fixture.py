@@ -6,10 +6,11 @@ import os
 from collections.abc import Mapping
 from pathlib import Path
 
+from flext_tests import tm
+
 from flext_infra import c, m, t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.worktree import FlextInfraWorktreeService
-from flext_tests import tm
 from tests import u
 
 

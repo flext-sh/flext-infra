@@ -83,9 +83,16 @@ class FlextInfraConstantsCheck:
             "internal://flext-infra/direnv",
         ),
         "duplication": ("jscpd", "https://github.com/kucherenko/jscpd"),
+        "budget": ("Flext Execution Budget Gate", "internal://flext-infra/budget"),
     })
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
+    BUDGET_REQUIRED_FIELDS: Final[tuple[str, ...]] = (
+        "time-seconds",
+        "memory-mb",
+        "tokens",
+    )
+    "Per-gate budget fields required under [tool.flext.project.budget]."
     MUTATING_GATES: Final[frozenset[str]] = frozenset({FORMAT})
     "Gates that rewrite files: owned by `fmt`/`fix`, never a read-only `check` vocabulary."
     RUFF_FORMAT_FILE_RE: Final[t.RegexPattern] = re.compile(
@@ -122,8 +129,12 @@ class FlextInfraConstantsCheck:
         "protocols.py",
         "typings.py",
         "utilities.py",
+        "config.py",
         "settings.py",
+        "_config.py",
+        "_settings.py",
     })
+    BOUNDARY_SKIP_PATH_FRAGMENTS: Final[t.StrSequence] = ("/ai_hub_hook_client/",)
     BOUNDARY_BANNED_LIBS: Final[t.MappingKV[str, str]] = MappingProxyType({
         "typer": "cli.create_app_with_common_params / cli.register_command",
         "click": "flext_cli.cli application, registration, execution, and invocation methods",
@@ -155,18 +166,6 @@ class FlextInfraConstantsCheck:
             "imports subprocess — use cli.run / cli.capture",
         ),
         (
-            re.compile(r"\bjson\.(load|dump|loads|dumps)\b"),
-            "uses json.load/dump — use cli.*_json_file",
-        ),
-        (
-            re.compile(r"\byaml\.(safe_load|dump|load)\b"),
-            "uses yaml.safe_load/dump — use cli.*_yaml_file",
-        ),
-        (
-            re.compile(r"\bcsv\.(reader|writer|DictReader|DictWriter)\b"),
-            "uses csv.reader/writer — use cli.*_csv_file",
-        ),
-        (
             re.compile(r"^\s*print\(", re.MULTILINE),
             "uses u.Cli.print() — use cli.print",
         ),
@@ -181,7 +180,46 @@ class FlextInfraConstantsCheck:
     BOUNDARY_SELF_FILES: Final[frozenset[str]] = frozenset({
         "flext_infra/_constants/check.py",
         "flext_infra/gates/abstraction_boundary.py",
+        # Why: the Darwin supervisor is a std-lib-only bootstrap executable that
+        # must own its process group BEFORE the fleet stack (and its CLI
+        # facade) is importable; subprocess with constant argv is its core
+        # mechanism, not an untrusted-input boundary.
+        "flext_infra/_utilities/_mypy_supervisor.py",
     })
+    BOUNDARY_JSON_ATTRS: Final[frozenset[str]] = frozenset({
+        "dump",
+        "dumps",
+        "load",
+        "loads",
+    })
+    BOUNDARY_YAML_ATTRS: Final[frozenset[str]] = frozenset({
+        "dump",
+        "load",
+        "safe_load",
+    })
+    BOUNDARY_CSV_ATTRS: Final[frozenset[str]] = frozenset({
+        "DictReader",
+        "DictWriter",
+        "reader",
+        "writer",
+    })
+    BOUNDARY_ATTR_RULES: Final[t.VariadicTuple[t.Triple[str, frozenset[str], str]]] = (
+        (
+            "json",
+            BOUNDARY_JSON_ATTRS,
+            "uses json serialization — use u.Cli.json_* / cli.json_*",
+        ),
+        (
+            "yaml",
+            BOUNDARY_YAML_ATTRS,
+            "uses yaml serialization — use u.Cli.yaml_* / cli.yaml_*",
+        ),
+        (
+            "csv",
+            BOUNDARY_CSV_ATTRS,
+            "uses csv serialization — use u.Cli.csv_* / cli.csv_*",
+        ),
+    )
     BOUNDARY_TOML_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*(import|from)\s+(tomllib|tomlkit)(\s|$|\.)", re.MULTILINE
     )
@@ -228,10 +266,21 @@ class FlextInfraConstantsCheck:
     JSCPD_BINARY: Final[str] = "jscpd"
     "Provisioned by mise from codegen.toolchain.jscpd_version; never a runner or a version here."
     JSCPD_MODE: Final[str] = "strict"
-    JSCPD_MIN_LINES: Final[int] = 8
-    JSCPD_MIN_TOKENS: Final[int] = 50
+    JSCPD_MIN_LINES: Final[int] = 10
+    "Minimum lines for a clone (R2: 10 lines = 62 tokens per consumption-law.md)."
+    JSCPD_MIN_TOKENS: Final[int] = 62
+    "Minimum tokens for a clone (R2: 10 lines ≈ 62 tokens)."
     JSCPD_THRESHOLD_PERCENT: Final[int] = 0
-    JSCPD_SCOPE_DIRNAMES: Final[t.StrSequence] = ("src", "tests", "config", "templates")
+    "Zero tolerance — every owned clone is an error."
+    JSCPD_SCOPE_DIRNAMES: Final[t.StrSequence] = (
+        "src",
+        "tests",
+        "scripts",
+        "examples",
+        "templates",
+        "config",
+    )
+    "Canonical scope: source, tests, scripts, examples, templates, config (R2 consumer+family)."
     JSCPD_REPORT_DIRNAME: Final[str] = ".reports/jscpd"
     JSCPD_CONFIG_FILENAME: Final[str] = ".jscpd.generated.json"
     JSCPD_REPORT_FILENAME: Final[str] = "jscpd-report.json"
@@ -242,8 +291,19 @@ class FlextInfraConstantsCheck:
     JSCPD_IGNORE_PATTERNS: Final[t.StrSequence] = (
         "**/__snapshots__/**",
         "**/__init__.py",
+        "**/api_cases/**",
+        "**/_cases/**",
+        "**/_cov.py",
+        "**/_parts/**",
     )
-    "Generated Python surfaces excluded semantically; Git owns artifact visibility."
+    "Generated Python surfaces and structured test-case parameterization files "
+    "excluded semantically; Git owns artifact visibility."
+
+    # --- Extended duplication gate (R2 consumer+family scope) ---
+    JSCPD_CONSUMER_FAMILY_SCOPE: Final[bool] = True
+    "When true, extend scan scope to consumer+family via [tool.flext.project] keys."
+    JSCPD_STRUCTURAL_BAN_FORMS: Final[bool] = True
+    "When true, ban structural forms only for mechanisms with published canonical owner."
 
     # --- Manual-command blocker (AGENTS.md `Build & Test`) SSOT ---
     MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset({

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import m
+import pytest
 from flext_tests import tm
+
+from flext_infra import m
 from tests import u
 
 _RENDERED = '[tools]\npython = "3.13"\n'
@@ -50,9 +52,5 @@ class TestsProjectMiseTools:
             '      "github:example/tool": "1.2.3"\n',
         )
 
-        try:
+        with pytest.raises(m.ValidationError):
             u.Infra.load_project_managed_artifacts(root)
-        except m.ValidationError:
-            return
-        msg = "a bare version string must not validate as a project tool"
-        raise AssertionError(msg)

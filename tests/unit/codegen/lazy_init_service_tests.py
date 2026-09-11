@@ -5,8 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_tests import tm
+
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from tests import c, u
 
 if TYPE_CHECKING:

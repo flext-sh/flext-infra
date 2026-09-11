@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_tests import tm
+
 from flext_core import r
 from flext_infra.docs.generator import FlextInfraDocGenerator
-from flext_tests import tm
 from tests import m, t
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
@@ -52,7 +53,7 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
             _write(
                 workspace / "pyproject.toml",
                 (
-                    '[project]\nname = "workspace"\n\n'
+                    '[project]\nname = "workspace"\nversion = "0.1.0"\n\n'
                     f"[tool.uv.workspace]\nmembers = [{members}]\n"
                 ),
             )

@@ -47,17 +47,19 @@ jobs:
       matrix:
         distro: [ubuntu, debian, fedora, alpine, arch]
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/checkout@v7
         with:
           submodules: false
           # No step needs authenticated git after checkout; persisting the
           # token into .git/config would expose it to every later command.
           persist-credentials: false
       - name: Build ${{ matrix.distro }} image
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
           docker build
           -f tests/fixtures/ci/docker/${{ matrix.distro }}.Dockerfile
-          --build-arg GITHUB_TOKEN=${{ env.GITHUB_TOKEN }}
+          --secret id=github_token,env=GITHUB_TOKEN
           -t ci-matrix-${{ matrix.distro }}
           .
       - name: Bootstrap + verb smoke (${{ matrix.distro }})
@@ -65,7 +67,7 @@ jobs:
           CI: Y
         run: |
           docker run --rm -e CI=Y ci-matrix-${{ matrix.distro }} make help
-          docker run --rm -e CI=Y ci-matrix-${{ matrix.distro }} make check APPLY=Y
+          docker run --rm -e CI=Y ci-matrix-${{ matrix.distro }} make check 
           # ci-matrix proves bootstrap + check across distros; it never runs make test.
   # End SECTION: distro-matrix
 
@@ -76,7 +78,7 @@ jobs:
     env:
       CI: Y
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/checkout@v7
         with:
           submodules: false
           # No step needs authenticated git after checkout; persisting the
@@ -90,7 +92,7 @@ jobs:
       # catch platform-specific failures, and `make help` exercises none of
       # the gates. The linux job already runs it.
       - name: Canonical check
-        run: CI=Y make check APPLY=Y
+        run: CI=Y make check 
   # End SECTION: macos
 
   # === SECTION: windows (managed) ===
@@ -100,7 +102,7 @@ jobs:
     env:
       CI: Y
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/checkout@v7
         with:
           submodules: false
           # No step needs authenticated git after checkout; persisting the
@@ -117,5 +119,5 @@ jobs:
       # the gates. The linux job already runs it.
       - name: Canonical check
         shell: bash
-        run: CI=Y make check APPLY=Y
+        run: CI=Y make check 
 # End SECTION: windows

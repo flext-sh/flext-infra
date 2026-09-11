@@ -3,15 +3,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import _git as _git
-    from . import _rope as _rope
+    from . import _git, _rope
     from ._docs_audit_detectors import FlextInfraUtilitiesDocsAuditDetectorsMixin
     from ._docs_command_contract import FlextInfraUtilitiesDocsCommandContractMixin
     from ._docs_generate_plan import FlextInfraUtilitiesDocsGeneratePlanMixin
@@ -26,6 +24,7 @@ if TYPE_CHECKING:
     from ._docs_scope_projects import FlextInfraUtilitiesDocsScopeProjectsMixin
     from ._docs_scope_selection import FlextInfraUtilitiesDocsScopeSelectionMixin
     from ._docs_scope_state import FlextInfraUtilitiesDocsScopeStateMixin
+    from ._gen_requirements import FlextInfraUtilitiesGenRequirements
     from ._git.attestation import FlextInfraUtilitiesGitAttestationMixin
     from ._git.remote import FlextInfraUtilitiesGitRemote
     from ._git.repo import FlextInfraUtilitiesGitRepo
@@ -48,6 +47,7 @@ if TYPE_CHECKING:
     from ._git.worktree_removal import FlextInfraUtilitiesGitWorktreeRemovalMixin
     from ._git.worktree_roots import FlextInfraUtilitiesGitWorktreeRootsMixin
     from ._git.worktree_status import FlextInfraUtilitiesGitWorktreeStatusMixin
+    from ._mypy_supervisor import MypyDarwinSupervisor, ProcessGroupAbsentError
     from ._project_discovery_candidates import (
         FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
     )
@@ -103,6 +103,7 @@ if TYPE_CHECKING:
     from .namespace_facades import FlextInfraUtilitiesRefactorNamespaceFacades
     from .namespace_moves import FlextInfraUtilitiesRefactorNamespaceMoves
     from .network import FlextInfraUtilitiesNetwork
+    from .private_import_ancestry import FlextInfraUtilitiesPrivateImportAncestry
     from .private_import_cst import FlextInfraUtilitiesPrivateImportCst
     from .private_import_facades import FlextInfraUtilitiesPrivateImportFacades
     from .private_import_validation import FlextInfraUtilitiesPrivateImportValidation
@@ -196,6 +197,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsScopeSelectionMixin",
     "FlextInfraUtilitiesDocsScopeStateMixin",
     "FlextInfraUtilitiesDocsValidate",
+    "FlextInfraUtilitiesGenRequirements",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGitAttestationMixin",
     "FlextInfraUtilitiesGitRemote",
@@ -225,6 +227,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesManagedConflicts",
     "FlextInfraUtilitiesNamespaceConfig",
     "FlextInfraUtilitiesNetwork",
+    "FlextInfraUtilitiesPrivateImportAncestry",
     "FlextInfraUtilitiesPrivateImportCst",
     "FlextInfraUtilitiesPrivateImportFacades",
     "FlextInfraUtilitiesPrivateImportValidation",
@@ -284,6 +287,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesWorkspaceFingerprint",
     "FlextInfraWorktreeLifecycle",
     "FlextInfraWorktreeProvisioning",
+    "MypyDarwinSupervisor",
+    "ProcessGroupAbsentError",
     "_git",
     "_rope",
     "git_stdin",
@@ -306,6 +311,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._docs_scope_projects": ("FlextInfraUtilitiesDocsScopeProjectsMixin",),
             "._docs_scope_selection": ("FlextInfraUtilitiesDocsScopeSelectionMixin",),
             "._docs_scope_state": ("FlextInfraUtilitiesDocsScopeStateMixin",),
+            "._gen_requirements": ("FlextInfraUtilitiesGenRequirements",),
             "._git": ("_git",),
             "._git.attestation": ("FlextInfraUtilitiesGitAttestationMixin",),
             "._git.remote": ("FlextInfraUtilitiesGitRemote",),
@@ -335,6 +341,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._git.worktree_removal": ("FlextInfraUtilitiesGitWorktreeRemovalMixin",),
             "._git.worktree_roots": ("FlextInfraUtilitiesGitWorktreeRootsMixin",),
             "._git.worktree_status": ("FlextInfraUtilitiesGitWorktreeStatusMixin",),
+            "._mypy_supervisor": ("MypyDarwinSupervisor", "ProcessGroupAbsentError"),
             "._project_discovery_candidates": (
                 "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
             ),
@@ -395,6 +402,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".namespace_facades": ("FlextInfraUtilitiesRefactorNamespaceFacades",),
             ".namespace_moves": ("FlextInfraUtilitiesRefactorNamespaceMoves",),
             ".network": ("FlextInfraUtilitiesNetwork",),
+            ".private_import_ancestry": ("FlextInfraUtilitiesPrivateImportAncestry",),
             ".private_import_cst": ("FlextInfraUtilitiesPrivateImportCst",),
             ".private_import_facades": ("FlextInfraUtilitiesPrivateImportFacades",),
             ".private_import_validation": (

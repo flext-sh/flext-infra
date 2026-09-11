@@ -46,7 +46,7 @@ class FlextInfraRefactorTypingUnifier(
     def __init__(
         self,
         *,
-        canonical_map: t.MutableMappingKV[frozenset[str], str],
+        canonical_map: t.MappingKV[frozenset[str], str],
         file_path: Path | None = None,
     ) -> None:
         """Initialize with canonical union map and optional file path for skip logic."""

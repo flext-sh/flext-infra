@@ -13,7 +13,6 @@ from flext_infra.codegen import (
     _codegen_staging as generic_staging,
     _mise_artifacts_publication as publication,
 )
-from flext_infra.codegen.mise_artifacts_lock import FlextInfraMiseLock
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 
 from ._mise_artifacts_journal import FlextInfraMiseArtifactsJournal as journal_io
@@ -33,7 +32,6 @@ class FlextInfraCodegenTransaction:
         """Initialize the transaction with its configured Mise artifact owner."""
         self._owner = owner
         self._planner = FlextInfraMiseWorkspacePlanner(owner)
-        self._lock = FlextInfraMiseLock()
         self._recovery = FlextInfraMiseRecovery()
         self._mise_staging = FlextInfraMiseStaging(owner)
 
@@ -91,22 +89,16 @@ class FlextInfraCodegenTransaction:
     def run_locked[T](
         self, *, prepare: bool, operation: Callable[[Path], p.Result[T]]
     ) -> p.Result[T]:
-        """Run one operation under the stable descriptor-bound workspace lock."""
+        """Own the shared journal before recovery through final publication cleanup."""
         identity = self._planner.scope_identity()
         if identity.failure:
             return r[T].from_failure(identity)
-        try:
-            with self._lock.lease(identity.value):
-                return self._run_locked_operation(
-                    identity.value, prepare=prepare, operation=operation
-                )
-        except BlockingIOError:
-            return r[T].fail(
-                "another generation transaction owns the workspace: "
-                f"{identity.value.git_dir / 'HEAD'}"
+        with u.Infra.codegen_transaction_lease(
+            self._planner.journal_path(identity.value)
+        ):
+            return self._run_locked_operation(
+                identity.value, prepare=prepare, operation=operation
             )
-        except OSError as exc:
-            return r[T].fail_op("execute generation transaction", exc)
 
     def _run_locked_operation[T](
         self,
@@ -209,7 +201,18 @@ class FlextInfraCodegenTransaction:
                     layout, mise_staged.error or "cannot stage Mise artifacts"
                 )
             )
-        publications = (*ordinary_staged.value, *mise_staged.value)
+        bound = state.bind_created_parents(
+            layout,
+            active_journal.directories,
+            (*ordinary_staged.value, *mise_staged.value),
+        )
+        if bound.failure:
+            return result_type.from_failure(
+                self._recover_failure(
+                    layout, bound.error or "cannot bind generation destination parents"
+                )
+            )
+        publications = bound.value
         barriers = self._verified_prepublication_barriers(
             layout, plan.value, all_sources, publications
         )
@@ -296,25 +299,13 @@ class FlextInfraCodegenTransaction:
         )
         if not changed:
             return result_type.ok(session)
-        layout = session.plan.layout
-        observed_journal = state.journal_state(layout)
-        observed_journal_snapshot = (
-            None
-            if observed_journal.failure
-            else state.journal_snapshot(observed_journal.value)
+        aligned = self._unchanged_journal(
+            session, "generation journal changed between phases"
         )
-        if (
-            observed_journal.failure
-            or observed_journal_snapshot is None
-            or observed_journal_snapshot != session.journal_state
-        ):
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout,
-                    observed_journal.error
-                    or "generation journal changed between phases",
-                )
-            )
+        if aligned.failure:
+            return result_type.from_failure(aligned)
+        session = aligned.value
+        layout = session.plan.layout
         sources = self._phase_sources(phase, plans)
         if sources.failure:
             return result_type.from_failure(
@@ -333,6 +324,15 @@ class FlextInfraCodegenTransaction:
             return result_type.from_failure(
                 self._recover_failure(
                     layout, staged.error or f"cannot stage {phase} phase"
+                )
+            )
+        staged = state.bind_created_parents(
+            layout, session.journal.directories, staged.value
+        )
+        if staged.failure:
+            return result_type.from_failure(
+                self._recover_failure(
+                    layout, staged.error or f"cannot bind {phase} destination parents"
                 )
             )
         destination_barrier = verify.states_current(
@@ -433,6 +433,7 @@ class FlextInfraCodegenTransaction:
         )
         if unchanged.failure:
             return result_type.from_failure(unchanged)
+        session = unchanged.value
         extended = journal_io.append_directories(session.journal, planned.value)
         if extended.failure:
             return result_type.from_failure(
@@ -485,6 +486,7 @@ class FlextInfraCodegenTransaction:
         )
         if unchanged.failure:
             return r[tuple[Path, ...]].from_failure(unchanged)
+        session = unchanged.value
         committed = journal_io.commit(session.journal)
         if committed.failure:
             return r[tuple[Path, ...]].from_failure(
@@ -644,7 +646,11 @@ class FlextInfraCodegenTransaction:
         journal_snapshot = state.journal_snapshot(journal.value)
         if journal_snapshot is not None and journal_snapshot.content is not None:
             return self._recover(layout.value)
-        return r[bool].ok(True)
+        # The journal lease is held here: every live transaction of this scope
+        # identity is excluded, so any transaction-staged tree found across
+        # the whole scope — including member roots outside the reconciled
+        # layout — belongs to a dead process and is removed automatically.
+        return state.cleanup_scope_residue(identity.repo_root)
 
     def _handle_journal_write_failure(
         self, layout: m.Infra.MiseToolchainWorkspaceLayout, failure: str
@@ -682,23 +688,33 @@ class FlextInfraCodegenTransaction:
 
     def _unchanged_journal(
         self, session: m.Infra.CodegenTransactionSession, changed_error: str
-    ) -> p.Result[bool]:
-        """Confirm the on-disk journal still matches this session's snapshot."""
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Keep session CAS on live journal identity when bytes and mode match."""
+        result_type = r[m.Infra.CodegenTransactionSession]
         observed = state.journal_state(session.plan.layout)
         observed_snapshot = (
             None if observed.failure else state.journal_snapshot(observed.value)
         )
-        if (
-            observed.failure
-            or observed_snapshot is None
-            or observed_snapshot != session.journal_state
-        ):
-            return r[bool].from_failure(
+        expected = session.journal_state
+        if observed.failure or observed_snapshot is None:
+            return result_type.from_failure(
                 self._recover_failure(
                     session.plan.layout, observed.error or changed_error
                 )
             )
-        return r[bool].ok(True)
+        if (
+            observed_snapshot.path != expected.path
+            or observed_snapshot.content != expected.content
+            or observed_snapshot.mode != expected.mode
+        ):
+            return result_type.from_failure(
+                self._recover_failure(session.plan.layout, changed_error)
+            )
+        if observed_snapshot == expected:
+            return result_type.ok(session)
+        return result_type.ok(
+            session.model_copy(update={"journal_state": observed_snapshot})
+        )
 
     def _recover_failure(
         self, layout: m.Infra.MiseToolchainWorkspaceLayout, failure: str

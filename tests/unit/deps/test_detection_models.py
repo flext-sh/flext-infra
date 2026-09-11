@@ -5,11 +5,13 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping
 from pathlib import Path
-from typing import cast
+
+import pytest
+from flext_tests import tm
+from pydantic import ValidationError
 
 from flext_infra import m, t
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-from flext_tests import tm
 
 
 class TestsFlextInfraDepsDetectionModels:
@@ -112,13 +114,10 @@ class TestsFlextInfraDepsDetectionModels:
             eq=expected_list,
         )
 
-    def test_list_with_unconvertible(self, tmp_path: Path) -> None:
+    def test_list_with_unconvertible(self) -> None:
         """Verify list with unconvertible."""
         tm.that(
-            FlextInfraDependencyDetectionService.to_infra_value(
-                cast("t.Infra.InfraValue", [tmp_path / "unsupported"])
-            ),
-            none=True,
+            FlextInfraDependencyDetectionService.to_infra_value([["nested"]]), none=True
         )
 
     def test_mapping_value(self) -> None:
@@ -131,23 +130,17 @@ class TestsFlextInfraDepsDetectionModels:
         expected_map: t.JsonMapping = {"key": "value", "num": 42}
         tm.that(result, eq=expected_map)
 
-    def test_mapping_with_unconvertible(self, tmp_path: Path) -> None:
+    def test_mapping_with_unconvertible(self) -> None:
         """Verify mapping with unconvertible."""
         tm.that(
-            FlextInfraDependencyDetectionService.to_infra_value(
-                cast("t.Infra.InfraValue", {"key": tmp_path / "unsupported"})
-            ),
+            FlextInfraDependencyDetectionService.to_infra_value({"key": ["nested"]}),
             none=True,
         )
 
     def test_unsupported_type(self, tmp_path: Path) -> None:
         """Verify unsupported type."""
-        tm.that(
-            FlextInfraDependencyDetectionService.to_infra_value(
-                cast("t.Infra.InfraValue", tmp_path / "unsupported")
-            ),
-            none=True,
-        )
+        with pytest.raises(ValidationError):
+            _ = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(str(tmp_path))
 
     def test_list_with_none_item(self) -> None:
         """Verify list with none item."""

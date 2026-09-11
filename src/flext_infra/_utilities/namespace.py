@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import r, u
+
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
@@ -40,6 +41,10 @@ class FlextInfraUtilitiesCodegenNamespace:
             case "NS-002":
                 typings_filename: str = c.Infra.TYPINGS_PY
                 return Path(module).name != typings_filename
+            # Validator-reported families with no auto-fix keyed to their
+            # codes: reported as violations, never claimed as fixed.
+            case "NS-STRUCT" | "NS-IMPORT" | "NS-CONTRACT" | "NS-PARSE" | "NS-LAYOUT":
+                return False
 
             case _:
                 msg = f"unsupported namespace rule: {rule_id}"

@@ -16,11 +16,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from pathlib import Path
+
+import pytest
+from flext_tests import tm
 
 import flext_infra
 from flext_infra import c
-from flext_tests import tm
 
 # ``$(shell ...)`` call marker. Assignment identity uses c.Infra.MAKE_ASSIGNMENT_RE;
 # immediacy is ``:=`` / ``::=`` (name token ends with ``:`` before ``=``).
@@ -73,13 +76,31 @@ def _interpreter_at_parse_time(surface: Path) -> tuple[str, ...]:
     )
 
 
+def _silencing_lines(surface: Path) -> tuple[str, ...]:
+    """Return recipe lines that discard a command's exit status."""
+    return tuple(
+        f"{surface.name}:{number}: {line.strip()}"
+        for number, line in enumerate(
+            surface.read_text(encoding="utf-8").splitlines(), start=1
+        )
+        if line.startswith("\t") and "|| true" in line
+    )
+
+
 class TestsFlextInfraMakeParseIsSideEffectFree:
-    def test_no_surface_starts_an_interpreter_while_parsing(self) -> None:
-        """No Make surface pays interpreter startup on every invocation."""
+    @pytest.mark.parametrize(
+        "scan",
+        [_interpreter_at_parse_time, _silencing_lines],
+        ids=["no-interpreter-at-parse-time", "no-silenced-recipe-failure"],
+    )
+    def test_make_surfaces_preserve_execution_boundaries(
+        self, scan: Callable[[Path], tuple[str, ...]]
+    ) -> None:
+        """Parsing starts no interpreter and recipes never swallow failures."""
         offenders = {
             surface.name: lines
             for surface in _make_surfaces()
-            if (lines := _interpreter_at_parse_time(surface))
+            if (lines := scan(surface))
         }
 
         tm.that(len(offenders), eq=0)

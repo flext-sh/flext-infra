@@ -12,9 +12,6 @@
 
 Infra:
   codegen:
-    toolchain:
-      dependency_cooldown_overrides: {}
-
     checkout_submodules_overrides: {}
 
     # Per-distribution private submodule deploy-key contracts.
@@ -171,11 +168,18 @@ Infra:
             - cosmos-release.lock
             - release.lock.json
             - pycodestyle.cfg
+            - ast-grep-rule-tests
+            - mise.lock
+            - release.intent.yaml
+            - sgconfig.yml
           ignore_globs:
             - build
             - charts
             - images
         cosmos-gitops:
+          keep_root_files:
+            - mise.lock
+            - sgconfig.yml
           ignore_globs:
             - build
             - repo

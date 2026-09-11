@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.docs.fixer import FlextInfraDocFixer
 from flext_tests import tm
+
+from flext_infra.docs.fixer import FlextInfraDocFixer
 from tests import c, m, u
 
 if TYPE_CHECKING:

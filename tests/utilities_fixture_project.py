@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-from flext_infra import config, u
 from flext_tests import tm
+
+from flext_infra import config, u
 from tests import c, m, t
 
 
@@ -120,11 +120,17 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             database=database,
             issue_prefix=issue_prefix,
         )
+        workspace_dump = u.Cli.json_dumps(spec.workspace)
+        database_dump = u.Cli.json_dumps(spec.database)
+        prefix_dump = u.Cli.json_dumps(spec.issue_prefix)
+        tm.ok(workspace_dump)
+        tm.ok(database_dump)
+        tm.ok(prefix_dump)
         path.write_text(
             f"version: {spec.version}\n"
-            f"workspace: {json.dumps(spec.workspace)}\n"
-            f"database: {json.dumps(spec.database)}\n"
-            f"issue_prefix: {json.dumps(spec.issue_prefix)}\n\n",
+            f"workspace: {workspace_dump.value}\n"
+            f"database: {database_dump.value}\n"
+            f"issue_prefix: {prefix_dump.value}\n\n",
             encoding="utf-8",
         )
         return path

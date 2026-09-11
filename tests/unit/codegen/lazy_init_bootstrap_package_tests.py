@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
+
 from tests import c, u
 
 if TYPE_CHECKING:
@@ -109,4 +110,4 @@ class TestsFlextInfraLazyInitBootstrapPackage:
         )
         tm.that(result, eq=0)
         tm.that(init_content, contains="from flext_core.lazy import")
-        tm.that(init_content, contains="FlextLazyPart")
+        tm.that(init_content, contains="FlextModelsPart")

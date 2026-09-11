@@ -14,8 +14,6 @@ class FlextInfraConstantsDocs:
 
     DEFAULT_DOCS_OUTPUT_DIR: Final[str] = ".reports/docs"
     DOCS_CONFIG_FILENAME: Final[str] = "docs_config.json"
-    DIR_CRG_REPORTS: Final[str] = "architecture/crg-reports"
-    "Subdirectory under docs/ for auto-generated CRG analysis reports."
     DOCS_INSECURE_WEB_SCHEME: Final[str] = "http"
     DOCS_SECURE_WEB_SCHEME: Final[str] = "https"
     # A generated document may point outward, never carry a payload: a `data:`
@@ -58,8 +56,14 @@ class FlextInfraConstantsDocs:
         "agent",
         "barman",
         "scanner",
+        "argocd",
     )
-    """Container/CI identities whose home is part of the image contract, not a machine."""
+    """Container/CI identities whose home is part of the image contract, not a machine.
+
+    ``argocd`` is the in-container HOME of the Argo CD side images
+    (argocd-cmp-plugin / repo-server) referenced in ADR_024 and the release
+    convergence plan; it is an image contract, not an operator machine
+    (flext-9v0d.3 / cosmos-iracn.7)."""
     PYTHON_FENCE_RE: Final[t.RegexPattern] = re.compile(
         r"^```python\s*\n(?P<body>.*?)^```\s*$", re.MULTILINE | re.DOTALL
     )

@@ -3,18 +3,19 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from .orchestrator import FlextInfraReleaseOrchestrator
     from .orchestrator_phases import FlextInfraReleaseOrchestratorPhases
+    from .policy_render import FlextInfraReleasePolicyRender
 __all__: tuple[str, ...] = (
     "FlextInfraReleaseOrchestrator",
     "FlextInfraReleaseOrchestratorPhases",
+    "FlextInfraReleasePolicyRender",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -22,6 +23,7 @@ _LAZY_IMPORTS = MappingProxyType(
         MappingProxyType({
             ".orchestrator": ("FlextInfraReleaseOrchestrator",),
             ".orchestrator_phases": ("FlextInfraReleaseOrchestratorPhases",),
+            ".policy_render": ("FlextInfraReleasePolicyRender",),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

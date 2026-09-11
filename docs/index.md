@@ -10,7 +10,7 @@
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
-- Version: `0.12.0rc0`
+- Version: `0.12.0`
 - Project class: `infra`
 - Package: `flext_infra`
 - Description: FLEXT Infrastructure Tooling - Build automation, code generation,

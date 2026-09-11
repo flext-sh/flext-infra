@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
+
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -38,17 +39,14 @@ class FlextInfraUtilitiesRopeSource:
 
     @staticmethod
     def discover_first_party_namespaces(project_dir: Path) -> t.StrSequence:
-        """Discover first-party namespaces directly under ``src/``."""
+        """Discover live regular, namespace, and stub packages under ``src/``."""
         src_dir = project_dir / c.Infra.DEFAULT_SRC_DIR
-        if not src_dir.is_dir():
-            return []
         return [
-            entry.name
-            for entry in sorted(src_dir.iterdir())
-            if entry.is_dir()
-            and entry.name != c.Infra.DUNDER_PYCACHE
-            and entry.name.isidentifier()
-            and "-" not in entry.name
+            name
+            for name in FlextInfraUtilitiesDiscovery.discover_python_dirs(
+                src_dir, workspace_excluded_top_dirs=frozenset()
+            )
+            if name.isidentifier()
         ]
 
     @staticmethod
@@ -66,8 +64,17 @@ class FlextInfraUtilitiesRopeSource:
         Only top-level imports move the position. ``past_existing`` places it
         after the last of them; otherwise it lands after the module docstring
         and the ``__future__`` imports, before the first regular import.
+
+        A module whose first statement is neither a docstring nor an import
+        pins the position just above that statement: returning 0 would insert
+        above comment-only header lines (shebang, encoding) and corrupt them.
+
+        ``lines`` may or may not carry trailing newlines (callers feed both
+        ``splitlines()`` and ``splitlines(keepends=True)``), so separators are
+        normalized here: a ``"".join`` collapse would hand ``ast.parse`` one
+        broken line.
         """
-        source = "".join(lines)
+        source = "\n".join(line.removesuffix("\n") for line in lines)
         module = ast.parse(source)
         position = 0
         for statement in module.body:
@@ -87,6 +94,8 @@ class FlextInfraUtilitiesRopeSource:
             if past_existing and isinstance(statement, ast.Import | ast.ImportFrom):
                 position = statement.end_lineno or position
                 continue
+            if position == 0 and statement.lineno:
+                position = statement.lineno - 1
             break
         return position
 

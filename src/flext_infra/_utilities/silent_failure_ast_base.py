@@ -22,16 +22,22 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
         replacement: t.Triple[int, int, str] | None = None
 
     _SENTINEL_CONSTANTS: ClassVar[frozenset[object]] = frozenset({False, None})
+    _BOOLEAN_PREDICATE_PREFIXES: ClassVar[t.VariadicTuple[str]] = (
+        "has_",
+        "is_",
+        "should_",
+    )
     _BROAD_EXCEPTION_NAMES: ClassVar[frozenset[str]] = frozenset({
         "Exception",
         "BaseException",
     })
 
-    def __init__(self, source: str) -> None:
+    def __init__(self, source: str, *, is_test_module: bool = False) -> None:
         self._lines = source.splitlines(keepends=True)
         self._findings: list[FlextInfraUtilitiesSilentFailureAstBase.Finding] = []
         self._import_aliases: dict[str, str] = {}
         self._parents: dict[ast.AST, ast.AST] = {}
+        self._is_test_module = is_test_module
 
     def analyze(self, tree: ast.Module) -> t.VariadicTuple[Finding]:
         """Build the parent map and collect findings from one module."""
@@ -52,6 +58,30 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
                 return current
             current = self._parents.get(current)
         return None
+
+    def _is_findings_collector(
+        self, function: ast.FunctionDef | ast.AsyncFunctionDef
+    ) -> bool:
+        """Return whether ``function`` is a findings collector.
+
+        Why (cosmos-3flk9): a collector's contract returns the list of
+        findings it found; an empty list in a success branch means "no
+        findings", not a swallowed failure.
+        """
+        return function.name.endswith("_findings") or function.name.startswith(
+            "collect_"
+        )
+
+    def _is_boolean_predicate(
+        self, function: ast.FunctionDef | ast.AsyncFunctionDef
+    ) -> bool:
+        """Return whether ``function`` is a boolean predicate.
+
+        Why (cosmos-3flk9): a ``has_*``/``is_*``/``should_*`` predicate maps
+        a specific, expected exception to ``False`` — that is the predicate's
+        meaning, not a hidden failure.
+        """
+        return function.name.startswith(self._BOOLEAN_PREDICATE_PREFIXES)
 
     @staticmethod
     def _result_inner_type(
@@ -124,7 +154,7 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
             or (
                 isinstance(child, ast.Call)
                 and isinstance(child.func, ast.Attribute)
-                and child.func.attr == "fail"
+                and child.func.attr.startswith("fail")
             )
             for statement in body
             for child in ast.walk(statement)

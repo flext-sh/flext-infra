@@ -815,10 +815,10 @@ class FlextInfraUtilitiesRopeAnalysis:
 
     @staticmethod
     def symbol_has_docstring_source(source: str, symbol_name: str) -> bool:
-        """Return whether ``symbol_name`` in ``source`` carries a docstring (rope-parsed)."""
+        """Check a locally defined symbol; imported docs need module context."""
         pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
         pyname = pymodule.get_attributes().get(symbol_name)
-        if pyname is None:
+        if pyname is None or not FlextInfraUtilitiesRopeRuntime.is_defined_name(pyname):
             return False
         obj = pyname.get_object()
         get_doc = getattr(obj, "get_doc", None)
@@ -832,7 +832,8 @@ class FlextInfraUtilitiesRopeAnalysis:
         """Return assignment names followed by a string-literal expression (rope-parsed).
 
         Iterates the parsed module's body via ``_fields`` access and pairs each
-        ``Assign``/``AnnAssign`` target with the next sibling ``Expr(Constant(str))``.
+        ``Assign``/``AnnAssign``/PEP-695 ``TypeAlias`` target with the next
+        sibling ``Expr(Constant(str))``.
         """
         pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
         module_ast = pymodule.get_ast()
@@ -841,7 +842,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         previous_targets: list[str] = []
         for statement in body:
             kind = FlextInfraUtilitiesRopeAnalysis.node_kind(statement)
-            if kind in {"Assign", "AnnAssign"}:
+            if kind in {"Assign", "AnnAssign", "TypeAlias"}:
                 previous_targets = (
                     FlextInfraUtilitiesRopeAnalysis._statement_target_names(statement)
                 )
@@ -1470,12 +1471,16 @@ class FlextInfraUtilitiesRopeAnalysis:
 
     @staticmethod
     def _statement_target_names(statement: object) -> list[str]:
-        """Extract target names from an Assign/AnnAssign statement."""
+        """Extract target names from an Assign/AnnAssign/PEP-695 TypeAlias."""
         kind = FlextInfraUtilitiesRopeAnalysis.node_kind(statement)
         if kind == "AnnAssign":
             target = getattr(statement, "target", None)
             name = getattr(target, "id", "") if target is not None else ""
             return [name] if name else []
+        if kind == "TypeAlias":
+            name_node = getattr(statement, "name", None)
+            name = getattr(name_node, "id", "")
+            return [name] if isinstance(name, str) and name else []
         targets = getattr(statement, "targets", []) or []
         names: list[str] = []
         for target in targets:

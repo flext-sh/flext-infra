@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import main as infra_main
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+import pytest
 from flext_tests import tm
+
+from flext_infra import main as infra_main
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, u
 from tests.unit.workspace import WorktreeFixture
 
@@ -84,7 +86,11 @@ class TestsFlextInfraWorkspaceMain:
 
         tm.that(exit_code, eq=0)
 
-    def test_workspace_main_orchestrate_returns_failure_for_unknown_verb(self) -> None:
+    def test_workspace_main_orchestrate_returns_failure_for_unknown_verb(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Unknown verbs fail only after the write-enable gate is satisfied."""
+        monkeypatch.setenv("APPLY", "Y")
         tm.that(
             (workspace_main(["orchestrate", "--verb", "legacy-check"]) == 1), eq=True
         )

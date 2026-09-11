@@ -9,16 +9,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
-
-from flext_infra import config
 from flext_tests import tm
-from tests import c, u
 
-if TYPE_CHECKING:
-    from tests import m, t
+from flext_infra import config, infra
+from flext_infra.codegen.conform import FlextInfraCodegenConform
+from tests import c, m, t, u
 
 _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -51,6 +48,76 @@ def deptry_report_payload() -> t.JsonPayload:
 @pytest.fixture
 def tool_config_document() -> m.Infra.ToolConfigDocument:
     return u.Tests.tool_config_document()
+
+
+@pytest.fixture(params=[("requests",)])
+def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
+    """Provision a real isolated detector consumer through generated Make setup."""
+    modules = t.Infra.STR_SEQ_ADAPTER.validate_python(request.param)
+    distributions = {
+        "requests": "requests",
+        "dateutil": "python-dateutil",
+        "yaml": "pyyaml",
+    }
+    dependencies = ", ".join(f'"{distributions[name]}"' for name in modules)
+    root = u.Tests.mk_project(
+        tmp_path,
+        "detector-fixture",
+        with_src=True,
+        pyproject=(
+            '[build-system]\nrequires = ["hatchling"]\nbuild-backend = "hatchling.build"\n'
+            '[project]\nname = "detector-fixture"\nversion = "0.1.0"\n'
+            f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
+            f"dependencies = [{dependencies}]\n"
+            '[project.optional-dependencies]\nfeature = ["requests"]\n'
+            '[dependency-groups]\ndev = ["deptry", "mypy", "pip", '
+            f'"flext-infra @ {_PROJECT_ROOT.as_uri()}"]\n'
+            "[tool.mypy]\n"
+            '[tool.deptry]\npep621_dev_dependency_groups = ["dev"]\n'
+        ),
+    )
+    (root / "src" / "detector_fixture" / "__init__.py").write_text(
+        "\n".join(f"import {name}" for name in modules) + "\n", encoding="utf-8"
+    )
+    u.Tests.copy_tracked_mise_seeds(root)
+    repository = u.Tests.repository_ref(
+        root.name, role=c.Infra.MakeProfile.STANDALONE
+    ).model_copy(update={"editable": True})
+    u.Tests.initialize_git_repo(root, origin_url=repository.url)
+    workspace = m.Infra.WorkspaceSpec(
+        name=root.name,
+        beads=u.Tests.beads_project(root.name),
+        repository=repository,
+        project=u.Tests.project_spec(root.name),
+    )
+    conform_request = u.Tests.conform_request(
+        root, what=c.Infra.CodegenConformSurface.MAKEFILE
+    )
+    plan = tm.ok(
+        FlextInfraCodegenConform(
+            repository_root=root, initial_workspace=workspace, request=conform_request
+        ).plan(conform_request)
+    )
+    makefile = next(
+        item for item in plan.files if item.path.name == c.Infra.MAKEFILE_FILENAME
+    )
+    tm.ok(
+        u.Cli.atomic_write_text_file(
+            root / c.Infra.MAKEFILE_FILENAME, u.Tests.codegen_file_text(makefile)
+        )
+    )
+    tm.ok(
+        infra.sync_environment_files(
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=root, apply=True)
+        )
+    )
+    setup = tm.ok(u.Tests.run_isolated_make(["setup", ""], cwd=root))
+    tm.that(u.Cli.process_succeeded(setup.outcome), eq=True, msg=setup.stderr)
+    tm.that((root / c.Infra.VENV_BIN_REL / c.Infra.DEPTRY).is_file(), eq=True)
+    (root / "limits.toml").write_text(
+        "[typing_libraries]\nexclude = []\n", encoding="utf-8"
+    )
+    return root
 
 
 @pytest.fixture
@@ -131,6 +198,15 @@ def cached_runner_project(tmp_path: Path) -> Path:
     tests_root = project_root / policy.target_directory
     package_root.mkdir(parents=True)
     tests_root.mkdir(parents=True)
+    # A faithful consumer project carries the fleet-standard coverage
+    # boundary: the Cython provider mapping of dependency_injector is not
+    # parseable source and is omitted by every fleet coverage config.
+    (project_root / "pyproject.toml").write_text(
+        '[tool.coverage.run]\nomit = ["*/dependency_injector/providers.pyx"]\n'
+        "[tool.pytest.ini_options]\n"
+        f'pythonpath = ["{c.Infra.DEFAULT_SRC_DIR}"]\n',
+        encoding="utf-8",
+    )
     (package_root / "__init__.py").write_text(
         "def answer() -> int:\n    return 42\n", encoding="utf-8"
     )
@@ -139,6 +215,30 @@ def cached_runner_project(tmp_path: Path) -> Path:
         "from runner_sample import answer\n\n"
         "def test_runtime() -> None:\n"
         "    tm.that(answer(), eq=42)\n",
+        encoding="utf-8",
+    )
+    return project_root
+
+
+@pytest.fixture
+def policy_violation_project(tmp_path: Path) -> Path:
+    """Create a real consumer whose suite violates the slow-timeout policy."""
+    project_root = tmp_path / "policy_violation_project"
+    policy = config.Infra.codegen.make.testmon_cache
+    tests_root = project_root / policy.target_directory
+    tests_root.mkdir(parents=True)
+    # The ini value is an arbitrary non-production budget owned by this probe.
+    (project_root / "pyproject.toml").write_text(
+        '[tool.pytest.ini_options]\nflext_slow_timeout_seconds = "30"\n',
+        encoding="utf-8",
+    )
+    (tests_root / "test_policy.py").write_text(
+        "import pytest\n"
+        "\n"
+        "\n"
+        "@pytest.mark.timeout(1)\n"
+        "def test_breaks_policy() -> None:\n"
+        "    pass\n",
         encoding="utf-8",
     )
     return project_root
@@ -176,7 +276,7 @@ def mod_workspace(tmp_path: Path) -> Path:
             "u.Infra.serialization_lock_execute(paths, timeout)\n",
         )
     )
-    package_dir = workspace / "src" / str(project.project.name).replace("-", "_")
+    package_dir = workspace / "src" / project.project.name.replace("-", "_")
     tm.ok(u.Cli.ensure_dir(package_dir))
     tm.ok(
         u.Cli.atomic_write_text_file(
@@ -337,6 +437,7 @@ __all__: list[str] = [
     "models_resource",
     "modernizer_workspace",
     "modernizer_workspace_with_projects",
+    "policy_violation_project",
     "real_docs_project",
     "real_makefile_project",
     "real_python_package",

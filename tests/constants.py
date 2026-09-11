@@ -13,8 +13,9 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar, Final
 
-from flext_infra import c
 from flext_tests import FlextTestsConstants
+
+from flext_infra import c
 from tests.constants_scan import TestsFlextInfraConstantsScanMixin
 
 if TYPE_CHECKING:
@@ -129,7 +130,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "u",
         )
         INFRA_PUBLIC_UTILITY_NAMESPACE_METHODS: Final[t.StrSequence] = (
-            "class_nesting_plans",
+            "class_nesting_plan",
             "current_workspace_version",
             "parse_semver",
         )

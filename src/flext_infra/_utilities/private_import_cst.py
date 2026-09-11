@@ -18,6 +18,60 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesPrivateImportCst:
     """Preserve source layout while moving consumers to public facades."""
 
+    class _DeclaredExports(cst.CSTTransformer):
+        """Relocate imports without renaming their consumer-side bindings."""
+
+        def __init__(self, exports: t.MappingKV[str, tuple[str, str]]) -> None:
+            self.exports = exports
+
+        @override
+        def leave_ImportFrom(
+            self, original_node: cst.ImportFrom, updated_node: cst.ImportFrom
+        ) -> cst.BaseSmallStatement | cst.FlattenSentinel[cst.BaseSmallStatement]:
+            if original_node.relative or isinstance(updated_node.names, cst.ImportStar):
+                return updated_node
+            dotted_name = FlextInfraUtilitiesPrivateImportCst._Transformer.dotted_name
+            module = dotted_name(original_node.module)
+            if not any(
+                f"{module}.{dotted_name(item.name)}" in self.exports
+                for item in updated_node.names
+            ):
+                return updated_node
+            statements: list[cst.BaseSmallStatement] = []
+            for imported in updated_node.names:
+                name = dotted_name(imported.name)
+                if name is None:
+                    msg = "declared export import requires a static symbol name"
+                    raise ValueError(msg)
+                destination = self.exports.get(f"{module}.{name}")
+                replacement = imported.with_changes(comma=cst.MaybeSentinel.DEFAULT)
+                destination_module = updated_node.module
+                if destination is not None:
+                    public_module, public_name = destination
+                    asname = imported.asname
+                    if asname is None and public_name != name:
+                        asname = cst.AsName(cst.Name(name))
+                    replacement = replacement.with_changes(
+                        name=cst.Name(public_name), asname=asname
+                    )
+                    destination_module = cst.parse_expression(public_module)
+                statements.append(
+                    updated_node.with_changes(
+                        module=destination_module,
+                        names=(replacement,),
+                        lpar=None,
+                        rpar=None,
+                    )
+                )
+            return cst.FlattenSentinel(statements)
+
+    @classmethod
+    def relocate_declared_exports(
+        cls, source: str, exports: t.MappingKV[str, tuple[str, str]]
+    ) -> str:
+        """Keep lexical scopes and ``as`` aliases while selecting public owners."""
+        return cst.parse_module(source).visit(cls._DeclaredExports(exports)).code
+
     class _Transformer(cst.CSTTransformer):
         METADATA_DEPENDENCIES = (ParentNodeProvider, QualifiedNameProvider)
 

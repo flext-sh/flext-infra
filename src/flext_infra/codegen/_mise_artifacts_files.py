@@ -40,6 +40,27 @@ class FlextInfraMiseArtifactsFiles:
         return u.Cli.sha256_bytes(content)
 
     @classmethod
+    def packaged_launchers(cls) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+        """Load the packaged unlocked bootstrap launcher pair for fresh seeding."""
+        seed_directory = (
+            Path(__file__).resolve().parents[1] / c.Infra.MISE_BOOTSTRAP_SEED_DIRECTORY
+        )
+        # Package resources are data; staging owns executable output permissions.
+        states: list[m.Cli.AtomicFileState] = []
+        for name in cls.ARTIFACT_NAMES:
+            path = seed_directory / Path(name).name
+            state = u.Cli.atomic_read_binary_file_state(path, required=True)
+            if state.failure:
+                return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(state)
+            observed = state.value
+            if not observed.content:
+                return r[tuple[m.Cli.AtomicFileState, ...]].fail(
+                    f"packaged Mise launcher seed is empty: {path}"
+                )
+            states.append(observed)
+        return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(states))
+
+    @classmethod
     def read_state(
         cls, path: Path, *, required: bool
     ) -> p.Result[m.Cli.AtomicFileState]:
@@ -66,7 +87,11 @@ class FlextInfraMiseArtifactsFiles:
     def write_publication(
         cls, publication: m.Infra.CodegenStagedFile
     ) -> p.Result[bool]:
-        """Consume one staged create/replace/mode/delete through the CLI owner."""
+        """Consume one staged create/replace/mode/delete through the CLI owner.
+
+        Publication is a guarded atomic replace; the zero-residue law
+        prohibits leaving backup copies beside managed destinations.
+        """
         before = publication.before
         replacement = publication.replacement
         if replacement is None:

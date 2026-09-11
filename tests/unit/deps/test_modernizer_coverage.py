@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_tests import tm
+
 from flext_infra import config
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
-from flext_tests import tm
 from tests import u
 
 

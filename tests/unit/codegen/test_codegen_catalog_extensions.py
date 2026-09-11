@@ -5,11 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_tests import tm
-from tests import u, u as test_u
+from tests import u
 from tests.unit.workspace import WorktreeFixture
 
 pytestmark = pytest.mark.slow
@@ -18,7 +18,7 @@ pytestmark = pytest.mark.slow
 def _repository(
     name: str, *, path: str, role: c.Infra.MakeProfile
 ) -> m.Infra.RepositoryRef:
-    reference = test_u.Tests.repository_ref(name, path=Path(path), role=role)
+    reference = u.Tests.repository_ref(name, path=Path(path), role=role)
     is_standalone = role is c.Infra.MakeProfile.STANDALONE
     return reference.model_copy(
         update={"package": is_standalone, "editable": is_standalone}
@@ -73,7 +73,6 @@ class TestsCodegenCatalogExtensions:
         tm.that(template, lacks="latest_release_url")
         tm.that(template, lacks="curl ")
         tm.that(template, lacks="--windows --version")
-        tm.that(template, has="generate install-script --write")
         tm.that(template, has='mise_install_path="$$scratch/runtime/seed-mise')
         tm.that(template, has='mise_install_path="$$scratch/runtime/mise')
         tm.that(template, has="receipt_runtime")
@@ -113,7 +112,8 @@ class TestsCodegenCatalogExtensions:
         tm.that(bootstrap, lacks="self-update")
         tm.that("mise launcher version mismatch" in bootstrap, eq=False)
         verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
-        tm.that("conform" in verb_names, eq=False)
+        tm.that(verb_names, has="setup")
+        tm.that(verb_names, has="gen")
 
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(
@@ -131,7 +131,7 @@ class TestsCodegenCatalogExtensions:
             encoding="utf-8",
         )
 
-        result = FlextInfraCodegenConform._compose_project_artifact(  # ruff: ignore[private-member-access]
+        result = FlextInfraCodegenConform.compose_project_artifact(
             tmp_path, c.Infra.MISE_TOML_FILENAME, '[tools]\npython = "3.13"\n'
         )
 
@@ -149,12 +149,12 @@ class TestsCodegenCatalogExtensions:
         )
         workspace = m.Infra.WorkspaceSpec(
             name=root.name,
-            beads=test_u.Tests.beads_project(root.name),
+            beads=u.Tests.beads_project(root.name),
             repository=root,
-            project=test_u.Tests.project_spec(root.name),
+            project=u.Tests.project_spec(root.name),
             subprojects=(member,),
         )
-        provider = test_u.Tests.provider()
+        provider = u.Tests.provider()
         member_source = tmp_path / "member-source"
         WorktreeFixture.initialize_governed_project(
             member_source,
@@ -162,7 +162,6 @@ class TestsCodegenCatalogExtensions:
             workspace=member.name,
             database=member.name,
             issue_prefix=member.name,
-            beads_owner=False,
         )
         member_head = tm.ok(
             u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=member_source)
@@ -225,13 +224,6 @@ class TestsCodegenCatalogExtensions:
                 cwd=member_checkout,
             )
         )
-        WorktreeFixture.link_member_beads(
-            member_checkout,
-            repository_root,
-            workspace_name=root.name,
-            database=root.name,
-            issue_prefix=root.name,
-        )
         tm.ok(
             u.Cli.run_checked(
                 [
@@ -272,7 +264,7 @@ class TestsCodegenCatalogExtensions:
         )
         declared_gitmodules = gitmodules.read_bytes()
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
-            test_u.Tests.conform_request(
+            u.Tests.conform_request(
                 repository_root,
                 what=c.Infra.CodegenConformSurface.ALL,
                 scope=c.Infra.CodegenConformScope.ALL,
@@ -290,7 +282,7 @@ class TestsCodegenCatalogExtensions:
             if file.path == repository_root.resolve() / c.Infra.MAKEFILE_FILENAME
         )
         tm.that(
-            test_u.Tests.codegen_file_text(root_makefile),
+            u.Tests.codegen_file_text(root_makefile),
             has=f"DECLARED_REPOSITORIES := {member.name}",
         )
         gitmodules_plan = next(

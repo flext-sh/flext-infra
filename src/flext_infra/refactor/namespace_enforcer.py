@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_cli import cli
+
 from flext_core import r
 from flext_infra import m, u
 

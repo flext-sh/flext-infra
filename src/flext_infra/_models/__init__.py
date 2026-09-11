@@ -3,14 +3,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import _git as _git
+    from . import _git
     from ._git.identity import FlextInfraModelsGitIdentity
     from .base import FlextInfraModelsBase
     from .census import FlextInfraModelsCensus
@@ -40,6 +39,7 @@ if TYPE_CHECKING:
     from .git import FlextInfraModelsGit
     from .layout import FlextInfraModelsLayout
     from .mixins import FlextInfraModelsMixins
+    from .promoted import FlextInfraModelsPromoted
     from .refactor import FlextInfraModelsRefactor
     from .refactor_ast_grep import FlextInfraModelsRefactorGrep
     from .refactor_census import FlextInfraModelsRefactorCensus
@@ -83,6 +83,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsLayout",
     "FlextInfraModelsMixins",
     "FlextInfraModelsNamespaceEnforcer",
+    "FlextInfraModelsPromoted",
     "FlextInfraModelsRefactor",
     "FlextInfraModelsRefactorCensus",
     "FlextInfraModelsRefactorGrep",
@@ -132,6 +133,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".git": ("FlextInfraModelsGit",),
             ".layout": ("FlextInfraModelsLayout",),
             ".mixins": ("FlextInfraModelsMixins",),
+            ".promoted": ("FlextInfraModelsPromoted",),
             ".refactor": ("FlextInfraModelsRefactor",),
             ".refactor_ast_grep": ("FlextInfraModelsRefactorGrep",),
             ".refactor_census": ("FlextInfraModelsRefactorCensus",),

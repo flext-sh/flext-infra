@@ -14,9 +14,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import CliRouteService, c, config, main as infra_main
-from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -40,6 +40,9 @@ def _with_pep621_identity(repo: Path) -> Path:
     # Identity is not only PEP 621: a governed checkout also declares its own
     # ledger, and conform refuses to render without it.
     u.Tests.write_project_beads_config(repo, repository.distribution)
+    # A governed checkout resolves its owner from the declared provider origin;
+    # the default local-path origin is not a provider identity.
+    u.Tests.initialize_git_repo(repo, origin_url=repository.url)
     return repo
 
 

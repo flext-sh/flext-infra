@@ -43,11 +43,13 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             module: m.Infra.RopeModuleIndexEntry,
             config: m.Infra.Census.ScanConfig,
             *,
-            project_objects: t.MappingKV[str, t.SequenceOf[m.Infra.Census.Object]],
-            project_violations: t.MappingKV[
-                str, t.SequenceOf[m.Infra.Census.Violation]
+            project_objects: t.MappingKV[
+                str, t.MutableSequenceOf[m.Infra.Census.Object]
             ],
-            project_fixes: t.MappingKV[str, t.SequenceOf[m.Infra.Census.Fix]],
+            project_violations: t.MappingKV[
+                str, t.MutableSequenceOf[m.Infra.Census.Violation]
+            ],
+            project_fixes: t.MappingKV[str, t.MutableSequenceOf[m.Infra.Census.Fix]],
             report_projects: set[str],
         ) -> None:
             """Scan through the composed census collection mixin."""

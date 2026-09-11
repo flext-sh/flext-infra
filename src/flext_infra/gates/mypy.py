@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, t, u
@@ -10,8 +11,6 @@ from flext_infra import c, m, t, u
 from .base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import p
 
 
@@ -21,6 +20,11 @@ class FlextInfraMypyGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.MYPY
     gate_name: ClassVar[str] = "Mypy"
     can_fix: ClassVar[bool] = False
+    checker_info_prefixes: ClassVar[t.StrSequence] = (
+        "LOG:",
+        "TRACE:",
+        "[pydantic-mypy]:",
+    )
 
     @staticmethod
     def _config_exclude(config_path: Path) -> re.Pattern[str] | None:
@@ -101,8 +105,43 @@ class FlextInfraMypyGate(FlextInfraGate):
                 str(cfg),
                 "--output",
                 c.Infra.OUTPUT_JSON,
+                "--no-error-summary",
+                "--no-color-output",
+                "--linecoverage-report",
+                str(self._check_report_path(project_dir, ctx).parent),
             )
         )
+
+    @override
+    def _check_report_path(self, project_dir: Path, ctx: m.Infra.GateContext) -> Path:
+        """Keep Mypy's native source inventory within the existing report root."""
+        return ctx.reports_dir / f"{project_dir.name}-mypy" / "coverage.json"
+
+    @override
+    def _validate_check_report(
+        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
+    ) -> None:
+        """Account for every submitted target using Mypy's native source set."""
+        report = m.Infra.MypyCoverageReport.model_validate_json(
+            self._check_report_path(project_dir, ctx).read_text(encoding="utf-8"),
+            strict=True,
+        )
+        sources = tuple(Path(source).resolve() for source in report.lines)
+        submitted = tuple((project_dir / target).resolve() for target in targets)
+        for target in submitted:
+            if not any(
+                source == target or (target.is_dir() and source.is_relative_to(target))
+                for source in sources
+            ):
+                msg = f"Mypy native report did not account for target: {target}"
+                raise ValueError(msg)
+        for source in sources:
+            if not any(
+                source == target or (target.is_dir() and source.is_relative_to(target))
+                for target in submitted
+            ):
+                msg = f"Mypy native report contains an unsubmitted source: {source}"
+                raise ValueError(msg)
 
     @override
     def _check_timeout(self, project_dir: Path, ctx: m.Infra.GateContext) -> int:
@@ -129,7 +168,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
-        _ = project_dir, ctx
+        _ = ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         if resource_diagnostic := u.Infra.mypy_failure_diagnostic(result):
             return (
@@ -145,31 +184,21 @@ class FlextInfraMypyGate(FlextInfraGate):
                     ),
                 ),
             )
-        for raw_line in (result.stdout or "").splitlines():
-            stripped = raw_line.strip()
-            if not stripped:
-                continue
-            try:
-                line_data: t.MappingKV[str, t.Infra.InfraValue] = (
-                    t.Infra.INFRA_MAPPING_ADAPTER.validate_json(stripped)
+        for raw_line in result.stdout.splitlines():
+            diagnostic = m.Infra.MypyDiagnostic.model_validate_json(
+                raw_line, strict=True
+            )
+            issues.append(
+                m.Infra.Issue(
+                    file=diagnostic.file,
+                    line=diagnostic.line,
+                    column=diagnostic.column,
+                    code=diagnostic.code or "",
+                    message=diagnostic.message,
+                    severity=diagnostic.severity,
                 )
-            except c.ValidationError:
-                continue
-            try:
-                severity = u.Cli.json_pick_str(line_data, "severity", c.Infra.ERROR)
-                if severity in c.Infra.VALID_GATE_SEVERITIES:
-                    issues.append(
-                        m.Infra.Issue(
-                            file=u.Cli.json_pick_str(line_data, "file", "?"),
-                            line=u.Cli.json_pick_int(line_data, "line"),
-                            column=u.Cli.json_pick_int(line_data, "column"),
-                            code=u.Cli.json_pick_str(line_data, "code"),
-                            message=u.Cli.json_pick_str(line_data, "message"),
-                            severity=severity,
-                        )
-                    )
-            except c.ValidationError:
-                continue
+            )
+        issues.extend(self._checker_stderr_issues(result, project_dir))
         if (not issues) and not u.Cli.process_succeeded(result.outcome):
             message = (result.stderr or result.stdout).strip()
             if not message:
@@ -184,7 +213,11 @@ class FlextInfraMypyGate(FlextInfraGate):
                     severity=c.Infra.ERROR,
                 )
             )
-        return u.Cli.process_succeeded(result.outcome), issues
+        return (
+            u.Cli.process_succeeded(result.outcome)
+            and not any(issue.severity.lower() == "error" for issue in issues),
+            issues,
+        )
 
 
 __all__: list[str] = ["FlextInfraMypyGate"]

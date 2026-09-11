@@ -1,4 +1,4 @@
-"""Dependency detection stub test utilities for flext-infra."""
+"""Public dependency-test execution and legacy replay utilities for flext-infra."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import r
+from flext_infra import r, u
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from tests import c, m, p, t
@@ -15,7 +15,39 @@ from tests.utilities_replay_sequence import TestsFlextInfraUtilitiesReplaySequen
 
 
 class TestsFlextInfraUtilitiesDepsMixin:
-    """Typed dependency-service and detector stub helpers."""
+    """Shared dependency-test execution and service fixture owners."""
+
+    @staticmethod
+    def run_real_detector(
+        root: Path,
+        *arguments: str,
+        env: t.StrMapping | None = None,
+        repository_root: Path | None = None,
+    ) -> p.Result[p.Cli.CommandOutput]:
+        """Run the public detector in its provisioned interpreter, without overrides."""
+        runtime = root / Path(c.Infra.VENV_BIN_REL).parent
+        environment = {
+            "UV_PROJECT_ENVIRONMENT": str(runtime),
+            "VIRTUAL_ENV": str(runtime),
+        }
+        if env is not None:
+            environment.update(env)
+        return u.Cli.run_raw(
+            [
+                str(runtime / "bin" / "python"),
+                "-m",
+                "flext_infra",
+                "deps",
+                "detect",
+                "--repository-root",
+                str(repository_root if repository_root is not None else root),
+                "--limits",
+                str(root / "limits.toml"),
+                *arguments,
+            ],
+            cwd=root,
+            env=environment,
+        )
 
     class DeptrySelector:
         """Protocol-compatible selector backed by a real Result."""
@@ -167,7 +199,7 @@ class TestsFlextInfraUtilitiesDepsMixin:
     ) -> m.Infra.DetectCommand:
         """Create a validated dependency-detection command."""
         validated: m.Infra.DetectCommand = m.Infra.DetectCommand.model_validate({
-            "workspace": str(repository_root),
+            "repository_root": str(repository_root),
             **overrides,
         })
         return validated

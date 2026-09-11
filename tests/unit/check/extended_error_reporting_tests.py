@@ -9,10 +9,11 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
-from flext_tests import tm
 from tests import c, u
 
 if TYPE_CHECKING:
@@ -33,6 +34,7 @@ class TestGateErrorReportingPublicBehavior:
         """Run the markdown gate once through the checker with one runner."""
         project_dir = u.Tests.mk_project(tmp_path, "p1")
         _ = (project_dir / "README.md").write_text("# Project\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(project_dir)
         return FlextInfraWorkspaceChecker(
             repository_root=tmp_path, gate_runners={c.Infra.MARKDOWN: runner}
         ).run_projects(["p1"], ["markdown"], reports_dir=tmp_path / "reports")

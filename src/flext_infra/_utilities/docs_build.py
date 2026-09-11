@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 from flext_cli import u
+
 from flext_infra.constants import c
 from flext_infra.models import m
 
@@ -147,6 +148,7 @@ class FlextInfraUtilitiesDocsBuild:
                     str(site_dir),
                 ],
                 cwd=scope.path,
+                env={"DISABLE_MKDOCS_2_WARNING": "true"},
             )
             if completed.failure:
                 return m.Infra.DocsPhaseReport(

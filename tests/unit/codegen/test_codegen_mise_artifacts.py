@@ -2,16 +2,42 @@
 
 from __future__ import annotations
 
+from importlib.resources import files
 from pathlib import Path
 
-from flext_infra import config, m, u
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
+import pytest
 from flext_tests import tm
+
+from flext_infra import c, config, m, u
+from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from tests import u as test_u
 
 
 class TestsCodegenMiseArtifacts:
     """Keep ordinary generation checks independent from remote resolution."""
+
+    @pytest.mark.parametrize("invalid", ["missing", "empty", "nonexecutable"])
+    def test_public_launcher_validation_keeps_failure_guards(
+        self, tmp_path: Path, invalid: str
+    ) -> None:
+        """Published launchers must retain content and executable-output validation."""
+        resources = files("flext_infra").joinpath(c.Infra.MISE_BOOTSTRAP_SEED_DIRECTORY)
+        launchers = tmp_path / "bin"
+        launchers.mkdir()
+        for name, mode in (("mise", 0o755), ("mise.cmd", 0o644)):
+            launcher = launchers / name
+            launcher.write_bytes(resources.joinpath(name).read_bytes())
+            launcher.chmod(mode)
+        tm.ok(FlextInfraCodegenMiseArtifacts.validate_launchers(tmp_path))
+        unix = launchers / "mise"
+        if invalid == "empty":
+            unix.write_bytes(b"")
+        elif invalid == "missing":
+            unix.unlink()
+        else:
+            unix.chmod(0o644)
+
+        tm.fail(FlextInfraCodegenMiseArtifacts.validate_launchers(tmp_path))
 
     @staticmethod
     def _launcher_checksum() -> str:

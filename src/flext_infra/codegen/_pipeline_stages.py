@@ -101,9 +101,9 @@ class FlextInfraCodegenPipelineStagesMixin:
         """Conform dependencies to reality via deptry + typing-stub detection.
 
         Reuses ``FlextInfraRuntimeDevDependencyDetector`` (deptry DEP001-004 +
-        ``types-*`` stub hints). In apply mode it adds missing typing packages
-        and applies detected fixes; in dry-run it reports only. No duplicate
-        detection logic in the pipeline.
+        ``types-*`` stub hints). Apply declares missing requirements in CUSTOM
+        ``project.optional-dependencies.typings`` and installs them through UV;
+        dry-run reports only. Mutation failures remain stage failures.
         """
 
         def _action() -> bool:

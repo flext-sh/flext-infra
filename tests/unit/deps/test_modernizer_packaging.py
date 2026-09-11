@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c, config, main as infra_main
-from flext_tests import tm
 from tests import t, u
 
 if TYPE_CHECKING:
@@ -39,7 +39,12 @@ def _prepare_project(
                 source_root / root_package / c.Infra.INIT_PY, "VALUE = 1\n"
             )
         )
-    _ = u.Tests.write_standalone_workspace_manifest(root, config.Infra.name)
+    _ = u.Tests.write_standalone_workspace_manifest(
+        root,
+        config.Infra.name,
+        root_modules=[root_module],
+        root_packages=[root_package],
+    )
     u.Tests.copy_tracked_mise_seeds(root)
     return root_module, root_package
 
@@ -59,6 +64,7 @@ def _conform_self(infra_git_repo: Path) -> int:
     ])
 
 
+@pytest.mark.slow
 def test_conform_packages_every_declared_python_root(infra_git_repo: Path) -> None:
     """The public generator emits matching bounded wheel and sdist targets."""
     root_module, root_package = _prepare_project(
@@ -82,6 +88,7 @@ def test_conform_packages_every_declared_python_root(infra_git_repo: Path) -> No
     }
     module_path = f"{c.Infra.DEFAULT_SRC_DIR}/{root_module}.py"
     tm.that(set(u.Tests.toml_list(wheel["packages"])), eq=package_paths)
+    tm.that(u.Tests.toml_mapping(wheel["force-include"]), has=module_path, msg=manifest)
     tm.that(
         u.Tests.toml_mapping(wheel["force-include"])[module_path],
         eq=f"{root_module}.py",
@@ -106,9 +113,7 @@ def test_conform_packages_every_declared_python_root(infra_git_repo: Path) -> No
 @pytest.mark.slow
 @pytest.mark.parametrize("missing_kind", ["module", "package"])
 def test_conform_rejects_missing_declared_python_root(
-    infra_git_repo: Path,
-    missing_kind: Literal["module", "package"],
-    capsys: pytest.CaptureFixture[str],
+    infra_git_repo: Path, missing_kind: Literal["module", "package"]
 ) -> None:
     """A declaration never produces a phantom wheel or sdist path."""
     _ = _prepare_project(
@@ -118,11 +123,8 @@ def test_conform_rejects_missing_declared_python_root(
     )
     before = (infra_git_repo / c.Infra.PYPROJECT_FILENAME).read_bytes()
 
-    exit_code = _conform_self(infra_git_repo)
-
-    output = capsys.readouterr()
-    tm.that(exit_code, ne=0)
-    tm.that(output.out + output.err, has=f"root {missing_kind}")
+    with pytest.raises(FileNotFoundError, match=f"root {missing_kind}"):
+        _conform_self(infra_git_repo)
     tm.that((infra_git_repo / c.Infra.PYPROJECT_FILENAME).read_bytes(), eq=before)
 
 

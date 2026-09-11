@@ -82,6 +82,20 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
             *(node.name for node in outer.body if isinstance(node, ast.ClassDef)),
             *(node.name.id for node in outer.body if isinstance(node, ast.TypeAlias)),
         })
+        declared_names = set(owned_names)
+        for statement in outer.body:
+            if isinstance(statement, ast.Assign):
+                targets = statement.targets
+            elif isinstance(statement, ast.AnnAssign) and statement.value is not None:
+                targets = [statement.target]
+            else:
+                continue
+            declared_names.update(
+                node.id
+                for target in targets
+                for node in ast.walk(target)
+                if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store)
+            )
         offsets = cls._line_offsets(source)
         edits: dict[tuple[int, int], str] = {}
         for sibling in siblings:
@@ -92,6 +106,12 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
                         and isinstance(node.value, ast.Name)
                         and node.value.id == outer.name
                     ):
+                        if node.attr not in declared_names and not outer.bases:
+                            msg = (
+                                "ambiguous self-qualified annotation "
+                                f"{outer.name}.{node.attr} at line {node.lineno}"
+                            )
+                            raise ValueError(msg)
                         continue
                     if not (
                         isinstance(node, ast.Name)

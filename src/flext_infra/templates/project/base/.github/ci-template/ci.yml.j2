@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 120
     steps:
       - name: Checkout repository
-        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
@@ -27,7 +27,7 @@ jobs:
         run: make setup
 
       - name: Check
-        run: make check {{ make.apply_variable }}={{ make.apply_value }}
+        run: make check 
 
       - name: Test
-        run: make test {{ make.apply_variable }}={{ make.apply_value }}
+        run: make test 

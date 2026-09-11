@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ast import Import, ImportFrom
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
@@ -48,6 +49,14 @@ class FlextInfraNamespaceRulesBase:
             return value if isinstance(value, str) else ""
         if kind == "Call":
             return cls.name_of(getattr(node, "func", None))
+        if kind in {"FunctionDef", "AsyncFunctionDef", "ClassDef"}:
+            # Why (cosmos-3flk9): definition nodes carry their identifier on
+            # ``.name``; without this branch every name-based structure
+            # exemption (the ``cli.py`` ``main`` entrypoint, facade classes,
+            # alias publishes) silently resolved to "" and flagged as a
+            # violation.
+            value = getattr(node, "name", "")
+            return value if isinstance(value, str) else ""
         return ""
 
     @classmethod
@@ -74,7 +83,7 @@ class FlextInfraNamespaceRulesBase:
     @classmethod
     def imports_with_context(
         cls, tree: object
-    ) -> t.SequenceOf[t.Pair[t.JsonValue, bool]]:
+    ) -> t.SequenceOf[t.Pair[t.Infra.PythonImportNode, bool]]:
         """Return every import with its TYPE_CHECKING-only state."""
         guarded = {
             id(child)
@@ -86,7 +95,7 @@ class FlextInfraNamespaceRulesBase:
         return tuple(
             (node, id(node) in guarded)
             for node in cls.walk(tree)
-            if cls.kind(node) in {"Import", "ImportFrom"}
+            if isinstance(node, (Import, ImportFrom))
         )
 
     @staticmethod

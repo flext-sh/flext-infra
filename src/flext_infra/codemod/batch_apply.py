@@ -1,4 +1,4 @@
-"""Fix-forward ast-grep batch application for ``make mod APPLY=Y``."""
+"""Fix-forward ast-grep batch application for ``make mod``."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import override
 
 from flext_cli import cli
+
 from flext_infra import p, r, t, u
 from flext_infra.base import FlextInfraServiceBase
 

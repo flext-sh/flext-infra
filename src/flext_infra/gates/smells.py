@@ -79,13 +79,21 @@ class FlextInfraSmellsGate(FlextInfraGate):
     ) -> t.SequenceOf[m.Infra.Issue]:
         """Filter one workspace scan to the blocking issues owned by ``project``.
 
-        A scanner crash that produced no finding is reported as its own issue so
-        an absent or failed scan never reads as a clean pass.
+        The process outcome decides what an unusable payload means: a
+        successful scan that emits no SARIF payload is a zero-findings pass,
+        while a scanner that crashed or could not run at all is a blocking
+        issue carrying its own error, never a clean pass. Non-blank output
+        that fails to parse stays a loud parse failure.
         """
         parsed = self._issues_from_sarif(scan.stdout, project)
-        issues = self._drop_generated_projections(
-            parsed.value if parsed.success else (self._failure_issue(parsed.error),)
-        )
+        issues: t.VariadicTuple[m.Infra.Issue]
+        if parsed.success:
+            issues = parsed.value
+        elif not scan.stdout.strip():
+            issues = ()
+        else:
+            issues = (self._failure_issue(parsed.error),)
+        issues = self._drop_generated_projections(issues)
         if not issues and not u.Cli.process_succeeded(scan.outcome):
             return (self._tool_failure_issue(scan),)
         return issues
@@ -130,12 +138,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse SARIF stdout into per-project issues (check_files path)."""
         _ = ctx
-        parsed = self._issues_from_sarif(result.stdout, project_dir.name)
-        issues = self._drop_generated_projections(
-            parsed.value if parsed.success else (self._failure_issue(parsed.error),)
-        )
-        if not issues and not u.Cli.process_succeeded(result.outcome):
-            issues = (self._tool_failure_issue(result),)
+        issues = self._scanned_issues(result, project_dir.name)
         return not issues, issues
 
     def _workspace_scan(self) -> p.Cli.CommandOutput:
@@ -144,49 +147,54 @@ class FlextInfraSmellsGate(FlextInfraGate):
         cached = self._scan_cache.get(key)
         if cached is not None:
             return cached
-        binary = self._resolve_binary()
-        if binary is None:
-            output = m.Cli.CommandOutput(
-                stdout="",
-                stderr=f"{c.Infra.QLTY_BINARY} binary not found on PATH",
-                outcome=m.Cli.ProcessOutcome(
-                    raw_return_code=c.Infra.PROCESS_COMMAND_NOT_FOUND_EXIT_CODE,
-                    timed_out=False,
-                    forwarded_signal=None,
-                ),
-            )
-        else:
-            self._require_scan_config()
-            output = self._run(
-                [binary, *c.Infra.SMELLS_QLTY_ARGS],
-                self._repository_root,
-                timeout=c.Infra.TIMEOUT_LONG,
-            )
+        output = self._uncached_workspace_scan()
         self._scan_cache[key] = output
         return output
 
-    def _require_scan_config(self) -> None:
-        """Prove the generated qlty config exists before scanning with it.
+    @staticmethod
+    def _unrunnable_scan_output(stderr: str) -> p.Cli.CommandOutput:
+        """Synthesize the scan result for a scanner that cannot run at all."""
+        return m.Cli.CommandOutput(
+            stdout="",
+            stderr=stderr,
+            outcome=m.Cli.ProcessOutcome(
+                raw_return_code=c.Infra.PROCESS_COMMAND_NOT_FOUND_EXIT_CODE,
+                timed_out=False,
+                forwarded_signal=None,
+            ),
+        )
 
-        Codegen renders this file from its template; this gate used to rewrite
-        it from a constant at scan time. Two owners writing one path disagree
-        by construction: every scan replaced the rendered projection with the
-        constant, the next generation put the projection back, and the file
-        churned between them — it reached this branch as an unexplained `wip`
-        commit. The generator owns it; a missing file is a generation gap to
-        report, never one to paper over mid-scan.
+    def _uncached_workspace_scan(self) -> p.Cli.CommandOutput:
+        """Run one qlty scan, or synthesize the blocking reason it cannot run.
+
+        Codegen renders the qlty config from its template; this gate used to
+        rewrite it from a constant at scan time. Two owners writing one path
+        disagree by construction: every scan replaced the rendered projection
+        with the constant, the next generation put the projection back, and
+        the file churned between them — it reached this branch as an
+        unexplained `wip` commit. The generator owns the file, so its absence
+        is a generation gap reported through the gate result with the exact
+        path, never papered over mid-scan and never read as a clean pass.
         """
+        binary = self._resolve_binary()
+        if binary is None:
+            return self._unrunnable_scan_output(
+                f"{c.Infra.QLTY_BINARY} binary not found on PATH"
+            )
         config_path = (
             self._repository_root
             / c.Infra.QLTY_CONFIG_DIRNAME
             / c.Infra.QLTY_CONFIG_FILENAME
         )
         if not config_path.is_file():
-            msg = (
-                f"generated qlty configuration is absent: {config_path}; "
-                "run make gen APPLY=Y"
+            return self._unrunnable_scan_output(
+                f"generated qlty configuration is absent: {config_path}; run make gen"
             )
-            raise FileNotFoundError(msg)
+        return self._run(
+            [binary, *c.Infra.SMELLS_QLTY_ARGS],
+            self._repository_root,
+            timeout=c.Infra.TIMEOUT_LONG,
+        )
 
     @staticmethod
     def _failure_issue(message: str | None) -> m.Infra.Issue:

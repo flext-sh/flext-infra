@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from flext_infra.constants import c
 from flext_infra.models import m
 
+from .private_import_ancestry import FlextInfraUtilitiesPrivateImportAncestry
 from .private_import_cst import FlextInfraUtilitiesPrivateImportCst
 from .private_import_facades import FlextInfraUtilitiesPrivateImportFacades
 from .private_import_validation import FlextInfraUtilitiesPrivateImportValidation
@@ -35,13 +36,15 @@ class FlextInfraUtilitiesPrivateImports:
             if part == c.Infra.DEFAULT_SRC_DIR
         ]
         # Repo-rooted trees (tests) import from the checkout root, so the
-        # package path itself anchors the module without a src segment.
-        rooted_parts = path_parts[-(len(package_parts) + 1) :]
-        if (
-            len(rooted_parts) == len(package_parts) + 1
-            and tuple(rooted_parts[:-1]) == package_parts
-        ):
-            source_candidates.append(rooted_parts)
+        # package path itself anchors the module without a src segment. The
+        # anchor applies at ANY depth inside the owner: a module nested in a
+        # private segment (tests/_utilities/x.py) is a same-owner sibling and
+        # must resolve to a minimal relative import, never to a facade hunt.
+        owner_length = len(package_parts)
+        for index in range(len(path_parts) - owner_length):
+            if tuple(path_parts[index : index + owner_length]) == package_parts:
+                source_candidates.append(path_parts[index:])
+                break
         for source_parts in source_candidates:
             if (
                 len(source_parts) <= len(package_parts)
@@ -130,7 +133,17 @@ class FlextInfraUtilitiesPrivateImports:
         findings: t.SequenceOf[m.Infra.ModScanFinding],
     ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Plan owner-aware relative and binding-aware public import rewrites."""
-        facades = FlextInfraUtilitiesPrivateImportFacades.discover(sources)
+        discovery_sources = FlextInfraUtilitiesPrivateImportFacades.source_modules(
+            sources, tuple(finding.text for finding in findings)
+        )
+        facades = FlextInfraUtilitiesPrivateImportFacades.discover(discovery_sources)
+        export_bindings, declared_exports = (
+            FlextInfraUtilitiesPrivateImportFacades.declared_exports(discovery_sources)
+        )
+        class_bases = FlextInfraUtilitiesPrivateImportAncestry.class_bases(
+            discovery_sources
+        )
+        direct_specs: dict[Path, dict[str, tuple[str, str]]] = {}
         specs: dict[Path, list[tuple[str, str, str, str, str]]] = {}
         for finding in findings:
             parsed = ast.parse(finding.text)
@@ -156,6 +169,14 @@ class FlextInfraUtilitiesPrivateImports:
                 qualified = f"{private_module}.{imported.name}"
                 target_reference = relative_module
                 if target_reference is None:
+                    declared = FlextInfraUtilitiesPrivateImportFacades.declared_public_reference(
+                        qualified, export_bindings, declared_exports
+                    )
+                    if declared is not None:
+                        direct_specs.setdefault(file_path, {})[qualified] = declared
+                        specs.setdefault(file_path, [])
+                        continue
+                if target_reference is None:
                     target_reference = (
                         FlextInfraUtilitiesPrivateImportFacades.facade_alias_binding(
                             owners=facades.get(package, ()), alias=imported.asname
@@ -167,6 +188,8 @@ class FlextInfraUtilitiesPrivateImports:
                             owners=facades.get(package, ()),
                             package=package,
                             qualified=qualified,
+                            bindings=export_bindings,
+                            class_bases=class_bases,
                         )
                     )
                 if target_reference is None:
@@ -267,7 +290,9 @@ class FlextInfraUtilitiesPrivateImports:
             )
             rewritten = (
                 FlextInfraUtilitiesPrivateImportCst.rewrite_private_import_source(
-                    source,
+                    FlextInfraUtilitiesPrivateImportCst.relocate_declared_exports(
+                        source, direct_specs.get(file_path, {})
+                    ),
                     relative_imports=relative_imports,
                     removals={key: frozenset(value) for key, value in removals.items()},
                     obsolete_imports={
@@ -278,6 +303,10 @@ class FlextInfraUtilitiesPrivateImports:
                     runtime_public_imports=runtime_public_imports,
                 )
             )
+            direct_removals: dict[str, set[str]] = {}
+            for qualified in direct_specs.get(file_path, {}):
+                module, _, name = qualified.rpartition(".")
+                direct_removals.setdefault(module, set()).add(name)
             FlextInfraUtilitiesPrivateImportValidation.require_zero_private_import_residue(
                 rewritten,
                 file_path=file_path,
@@ -286,7 +315,12 @@ class FlextInfraUtilitiesPrivateImports:
                 removals={
                     module: removals.get(module, set())
                     | obsolete_imports.get(module, set())
-                    for module in removals.keys() | obsolete_imports.keys()
+                    | direct_removals.get(module, set())
+                    for module in (
+                        removals.keys()
+                        | obsolete_imports.keys()
+                        | direct_removals.keys()
+                    )
                 },
                 replacements=replacements,
                 public_imports=public_imports,
@@ -298,6 +332,12 @@ class FlextInfraUtilitiesPrivateImports:
                         original_source=source,
                         updated_source=rewritten,
                         changes=(
+                            *(
+                                f"rewired {private} to {module}.{name}"
+                                for private, (module, name) in sorted(
+                                    direct_specs.get(file_path, {}).items()
+                                )
+                            ),
                             *(
                                 f"relativized {absolute} to {relative}"
                                 for absolute, relative in sorted(

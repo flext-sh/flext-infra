@@ -7,7 +7,7 @@
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
 - Package: `flext_infra`
-- Version: `0.12.0rc0`
+- Version: `0.12.0`
 - Description: FLEXT Infrastructure Tooling - Build automation, code generation,
   and workspace management
 - Doc summary: Flext Infra package.
@@ -18,18 +18,17 @@
 - Keywords: `automation`, `codegen`, `flext`, `infrastructure`, `tooling`
 - Main facades: `FlextInfra`, `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
-  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport`,
-  `FlextInfraCanonicalAliasGate`, `FlextInfraCensusImportDiscoveryVisitor` (+169
-  more)
+  `FlextInfraBooleanLogicFixer`, `FlextInfraBudgetGate`,
+  `FlextInfraCProfileReport`, `FlextInfraCanonicalAliasGate` (+173 more)
 - Alias exports: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
 - Public symbol exports: `CliDispatchService`, `CliRouteBase`,
   `CliRouteService`, `CodegenRoutes`, `FlextInfra`,
   `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
-  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+182 more)
+  `FlextInfraBooleanLogicFixer`, `FlextInfraBudgetGate` (+186 more)
 - Exported module shortcuts: `check`, `codegen`, `codemod`, `deps`, `detectors`,
-  `docs`, `fixers`, `gates` (+7 more)
-- Generated module pages: `196`
+  `docs`, `fixers`, `gates` (+8 more)
+- Generated module pages: `201`
 
 ## Next Pages
 

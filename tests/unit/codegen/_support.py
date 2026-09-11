@@ -55,7 +55,6 @@ class CodegenTestSupport:
                 system_packages=system_packages,
                 python_version=codegen.toolchain.python_version,
                 state_directory_name=codegen.toolchain.state_directory_name,
-                dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
                 github_actions=codegen.github_actions,
                 make=codegen.make,
                 workspace_repositories=(),

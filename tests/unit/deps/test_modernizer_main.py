@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import main
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-from flext_tests import tm
 from tests import c
 
 if TYPE_CHECKING:
