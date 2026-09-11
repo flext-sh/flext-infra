@@ -14,9 +14,7 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-def publish_file_plan(
-    plan: m.Infra.CodegenFilePlan, *, backup: bool, phase: str
-) -> p.Result[bool]:
+def publish_file_plan(plan: m.Infra.CodegenFilePlan, *, phase: str) -> p.Result[bool]:
     """Publish one FilePlan through write_publication without a journal."""
     if not u.Infra.codegen_file_requires_effect(plan):
         return r[bool].ok(True)
@@ -49,8 +47,7 @@ def publish_file_plan(
             project=plan.project,
             before=before.value,
             replacement=replacement,
-        ),
-        backup=backup,
+        )
     )
 
 

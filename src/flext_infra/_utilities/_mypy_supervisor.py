@@ -65,7 +65,7 @@ class MypyDarwinSupervisor:
         cls._usage(os.getpgrp())
         deadline = time.monotonic() + timeout
         child = subprocess.Popen(command, start_new_session=True)
-        received_signal = 0
+        received_signal: int = 0
 
         def receive_signal(signum: int, _frame: FrameType | None) -> None:
             nonlocal received_signal

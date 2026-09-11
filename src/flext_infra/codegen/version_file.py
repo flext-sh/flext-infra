@@ -104,9 +104,7 @@ class FlextInfraCodegenVersionFile(s[bool]):
             )
             if planned.failure:
                 return r[bool].from_failure(planned)
-            write_result = publish_file_plan(
-                planned.value, backup=True, phase="version-file"
-            )
+            write_result = publish_file_plan(planned.value, phase="version-file")
             if write_result.failure:
                 return r[bool].from_failure(write_result)
             generated += 1

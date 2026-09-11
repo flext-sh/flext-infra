@@ -29,8 +29,6 @@ from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.typings import t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
-from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles
-
 
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
@@ -337,15 +335,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenResult].fail(
                     "Makefile bootstrap cannot delete its dispatcher"
                 )
-            if (
-                before.value.content is not None
-                and before.value.content != file.desired_content
-            ):
-                backed = FlextInfraMiseArtifactsFiles.persist_apply_backup(
-                    before.value.path, before.value.content
-                )
-                if backed.failure:
-                    return r[m.Infra.CodegenResult].from_failure(backed)
             published = u.Cli.atomic_write_binary_file_guarded(
                 before.value, file.desired_content, permission_mode=file.desired_mode
             )
