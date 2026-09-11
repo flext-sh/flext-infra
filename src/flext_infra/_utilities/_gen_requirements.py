@@ -43,7 +43,9 @@ class FlextInfraUtilitiesGenRequirements:
         return gen_path
 
     @classmethod
-    def load_gen_requirements(cls, anchor: Path) -> p.Result[m.Infra.GenRequirementsSpec]:
+    def load_gen_requirements(
+        cls, anchor: Path
+    ) -> p.Result[m.Infra.GenRequirementsSpec]:
         """Locate, load, and validate the contract relative to ``anchor``."""
         from flext_infra import c, m, u  # method-point import: facade assembly
 
