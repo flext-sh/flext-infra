@@ -142,7 +142,12 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
                 u.Cli.toml_table_child(hatch, "metadata") if hatch is not None else None
             )
             if metadata is not None:
-                u.Cli.toml_remove_key_if_present(metadata, "allow-direct-references")
+                if config.Infra.release.private_direct_refs:
+                    metadata["allow-direct-references"] = True
+                else:
+                    u.Cli.toml_remove_key_if_present(
+                        metadata, "allow-direct-references"
+                    )
                 if not metadata and hatch is not None:
                     u.Cli.toml_remove_key_if_present(hatch, "metadata")
         rendered = u.Cli.toml_dumps(document)

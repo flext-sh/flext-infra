@@ -91,6 +91,14 @@ class FlextInfraConstantsNamespace:
         })
     )
     "Canonical platform facade file name -> (alias, class-name suffix)."
+    # Operational r/e/x/h/d/s re-export modules and the ``__main__`` entrypoint
+    # stub carry no class by law; the one-class and facade-naming rules skip
+    # them (cosmos-3flk9). The filenames derive from the canonical operation
+    # facades tuple above — the letters are declared once, never re-listed.
+    NAMESPACE_OPERATIONAL_MODULES: Final[frozenset[str]] = frozenset({
+        *(f"{letter}.py" for letter in NAMESPACE_OPERATION_FACADES),
+        "__main__.py",
+    })
     NAMESPACE_LAYER_BY_FILE: Final[MappingProxyType[str, str]] = MappingProxyType({
         "settings.py": "settings",
         "_settings.py": "settings",
