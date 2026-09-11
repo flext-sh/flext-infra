@@ -335,13 +335,10 @@ Infra:
         block_threshold_percent: 80
         allowed_save_refs: [refs/heads/0.12.0-dev]
         key_prefix: testmon-v1
-      apply_variable: APPLY
-      apply_value: Y
-      # Operator decision 2026-09-10 (0.12.0-dev): public verbs APPLY by
-      # default. `make gen`, `make test`, and every other declared verb runs
-      # with no variables at all; APPLY=N is the explicit opt-out for check
-      # mode where the verb supports one (docs fix, conform, audit).
-      apply_absent_value: Y
+      # Operator decision 2026-09-11: the APPLY write-enable flag is
+      # exterminated. Public verbs mutate by default with zero variables;
+      # read-only verification lives in dedicated verbs (check, conform
+      # --mode check).
       ci:
         variable: CI
         value: Y
@@ -380,14 +377,14 @@ Infra:
         # Why: pre-commit runs fmt+fix (mutation) then CI=Y make check (same
         # gates as CI: mypy pyright security markdown smells). This bans
         # broken code from ever being committed. pre-push adds gen+test.
-        - {verb: setup, apply: false, contexts: [local, ci]}
-        - {verb: gen, apply: true, contexts: [local, pre_push]}
-        - {verb: fmt, apply: true, contexts: [local, pre_commit]}
-        - {verb: fix, apply: true, contexts: [local, pre_commit]}
-        - {verb: check, apply: true, contexts: [local, ci, pre_push, pre_commit]}
+        - {verb: setup, contexts: [local, ci]}
+        - {verb: gen, contexts: [local, pre_push]}
+        - {verb: fmt, contexts: [local, pre_commit]}
+        - {verb: fix, contexts: [local, pre_commit]}
+        - {verb: check, contexts: [local, ci, pre_push, pre_commit]}
         # Review CI proves the complete native gate set. Draft PRs do not select
         # the job, while attestation reuse is selected externally by AI Hub.
-        - {verb: test, apply: true, contexts: [local, ci, pre_push]}
+        - {verb: test, contexts: [local, ci, pre_push]}
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.
       clean:
@@ -474,83 +471,59 @@ Infra:
       verbs:
         - name: help
           description: Show the complete selector-free public interface.
-          requires_apply: false
         - name: setup
           description: Provision the declared environment and hooks.
-          requires_apply: false
         - name: deps
           description: Upgrade, lock, and conform every declared dependency.
-          requires_apply: true
         - name: build
           description: Build the project distribution artifacts.
-          requires_apply: true
         - name: check
           description: Run every configured non-test gate.
-          requires_apply: true
         - name: test
           description: Run the complete suite through the persistent testmon cache.
-          requires_apply: true
         - name: fmt
           description: Apply ruff format --preview and ruff check --fix --unsafe-fixes --preview. Ruff is the rule; change code, never ruff.
-          requires_apply: true
         - name: fix
           description: Apply ruff check --fix --unsafe-fixes --preview plus every other configured safe correction. Ruff is the rule; change code, never ruff.
-          requires_apply: true
         - name: fix-enforcement
           description: Apply the safe fix actions declared by the enforcement catalog.
-          requires_apply: true
         - name: audit
           description: Inspect ownership, dependency, and generated-state health.
-          requires_apply: false
         - name: status
           description: Report the resolved runtime and repository state.
-          requires_apply: false
         - name: docs
           description: Generate, repair, build, and validate documentation.
-          requires_apply: true
         - name: clean
           description: Remove every declared disposable artifact.
-          requires_apply: true
         - name: release-plan
           description: Resolve the release decision through the public protocol.
-          requires_apply: true
         - name: release-version
           description: Materialize the planned version.
-          requires_apply: true
         - name: release-tag
           description: Tag the verified release commit.
-          requires_apply: true
         - name: release-build
           description: Build the release receipt and artifacts.
-          requires_apply: true
         - name: publication
           description: Publish only receipt-attested release artifacts.
-          requires_apply: true
         - name: gen
           description: Regenerate every managed projection atomically.
-          requires_apply: true
         - name: conform
           description: Prove generated projections are at their fixed point.
-          requires_apply: true
         - name: initialize
           description: Materialize the declared package initializer graph.
-          requires_apply: true
         - name: mod
           description: Apply the declared structural codemods.
-          requires_apply: true
         - name: waza
           description: Validate provider-neutral governance semantics with Waza.
-          requires_apply: true
         - name: duplication
           description: Run the canonical jscpd duplicate-code gate.
-          requires_apply: true
       custom_handler_profile_overrides: {}
       custom_handler_policy:
         filename: custom.mk
         # Custom behavior is one private whole-verb replacement or one lifecycle
         # hook. Selector-specific handlers are prohibited because public verbs are
         # already the complete operation and APPLY=Y is their sole mutation input.
-        target_pattern: "^((pre|post)-[a-z][a-z0-9-]*|_custom-[a-z][a-z0-9-]*)$"
+        target_pattern: "^((pre|post)-[a-z][a-z0-9-]*|gen|_custom-[a-z][a-z0-9-]*)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
 

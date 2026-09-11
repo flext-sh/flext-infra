@@ -142,9 +142,15 @@ class FlextInfraUtilitiesCodegenFilePlan:
                 else (raw_before or b"").decode("utf-8", errors="replace")
             )
             new_text = (plan.desired_content or b"").decode("utf-8", errors="replace")
+            committed_mode = (
+                oct(plan.before.mode) if plan.before.mode is not None else "absent"
+            )
+            rendered_mode = (
+                oct(plan.desired_mode) if plan.desired_mode is not None else "absent"
+            )
             header = (
-                f"--- {plan.path} (committed mode={oct(plan.before.mode) if plan.before.mode is not None else 'none'})"
-                f"\n+++ {plan.path} (rendered mode={oct(plan.desired_mode or 0)})"
+                f"--- {plan.path} (committed mode={committed_mode})"
+                f"\n+++ {plan.path} (rendered mode={rendered_mode})"
             )
             diff = tuple(
                 islice(
@@ -159,8 +165,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
                 if diff
                 else (
                     f"{header}\n(content equal: mode-only drift "
-                    f"observed={oct(plan.before.mode) if plan.before.mode is not None else 'none'} "
-                    f"desired={oct(plan.desired_mode) if plan.desired_mode is not None else 'none'})"
+                    f"observed={committed_mode} desired={rendered_mode})"
                 )
             )
         return "\n----\n".join(parts)
