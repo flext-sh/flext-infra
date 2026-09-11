@@ -30,6 +30,34 @@ from flext_infra.typings import t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
+def resolve_gate_budgets(
+    configured_budgets: Mapping[str, m.Infra.ProjectGateBudgetSpec],
+) -> p.Result[Mapping[str, Mapping[str, int]]]:
+    """Project config budget rows; registry divergence fails loud.
+
+    The budget gate requires one row per registry gate; the config SSOT is
+    the single budget owner and a missing or unknown gate id is a declared
+    generation error, never a silent skip.
+    """
+    allowed_gates = c.Infra.ALLOWED_GATES
+    missing_budget_rows = sorted(allowed_gates - configured_budgets.keys())
+    unknown_budget_rows = sorted(configured_budgets.keys() - allowed_gates)
+    if missing_budget_rows or unknown_budget_rows:
+        return r[Mapping[str, Mapping[str, int]]].fail(
+            "budget configuration diverges from the gate registry: "
+            f"missing rows={missing_budget_rows}; "
+            f"unknown rows={unknown_budget_rows}"
+        )
+    return r[Mapping[str, Mapping[str, int]]].ok({
+        gate_id: {
+            "time-seconds": configured_budgets[gate_id].time_seconds,
+            "memory-mb": configured_budgets[gate_id].memory_mb,
+            "tokens": configured_budgets[gate_id].tokens,
+        }
+        for gate_id in sorted(configured_budgets)
+    })
+
+
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
 
@@ -2609,34 +2637,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         )
 
-    @staticmethod
-    def _resolve_gate_budgets(
-        configured_budgets: Mapping[str, m.Infra.ProjectGateBudgetSpec],
-    ) -> p.Result[Mapping[str, Mapping[str, int]]]:
-        """Project config budget rows; registry divergence fails loud.
-
-        The budget gate requires one row per registry gate; the config SSOT is
-        the single budget owner and a missing or unknown gate id is a declared
-        generation error, never a silent skip.
-        """
-        allowed_gates = c.Infra.ALLOWED_GATES
-        missing_budget_rows = sorted(allowed_gates - configured_budgets.keys())
-        unknown_budget_rows = sorted(configured_budgets.keys() - allowed_gates)
-        if missing_budget_rows or unknown_budget_rows:
-            return r[Mapping[str, Mapping[str, int]]].fail(
-                "budget configuration diverges from the gate registry: "
-                f"missing rows={missing_budget_rows}; "
-                f"unknown rows={unknown_budget_rows}"
-            )
-        return r[Mapping[str, Mapping[str, int]]].ok({
-            gate_id: {
-                "time-seconds": configured_budgets[gate_id].time_seconds,
-                "memory-mb": configured_budgets[gate_id].memory_mb,
-                "tokens": configured_budgets[gate_id].tokens,
-            }
-            for gate_id in sorted(configured_budgets)
-        })
-
     def _project_render_context(
         self,
         repository: m.Infra.RepositoryRef,
@@ -2795,7 +2795,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if version_result.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(version_result)
-        gate_budgets_result = FlextInfraCodegenConform._resolve_gate_budgets(
+        gate_budgets_result = resolve_gate_budgets(
             codegen.budget
         )
         if gate_budgets_result.failure:
