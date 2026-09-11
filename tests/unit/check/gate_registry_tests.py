@@ -209,7 +209,7 @@ def test_every_allowed_gate_resolves_in_the_registry() -> None:
 def test_fixable_gate_vocabulary_matches_the_registry() -> None:
     """The Make fixable-gate vocabulary equals the gates that declare can_fix.
 
-    flext-38p39: `make fix APPLY=Y` routes through `check run --fix`. Without a
+    flext-38p39: `make fix` routes through `check run --fix`. Without a
     gate selector that run executes EVERY gate, including pyright and mypy,
     which cannot fix anything and cost ~37s -- the verb timed out (exit 124).
 

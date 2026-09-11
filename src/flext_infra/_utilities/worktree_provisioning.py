@@ -137,14 +137,7 @@ class FlextInfraWorktreeProvisioning:
                     exception=exc,
                 )
         setup = u.Cli.run_live(
-            (
-                c.Infra.MAKE,
-                "setup",
-                (
-                    f"{config.Infra.codegen.make.apply_variable}="
-                    f"{config.Infra.codegen.make.apply_value}"
-                ),
-            ),
+            (c.Infra.MAKE, "setup"),
             cwd=lane,
             remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
         )

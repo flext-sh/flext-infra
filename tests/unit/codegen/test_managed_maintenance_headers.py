@@ -30,13 +30,13 @@ class TestsFlextInfraManagedMaintenanceHeaders:
             (templates / "project" / "base" / "Makefile.j2").read_text(encoding="utf-8")
         )
         tm.that(makefile_fields.get("@flext-generated"), eq="continuous")
-        tm.that(makefile_fields.get("@flext-regenerate"), eq="make gen APPLY=Y")
+        tm.that(makefile_fields.get("@flext-regenerate"), eq="make gen")
         tm.that(makefile_fields.get("@flext-owner", ""), has="config/codegen.yaml")
         tm.that(makefile_fields.get("@flext-adjust", ""), has="never this projection")
 
         pyproject_fields = self._fields(c.Infra.BANNER)
         tm.that(pyproject_fields.get("@flext-generated"), eq="continuous")
-        tm.that(pyproject_fields.get("@flext-regenerate"), eq="make gen APPLY=Y")
+        tm.that(pyproject_fields.get("@flext-regenerate"), eq="make gen")
         tm.that(pyproject_fields.get("@flext-owner", ""), has="config/codegen.yaml")
         tm.that(pyproject_fields.get("@flext-adjust", ""), has="overwrite_project_keys")
         tm.that(pyproject_fields.get("@flext-adjust", ""), has="conflict_sections")
@@ -45,7 +45,7 @@ class TestsFlextInfraManagedMaintenanceHeaders:
                 encoding="utf-8"
             )
         )
-        tm.that(template_fields.get("@flext-regenerate"), eq="make gen APPLY=Y")
+        tm.that(template_fields.get("@flext-regenerate"), eq="make gen")
         tm.that(template_fields.get("@flext-adjust", ""), has="overwrite_project_keys")
 
     def test_pyproject_template_marks_ssot_project_keys(self) -> None:

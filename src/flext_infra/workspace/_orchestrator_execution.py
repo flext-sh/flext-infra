@@ -133,10 +133,6 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
                 "-C",
                 project,
                 target,
-                (
-                    f"{config.Infra.codegen.make.apply_variable}="
-                    f"{config.Infra.codegen.make.apply_value}"
-                ),
             ],
             log_path,
             env=self._project_child_env(),

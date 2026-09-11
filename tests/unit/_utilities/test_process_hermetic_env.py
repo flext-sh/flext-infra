@@ -14,7 +14,7 @@ class TestsMakeHermeticEnvRemoveKeys:
     def test_covers_orchestrator_apply_standalone_pytest_and_color_keys(self) -> None:
         keys = u.Infra.make_hermetic_env_remove_keys()
         make = config.Infra.codegen.make
-        tm.that(make.apply_variable in keys, eq=True)
+        tm.that("APPLY" not in keys, eq=True)
         for key in c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS:
             tm.that(key in keys, eq=True)
         tm.that(c.Infra.ENV_VAR_STANDALONE in keys, eq=True)
