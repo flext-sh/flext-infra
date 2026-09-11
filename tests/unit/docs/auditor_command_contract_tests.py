@@ -196,11 +196,11 @@ ruff check src
     @staticmethod
     @pytest.mark.parametrize("verb_name", ["publish-preview", "archive-assets"])
     @pytest.mark.parametrize(
-        ("declared", "legacy_apply", "expected"),
+        ("declared", "expected"),
         [
-            (True, False, ""),
-            (True, True, "legacy `APPLY` flag is exterminated"),
-            (False, False, "not declared"),
+            (True, ""),
+            (True, "legacy `APPLY` flag is exterminated"),
+            (False, "not declared"),
         ],
     )
     def test_audits_repository_declared_verbs(
@@ -208,7 +208,6 @@ ruff check src
         verb_name: str,
         *,
         declared: bool,
-        legacy_apply: bool,
         expected: str,
     ) -> None:
         scope = command_contract_scope
@@ -220,7 +219,7 @@ ruff check src
         )
         guide = scope.path / "docs/guides/commands.md"
         guide.parent.mkdir(parents=True)
-        token = "" if legacy_apply else ""
+        token = ""
         u.write_file(guide, f"```bash\nmake {verb_name}{token}\n```\n")
 
         issues = u.Infra.docs_command_contract_issues(scope)

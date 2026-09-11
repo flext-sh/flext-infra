@@ -58,9 +58,7 @@ class FlextInfraConsumerImportViolationsDetector:
         """Detect R1 violations in one file with true statement line numbers."""
         path: Path = ctx.file_path
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        importer_root = FlextInfraConsumerImportViolationsDetector._importer_root(
-            path
-        )
+        importer_root = FlextInfraConsumerImportViolationsDetector._importer_root(path)
         family_roots = FlextInfraConsumerImportViolationsDetector._family_roots()
         renames = core_u.compatibility_alias_renames()
         violations: list[m.Infra.ConsumerImportViolation] = []
@@ -71,8 +69,8 @@ class FlextInfraConsumerImportViolationsDetector:
             root = target.split(".", maxsplit=1)[0]
             if root not in family_roots or root == importer_root:
                 continue
-            published = (
-                FlextInfraConsumerImportViolationsDetector._published_symbols(root)
+            published = FlextInfraConsumerImportViolationsDetector._published_symbols(
+                root
             )
             if "." in target:
                 violations.append(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Mapping
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -44,7 +45,7 @@ class FlextInfraBudgetGate(FlextInfraGate):
             started=started,
         )
 
-    def _read_budget_config(self, project_dir: Path) -> dict:
+    def _read_budget_config(self, project_dir: Path) -> dict[str, t.JsonValue]:
         """Read ``[tool.flext.project.budget]`` from the project manifest.
 
         Input shapes stay untrusted until the collapse into typed shells
@@ -65,27 +66,40 @@ class FlextInfraBudgetGate(FlextInfraGate):
         return dict(u.Cli.json_as_mapping(budget))
 
     def _validate_gate_budgets(
-        self, budget_config: dict
+        self, budget_config: dict[str, t.JsonValue]
     ) -> tuple[m.Infra.Issue, ...]:
         """Validate one budget row per ``c.Infra.ALLOWED_GATES`` entry."""
         required_fields = c.Infra.BUDGET_REQUIRED_FIELDS
-        return tuple(
-            FlextInfraBudgetGate._budget_issue(gate_id, budget_config, required_fields=required_fields)
+        issues = (
+            FlextInfraBudgetGate._budget_issue(
+                gate_id, budget_config, required_fields=required_fields
+            )
             for gate_id in sorted(c.Infra.ALLOWED_GATES)
         )
+        return tuple(issue for issue in issues if issue is not None)
 
     @staticmethod
     def _budget_issue(
-        gate_id: str, budget_config: dict, *, required_fields: tuple[str, ...]
+        gate_id: str,
+        budget_config: dict[str, t.JsonValue],
+        *,
+        required_fields: tuple[str, ...],
     ) -> m.Infra.Issue | None:
         """Return the declared error for one gate's budget row, when broken."""
         gate_budget = budget_config.get(gate_id)
         if gate_budget is None:
             return FlextInfraBudgetGate._issue(gate_id, "missing budget row")
+        if not isinstance(gate_budget, Mapping):
+            return FlextInfraBudgetGate._issue(gate_id, "budget row must be a table")
         for field in required_fields:
-            if field not in u.Cli.json_as_mapping(gate_budget):
+            if field not in gate_budget:
                 return FlextInfraBudgetGate._issue(
                     gate_id, f"missing required field {field!r}"
+                )
+            value = gate_budget[field]
+            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                return FlextInfraBudgetGate._issue(
+                    gate_id, f"field {field!r} must be a positive integer"
                 )
         return None
 

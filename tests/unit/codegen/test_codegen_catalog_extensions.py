@@ -131,7 +131,7 @@ class TestsCodegenCatalogExtensions:
             encoding="utf-8",
         )
 
-        result = FlextInfraCodegenConform._compose_project_artifact(  # ruff: ignore[private-member-access]
+        result = FlextInfraCodegenConform.compose_project_artifact(
             tmp_path, c.Infra.MISE_TOML_FILENAME, '[tools]\npython = "3.13"\n'
         )
 
