@@ -2579,6 +2579,15 @@ class FlextInfraConfigModels:
         upstream: Annotated[
             t.NonEmptyStr, m.Field(description="Upstream FLEXT facade module")
         ]
+        namespace_scan_dirs: Annotated[
+            t.StrSequence,
+            m.Field(
+                description=(
+                    "Production source roots the namespace validator enforces; "
+                    "empty keeps every root in scope (previous behavior)"
+                )
+            ),
+        ] = ()
         inherited_facets: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
@@ -2760,6 +2769,17 @@ class FlextInfraConfigModels:
 
     class ProjectRenderContext(MakeRenderContext):
         """Complete typed input consumed by project scaffold templates."""
+
+        namespace_scan_dirs: Annotated[
+            t.StrSequence,
+            m.Field(
+                description=(
+                    "Production source roots rendered as the namespace "
+                    "validator's declared scan scope; empty keeps every root "
+                    "in scope"
+                )
+            ),
+        ] = ()
 
         @m.computed_field
         @property
