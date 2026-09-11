@@ -37,11 +37,10 @@ Infra:
           MD057: false
           MD060: false
           MD076: false
-          per-file-ignores:
-            "docs/knowledge-index.md": [MD058]
-            "docs/architecture/communities/README.md": [MD058]
-            "docs/architecture/crg-reports/large-functions.md": [MD075, MD013]
         exclude:
+          # AGENTS.md is a tool-managed projection (beads integration + codex
+          # setup blocks): gating generated output is a projection defect.
+          - AGENTS.md
           - .kilo/**
           - .omo/**
           - .tmp/**
@@ -700,6 +699,12 @@ Infra:
 ManagedArtifacts:
   Ruff:
     per_file_ignores:
+      # Darwin resource-control boundary: executes validated argv without a
+      # shell and uses the native /bin/ps solely for resident-memory accounting.
+      # This private executable must supervise before loading checker packages.
+      src/flext_infra/_utilities/_mypy_supervisor.py:
+        - suspicious-subprocess-import
+        - subprocess-without-shell-equals-true
       # OPERATOR-AUTHORIZED 2026-08-08 (rope only, private-member-access only).
       # Rope 1.14 and upstream master expose NO public API to register a PEP 695
       # walker handler, so these private slots ARE the library interface.

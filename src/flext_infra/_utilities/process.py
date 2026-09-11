@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config
+from flext_infra import c
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -32,16 +32,13 @@ class FlextInfraUtilitiesProcess:
         recursion state to every child, so pytest and any ``make`` a test
         spawns would otherwise see the outer verb's selectors and refuse
         (``verb help is read-only and does not accept APPLY``). The generated
-        Makefile is selector-free — its only public input is the apply
-        variable — so the set is derived from the declared owners only: the
-        orchestrator recursion keys, the config-owned apply variable, the
+        Makefile is selector-free — no public inputs — so the set is derived
+        from the declared owners only: the orchestrator recursion keys, the
         settings identity variable, the pytest-specific keys, and the host
         color-forcing signal. No list is repeated here.
         """
-        make = config.Infra.codegen.make
         ordered: dict[str, None] = dict.fromkeys((
             *c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
-            make.apply_variable,
             c.Infra.ENV_VAR_STANDALONE,
             *c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
             c.Infra.ENV_VAR_FORCE_COLOR,

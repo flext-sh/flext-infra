@@ -646,9 +646,11 @@ class FlextInfraCodegenTransaction:
         journal_snapshot = state.journal_snapshot(journal.value)
         if journal_snapshot is not None and journal_snapshot.content is not None:
             return self._recover(layout.value)
-        if state.transaction_residue(layout.value):
-            return state.cleanup_orphan_residue(layout.value)
-        return r[bool].ok(True)
+        # The journal lease is held here: every live transaction of this scope
+        # identity is excluded, so any transaction-staged tree found across
+        # the whole scope — including member roots outside the reconciled
+        # layout — belongs to a dead process and is removed automatically.
+        return state.cleanup_scope_residue(identity.repo_root)
 
     def _handle_journal_write_failure(
         self, layout: m.Infra.MiseToolchainWorkspaceLayout, failure: str

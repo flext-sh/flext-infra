@@ -46,7 +46,7 @@ class FlextInfraConstantsDeps:
         "# @flext-adjust: MANAGED=conflict_sections + overwrite_project_keys."
         " CUSTOM=preserve_project_keys and [tool.*] outside conflict_sections."
         " Never edit this projection.\n"
-        "# @flext-regenerate: make gen APPLY=Y\n"
+        "# @flext-regenerate: make gen\n"
     )
     DEV_OPTIONAL_DEPS_MARKER: Final[str] = (
         "# [MANAGED] consolidated development dependencies"

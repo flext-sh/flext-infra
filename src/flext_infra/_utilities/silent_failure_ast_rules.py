@@ -33,7 +33,7 @@ class FlextInfraUtilitiesSilentFailureAstRules(FlextInfraUtilitiesSilentFailureA
     @override
     def visit_Call(self, node: ast.Call) -> None:
         call_name = self._resolve_call_name(node)
-        if call_name == "contextlib.suppress":
+        if call_name == "contextlib.suppress" and not self._is_test_module:
             self._add(
                 line=node.lineno,
                 column=node.col_offset,
@@ -134,6 +134,9 @@ class FlextInfraUtilitiesSilentFailureAstRules(FlextInfraUtilitiesSilentFailureA
         return returned, inner
 
     def _add_guard(self, node: ast.If, result_name: str) -> None:
+        function = self._enclosing_function(node)
+        if function is not None and self._is_findings_collector(function):
+            return
         context = self._sentinel_return_context(node)
         if context is None:
             return
@@ -163,6 +166,9 @@ class FlextInfraUtilitiesSilentFailureAstRules(FlextInfraUtilitiesSilentFailureA
         )
 
     def _add_except_sentinel(self, node: ast.ExceptHandler) -> None:
+        function = self._enclosing_function(node)
+        if function is not None and self._is_boolean_predicate(function):
+            return
         context = self._sentinel_return_context(node)
         if context is None:
             return

@@ -143,14 +143,14 @@ class TestCodegenCiMatrix:
         )
 
         ci_step_runs = tuple(
-            (f"run: CI=Y make {step.verb}" + (" APPLY=Y" if step.apply else ""))
+            f"run: CI=Y make {step.verb} APPLY=Y"
             for step in config.Infra.codegen.make.workflow
             if "ci" in step.contexts
         )
         for run_line in ci_step_runs:
             tm.that(workflow, has=run_line)
         tm.that(ci_step_runs, has="run: CI=Y make setup")
-        tm.that(workflow, has="run: CI=Y make conform APPLY=Y")
+        tm.that(workflow, has="run: CI=Y make conform")
         tm.that(workflow, has="run: CI=Y make audit")
         tm.that(workflow, lacks="attest/gates/v1")
         tm.that(workflow, lacks="github verify-gates")
@@ -158,10 +158,10 @@ class TestCodegenCiMatrix:
         step_indices = tuple(workflow.index(run_line) for run_line in ci_step_runs)
         tm.that(step_indices, eq=tuple(sorted(step_indices)))
         setup_index = workflow.index("run: CI=Y make setup")
-        conform_index = workflow.index("run: CI=Y make conform APPLY=Y")
+        conform_index = workflow.index("run: CI=Y make conform")
         audit_index = workflow.index("run: CI=Y make audit")
-        check_index = workflow.index("run: CI=Y make check APPLY=Y")
-        test_index = workflow.index("run: CI=Y make test APPLY=Y")
+        check_index = workflow.index("run: CI=Y make check")
+        test_index = workflow.index("run: CI=Y make test")
         tm.that(
             setup_index < conform_index < audit_index < check_index < test_index,
             eq=True,
@@ -230,12 +230,7 @@ class TestCodegenCiMatrix:
                     if step.verb == "check"
                     else f"make {step.verb}"
                 )
-                + (
-                    f" {config.Infra.codegen.make.apply_variable}="
-                    f"{config.Infra.codegen.make.apply_value}"
-                    if step.apply
-                    else ""
-                )
+                + (" APPLY=Y")
                 for step in workflow
                 if context in step.contexts
             )

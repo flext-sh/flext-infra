@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from types import CodeType
 
 import pytest
 from flext_tests import tm
@@ -204,11 +205,11 @@ _LAZY_CASCADE_TEST = (
 )
 
 
-def _parse_source_ast(source: str) -> r[object]:
+def _parse_source_ast(source: str) -> r[CodeType]:
     try:
-        return r[object].ok(compile(source, "<refactor-test-source>", "exec"))
+        return r[CodeType].ok(compile(source, "<refactor-test-source>", "exec"))
     except SyntaxError as exc:
-        return r[object].fail(f"source failed to compile: {exc}", exception=exc)
+        return r[CodeType].fail(f"source failed to compile: {exc}", exception=exc)
 
 
 def _strings(value: t.JsonValue) -> t.StrSequence:

@@ -29,8 +29,6 @@ from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.typings import t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
-from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles
-
 
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
@@ -50,6 +48,74 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             msg = "resolved uv link mode must be a string"
             raise TypeError(msg)
         return link_mode
+
+    @staticmethod
+    def _dependency_cooldown_policy(
+        repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
+    ) -> tuple[tuple[str, ...], dict[str, str]]:
+        """Compose fleet defaults with the repository's narrower policy."""
+        exclusions = dict.fromkeys(toolchain.dependency_cooldown_exclusions)
+        overrides = dict(toolchain.dependency_cooldown_overrides)
+        for package in repository.dependency_cooldown_exclusions:
+            overrides.pop(package, None)
+            exclusions[package] = None
+        for package, cutoff in repository.dependency_cooldown_overrides.items():
+            exclusions.pop(package, None)
+            overrides[package] = cutoff
+        return tuple(exclusions), overrides
+
+    @staticmethod
+    def _discover_script_verbs(
+        repository_root: Path,
+    ) -> tuple[m.Infra.MakeVerbSpec, ...]:
+        """Discover script verbs from scripts/<verb>/all.sh in the repository root.
+
+        The filesystem is the SSOT: a verb is emitted only when its all.sh
+        entrypoint exists. No manual list is required.
+        """
+        scripts_dir = repository_root / "scripts"
+        if not scripts_dir.is_dir():
+            return ()
+        discovered = [
+            m.Infra.MakeVerbSpec(
+                name=entry.name, description=f"Script command: {entry.name}"
+            )
+            for entry in sorted(scripts_dir.iterdir())
+            if entry.is_dir() and (entry / "all.sh").is_file()
+        ]
+        return tuple(discovered)
+
+    @staticmethod
+    def _merge_extra_verbs(
+        declared: tuple[m.Infra.MakeVerbSpec, ...],
+        discovered: tuple[m.Infra.MakeVerbSpec, ...],
+        canonical_names: frozenset[str],
+    ) -> tuple[m.Infra.MakeVerbSpec, ...]:
+        """Union declared and discovered script verbs deduplicated by name.
+
+        Why (cosmos-3flk9): object-level dedup never converges because declared
+        verbs carry their canonical config descriptions while discoveries carry
+        ``Script command: <name>``, so every verb entered ``extra_verbs`` twice
+        and the generated Makefile emitted colliding ``_builtin-<verb>``
+        recipes. The declared config verb is the writable authority and wins;
+        a discovery is dropped when it would shadow a canonical ``make.verbs``
+        builtin, whose native ``_builtin-<verb>`` implementation is the only
+        owner of that name in the generated Makefile.
+        """
+        merged: dict[str, m.Infra.MakeVerbSpec] = {}
+        for verb in discovered:
+            if verb.name in canonical_names:
+                continue
+            merged.setdefault(verb.name, verb)
+        for verb in declared:
+            if verb.name in canonical_names:
+                msg = (
+                    f"config extra_verbs declares canonical verb {verb.name!r}; "
+                    "extra verbs must never shadow canonical make.verbs builtins"
+                )
+                raise ValueError(msg)
+            merged[verb.name] = verb
+        return tuple(merged.values())
 
     @classmethod
     def _surface_contract(
@@ -268,15 +334,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenResult].fail(
                     "Makefile bootstrap cannot delete its dispatcher"
                 )
-            if (
-                before.value.content is not None
-                and before.value.content != file.desired_content
-            ):
-                backed = FlextInfraMiseArtifactsFiles.persist_apply_backup(
-                    before.value.path, before.value.content
-                )
-                if backed.failure:
-                    return r[m.Infra.CodegenResult].from_failure(backed)
             published = u.Cli.atomic_write_binary_file_guarded(
                 before.value, file.desired_content, permission_mode=file.desired_mode
             )
@@ -478,7 +535,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # path supplies the workspace explicitly. Conforming a repository
             # that declares no project block has no scaffold chain to create —
             # nothing to do is not invalid input, and treating it as an error
-            # made `make gen APPLY=Y` unusable in every repository without its
+            # made `make gen` unusable in every repository without its
             # own manifest.
             if scaffolding is not None:
                 return r[tuple[m.Cli.AtomicDirectoryState, ...]].fail(
@@ -573,7 +630,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenResult].from_failure(reality)
             if changed:
                 paths = ", ".join(str(file.path) for file in changed)
-                return r[m.Infra.CodegenResult].fail(f"codegen drift detected: {paths}")
+                report = u.Infra.codegen_file_drift_report(changed)
+                return r[m.Infra.CodegenResult].fail(
+                    f"codegen drift detected: {paths}\n{report}"
+                )
             lazy_analysis = FlextInfraCodegenLazyInit(
                 repository_root=request.root
             ).plan_files()
@@ -586,8 +646,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if lazy_changed:
                 paths = ", ".join(str(file.path) for file in lazy_changed)
+                report = u.Infra.codegen_file_drift_report(lazy_changed)
                 return r[m.Infra.CodegenResult].fail(
-                    f"lazy-init drift detected: {paths}"
+                    f"lazy-init drift detected: {paths}\n{report}"
                 )
             docs_generator = FlextInfraDocGenerator(
                 repository_root=request.root,
@@ -606,7 +667,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if docs_changed:
                 paths = ", ".join(str(file.path) for file in docs_changed)
-                return r[m.Infra.CodegenResult].fail(f"docs drift detected: {paths}")
+                report = u.Infra.codegen_file_drift_report(docs_changed)
+                return r[m.Infra.CodegenResult].fail(
+                    f"docs drift detected: {paths}\n{report}"
+                )
             return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
         session = transaction.begin_locked(scope_root, config_plans.value, plan.files)
         if session.failure:
@@ -733,6 +797,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             Path(c.Infra.BEADS_CONFIG_RELPATH).name,
             Path(c.Infra.BEADS_METADATA_RELPATH).name,
             c.Infra.BEADS_LOCAL_VERSION_FILENAME,
+            c.Infra.BEADS_LAST_TOUCHED_FILENAME,
         })
         route = root / c.Infra.BEADS_DIRNAME
         if route.is_symlink():
@@ -748,7 +813,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"composed project Beads route is not a directory: {route}"
             )
         unexpected = sorted(
-            entry.name for entry in route.iterdir() if entry.name not in allowed_entries
+            entry.name
+            for entry in route.iterdir()
+            if entry.name not in allowed_entries
+            and not FlextInfraCodegenConform._is_dry_run_config_backup(entry.name)
         )
         if unexpected:
             return r[bool].fail(
@@ -756,6 +824,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 + ", ".join(unexpected)
             )
         return r[bool].ok(True)
+
+    @staticmethod
+    def _is_dry_run_config_backup(name: str) -> bool:
+        """Return whether ``name`` is a dry-run ``config.yaml`` backup snapshot.
+
+        Why (cosmos-3flk9): the bd client rewrites ``last-touched`` on every
+        write, and a dry-run ``make gen`` leaves ``config.yaml.<ts>.bak``
+        snapshots behind — both are ephemeral tooling state, not unmerged
+        ledger state, so they must not fail the composed-project verify.
+        """
+        return name.startswith(
+            f"{Path(c.Infra.BEADS_CONFIG_RELPATH).name}."
+        ) and name.endswith(".bak")
 
     def _validate_managed_fixed_point(
         self,
@@ -1430,6 +1511,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 repository, codegen.toolchain
             ),
             uv_exclude_dependencies=uv_exclude_dependencies,
+            namespace_scan_dirs=(
+                workspace.project.namespace_scan_dirs
+                if workspace.project is not None
+                else None
+            ),
         )
 
     @staticmethod
@@ -2317,7 +2403,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     ),
                     uv_version=codegen.toolchain.uv_version,
                     make=codegen.make,
-                    extra_verbs=repository.extra_verbs,
+                    extra_verbs=(
+                        FlextInfraCodegenConform._merge_extra_verbs(
+                            repository.extra_verbs,
+                            (
+                                ()
+                                if repository.script_dispatch is None
+                                else FlextInfraCodegenConform._discover_script_verbs(
+                                    repository_root
+                                )
+                            ),
+                            frozenset(verb.name for verb in codegen.make.verbs),
+                        )
+                    ),
                     script_dispatch=repository.script_dispatch,
                     workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
@@ -2338,7 +2436,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Make contract as Makefile; they do not require scaffold-only
             # project metadata.
             make_context = FlextInfraCodegenConform.make_render_context(
-                repository, target, workspace, codegen, tooling_runtime=tooling_runtime
+                repository,
+                target,
+                workspace,
+                codegen,
+                tooling_runtime=tooling_runtime,
+                repository_root=repository_root,
             )
             if make_context.failure:
                 return r[p.Model].from_failure(make_context)
@@ -2373,6 +2476,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         codegen: m.Infra.CodegenConfigSpec,
         *,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
+        repository_root: Path,
     ) -> p.Result[m.Infra.MakeRenderContext]:
         """Build the typed context consumed by the generated Makefile."""
         profile = target.make_profile
@@ -2384,6 +2488,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         gitlinks = FlextInfraCodegenConform._managed_gitlinks(workspace, codegen)
         if gitlinks.failure:
             return r[m.Infra.MakeRenderContext].from_failure(gitlinks)
+        cooldown_exclusions, cooldown_overrides = (
+            FlextInfraCodegenConform._dependency_cooldown_policy(
+                repository, codegen.toolchain
+            )
+        )
+        extra_verbs = FlextInfraCodegenConform._merge_extra_verbs(
+            repository.extra_verbs,
+            (
+                ()
+                if repository.script_dispatch is None
+                else FlextInfraCodegenConform._discover_script_verbs(repository_root)
+            ),
+            frozenset(verb.name for verb in codegen.make.verbs),
+        )
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=config.Infra.tooling.tools.pytest,
@@ -2419,7 +2537,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 workspace_repositories=subprojects,
                 workspace_gitlinks=gitlinks.value,
-                extra_verbs=repository.extra_verbs,
+                extra_verbs=extra_verbs,
                 script_dispatch=repository.script_dispatch,
             )
         )
@@ -2588,7 +2706,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         profile = target.make_profile
         make_context = FlextInfraCodegenConform.make_render_context(
-            repository, target, workspace, codegen, tooling_runtime=tooling_runtime
+            repository,
+            target,
+            workspace,
+            codegen,
+            tooling_runtime=tooling_runtime,
+            repository_root=repository_root,
         )
         if make_context.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(make_context)
@@ -2680,6 +2803,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 const_name=project.constant_name,
                 package_name=project.package_name,
                 packaged_data_dirs=packaged_data_dirs,
+                namespace_scan_dirs=project.namespace_scan_dirs,
                 class_stem=project.class_stem,
                 ns=project.namespace,
                 ns_attr=project.namespace_attribute,

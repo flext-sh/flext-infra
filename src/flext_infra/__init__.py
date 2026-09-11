@@ -101,6 +101,9 @@ if TYPE_CHECKING:
     from .detectors.compatibility_alias_detector import (
         FlextInfraCompatibilityAliasDetector,
     )
+    from .detectors.consumer_import_violations_detector import (
+        FlextInfraConsumerImportViolationsDetector,
+    )
     from .detectors.cyclic_import_detector import FlextInfraCyclicImportDetector
     from .detectors.deferred_self_reference_detector import (
         FlextInfraDeferredSelfReferenceDetector,
@@ -141,6 +144,7 @@ if TYPE_CHECKING:
     from .gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
     from .gates.bandit import FlextInfraBanditGate
     from .gates.base_gate import FlextInfraGate, FlextInfraScannerGateMixin
+    from .gates.budget import FlextInfraBudgetGate
     from .gates.canonical_alias import FlextInfraCanonicalAliasGate
     from .gates.deferred_self_reference import FlextInfraDeferredSelfReferenceGate
     from .gates.direnv import FlextInfraDirenvGate
@@ -272,6 +276,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraAccessorMigrationOrchestrator",
     "FlextInfraBanditGate",
     "FlextInfraBooleanLogicFixer",
+    "FlextInfraBudgetGate",
     "FlextInfraCProfileReport",
     "FlextInfraCanonicalAliasGate",
     "FlextInfraCensusImportDiscoveryVisitor",
@@ -304,6 +309,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraConfigFixer",
     "FlextInfraConsolidateGroupsPhase",
     "FlextInfraConstants",
+    "FlextInfraConsumerImportViolationsDetector",
     "FlextInfraCyclicImportDetector",
     "FlextInfraDeferredSelfReferenceDetector",
     "FlextInfraDeferredSelfReferenceGate",
@@ -566,6 +572,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".detectors.compatibility_alias_detector": (
                 "FlextInfraCompatibilityAliasDetector",
             ),
+            ".detectors.consumer_import_violations_detector": (
+                "FlextInfraConsumerImportViolationsDetector",
+            ),
             ".detectors.cyclic_import_detector": ("FlextInfraCyclicImportDetector",),
             ".detectors.deferred_self_reference_detector": (
                 "FlextInfraDeferredSelfReferenceDetector",
@@ -615,6 +624,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates.abstraction_boundary": ("FlextInfraAbstractionBoundaryGate",),
             ".gates.bandit": ("FlextInfraBanditGate",),
             ".gates.base_gate": ("FlextInfraGate", "FlextInfraScannerGateMixin"),
+            ".gates.budget": ("FlextInfraBudgetGate",),
             ".gates.canonical_alias": ("FlextInfraCanonicalAliasGate",),
             ".gates.deferred_self_reference": ("FlextInfraDeferredSelfReferenceGate",),
             ".gates.direnv": ("FlextInfraDirenvGate",),

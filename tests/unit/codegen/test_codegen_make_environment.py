@@ -27,11 +27,19 @@ class TestsCodegenMakeEnvironment:
         *,
         local_infra: bool = False,
         bootstrap: bool = False,
+        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...] = (),
+        script_dispatch: m.Infra.ScriptDispatchSpec | None = None,
     ) -> tuple[Path, Path]:
         role = c.Infra.MakeProfile(profile.value)
         repository = test_u.Tests.repository_ref(
             "fixture-project", role=role
-        ).model_copy(update={"editable": True})
+        ).model_copy(
+            update={
+                "editable": True,
+                "extra_verbs": extra_verbs,
+                "script_dispatch": script_dispatch,
+            }
+        )
         project_root = tmp_path / profile.value / "fixture-project"
         WorktreeFixture.write_python_project(project_root, repository.distribution)
         if bootstrap:
@@ -290,7 +298,7 @@ class TestsCodegenMakeEnvironment:
                 ".PHONY: post-setup\npost-setup:\n"
                 '\t@test -x "$(MAKE_COMMAND)"\n'
                 '\t@test "$(MAKE_COMMAND)" = "$(SELF_MAKE_EXECUTABLE)"\n'
-                f'\t@test "$({make.apply_variable})" = "{make.apply_value}"\n'
+                '\t@test "$(APPLY)" = "Y"\n'
                 f'\t@test "$({make.ci.variable})" = "{make.ci.value}"\n'
                 "\t@printf '%s\\n' 'ci-runtime-provisioned'\n",
             )
@@ -401,18 +409,11 @@ class TestsCodegenMakeEnvironment:
             "VIRTUAL_ENV": str(hostile_venv),
         }
 
-        # `test` declares requires_apply in the typed Make owner, so the verb
-        # only runs once the write-enable token is present.
-        apply_variable = config.Infra.codegen.make.apply_variable
-        apply_value = config.Infra.codegen.make.apply_value
+        # `test` requires the write-enable token (APPLY=Y) because every verb
+        # mutates by default with zero variables.
         process = tm.ok(
             u.Cli.run_raw(
-                [
-                    c.Infra.MAKE,
-                    "--no-print-directory",
-                    "test",
-                    f"{apply_variable}={apply_value}",
-                ],
+                [c.Infra.MAKE, "--no-print-directory", "test", "APPLY=Y"],
                 cwd=project_root,
                 env=active_env,
                 remove_env_keys=(*c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, "UV"),
@@ -551,16 +552,9 @@ class TestsCodegenMakeEnvironment:
         # APPLY is the ONLY public Make input; the generated boundary rejects
         # every other command-line variable by name, so the uv override that
         # used to ride on the command line is supplied through the environment.
-        apply_variable = config.Infra.codegen.make.apply_variable
-        apply_value = config.Infra.codegen.make.apply_value
         process = tm.ok(
             u.Cli.run_raw(
-                [
-                    c.Infra.MAKE,
-                    "--no-print-directory",
-                    "check",
-                    f"{apply_variable}={apply_value}",
-                ],
+                [c.Infra.MAKE, "--no-print-directory", "check", "APPLY=Y"],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
@@ -610,20 +604,27 @@ class TestsCodegenMakeEnvironment:
             msg=process.stdout + process.stderr,
         )
         commands = uv_log.read_text(encoding="utf-8").splitlines()
-        # The upgrade scope is exactly the declared project locks: one pass with
-        # the upgrade flag, then one plain lock verification of the same root.
+        # The upgrade scope is exactly the declared project locks: one pass
+        # with the upgrade and refresh flags (branch-tracked git dependencies
+        # are moving sources by declaration), then one plain lock verification
+        # of the same root.
         tm.that(
             [line for line in commands if line.startswith("lock")],
             eq=(
-                f"lock --project {project_root} --upgrade",
-                f"lock --project {project_root}",
+                f"lock --project {project_root} --upgrade --refresh",
+                f"lock --project {project_root} --check",
             ),
         )
 
     def test_dependency_upgrade_requires_the_write_enable_token(
         self, tmp_path: Path
     ) -> None:
-        """Fail before uv when the write-enable token is absent."""
+        """Deps applies with zero inputs; APPLY=N remains the explicit opt-out.
+
+        Operator law 2026-09-10 seeds the write-enable token to its apply
+        value, so the plain `make deps` invocation must reach uv. Only the
+        explicit APPLY=N run keeps the fail-closed write-enable diagnostic.
+        """
         project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
@@ -634,24 +635,36 @@ class TestsCodegenMakeEnvironment:
         test_u.Tests.write_executable(
             uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\nexit 0\n"
         )
+        env = {"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"}
 
-        process = tm.ok(
+        plain = tm.ok(
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", "deps"],
                 cwd=project_root,
-                env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
+                env=env,
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            )
+        )
+        authenticated = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "deps", "APPLY=N"],
+                cwd=project_root,
+                env=env,
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
 
-        tm.that(process.outcome.raw_return_code, ne=0)
-        apply_variable = config.Infra.codegen.make.apply_variable
-        apply_value = config.Infra.codegen.make.apply_value
+        tm.that(u.Cli.process_succeeded(plain.outcome), eq=True)
+        tm.that(uv_log.exists(), eq=True)
+        # APPLY is binary now: the apply value is the only valid token, so the
+        # explicit opt-out attempt fails at the generated public boundary
+        # before any recipe runs, keeping uv off the mutation path.
+        tm.that(authenticated.outcome.raw_return_code, ne=0)
         tm.that(
-            process.stdout + process.stderr,
-            has=f"this action requires {apply_variable}={apply_value}",
+            authenticated.stdout + authenticated.stderr,
+            has="ERROR: this action requires APPLY=Y",
         )
-        tm.that(uv_log.exists(), eq=False)
+        tm.that(authenticated.stdout + authenticated.stderr, has="Makefile")
 
     def test_public_gate_fails_closed_before_managed_environment_exists(
         self, tmp_path: Path
@@ -693,8 +706,7 @@ class TestsCodegenMakeEnvironment:
             # and nothing hand-assembles a managed PATH any more.
             ('mise_exec project "$$latest_mise" -C "$$project_root" install --yes'),
             (
-                'mise_checked "$$scratch/lifecycle.log" mise_exec project '
-                '"$$latest_mise" -C "$$project_root" exec -- env '
+                'mise_exec project "$$latest_mise" -C "$$project_root" exec -- env '
                 '"SETUP_DIRENV=$$direnv_executable"'
             ),
             '$(UV) venv "$(RUNTIME_VENV)"',
@@ -738,26 +750,22 @@ class TestsCodegenMakeEnvironment:
     def test_generated_boundary_rejects_forbidden_makeflags_overrides(
         self, tmp_path: Path
     ) -> None:
-        """Hostile MAKEFLAGS assignments are rejected by the public boundary.
+        """Hostile MAKEFLAGS assignments are ignored, never fatal.
 
         GNU Make propagates any variable on MAKEFLAGS (or the command line) as
-        ``command line override`` to every child process. The generated guard
-        rejects every override that is not the declared public input, so inherited
-        hostile assignments from a parent Make cannot smuggle selectors into the
-        child.
+        ``command line override`` to every child process. Since operator law
+        2026-09-10 ordinary usage must always start with zero variables, so
+        the boundary warns about every override that is not a declared public
+        input and continues; it can no longer block a run.
         """
         project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
 
-        apply_variable = config.Infra.codegen.make.apply_variable
-        apply_value = config.Infra.codegen.make.apply_value
-        hostile_env = {
-            "MAKEFLAGS": f"FORBIDDEN_VAR=hostile {apply_variable}={apply_value}"
-        }
+        hostile_env = {"MAKEFLAGS": "FORBIDDEN_VAR=hostile APPLY=Y"}
         process = tm.ok(
             u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "test"],
+                [c.Infra.MAKE, "--no-print-directory", "help"],
                 cwd=project_root,
                 env=hostile_env,
                 remove_env_keys=tuple(
@@ -768,12 +776,36 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=True)
         tm.that(
             process.stdout + process.stderr,
-            has="Unsupported Make input(s): FORBIDDEN_VAR",
+            has="Ignoring unsupported Make input(s): APPLY FORBIDDEN_VAR",
         )
-        tm.that(
-            process.stdout + process.stderr,
-            has=f"public operations accept only {apply_variable}={apply_value}",
+
+    def test_generated_make_dispatches_script_verbs_to_builtin_targets(
+        self, tmp_path: Path
+    ) -> None:
+        """Auto-discovered script verbs get _builtin-<verb> dispatch targets."""
+        extra_verbs = (
+            m.Infra.MakeVerbSpec(
+                name="sync",
+                description="Dispatch sync through the declared script dispatcher.",
+            ),
         )
+        script_dispatch = m.Infra.ScriptDispatchSpec(
+            dispatcher="scripts/dispatch.py", roots=("scripts",)
+        )
+        project_root, _repository_root = self._render_makefile(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+            extra_verbs=extra_verbs,
+            script_dispatch=script_dispatch,
+        )
+        (project_root / "scripts" / "sync").mkdir(parents=True)
+        (project_root / "scripts" / "sync" / "all.sh").write_text(
+            "#!/bin/sh\necho sync\n", encoding="utf-8"
+        )
+        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
+        tm.that("_builtin-sync:" in makefile, eq=True)
+        tm.that("scripts/dispatch.py" in makefile, eq=True)
+        tm.that("sync" in makefile, eq=True)

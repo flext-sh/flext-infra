@@ -7,7 +7,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import m
+from flext_infra import c, m, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests.unit.workspace import WorktreeFixture
 
@@ -60,8 +60,47 @@ class TestsWorkspaceMemberLedgerIdentity:
         )
         return member, parent
 
-    def test_parent_does_not_load_member_local_manifest(self, tmp_path: Path) -> None:
-        """A parent observes member paths without parsing the member-local manifest."""
+    def test_parent_preserves_member_commands_and_git_coordinates(
+        self, tmp_path: Path
+    ) -> None:
+        """A member's commands survive composition without importing its topology."""
+        member, parent = self._attach_member_to_workspace(tmp_path)
+        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
+        verb = m.Infra.MakeVerbSpec(name="charts", description="Render charts")
+        dispatch = m.Infra.ScriptDispatchSpec(
+            dispatcher="scripts/dispatch.py", roots=("scripts",)
+        )
+        declared = observed.repository.model_copy(
+            update={
+                "extra_verbs": (verb,),
+                "script_dispatch": dispatch,
+                "editable": False,
+            }
+        )
+        manifest = m.Infra.WorkspaceManifestSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name=declared.name,
+            repository=declared,
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                member / "config/workspace.yaml", manifest.model_dump(mode="json")
+            )
+        )
+
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(parent))
+
+        reference = workspace.subprojects[0]
+        tm.that(reference.path, eq=Path("apps/member"))
+        tm.that(reference.editable, eq=True)
+        tm.that(reference.extra_verbs, eq=(verb,))
+        tm.that(reference.script_dispatch, eq=dispatch)
+        tm.that(workspace.repository.extra_verbs, empty=True)
+
+    def test_parent_rejects_invalid_member_command_manifest(
+        self, tmp_path: Path
+    ) -> None:
+        """Selected command metadata must pass the manifest's typed contract."""
         member, parent = self._attach_member_to_workspace(tmp_path)
         member_manifest = member / "config/workspace.yaml"
         member_manifest.parent.mkdir(parents=True, exist_ok=True)
@@ -69,11 +108,9 @@ class TestsWorkspaceMemberLedgerIdentity:
             "version: parent-must-not-parse-member-manifest\n", encoding="utf-8"
         )
 
-        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(parent))
-
-        tm.that(
-            tuple(item.path for item in workspace.subprojects), has=Path("apps/member")
-        )
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(parent)
+        tm.that(workspace.failure, eq=True)
+        tm.that(str(workspace.error), has="workspace manifest model validation")
 
     def test_submodule_self_load_accepts_an_independent_ledger(
         self, tmp_path: Path

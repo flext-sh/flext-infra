@@ -165,8 +165,30 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
             return r[bool].from_failure(current)
         for expected, observed in zip(source_states, current.value, strict=True):
             if observed != expected:
+                model_fields = type(expected).model_fields
+                differing = tuple(
+                    field
+                    for field in model_fields
+                    if getattr(expected, field) != getattr(observed, field)
+                )
                 return r[bool].fail(
-                    f"docs source changed during planning: {expected.path}"
+                    f"docs source changed during planning: {expected.path}; "
+                    f"differing={
+                        dict(
+                            zip(
+                                differing,
+                                [
+                                    (
+                                        field,
+                                        getattr(expected, field),
+                                        getattr(observed, field),
+                                    )
+                                    for field in differing
+                                ],
+                                strict=False,
+                            )
+                        )
+                    }"
                 )
         return r[bool].ok(True)
 
