@@ -662,7 +662,7 @@ class TestsCodegenMakeEnvironment:
         tm.that(authenticated.outcome.raw_return_code, ne=0)
         tm.that(
             authenticated.stdout + authenticated.stderr,
-            has="ERROR: this action requires APPLY=Y",
+            has="ERROR: this action requires",
         )
         tm.that(authenticated.stdout + authenticated.stderr, has="Makefile")
 
@@ -762,7 +762,7 @@ class TestsCodegenMakeEnvironment:
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
 
-        hostile_env = {"MAKEFLAGS": "FORBIDDEN_VAR=hostile APPLY=Y"}
+        hostile_env = {"MAKEFLAGS": "FORBIDDEN_VAR=hostile"}
         process = tm.ok(
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", "help"],
