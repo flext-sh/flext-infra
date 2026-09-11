@@ -65,7 +65,7 @@ class MypyDarwinSupervisor:
         cls._usage(os.getpgrp())
         deadline = time.monotonic() + timeout
         child = subprocess.Popen(command, start_new_session=True)
-        received_signal: int | None = None
+        received_signal: int = 0
 
         def receive_signal(signum: int, _frame: FrameType | None) -> None:
             nonlocal received_signal
@@ -77,7 +77,7 @@ class MypyDarwinSupervisor:
         }
         try:
             while (exit_code := child.poll()) is None:
-                if received_signal is not None:
+                if received_signal:
                     return 128 + received_signal
                 if time.monotonic() >= deadline:
                     sys.stderr.write("Mypy wall-time limit reached\n")

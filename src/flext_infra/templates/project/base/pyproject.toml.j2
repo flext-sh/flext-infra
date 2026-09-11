@@ -403,3 +403,12 @@ exclude-newer = "{{ uv_exclude_newer }}"
 {% if dependency_cooldown_exclusions or dependency_cooldown_overrides %}
 exclude-newer-package = { {% for package in dependency_cooldown_exclusions if package not in dependency_cooldown_overrides %}{{ package }} = false{% if not loop.last or dependency_cooldown_overrides %}, {% endif %}{% endfor %}{% for package, cutoff in dependency_cooldown_overrides | dictsort %}{{ package }} = "{{ cutoff }}"{% if not loop.last %}, {% endif %}{% endfor %} }
 {% endif %}
+
+# [MANAGED] tool.flext.namespace
+{% if namespace_scan_dirs %}
+[tool.flext.namespace]
+# Production source roots the namespace validator enforces (cosmos-3flk9
+# decision A): tests host pytest conventions and scripts are thin command
+# surfaces, so projects declare their production scope here.
+scan_dirs = [{% for item in namespace_scan_dirs %}{{ item | tojson }}{{ ", " if not loop.last }}{% endfor %}]
+{% endif %}

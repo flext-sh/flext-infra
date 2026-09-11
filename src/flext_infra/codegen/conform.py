@@ -29,8 +29,6 @@ from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.typings import t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
-from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles
-
 
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
@@ -80,9 +78,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return ()
         discovered = [
             m.Infra.MakeVerbSpec(
-                name=entry.name,
-                description=f"Script command: {entry.name}",
-                requires_apply=True,
+                name=entry.name, description=f"Script command: {entry.name}"
             )
             for entry in sorted(scripts_dir.iterdir())
             if entry.is_dir() and (entry / "all.sh").is_file()
@@ -338,15 +334,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenResult].fail(
                     "Makefile bootstrap cannot delete its dispatcher"
                 )
-            if (
-                before.value.content is not None
-                and before.value.content != file.desired_content
-            ):
-                backed = FlextInfraMiseArtifactsFiles.persist_apply_backup(
-                    before.value.path, before.value.content
-                )
-                if backed.failure:
-                    return r[m.Infra.CodegenResult].from_failure(backed)
             published = u.Cli.atomic_write_binary_file_guarded(
                 before.value, file.desired_content, permission_mode=file.desired_mode
             )
@@ -680,7 +667,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if docs_changed:
                 paths = ", ".join(str(file.path) for file in docs_changed)
-                return r[m.Infra.CodegenResult].fail(f"docs drift detected: {paths}")
+                report = u.Infra.codegen_file_drift_report(docs_changed)
+                return r[m.Infra.CodegenResult].fail(
+                    f"docs drift detected: {paths}\n{report}"
+                )
             return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
         session = transaction.begin_locked(scope_root, config_plans.value, plan.files)
         if session.failure:
@@ -1509,12 +1499,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             m.Infra.UvScopedDependencyExclusionSpec
         ],
     ) -> p.Result[str]:
-        """Conform one pyproject source under this repository's cooldown policy."""
-        cooldown_exclusions, cooldown_overrides = (
-            FlextInfraCodegenConform._dependency_cooldown_policy(
-                repository, codegen.toolchain
-            )
-        )
+        """Conform one pyproject source."""
         return u.Infra.pyproject_conform(
             source,
             providers=codegen.providers,
@@ -1525,9 +1510,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             uv_link_mode=FlextInfraCodegenConform._link_mode(
                 repository, codegen.toolchain
             ),
-            dependency_cooldown_exclusions=cooldown_exclusions,
-            dependency_cooldown_overrides=cooldown_overrides,
             uv_exclude_dependencies=uv_exclude_dependencies,
+            namespace_scan_dirs=(
+                workspace.project.namespace_scan_dirs
+                if workspace.project is not None
+                else None
+            ),
         )
 
     @staticmethod
@@ -2333,9 +2321,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     ),
                     python_version=codegen.toolchain.python_version,
                     state_directory_name=codegen.toolchain.state_directory_name,
-                    dependency_cooldown_days=(
-                        codegen.toolchain.dependency_cooldown_days
-                    ),
                     github_actions=codegen.github_actions,
                     make=codegen.make,
                     workspace_repositories=workspace_repositories,
@@ -2395,9 +2380,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             gitlinks = self._managed_gitlinks(workspace, codegen)
             if gitlinks.failure:
                 return r[p.Model].from_failure(gitlinks)
-            cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
-                repository, codegen.toolchain
-            )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     pytest=config.Infra.tooling.tools.pytest,
@@ -2420,9 +2402,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         repository, codegen.toolchain
                     ),
                     uv_version=codegen.toolchain.uv_version,
-                    uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
-                    dependency_cooldown_exclusions=cooldown_exclusions,
-                    dependency_cooldown_overrides=cooldown_overrides,
                     make=codegen.make,
                     extra_verbs=(
                         FlextInfraCodegenConform._merge_extra_verbs(
@@ -2543,9 +2522,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 uv_link_mode=FlextInfraCodegenConform._link_mode(
                     repository, codegen.toolchain
                 ),
-                uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
-                dependency_cooldown_exclusions=cooldown_exclusions,
-                dependency_cooldown_overrides=cooldown_overrides,
                 # ProjectRenderContext replaces this with the composed map.
                 # Pass the neutral value explicitly so Pydantic never deep-copies
                 # the MappingProxyType model default while building the base.
@@ -2827,6 +2803,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 const_name=project.constant_name,
                 package_name=project.package_name,
                 packaged_data_dirs=packaged_data_dirs,
+                namespace_scan_dirs=project.namespace_scan_dirs,
                 class_stem=project.class_stem,
                 ns=project.namespace,
                 ns_attr=project.namespace_attribute,

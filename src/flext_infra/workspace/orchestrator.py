@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, override
 
 from flext_core import r, s
-from flext_infra import c, config, m, t, u
+from flext_infra import c, m, t
 
 from ._orchestrator_discovery import FlextInfraWorkspaceOrchestratorDiscoveryMixin
 from ._orchestrator_execution import FlextInfraWorkspaceOrchestratorExecutionMixin
@@ -41,21 +40,6 @@ class FlextInfraOrchestratorService(
     def root(self) -> Path:
         """Canonical workspace root."""
         return self.repository_root.resolve()
-
-    @u.model_validator(mode="after")
-    def _require_apply(self) -> Self:
-        """Require the sole Make effect authorization from the parent process."""
-        make = config.Infra.codegen.make
-        supplied = (
-            u.Cli.env_read(make.apply_variable, dict(os.environ)).unwrap().strip()
-        )
-        if supplied == make.apply_value:
-            return self
-        read_only_verbs = frozenset({"check", "test", "docs", "scan", "val", "build"})
-        if self.verb not in read_only_verbs:
-            msg = f"workspace orchestration requires {make.apply_variable}={make.apply_value}"
-            raise ValueError(msg)
-        return self
 
     @classmethod
     def execute_command(cls, params: Self) -> p.Result[bool]:

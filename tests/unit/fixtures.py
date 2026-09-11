@@ -111,7 +111,7 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
             m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=root, apply=True)
         )
     )
-    setup = tm.ok(u.Tests.run_isolated_make(["setup", "APPLY=Y"], cwd=root))
+    setup = tm.ok(u.Tests.run_isolated_make(["setup", ""], cwd=root))
     tm.that(u.Cli.process_succeeded(setup.outcome), eq=True, msg=setup.stderr)
     tm.that((root / c.Infra.VENV_BIN_REL / c.Infra.DEPTRY).is_file(), eq=True)
     (root / "limits.toml").write_text(

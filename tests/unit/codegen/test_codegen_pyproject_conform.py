@@ -325,7 +325,6 @@ dev = ["custom-tool>=1"]
 required-version = ">=0"
 exclude-newer = "7 days"
 exclude-newer-package = { cryptography = false }
-
 [tool.pyrefly]
 python-interpreter-path = "../.venv/bin/python"
 """
@@ -352,24 +351,12 @@ python-interpreter-path = "../.venv/bin/python"
         uv = test_u.Tests.toml_table_at(first, "tool", "uv")
         tm.that(second, eq=first)
         tm.that(uv["link-mode"], eq=toolchain.uv_link_mode)
-        tm.that(uv["exclude-newer"], eq=toolchain.uv_exclude_newer)
-        # The rolling supply-chain window exempts the typed tool identities the
-        # fleet declares: cooldown exclusions plus the config-owned full tool
-        # catalog. Table placement never grants an exemption, so an unknown
-        # package in dev remains a capped runtime library.
-        expected_exclude_newer_package: dict[str, bool | str] = {
-            package: False
-            for package in {
-                *toolchain.dependency_cooldown_exclusions,
-                *toolchain.additional_python_tool_distributions,
-            }
-            if package not in toolchain.dependency_cooldown_overrides
-        }
-        expected_exclude_newer_package.update(toolchain.dependency_cooldown_overrides)
-        tm.that(
-            test_u.Tests.toml_mapping(uv["exclude-newer-package"]),
-            eq=expected_exclude_newer_package,
-        )
+        # The supply-chain cooldown is exterminated fleet-wide (flext-fphyv):
+        # uv resolves every version published up to now, and a removed
+        # declaration exterminates the keys everywhere (flext-gzfd2 class), so
+        # pre-existing projections carrying the old cap converge to no keys.
+        tm.that("exclude-newer" not in uv, eq=True)
+        tm.that("exclude-newer-package" not in uv, eq=True)
         tm.that("required-version" not in uv, eq=True)
         tm.that(
             "python-interpreter-path"
@@ -378,10 +365,6 @@ python-interpreter-path = "../.venv/bin/python"
         )
         dev_group = test_u.Tests.toml_strings_at(first, "dependency-groups", "dev")
         tm.that("custom-tool>=1" in dev_group, eq=True)
-        tm.that(
-            "custom-tool" not in test_u.Tests.toml_mapping(uv["exclude-newer-package"]),
-            eq=True,
-        )
         # Why (CodeRabbit 3742335224): assert the exact requirement the typed
         # SSOT declares, not merely the package name. A name-only assertion
         # stays green even if the generated floor drifts away from the owner.

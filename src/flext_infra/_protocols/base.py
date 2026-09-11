@@ -325,18 +325,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def dependency_cooldown_days(self) -> int:
-            """Supply-chain cooldown for uv-resolved runtime libraries."""
-            ...
-
-        @property
-        def dependency_cooldown_exclusions(self) -> t.StrSequence:
-            """Packages exempted from cooldown for urgent security floors."""
-            ...
-
-        @property
         def additional_python_tool_distributions(self) -> t.StrSequence:
-            """Declared tool identities uncapped by the supply-chain cooldown."""
+            """Declared tool identities outside the scaffold requirement owners."""
             ...
 
         @property
@@ -345,24 +335,9 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def dependency_cooldown_overrides(self) -> t.StrMapping:
-            """Per-package cooldown cutoffs as RFC 3339 timestamps."""
-            ...
-
-        @property
         def uv_constraint_dependencies(self) -> t.StrSequence:
             """SSOT-declared [tool.uv] constraints; empty exterminates the key."""
             ...
-
-        @property
-        def uv_exclude_newer(self) -> str:
-            """Uv exclude-newer window scoped away from development tools."""
-            ...
-
-        # `uv_exclude_newer_package` used to sit here, undocumented and with no
-        # implementation on ToolchainSpec, so the model never satisfied its own
-        # protocol. `dependency_cooldown_overrides` above is that concept, named
-        # for the policy rather than the uv key it renders into.
 
         @property
         def kubectl_version(self) -> str:

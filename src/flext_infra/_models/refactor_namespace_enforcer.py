@@ -87,6 +87,23 @@ class FlextInfraModelsNamespaceEnforcer:
     class InternalImportViolation(mm.ViolationDetailMixin, ImportViolationBase):
         """Internal import violation."""
 
+    class ConsumerImportViolation(mm.ViolationDetailMixin, ImportViolationBase):
+        """Consumer import grammar violation (R1 facade-only rule)."""
+
+        target_package: Annotated[
+            t.NonEmptyStr, m.Field(description="Target flext package name")
+        ]
+        imported_path: Annotated[
+            t.NonEmptyStr, m.Field(description="Full imported module path")
+        ]
+        imported_symbol: Annotated[
+            t.NonEmptyStr, m.Field(description="Symbol being imported")
+        ]
+        legal_symbols: Annotated[
+            t.StrSequence,
+            m.Field(description="Legal symbols published by target package"),
+        ] = ()
+
     class PrivateImportBypassViolation(mm.ViolationDetailMixin, ImportViolationBase):
         """Private-module import that should use the canonical facade."""
 
@@ -233,6 +250,13 @@ class FlextInfraModelsNamespaceEnforcer:
             m.Field(
                 default_factory=tuple,
                 description="Internal import violations collected for the project.",
+            ),
+        ]
+        consumer_import_violations: Annotated[
+            t.SequenceOf[FlextInfraModelsNamespaceEnforcer.ConsumerImportViolation],
+            m.Field(
+                default_factory=tuple,
+                description="Consumer import grammar violations (R1) collected for the project.",
             ),
         ]
         private_import_bypass_violations: Annotated[
@@ -403,6 +427,7 @@ class FlextInfraModelsNamespaceEnforcer:
                 self.import_violations,
                 self.namespace_source_violations,
                 self.internal_import_violations,
+                self.consumer_import_violations,
                 self.private_import_bypass_violations,
                 self.manual_protocol_violations,
                 self.cyclic_imports,
@@ -453,6 +478,10 @@ class FlextInfraModelsNamespaceEnforcer:
         ] = 0
         total_internal_import_violations: Annotated[
             t.NonNegativeInt, m.Field(description="Total internal import violations")
+        ] = 0
+        total_consumer_import_violations: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Total consumer import grammar violations (R1)"),
         ] = 0
         total_private_import_bypass_violations: Annotated[
             t.NonNegativeInt,
@@ -555,6 +584,9 @@ class FlextInfraModelsNamespaceEnforcer:
                 ),
                 total_internal_import_violations=sum(
                     len(p.internal_import_violations) for p in projects
+                ),
+                total_consumer_import_violations=sum(
+                    len(p.consumer_import_violations) for p in projects
                 ),
                 total_private_import_bypass_violations=sum(
                     len(p.private_import_bypass_violations) for p in projects

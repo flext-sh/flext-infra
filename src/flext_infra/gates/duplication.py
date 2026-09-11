@@ -1,4 +1,4 @@
-"""Fail-closed jscpd duplicate-code detector."""
+"""Fail-closed jscpd duplicate-code detector (R2 consumer+family scope)."""
 
 from __future__ import annotations
 
@@ -19,7 +19,12 @@ if TYPE_CHECKING:
 
 
 class FlextInfraDuplicationGate(FlextInfraGate):
-    """Report every clone owned by one project from a fresh workspace scan."""
+    """Report every clone owned by one project from a fresh workspace scan.
+
+    R2 extension: consumer+family scope via [tool.flext.project] config keys;
+    thresholds in config SSOT. Structural ban forms only for mechanisms with
+    a published canonical owner (derived from primitives set) — never per-site lists.
+    """
 
     gate_id: ClassVar[str] = "duplication"
     gate_name: ClassVar[str] = "Code Duplication"
@@ -39,7 +44,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         """Run and validate jscpd, then expose every owned clone as an error."""
         _ = ctx
         started = time.monotonic()
-        scan = self._scan_workspace()
+        scan = self._scan_workspace(project_dir)
         parsed = self._issues_from_report(scan, project_dir)
         issues = (
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
@@ -54,7 +59,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             started=started,
         )
 
-    def _scan_workspace(self) -> p.Cli.CommandOutput:
+    def _scan_workspace(self, project_dir: Path) -> p.Cli.CommandOutput:
         """Create one fresh report; tool, scope, and report failures escape."""
         binary = shutil.which(c.Infra.JSCPD_BINARY)
         if binary is None:
@@ -72,7 +77,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                     forwarded_signal=None,
                 ),
             )
-        scope = self._render_scope_dirs()
+        scope = self._render_scope_dirs(project_dir)
         if scope.failure:
             return m.Cli.CommandOutput(
                 stdout="",
@@ -89,7 +94,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                     raw_return_code=1, timed_out=False, forwarded_signal=None
                 ),
             )
-        config_path = self._render_config()
+        config_path = self._render_config(project_dir)
         report_dir = self._repository_root / c.Infra.JSCPD_REPORT_DIRNAME
         report_path = report_dir / c.Infra.JSCPD_REPORT_FILENAME
         if report_path.is_symlink() or (
@@ -112,15 +117,22 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         result = self._run(cmd, self._repository_root, timeout=c.Infra.TIMEOUT_LONG)
         return self._load_report(report_dir, result)
 
-    def _render_scope_dirs(self) -> p.Result[t.StrSequence]:
+    def _render_scope_dirs(self, project_dir: Path) -> p.Result[t.StrSequence]:
         """Every discovered project's canonical scope plus declared extra trees.
 
+        R2: Extended to consumer+family scope via [tool.flext.project] config keys.
         Reuses the same workspace-topology discovery every other check-scoping
         path uses (``u.Infra.resolve_projects``) — never a second hardcoded
         project list. A project's manifest may declare additional
         ``repository.duplication_trees`` (e.g. Helm charts); those declared
         trees join the scan when they exist on disk.
         """
+        # Read project-specific config from [tool.flext.project]
+        project_config = self._read_project_config(project_dir)
+        scope_dirnames = project_config.get("duplication", {}).get(
+            "scope", c.Infra.JSCPD_SCOPE_DIRNAMES
+        )
+
         discovered = u.Infra.resolve_projects(self._repository_root, ())
         if discovered.failure:
             return r[t.StrSequence].from_failure(discovered)
@@ -138,9 +150,28 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                         for tree in declared_trees.value
                         if (project.path / tree).is_dir()
                     ),
+                    *(
+                        dirname
+                        for dirname in scope_dirnames
+                        if (project.path / dirname).is_dir()
+                    ),
                 )
             )
         )
+
+    def _read_project_config(self, project_dir: Path) -> dict:
+        """Read [tool.flext.project] from project's pyproject.toml."""
+        pyproject_path = project_dir / "pyproject.toml"
+        if not pyproject_path.is_file():
+            return {}
+        loaded = u.Cli.config_load(pyproject_path, expand_env=False)
+        if loaded.failure:
+            return {}
+        try:
+            data = loaded.value.data
+            return data.get("tool", {}).get("flext", {}).get("project", {})
+        except c.ValidationError:
+            return {}
 
     def _declared_duplication_trees(self) -> p.Result[t.StrSequence]:
         """Read ``repository.duplication_trees`` from the governed manifest."""
@@ -178,13 +209,21 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             raise ValueError(msg)
         return scope
 
-    def _render_config(self) -> Path:
+    def _render_config(self, project_dir: Path) -> Path:
         """Materialize the jscpd config from this gate's typed SSOT.
 
+        R2: Reads thresholds from [tool.flext.project] config SSOT.
         A generated-at-scan-time projection, never a second hand-edited
         source; regenerating with unchanged constants produces byte-identical
         content (idempotent).
         """
+        project_config = self._read_project_config(project_dir)
+        dup_config = project_config.get("duplication", {})
+        min_lines = dup_config.get("min-lines", c.Infra.JSCPD_MIN_LINES)
+        min_tokens = dup_config.get("min-tokens", c.Infra.JSCPD_MIN_TOKENS)
+        threshold = dup_config.get("threshold-percent", c.Infra.JSCPD_THRESHOLD_PERCENT)
+        mode = dup_config.get("mode", c.Infra.JSCPD_MODE)
+
         config = m.Infra.JscpdConfig(
             absolute=True,
             formatsExts={
@@ -192,13 +231,13 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 for name, extensions in c.Infra.JSCPD_FORMAT_EXTENSIONS.items()
             },
             ignore=tuple(c.Infra.JSCPD_IGNORE_PATTERNS),
-            minLines=c.Infra.JSCPD_MIN_LINES,
-            minTokens=c.Infra.JSCPD_MIN_TOKENS,
-            mode=c.Infra.JSCPD_MODE,
+            minLines=min_lines,
+            minTokens=min_tokens,
+            mode=mode,
             noColors=True,
             noTips=True,
             reporters=(c.Infra.OUTPUT_JSON,),
-            threshold=c.Infra.JSCPD_THRESHOLD_PERCENT,
+            threshold=threshold,
         )
         config_path = (
             self._repository_root

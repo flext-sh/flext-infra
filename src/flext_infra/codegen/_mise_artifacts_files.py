@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import stat
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
@@ -85,32 +84,13 @@ class FlextInfraMiseArtifactsFiles:
         return r[tuple[int, int]].ok((observed.st_dev, observed.st_ino))
 
     @classmethod
-    def persist_apply_backup(cls, path: Path, content: bytes) -> p.Result[Path]:
-        """Write `{name}.{UTC basic ISO}.bak` beside a destination about to change."""
-        stamp = datetime.now(UTC).strftime(c.Infra.GEN_BACKUP_UTC_FORMAT)
-        backup = path.with_name(f"{path.name}.{stamp}.bak")
-        before = u.Cli.atomic_read_binary_file_state(backup, required=False)
-        if before.failure:
-            return r[Path].from_failure(before)
-        if before.value.parent_device is None or before.value.parent_inode is None:
-            return r[Path].fail(f"generation backup parent is absent: {backup.parent}")
-        if before.value.content is not None:
-            return r[Path].fail(f"generation backup already exists: {backup}")
-        written = u.Cli.atomic_write_binary_file_guarded(
-            before.value, content, permission_mode=0o644
-        )
-        if written.failure:
-            return r[Path].from_failure(written)
-        return r[Path].ok(backup)
-
-    @classmethod
     def write_publication(
-        cls, publication: m.Infra.CodegenStagedFile, *, backup: bool = True
+        cls, publication: m.Infra.CodegenStagedFile
     ) -> p.Result[bool]:
         """Consume one staged create/replace/mode/delete through the CLI owner.
 
-        ``backup`` is apply-only. Recovery must pass ``backup=False`` so a
-        rollback never snapshots the failed new bytes before restoring.
+        Publication is a guarded atomic replace; the zero-residue law
+        prohibits leaving backup copies beside managed destinations.
         """
         before = publication.before
         replacement = publication.replacement
@@ -120,14 +100,6 @@ class FlextInfraMiseArtifactsFiles:
             return r[bool].fail(
                 f"codegen staged replacement is absent: {replacement.path}"
             )
-        if (
-            backup
-            and before.content is not None
-            and before.content != replacement.content
-        ):
-            backed = cls.persist_apply_backup(before.path, before.content)
-            if backed.failure:
-                return r[bool].from_failure(backed)
         published = u.Cli.atomic_publish_staged_binary_file_guarded(before, replacement)
         if published.failure:
             return r[bool].from_failure(published)
