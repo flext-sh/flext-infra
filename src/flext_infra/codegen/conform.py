@@ -2830,6 +2830,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 const_name=project.constant_name,
                 package_name=project.package_name,
                 packaged_data_dirs=packaged_data_dirs,
+                namespace_scan_dirs=project.namespace_scan_dirs,
                 class_stem=project.class_stem,
                 ns=project.namespace,
                 ns_attr=project.namespace_attribute,
