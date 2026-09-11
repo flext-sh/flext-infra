@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, u
 
 from .base import FlextInfraNamespaceRulesBase
 
@@ -36,7 +36,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
                 continue
             if cls._module_docstring(statement):
                 continue
-            if kind == "Assign" and cls._dunder_assignment(statement):
+            if kind in {"Assign", "AnnAssign"} and cls._dunder_assignment(statement):
                 continue
             if kind == "Raise":
                 continue
@@ -62,7 +62,15 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         # An ``__main__`` guard must terminate through the package
         # entrypoint (``...main()``); a pure re-export (operational
         # r/e/x/h/d/s) carries no call at all and is functional too.
-        return all(name.endswith("main") for name in entry_calls)
+        # Terminal wrappers (``SystemExit``/``sys.exit``/``builtins.exit``)
+        # only forward the entrypoint's return code, so the real terminator is
+        # the ``...main()`` call nested inside them.
+        entrypoint_calls = [
+            name for name in entry_calls if not name.lower().endswith("exit")
+        ]
+        return not entrypoint_calls or all(
+            name.endswith("main") for name in entrypoint_calls
+        )
 
     @classmethod
     def check_structure(
@@ -234,6 +242,8 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         ):
             return False
         alias, suffix = spec
+        canonical_alias = u.Infra.package_alias(package_name=package_name)
+        accepted_aliases = {alias, canonical_alias}
         classes = cls.outer_classes(tree)
         # Secondary support classes at module level are allowed (see the loop
         # in check_structure); only the facade class itself must exist with the
@@ -259,7 +269,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             cls.kind(node) in {"Assign", "AnnAssign"}
             and len(targets) == 1
             and cls.kind(targets[0]) == "Name"
-            and cls.name_of(targets[0]) == alias
+            and cls.name_of(targets[0]) in accepted_aliases
             and (value_is_class or value_is_global_singleton)
             and cls.line(node) > cls.line(facade)
         ):
