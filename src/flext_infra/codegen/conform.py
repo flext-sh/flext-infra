@@ -1499,12 +1499,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             m.Infra.UvScopedDependencyExclusionSpec
         ],
     ) -> p.Result[str]:
-        """Conform one pyproject source under this repository's cooldown policy."""
-        cooldown_exclusions, cooldown_overrides = (
-            FlextInfraCodegenConform._dependency_cooldown_policy(
-                repository, codegen.toolchain
-            )
-        )
+        """Conform one pyproject source."""
         return u.Infra.pyproject_conform(
             source,
             providers=codegen.providers,
@@ -1515,8 +1510,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             uv_link_mode=FlextInfraCodegenConform._link_mode(
                 repository, codegen.toolchain
             ),
-            dependency_cooldown_exclusions=cooldown_exclusions,
-            dependency_cooldown_overrides=cooldown_overrides,
             uv_exclude_dependencies=uv_exclude_dependencies,
             namespace_scan_dirs=(
                 workspace.project.namespace_scan_dirs
@@ -2328,9 +2321,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     ),
                     python_version=codegen.toolchain.python_version,
                     state_directory_name=codegen.toolchain.state_directory_name,
-                    dependency_cooldown_days=(
-                        codegen.toolchain.dependency_cooldown_days
-                    ),
                     github_actions=codegen.github_actions,
                     make=codegen.make,
                     workspace_repositories=workspace_repositories,
@@ -2390,9 +2380,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             gitlinks = self._managed_gitlinks(workspace, codegen)
             if gitlinks.failure:
                 return r[p.Model].from_failure(gitlinks)
-            cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
-                repository, codegen.toolchain
-            )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     pytest=config.Infra.tooling.tools.pytest,
@@ -2415,9 +2402,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         repository, codegen.toolchain
                     ),
                     uv_version=codegen.toolchain.uv_version,
-                    uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
-                    dependency_cooldown_exclusions=cooldown_exclusions,
-                    dependency_cooldown_overrides=cooldown_overrides,
                     make=codegen.make,
                     extra_verbs=(
                         FlextInfraCodegenConform._merge_extra_verbs(
@@ -2538,9 +2522,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 uv_link_mode=FlextInfraCodegenConform._link_mode(
                     repository, codegen.toolchain
                 ),
-                uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
-                dependency_cooldown_exclusions=cooldown_exclusions,
-                dependency_cooldown_overrides=cooldown_overrides,
                 # ProjectRenderContext replaces this with the composed map.
                 # Pass the neutral value explicitly so Pydantic never deep-copies
                 # the MappingProxyType model default while building the base.
