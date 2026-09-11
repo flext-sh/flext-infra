@@ -68,7 +68,6 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
         *,
         skip_protected: bool,
         skip_settings: bool,
-        skip_alias_modules: bool,
         skip_init_py: bool,
     ) -> bool:
         """Return whether a path should be exposed as a Python Rope resource."""
@@ -87,11 +86,6 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
                 skip_settings
                 and file_path.name
                 in FlextInfraConstantsNamespace.NAMESPACE_SETTINGS_FILE_NAMES
-            )
-            and not (
-                skip_alias_modules
-                and file_path.stem
-                in FlextInfraConstantsNamespace.NAMESPACE_CANONICAL_ALIAS_MODULE_STEMS
             )
         )
 
