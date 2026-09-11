@@ -13,7 +13,7 @@ from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
 from flext_core import r
-from flext_infra import c, config, t, u
+from flext_infra import c, t, u
 
 from ._release_artifact_archive import FlextInfraReleaseArtifactArchiveMixin
 
@@ -58,15 +58,9 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
             return r[str].fail_op("parse release requirement", exc)
         name = canonicalize_name(parsed.name)
         if not name.startswith("flext-"):
-            if parsed.url is not None:
-                if not any(
-                    str(parsed.url).startswith(prefix)
-                    for prefix in config.Infra.release.private_direct_refs
-                ):
-                    return r[str].fail(
-                        f"external direct reference is not publishable: {requirement}"
-                    )
-                return r[str].ok(requirement.strip())
+            # Non-fleet dependencies pass through verbatim: the committed
+            # source pyproject is the single authority that declares them, and
+            # the release must preserve exactly what the source pinned.
             return r[str].ok(requirement.strip())
         if name not in versions:
             return r[str].fail(
@@ -142,7 +136,25 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
                 u.Cli.toml_table_child(hatch, "metadata") if hatch is not None else None
             )
             if metadata is not None:
-                if config.Infra.release.private_direct_refs:
+                # Direct references survive only when the release itself
+                # carries one: the flag is deduced from the rendered
+                # dependencies (main + every declared group), never configured.
+                rendered_fields = [
+                    project.get(c.Infra.DEPENDENCIES),
+                    *(
+                        section.get(group_name)
+                        for section, group_name in u.Infra.requirement_group_fields(
+                            document, project
+                        )
+                    ),
+                ]
+                rendered_has_direct = any(
+                    Requirement(str(item)).url is not None
+                    for field in rendered_fields
+                    if field
+                    for item in field
+                )
+                if rendered_has_direct:
                     metadata["allow-direct-references"] = True
                 else:
                     u.Cli.toml_remove_key_if_present(
@@ -285,13 +297,10 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
             except InvalidRequirement as exc:
                 return r[bool].fail_op("parse artifact requirement", exc)
             if requirement.url is not None:
-                if not any(
-                    str(requirement.url).startswith(prefix)
-                    for prefix in config.Infra.release.private_direct_refs
-                ):
-                    return r[bool].fail(
-                        f"artifact contains direct dependency reference: {requirement_text}"
-                    )
+                # Direct references are source-declared (the single
+                # authority); hatch's allow-direct-references gate is deduced
+                # at render time.
+                continue
             name = canonicalize_name(requirement.name)
             if not name.startswith("flext-"):
                 continue
