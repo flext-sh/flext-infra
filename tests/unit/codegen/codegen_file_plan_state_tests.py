@@ -20,7 +20,7 @@ def _observed_state(root: Path, *, text: str) -> m.Cli.AtomicFileState:
     target.write_text(text, encoding="utf-8")
     state = u.Cli.atomic_read_binary_file_state(target, required=True)
     if state.failure:
-        raise AssertionError(f"state read failed: {state.error}")
+        raise AssertionError(state.error)
     return state.value
 
 
