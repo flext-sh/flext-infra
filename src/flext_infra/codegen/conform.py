@@ -372,35 +372,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         Returns failure if any requirement is violated, or if the ``.gen`` file
         itself is absent or malformed.
         """
-        package_root = Path(__file__).resolve().parent.parent
-        # Installed (wheel) layout ships config inside the package; the source
-        # checkout keeps it at the repository root next to src/.
-        gen_path = (
-            package_root / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_GEN_FILENAME
-        )
-        if not gen_path.is_file():
-            gen_path = (
-                package_root.parent.parent
-                / c.Infra.CODEGEN_CONFIG_DIR
-                / c.Infra.CODEGEN_GEN_FILENAME
-            )
-        if not gen_path.is_file():
-            return r[bool].fail(
-                f"generation requirements contract is absent: {gen_path}; "
-                f"{c.Infra.CODEGEN_GEN_FILENAME} is the mandatory conformance gate"
-            )
-        loaded = u.Cli.config_load(gen_path, expand_env=False)
-        if loaded.failure:
-            return r[bool].fail(
-                f"failed to load generation requirements: {loaded.error or gen_path}"
-            )
-        try:
-            requirements = m.Infra.GenRequirementsSpec.model_validate(loaded.value.data)
-        except c.ValidationError as exc:
-            return r[bool].fail(
-                f"invalid .gen requirements contract at {gen_path}: {exc}",
-                exception=exc,
-            )
+        requirements_result = u.Infra.load_gen_requirements(Path(__file__))
+        if requirements_result.failure:
+            return r[bool].from_failure(requirements_result)
+        requirements = requirements_result.unwrap()
         bypass_policies = c.Infra.MANAGED_FILE_POLICIES_BYPASS
         forbidden_in_contract = frozenset(
             requirements.requirements.managed_file_policies.forbidden
@@ -1516,6 +1491,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if workspace.project is not None
                 else None
             ),
+            gate_budgets=dict(codegen.budget),
         )
 
     @staticmethod

@@ -128,9 +128,10 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         """
         # Read project-specific config from [tool.flext.project]
         project_config = self._read_project_config(project_dir)
-        scope_dirnames = project_config.get("duplication", {}).get(
-            "scope", c.Infra.JSCPD_SCOPE_DIRNAMES
+        duplication_config = u.Cli.json_as_mapping(
+            project_config.get("duplication", {})
         )
+        scope_dirnames = duplication_config.get("scope", c.Infra.JSCPD_SCOPE_DIRNAMES)
 
         discovered = u.Infra.resolve_projects(self._repository_root, ())
         if discovered.failure:
@@ -158,7 +159,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             )
         )
 
-    def _read_project_config(self, project_dir: Path) -> dict[str, m.JsonValue]:
+    def _read_project_config(self, project_dir: Path) -> dict[str, t.JsonValue]:
         """Read [tool.flext.project] from project's pyproject.toml.
 
         Why: a malformed manifest is a declared error, never an empty config —
@@ -173,7 +174,8 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             return {}
         tool = u.Cli.json_as_mapping(loaded.value.data).get("tool", {})
         flext = u.Cli.json_as_mapping(tool).get("flext", {})
-        return dict(u.Cli.json_as_mapping(flext).get("project", {}))
+        project = u.Cli.json_as_mapping(flext).get("project", {})
+        return dict(u.Cli.json_as_mapping(project))
 
     def _declared_duplication_trees(self) -> p.Result[t.StrSequence]:
         """Read ``repository.duplication_trees`` from the governed manifest."""
@@ -220,7 +222,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         content (idempotent).
         """
         project_config = self._read_project_config(project_dir)
-        dup_config = project_config.get("duplication", {})
+        dup_config = u.Cli.json_as_mapping(project_config.get("duplication", {}))
         min_lines = dup_config.get("min-lines", c.Infra.JSCPD_MIN_LINES)
         min_tokens = dup_config.get("min-tokens", c.Infra.JSCPD_MIN_TOKENS)
         threshold = dup_config.get("threshold-percent", c.Infra.JSCPD_THRESHOLD_PERCENT)

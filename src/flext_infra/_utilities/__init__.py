@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from ._docs_scope_projects import FlextInfraUtilitiesDocsScopeProjectsMixin
     from ._docs_scope_selection import FlextInfraUtilitiesDocsScopeSelectionMixin
     from ._docs_scope_state import FlextInfraUtilitiesDocsScopeStateMixin
+    from ._gen_requirements import FlextInfraUtilitiesGenRequirements
     from ._git.attestation import FlextInfraUtilitiesGitAttestationMixin
     from ._git.remote import FlextInfraUtilitiesGitRemote
     from ._git.repo import FlextInfraUtilitiesGitRepo
@@ -196,6 +197,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsScopeSelectionMixin",
     "FlextInfraUtilitiesDocsScopeStateMixin",
     "FlextInfraUtilitiesDocsValidate",
+    "FlextInfraUtilitiesGenRequirements",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGitAttestationMixin",
     "FlextInfraUtilitiesGitRemote",
@@ -308,6 +310,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._docs_scope_projects": ("FlextInfraUtilitiesDocsScopeProjectsMixin",),
             "._docs_scope_selection": ("FlextInfraUtilitiesDocsScopeSelectionMixin",),
             "._docs_scope_state": ("FlextInfraUtilitiesDocsScopeStateMixin",),
+            "._gen_requirements": ("FlextInfraUtilitiesGenRequirements",),
             "._git": ("_git",),
             "._git.attestation": ("FlextInfraUtilitiesGitAttestationMixin",),
             "._git.remote": ("FlextInfraUtilitiesGitRemote",),
