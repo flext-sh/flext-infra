@@ -383,9 +383,7 @@ class FlextInfraMiseArtifactsState:
         return tuple(sorted(set(residue)))
 
     @classmethod
-    def scope_transaction_residue(
-        cls, scope_root: Path
-    ) -> t.VariadicTuple[Path]:
+    def scope_transaction_residue(cls, scope_root: Path) -> t.VariadicTuple[Path]:
         """Find unowned transaction trees across the entire scope identity.
 
         One scope identity shares exactly one journal lease. Reconciliation
@@ -431,9 +429,7 @@ class FlextInfraMiseArtifactsState:
         return cls.cleanup_orphan_paths(residue)
 
     @classmethod
-    def cleanup_orphan_paths(
-        cls, paths: t.VariadicTuple[Path]
-    ) -> p.Result[bool]:
+    def cleanup_orphan_paths(cls, paths: t.VariadicTuple[Path]) -> p.Result[bool]:
         """Remove orphaned physical trees through the guarded cleanup owner."""
         for path in paths:
             observed = u.Cli.atomic_inventory_physical_tree(path)

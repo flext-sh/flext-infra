@@ -229,7 +229,7 @@ def policy_violation_project(tmp_path: Path) -> Path:
     tests_root.mkdir(parents=True)
     # The ini value is an arbitrary non-production budget owned by this probe.
     (project_root / "pyproject.toml").write_text(
-        "[tool.pytest.ini_options]\nflext_slow_timeout_seconds = \"30\"\n",
+        '[tool.pytest.ini_options]\nflext_slow_timeout_seconds = "30"\n',
         encoding="utf-8",
     )
     (tests_root / "test_policy.py").write_text(

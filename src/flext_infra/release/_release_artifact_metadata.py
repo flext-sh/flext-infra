@@ -284,14 +284,13 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
                 requirement = Requirement(requirement_text)
             except InvalidRequirement as exc:
                 return r[bool].fail_op("parse artifact requirement", exc)
-            if requirement.url is not None:
-                if not any(
-                    str(requirement.url).startswith(prefix)
-                    for prefix in config.Infra.release.private_direct_refs
-                ):
-                    return r[bool].fail(
-                        f"artifact contains direct dependency reference: {requirement_text}"
-                    )
+            if requirement.url is not None and not any(
+                str(requirement.url).startswith(prefix)
+                for prefix in config.Infra.release.private_direct_refs
+            ):
+                return r[bool].fail(
+                    f"artifact contains direct dependency reference: {requirement_text}"
+                )
             name = canonicalize_name(requirement.name)
             if not name.startswith("flext-"):
                 continue
