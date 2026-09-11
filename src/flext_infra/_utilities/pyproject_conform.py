@@ -121,9 +121,6 @@ class FlextInfraUtilitiesPyprojectConform:
         toolchain: p.Infra.ToolchainSpec,
         required_dev_dependencies: t.StrSequence,
         uv_link_mode: str | None = None,
-        uv_exclude_newer: str | None = None,
-        dependency_cooldown_exclusions: t.StrSequence | None = None,
-        dependency_cooldown_overrides: t.StrMapping | None = None,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and root workspace."""
@@ -158,22 +155,6 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
             link_mode=uv_link_mode or toolchain.uv_link_mode,
-            exclude_newer=uv_exclude_newer or toolchain.uv_exclude_newer,
-            exclude_newer_packages=(
-                tuple(
-                    dict.fromkeys((
-                        *toolchain.dependency_cooldown_exclusions,
-                        *toolchain.additional_python_tool_distributions,
-                    ))
-                )
-                if dependency_cooldown_exclusions is None
-                else dependency_cooldown_exclusions
-            ),
-            exclude_newer_overrides=(
-                toolchain.dependency_cooldown_overrides
-                if dependency_cooldown_overrides is None
-                else dependency_cooldown_overrides
-            ),
             exclude_dependencies=uv_exclude_dependencies,
             uv_environments=toolchain.uv_environments,
             constraint_dependencies=toolchain.uv_constraint_dependencies,
@@ -633,9 +614,6 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.MakeProfile,
         link_mode: str | None = None,
-        exclude_newer: str | None = None,
-        exclude_newer_packages: t.StrSequence | None = None,
-        exclude_newer_overrides: t.StrMapping | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] | None = None,
         uv_environments: t.StrSequence | None = None,
@@ -684,8 +662,12 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_remove_key_if_present(uv, "constraint-dependencies")
         if link_mode is not None:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
-        if exclude_newer is not None:
-            u.Cli.toml_sync_value(uv, "exclude-newer", exclude_newer)
+        # The supply-chain cooldown was exterminated fleet-wide (flext-fphyv):
+        # uv resolves every version published up to now. Removed declarations
+        # exterminate the keys everywhere so no orphan cap survives without an
+        # owner (flext-gzfd2 class).
+        u.Cli.toml_remove_key_if_present(uv, "exclude-newer")
+        u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
         # Environments come from the fleet toolchain SSOT: an empty declaration
         # removes the key so uv resolves every environment, and a declared
         # sequence skips the splits the fleet does not support (win32 resolves
@@ -699,19 +681,6 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_sync_value(uv, "environments", environments)
         elif uv_environments is not None:
             u.Cli.toml_remove_key_if_present(uv, "environments")
-        if exclude_newer_packages is not None or exclude_newer_overrides is not None:
-            exclude_newer_payload: t.JsonDict = dict.fromkeys(
-                sorted(exclude_newer_packages or ()), False
-            )
-            exclude_newer_payload.update(
-                sorted((exclude_newer_overrides or {}).items())
-            )
-            if exclude_newer_payload:
-                u.Cli.toml_sync_value(
-                    uv, "exclude-newer-package", exclude_newer_payload
-                )
-            else:
-                u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
         # Project is a flext-infra routing key only; uv scoped form is
         # {package={name, version?}, dependencies=[...]} (uv settings docs).
         # Emit on every owning pyproject so standalone CI clones resolve;

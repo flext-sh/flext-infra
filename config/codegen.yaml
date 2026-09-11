@@ -24,12 +24,7 @@ Infra:
       mise_namespace: mise-artifacts
       uv_link_mode: copy
       uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
-      # Supply-chain cooldown SSOT shared by uv and generated update policy.
-      # 0 disables the window: uv resolves every version published up to now.
-      dependency_cooldown_days: 0
-      dependency_cooldown_exclusions: []
-      dependency_cooldown_overrides: {}
-      # Complete tool catalog uncapped by the uv supply-chain cooldown. The
+      # Complete tool catalog. The
       # codegen model projects the closure of this list with the scaffold
       # requirement owners derived from the build and dev tables; runtime
       # dependency profiles never enter it.
@@ -1092,10 +1087,9 @@ Infra:
           - pytest-testmon>=2.2.0
           - pytest-timeout
           - pytest-xdist
-          # types-* stub floors are declared here (cooldown-eligible dates).
+          # types-* stub floors are declared here (dated floors).
           # Lock-fed raising wrote dated stub versions into the projections;
-          # dated stubs churn weekly, so the SSOT owns the clamp and the
-          # rolling window governs when the date advances (flext-gzfd2).
+          # dated stubs churn weekly, so the SSOT owns the clamp (flext-gzfd2).
           - types-cachetools>=7.0.0.20260713
           - types-cffi>=2.1.0.20260827
           - types-click>=7.1.8
