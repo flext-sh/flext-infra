@@ -14,34 +14,28 @@ from .base_gate import FlextInfraGate
 class FlextInfraBudgetGate(FlextInfraGate):
     """Enforce execution budgets (time, memory, tokens) for gate runs.
 
-    R4: Every gate is a product with a non-optional budget. Budget config via
-    [tool.flext.project.budget] keys; thresholds in config SSOT. Registry
-    divergence (gate without budget row) = hard error.
+    R4: every gate is a product with a non-optional budget. The gate set is
+    derived from ``c.Infra.ALLOWED_GATES`` (the SARIF vocabulary SSOT) — never
+    a frozen enumeration in this class. Budget config lives in
+    ``[tool.flext.project.budget]``; a missing row, a missing required field,
+    or an unreadable pyproject is a declared error, never a skip: registry
+    divergence between the gate registry and consumer configuration is a
+    hard error by design.
     """
 
     gate_id: ClassVar[str] = "budget"
     gate_name: ClassVar[str] = "Execution Budget"
     can_fix: ClassVar[bool] = False
 
-    # Budget defaults (SSOT in constants, overridable via [tool.flext.project])
-    _DEFAULT_TIME_SECONDS: ClassVar[int] = 300
-    _DEFAULT_MEMORY_MB: ClassVar[int] = 6144
-    _DEFAULT_TOKENS: ClassVar[int] = 100000
-
     @override
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
-        """Check that all gates in this project have budget config."""
+        """Check that every registered gate has a complete budget row."""
         _ = ctx
         started = time.monotonic()
-
-        # Read project budget config
         budget_config = self._read_budget_config(project_dir)
-
-        # Validate that all registered gates have budget entries
         issues = self._validate_gate_budgets(budget_config)
-
         return self._build_check_gate_execution(
             project_dir,
             passed=not issues,
@@ -51,74 +45,64 @@ class FlextInfraBudgetGate(FlextInfraGate):
         )
 
     def _read_budget_config(self, project_dir: Path) -> dict:
-        """Read [tool.flext.project.budget] from project's pyproject.toml."""
+        """Read ``[tool.flext.project.budget]`` from the project manifest.
+
+        Input shapes stay untrusted until the collapse into typed shells
+        below; a failed manifest load or a non-mapping projection escapes
+        with its cause instead of degrading into an empty config.
+        """
         pyproject_path = project_dir / "pyproject.toml"
         if not pyproject_path.is_file():
             return {}
         loaded = u.Cli.config_load(pyproject_path, expand_env=False)
         if loaded.failure:
-            return {}
-        try:
-            data = loaded.value.data
-            return (
-                data
-                .get("tool", {})
-                .get("flext", {})
-                .get("project", {})
-                .get("budget", {})
-            )
-        except c.ValidationError:
-            return {}
+            msg = f"budget gate cannot read {pyproject_path}: {loaded.error}"
+            raise ValueError(msg)
+        tool = u.Cli.json_as_mapping(loaded.value.data).get("tool", {})
+        flext = u.Cli.json_as_mapping(tool).get("flext", {})
+        project = u.Cli.json_as_mapping(flext).get("project", {})
+        budget = u.Cli.json_as_mapping(project).get("budget", {})
+        return dict(u.Cli.json_as_mapping(budget))
 
-    def _validate_gate_budgets(self, budget_config: dict) -> tuple[m.Infra.Issue, ...]:
-        """Validate that all gates have budget configuration."""
-        issues: list[m.Infra.Issue] = []
-        required_gates = {
-            "namespace",
-            "canonical_alias",
-            "duplication",
-            "consumer_import_violations",
-            "silent_failure",
-            "boundary",
-            "loc_cap",
-            "tier_whitelist",
-            "mypy",
-            "pyrefly",
-            "pyright",
-            "ruff_lint",
-            "ruff_format",
-            "codemod",
-            "budget",
-        }
+    def _validate_gate_budgets(
+        self, budget_config: dict
+    ) -> tuple[m.Infra.Issue, ...]:
+        """Validate one budget row per ``c.Infra.ALLOWED_GATES`` entry."""
+        required_fields = c.Infra.BUDGET_REQUIRED_FIELDS
+        return tuple(
+            FlextInfraBudgetGate._budget_issue(gate_id, budget_config, required_fields=required_fields)
+            for gate_id in sorted(c.Infra.ALLOWED_GATES)
+        )
 
-        for gate_id in required_gates:
-            if gate_id not in budget_config:
-                issues.append(
-                    m.Infra.Issue(
-                        file="pyproject.toml",
-                        line=1,
-                        column=0,
-                        code=self.gate_id,
-                        message=f"Gate '{gate_id}' missing budget config in [tool.flext.project.budget] — registry divergence is a hard error",
-                        severity=str(c.Infra.GateSeverity.ERROR.value),
-                    )
+    @staticmethod
+    def _budget_issue(
+        gate_id: str, budget_config: dict, *, required_fields: tuple[str, ...]
+    ) -> m.Infra.Issue | None:
+        """Return the declared error for one gate's budget row, when broken."""
+        gate_budget = budget_config.get(gate_id)
+        if gate_budget is None:
+            return FlextInfraBudgetGate._issue(gate_id, "missing budget row")
+        for field in required_fields:
+            if field not in u.Cli.json_as_mapping(gate_budget):
+                return FlextInfraBudgetGate._issue(
+                    gate_id, f"missing required field {field!r}"
                 )
-            else:
-                gate_budget = budget_config[gate_id]
-                issues.extend(
-                    m.Infra.Issue(
-                        file="pyproject.toml",
-                        line=1,
-                        column=0,
-                        code=self.gate_id,
-                        message=f"Gate '{gate_id}' budget missing required field '{field}'",
-                        severity=str(c.Infra.GateSeverity.ERROR.value),
-                    )
-                    for field in ("time-seconds", "memory-mb", "tokens")
-                    if field not in gate_budget
-                )
+        return None
 
-        return tuple(issues)
+    @staticmethod
+    def _issue(gate_id: str, detail: str) -> m.Infra.Issue:
+        """Build one strict budget issue targeted at the project manifest."""
+        return m.Infra.Issue(
+            file=c.Infra.PYPROJECT_FILENAME,
+            line=1,
+            column=0,
+            code=FlextInfraBudgetGate.gate_id,
+            message=(
+                f"gate {gate_id!r}: {detail} in [tool.flext.project.budget] "
+                "— registry divergence is a hard error"
+            ),
+            severity=str(c.Infra.GateSeverity.ERROR.value),
+        )
 
 
 __all__: list[str] = ["FlextInfraBudgetGate"]

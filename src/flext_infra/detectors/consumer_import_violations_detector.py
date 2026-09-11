@@ -1,4 +1,4 @@
-"""Detect consumer import grammar violations (R1 facade-only import rule).
+"""R1 consumer import grammar detector (consumption-law.md section R1).
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,193 +6,139 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from typing import TYPE_CHECKING
 
-from flext_infra import m, u
+from flext_core import u as core_u
+from flext_infra import m, u as infra_u
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from flext_infra import t
 
 
 class FlextInfraConsumerImportViolationsDetector:
-    """Detect consumer import grammar violations per R1 facade-only rule.
+    """Detect consumer import grammar violations (R1).
 
-    Consumer legality (R1): legal iff ``from <pkg> import X`` with
-    ``X in pkg.__all__`` (published lazy contract). Any ``pkg.<submodule>``
-    path is a violation — including facet modules (``flext_cli.models``),
-    nested reach-throughs (``flext_infra.workspace.detector``) and
-    ``flext_core.lazy``. Facet modules remain legal only intra-family.
-
-    Fix hints derived by inverting the published ``_LAZY_IMPORTS`` map.
+    Family roots derive at runtime from the published family surface
+    (``core_u.project_alias_owners()``) — prefix discovery plus the lazy
+    export structural proof, never a frozen roster. Legality per statement:
+    ``from <pkg_root> import X`` is legal iff ``X`` is published by that
+    root; any ``pkg.<submodule>`` path is a violation; wildcard imports
+    cannot prove membership and stay violations. Fix hints use the derived
+    compatibility rename map (long public names -> canonical letters).
     """
 
-    _FLEXT_PREFIXES = ("flext_", "ai_hub")
-    _MIN_FACET_PARTS: int = 2
+    @classmethod
+    def _family_roots(cls) -> frozenset[str]:
+        """Published family member roots at runtime derivation."""
+        return frozenset(core_u.project_alias_owners())
 
     @staticmethod
-    def _is_flext_package(module_name: str) -> bool:
-        """Return whether a module name is a FLEXT family package."""
-        return any(
-            module_name.startswith(prefix)
-            for prefix in FlextInfraConsumerImportViolationsDetector._FLEXT_PREFIXES
-        )
+    def _importer_root(file_path: Path) -> str:
+        """Return the root package name of the module being inspected."""
+        module = infra_u.Infra.package_name(file_path) or ""
+        return module.split(".", maxsplit=1)[0]
 
-    @classmethod
-    def _get_legal_imports(cls, package_name: str) -> set[str]:
-        """Return the set of legal public symbols for a flext package.
-
-        Derives from the package's published ``__all__`` (lazy export contract).
-        """
-        try:
-            module = __import__(package_name, fromlist=["__all__"])
-            published = getattr(module, "__all__", None)
-            if published is None:
-                return set()
-            return set(published)
-        except ImportError:
-            return set()
-
-    @classmethod
-    def _is_facet_module(cls, module_name: str) -> bool:
-        """Return whether a module is a FLEXT facet module (c/t/p/m/u/lazy/etc)."""
-        parts = module_name.split(".")
-        if len(parts) < cls._MIN_FACET_PARTS:
-            return False
-        facet_name = parts[-1]
-        return facet_name in {
-            "constants",
-            "models",
-            "protocols",
-            "typings",
-            "utilities",
-            "lazy",
-            "result",
-            "exceptions",
-            "mixins",
-            "handlers",
-            "decorators",
-            "service",
-            "container",
-            "context",
-            "dispatcher",
-            "registry",
-            "runtime",
-            "loggings",
-            "config",
-            "settings",
-        }
-
-    @classmethod
-    def _is_intra_family(cls, importer_module: str, imported_module: str) -> bool:
-        """Return whether both modules belong to the same flext family package."""
-        if not importer_module or not imported_module:
-            return False
-        importer_root = importer_module.split(".", maxsplit=1)[0]
-        imported_root = imported_module.split(".", maxsplit=1)[0]
-        return importer_root == imported_root
-
-    @classmethod
-    def _is_legal_import(cls, importer_module: str, fqn: str) -> bool:
-        """Return whether an import conforms to the R1 consumer grammar.
-
-        Legal: ``from <pkg> import X`` where X is in pkg.__all__
-        Illegal: any ``pkg.<submodule>``, ``from pkg import submodule``, etc.
-        """
-        # Not a flext package - not our concern
-        if not cls._is_flext_package(fqn.split(".", maxsplit=1)[0]):
-            return True
-
-        # Intra-family facet imports are legal (facade assembly)
-        if cls._is_intra_family(importer_module, fqn):
-            return True
-
-        # Parse the import statement to check form
-        # Legal form: from <pkg> import X
-        # We check: does the import target a submodule (not a symbol in __all__)?
-        imported_root = fqn.split(".", maxsplit=1)[0]
-        cls._get_legal_imports(imported_root)
-
-        # If the import is a direct submodule access (pkg.module), it's illegal
-        if "." in fqn and not fqn.startswith(f"{imported_root}."):
-            # Cross-package submodule access
-            return False
-
-        # Check if it's importing a submodule rather than a published symbol
-        if fqn != imported_root:
-            # It's a submodule import (e.g., flext_cli.models, flext_infra.workspace.detector)
-            # Check if it's a facet module - those are never legal for consumers
-            if cls._is_facet_module(fqn):
-                return False
-            # Any other submodule is also illegal for consumers
-            return False
-
-        # Direct import of package root - check if what's imported is in __all__
-        # This is harder to detect statically; we assume from pkg import X where X is symbol
-        return True
+    @staticmethod
+    def _published_symbols(root: str) -> frozenset[str]:
+        """Return the root's published ``__all__`` membership contract."""
+        module = __import__(root)
+        published = getattr(module, "__all__", None)
+        if published is None:
+            msg = f"R1 detector: family root {root!r} publishes no __all__"
+            raise ValueError(msg)
+        return frozenset(published)
 
     @classmethod
     def detect_file(
         cls, ctx: m.Infra.DetectorContext
-    ) -> t.SequenceOf[m.Infra.ConsumerImportViolation]:
-        """Detect consumer import violations in a single file."""
-        res = u.Infra.fetch_python_resource(
-            ctx.rope_project, ctx.file_path, skip_init_py=True
+    ) -> tuple[m.Infra.ConsumerImportViolation, ...]:
+        """Detect R1 violations in one file with true statement line numbers."""
+        path: Path = ctx.file_path
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        importer_root = FlextInfraConsumerImportViolationsDetector._importer_root(
+            path
         )
-        if res is None:
-            return []
-
-        rope_project = ctx.rope_project
-        current_module = u.Infra.package_name(ctx.file_path)
-        imports = u.Infra.get_semantic_module_imports(rope_project, res)
-
+        family_roots = FlextInfraConsumerImportViolationsDetector._family_roots()
+        renames = core_u.compatibility_alias_renames()
         violations: list[m.Infra.ConsumerImportViolation] = []
-
-        for local, fqn in imports.items():
-            # Skip if not a flext package import
-            fqn_root = fqn.split(".")[0]
-            if not cls._is_flext_package(fqn_root):
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom) or node.level != 0:
                 continue
-
-            # Skip intra-family imports
-            if cls._is_intra_family(current_module, fqn):
+            target = node.module or ""
+            root = target.split(".", maxsplit=1)[0]
+            if root not in family_roots or root == importer_root:
                 continue
-
-            # Check if this is a submodule import (illegal per R1)
-            is_submodule = fqn != fqn_root
-
-            # Get legal symbols for the target package
-            legal_symbols = cls._get_legal_imports(fqn_root)
-
-            # Determine if this import is legal
-            is_legal = False
-            if not is_submodule:
-                # Direct package import - what symbol is imported?
-                # The local name is what's imported; check if it's in legal_symbols
-                # Note: local could be an alias (from flext_core import u as u)
-                # We need to check the actual imported symbol
-                if local in legal_symbols:
-                    is_legal = True
-            # Submodule import - check if it's a facet module
-            elif cls._is_facet_module(fqn):
-                is_legal = False
-            else:
-                is_legal = False  # Any submodule is illegal for consumers
-
-            if not is_legal:
+            published = (
+                FlextInfraConsumerImportViolationsDetector._published_symbols(root)
+            )
+            if "." in target:
                 violations.append(
-                    m.Infra.ConsumerImportViolation(
-                        file=str(ctx.file_path),
-                        line=1,
-                        current_import=f"from ... import {local}  # {fqn}",
-                        target_package=fqn_root,
-                        imported_path=fqn,
-                        imported_symbol=local,
-                        legal_symbols=sorted(legal_symbols),
-                        detail="consumer import violates R1 facade-only grammar",
+                    FlextInfraConsumerImportViolationsDetector._violation(
+                        path,
+                        node.lineno,
+                        target,
+                        target.rsplit(".", maxsplit=1)[-1],
+                        renames,
+                        "submodule path import violates R1 facade-only grammar",
                     )
                 )
+                continue
+            for alias in node.names:
+                symbol = alias.name
+                if symbol == "*":
+                    violations.append(
+                        FlextInfraConsumerImportViolationsDetector._violation(
+                            path,
+                            node.lineno,
+                            f"{target}.<star>",
+                            "(wildcard)",
+                            renames,
+                            "wildcard import cannot prove published membership",
+                        )
+                    )
+                    continue
+                if symbol in published:
+                    continue
+                violations.append(
+                    FlextInfraConsumerImportViolationsDetector._violation(
+                        path,
+                        node.lineno,
+                        target,
+                        symbol,
+                        renames,
+                        "symbol not published by target root (R1 facade-only grammar)",
+                    )
+                )
+        return tuple(violations)
 
-        return violations
+    @staticmethod
+    def _violation(
+        path: Path,
+        lineno: int,
+        target: str,
+        symbol: str,
+        renames: t.StrMapping,
+        detail: str,
+    ) -> m.Infra.ConsumerImportViolation:
+        """Build one typed violation with the true line and a derived hint."""
+        canonical = renames.get(symbol)
+        hint = (
+            f"; canonical form: from {target.split('.', maxsplit=1)[0]} import {canonical}"
+            if canonical
+            else ""
+        )
+        return m.Infra.ConsumerImportViolation(
+            file=str(path),
+            line=lineno,
+            current_import=f"from {target} import {symbol}",
+            target_package=target.split(".", maxsplit=1)[0],
+            imported_path=target,
+            imported_symbol=symbol,
+            detail=f"{detail}{hint}",
+        )
 
 
 __all__: list[str] = ["FlextInfraConsumerImportViolationsDetector"]
