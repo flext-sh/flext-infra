@@ -14,9 +14,6 @@ from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra import c, m, u
-from flext_infra._utilities.namespace_config import (
-    FlextInfraUtilitiesNamespaceConfig,
-)
 from flext_infra.base import s
 
 from .namespace_rules import FlextInfraNamespaceRules
@@ -122,9 +119,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         same declaration made the declared scope a no-op. Without an explicit
         declaration every file stays in scope (previous behavior).
         """
-        declared = FlextInfraUtilitiesNamespaceConfig.namespace_meta(
-            project_root
-        ).get("scan_dirs")
+        declared = u.Infra.namespace_meta(project_root).get("scan_dirs")
         if not isinstance(declared, list) or not declared:
             return True
         scope = frozenset(str(item).strip() for item in declared if str(item).strip())

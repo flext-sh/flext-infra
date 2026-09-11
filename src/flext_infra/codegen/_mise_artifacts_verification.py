@@ -689,7 +689,7 @@ class FlextInfraMiseArtifactsVerification:
                     return r[tuple[m.Cli.AtomicFileState, ...]].fail(
                         "published Mise artifact mode is noncanonical:"
                         f" {expected.path}"
-                        f" (observed {oct(current.value.mode)},"
+                        f" (observed {oct(current.value.mode) if current.value.mode is not None else 'none'},"
                         f" canonical {oct(required_mode)})"
                     )
                 observed.append(current.value.content)

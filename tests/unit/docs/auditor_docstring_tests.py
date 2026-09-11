@@ -46,7 +46,10 @@ def _write_project(tmp_path: Path) -> Path:
     )
     (package / "__init__.py").write_text(_PACKAGE_INIT, encoding="utf-8")
     u.Tests.write_beads_project(
-        project, workspace="flext-demo", database="flext-demo", issue_prefix="flext-demo"
+        project,
+        workspace="flext-demo",
+        database="flext-demo",
+        issue_prefix="flext-demo",
     )
     return project
 

@@ -125,6 +125,7 @@ class FlextInfraUtilitiesPyprojectConform:
         dependency_cooldown_exclusions: t.StrSequence | None = None,
         dependency_cooldown_overrides: t.StrMapping | None = None,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
+        namespace_scan_dirs: t.StrSequence | None = None,
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and root workspace."""
         parsed = cls._parsed_pyproject(pyproject_content)
@@ -152,6 +153,9 @@ class FlextInfraUtilitiesPyprojectConform:
         typecheck_paths = cls._sync_typecheck_paths(source)
         if typecheck_paths.failure:
             return r[str].from_failure(typecheck_paths)
+        namespace_scope = cls._sync_namespace_scope(source, namespace_scan_dirs)
+        if namespace_scope.failure:
+            return r[str].from_failure(namespace_scope)
         sources_result = cls._sync_uv_sources(
             source,
             project_name=project_name,
@@ -577,6 +581,22 @@ class FlextInfraUtilitiesPyprojectConform:
         if tool is None:
             return
         u.Cli.toml_remove_key_if_present(tool, c.Infra.POETRY)
+
+    @staticmethod
+    def _sync_namespace_scope(
+        document: t.Cli.TomlDocument, namespace_scan_dirs: t.StrSequence | None
+    ) -> p.Result[bool]:
+        """Sync ``[tool.flext.namespace].scan_dirs`` from the project SSOT.
+
+        ``None`` leaves the section untouched: projects without a declared
+        scope keep the dynamic every-root behavior. A declared sequence is
+        the workspace manifest's production scope (cosmos-3flk9 decision A).
+        """
+        if namespace_scan_dirs is None:
+            return r[bool].ok(True)
+        namespace = u.Cli.toml_ensure_path(document, ("tool", "flext", "namespace"))
+        u.Cli.toml_sync_string_list(namespace, "scan_dirs", list(namespace_scan_dirs))
+        return r[bool].ok(True)
 
     @staticmethod
     def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:

@@ -77,7 +77,8 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         started = time.monotonic()
         if self._normalized_project_name(project_dir) in self._ALIAS_SOURCE_PACKAGES:
             return self._neutral_skip_result(
-                project_dir, started,
+                project_dir,
+                started,
                 message=f"{self.gate_id}: source package ({c.Infra.PKG_CORE_UNDERSCORE}) excluded from rewrite",
             )
         files_result = self._alias_files(project_dir)
@@ -144,7 +145,8 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         started = time.monotonic()
         if self._normalized_project_name(project_dir) in self._ALIAS_SOURCE_PACKAGES:
             return self._neutral_skip_result(
-                project_dir, started,
+                project_dir,
+                started,
                 message=f"{self.gate_id}: source package ({c.Infra.PKG_CORE_UNDERSCORE}) excluded from rewrite",
             )
         files_result = self._alias_files(project_dir)

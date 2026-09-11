@@ -16,11 +16,7 @@ class FlextInfraUtilitiesSilentFailureAst:
 
     @classmethod
     def collect_silent_failure_findings(
-        cls,
-        tree: ast.Module,
-        source: str,
-        *,
-        is_test_module: bool = False,
+        cls, tree: ast.Module, source: str, *, is_test_module: bool = False
     ) -> t.VariadicTuple[FlextInfraUtilitiesSilentFailureAstRules.Finding]:
         """Collect all silent-failure findings in one module.
 
