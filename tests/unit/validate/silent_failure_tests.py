@@ -7,8 +7,7 @@ from typing import TYPE_CHECKING
 from flext_cli import u as cli_u
 from flext_tests import tm
 
-from flext_infra import main as infra_main
-from flext_infra import u as infra_u
+from flext_infra import main as infra_main, u as infra_u
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )

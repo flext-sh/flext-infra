@@ -11,7 +11,7 @@ class TestsCiCheckoutModeNormalization:
     """Runner umask 002 checks out 0664; canonical Mise artifacts demand 0o644."""
 
     def test_ci_job_normalizes_checkout_modes_before_gates(self) -> None:
-        rendered = TestsCiIntegrationBranchTriggers._render_ci(
+        rendered = TestsCiIntegrationBranchTriggers.render_ci(
             repository_branch="0.12.0-dev"
         )
         tm.that("chmod -R go-w ." in rendered, eq=True)

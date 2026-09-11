@@ -173,10 +173,22 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                 )
                 return r[bool].fail(
                     f"docs source changed during planning: {expected.path}; "
-                    f"differing={dict(zip(differing, [
-                        (field, getattr(expected, field), getattr(observed, field))
-                        for field in differing
-                    ], strict=False))}"
+                    f"differing={
+                        dict(
+                            zip(
+                                differing,
+                                [
+                                    (
+                                        field,
+                                        getattr(expected, field),
+                                        getattr(observed, field),
+                                    )
+                                    for field in differing
+                                ],
+                                strict=False,
+                            )
+                        )
+                    }"
                 )
         return r[bool].ok(True)
 

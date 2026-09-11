@@ -34,7 +34,6 @@ repository:
 {%- for verb in workspace_repository.extra_verbs %}
     - name: {{ verb.name | tojson }}
       description: {{ verb.description | tojson }}
-      requires_apply: {{ verb.requires_apply | tojson }}
 {%- endfor %}
 {%- endif %}
 {%- if workspace_repository.script_dispatch %}
@@ -113,7 +112,6 @@ members:
 {%- for verb in repository.extra_verbs %}
       - name: {{ verb.name | tojson }}
         description: {{ verb.description | tojson }}
-        requires_apply: {{ verb.requires_apply | tojson }}
 {%- endfor %}
 {%- endif %}
 {%- if repository.script_dispatch %}

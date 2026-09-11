@@ -31,9 +31,7 @@ def _parse_violation(violation: str) -> r[m.Infra.CensusViolation]:
         )
     )
     if parsed.failure:
-        return r[m.Infra.CensusViolation].fail(
-            parsed.error or "namespace validation parse failed"
-        )
+        return r[m.Infra.CensusViolation].from_failure(parsed)
     violations = parsed.unwrap()
     if not violations:
         return r[m.Infra.CensusViolation].fail("no violations parsed from report")

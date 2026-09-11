@@ -201,7 +201,7 @@ class FlextInfraCodegenScaffolder(s[str]):
             if planned.failure:
                 message = f"writing scaffold {filepath}: {planned.error}"
                 raise OSError(message)
-            written = publish_file_plan(planned.value, backup=True, phase="scaffold")
+            written = publish_file_plan(planned.value, phase="scaffold")
             if written.failure:
                 message = f"writing scaffold {filepath}: {written.error}"
                 raise OSError(message)

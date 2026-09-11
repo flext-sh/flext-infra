@@ -111,7 +111,7 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
             m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=root, apply=True)
         )
     )
-    setup = tm.ok(u.Tests.run_isolated_make(["setup", "APPLY=Y"], cwd=root))
+    setup = tm.ok(u.Tests.run_isolated_make(["setup", ""], cwd=root))
     tm.that(u.Cli.process_succeeded(setup.outcome), eq=True, msg=setup.stderr)
     tm.that((root / c.Infra.VENV_BIN_REL / c.Infra.DEPTRY).is_file(), eq=True)
     (root / "limits.toml").write_text(
@@ -229,7 +229,7 @@ def policy_violation_project(tmp_path: Path) -> Path:
     tests_root.mkdir(parents=True)
     # The ini value is an arbitrary non-production budget owned by this probe.
     (project_root / "pyproject.toml").write_text(
-        "[tool.pytest.ini_options]\nflext_slow_timeout_seconds = \"30\"\n",
+        '[tool.pytest.ini_options]\nflext_slow_timeout_seconds = "30"\n',
         encoding="utf-8",
     )
     (tests_root / "test_policy.py").write_text(
