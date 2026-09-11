@@ -997,10 +997,7 @@ Infra:
       - path: .vscode/settings.json
         owner: vscode
         policy: merge
-    # Release build policies (flext-to3n7): fully generated fleet-wide bytes.
-      - path: config/build-constraints.txt
-        owner: codegen
-        policy: full
+    # Release build policy (flext-to3n7): fully generated fleet-wide bytes.
       - path: config/gitleaks-release.toml
         owner: codegen
         policy: full
@@ -1636,6 +1633,7 @@ Infra:
         - name: "Backup files inside allowed directories"
           patterns:
             - "**/*.bak"
+            - "**/*.bak.*"
             - "**/*.bkp"
             - "**/*.bkp?"
             - "**/*.backup"
@@ -1644,6 +1642,14 @@ Infra:
             - "**/*_backup_*"
             - "**/*.md.backup"
             - "**/archived/"
+        # Operator ruling 2026-09-11: editor-lane residue (.bak.*) and AI Hub
+        # capture artifacts are never source; they stay untracked everywhere
+        # even inside whitelisted subtrees.
+        - name: "Banned residue (never source, any profile)"
+          profiles: [workspace, standalone]
+          patterns:
+            - "*aihub-prior*"
+            - "config/build-constraints.txt"
         - name: "Autofix rejection artifacts (run_skill_autofix.sh rollback output)"
           patterns:
             - "**/*.rej-*.bak"
@@ -1820,16 +1826,13 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-      # Why (flext-to3n7): the release build phase snapshots these two policy
-      # files before the first artifact build (hash-pinned build backend for
-      # `uv build --require-hashes`, and the Gitleaks policy). They are one
-      # fleet-wide policy owned here and projected into every repository;
-      # a repository never hand-writes its own (overwrite: true).
-        - source: base/config/build-constraints.txt.j2
-          destination: config/build-constraints.txt
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: true
+      # Why (flext-to3n7): the release build phase snapshots the Gitleaks policy
+      # before the first artifact build. It is one fleet-wide policy owned here
+      # and projected into every repository; a repository never hand-writes its
+      # own (overwrite: true). The build constraints are NOT projected: the
+      # release phase renders them straight from the checked-out flext-infra
+      # config SSOT into the release policy directory, so no repository ever
+      # carries ``config/build-constraints.txt``.
         - source: base/config/gitleaks-release.toml.j2
           destination: config/gitleaks-release.toml
           profiles: [workspace, standalone]

@@ -1688,7 +1688,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if rendered.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(rendered)
-            rendered_content = self._compose_project_artifact(
+            rendered_content = self.compose_project_artifact(
                 root,
                 destination,
                 rendered.value,
@@ -1947,7 +1947,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if rendered.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(rendered)
             rendered_content = rendered.value
-            composed = self._compose_project_artifact(
+            composed = self.compose_project_artifact(
                 root,
                 entry.destination,
                 rendered_content,
@@ -1987,7 +1987,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
     @staticmethod
-    def _compose_project_artifact(
+    def compose_project_artifact(
         repository_root: Path,
         destination: str,
         rendered: str,
@@ -2358,13 +2358,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     mise_bootstrap=self._mise_bootstrap_environment(),
                 )
             )
-        if destination in {
-            c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
-            c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
-        }:
-            # Why (flext-to3n7): the release build phase snapshots these two
-            # policies from the repository; they are fleet policy owned by
-            # config/infra.yaml, never scaffold-only project metadata.
+        if destination == c.Infra.RELEASE_GITLEAKS_CONFIG_PATH:
+            # Why (flext-to3n7): the release build phase snapshots this policy
+            # from the repository. The build constraints are NOT projected: the
+            # release phase renders them straight from the checked-out
+            # flext-infra config SSOT (flext-boot), so no repository ever
+            # carries ``config/build-constraints.txt``.
             return r[p.Model].ok(
                 m.Infra.ReleasePolicyRenderSpec(
                     build_constraints=config.Infra.release.build_constraints
@@ -2610,7 +2609,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
 
     @staticmethod
-    def _resolve_gate_budgets(
+    def resolve_gate_budgets(
         configured_budgets: Mapping[str, m.Infra.ProjectGateBudgetSpec],
     ) -> p.Result[Mapping[str, Mapping[str, int]]]:
         """Project config budget rows; registry divergence fails loud.
@@ -2795,7 +2794,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if version_result.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(version_result)
-        gate_budgets_result = FlextInfraCodegenConform._resolve_gate_budgets(
+        gate_budgets_result = FlextInfraCodegenConform.resolve_gate_budgets(
             codegen.budget
         )
         if gate_budgets_result.failure:

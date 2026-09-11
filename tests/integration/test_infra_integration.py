@@ -13,6 +13,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from flext_core import p
+
 import pytest
 from flext_tests import tm
 
@@ -21,6 +24,23 @@ from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from tests import TestsFlextInfraUtilities as tu
+
+
+def _flat_map_double(x: int) -> p.Result[int]:
+    return r[int].ok(x * 2)
+
+
+def _flat_map_add_five(x: int) -> p.Result[int]:
+    return r[int].ok(x + 5)
+
+
+def _flat_map_intentional_fail(_: int) -> p.Result[int]:
+    return r[int].fail("intentional error")
+
+
+def _flat_map_add_three(x: int) -> p.Result[int]:
+    return r[int].ok(x + 3)
+
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -127,8 +147,8 @@ class TestsFlextInfraIntegrationInfraIntegration:
         result = (
             r[int]
             .ok(initial_value)
-            .flat_map(lambda x: r[int].ok(x * 2))
-            .flat_map(lambda x: r[int].ok(x + 5))
+            .flat_map(_flat_map_double)
+            .flat_map(_flat_map_add_five)
         )
         tm.ok(result)
         tm.that(result.value, eq=25)
@@ -146,9 +166,9 @@ class TestsFlextInfraIntegrationInfraIntegration:
         result = (
             r[int]
             .ok(initial_value)
-            .flat_map(lambda x: r[int].ok(x * 2))
-            .flat_map(lambda _: r[int].fail("intentional error"))
-            .flat_map(lambda x: r[int].ok(x + 5))
+            .flat_map(_flat_map_double)
+            .flat_map(_flat_map_intentional_fail)
+            .flat_map(_flat_map_add_five)
         )
         tm.fail(result)
         tm.that(result.error, is_=str)
@@ -168,7 +188,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
             r[int]
             .ok(initial_value)
             .map(lambda x: x * 2)
-            .flat_map(lambda x: r[int].ok(x + 3))
+            .flat_map(_flat_map_add_three)
             .map(lambda x: x * 2)
         )
         tm.ok(result)

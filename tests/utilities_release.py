@@ -15,20 +15,19 @@ class TestsFlextInfraUtilitiesReleaseMixin:
 
     @staticmethod
     def release_policy_root() -> Path:
-        """Return the packaged template root that owns the release policies.
+        """Return the packaged release template root that owns release policies.
 
-        The build-constraints and Gitleaks policies are codegen templates
-        projected into every repository; the release fixtures copy the same
-        bytes so the test workspace carries exactly what a generated
-        repository carries.
+        The Gitleaks policy is a codegen projection shipped in every governed
+        repository; the release template root supplies the same bytes. The
+        build constraints are rendered by the release phase straight from the
+        flext-infra config SSOT and are never repository-carried files.
         """
         return (
             Path(__file__).resolve().parents[1]
             / "src"
             / "flext_infra"
+            / "release"
             / "templates"
-            / "project"
-            / "base"
         )
 
     @staticmethod
@@ -63,27 +62,22 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         # Generated repositories ignore their report tree; the protocol's
         # plan receipt must never count as a dirty checkout.
         (workspace / ".gitignore").write_text(".reports/\n", encoding="utf-8")
-        policy_paths = (
-            c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
-            c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
+        # The Gitleaks policy is the codegen projection shipped inside every
+        # governed repository: same template, same bytes. The build constraints
+        # are rendered by the release phase from the config SSOT and are never
+        # written into the repository.
+        gitleaks_policy_source = (
+            Path(__file__).resolve().parents[1]
+            / "src"
+            / "flext_infra"
+            / "templates"
+            / "project"
+            / "base"
+            / f"{c.Infra.RELEASE_GITLEAKS_CONFIG_PATH}.j2"
         )
-        # The policies are rendered exactly as codegen projects them into
-        # a generated repository: same template, same typed pins.
-        policy_context = m.Infra.ReleasePolicyRenderSpec(
-            build_constraints=config.Infra.release.build_constraints
-        )
-        for policy_path in policy_paths:
-            policy_source = (
-                TestsFlextInfraUtilitiesReleaseMixin.release_policy_root()
-                / (f"{policy_path}.j2")
-            )
-            rendered = u.Cli.template_render(policy_source, policy_context)
-            if rendered.failure:
-                msg = rendered.error or f"release policy render failed: {policy_path}"
-                raise RuntimeError(msg)
-            policy_target = workspace / policy_path
-            policy_target.parent.mkdir(parents=True, exist_ok=True)
-            policy_target.write_text(rendered.value, encoding="utf-8")
+        policy_target = workspace / c.Infra.RELEASE_GITLEAKS_CONFIG_PATH
+        policy_target.parent.mkdir(parents=True, exist_ok=True)
+        policy_target.write_bytes(gitleaks_policy_source.read_bytes())
         for name in project_names:
             project = workspace / name
             project.mkdir(parents=True, exist_ok=True)
@@ -136,6 +130,14 @@ class TestsFlextInfraUtilitiesReleaseMixin:
             )
         if initialize_root_git:
             TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(workspace)
+            # The release protocol runs on the provider-declared integration
+            # baseline. The fake remote already publishes it; the workspace
+            # checkout must carry the same branch so the version preflight
+            # resolves and the protocol starts from its published lane.
+            baseline = TestsFlextInfraUtilitiesProjectFixtureMixin.provider().branch
+            TestsFlextInfraUtilitiesGitMixin.git_run(
+                workspace, "branch", "-m", baseline
+            )
         else:
             (workspace / ".git").mkdir(exist_ok=True)
         if initialize_project_git:
@@ -177,6 +179,40 @@ class TestsFlextInfraUtilitiesReleaseMixin:
             root,
             project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
             initialize_project_git=initialize_project_git,
+        )
+
+    @staticmethod
+    def release_allocatable_constraints_template() -> Path:
+        """Return the release-owned template that renders build constraints."""
+        return (
+            Path(__file__).resolve().parents[1]
+            / "src"
+            / "flext_infra"
+            / c.Infra.RELEASE_BUILD_CONSTRAINTS_TEMPLATE
+        )
+
+    @staticmethod
+    def release_rendered_build_constraints() -> str:
+        """Render the build constraints exactly like the release phase does."""
+        rendered = u.Cli.template_render(
+            TestsFlextInfraUtilitiesReleaseMixin.release_allocatable_constraints_template(),
+            m.Infra.ReleasePolicyRenderSpec(
+                build_constraints=config.Infra.release.build_constraints
+            ),
+        )
+        if rendered.failure:
+            msg = rendered.error or "release constraints render failed"
+            raise RuntimeError(msg)
+        return rendered.value
+
+    @staticmethod
+    def release_snapshot_policy_dir(repository_root: Path, version: str) -> Path:
+        """Return the immutable policy directory of one release snapshot."""
+        return (
+            TestsFlextInfraUtilitiesReleaseMixin.release_report_dir(
+                repository_root, version
+            )
+            / "policy"
         )
 
     @staticmethod

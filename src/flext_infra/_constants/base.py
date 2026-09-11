@@ -214,21 +214,17 @@ class FlextInfraConstantsBase(
     "Ambient Gitleaks policy variables removed from release scans."
     SOURCE_DATE_EPOCH: Final[str] = "SOURCE_DATE_EPOCH"
     "Reproducible-build timestamp environment variable."
-    RELEASE_BUILD_CONSTRAINTS_PATH: Final[str] = "config/build-constraints.txt"
-    "Workspace-relative hashed build-backend constraint file."
+    RELEASE_BUILD_CONSTRAINTS_TEMPLATE: Final[str] = (
+        "release/templates/build-constraints.txt.j2"
+    )
+    "Package-internal template rendering the hashed release build constraints."
+    RELEASE_BUILD_CONSTRAINTS_BANNED_PATH: Final[str] = "config/build-constraints.txt"
+    "Banned residue: repositories never carry this file (release renders it)."
+
     # Why: restored — deleted declaration with consumers left behind (worktree
     # exclusions and mise-artifact transaction staging).
     TRANSACTION_STATE_DIRNAME: Final[str] = ".state"
     "Root of regenerable codegen transaction state; never repository content."
-    RELEASE_BUILD_TOOLCHAIN_REQUIREMENTS: Final[frozenset[str]] = frozenset({
-        "hatchling",
-        "packaging",
-        "pathspec",
-        "pluggy",
-        "tomlkit",
-        "trove-classifiers",
-    })
-    "Complete registry package set required by the isolated Hatch build backend."
     RELEASE_GITLEAKS_CONFIG_PATH: Final[str] = "config/gitleaks-release.toml"
     "Workspace-relative trusted release secret-scan configuration."
     PYPI_SIMPLE_INDEX_URL: Final[str] = "https://pypi.org/simple"

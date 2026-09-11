@@ -8,6 +8,8 @@ import zipfile
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
+from pydantic import ValidationError
+
 from flext_core import r
 from flext_infra import c, config, u
 
@@ -19,13 +21,15 @@ class FlextInfraReleaseArtifactArchiveMixin:
     """Validate release archive boundaries before artifact persistence."""
 
     @staticmethod
-    def _gen_exists_or_absent(name: str) -> bool:
+    def _gen_exists_or_absent(name: str) -> p.Result[bool]:
         """Return whether ``name`` is a .gen externally-managed exists_or_absent file.
 
         Why: such files are template projections whose existence the .gen
         contract validates without owning content; their names can match
         sensitive-path patterns (``.env.example``) while never carrying
-        secrets, so the release archive exempts them.
+        secrets, so the release archive exempts them. Every contract read
+        failure is typed and loud: a malformed boundary config must never
+        silently disable or silently broaden the audit exemption.
         """
         package_root = Path(__file__).resolve().parent.parent
         gen_path = (
@@ -38,26 +42,29 @@ class FlextInfraReleaseArtifactArchiveMixin:
                 / c.Infra.CODEGEN_GEN_FILENAME
             )
         if not gen_path.is_file():
-            return False
+            return r[bool].fail(f"release archive .gen contract missing: {gen_path}")
         loaded = u.Cli.config_load(gen_path, expand_env=False)
         if loaded.failure:
-            return False
+            return r[bool].fail_op("read release archive .gen contract", loaded.error)
         try:
             from flext_infra import m
 
             requirements = m.Infra.GenRequirementsSpec.model_validate(loaded.value.data)
-        except Exception:  # ruff: ignore[blind-except] — a malformed contract falls back to blocking
-            return False
+        except ValidationError as exc:
+            return r[bool].fail_op("parse release archive .gen contract", exc)
         entry = requirements.requirements.externally_managed.get(name)
-        return entry is not None and entry.validation == "exists_or_absent"
+        return r[bool].ok(entry is not None and entry.validation == "exists_or_absent")
 
-    @staticmethod
-    def _staged_member_path_error(name: str) -> str:
-        """Return a staged-source sensitivity error, or an empty string."""
+    @classmethod
+    def _staged_member_path_error(cls, name: str) -> str:
+        """Return a policy error for one staged source path, or an empty string."""
         path = PurePosixPath(name)
         if not name or "\\" in name or path.is_absolute() or ".." in path.parts:
             return f"unsafe staged source path: {name}"
-        if FlextInfraReleaseArtifactArchiveMixin._gen_exists_or_absent(name):
+        exemption = cls._gen_exists_or_absent(name)
+        if exemption.failure:
+            return exemption.error or f"release archive boundary: {name}"
+        if exemption.value:
             return ""
         # Why: a file codegen owns (`.env.example`) is a projection of the
         # fleet template, never a secret; only its name matches the pattern.

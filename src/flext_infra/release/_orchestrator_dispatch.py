@@ -540,7 +540,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
     @staticmethod
     def _subjects(
         root: Path, since: str, *, merges_only: bool
-    ) -> p.Result[t.StrSequence]:
+    ) -> p.Result[tuple[str, ...]]:
         """Return commit subjects reachable from HEAD since ``since`` (all when empty).
 
         Merge commits carry the pull-request titles the bump is derived from;
@@ -557,8 +557,8 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             cwd=root,
         )
         if log.failure:
-            return r[t.StrSequence].from_failure(log)
-        return r[t.StrSequence].ok(
+            return r[tuple[str, ...]].from_failure(log)
+        return r[tuple[str, ...]].ok(
             tuple(line for line in log.value.splitlines() if line.strip())
         )
 

@@ -29,7 +29,7 @@ class FlextInfraReleaseOrchestratorPhases(
     @staticmethod
     def _build_targets(
         repository_root: Path, project_names: t.StrSequence
-    ) -> p.Result[t.SequenceOf[t.Pair[str, Path]]]:
+    ) -> p.Result[tuple[t.Pair[str, Path], ...]]:
         """Resolve release build targets from the configured eligibility policy.
 
         Why (aihub-ioijy.9): this used to hardcode
@@ -39,7 +39,7 @@ class FlextInfraReleaseOrchestratorPhases(
         """
         projects_result = u.Infra.resolve_projects(repository_root, project_names)
         if projects_result.failure:
-            return r[t.SequenceOf[t.Pair[str, Path]]].from_failure(projects_result)
+            return r[tuple[t.Pair[str, Path], ...]].from_failure(projects_result)
         prefixes = tuple(config.Infra.release.publishable_prefixes)
         seen: t.Infra.StrSet = set()
         unique: t.MutableSequenceOf[t.Pair[str, Path]] = []
@@ -50,10 +50,10 @@ class FlextInfraReleaseOrchestratorPhases(
                 continue
             seen.add(project.name)
             unique.append((project.name, project.path))
-        return r[t.SequenceOf[t.Pair[str, Path]]].ok(unique)
+        return r[tuple[t.Pair[str, Path], ...]].ok(tuple(unique))
 
     @staticmethod
-    def _internal_versions(repository_root: Path) -> p.Result[t.StrMapping]:
+    def _internal_versions(repository_root: Path) -> p.Result[t.StrDict]:
         """Map every visible internal distribution to its own declared version.
 
         Each repository versions independently, so release metadata pins a
@@ -65,7 +65,7 @@ class FlextInfraReleaseOrchestratorPhases(
         """
         projects = u.Infra.resolve_projects(repository_root, ())
         if projects.failure:
-            return r[t.StrMapping].from_failure(projects)
+            return r[t.StrDict].from_failure(projects)
         versions: dict[str, str] = dict(
             u.Infra.locked_dependency_versions(
                 repository_root / c.Infra.UV_LOCK_FILENAME, sources=("git",)
@@ -74,9 +74,9 @@ class FlextInfraReleaseOrchestratorPhases(
         for project in projects.value:
             declared = u.Infra.current_workspace_version(project.path)
             if declared.failure:
-                return r[t.StrMapping].from_failure(declared)
+                return r[t.StrDict].from_failure(declared)
             versions[project.name] = declared.value
-        return r[t.StrMapping].ok(versions)
+        return r[t.StrDict].ok(versions)
 
     def _build_project_record(
         self,
@@ -85,7 +85,7 @@ class FlextInfraReleaseOrchestratorPhases(
         name: str,
         path: Path,
         output_dir: Path,
-        versions: t.StrMapping,
+        versions: t.StrDict,
     ) -> p.Result[m.Infra.BuildRecord]:
         """Build one project and convert fail-loud errors into report records."""
         record_result = self._build_release_record(
@@ -122,24 +122,53 @@ class FlextInfraReleaseOrchestratorPhases(
         policy: m.Infra.BuildPolicy,
         targets: t.SequenceOf[t.Pair[str, Path]],
         output_dir: Path,
-    ) -> p.Result[t.SequenceOf[m.Infra.BuildRecord]]:
+    ) -> p.Result[tuple[m.Infra.BuildRecord, ...]]:
         """Build every selected project and retain its strict report record."""
         versions = self._internal_versions(ctx.repository_root)
         if versions.failure:
-            return r[t.SequenceOf[m.Infra.BuildRecord]].from_failure(versions)
+            return r[tuple[m.Infra.BuildRecord, ...]].from_failure(versions)
         records: t.MutableSequenceOf[m.Infra.BuildRecord] = []
         for name, path in targets:
             record_result = self._build_project_record(
                 ctx, policy, name, path, output_dir, versions.value
             )
             if record_result.failure:
-                return r[t.SequenceOf[m.Infra.BuildRecord]].from_failure(record_result)
+                return r[tuple[m.Infra.BuildRecord, ...]].from_failure(record_result)
             record = record_result.value
             records.append(record)
             logger.info(
                 "release_phase_build_project", project=name, exit_code=record.exit_code
             )
-        return r[t.SequenceOf[m.Infra.BuildRecord]].ok(tuple(records))
+        return r[tuple[m.Infra.BuildRecord, ...]].ok(tuple(records))
+
+    @staticmethod
+    def _persist_release_policy(
+        content: str, destination: Path, *, policy_root: Path
+    ) -> p.Result[str]:
+        """Persist rendered policy bytes and return their SHA-256 digest."""
+        destination = destination.resolve()
+        if not destination.is_relative_to(policy_root.resolve()):
+            return r[str].fail(
+                f"release policy destination escapes policy root: {destination}"
+            )
+        payload = content.encode(c.DEFAULT_ENCODING)
+        try:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            return r[str].fail_op(
+                f"create release policy directory {destination.parent}", exc
+            )
+        try:
+            if destination.exists():
+                if destination.read_bytes() != payload:
+                    return r[str].fail(
+                        f"immutable release policy collision: {destination}"
+                    )
+            else:
+                destination.write_bytes(payload)
+            return r[str].ok(u.Cli.sha256_bytes(payload))
+        except OSError as exc:
+            return r[str].fail_op(f"persist release policy {destination}", exc)
 
     @staticmethod
     def _snapshot_policy_file(
@@ -177,11 +206,26 @@ class FlextInfraReleaseOrchestratorPhases(
     def _snapshot_build_policy(
         cls, repository_root: Path, output_dir: Path
     ) -> p.Result[m.Infra.BuildPolicy]:
-        """Capture one immutable policy pair before the first project build."""
+        """Render the immutable policy pair before the first project build.
+
+        Both policies are fleet-wide flext-infra assets: the build constraints
+        are rendered straight from the checked-out config SSOT (never a
+        repository-carried file) and the Gitleaks policy is the codegen
+        projection shipped at ``config/gitleaks-release.toml``.
+        """
         policy_dir = output_dir / "policy"
+        template_root = Path(__file__).resolve().parents[1]
+        constraints_render = u.Cli.template_render(
+            template_root / c.Infra.RELEASE_BUILD_CONSTRAINTS_TEMPLATE,
+            m.Infra.ReleasePolicyRenderSpec(
+                build_constraints=config.Infra.release.build_constraints
+            ),
+        )
+        if constraints_render.failure:
+            return r[m.Infra.BuildPolicy].from_failure(constraints_render)
         constraints_path = policy_dir / "build-constraints.txt"
-        constraints_result = cls._snapshot_policy_file(
-            repository_root / c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
+        constraints_result = cls._persist_release_policy(
+            constraints_render.value,
             constraints_path,
             policy_root=policy_dir,
         )

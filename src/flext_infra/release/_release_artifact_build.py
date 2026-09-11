@@ -96,11 +96,11 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
         version: str,
         versions: t.StrMapping,
         license_sha256: str,
-    ) -> p.Result[t.SequenceOf[m.Infra.BuildArtifact]]:
+    ) -> p.Result[tuple[m.Infra.BuildArtifact, ...]]:
         """Validate a complete artifact set and persist it atomically."""
         built_result = self._build_artifact_paths(temporary_dist)
         if built_result.failure:
-            return r[t.SequenceOf[m.Infra.BuildArtifact]].from_failure(built_result)
+            return r[tuple[m.Infra.BuildArtifact, ...]].from_failure(built_result)
         validated: t.MutableSequenceOf[
             t.Triple[Path, t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
         ] = []
@@ -109,17 +109,17 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
                 source, project, version, license_sha256, versions
             )
             if validation.failure:
-                return r[t.SequenceOf[m.Infra.BuildArtifact]].from_failure(validation)
+                return r[tuple[m.Infra.BuildArtifact, ...]].from_failure(validation)
             kind, digest = validation.value
             validated.append((source, kind, digest))
         persistence_result = self._persist_artifact_set(
             validated, output_dir / "artifacts" / project
         )
         if persistence_result.failure:
-            return r[t.SequenceOf[m.Infra.BuildArtifact]].from_failure(
+            return r[tuple[m.Infra.BuildArtifact, ...]].from_failure(
                 persistence_result
             )
-        return r[t.SequenceOf[m.Infra.BuildArtifact]].ok(
+        return r[tuple[m.Infra.BuildArtifact, ...]].ok(
             tuple(
                 m.Infra.BuildArtifact(
                     path=str(destination.resolve()), kind=kind, sha256=digest
