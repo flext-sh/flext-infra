@@ -1,44 +1,67 @@
-"""Test detector report flags behavior."""
+"""Public report flags against real project discovery and installed tools."""
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
-from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
-from tests import TestsFlextInfraUtilities as u
 
-if TYPE_CHECKING:
-    from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
+from tests import c, u
 
-
-def _setup(
-    tmp_path: Path, deps: u.Tests.DepsReportStub
-) -> FlextInfraRuntimeDevDependencyDetector:
-    detector: FlextInfraRuntimeDevDependencyDetector = u.Tests.setup_detector_runtime(
-        tmp_path, deps
-    )
-    return detector
+pytestmark = pytest.mark.slow
 
 
 class TestsFlextInfraDepsDetectorReportFlags:
-    """Test flext infra deps detector report flags behavior."""
+    @pytest.mark.parametrize("no_fail", [False, True])
+    def test_real_dependency_and_environment_issues_respect_no_fail(
+        self, real_detector_project: Path, *, no_fail: bool
+    ) -> None:
+        root = real_detector_project
+        (root / "src/detector_fixture/undeclared.py").write_text(
+            "import undeclared_detector_dependency\n", encoding="utf-8"
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    os.environ.get("UV", c.Infra.UV),
+                    "pip",
+                    "uninstall",
+                    "--python",
+                    str(root / ".venv/bin/python"),
+                    "requests",
+                ],
+                cwd=root,
+            )
+        )
+        arguments = ("--no-fail",) if no_fail else ()
+        outcome = tm.ok(u.Tests.run_real_detector(root, *arguments))
+        tm.that(
+            u.Cli.process_succeeded(outcome.outcome), eq=no_fail, msg=outcome.stderr
+        )
+        report = u.Cli.json_as_mapping(
+            tm.ok(
+                u.Cli.json_read(
+                    root / ".reports/dependencies/detect-runtime-dev-latest.json"
+                )
+            )
+        )
+        tm.that(u.Cli.json_as_mapping(report.get("pip_check")).get("ok"), eq=False)
+        project = u.Cli.json_as_mapping(
+            u.Cli.json_as_mapping(report.get("projects")).get(root.name)
+        )
+        tm.that(
+            u.Cli.json_pick_int(
+                u.Cli.json_as_mapping(project.get("deptry")), "raw_count"
+            ),
+            gt=0,
+        )
 
-    def test_run_with_issues_and_pip_failure(self, tmp_path: Path) -> None:
-        """Verify run with issues and pip failure."""
-        detector = _setup(tmp_path, u.Tests.DepsReportStub(tmp_path / "proj-a", 5, 1))
-        tm.fail(detector.execute(), has="dependency issues detected")
-
-    def test_run_with_no_fail_flag_with_issues(self, tmp_path: Path) -> None:
-        """Verify run with no fail flag with issues."""
-        detector = _setup(
-            tmp_path, u.Tests.DepsReportStub(tmp_path / "proj-a", 5, 1)
-        ).model_copy(update={"no_fail": True})
-        tm.that(tm.ok(detector.execute()), eq=True)
-
-    def test_run_with_json_stdout_flag(self, tmp_path: Path) -> None:
-        """Verify run with json stdout flag."""
-        detector = _setup(
-            tmp_path, u.Tests.DepsReportStub(tmp_path / "proj-a", 0, 0)
-        ).model_copy(update={"output_format": "json", "no_pip_check": True})
-        tm.that(tm.ok(detector.execute()), eq=True)
+    def test_run_with_json_stdout_flag(self, real_detector_project: Path) -> None:
+        outcome = tm.ok(
+            u.Tests.run_real_detector(
+                real_detector_project, "--format", "json", "--no-pip-check"
+            )
+        )
+        tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True, msg=outcome.stderr)

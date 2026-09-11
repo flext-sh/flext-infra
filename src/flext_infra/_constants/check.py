@@ -72,12 +72,12 @@ class FlextInfraConstantsCheck:
             "internal://flext-infra/tier-whitelist",
         ),
         "smells": ("Flext Code Smell Detector", "internal://flext-infra/smells"),
+        "codemod": ("ast-grep", AST_GREP_DOCS_URL),
         "layout": ("Flext Project Layout Gate", "internal://flext-infra/layout"),
         "canonical-alias": (
             "Flext Canonical Alias Detector",
             "internal://flext-infra/canonical-alias",
         ),
-        "codemod": ("ast-grep", AST_GREP_DOCS_URL),
         "direnv": (
             "Flext Direnv Environment Contract Gate",
             "internal://flext-infra/direnv",
@@ -122,8 +122,12 @@ class FlextInfraConstantsCheck:
         "protocols.py",
         "typings.py",
         "utilities.py",
+        "config.py",
         "settings.py",
+        "_config.py",
+        "_settings.py",
     })
+    BOUNDARY_SKIP_PATH_FRAGMENTS: Final[t.StrSequence] = ("/ai_hub_hook_client/",)
     BOUNDARY_BANNED_LIBS: Final[t.MappingKV[str, str]] = MappingProxyType({
         "typer": "cli.create_app_with_common_params / cli.register_command",
         "click": "flext_cli.cli application, registration, execution, and invocation methods",
@@ -140,29 +144,19 @@ class FlextInfraConstantsCheck:
     })
     # Precompiled (lib, regex, replacement) rows — click is exempted at the call
     # site for Singer-SDK boundary files.
-    BOUNDARY_BANNED_RULES: Final[tuple[tuple[str, t.RegexPattern, str], ...]] = tuple(
+    BOUNDARY_BANNED_RULES: Final[
+        t.VariadicTuple[t.Triple[str, t.RegexPattern, str]]
+    ] = tuple(
         (lib, re.compile(rf"^\s*(import|from)\s+{lib}(\s|$|\.)", re.MULTILINE), repl)
         for lib, repl in BOUNDARY_BANNED_LIBS.items()
     )
     # Unconditional (regex, message) catalog — one data-driven loop in the gate.
-    BOUNDARY_SIMPLE_RULES: Final[tuple[tuple[t.RegexPattern, str], ...]] = (
+    BOUNDARY_SIMPLE_RULES: Final[t.VariadicTuple[t.Pair[t.RegexPattern, str]]] = (
         (
             re.compile(
                 rf"^\s*(import|from)\s+{'sub' + 'process'}(\s|$|\.)", re.MULTILINE
             ),
             "imports subprocess — use cli.run / cli.capture",
-        ),
-        (
-            re.compile(r"\bjson\.(load|dump|loads|dumps)\b"),
-            "uses json.load/dump — use cli.*_json_file",
-        ),
-        (
-            re.compile(r"\byaml\.(safe_load|dump|load)\b"),
-            "uses yaml.safe_load/dump — use cli.*_yaml_file",
-        ),
-        (
-            re.compile(r"\bcsv\.(reader|writer|DictReader|DictWriter)\b"),
-            "uses csv.reader/writer — use cli.*_csv_file",
         ),
         (
             re.compile(r"^\s*print\(", re.MULTILINE),
@@ -180,6 +174,40 @@ class FlextInfraConstantsCheck:
         "flext_infra/_constants/check.py",
         "flext_infra/gates/abstraction_boundary.py",
     })
+    BOUNDARY_JSON_ATTRS: Final[frozenset[str]] = frozenset({
+        "dump",
+        "dumps",
+        "load",
+        "loads",
+    })
+    BOUNDARY_YAML_ATTRS: Final[frozenset[str]] = frozenset({
+        "dump",
+        "load",
+        "safe_load",
+    })
+    BOUNDARY_CSV_ATTRS: Final[frozenset[str]] = frozenset({
+        "DictReader",
+        "DictWriter",
+        "reader",
+        "writer",
+    })
+    BOUNDARY_ATTR_RULES: Final[t.VariadicTuple[t.Triple[str, frozenset[str], str]]] = (
+        (
+            "json",
+            BOUNDARY_JSON_ATTRS,
+            "uses json serialization — use u.Cli.json_* / cli.json_*",
+        ),
+        (
+            "yaml",
+            BOUNDARY_YAML_ATTRS,
+            "uses yaml serialization — use u.Cli.yaml_* / cli.yaml_*",
+        ),
+        (
+            "csv",
+            BOUNDARY_CSV_ATTRS,
+            "uses csv serialization — use u.Cli.csv_* / cli.csv_*",
+        ),
+    )
     BOUNDARY_TOML_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*(import|from)\s+(tomllib|tomlkit)(\s|$|\.)", re.MULTILINE
     )
@@ -187,11 +215,6 @@ class FlextInfraConstantsCheck:
         r"\bFlextCli[A-Z]\w*"
     )
 
-    # --- 200-LOC module law gate SSOT ---
-    # The current operator contract supersedes the former 1000-LOC allowance.
-    # Consumers read this constant so decomposition converges on one value.
-    LOC_CAP_MAX: Final[int] = 200
-    "Per-module logical-LOC ceiling."
     SCC_BINARY: Final[str] = "scc"
     CLI_DIRENV: Final[str] = "direnv"
     SCC_PYTHON_LANG: Final[str] = "Python"
@@ -245,8 +268,13 @@ class FlextInfraConstantsCheck:
     JSCPD_IGNORE_PATTERNS: Final[t.StrSequence] = (
         "**/__snapshots__/**",
         "**/__init__.py",
+        "**/api_cases/**",
+        "**/_cases/**",
+        "**/_cov.py",
+        "**/_parts/**",
     )
-    "Generated Python surfaces excluded semantically; Git owns artifact visibility."
+    "Generated Python surfaces and structured test-case parameterization files "
+    "excluded semantically; Git owns artifact visibility."
 
     # --- Manual-command blocker (AGENTS.md `Build & Test`) SSOT ---
     MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset({

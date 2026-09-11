@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated, override
 
 from flext_cli import cli
+
 from flext_infra import c, m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 
@@ -119,7 +120,7 @@ class FlextInfraAccessorMigrationOrchestrator(
     ) -> p.Result[m.Infra.AccessorMigrationReport]:
         """Execute accessor migration from the validated command service."""
         result = cls(
-            repository_root=params.workspace_path,
+            repository_root=params.repository_root,
             selected_projects=params.projects,
             apply_changes=params.apply,
             target_module=params.module,

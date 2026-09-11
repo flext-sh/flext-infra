@@ -10,14 +10,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-import tomllib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import CliRouteService, c, config, main as infra_main
-from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -38,6 +37,12 @@ def _with_pep621_identity(repo: Path) -> Path:
         f'[project.urls]\nRepository = "{repository.url}"\n',
         encoding="utf-8",
     )
+    # Identity is not only PEP 621: a governed checkout also declares its own
+    # ledger, and conform refuses to render without it.
+    u.Tests.write_project_beads_config(repo, repository.distribution)
+    # A governed checkout resolves its owner from the declared provider origin;
+    # the default local-path origin is not a provider identity.
+    u.Tests.initialize_git_repo(repo, origin_url=repository.url)
     return repo
 
 
@@ -101,7 +106,7 @@ class TestHandleLazyInit:
             "codegen",
             "init",
             "--apply",
-            "--workspace",
+            "--repository-root",
             str(_with_pep621_identity(real_git_repo)),
         ])
         tm.that(result, eq=0)
@@ -116,7 +121,7 @@ class TestHandleLazyInit:
             "codegen",
             "init",
             "--check",
-            "--workspace",
+            "--repository-root",
             str(repository),
         ])
         tm.that(result, ne=0)
@@ -129,7 +134,7 @@ class TestHandleLazyInit:
             "codegen",
             "init",
             "--apply",
-            "--workspace",
+            "--repository-root",
             str(_with_pep621_identity(real_git_repo)),
         ])
         tm.that(result, eq=0)
@@ -144,7 +149,7 @@ class TestMainCommandDispatch:
             "codegen",
             "init",
             "--apply",
-            "--workspace",
+            "--repository-root",
             str(_with_pep621_identity(real_git_repo)),
         ])
         tm.that(result, eq=0)
@@ -159,18 +164,18 @@ class TestMainCommandDispatch:
         result = infra_main(["codegen"])
         tm.that(result, ne=0)
 
-    def test_init_with_custom_root(self, real_git_repo: Path) -> None:
-        """main() init with custom root directory."""
+    def test_init_rejects_nested_non_worktree_root(self, real_git_repo: Path) -> None:
+        """Initialization accepts only the exact Git worktree root."""
         custom_root = real_git_repo / "custom"
         custom_root.mkdir()
         result = infra_main([
             "codegen",
             "init",
             "--apply",
-            "--workspace",
+            "--repository-root",
             str(_with_pep621_identity(custom_root)),
         ])
-        tm.that(result, eq=0)
+        tm.that(result, ne=0)
 
 
 # Exemplar: every test here spawns a fresh interpreter to prove the real
@@ -186,7 +191,7 @@ class TestMainEntryPoint:
             "codegen",
             "init",
             "--apply",
-            "--workspace",
+            "--repository-root",
             str(_with_pep621_identity(real_git_repo)),
         ])
         tm.that(type(result).__name__, eq="int")
@@ -259,9 +264,9 @@ class TestMainEntryPoint:
         )
         rendered = pyproject.read_text(encoding="utf-8")
         tm.that(rendered, lacks="<<<<<<<")
-        payload = tomllib.loads(rendered)
+        ini_options = u.Tests.toml_table_at(rendered, "tool", "pytest", "ini_options")
         tm.that(
-            payload["tool"]["pytest"]["ini_options"]["addopts"],
+            ini_options["addopts"],
             has=(f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}"),
         )
         tm.that(journal.exists(), eq=False)
@@ -287,20 +292,22 @@ class TestMainEntryPoint:
         """Reject a present invalid artifact before credential/network work."""
         root = infra_git_repo
         _seed_public_conform_checkout(root)
-        lock = root / "mise.lock"
-        lock_state = tm.ok(u.Cli.atomic_read_binary_file_state(lock, required=True))
-        lock_mode = lock_state.mode
-        tm.that(lock_mode is None, eq=False)
-        if lock_mode is None:
-            msg = "required Mise lock has no permission mode"
+        launcher = root / "bin" / "mise"
+        launcher_state = tm.ok(
+            u.Cli.atomic_read_binary_file_state(launcher, required=True)
+        )
+        launcher_mode = launcher_state.mode
+        tm.that(launcher_mode is None, eq=False)
+        if launcher_mode is None:
+            msg = "required Mise launcher has no permission mode"
             raise AssertionError(msg)
-        if lock_state.content is None:
-            msg = "required Mise lock has no bytes"
+        if launcher_state.content is None:
+            msg = "required Mise launcher has no bytes"
             raise AssertionError(msg)
-        corrupted = lock_state.content + b"\ninvalid = [\n"
+        corrupted = launcher_state.content + b"\nchecksum_linux_x86_64=invalid\n"
         tm.ok(
             u.Cli.atomic_write_binary_file_guarded(
-                lock_state, corrupted, permission_mode=lock_mode
+                launcher_state, corrupted, permission_mode=launcher_mode
             )
         )
         journal, transaction = _mise_transaction_state(root)
@@ -317,7 +324,7 @@ class TestMainEntryPoint:
             applied.value.stdout + applied.value.stderr,
             lacks="MISE_GITHUB_CREDENTIAL_COMMAND is required",
         )
-        tm.that(lock.read_bytes(), eq=corrupted)
+        tm.that(launcher.read_bytes(), eq=corrupted)
         tm.that(journal.exists(), eq=False)
         tm.that(transaction.exists(), eq=False)
 

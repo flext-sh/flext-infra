@@ -15,6 +15,8 @@ from flext_core import r
 from flext_infra import c, m, u
 from flext_infra.base import s
 
+from ._mise_artifacts_publication import publish_file_plan
+
 if TYPE_CHECKING:
     from flext_infra import p, t
 
@@ -167,7 +169,7 @@ class FlextInfraCodegenScaffolder(s[str]):
 
     def _scaffold_dir(
         self, request: m.Infra.ScaffoldDirRequest
-    ) -> tuple[t.MutableSequenceOf[str], t.MutableSequenceOf[str]]:
+    ) -> t.Pair[t.MutableSequenceOf[str], t.MutableSequenceOf[str]]:
         """Generate missing modules in a directory and return file lists."""
         files_created: t.MutableSequenceOf[str] = []
         files_skipped: t.MutableSequenceOf[str] = []
@@ -187,8 +189,19 @@ class FlextInfraCodegenScaffolder(s[str]):
             if request.dry_run:
                 files_created.append(str(filepath))
                 continue
-            # flext-j47u (codex): templates own final source shape; codegen never fixes it.
-            written = u.Cli.atomic_write_text_file(filepath, content)
+            planned = u.Infra.planned_file(
+                request.target_dir,
+                filepath,
+                required=False,
+                desired_content=content.encode(c.Cli.ENCODING_DEFAULT),
+                desired_mode=0o644,
+                owner="codegen",
+                policy="create-only",
+            )
+            if planned.failure:
+                message = f"writing scaffold {filepath}: {planned.error}"
+                raise OSError(message)
+            written = publish_file_plan(planned.value, backup=True, phase="scaffold")
             if written.failure:
                 message = f"writing scaffold {filepath}: {written.error}"
                 raise OSError(message)

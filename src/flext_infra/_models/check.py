@@ -9,7 +9,7 @@ from typing import Annotated, ClassVar
 from flext_core import m, u
 from flext_infra import c, t
 
-from .._models.mixins import FlextInfraModelsMixins as mm
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsCheck:
@@ -19,10 +19,16 @@ class FlextInfraModelsCheck:
         """Canonical CLI payload for ``flext-infra check run``.
 
         Inherits canonical ``gates`` (parsed to ``t.StrSequence``),
-        ``apply``/``dry_run``, ``workspace``, ``projects``, ``fail_fast``,
-        ``verbose`` from ``WriteMixin``.
+        ``apply``/``dry_run``, ``projects``, ``fail_fast``, ``verbose`` from
+        ``WriteMixin`` and redeclares the scope root as ``workspace`` — the
+        option name this verb's generated CLI contract uses.
         """
 
+        workspace: Annotated[
+            Path,
+            m.BeforeValidator(lambda value: Path(value).resolve()),
+            m.Field(description="Repository root"),
+        ] = Path()
         reports_dir: Annotated[
             str,
             m.Field(
@@ -85,7 +91,7 @@ class FlextInfraModelsCheck:
             m.Field(
                 gt=0,
                 le=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
-                description="Positive Mypy address-space limit in MiB",
+                description="Positive Mypy memory limit in MiB (Linux AS; Darwin RSS)",
             ),
         ] = c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT
         timeout_seconds: Annotated[
@@ -100,7 +106,7 @@ class FlextInfraModelsCheck:
         @m.computed_field
         @property
         def memory_limit_bytes(self) -> int:
-            """Validated limit converted to bytes for prlimit."""
+            """Validated memory limit converted to bytes for the platform owner."""
             return self.memory_limit_mb * 1024 * 1024
 
     class FixPyreflyConfigCommand(mm.WriteMixin, m.ContractModel):
@@ -167,7 +173,7 @@ class FlextInfraModelsCheck:
         result: FlextInfraModelsCheck.GateResult = m.Field(
             description="Gate result model"
         )
-        issues: tuple[FlextInfraModelsCheck.Issue, ...] = m.Field(
+        issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
             default_factory=tuple, description="Detected issues"
         )
         raw_output: str = m.Field(
@@ -212,7 +218,7 @@ class FlextInfraModelsCheck:
         # Why: owned by m.Infra; ArbitraryTypesModel keeps protocol field writability.
 
         results: Annotated[
-            tuple[FlextInfraModelsCheck.ProjectResult, ...],
+            t.VariadicTuple[FlextInfraModelsCheck.ProjectResult],
             m.Field(description="Individual project execution results."),
         ]
         failed: Annotated[
@@ -305,10 +311,10 @@ class FlextInfraModelsCheck:
         information_uri: str = m.Field(
             "", description="Tool documentation URL", validate_default=True
         )
-        rules: tuple[FlextInfraModelsCheck.SarifRule, ...] = m.Field(
+        rules: t.VariadicTuple[FlextInfraModelsCheck.SarifRule] = m.Field(
             default_factory=tuple, description="Rule descriptors"
         )
-        results: tuple[FlextInfraModelsCheck.SarifResult, ...] = m.Field(
+        results: t.VariadicTuple[FlextInfraModelsCheck.SarifResult] = m.Field(
             default_factory=tuple, description="Run results"
         )
 
@@ -346,7 +352,7 @@ class FlextInfraModelsCheck:
             description="SARIF version",
             validate_default=True,
         )
-        runs: tuple[FlextInfraModelsCheck.SarifRun, ...] = m.Field(
+        runs: t.VariadicTuple[FlextInfraModelsCheck.SarifRun] = m.Field(
             default_factory=tuple, description="SARIF runs"
         )
 

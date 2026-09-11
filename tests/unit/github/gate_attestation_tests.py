@@ -6,24 +6,30 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-
 from flext_cli import u as cli_u
-from flext_infra import c, m, p, u
 from flext_tests import tm
+
+from flext_infra import c, m, p, u
 from tests import u as test_u
 
 
 def _signed_repository(root: Path) -> Path:
-    test_u.Tests.git_bootstrap(root, ("init",))
-    for name, value in (
+    test_u.Tests.git_bootstrap(root, ("init", "-b", c.Infra.GIT_MAIN))
+    for key, value in (
         ("user.name", "Attestation Test"),
         ("user.email", "attestation@example.test"),
         ("gpg.format", "ssh"),
         ("commit.gpgsign", "false"),
     ):
-        test_u.Tests.git_bootstrap(root, ("config", name, value))
+        test_u.Tests.git_bootstrap(root, ("config", key, value))
     test_u.Tests.git_bootstrap(
-        root, ("remote", "add", "origin", "https://github.example/flext/fixture.git")
+        root,
+        (
+            "remote",
+            "add",
+            c.Infra.GIT_ORIGIN,
+            "https://github.example/flext/fixture.git",
+        ),
     )
     key_path = root / "signing_key"
     tm.ok(
@@ -84,11 +90,7 @@ def _rev_parse(root: Path, commitish: str) -> str:
 
 @pytest.fixture
 def signed_repository_factory() -> Callable[[Path], Path]:
-    """Build one signed repository per test through the creation helper.
-
-    Nothing needs closing: repository construction runs as isolated git
-    commands, so no handle outlives the call.
-    """
+    """Create one SSH-signing fixture repository per test invocation."""
     return _signed_repository
 
 

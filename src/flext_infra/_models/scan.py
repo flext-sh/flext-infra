@@ -14,8 +14,8 @@ from typing import Annotated, ClassVar, Literal
 from flext_core import m
 from flext_infra import c, t
 
-from .._models.mixins import FlextInfraModelsMixins as mm
-from .._models.refactor_namespace_enforcer import FlextInfraModelsNamespaceEnforcer
+from .mixins import FlextInfraModelsMixins as mm
+from .refactor_namespace_enforcer import FlextInfraModelsNamespaceEnforcer
 
 
 class FlextInfraModelsScan:
@@ -142,7 +142,7 @@ class FlextInfraModelsScan:
             frozenset[Path], m.Field(description="Files containing findings")
         ]
         entries: Annotated[
-            tuple[FlextInfraModelsScan.ModScanFinding, ...],
+            t.VariadicTuple[FlextInfraModelsScan.ModScanFinding],
             m.Field(description="Every validated ast-grep finding in stable order"),
         ]
 
@@ -159,7 +159,7 @@ class FlextInfraModelsScan:
         ]
         root: Annotated[Path, m.Field(description="Absolute scanned workspace root")]
         scope: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Exact ast-grep target scope"),
         ]
         findings: Annotated[
@@ -189,7 +189,7 @@ class FlextInfraModelsScan:
             m.Field(description="Complete finding totals by rule identifier"),
         ]
         entries: Annotated[
-            tuple[FlextInfraModelsScan.ModScanFinding, ...],
+            t.VariadicTuple[FlextInfraModelsScan.ModScanFinding],
             m.Field(description="Every finding in deterministic scan order"),
         ]
 

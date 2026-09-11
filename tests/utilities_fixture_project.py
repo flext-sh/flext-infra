@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-from flext_infra import config, u
 from flext_tests import tm
+
+from flext_infra import config, u
 from tests import c, m, t
 
 
@@ -42,10 +42,10 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
         """
         provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
         resolved_path = Path() if path is None else path
-        is_subproject = bool(resolved_path.parts)
+        is_declared_repository = bool(resolved_path.parts)
         resolved_role = role or (
             c.Infra.MakeProfile.STANDALONE
-            if is_subproject
+            if is_declared_repository
             else c.Infra.MakeProfile.WORKSPACE
         )
         return m.Infra.RepositoryRef(
@@ -58,7 +58,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             codegen=c.Infra.CodegenKind.CONFORM,
             package=True,
-            editable=is_subproject,
+            editable=is_declared_repository,
             read_only=False,
         )
 
@@ -98,7 +98,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             ),
             homepage=homepage,
             documentation=homepage,
-            workspace_root_rel=".",
+            repository_root_rel=".",
             year=2026,
         )
 
@@ -120,11 +120,17 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             database=database,
             issue_prefix=issue_prefix,
         )
+        workspace_dump = u.Cli.json_dumps(spec.workspace)
+        database_dump = u.Cli.json_dumps(spec.database)
+        prefix_dump = u.Cli.json_dumps(spec.issue_prefix)
+        tm.ok(workspace_dump)
+        tm.ok(database_dump)
+        tm.ok(prefix_dump)
         path.write_text(
             f"version: {spec.version}\n"
-            f"workspace: {json.dumps(spec.workspace)}\n"
-            f"database: {json.dumps(spec.database)}\n"
-            f"issue_prefix: {json.dumps(spec.issue_prefix)}\n\n",
+            f"workspace: {workspace_dump.value}\n"
+            f"database: {database_dump.value}\n"
+            f"issue_prefix: {prefix_dump.value}\n\n",
             encoding="utf-8",
         )
         return path

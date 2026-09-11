@@ -9,15 +9,17 @@ from flext_core import r
 from flext_infra import config
 from flext_infra.models import m
 
-from .._utilities._docs_generate_plan import (
+from ._docs_generate_plan import (
     DocsRenderedArtifactTuple,
     FlextInfraUtilitiesDocsGeneratePlanMixin,
 )
-from .._utilities.docs_api import FlextInfraUtilitiesDocsApi
-from .._utilities.docs_contract import FlextInfraUtilitiesDocsContract
-from .._utilities.docs_render import FlextInfraUtilitiesDocsRender
+from ._docs_guides import FlextInfraUtilitiesDocsGuidesMixin
+from .docs_api import FlextInfraUtilitiesDocsApi
+from .docs_contract import FlextInfraUtilitiesDocsContract
+from .docs_render import FlextInfraUtilitiesDocsRender
 
 if TYPE_CHECKING:
+    from flext_infra import t
     from flext_infra.protocols import p
 
 
@@ -33,10 +35,59 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
         return [f"{scope.package_name}.{module}" for module in declared]
 
     @staticmethod
+    def docs_project_api_artifacts(scope: m.Infra.DocScope) -> list[t.Pair[Path, str]]:
+        """Render package API pages before their owning tree is pruned."""
+        module_names = FlextInfraUtilitiesDocsGenerateProjectMixin._module_names(scope)
+        api_root = scope.path / "docs/api-reference/generated"
+        rendered = [
+            (
+                api_root / "public-api.md",
+                FlextInfraUtilitiesDocsRender.docs_directive_page(
+                    f"{scope.name} Public API", scope.package_name
+                ),
+            ),
+            (
+                api_root / "modules/index.md",
+                FlextInfraUtilitiesDocsRender.docs_modules_index(scope, module_names),
+            ),
+        ]
+        for module_name in module_names:
+            relative = module_name.removeprefix(f"{scope.package_name}.").replace(
+                ".", "/"
+            )
+            rendered.append((
+                api_root / "modules" / f"{relative}.md",
+                FlextInfraUtilitiesDocsRender.docs_directive_page(
+                    module_name, module_name
+                ),
+            ))
+        return rendered
+
+    @staticmethod
     def docs_project_artifacts(
         scope: m.Infra.DocScope,
-    ) -> p.Result[tuple[DocsRenderedArtifactTuple, ...]]:
+        *,
+        repository_root: Path,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState],
+    ) -> p.Result[t.VariadicTuple[DocsRenderedArtifactTuple]]:
         """Render the complete target inventory for one FLEXT project."""
+        guides = FlextInfraUtilitiesDocsGuidesMixin.docs_project_guides_artifacts(
+            scope, repository_root=repository_root, source_states=source_states
+        )
+        if guides.failure:
+            return r[tuple[DocsRenderedArtifactTuple, ...]].from_failure(guides)
+        guide_paths = {
+            state.path
+            for state in source_states
+            if state.path.parent == scope.path / "docs/guides"
+            and state.path.suffix == ".md"
+            and state.path.name != "README.md"
+        }
+        for _project, path, content in guides.value:
+            if content is None:
+                guide_paths.discard(path)
+            else:
+                guide_paths.add(path)
         analyzed_contract = FlextInfraUtilitiesDocsApi.public_contract(
             scope.path, scope.package_name
         )
@@ -55,7 +106,9 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
             ),
             (
                 scope.path / "docs/guides/README.md",
-                FlextInfraUtilitiesDocsRender.docs_guides_index(scope),
+                FlextInfraUtilitiesDocsRender.docs_guides_index(
+                    scope, guide_paths=tuple(sorted(guide_paths))
+                ),
             ),
             (
                 scope.path / "docs/api-reference/README.md",
@@ -68,30 +121,13 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
                 ),
             ),
             (
-                scope.path / "docs/api-reference/generated/modules/index.md",
-                FlextInfraUtilitiesDocsRender.docs_modules_index(scope, module_names),
-            ),
-            (
                 scope.path / "docs/api-reference/generated/overview.md",
                 FlextInfraUtilitiesDocsRender.docs_overview_page(scope, contract),
             ),
-            (
-                scope.path / "docs/api-reference/generated/public-api.md",
-                FlextInfraUtilitiesDocsRender.docs_directive_page(
-                    f"{scope.name} Public API", scope.package_name
-                ),
+            *FlextInfraUtilitiesDocsGenerateProjectMixin.docs_project_api_artifacts(
+                scope
             ),
         ]
-        for module_name in module_names:
-            relative = module_name.removeprefix(f"{scope.package_name}.").replace(
-                ".", "/"
-            )
-            rendered.append((
-                scope.path / "docs/api-reference/generated/modules" / f"{relative}.md",
-                FlextInfraUtilitiesDocsRender.docs_directive_page(
-                    module_name, module_name
-                ),
-            ))
         pruned = (
             FlextInfraUtilitiesDocsGenerateProjectMixin._prune_generated_tree_artifacts(
                 scope.path, scope.path / "docs/api-reference/generated", rendered
@@ -101,6 +137,7 @@ class FlextInfraUtilitiesDocsGenerateProjectMixin(
             return r[tuple[DocsRenderedArtifactTuple, ...]].from_failure(pruned)
         return FlextInfraUtilitiesDocsGenerateProjectMixin.docs_normalize_artifacts((
             *((scope.path, path, content) for path, content in rendered),
+            *guides.value,
             *pruned.value,
         ))
 

@@ -5,9 +5,9 @@ from __future__ import annotations
 from fnmatch import fnmatchcase
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c, config, m
-from flext_tests import tm
 
 _CANONICAL_SELECTOR = "github:marlon-costa-dc/beads"
 _CANONICAL_VERSION_SELECTOR = "latest"
@@ -38,7 +38,7 @@ class TestsToolchainBeadsDistribution:
         )
 
     def test_release_policy_tracks_the_latest_fork_release(self) -> None:
-        """Keep the fork identity stable while mise.lock attests its release."""
+        """Keep the fork identity stable while mise resolves its newest release."""
         toolchain = config.Infra.codegen.toolchain
         version = toolchain.beads.version
 

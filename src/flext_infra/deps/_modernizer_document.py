@@ -6,27 +6,22 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from flext_infra.deps.phases.consolidate_groups import FlextInfraConsolidateGroupsPhase
-from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
-from flext_infra.deps.phases.ensure_formatting import (
-    FlextInfraEnsureFormattingToolingPhase,
-)
-from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
-from flext_infra.deps.phases.ensure_namespace import (
-    FlextInfraEnsureNamespaceToolingPhase,
-)
-from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
-from flext_infra.deps.phases.ensure_pydantic_mypy import (
-    FlextInfraEnsurePydanticMypyConfigPhase,
-)
-from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
-from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
-from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
-from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-from flext_infra.deps.phases.ensure_vulture import FlextInfraEnsureVultureConfigPhase
-from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
 from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
+
+from .extra_paths import FlextInfraExtraPathsManager
+from .phases.consolidate_groups import FlextInfraConsolidateGroupsPhase
+from .phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
+from .phases.ensure_formatting import FlextInfraEnsureFormattingToolingPhase
+from .phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
+from .phases.ensure_namespace import FlextInfraEnsureNamespaceToolingPhase
+from .phases.ensure_packaging import FlextInfraEnsurePackagingPhase
+from .phases.ensure_pydantic_mypy import FlextInfraEnsurePydanticMypyConfigPhase
+from .phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
+from .phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
+from .phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
+from .phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
+from .phases.ensure_vulture import FlextInfraEnsureVultureConfigPhase
+from .phases.inject_comments import FlextInfraInjectCommentsPhase
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -41,7 +36,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
     if TYPE_CHECKING:
         # Members provided by the composed dependency modernizer.
         _rewrite_dependency_constraints_payload: Callable[..., t.StrSequence]
-        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None
 
         @property
         def root(self) -> Path: ...
@@ -59,6 +53,10 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         # default comes from the tomlsort SSOT. A property here would make the
         # field an incompatible override of a read-only descriptor.
         tomlsort_sort_first: t.StrSequence
+
+        # Caller-owned project ManagedArtifacts resolution, supplied by the
+        # composed owner (FlextInfraPyprojectModernizer) as a Pydantic field.
+        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None
 
         def _reorder_document_inplace(
             self,
@@ -124,9 +122,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         dry_run: bool,
         skip_comments: bool,
         format_source: bool = True,
-        rewrite_constraints: bool = False,
-        locked_versions: t.MappingKV[str, str] | None = None,
-        internal_names: t.StrSequence = (),
         root_modules: t.StrSequence = (),
         root_packages: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
@@ -145,7 +140,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         # disk discovery converges on the first post-write conformance pass.
         project_root_exists = path.is_file()
         effective_project_dir = path.parent if project_root_exists else None
-        effective_workspace_root = self.root if project_root_exists else None
+        effective_repository_root = self.root if project_root_exists else None
         paths_manager = FlextInfraExtraPathsManager(
             repository_root=self.root,
             generated_python_roots=generated_python_roots,
@@ -169,14 +164,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         changes: t.MutableSequenceOf[str] = []
         changes.extend(self._ensure_build_system_payload(payload))
         changes.extend(self._remove_empty_poetry_groups_payload(payload))
-        if rewrite_constraints:
-            changes.extend(
-                self._rewrite_dependency_constraints_payload(
-                    payload,
-                    locked_versions=locked_versions or {},
-                    internal_names=internal_names,
-                )
-            )
         changes.extend(
             FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev)
         )
@@ -191,7 +178,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             FlextInfraEnsurePyrightConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
                 is_root=is_root,
-                workspace_root=effective_workspace_root,
+                repository_root=effective_repository_root,
                 project_dir=effective_project_dir,
                 project_kind=resolved_project_kind,
                 paths_manager=effective_paths_manager,

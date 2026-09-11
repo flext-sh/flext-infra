@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
-from flext_infra.fixers.base import FlextInfraFixerAdapter
+
+from .base import FlextInfraFixerAdapter
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -48,7 +49,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
     def fix_project(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[t.Pair[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Apply gate fixes for the first violation group (all share target)."""
@@ -101,7 +102,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                 )
             reports_dir = reports_dir_result.value
         gate_ctx = m.Infra.GateContext(
-            workspace=self._repository_root,
+            repository_root=self._repository_root,
             reports_dir=reports_dir,
             apply_fixes=ctx.apply,
             check_only=not ctx.apply,
@@ -153,11 +154,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                 )
             ]
         return self._build_project_fix_result(
-            project_dir,
-            fixed,
-            previewed,
-            skipped,
-            failed,
+            project_dir, fixed, previewed, skipped, failed
         )
 
     def _preview_from_check(
@@ -203,7 +200,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
     @staticmethod
     def _matching_issues(
         rule: m.EnforcementRuleSpec, issues: t.SequenceOf[m.Infra.Issue]
-    ) -> tuple[m.Infra.Issue, ...]:
+    ) -> t.VariadicTuple[m.Infra.Issue]:
         """Return gate issues that correspond to the selected rule fix action."""
         fix_action = rule.fix_action
         if fix_action is None:

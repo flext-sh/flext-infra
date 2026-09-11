@@ -11,8 +11,9 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import m
-from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
+
+from .base_gate import FlextInfraGate
 
 
 class FlextInfraTierWhitelistGate(FlextInfraGate):

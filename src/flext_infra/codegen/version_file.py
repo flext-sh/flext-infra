@@ -1,7 +1,7 @@
 """Auto-generate ``__version__.py`` files from the project-metadata SSOT.
 
 Each generated file inherits ``FlextVersion`` from flext-core, with the
-project name baked in from ``u.read_project_metadata()`` at generation
+project name baked in from ``u.Infra.read_project_metadata_result()`` at generation
 time.  No fallback, no hardcoded defaults — ``PackageNotFoundError``
 propagates if the package is not installed.
 
@@ -21,6 +21,8 @@ from flext_core import r
 from flext_core.__version__ import FlextVersion
 from flext_infra import c, u
 from flext_infra.base import s
+
+from ._mise_artifacts_publication import publish_file_plan
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -56,7 +58,7 @@ class FlextInfraCodegenVersionFile(s[bool]):
         skipped = 0
 
         for project_info in discovered.value:
-            metadata_result = u.read_project_metadata(project_info.path)
+            metadata_result = u.Infra.read_project_metadata_result(project_info.path)
             if metadata_result.failure:
                 return r[bool].from_failure(metadata_result)
             meta = metadata_result.value
@@ -91,7 +93,20 @@ class FlextInfraCodegenVersionFile(s[bool]):
                 generated += 1
                 continue
 
-            write_result = u.Cli.atomic_write_text_file(target, content)
+            planned = u.Infra.planned_file(
+                project_info.path,
+                target,
+                required=False,
+                desired_content=content.encode(c.Cli.ENCODING_DEFAULT),
+                desired_mode=0o644,
+                owner="codegen",
+                policy="full",
+            )
+            if planned.failure:
+                return r[bool].from_failure(planned)
+            write_result = publish_file_plan(
+                planned.value, backup=True, phase="version-file"
+            )
             if write_result.failure:
                 return r[bool].from_failure(write_result)
             generated += 1

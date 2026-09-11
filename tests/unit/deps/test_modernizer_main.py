@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import main
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-from flext_tests import tm
 from tests import c
 
 if TYPE_CHECKING:
@@ -68,7 +69,7 @@ class TestsFlextInfraDepsModernizerMain:
             main([
                 "deps",
                 "modernize",
-                "--workspace",
+                "--repository-root",
                 str(modernizer_workspace),
                 "--audit",
                 "--skip-comments",

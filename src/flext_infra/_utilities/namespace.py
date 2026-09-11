@@ -9,16 +9,17 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import r, u
+
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
 
-from .._utilities.discovery import FlextInfraUtilitiesDiscovery
-from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-from .._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from .._utilities.rope_source import FlextInfraUtilitiesRopeSource
+from .discovery import FlextInfraUtilitiesDiscovery
+from .docs_scope import FlextInfraUtilitiesDocsScope
+from .rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from .rope_core import FlextInfraUtilitiesRopeCore
+from .rope_source import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraUtilitiesCodegenNamespace:
@@ -40,6 +41,10 @@ class FlextInfraUtilitiesCodegenNamespace:
             case "NS-002":
                 typings_filename: str = c.Infra.TYPINGS_PY
                 return Path(module).name != typings_filename
+            # Validator-reported families with no auto-fix keyed to their
+            # codes: reported as violations, never claimed as fixed.
+            case "NS-STRUCT" | "NS-IMPORT" | "NS-CONTRACT" | "NS-PARSE" | "NS-LAYOUT":
+                return False
 
             case _:
                 msg = f"unsupported namespace rule: {rule_id}"
@@ -81,7 +86,17 @@ class FlextInfraUtilitiesCodegenNamespace:
         parts = tuple(part for part in package_name.split(".") if part)
         if not parts:
             return False
-        return len(parts) == 1
+        if len(parts) == 1:
+            return True
+        # A governed wrapper surface is not itself an importable package: its
+        # namespace root is the directory under it, so `tests.unit` is what
+        # `flext_demo` is under `src/`. Requiring a single part made every such
+        # package publish the inherited test aliases and none of its own
+        # declarations, which is the opposite of the contract above.
+        return (
+            len(parts) == c.Infra.WRAPPER_NAMESPACE_DEPTH
+            and parts[0] in c.Infra.NON_PUBLIC_LAZY_ROOTS
+        )
 
     @staticmethod
     def ordered_namespace_exports(
@@ -252,7 +267,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     @classmethod
     def _resolve_family(
         cls, file_path: Path
-    ) -> tuple[str | None, str | None, str | None, t.StrSequence]:
+    ) -> t.Quad[str | None, str | None, str | None, t.StrSequence]:
         """Return (family_alias, expected_family, expected_alias, family_tokens)."""
         family_alias = next(
             (
@@ -480,7 +495,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     @classmethod
     def parse_namespace_validation(
         cls, validation: p.Result[m.Infra.ValidationReport]
-    ) -> p.Result[tuple[m.Infra.CensusViolation, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.CensusViolation]]:
         """Convert validator output into typed census violations."""
         if validation.failure:
             return r[tuple[m.Infra.CensusViolation, ...]].from_failure(validation)
@@ -632,8 +647,9 @@ class FlextInfraUtilitiesCodegenNamespace:
         project_path: Path,
         initial_violations: t.SequenceOf[m.Infra.CensusViolation],
         remaining_violations: t.SequenceOf[m.Infra.CensusViolation],
-    ) -> tuple[
-        tuple[m.Infra.CensusViolation, ...], tuple[m.Infra.CensusViolation, ...]
+    ) -> t.Pair[
+        t.VariadicTuple[m.Infra.CensusViolation],
+        t.VariadicTuple[m.Infra.CensusViolation],
     ]:
         """Split initial violations into fixed and still-skipped groups."""
         if not initial_violations:

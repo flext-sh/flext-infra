@@ -9,7 +9,7 @@ from flext_core import m, u
 from flext_infra import t
 
 from .._constants.release import FlextInfraConstantsRelease as cr
-from .._models.mixins import FlextInfraModelsMixins as mm
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsRelease:
@@ -131,7 +131,7 @@ class FlextInfraModelsRelease:
             m.Field(default=None, description="Latest release tag, if any"),
         ] = None
         merges: Annotated[
-            tuple[str, ...],
+            t.VariadicTuple[str],
             m.Field(default=(), description="Merged PR subjects since previous_tag"),
         ] = ()
         declared: Annotated[

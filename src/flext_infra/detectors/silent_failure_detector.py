@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, u
@@ -38,7 +39,9 @@ class FlextInfraSilentFailureDetector:
                 code=finding.kind,
                 message=finding.detail,
             )
-            for finding in u.Infra.collect_silent_failure_findings(tree, source)
+            for finding in u.Infra.collect_silent_failure_findings(
+                tree, source, is_test_module=_is_test_module(file_path)
+            )
         )
 
     @classmethod
@@ -63,13 +66,25 @@ class FlextInfraSilentFailureDetector:
                 detail=finding.detail,
                 fix_action=finding.fix_action,
             )
-            for finding in u.Infra.collect_silent_failure_findings(tree, source)
+            for finding in u.Infra.collect_silent_failure_findings(
+                tree, source, is_test_module=_is_test_module(ctx.file_path)
+            )
         )
 
     @classmethod
     def fixable_kinds(cls) -> frozenset[str]:
         """Kinds that ``fix_silent_failure_sentinels`` can auto-correct."""
         return frozenset({"silent-failure-guard", "silent-failure-except"})
+
+
+def _is_test_module(file_path: Path) -> bool:
+    """Return whether ``file_path`` lives under a tests tree.
+
+    Why (cosmos-3flk9): a test teardown legitimately suppresses lifecycle
+    errors (a child process that already died) via ``contextlib.suppress``;
+    that is process reaping, not a silenced production failure.
+    """
+    return any(part == "tests" for part in file_path.parts)
 
 
 def _rope_module_ast(

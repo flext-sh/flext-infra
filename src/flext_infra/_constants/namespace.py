@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Final
+from typing import TYPE_CHECKING, Final
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraConstantsNamespace:
@@ -29,7 +32,7 @@ class FlextInfraConstantsNamespace:
         "cli",
         "main",
     })
-    NAMESPACE_LAYER_ORDER: Final[tuple[str, ...]] = (
+    NAMESPACE_LAYER_ORDER: Final[t.VariadicTuple[str]] = (
         "settings",
         "config",
         "c",
@@ -42,7 +45,52 @@ class FlextInfraConstantsNamespace:
         "api",
         "cli",
     )
-    NAMESPACE_OPERATION_FACADES: Final[tuple[str, ...]] = ("r", "e", "x", "h", "d", "s")
+    NAMESPACE_OPERATION_FACADES: Final[t.VariadicTuple[str]] = (
+        "r",
+        "e",
+        "x",
+        "h",
+        "d",
+        "s",
+    )
+    # Carve-out D1 (decision A, handoff §1.3): settings/config owners (the only
+    # rank-0/1 layers that declare nested Pydantic namespace-models) may import
+    # the declaration facades m/t/u at runtime — BaseModel/Field/typings/
+    # MappingKV/JSON/JsonValue and model_validator — exactly the canonical
+    # Flext<X>Settings pattern (e.g. flext-auth/_settings.py, flext-api/_settings).
+    # Direct ``pydantic`` stays prohibited (ENFORCE-070): flext-core is the sole
+    # owner of pydantic. c/p and the operational facades r/e/x/h/d/s are NOT
+    # covered by this carve-out and remain forward-only (TYPE_CHECKING).
+    NAMESPACE_SETTINGS_IMPORT_ALLOWED_OWNERS: Final[t.VariadicTuple[str]] = (
+        "settings",
+        "config",
+    )
+    NAMESPACE_SETTINGS_IMPORT_ALLOWED_FACADES: Final[t.VariadicTuple[str]] = (
+        "t",
+        "m",
+        "u",
+    )
+    NAMESPACE_SETTINGS_IMPORT_ALLOWED_FACADES_SET: Final[frozenset[str]] = frozenset(
+        NAMESPACE_SETTINGS_IMPORT_ALLOWED_FACADES
+    )
+    # Platform service-facade singletons emitted by codegen (api.py.j2:20
+    # ``{{ alias }} = {{ class_stem }}.fetch_global()``) and the canonical
+    # base/services/config/settings layers. These expose a bottom singleton
+    # ``alias = Class.fetch_global()`` (plain Assign or typed AnnAssign) which
+    # the structure rule must recognize as canonical, not a banned module alias.
+    # Handoff §1.2 layer order: ...base->services->api->cli; settings/config are
+    # the rank-0/1 layers (rank-0/1 layers that declare the Flext<X>Settings).
+    NAMESPACE_PLATFORM_FACADE_SINGLETONS: Final[t.MappingKV[str, t.StrPair]] = (
+        MappingProxyType({
+            "api.py": ("api", ""),
+            "base.py": ("s", "ServiceBase"),
+            "_config.py": ("config", "Config"),
+            "config.py": ("config", "Config"),
+            "_settings.py": ("settings", "Settings"),
+            "settings.py": ("settings", "Settings"),
+        })
+    )
+    "Canonical platform facade file name -> (alias, class-name suffix)."
     NAMESPACE_LAYER_BY_FILE: Final[MappingProxyType[str, str]] = MappingProxyType({
         "settings.py": "settings",
         "_settings.py": "settings",

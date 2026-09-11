@@ -9,10 +9,10 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
+from flext_tests import tm
 
 import flext_infra as infra_pkg
 from flext_infra import config
-from flext_tests import tm
 from tests import c, t, u
 
 # NOTE(flext-p68a.9.4, agent codex): the installed flext-tests pytest11 plugin is
@@ -21,9 +21,24 @@ pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
 
 
 @pytest.fixture
-def isolate_github_trigger_sha(monkeypatch: pytest.MonkeyPatch) -> None:
+def installed_dependency_path(tmp_path: Path) -> Iterator[Path]:
+    """Expose real non-src package files through the selected import environment."""
+    location = tmp_path / "installed"
+    location.mkdir()
+    sys.path.insert(0, str(location))
+    importlib.invalidate_caches()
+    try:
+        yield location
+    finally:
+        sys.path.remove(str(location))
+        importlib.invalidate_caches()
+
+
+@pytest.fixture
+def isolate_github_trigger_sha() -> Iterator[None]:
     """Remove the outer checkout identity for explicit conform test consumers."""
-    monkeypatch.delenv(c.Infra.ENV_VAR_GITHUB_SHA, raising=False)
+    with u.Tests.env_vars_context(vars_to_clear=(c.Infra.ENV_VAR_GITHUB_SHA,)):
+        yield
 
 
 @pytest.fixture

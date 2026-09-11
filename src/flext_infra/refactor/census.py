@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_cli import cli
+
 from flext_core import r
 from flext_infra import c, m, p, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
@@ -130,7 +131,7 @@ class FlextInfraRefactorCensus(
 
     def _execution_reports(
         self,
-    ) -> tuple[m.Infra.Census.WorkspaceReport, m.Infra.Census.WorkspaceReport | None]:
+    ) -> t.Pair[m.Infra.Census.WorkspaceReport, m.Infra.Census.WorkspaceReport | None]:
         """Collect the final report and the pre-apply impact-map report."""
         started = time.monotonic()
         applied = frozenset[str]()

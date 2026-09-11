@@ -7,15 +7,13 @@ the utility metric and the persisted audit reports.
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
-from flext_infra.utilities import u
-from flext_tests import tm
-from tests import m
+from tests import m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -47,6 +45,9 @@ def _write_project(tmp_path: Path) -> Path:
         '[project]\nname = "flext-demo"\nversion = "0.1.0"\n', encoding="utf-8"
     )
     (package / "__init__.py").write_text(_PACKAGE_INIT, encoding="utf-8")
+    u.Tests.write_beads_project(
+        project, workspace="flext-demo", database="flext-demo", issue_prefix="flext-demo"
+    )
     return project
 
 
@@ -98,18 +99,26 @@ class TestsDocstringCoverage:
                 package_name="flext_demo",
             )
 
-            FlextInfraDocAuditor().audit_scope(
-                scope, params=m.Infra.AuditScopeParams(check="docstrings", strict=False)
+            report = FlextInfraDocAuditor().audit_scope(
+                scope, params=m.Infra.AuditScopeParams(check="docstrings")
             )
+            tm.that(report.passed, eq=False)
+            tm.that(report.items, empty=False)
 
             markdown = (report_dir / "audit-report.md").read_text(encoding="utf-8")
             tm.that(markdown, has="Docstring coverage:")
-            summary = json.loads(
+            summary = u.Tests.json_payload(
                 (report_dir / "audit-summary.json").read_text(encoding="utf-8")
             )
-            metric = summary["summary"]["docstring_coverage"]
-            tm.that(metric["checked"] > 0, eq=True)
-            tm.that(0.0 <= metric["percent"] < _FULL_COVERAGE_PERCENT, eq=True)
+            metric = u.Tests.toml_mapping(
+                u.Tests.toml_mapping(summary["summary"])["docstring_coverage"]
+            )
+            checked = metric["checked"]
+            percent = metric["percent"]
+            assert isinstance(checked, int)
+            assert isinstance(percent, float)
+            tm.that(checked > 0, eq=True)
+            tm.that(0.0 <= percent < _FULL_COVERAGE_PERCENT, eq=True)
 
     class TestExecuteChecksSelector:
         """execute() honors the CLI --checks selector (no hardcoded "all")."""
@@ -121,28 +130,35 @@ class TestsDocstringCoverage:
                 repository_root=project, checks="docstrings"
             ).execute()
 
-            tm.ok(result)
-            summary = json.loads(
+            tm.fail(result)
+            summary = u.Tests.json_payload(
                 (project / ".reports/docs/audit-summary.json").read_text(
                     encoding="utf-8"
                 )
-            )["summary"]
+            )
+            summary = u.Tests.toml_mapping(summary["summary"])
             tm.that(summary["checks"], eq=["docstrings"])
-            tm.that(summary["docstring_coverage"]["checked"] > 0, eq=True)
+            tm.that(u.Tests.number(summary["issues"]), gt=0)
+            coverage = u.Tests.toml_mapping(summary["docstring_coverage"])
+            checked = coverage["checked"]
+            assert isinstance(checked, int)
+            tm.that(checked > 0, eq=True)
 
         def test_default_checks_runs_full_suite(self, tmp_path: Path) -> None:
             project = _write_project(tmp_path)
 
             result = FlextInfraDocAuditor(repository_root=project).execute()
 
-            tm.ok(result)
-            summary = json.loads(
+            tm.fail(result)
+            summary = u.Tests.json_payload(
                 (project / ".reports/docs/audit-summary.json").read_text(
                     encoding="utf-8"
                 )
-            )["summary"]
+            )
+            summary = u.Tests.toml_mapping(summary["summary"])
             tm.that(summary["checks"], has="docstrings")
             tm.that(summary["checks"], has="links")
+            tm.that(u.Tests.number(summary["issues"]), gt=0)
 
     class TestDocstringMinThreshold:
         """--docstring-min replaces the interrogate --fail-under gate."""
@@ -155,33 +171,70 @@ class TestsDocstringCoverage:
             ).execute()
 
             tm.fail(result)
-            summary = json.loads(
+            summary = u.Tests.json_payload(
                 (project / ".reports/docs/audit-summary.json").read_text(
                     encoding="utf-8"
                 )
-            )["summary"]
+            )
+            summary = u.Tests.toml_mapping(summary["summary"])
             tm.that(
                 (
-                    summary["docstring_coverage"]["percent"]
+                    u.Tests.number(
+                        u.Tests.toml_mapping(summary["docstring_coverage"])["percent"]
+                    )
                     < _PARTIAL_COVERAGE_THRESHOLD
                 ),
                 eq=True,
             )
 
-        def test_coverage_above_minimum_keeps_audit_green(self, tmp_path: Path) -> None:
+        def test_coverage_above_minimum_cannot_allow_findings(
+            self, tmp_path: Path
+        ) -> None:
             project = _write_project(tmp_path)
 
             result = FlextInfraDocAuditor(
                 repository_root=project, checks="docstrings", docstring_min=40.0
             ).execute()
 
-            tm.ok(result)
+            tm.fail(result)
+            tm.that(result.error, has="issues:")
 
-        def test_no_threshold_disables_the_gate(self, tmp_path: Path) -> None:
+        def test_no_threshold_still_rejects_missing_docstrings(
+            self, tmp_path: Path
+        ) -> None:
             project = _write_project(tmp_path)
 
             result = FlextInfraDocAuditor(
                 repository_root=project, checks="docstrings"
             ).execute()
 
+            tm.fail(result)
+            tm.that(result.error, has="issues:")
+
+        def test_coverage_floor_applies_with_other_selected_checks(
+            self, tmp_path: Path
+        ) -> None:
+            """Selecting links cannot silently disable an explicit coverage floor."""
+            project = _write_project(tmp_path)
+            result = FlextInfraDocAuditor(
+                repository_root=project, checks="links", docstring_min=80.0
+            ).execute()
+            tm.fail(result)
+            tm.that(result.error, has="below minimum")
+
+        def test_fully_documented_package_passes(self, tmp_path: Path) -> None:
+            """Repairing the finding, rather than lowering a floor, makes it pass."""
+            project = _write_project(tmp_path)
+            package_init = project / "src/flext_demo/__init__.py"
+            package_init.write_text(
+                _PACKAGE_INIT.replace(
+                    "def undocumented_fn() -> str:\n",
+                    "def undocumented_fn() -> str:\n"
+                    '    """Return an undocumented label."""\n',
+                ),
+                encoding="utf-8",
+            )
+            result = FlextInfraDocAuditor(
+                repository_root=project, checks="docstrings", docstring_min=100.0
+            ).execute()
             tm.ok(result)

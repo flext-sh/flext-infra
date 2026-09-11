@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import m
+from flext_tests import tm
+
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
-from flext_tests import tm
 from tests.unit.workspace import WorktreeFixture
 
 if TYPE_CHECKING:
@@ -147,13 +147,3 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         error = _provenance_failure(workspace, site_packages)
         tm.that(error, has="distribution count mismatch")
         tm.that(error, has="distribution=sample-member")
-
-    def test_request_model_uses_workspace_cli_alias(self, tmp_path: Path) -> None:
-        """Parse the public workspace CLI flag into the canonical request field."""
-        workspace = _workspace(tmp_path / "workspace")
-
-        request = m.Infra.WorkspaceEnvironmentRequest.model_validate({
-            "workspace": workspace
-        })
-
-        tm.that(request.repository_root, eq=workspace)

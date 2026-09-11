@@ -5,7 +5,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from flext_cli import cli as cli_facade
+from flext_cli import u
+
 from tests import c, p, t
 
 
@@ -25,7 +26,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         ``bin/mise`` seeds instead of minting them, so a fixture tree that
         conforms the full surface must carry them exactly as a governed
         repository does. The declared ``.mise.toml`` travels with its
-        ``mise.lock``: the lock answers that exact declaration, so a fixture
+        launchers: the generated seeds answer that exact declaration, so a fixture
         carrying one without the other reads as a changed toolchain and
         makes conform resolve every selector against its remote registry —
         a network call inside a unit test. Conform still renders and
@@ -33,7 +34,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         when the rendered bytes match the seed.
         """
         source_root = Path(__file__).resolve().parents[1]
-        for relative in (".mise.toml", "bin/mise", "bin/mise.cmd", "mise.lock"):
+        for relative in (".mise.toml", "bin/mise", "bin/mise.cmd"):
             source = source_root / relative
             destination = root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
@@ -60,7 +61,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             # setup owner parses this declaration statically, never runs it.
             "mise_pinned_release() {\n"
             f'  local mise_version="${{MISE_VERSION:-{release}}}"\n'
-            '  printf \'%s\\n\' "$mise_version"\n'
+            "  printf '%s\\n' \"$mise_version\"\n"
             "}\n"
             'if [ "$1" = "--version" ]; then '
             f"printf '%s\\n' '{release}'; exit; fi\n"
@@ -104,7 +105,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         args: t.StrSequence, *, cwd: Path, env: t.StrMapping | None = None
     ) -> p.Result[p.Cli.CommandOutput]:
         """Run Make without undeclared state inherited from outer pytest."""
-        return cli_facade.run_raw(
+        return u.Cli.run_raw(
             [c.Infra.MAKE, *args],
             cwd=cwd,
             env=env,

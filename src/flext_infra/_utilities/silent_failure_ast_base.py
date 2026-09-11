@@ -5,6 +5,8 @@ from __future__ import annotations
 import ast
 from typing import ClassVar, NamedTuple
 
+from flext_infra import t
+
 
 class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
     """Own AST traversal state and structural predicates."""
@@ -17,21 +19,27 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
         kind: str
         detail: str
         fix_action: str
-        replacement: tuple[int, int, str] | None = None
+        replacement: t.Triple[int, int, str] | None = None
 
     _SENTINEL_CONSTANTS: ClassVar[frozenset[object]] = frozenset({False, None})
+    _BOOLEAN_PREDICATE_PREFIXES: ClassVar[t.VariadicTuple[str]] = (
+        "has_",
+        "is_",
+        "should_",
+    )
     _BROAD_EXCEPTION_NAMES: ClassVar[frozenset[str]] = frozenset({
         "Exception",
         "BaseException",
     })
 
-    def __init__(self, source: str) -> None:
+    def __init__(self, source: str, *, is_test_module: bool = False) -> None:
         self._lines = source.splitlines(keepends=True)
         self._findings: list[FlextInfraUtilitiesSilentFailureAstBase.Finding] = []
         self._import_aliases: dict[str, str] = {}
         self._parents: dict[ast.AST, ast.AST] = {}
+        self._is_test_module = is_test_module
 
-    def analyze(self, tree: ast.Module) -> tuple[Finding, ...]:
+    def analyze(self, tree: ast.Module) -> t.VariadicTuple[Finding]:
         """Build the parent map and collect findings from one module."""
         self._parents = {
             child: parent
@@ -51,6 +59,30 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
             current = self._parents.get(current)
         return None
 
+    def _is_findings_collector(
+        self, function: ast.FunctionDef | ast.AsyncFunctionDef
+    ) -> bool:
+        """Return whether ``function`` is a findings collector.
+
+        Why (cosmos-3flk9): a collector's contract returns the list of
+        findings it found; an empty list in a success branch means "no
+        findings", not a swallowed failure.
+        """
+        return function.name.endswith("_findings") or function.name.startswith(
+            "collect_"
+        )
+
+    def _is_boolean_predicate(
+        self, function: ast.FunctionDef | ast.AsyncFunctionDef
+    ) -> bool:
+        """Return whether ``function`` is a boolean predicate.
+
+        Why (cosmos-3flk9): a ``has_*``/``is_*``/``should_*`` predicate maps
+        a specific, expected exception to ``False`` — that is the predicate's
+        meaning, not a hidden failure.
+        """
+        return function.name.startswith(self._BOOLEAN_PREDICATE_PREFIXES)
+
     @staticmethod
     def _result_inner_type(
         function: ast.FunctionDef | ast.AsyncFunctionDef,
@@ -64,7 +96,7 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
         )
         return ast.unparse(returns.slice) if is_result else None
 
-    def _line_offsets(self, line_number: int) -> tuple[int, int]:
+    def _line_offsets(self, line_number: int) -> t.Pair[int, int]:
         start = sum(len(self._lines[index]) for index in range(line_number - 1))
         return start, start + len(self._lines[line_number - 1])
 
@@ -80,7 +112,7 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
         kind: str,
         detail: str,
         fix_action: str = "manual",
-        replacement: tuple[int, int, str] | None = None,
+        replacement: t.Triple[int, int, str] | None = None,
     ) -> None:
         self._findings.append(
             self.Finding(
@@ -103,7 +135,7 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
             return True
         return isinstance(node, ast.Dict) and not node.keys
 
-    def _first_sentinel_return(self, body: list[ast.stmt]) -> ast.Return | None:
+    def _first_sentinel_return(self, body: t.SequenceOf[ast.stmt]) -> ast.Return | None:
         return next(
             (
                 child
@@ -116,13 +148,13 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
         )
 
     @staticmethod
-    def _body_has_raise_or_fail(body: list[ast.stmt]) -> bool:
+    def _body_has_raise_or_fail(body: t.SequenceOf[ast.stmt]) -> bool:
         return any(
             isinstance(child, ast.Raise)
             or (
                 isinstance(child, ast.Call)
                 and isinstance(child.func, ast.Attribute)
-                and child.func.attr == "fail"
+                and child.func.attr.startswith("fail")
             )
             for statement in body
             for child in ast.walk(statement)
@@ -158,4 +190,4 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
         )
 
 
-__all__: tuple[str, ...] = ("FlextInfraUtilitiesSilentFailureAstBase",)
+__all__: t.VariadicTuple[str] = ("FlextInfraUtilitiesSilentFailureAstBase",)

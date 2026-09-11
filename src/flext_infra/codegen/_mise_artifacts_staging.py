@@ -7,14 +7,13 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.codegen import (
-    _mise_artifacts_candidates as candidates,
-    _mise_artifacts_files as files,
-    _mise_artifacts_process as process,
-)
+from flext_infra.codegen import _mise_artifacts_candidates as candidates
+
+from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
+from ._mise_artifacts_process import FlextInfraMiseArtifactsProcess as process
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 class FlextInfraMiseStaging:
@@ -25,8 +24,23 @@ class FlextInfraMiseStaging:
 
     def stage(
         self, plan: m.Infra.MiseToolchainWorkspacePlan
-    ) -> p.Result[tuple[m.Infra.CodegenStagedFile, ...]]:
-        """Stage and validate the committed lock selected before publication."""
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]:
+        """Stage the packaged launcher fleet alongside each declaration."""
+        if not plan.projects:
+            return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
+                "Mise plan declares no projects"
+            )
+        packaged = files.packaged_launchers()
+        if packaged.failure:
+            return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(packaged)
+        return self._stage_projects(plan, packaged.value)
+
+    def _stage_projects(
+        self,
+        plan: m.Infra.MiseToolchainWorkspacePlan,
+        seed_launchers: t.VariadicTuple[m.Cli.AtomicFileState],
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]:
+        """Stage the seed launcher pair into every selected project."""
         stages: list[Path] = []
         for project in plan.projects:
             if project.layout.transaction_root is None:
@@ -34,14 +48,20 @@ class FlextInfraMiseStaging:
                     f"Mise transaction root is absent: {project.layout.selector}"
                 )
             stage_root = project.layout.transaction_root / "stage"
-            staged = self._stage_project(project, stage_root=stage_root)
+            staged = self._stage_project(
+                project, stage_root=stage_root, seed_launchers=seed_launchers
+            )
             if staged.failure:
                 return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(staged)
             stages.append(stage_root)
         return candidates.publication_plan(plan.projects, tuple(stages))
 
     def _stage_project(
-        self, project: m.Infra.MiseToolchainProjectState, *, stage_root: Path
+        self,
+        project: m.Infra.MiseToolchainProjectState,
+        *,
+        stage_root: Path,
+        seed_launchers: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[bool]:
         """Build and validate one project without reading mutable source bytes."""
         stage_plan = u.Cli.atomic_plan_directory_chain(stage_root / "bin")
@@ -63,18 +83,11 @@ class FlextInfraMiseStaging:
         )
         if config_write.failure:
             return config_write
-        artifact_states = (
-            project.artifacts.unix_launcher,
-            project.artifacts.windows_launcher,
-            project.artifacts.lock,
-        )
         for source, (name, mode) in zip(
-            artifact_states, files.ARTIFACT_SPECS, strict=True
+            seed_launchers, files.ARTIFACT_SPECS, strict=True
         ):
             if source.content is None:
-                return r[bool].fail(
-                    f"committed Mise artifact is absent: {project.layout.root / name}"
-                )
+                return r[bool].fail(f"Mise launcher seed content is absent: {name}")
             copied = process.write_new(stage_root / name, source.content, mode)
             if copied.failure:
                 return copied

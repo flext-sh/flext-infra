@@ -115,11 +115,11 @@ class FlextInfraConstantsSharedInfra:
     MYPY_STUB_RE: Final[t.RegexPattern] = re.compile(
         r"Library stubs not installed for ['\"](\S+?)['\"]"
     )
-    INTERNAL_PREFIXES: Final[tuple[str, ...]] = ("flext_", "flext-")
+    INTERNAL_PREFIXES: Final[t.VariadicTuple[str]] = ("flext_", "flext-")
     METADATA_TOMLLIB_MODULES: Final[frozenset[str]] = frozenset({"tomllib"})
     METADATA_ALLOWLIST_PATH_MARKERS: Final[t.StrSequence] = (
         "flext-core/src/flext_core/_utilities/project_metadata.py",
-        "flext-infra/src/flext_infra/_utilities/iteration.py",
+        "flext-infra/src/flext_infra/iteration.py",
         "flext-infra/src/flext_infra/__version__.py",
     )
     METADATA_TARGET_SCOPE_MARKERS: Final[t.StrSequence] = (
@@ -137,7 +137,11 @@ class FlextInfraConstantsSharedInfra:
     # workspace declares for itself — a fleet that integrates on a versioned
     # line names it there rather than asking for a constant here. Product- and
     # release-specific names do not belong in this tuple.
-    INTEGRATION_BRANCH_PREFERENCE: Final[tuple[str, ...]] = ("develop", "dev", "main")
+    INTEGRATION_BRANCH_PREFERENCE: Final[t.VariadicTuple[str]] = (
+        "develop",
+        "dev",
+        "main",
+    )
 
     # --- File names (was: class Files) ---
     PYPROJECT_FILENAME: Final[str] = "pyproject.toml"
@@ -174,6 +178,16 @@ class FlextInfraConstantsSharedInfra:
     "Heading of the trailing .gitignore section holding layout-SSOT additions."
     MANAGED_FILE_POLICY_DELEGATED: Final[str] = "delegated"
     MANAGED_FILE_POLICY_FULL: Final[str] = "full"
+    MANAGED_FILE_POLICY_MERGE: Final[str] = "merge"
+    MANAGED_FILE_POLICY_CREATE_ONLY: Final[str] = "create-only"
+    MANAGED_FILE_POLICY_MANUAL: Final[str] = "manual"
+    "Managed-file policies that bypass or skip generation — forbidden by .gen requirements."
+    MANAGED_FILE_POLICIES_BYPASS: Final[frozenset[str]] = frozenset({
+        MANAGED_FILE_POLICY_DELEGATED,
+        MANAGED_FILE_POLICY_CREATE_ONLY,
+        MANAGED_FILE_POLICY_MANUAL,
+    })
+    "Bypass policies forbidden by strict .gen compliance."
     "Managed-file policy whose artifact is generated per checkout, not committed."
     INIT_PY: Final[str] = "__init__.py"
     API_PY: Final[str] = "api.py"

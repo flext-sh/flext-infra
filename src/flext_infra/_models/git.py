@@ -6,9 +6,10 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m
+
 from flext_infra import t
 
-from .._models._git.identity import FlextInfraModelsGitIdentity
+from ._git.identity import FlextInfraModelsGitIdentity
 
 
 class FlextInfraModelsGit(FlextInfraModelsGitIdentity):

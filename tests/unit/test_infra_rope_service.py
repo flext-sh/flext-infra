@@ -5,18 +5,88 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 import flext_infra
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-from flext_tests import tm
-from tests import c, m, u
+from tests import c, m, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
+def _demo_module(tmp_path: Path, module_name: str, source: str) -> tuple[Path, Path]:
+    """Create one flext-demo workspace and write ``source`` into its module."""
+    repository_root, package_root = u.Tests.create_lazy_init_workspace(
+        tmp_path, project_name="flext-demo", package_name="flext_demo"
+    )
+    module_path = package_root / module_name
+    module_path.write_text(source, encoding="utf-8")
+    return repository_root, module_path
+
+
+def _paired_namespace_projects(root: Path) -> tuple[Path, Path, Path, Path, Path]:
+    """Declare two sibling namespace projects and return their roots and modules."""
+    project_root, package_root = u.Tests.create_lazy_init_workspace(
+        root, project_name="flext-infra", package_name="flext_infra"
+    )
+    sibling_root, sibling_package_root = u.Tests.create_lazy_init_workspace(
+        root, project_name="flext-demo", package_name="flext_demo"
+    )
+    module_path = package_root / "models.py"
+    u.Tests.write_lazy_init_namespace_module(
+        module_path, class_name="FlextInfraModels", alias="m", docstring="Models."
+    )
+    sibling_module_path = sibling_package_root / "models.py"
+    u.Tests.write_lazy_init_namespace_module(
+        sibling_module_path,
+        class_name="FlextDemoModels",
+        alias="m",
+        docstring="Models.",
+    )
+    return project_root, package_root, module_path, sibling_root, sibling_module_path
+
+
+def _module_exports(
+    repository_root: Path, module_path: Path, options: t.JsonMapping
+) -> tuple[str, ...]:
+    """Read one module's public export contract through the Rope workspace."""
+    with flext_infra.infra.rope_workspace(repository_root) as rope:
+        return tuple(
+            rope.exports(
+                module_path,
+                export_options=m.Infra.ExportOptions.model_validate(options),
+            )
+        )
+
+
+def _module_objects_by_name(
+    repository_root: Path, module_path: Path
+) -> dict[str, m.Infra.Census.Object]:
+    """Index one module's non-local objects by their declared name."""
+    with flext_infra.infra.rope_workspace(repository_root) as rope:
+        return {
+            item.name: item
+            for item in rope.objects(module_path, include_local_scopes=False)
+        }
+
+
 class TestsFlextInfraInfraRopeService:
     """Validate the public Rope workspace DSL through public methods only."""
+
+    @pytest.mark.parametrize(
+        ("source", "symbol", "documented"),
+        [
+            ("from .sibling import Public\n", "Public", False),
+            ('class Public:\n    """Public contract."""\n', "Public", True),
+            ("class Public:\n    pass\n", "Public", False),
+        ],
+    )
+    def test_source_docstrings_only_resolve_local_definitions(
+        self, source: str, symbol: str, *, documented: bool
+    ) -> None:
+        """Relative reexports require repository context, not source-only lookup."""
+        tm.that(u.Infra.symbol_has_docstring_source(source, symbol), eq=documented)
 
     def test_open_workspace_materializes_snapshot(self, tmp_path: Path) -> None:
         """Public service class exposes one typed workspace snapshot."""
@@ -98,14 +168,11 @@ class TestsFlextInfraInfraRopeService:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
-            exports = rope.exports(
-                module_path,
-                export_options=m.Infra.ExportOptions.model_validate({
-                    "allow_assignments": True,
-                    "allow_functions": True,
-                }),
-            )
+        exports = _module_exports(
+            repository_root,
+            module_path,
+            {"allow_assignments": True, "allow_functions": True},
+        )
 
         tm.that(exports, eq=("PUBLIC",))
 
@@ -124,13 +191,9 @@ class TestsFlextInfraInfraRopeService:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
-            exports = rope.exports(
-                module_path,
-                export_options=m.Infra.ExportOptions.model_validate({
-                    "allow_assignments": True
-                }),
-            )
+        exports = _module_exports(
+            repository_root, module_path, {"allow_assignments": True}
+        )
 
         tm.that(exports, eq=("MODE",))
 
@@ -200,8 +263,10 @@ class TestsFlextInfraInfraRopeService:
 
         with flext_infra.infra.rope_workspace(repository_root) as rope:
             convention = rope.convention(module_path)
-            violations = tm.ok(u.Infra.class_nesting_plan(rope, module_path))
+            violations_result = u.Infra.class_nesting_plan(rope, module_path)
 
+        tm.that(violations_result.failure, eq=False)
+        violations = tm.not_none(violations_result.unwrap())
         tm.that(len(violations), eq=1)
         violation = violations[0]
         tm.that(violation.class_name, eq=extra_class_name)
@@ -233,24 +298,14 @@ class TestsFlextInfraInfraRopeService:
         """A workspace-context Rope call indexes declared and undeclared projects."""
         monorepo_root = tmp_path / "repo"
         monorepo_root.mkdir()
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(
-            monorepo_root, project_name="flext-infra", package_name="flext_infra"
-        )
-        sibling_root, sibling_package_root = u.Tests.create_lazy_init_workspace(
-            monorepo_root, project_name="flext-demo", package_name="flext_demo"
-        )
         u.Tests.declare_workspace_projects(monorepo_root, ("flext-infra",))
-        module_path = package_root / "models.py"
-        u.Tests.write_lazy_init_namespace_module(
-            module_path, class_name="FlextInfraModels", alias="m", docstring="Models."
-        )
-        sibling_module_path = sibling_package_root / "models.py"
-        u.Tests.write_lazy_init_namespace_module(
+        (
+            repository_root,
+            package_root,
+            module_path,
+            sibling_root,
             sibling_module_path,
-            class_name="FlextDemoModels",
-            alias="m",
-            docstring="Models.",
-        )
+        ) = _paired_namespace_projects(monorepo_root)
 
         for call_root in (monorepo_root, repository_root, package_root):
             with flext_infra.infra.rope_workspace(call_root) as rope:
@@ -266,22 +321,8 @@ class TestsFlextInfraInfraRopeService:
         """Without a workspace context, sibling projects remain outside Rope."""
         projects_root = tmp_path / "projects"
         projects_root.mkdir()
-        project_root, package_root = u.Tests.create_lazy_init_workspace(
-            projects_root, project_name="flext-infra", package_name="flext_infra"
-        )
-        sibling_root, sibling_package_root = u.Tests.create_lazy_init_workspace(
-            projects_root, project_name="flext-demo", package_name="flext_demo"
-        )
-        module_path = package_root / "models.py"
-        u.Tests.write_lazy_init_namespace_module(
-            module_path, class_name="FlextInfraModels", alias="m", docstring="Models."
-        )
-        sibling_module_path = sibling_package_root / "models.py"
-        u.Tests.write_lazy_init_namespace_module(
-            sibling_module_path,
-            class_name="FlextDemoModels",
-            alias="m",
-            docstring="Models.",
+        project_root, package_root, module_path, sibling_root, sibling_module_path = (
+            _paired_namespace_projects(projects_root)
         )
 
         with flext_infra.infra.rope_workspace(package_root) as rope:
@@ -479,16 +520,24 @@ class TestsFlextInfraInfraRopeService:
         with flext_infra.infra.rope_workspace(repository_root) as rope:
             original_semantic = rope.semantic(module_path)
             tm.that(rope.source(module_path), eq=original_source)
+            tm.that(
+                tuple(item.name for item in original_semantic.class_infos),
+                eq=("Original",),
+            )
 
             module_path.write_text(changed_source, encoding=c.Cli.ENCODING_DEFAULT)
-            tm.that(rope.source(module_path), eq=original_source)
-            tm.that(rope.semantic(module_path) is original_semantic, eq=True)
-
-            rope.refresh()
             tm.that(rope.source(module_path), eq=changed_source)
             tm.that(
                 tuple(item.name for item in rope.semantic(module_path).class_infos),
-                eq=("Changed",),
+                eq=("Original",),
+            )
+            tm.that(
+                tuple(item.name for item in rope.objects(module_path)), eq=("Original",)
+            )
+
+            rope.refresh()
+            tm.that(
+                tuple(item.name for item in rope.objects(module_path)), eq=("Changed",)
             )
 
     def test_workspace_refresh_can_preserve_reverted_name_indexes(
@@ -531,10 +580,10 @@ class TestsFlextInfraInfraRopeService:
             tm.that(rebuilt_index is not original_index, eq=True)
             tm.that(rebuilt_index, has="second")
 
-    def test_workspace_objects_raise_on_inventory_bootstrap_error(
+    def test_workspace_objects_raise_on_unparseable_module(
         self, tmp_path: Path
     ) -> None:
-        """Inventory bootstrap failures surface instead of returning an empty module."""
+        """Unparseable module sources surface instead of an empty module."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
@@ -543,11 +592,11 @@ class TestsFlextInfraInfraRopeService:
 
         with (
             flext_infra.infra.rope_workspace(repository_root) as rope,
-            pytest.raises(
-                RuntimeError, match=r"rope inventory failed to load .*service\.py"
-            ),
+            pytest.raises(SyntaxError) as parse_error,
         ):
             rope.objects(module_path)
+
+        tm.that(parse_error.value.filename, eq=str(module_path.resolve()))
 
     def test_workspace_name_index_raises_on_module_read_error(
         self, tmp_path: Path
@@ -654,25 +703,16 @@ class TestsFlextInfraInfraRopeService:
         self, tmp_path: Path
     ) -> None:
         """Legacy root facade declarations are ordinary objects."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path, project_name="flext-demo", package_name="flext_demo"
-        )
-        module_path = package_root / "models.py"
-        module_path.write_text(
-            (
-                "from __future__ import annotations\n\n"
-                "class FlextDemoModels:\n"
-                "    pass\n\n"
-                "m = FlextDemoModels\n"
-            ),
-            encoding="utf-8",
+        repository_root, module_path = _demo_module(
+            tmp_path,
+            "models.py",
+            "from __future__ import annotations\n\n"
+            "class FlextDemoModels:\n"
+            "    pass\n\n"
+            "m = FlextDemoModels\n",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
-            objects = {
-                item.name: item
-                for item in rope.objects(module_path, include_local_scopes=False)
-            }
+        objects = _module_objects_by_name(repository_root, module_path)
 
         tm.that(objects["FlextDemoModels"].is_facade_member, eq=False)
         tm.that(objects["m"].is_facade_member, eq=False)
@@ -681,25 +721,16 @@ class TestsFlextInfraInfraRopeService:
         self, tmp_path: Path
     ) -> None:
         """Private and dunder names expose zero production references."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path, project_name="flext-demo", package_name="flext_demo"
-        )
-        module_path = package_root / "service.py"
-        module_path.write_text(
-            (
-                "from __future__ import annotations\n\n"
-                '__all__: list[str] = ["public"]\n\n'
-                "def public() -> int:\n"
-                "    return 1\n"
-            ),
-            encoding="utf-8",
+        repository_root, module_path = _demo_module(
+            tmp_path,
+            "service.py",
+            "from __future__ import annotations\n\n"
+            '__all__: list[str] = ["public"]\n\n'
+            "def public() -> int:\n"
+            "    return 1\n",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
-            objects = {
-                item.name: item
-                for item in rope.objects(module_path, include_local_scopes=False)
-            }
+        objects = _module_objects_by_name(repository_root, module_path)
 
         tm.that(objects, has="__all__")
         tm.that(objects["__all__"].references_count, eq=0)

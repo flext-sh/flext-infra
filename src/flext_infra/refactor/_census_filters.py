@@ -22,11 +22,11 @@ class FlextInfraRefactorCensusFiltersMixin:
 
     @staticmethod
     def _duplicate_groups(
-        project_objects: tuple[list[m.Infra.Census.Object], ...],
-    ) -> tuple[m.Infra.Census.DuplicateGroup, ...]:
+        project_objects: t.VariadicTuple[t.SequenceOf[m.Infra.Census.Object]],
+    ) -> t.VariadicTuple[m.Infra.Census.DuplicateGroup]:
         """Duplicate groups."""
 
-        def object_location(item: m.Infra.Census.Object) -> tuple[str, str, int]:
+        def object_location(item: m.Infra.Census.Object) -> t.Triple[str, str, int]:
             return item.project, item.file_path, item.line
 
         groups: dict[tuple[str, str, str], list[m.Infra.Census.Object]] = defaultdict(
@@ -103,7 +103,7 @@ class FlextInfraRefactorCensusFiltersMixin:
 
     @staticmethod
     def _named_object(
-        objects: tuple[m.Infra.Census.Object, ...], name: str
+        objects: t.VariadicTuple[m.Infra.Census.Object], name: str
     ) -> m.Infra.Census.Object | None:
         """Named object."""
         return next(
@@ -113,7 +113,7 @@ class FlextInfraRefactorCensusFiltersMixin:
     @staticmethod
     def _runtime_alias_target(
         convention: m.Infra.RopeModuleConvention,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
+        objects: t.VariadicTuple[m.Infra.Census.Object] | None,
     ) -> m.Infra.Census.Object | None:
         """Runtime alias target."""
         if objects is None:

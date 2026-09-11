@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
-from flext_infra.gates.base_gate import FlextInfraGate
+
+from .base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -69,42 +69,32 @@ class FlextInfraPyrightGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
-        _ = project_dir, ctx
-        issues: t.MutableSequenceOf[m.Infra.Issue] = []
-        empty: t.MappingKV[str, t.Infra.InfraValue] = {}
-        parsed_result = u.Cli.json_parse(result.stdout or "{}")
-        parsed = parsed_result.unwrap() if parsed_result.success else empty
-        data = u.Cli.json_as_mapping(parsed) if isinstance(parsed, Mapping) else empty
-        try:
-            diagnostics = u.Cli.json_deep_mapping_list(
-                data, c.Infra.PYRIGHT_DIAGNOSTICS_KEY
-            )
-            issues.extend(
-                m.Infra.Issue(
-                    file=u.Cli.json_pick_str(diag, "file", "?"),
-                    line=u.Cli.json_nested_int(diag, "range", "start", "line") + 1,
-                    column=u.Cli.json_nested_int(diag, "range", "start", "character")
-                    + 1,
-                    code=u.Cli.json_pick_str(diag, "rule"),
-                    message=u.Cli.json_pick_str(diag, "message"),
-                    severity=u.Cli.json_pick_str(diag, "severity", c.Infra.ERROR),
-                )
-                for diag in diagnostics
-            )
-        except c.EXC_VALIDATION_TYPE as err:
-            issues.append(
-                m.Infra.Issue(
-                    file="<pyright-output>",
+        _ = ctx
+        if not u.Cli.process_succeeded(result.outcome) and not result.stdout.strip():
+            return False, (
+                self._command_error_issue(
+                    result,
+                    tool=c.Infra.PYRIGHT,
+                    file=str(project_dir),
                     line=0,
                     column=0,
-                    code="PARSE_ERROR",
-                    message=f"Tool output parsing failed: {type(err).__name__}",
-                    severity="ERROR",
-                )
+                ),
             )
-            return False, issues
+        report = m.Infra.PyrightReport.model_validate_json(result.stdout, strict=True)
+        issues: t.MutableSequenceOf[m.Infra.Issue] = [
+            m.Infra.Issue(
+                file=diag.file,
+                line=diag.range.start.line + 1 if diag.range is not None else 0,
+                column=diag.range.start.character + 1 if diag.range is not None else 0,
+                code=diag.rule or "",
+                message=diag.message,
+                severity=diag.severity,
+            )
+            for diag in report.general_diagnostics
+        ]
+        issues.extend(self._checker_stderr_issues(result, project_dir))
         if (not issues) and not u.Cli.process_succeeded(result.outcome):
             message = (result.stderr or result.stdout).strip()
             if not message:
@@ -122,7 +112,13 @@ class FlextInfraPyrightGate(FlextInfraGate):
                     severity=c.Infra.ERROR,
                 )
             )
-        return u.Cli.process_succeeded(result.outcome), issues
+        return (
+            u.Cli.process_succeeded(result.outcome)
+            and not report.summary.error_count
+            and not report.summary.warning_count
+            and not any(issue.severity == "ERROR" for issue in issues),
+            issues,
+        )
 
 
 __all__: list[str] = ["FlextInfraPyrightGate"]

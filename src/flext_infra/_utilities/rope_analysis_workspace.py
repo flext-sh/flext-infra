@@ -10,7 +10,7 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from .rope_core import FlextInfraUtilitiesRopeCore
 
 
 class FlextInfraUtilitiesRopeAnalysisWorkspace:
@@ -23,18 +23,22 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         return frozenset[str]((*c.Infra.ITERATION_EXCLUDED_PARTS, *ignored))
 
     @staticmethod
-    def _project_root_for_file(workspace_root: Path, file_path: Path) -> Path | None:
+    def _project_root_for_file(repository_root: Path, file_path: Path) -> Path | None:
         """Project root for file."""
         for parent in file_path.parents:
             if (parent / "pyproject.toml").is_file():
                 return parent.resolve()
-            if parent == workspace_root:
-                return workspace_root
+            if parent == repository_root:
+                return repository_root
         return None
 
     @classmethod
-    def _package_name_for_dir(cls, package_dir: Path, *, project_root: Path) -> str:
-        """Package name for dir."""
+    def package_name_for_dir(cls, package_dir: Path, *, project_root: Path) -> str:
+        """Return the import package a directory declares inside a project.
+
+        An empty string when the directory sits outside the project or under no
+        recognised source root.
+        """
         try:
             relative_parts = package_dir.relative_to(project_root).parts
         except ValueError:
@@ -54,10 +58,8 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
     def _module_name_for_file(cls, file_path: Path, *, project_root: Path) -> str:
         """Return the module name for a file."""
         if file_path.name in {c.Infra.INIT_PY, c.Infra.INIT_PYI}:
-            return cls._package_name_for_dir(
-                file_path.parent, project_root=project_root
-            )
-        package_name = cls._package_name_for_dir(
+            return cls.package_name_for_dir(file_path.parent, project_root=project_root)
+        package_name = cls.package_name_for_dir(
             file_path.parent, project_root=project_root
         )
         return f"{package_name}.{file_path.stem}" if package_name else ""
@@ -72,18 +74,54 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         )
 
     @staticmethod
-    def _inside_nested_repository(path: Path, workspace_root: Path) -> bool:
+    def _inside_nested_repository(path: Path, repository_root: Path) -> bool:
         """Exclude nested Git repositories and registered worktrees from indexing."""
         return any(
             (parent / ".git").exists() or (parent / ".git").is_symlink()
             for parent in path.parents
-            if parent != workspace_root and parent.is_relative_to(workspace_root)
+            if parent != repository_root and parent.is_relative_to(repository_root)
         )
+
+    @classmethod
+    def _is_pruned_walk_dir(cls, directory: Path, resolved_root: Path) -> bool:
+        """Return whether the pruned stub walk must not descend into ``directory``."""
+        return (
+            (directory / ".git").exists()
+            or (directory / ".git").is_symlink()
+            or cls._inside_nested_repository(directory, resolved_root)
+            or bool(
+                set(directory.relative_to(resolved_root).parts) & cls._excluded_parts()
+            )
+        )
+
+    @classmethod
+    def _pruned_stub_file_paths(cls, resolved_root: Path) -> set[Path]:
+        """Collect ``*.pyi`` paths with a walk that prunes excluded subtrees.
+
+        ``Path.rglob`` cannot prune, so it descends into every excluded
+        subtree — a populated ``.venv`` or an embedded worktree makes the
+        stat crawl cost whatever those directories contain. The walk applies
+        the exclusion names and the nested-repository classification at every
+        depth instead, and never follows symlinked directories.
+        """
+        stub_paths: set[Path] = set()
+        for parent, dir_names, file_names in resolved_root.walk():
+            dir_names[:] = [
+                name
+                for name in dir_names
+                if not cls._is_pruned_walk_dir(parent / name, resolved_root)
+            ]
+            stub_paths.update(
+                (parent / name).resolve()
+                for name in file_names
+                if name.endswith(".pyi") and (parent / name).is_file()
+            )
+        return stub_paths
 
     @classmethod
     def _python_and_stub_file_paths(
         cls, rope_project: t.Infra.RopeProject, resolved_root: Path
-    ) -> tuple[Path, ...]:
+    ) -> t.VariadicTuple[Path]:
         """Return indexed sources, declared wrapper modules, and typing stubs."""
         python_paths = {
             path.resolve()
@@ -108,15 +146,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 path, resolved_root
             )
         }
-        stub_paths = {
-            path.resolve()
-            for path in resolved_root.rglob("*.pyi")
-            if path.is_file()
-            and not set(path.relative_to(resolved_root).parts) & cls._excluded_parts()
-            and not FlextInfraUtilitiesRopeAnalysisWorkspace._inside_nested_repository(
-                path, resolved_root
-            )
-        }
+        stub_paths = cls._pruned_stub_file_paths(resolved_root)
         return tuple(
             sorted(python_paths | wrapper_paths | stub_paths, key=Path.as_posix)
         )
@@ -157,7 +187,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 else ""
             )
             package_name = (
-                cls._package_name_for_dir(package_dir, project_root=project_root)
+                cls.package_name_for_dir(package_dir, project_root=project_root)
                 if project_root is not None
                 else module_name
                 if is_package_init
@@ -195,10 +225,10 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
     @classmethod
     def index_rope_workspace(
-        cls, rope_project: t.Infra.RopeProject, workspace_root: Path
+        cls, rope_project: t.Infra.RopeProject, repository_root: Path
     ) -> m.Infra.RopeWorkspaceIndex:
         """Build a generic Rope workspace index for package-oriented planning."""
-        resolved_root = workspace_root.resolve()
+        resolved_root = repository_root.resolve()
         (
             modules_by_path,
             modules_by_dir,
@@ -246,7 +276,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 )
             )
             package_name = (
-                cls._package_name_for_dir(package_dir, project_root=project_root)
+                cls.package_name_for_dir(package_dir, project_root=project_root)
                 if project_root is not None
                 else init_entry.package_name
                 if init_entry is not None

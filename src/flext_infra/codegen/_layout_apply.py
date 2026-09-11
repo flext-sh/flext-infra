@@ -28,7 +28,7 @@ class FlextInfraCodegenLayoutApplyMixin(
         """Execute every planned finding and return the updated report."""
         findings: list[m.Infra.LayoutFinding] = []
         gitignore_status: t.Infra.LayoutStatus = "noop"
-        actionable: tuple[m.Infra.LayoutFinding, ...] = report.actionable
+        actionable: t.VariadicTuple[m.Infra.LayoutFinding] = report.actionable
         gitignore_patterns = tuple(
             finding.target for finding in actionable if finding.rule == "gitignore"
         )

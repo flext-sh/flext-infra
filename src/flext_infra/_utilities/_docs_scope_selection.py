@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra.models import m
 
-from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from .docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
@@ -18,7 +18,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
 
     @staticmethod
     def _selected_project_scopes(
-        workspace_root: Path,
+        repository_root: Path,
         discovered: t.SequenceOf[m.Infra.ProjectInfo],
         selected_names: t.StrSequence,
         output_dir: Path | str,
@@ -30,7 +30,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         scopes: list[m.Infra.DocScope] = []
         for name in selected_names:
             scope = FlextInfraUtilitiesDocsScopeSelectionMixin._selected_scope(
-                workspace_root, name, project_by_name, output_dir
+                repository_root, name, project_by_name, output_dir
             )
             if scope is not None:
                 scopes.append(scope)
@@ -38,7 +38,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
 
     @staticmethod
     def _selected_scope(
-        workspace_root: Path,
+        repository_root: Path,
         name: str,
         project_by_name: dict[str, m.Infra.ProjectInfo],
         output_dir: Path | str,
@@ -50,7 +50,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
                 project=selected, output_dir=output_dir
             )
         return FlextInfraUtilitiesDocsScopeSelectionMixin._optional_path_scope(
-            workspace_root, name, output_dir
+            repository_root, name, output_dir
         )
 
     @staticmethod
@@ -66,16 +66,16 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
 
     @staticmethod
     def _optional_path_scope(
-        workspace_root: Path, name: str, output_dir: Path | str
+        repository_root: Path, name: str, output_dir: Path | str
     ) -> m.Infra.DocScope | None:
         """Build a selected path scope when it is a local pyproject project."""
         relative = Path(name)
         if relative.is_absolute() or ".." in relative.parts:
             msg = f"docs project selector escapes repository: {name}"
             raise ValueError(msg)
-        project_root = workspace_root / relative
-        roots = FlextInfraUtilitiesDocsScope.docs_workspace_roots(
-            workspace_root, (project_root,)
+        project_root = repository_root / relative
+        roots = FlextInfraUtilitiesDocsScope.docs_repository_roots(
+            repository_root, (project_root,)
         )
         if roots.failure:
             raise ValueError(
@@ -94,7 +94,14 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         """Return one lexical report path owned by its project root."""
         relative = Path(output_dir)
         if relative.is_absolute() or ".." in relative.parts:
-            msg = f"docs output directory escapes project {project_root}: {relative}"
+            # Each scope anchors its own reports under its own root, so the
+            # argument is a project-relative directory. An absolute path is
+            # rejected even when it happens to sit inside one of the roots:
+            # it would force every member scope into a single owner.
+            msg = (
+                "docs output directory must be relative to each project root, "
+                f"got {relative} for {project_root}"
+            )
             raise ValueError(msg)
         return project_root / relative
 

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
 
-from ..._utilities._git.semantic_index import FlextInfraUtilitiesGitSemanticIndexMixin
+from .semantic_index import FlextInfraUtilitiesGitSemanticIndexMixin
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
@@ -70,7 +70,10 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
         ``git ls-files <scope_prefix>`` emits paths relative to the **repo root**.
         Callers join the result back onto ``scope_root``, so this function
         strips ``scope_prefix`` from each line to keep the contract honest:
-        returned paths are scope-relative, never repo-relative.
+        returned paths are scope-relative, never repo-relative. The ls-files
+        and status union is the sole tracked authority: a git-ignored scope
+        directory may still carry force-staged tracked files, so check_ignore
+        must never veto the result.
         """
         resolved_root = Path(scope_root)
         repo_root_text = cls._git_repo_root(scope_root)
@@ -81,13 +84,6 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
             return None
         repo_root = Path(repo_root_text).resolve()
         scope_prefix = resolved_root.resolve().relative_to(repo_root)
-        if scope_prefix.parts:
-            repo = cls._repo(repo_root)
-            ignored_scope = repo.git.check_ignore(
-                "--", scope_prefix.as_posix(), with_exceptions=False
-            )
-            if ignored_scope.strip():
-                return ()
         prefix_parts = scope_prefix.parts
         scope_paths: set[str] = set()
         for repo_relative_text in repo_relative_paths:
@@ -99,12 +95,6 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
             else:
                 scope_relative = repo_relative
             scope_paths.add(scope_relative.as_posix())
-        if not scope_paths and prefix_parts:
-            ignored_scope = cls._repo(repo_root).git.check_ignore(
-                "--", scope_prefix.as_posix(), with_exceptions=False
-            )
-            if ignored_scope.strip():
-                return ()
         return tuple(sorted(scope_paths))
 
     @classmethod

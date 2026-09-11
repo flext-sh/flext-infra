@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_tests import tm
+
 from flext_infra import config
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_tests import tm
 from tests import u
 from tests.unit.workspace import WorktreeFixture
 
@@ -44,8 +45,5 @@ class TestsDetectorOwnsNoProjectRegistry:
         tm.that(spec.name, eq="totally-unknown")
         tm.that(spec.repository.path, eq=Path())
         tm.that(spec.subprojects, empty=True)
-<<<<<<< Updated upstream
         tm.that(u.Tests.required_beads(spec).workspace, eq="totally-unknown-workspace")
-=======
         tm.that(spec.beads, none=True)
->>>>>>> Stashed changes

@@ -11,11 +11,12 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._settings import settings
-from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from .._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from .rope_core import FlextInfraUtilitiesRopeCore
+from .rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from flext_infra.protocols import p
 
 
@@ -38,7 +39,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def _resource_cache_key(
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
-    ) -> tuple[str, str, int]:
+    ) -> t.Triple[str, str, int]:
         """Resource cache key."""
         file_path = FlextInfraUtilitiesRopeCore.resource_file_path(
             rope_project, resource
@@ -233,7 +234,7 @@ class FlextInfraUtilitiesRopeAnalysis:
             rope_project, resource
         )
         raw_imports = getattr(module_imports, "imports", ())
-        import_stmts: tuple[t.Infra.RopeImportStatement, ...] = tuple(raw_imports)
+        import_stmts: t.VariadicTuple[t.Infra.RopeImportStatement] = tuple(raw_imports)
         for import_stmt in import_stmts:
             FlextInfraUtilitiesRopeAnalysis._merge_import_statement(
                 current_package=current_package,
@@ -478,7 +479,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         resolved_options = export_options or m.Infra.ExportOptions()
         module = ast.parse(source)
         assignments: t.MutableSequenceOf[str] = []
-        definitions: t.MutableSequenceOf[tuple[str, bool]] = []
+        definitions: t.MutableSequenceOf[t.Pair[str, bool]] = []
         explicit_all = False
 
         def bound_names(target: ast.expr) -> t.StrSequence:
@@ -814,10 +815,10 @@ class FlextInfraUtilitiesRopeAnalysis:
 
     @staticmethod
     def symbol_has_docstring_source(source: str, symbol_name: str) -> bool:
-        """Return whether ``symbol_name`` in ``source`` carries a docstring (rope-parsed)."""
+        """Check a locally defined symbol; imported docs need module context."""
         pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
         pyname = pymodule.get_attributes().get(symbol_name)
-        if pyname is None:
+        if pyname is None or not FlextInfraUtilitiesRopeRuntime.is_defined_name(pyname):
             return False
         obj = pyname.get_object()
         get_doc = getattr(obj, "get_doc", None)
@@ -831,7 +832,8 @@ class FlextInfraUtilitiesRopeAnalysis:
         """Return assignment names followed by a string-literal expression (rope-parsed).
 
         Iterates the parsed module's body via ``_fields`` access and pairs each
-        ``Assign``/``AnnAssign`` target with the next sibling ``Expr(Constant(str))``.
+        ``Assign``/``AnnAssign``/PEP-695 ``TypeAlias`` target with the next
+        sibling ``Expr(Constant(str))``.
         """
         pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
         module_ast = pymodule.get_ast()
@@ -840,7 +842,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         previous_targets: list[str] = []
         for statement in body:
             kind = FlextInfraUtilitiesRopeAnalysis.node_kind(statement)
-            if kind in {"Assign", "AnnAssign"}:
+            if kind in {"Assign", "AnnAssign", "TypeAlias"}:
                 previous_targets = (
                     FlextInfraUtilitiesRopeAnalysis._statement_target_names(statement)
                 )
@@ -935,7 +937,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def module_mapping_assignment_source(
         source: str, name: str
-    ) -> tuple[tuple[tuple[str, t.StrSequence], ...], t.StrSequence]:
+    ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
         """Collect mapping entries and referenced names from an assignment."""
         value_source = FlextInfraUtilitiesRopeAnalysis._assignment_value_source(
             source, name
@@ -947,7 +949,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def mapping_entries_refs(
         node: p.AttributeProbe | None,
-    ) -> tuple[tuple[tuple[str, t.StrSequence], ...], t.StrSequence]:
+    ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
         """Return literal mapping entries plus variable references."""
         if node is None:
             return ((), ())
@@ -980,7 +982,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def _dict_entries_refs(
         node: p.AttributeProbe,
-    ) -> tuple[tuple[tuple[str, t.StrSequence], ...], t.StrSequence]:
+    ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
         """Return string-sequence dict entries and unpack references."""
         keys = getattr(node, "keys", ()) or ()
         values = getattr(node, "values", ()) or ()
@@ -1017,7 +1019,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def imported_symbol_binding_source(
         source: str, *, current_module: str, symbol_name: str, package_module: bool
-    ) -> tuple[str, str]:
+    ) -> t.Pair[str, str]:
         """Return ``(module, original_name)`` for one imported symbol binding."""
         for (
             module_source,
@@ -1068,7 +1070,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         )
 
     @staticmethod
-    def lazy_public_exports_source(source: str) -> tuple[t.StrSequence, str]:
+    def lazy_public_exports_source(source: str) -> t.Pair[t.StrSequence, str]:
         """Return lazy-loader public exports or the local symbol holding them."""
         call_args = FlextInfraUtilitiesRopeAnalysis._call_args_source(
             source, "install_lazy_exports"
@@ -1143,27 +1145,39 @@ class FlextInfraUtilitiesRopeAnalysis:
         return "\n".join(collected)
 
     @staticmethod
-    def _bracket_depth_delta(source: str) -> int:
-        """Return bracket nesting delta for one source line."""
-        depth = 0
+    def _unquoted_characters(source: str, start: int = 0) -> Iterator[t.Pair[int, str]]:
+        """Yield ``(index, character)`` for every character outside a string literal.
+
+        Single owner of the quote/escape state machine every top-level source
+        scanner in this module needs; each caller keeps only its own bracket
+        depth bookkeeping.
+        """
         quote = ""
         escaped = False
-        for char in source:
+        for index in range(start, len(source)):
+            char = source[index]
             if quote:
                 if escaped:
                     escaped = False
-                    continue
-                if char == "\\":
+                elif char == "\\":
                     escaped = True
-                    continue
-                if char == quote:
+                elif char == quote:
                     quote = ""
                 continue
-            if char == "#":
-                break
             if char in {"'", '"'}:
                 quote = char
                 continue
+            yield index, char
+
+    @staticmethod
+    def _bracket_depth_delta(source: str) -> int:
+        """Return bracket nesting delta for one source line."""
+        depth = 0
+        for _index, char in FlextInfraUtilitiesRopeAnalysis._unquoted_characters(
+            source
+        ):
+            if char == "#":
+                break
             if char in "([{":
                 depth += 1
             elif char in ")]}":
@@ -1176,29 +1190,12 @@ class FlextInfraUtilitiesRopeAnalysis:
         parts: list[str] = []
         start = 0
         depth = 0
-        quote = ""
-        escaped = False
-        for index, char in enumerate(source):
-            if quote:
-                if escaped:
-                    escaped = False
-                    continue
-                if char == "\\":
-                    escaped = True
-                    continue
-                if char == quote:
-                    quote = ""
-                continue
-            if char in {"'", '"'}:
-                quote = char
-                continue
+        for index, char in FlextInfraUtilitiesRopeAnalysis._unquoted_characters(source):
             if char in "([{":
                 depth += 1
-                continue
-            if char in ")]}":
+            elif char in ")]}":
                 depth -= 1
-                continue
-            if char == "," and depth == 0:
+            elif char == "," and depth == 0:
                 item = source[start:index].strip()
                 if item:
                     parts.append(item)
@@ -1209,32 +1206,15 @@ class FlextInfraUtilitiesRopeAnalysis:
         return tuple(parts)
 
     @staticmethod
-    def _top_level_partition(source: str, separator: str) -> tuple[str, str, str]:
+    def _top_level_partition(source: str, separator: str) -> t.Triple[str, str, str]:
         """Partition one source fragment at a top-level separator."""
         depth = 0
-        quote = ""
-        escaped = False
-        for index, char in enumerate(source):
-            if quote:
-                if escaped:
-                    escaped = False
-                    continue
-                if char == "\\":
-                    escaped = True
-                    continue
-                if char == quote:
-                    quote = ""
-                continue
-            if char in {"'", '"'}:
-                quote = char
-                continue
+        for index, char in FlextInfraUtilitiesRopeAnalysis._unquoted_characters(source):
             if char in "([{":
                 depth += 1
-                continue
-            if char in ")]}":
+            elif char in ")]}":
                 depth -= 1
-                continue
-            if char == separator and depth == 0:
+            elif char == separator and depth == 0:
                 return (source[:index], separator, source[index + 1 :])
         return (source, "", "")
 
@@ -1322,27 +1302,12 @@ class FlextInfraUtilitiesRopeAnalysis:
         open_char = source[open_index]
         close_char = {"(": ")", "[": "]", "{": "}"}[open_char]
         depth = 0
-        quote = ""
-        escaped = False
-        for index in range(open_index, len(source)):
-            char = source[index]
-            if quote:
-                if escaped:
-                    escaped = False
-                    continue
-                if char == "\\":
-                    escaped = True
-                    continue
-                if char == quote:
-                    quote = ""
-                continue
-            if char in {"'", '"'}:
-                quote = char
-                continue
+        for index, char in FlextInfraUtilitiesRopeAnalysis._unquoted_characters(
+            source, open_index
+        ):
             if char == open_char:
                 depth += 1
-                continue
-            if char == close_char:
+            elif char == close_char:
                 depth -= 1
                 if depth == 0:
                     return index
@@ -1366,7 +1331,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def _mapping_entries_refs_source(
         source: str,
-    ) -> tuple[tuple[tuple[str, t.StrSequence], ...], t.StrSequence]:
+    ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
         """Return lazy-map entries and referenced mapping symbols from source."""
         text = source.strip()
         if not text:
@@ -1445,7 +1410,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def _from_import_bindings_source(
         source: str,
-    ) -> tuple[tuple[str, int, str, str], ...]:
+    ) -> t.VariadicTuple[t.Quad[str, int, str, str]]:
         """Return ``(module, level, original, bound)`` for ``from`` imports."""
         lines = source.splitlines()
         bindings: list[tuple[str, int, str, str]] = []
@@ -1474,7 +1439,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         return tuple(bindings)
 
     @staticmethod
-    def _import_alias_names(source: str) -> tuple[str, str]:
+    def _import_alias_names(source: str) -> t.Pair[str, str]:
         """Return ``(original, bound)`` names for one import alias source."""
         parts = source.strip().split()
         if (
@@ -1506,12 +1471,16 @@ class FlextInfraUtilitiesRopeAnalysis:
 
     @staticmethod
     def _statement_target_names(statement: object) -> list[str]:
-        """Extract target names from an Assign/AnnAssign statement."""
+        """Extract target names from an Assign/AnnAssign/PEP-695 TypeAlias."""
         kind = FlextInfraUtilitiesRopeAnalysis.node_kind(statement)
         if kind == "AnnAssign":
             target = getattr(statement, "target", None)
             name = getattr(target, "id", "") if target is not None else ""
             return [name] if name else []
+        if kind == "TypeAlias":
+            name_node = getattr(statement, "name", None)
+            name = getattr(name_node, "id", "")
+            return [name] if isinstance(name, str) and name else []
         targets = getattr(statement, "targets", []) or []
         names: list[str] = []
         for target in targets:
@@ -1577,6 +1546,8 @@ class FlextInfraUtilitiesRopeAnalysis:
             # settings SSOT, with cwd as last resort — both exist where CLI runs.
             # Path() coercion keeps this correct while settings migrates the
             # field from str to Path (both accepted).
+            from flext_infra import settings
+
             repository_root = settings.Infra.repository_root
             anchor = Path(repository_root) if repository_root else Path.cwd()
             cached = FlextInfraUtilitiesRopeCore.init_rope_project(anchor)
@@ -1637,14 +1608,14 @@ class FlextInfraUtilitiesRopeAnalysis:
         return collected
 
     @staticmethod
-    def ast_parent_map(root: object) -> dict[int, object]:
+    def ast_parent_map(root: p.AttributeProbe) -> dict[int, p.AttributeProbe]:
         """Return a child-id -> parent map for the full AST reachable from ``root``.
 
         Uses only public ``_fields`` access (no ``import ast``); the shared SSOT
         for parent lookups across every rope detector.
         """
-        parent_map: dict[int, object] = {}
-        stack: list[object] = [root]
+        parent_map: dict[int, p.AttributeProbe] = {}
+        stack: list[p.AttributeProbe] = [root]
         while stack:
             parent = stack.pop()
             for field_name in getattr(parent, "_fields", ()):
@@ -1660,7 +1631,9 @@ class FlextInfraUtilitiesRopeAnalysis:
         return parent_map
 
     @classmethod
-    def is_module_level_node(cls, node: object, parent_map: dict[int, object]) -> bool:
+    def is_module_level_node(
+        cls, node: p.AttributeProbe, parent_map: dict[int, p.AttributeProbe]
+    ) -> bool:
         """Return True when ``node`` is a direct child of the module body.
 
         Walks the parent chain; a node nested inside any ClassDef/FunctionDef is
@@ -1690,7 +1663,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         return ""
 
     @staticmethod
-    def line_col_range(node: object) -> tuple[int, int, int, int] | None:
+    def line_col_range(node: object) -> t.Quad[int, int, int, int] | None:
         """Return ``(lineno, col_offset, end_lineno, end_col_offset)`` for an AST node."""
         lineno = getattr(node, "lineno", None)
         col_offset = getattr(node, "col_offset", None)
@@ -1911,7 +1884,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def _open_pymodule(
         project_root: Path, file_path: Path
-    ) -> tuple[t.Infra.RopePyModule, t.Infra.RopeProject] | None:
+    ) -> t.Pair[t.Infra.RopePyModule, t.Infra.RopeProject] | None:
         """Open a rope project and resolve ``file_path`` to a ``PyModule``."""
         rope_project = FlextInfraUtilitiesRopeCore.init_rope_project(project_root)
         resource = FlextInfraUtilitiesRopeCore.fetch_python_resource(

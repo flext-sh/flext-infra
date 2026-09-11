@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class FlextInfraConstantsSourceCode:
     """Source code patterns, exclusion sets, and detection constants."""
 
-    MERGE_CONFLICT_CONTROLS: Final[tuple[tuple[str, str], ...]] = (
+    MERGE_CONFLICT_CONTROLS: Final[t.VariadicTuple[t.Pair[str, str]]] = (
         ("current", "<<<<<<< "),
         ("ancestor", "||||||| "),
         ("separator", "======="),
@@ -191,12 +191,6 @@ class FlextInfraConstantsSourceCode:
     "Regex: ``dict[str, t.JsonValue]`` / ``Dict[str, t.JsonValue]`` annotation."
     DICT_GENERIC_RE: Final[t.RegexPattern] = re.compile(r"\b(?:dict|Dict)\[")
     "Regex: opening of any ``dict[...]`` / ``Dict[...]`` annotation."
-    ANCHOR_NON_ALNUM_RE: Final[t.RegexPattern] = re.compile(r"[^a-z0-9_\s-]")
-    "Regex: characters to strip when generating an anchor slug (``_`` is kept, as python-markdown does)."
-    ANCHOR_WHITESPACE_RE: Final[t.RegexPattern] = re.compile(r"\s+")
-    "Regex: any run of whitespace (collapsed to single hyphen in anchors)."
-    ANCHOR_DASH_COLLAPSE_RE: Final[t.RegexPattern] = re.compile(r"-+")
-    "Regex: collapse consecutive hyphens to one in anchor slugs."
     TOC_BLOCK_RE: Final[t.RegexPattern] = re.compile(
         r"<!-- TOC START -->.*?<!-- TOC END -->", re.DOTALL
     )
@@ -540,7 +534,7 @@ class FlextInfraConstantsSourceCode:
     # --- Log parsing constants (was: class LogParser) ---
     LOG_TAIL_LINES: Final[int] = 50
     "Number of tail lines to extract from log output."
-    LOG_ERROR_PATTERNS: Final[tuple[t.RegexPattern, ...]] = (
+    LOG_ERROR_PATTERNS: Final[t.VariadicTuple[t.RegexPattern]] = (
         re.compile(r"^\s*\S+\.py:\d+"),
         re.compile(r"^ERROR:", re.IGNORECASE),
         re.compile(r"^\s+\[B\d+\]"),
@@ -555,7 +549,7 @@ class FlextInfraConstantsSourceCode:
     )
     "GNU make always exits 2 on a failed recipe but reports the recipe's real"
     " exit code in its error line; this pattern recovers the child's code."
-    LOG_NOISE_PATTERNS: Final[tuple[t.RegexPattern, ...]] = (
+    LOG_NOISE_PATTERNS: Final[t.VariadicTuple[t.RegexPattern]] = (
         re.compile(r"^make\["),
         re.compile(r"warning:\s+(overriding|ignoring)"),
         re.compile(r"^(Total|Success|Failed|Skipped):"),

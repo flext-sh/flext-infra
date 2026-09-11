@@ -13,14 +13,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_tests import tm
+
 import flext_infra
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_tests import tm
 from tests import u as test_u
 
 
-def _workspace_root() -> Path:
+def _repository_root() -> Path:
     """Return the workspace root that owns this checkout."""
     return Path(flext_infra.__file__).resolve().parents[2]
 
@@ -48,7 +49,9 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
             for item in config.Infra.codegen.managed_files
             if item.policy != c.Infra.MANAGED_FILE_POLICY_DELEGATED
         )
-        rendered = "\n".join(test_u.Tests.ignore_patterns_for(_workspace_root())) + "\n"
+        rendered = (
+            "\n".join(test_u.Tests.ignore_patterns_for(_repository_root())) + "\n"
+        )
         blocked = tuple(
             item.path.as_posix()
             for item in committed
@@ -92,6 +95,7 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         projects = ("probe-project", "nested/probe-project")
         workspace = m.Infra.WorkspaceSpec(
             name="probe-root",
+            beads=test_u.Tests.beads_project("probe-root"),
             repository=test_u.Tests.repository_ref("probe-root"),
             subprojects=tuple(
                 test_u.Tests.repository_ref(

@@ -61,15 +61,27 @@ class FlextInfraWorkspaceEnvironmentMixin:
     ) -> p.Result[str]:
         """Render one SSOT environment template from the toolchain spec."""
         template_path = (
-            Path(__file__).resolve().parents[2]
+            Path(__file__).resolve().parents[1]
             / "templates"
             / config.Infra.codegen.templates.root
             / "base"
             / f"{destination}.j2"
         )
         render_context: (
-            m.Infra.BeadsWorkspaceEnvironmentSpec | m.Infra.ToolchainSpec
-        ) = context if context is not None else config.Infra.codegen.toolchain
+            m.Infra.BeadsWorkspaceEnvironmentSpec | m.Infra.EnvrcRenderSpec
+        ) = (
+            context
+            if context is not None
+            else m.Infra.EnvrcRenderSpec(
+                state_directory_name=config.Infra.codegen.toolchain.state_directory_name,
+                scratch_namespace=config.Infra.codegen.toolchain.scratch_namespace,
+                pycache_namespace=config.Infra.codegen.toolchain.pycache_namespace,
+                environment_path_prepends=(
+                    config.Infra.codegen.toolchain.environment_path_prepends
+                ),
+                mise_bootstrap=u.Infra.mise_bootstrap_environment(),
+            )
+        )
         return u.Cli.template_render(template_path, render_context)
 
     @classmethod

@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
-from flext_infra.gates.base_gate import FlextInfraGate
+
+from .base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -43,10 +44,31 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     def _resolve_config_args(self, project_dir: Path) -> t.StrSequence:
         """Resolve only the repository-local markdown settings owner."""
-        config_path = project_dir / ".markdownlint.json"
+        config_path = project_dir / c.Infra.MARKDOWNLINT_CONFIG_FILENAME
         if not config_path.is_file():
             return ["--no-config"]
         return ["--config", str(config_path.resolve())]
+
+    def _resolve_exclude_args(self, project_dir: Path) -> t.StrSequence:
+        """Build ``--exclude`` from .markdownlintignore patterns.
+
+        ``rumdl`` only applies ignore patterns when scanning directories,
+        not when files are passed explicitly on the command line. The gate
+        collects files explicitly, so we read the ignore file and forward
+        its patterns via ``--exclude`` to replicate standard tool behavior.
+        """
+        ignore_path = project_dir / c.Infra.MARKDOWNLINT_IGNORE_FILENAME
+        if not ignore_path.is_file():
+            return ()
+        patterns: list[str] = []
+        for line in ignore_path.read_text(c.Cli.ENCODING_DEFAULT).splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            patterns.append(stripped)
+        if not patterns:
+            return ()
+        return ["--exclude", ",".join(patterns)]
 
     @override
     def _get_check_dirs(
@@ -75,6 +97,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
             "text",
             "--deny-config-warnings",
             *self._resolve_config_args(project_dir),
+            *self._resolve_exclude_args(project_dir),
             *check_dirs,
         )
 
@@ -100,19 +123,22 @@ class FlextInfraMarkdownGate(FlextInfraGate):
             "--color",
             "never",
             *self._resolve_config_args(project_dir),
+            *self._resolve_exclude_args(project_dir),
             *targets,
         )
 
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
-        """Parse check output."""
+    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+        """Parse rumdl output, discarding lines marking already-applied fixes."""
         _ = ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
             match = c.Infra.MARKDOWN_RE.match(line.strip())
             if not match:
+                continue
+            if match.group("msg").strip().endswith("[fixed]"):
                 continue
             issues.append(
                 m.Infra.Issue(
@@ -124,15 +150,9 @@ class FlextInfraMarkdownGate(FlextInfraGate):
                 )
             )
         if not u.Cli.process_succeeded(result.outcome) and not issues:
-            detail = (result.stderr or result.stdout).strip() or "no diagnostics"
             issues.append(
-                m.Infra.Issue(
-                    file=str(project_dir),
-                    line=1,
-                    column=1,
-                    code="TOOL_ERROR",
-                    message=f"rumdl exited with code {result.outcome.raw_return_code}: {detail}",
-                    severity="ERROR",
+                self._command_error_issue(
+                    result, tool=c.Infra.RUMDL, file=str(project_dir), line=1, column=1
                 )
             )
         return u.Cli.process_succeeded(result.outcome), issues

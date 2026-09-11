@@ -6,14 +6,15 @@ from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 
 from flext_cli import u
+
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities._docs_scope_build import FlextInfraUtilitiesDocsScopeBuildMixin
-from .._utilities.docs_contract import FlextInfraUtilitiesDocsContract
-from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from ._docs_scope_build import FlextInfraUtilitiesDocsScopeBuildMixin
+from .docs_contract import FlextInfraUtilitiesDocsContract
+from .docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -106,7 +107,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
 
     @staticmethod
     def anchorize(text: str) -> str:
-        """Convert a heading title to a GitHub-compatible anchor slug."""
+        """Convert heading text to the anchor consumed by MkDocs."""
         return FlextInfraUtilitiesDocsContract.docs_anchorize(text)
 
     @staticmethod

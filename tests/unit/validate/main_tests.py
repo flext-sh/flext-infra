@@ -10,10 +10,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import main as infra_main
 from flext_infra.validate.inventory import FlextInfraInventoryService
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
-from flext_tests import tm
 from tests import c
 
 if TYPE_CHECKING:
@@ -83,7 +84,7 @@ class TestMainCliRouting:
 
     def test_inventory_routing(self, tmp_path: Path) -> None:
         """Inventory subcommand routes correctly."""
-        result = _cli("inventory", "--workspace", str(tmp_path))
+        result = _cli("inventory", "--repository-root", str(tmp_path))
         tm.that({0, 1}, has=result)
 
     def test_scan_routing(self, tmp_path: Path) -> None:
@@ -91,7 +92,7 @@ class TestMainCliRouting:
         (tmp_path / "test.txt").write_text("content")
         result = _cli(
             "scan",
-            "--workspace",
+            "--repository-root",
             str(tmp_path),
             "--pattern",
             "content",
@@ -111,13 +112,17 @@ class TestMainCliRouting:
     def test_skill_validate_routing(self, tmp_path: Path) -> None:
         """skill-validate subcommand routes correctly."""
         result = _cli(
-            "skill-validate", "--skill", "test-skill", "--workspace", str(tmp_path)
+            "skill-validate",
+            "--skill",
+            "test-skill",
+            "--repository-root",
+            str(tmp_path),
         )
         tm.that({0, 1}, has=result)
 
     def test_stub_validate_routing(self, tmp_path: Path) -> None:
         """stub-validate subcommand routes correctly."""
-        result = _cli("stub-validate", "--workspace", str(tmp_path))
+        result = _cli("stub-validate", "--repository-root", str(tmp_path))
         tm.that({0, 1}, has=result)
 
 

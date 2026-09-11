@@ -10,7 +10,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import m
-from flext_infra.fixers.base import FlextInfraFixerAdapter
+
+from .base import FlextInfraFixerAdapter
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -36,7 +37,7 @@ class FlextInfraManualFixerAdapter(FlextInfraFixerAdapter):
     def fix_project(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[t.Pair[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Return previews for manual fixes; fail if apply was requested."""

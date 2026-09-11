@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Final
 
 from flext_cli import t
+
 from flext_core import m
 
 
@@ -48,11 +49,6 @@ class FlextInfraConstantsAdapters:
 
     STR_SEQ_ADAPTER: Final[m.TypeAdapter[t.StrSequence]] = m.TypeAdapter(t.StrSequence)
     "Validates t.StrSequence."
-
-    STR_MAPPING_SEQ_ADAPTER: Final[m.TypeAdapter[t.SequenceOf[t.StrMapping]]] = (
-        m.TypeAdapter(t.SequenceOf[t.StrMapping])
-    )
-    "Validates t.SequenceOf[StrMapping]."
 
     STR_ADAPTER: Final[m.TypeAdapter[str]] = m.TypeAdapter(str)
     "Validates one string at boundaries whose upstream stubs expose Any."

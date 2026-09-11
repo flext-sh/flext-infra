@@ -47,16 +47,19 @@ jobs:
       matrix:
         distro: [ubuntu, debian, fedora, alpine, arch]
     steps:
-      - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+      - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           submodules: {{ checkout_submodules }}
           # No step needs authenticated git after checkout; persisting the
           # token into .git/config would expose it to every later command.
           persist-credentials: false
       - name: Build {% raw %}${{ matrix.distro }}{% endraw %} image
+        env:
+          GITHUB_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
         run: >-
           docker build
           -f tests/fixtures/ci/docker/{% raw %}${{ matrix.distro }}{% endraw %}.Dockerfile
+          --secret id=github_token,env=GITHUB_TOKEN
           -t ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %}
           .
       - name: Bootstrap + verb smoke ({% raw %}${{ matrix.distro }}{% endraw %})
@@ -75,7 +78,7 @@ jobs:
     env:
       {{ make.ci.variable }}: {{ make.ci.value }}
     steps:
-      - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+      - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           submodules: {{ checkout_submodules }}
           # No step needs authenticated git after checkout; persisting the
@@ -99,7 +102,7 @@ jobs:
     env:
       {{ make.ci.variable }}: {{ make.ci.value }}
     steps:
-      - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+      - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           submodules: {{ checkout_submodules }}
           # No step needs authenticated git after checkout; persisting the

@@ -8,12 +8,13 @@ from importlib.metadata import Distribution, distributions, packages_distributio
 from importlib.util import find_spec
 from pathlib import Path
 
+from flext_cli import p, r, u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, t
 
-from .._utilities.dependencies import FlextInfraUtilitiesDependencies
+from .dependencies import FlextInfraUtilitiesDependencies
 
 
 class FlextInfraUtilitiesCodemodRules:
@@ -74,8 +75,6 @@ class FlextInfraUtilitiesCodemodRules:
 
     @staticmethod
     def _project(root: Path) -> p.Result[t.Pair[str, t.StrSequence]]:
-        from flext_infra import u
-
         pyproject = root / c.Infra.PYPROJECT_FILENAME
         document = u.Cli.toml_read_document(pyproject)
         if document.failure:
@@ -214,11 +213,18 @@ class FlextInfraUtilitiesCodemodRules:
                 canonicalize_name(name) for name in raw_distributions
             }:
                 continue
-            spec = find_spec(package_name)
+            # Data and native distributions (ML runtimes, compiled wheels)
+            # expose directory names that are not importable modules; they
+            # cannot host codemod provider configs and are skipped, never
+            # treated as provider failures.
+            if not package_name or not all(
+                part.isidentifier()
+                for part in package_name.replace("/", ".").split(".")
+            ):
+                continue
+            spec = find_spec(package_name.replace("/", "."))
             if spec is None:
-                return r[t.SequenceOf[Path]].fail(
-                    f"distribution package is not importable: {package_name}"
-                )
+                continue
             roots = tuple(Path(path) for path in spec.submodule_search_locations or ())
             if not roots and spec.origin is not None:
                 roots = (Path(spec.origin).parent,)
@@ -250,8 +256,6 @@ class FlextInfraUtilitiesCodemodRules:
 
     @staticmethod
     def _config_scope(config: Path) -> p.Result[str]:
-        from flext_infra import u
-
         parsed = u.Cli.yaml_parse(config.read_text(encoding=c.Cli.ENCODING_DEFAULT))
         if parsed.failure:
             return r[str].from_failure(parsed)
@@ -323,8 +327,6 @@ class FlextInfraUtilitiesCodemodRules:
     def _rules(
         cls, provider: str, config: Path
     ) -> p.Result[t.SequenceOf[m.Infra.CodemodRule]]:
-        from flext_infra import u
-
         parsed_config = u.Cli.yaml_parse(
             config.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         )

@@ -8,35 +8,17 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
+
 from flext_infra import c, p, t
 
-from .._models._defaults import ImmutableEmptyMapping
-from .._models.codegen_render import FlextInfraModelsCodegenRender
-from .._models.config import FlextInfraConfigModels
-from .._models.mixins import FlextInfraModelsMixins as mm
+from ._defaults import ImmutableEmptyMapping
+from .codegen_render import FlextInfraModelsCodegenRender
+from .config import FlextInfraConfigModels
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
-
-    class MiseToolchainLockLease(m.ArbitraryTypesModel):
-        """Authenticated Git HEAD state plus its locked native descriptor."""
-
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-
-        descriptor: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                strict=True,
-                exclude=True,
-                description="Caller-owned locked descriptor",
-            ),
-        ]
-        state: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(description="Exact HEAD bytes, mode, leaf, and parent identity"),
-        ]
 
     class MiseToolchainArtifactPaths(m.ArbitraryTypesModel):
         """Canonical live toolchain-bundle destinations for one project."""
@@ -50,7 +32,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         windows_launcher: Annotated[
             Path, m.Field(description="Windows launcher destination")
         ]
-        lock: Annotated[Path, m.Field(description="Project Mise lock destination")]
 
     class MiseToolchainProjectLayout(m.ArbitraryTypesModel):
         """Stable paths needed to validate and recover one project."""
@@ -95,7 +76,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             ),
         ] = None
         projects: Annotated[
-            tuple[FlextInfraModelsCodegen.MiseToolchainProjectLayout, ...],
+            t.VariadicTuple[FlextInfraModelsCodegen.MiseToolchainProjectLayout],
             m.Field(min_length=1, description="Ordered complete workspace topology"),
         ]
 
@@ -126,7 +107,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             ),
         ]
         sources: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(description="Ordered YAML states that produced the replacement"),
         ] = ()
 
@@ -145,7 +126,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         ]
         artifacts: Annotated[
             FlextInfraModelsCodegen.MiseToolchainArtifactSet,
-            m.Field(description="Named launcher and lock states"),
+            m.Field(description="Named launcher states"),
         ]
 
         @u.model_validator(mode="after")
@@ -155,13 +136,11 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 self.layout.artifacts.config,
                 self.layout.artifacts.unix_launcher,
                 self.layout.artifacts.windows_launcher,
-                self.layout.artifacts.lock,
             )
             observed = (
                 self.config.before.path,
                 self.artifacts.unix_launcher.path,
                 self.artifacts.windows_launcher.path,
-                self.artifacts.lock.path,
             )
             if observed != expected:
                 msg = "Mise project states differ from declared destinations"
@@ -180,10 +159,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             m.Cli.AtomicFileState,
             m.Field(description="Observed Windows launcher state"),
         ]
-        lock: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(description="Observed project Mise lock state"),
-        ]
 
     class MiseToolchainWorkspacePlan(m.ArbitraryTypesModel):
         """One stable layout plus a coherent mutable-state snapshot."""
@@ -195,7 +170,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             m.Field(description="Stable workspace topology"),
         ]
         projects: Annotated[
-            tuple[FlextInfraModelsCodegen.MiseToolchainProjectState, ...],
+            t.VariadicTuple[FlextInfraModelsCodegen.MiseToolchainProjectState],
             m.Field(min_length=1, description="Ordered complete workspace topology"),
         ]
 
@@ -749,22 +724,22 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             m.Field(description="Durable publication transition state"),
         ]
         projects: Annotated[
-            tuple[FlextInfraModelsCodegen.CodegenJournalProject, ...],
+            t.VariadicTuple[FlextInfraModelsCodegen.CodegenJournalProject],
             m.Field(
                 min_length=1,
                 description="Ordered project selectors owned by this transaction",
             ),
         ]
         sources: Annotated[
-            tuple[FlextInfraModelsCodegen.CodegenJournalSource, ...],
+            t.VariadicTuple[FlextInfraModelsCodegen.CodegenJournalSource],
             m.Field(description="Source identities used by staging"),
         ]
         directories: Annotated[
-            tuple[FlextInfraModelsCodegen.CodegenJournalDirectory, ...],
+            t.VariadicTuple[FlextInfraModelsCodegen.CodegenJournalDirectory],
             m.Field(description="Directories whose prior absence authorizes creation"),
         ]
         entries: Annotated[
-            tuple[FlextInfraModelsCodegen.CodegenJournalEntry, ...],
+            t.VariadicTuple[FlextInfraModelsCodegen.CodegenJournalEntry],
             m.Field(description="Recoverable artifact transitions"),
         ]
 
@@ -782,9 +757,19 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 msg = "staging codegen journal must not authorize live transitions"
                 raise ValueError(msg)
             if self.state == "staging" and any(
-                directory.disposition != "temporary" for directory in self.directories
+                directory.disposition == "generated"
+                and directory.phase == "transaction"
+                for directory in self.directories
             ):
-                msg = "staging codegen journal can authorize only temporary paths"
+                # A staging journal authorizes no live transition — that is the
+                # `entries` rule above. It must still authorize the destination
+                # directory of a file phase: staging snapshots the live target,
+                # which requires a physical parent, so a generated destination
+                # can never be recorded after the entries it makes possible.
+                # Rollback removes them with the temporary roots
+                # (`include_generated` for any non-committed journal). Only the
+                # transaction's own roots stay restricted to `temporary`.
+                msg = "staging codegen journal cannot generate a transaction root"
                 raise ValueError(msg)
             entry_paths = tuple(entry.path for entry in self.entries)
             if len(set(entry_paths)) != len(entry_paths):
@@ -831,7 +816,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             m.Field(description="Exact journal CAS state for the next transition"),
         ]
         written_files: Annotated[
-            tuple[Path, ...],
+            t.VariadicTuple[Path],
             m.Field(description="Ordered destinations published by completed phases"),
         ] = ()
 
@@ -851,15 +836,15 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         phase: Annotated[
-            Literal["lazy-init"],
+            Literal["docs", "lazy-init"],
             m.Field(description="Generation phase that produced this receipt"),
         ]
         files: Annotated[
-            tuple[FlextInfraConfigModels.CodegenFilePlan, ...],
+            t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan],
             m.Field(description="Ordered desired publication states"),
         ]
         inputs: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(description="Ordered complete authenticated planner inputs"),
         ]
 

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, override
 
 from flext_core import r, s
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, t, u
 
 from ._orchestrator_discovery import FlextInfraWorkspaceOrchestratorDiscoveryMixin
 from ._orchestrator_execution import FlextInfraWorkspaceOrchestratorExecutionMixin
@@ -27,11 +27,14 @@ class FlextInfraOrchestratorService(
         Path,
         m.Field(
             default_factory=Path.cwd,
-            alias="workspace",
-            description="Workspace root containing every orchestrated project.",
+            description="Repository root containing every orchestrated project.",
         ),
     ]
     verb: Annotated[str, m.Field(description="Make verb to execute")]
+    projects: Annotated[
+        t.StrSequence | None,
+        m.Field(description="Projects to process; repeat --projects NAME as needed"),
+    ] = None
 
     @m.computed_field
     @property
@@ -46,7 +49,10 @@ class FlextInfraOrchestratorService(
         supplied = (
             u.Cli.env_read(make.apply_variable, dict(os.environ)).unwrap().strip()
         )
-        if supplied != make.apply_value:
+        if supplied == make.apply_value:
+            return self
+        read_only_verbs = frozenset({"check", "test", "docs", "scan", "val", "build"})
+        if self.verb not in read_only_verbs:
             msg = f"workspace orchestration requires {make.apply_variable}={make.apply_value}"
             raise ValueError(msg)
         return self

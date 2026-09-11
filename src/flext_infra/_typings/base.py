@@ -10,6 +10,13 @@ from collections.abc import Callable, Container as _Container, MutableMapping
 from pathlib import Path as _Path
 from typing import Annotated, Literal
 
+# Why: flext_cli owns the pipeline models/result contract; flext_core's m/p
+# have no nested Cli namespace, so the pipeline handler alias below needs
+# flext_cli's own m/p under a distinct name. The import stays at runtime on
+# purpose: flext-cli's lazy __init__ keeps it cheap, flext-cli never imports
+# flext-infra (no cycle), and the runtime census gate evaluates every alias's
+# __value__, so a TYPE_CHECKING-only import would explode as NameError.
+from flext_cli import m as _cli_m, p as _cli_p
 from jinja2.environment import (
     Environment as _JinjaEnvironment,
     Template as _JinjaTemplate,
@@ -60,14 +67,23 @@ class FlextInfraTypesBase:
     "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
     type ChangeCallback = Callable[[str], None] | None
     "Optional callback invoked on transformer changes."
+    # Why: upstream flext_core.FlextTypingContainers is an empty stub (no
+    # `Container` alias shipped in the pinned release); flext-infra's own
+    # LibCST residue-matching consumer needs a membership-testable generic.
+    type Container[ItemT] = _Container[ItemT]
+    "Generic membership-testable collection (supports ``in``)."
+    type PipelineHandler = Callable[
+        [_cli_p.Cli.PipelineStageContext], _cli_p.Result[_cli_m.Cli.PipelineStageResult]
+    ]
+    "Stage handler contract for the flext-infra check/codegen DAG pipelines."
+    type PipelineHandlerMap = t.MappingKV[str, PipelineHandler]
+    "Stage-id to handler mapping used to build DAG pipeline stage specs."
     type LazyInitProcessResult = tuple[int | None, t.LazyAliasMap]
     "Result for per-directory lazy init processing."
     type LazyInitWriteResult = tuple[int, t.LazyAliasMap]
     "Result for writing generated __init__.py."
     type StrSet = set[str]
     "Mutable string set (supports .update/.intersection/etc)."
-    type Container[T] = _Container[T]
-    "Structural membership container (supports ``in``) for any item type."
     type CanonicalValue = t.Scalar | t.StrSequence
     "Canonical governance value: scalar payload or string sequence."
 

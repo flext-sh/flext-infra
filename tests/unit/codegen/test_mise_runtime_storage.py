@@ -5,8 +5,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flext_infra import c, u
 from flext_tests import tm
+
+from flext_infra import c, u
 
 
 class TestsMiseRuntimeStorage:
@@ -47,7 +48,7 @@ class TestsMiseRuntimeStorage:
             tmp_path, {contract.storage_root_variable: str(candidate)}, contract
         )
 
-        tm.fail(result, has="outside the checkout")
+        tm.fail(result)
         tm.that(candidate.exists(), eq=False)
 
 

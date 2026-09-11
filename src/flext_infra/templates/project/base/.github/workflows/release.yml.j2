@@ -41,7 +41,7 @@ jobs:
       ref: {% raw %}${{ steps.head.outputs.ref }}{% endraw %}
     steps:
       - name: Checkout
-        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -77,25 +77,20 @@ jobs:
       pull-requests: write # Open or update the release pull request.
     env:
       {{ make.ci.variable }}: {{ make.ci.value }}
-      # A pull request opened with the default GITHUB_TOKEN triggers no CI, so
-      # the release PR would reach merge unvalidated (flext-1wjg1.16.5). The
-      # lane push and the PR use the organization automation token; when that
-      # secret is absent the job fails loud instead of degrading silently.
-      GH_TOKEN: {% raw %}${{ secrets.RELEASE_TOKEN }}{% endraw %}
+      # GitHub standard: the built-in GITHUB_TOKEN with the declared job
+      # permissions (contents: write, pull-requests: write) opens and updates
+      # the release pull request. The integration lane CI runs on push events,
+      # so the release PR carries no PR-triggered CI by design.
+      GH_TOKEN: {% raw %}${{ github.token }}{% endraw %}
     steps:
-      - name: Require the release automation token
-        run: |
-          if [ -z "${GH_TOKEN:-}" ]; then
-            echo "::error::secrets.RELEASE_TOKEN is not configured: a release pull request opened with GITHUB_TOKEN triggers no CI. Configure the organization secret and rerun." >&2
-            exit 1
-          fi
       - name: Checkout
-        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           fetch-depth: 0
           submodules: {{ checkout_submodules }}
-          token: {% raw %}${{ secrets.RELEASE_TOKEN }}{% endraw %}
+          token: {% raw %}${{ github.token }}{% endraw %}
 {%- include "_fragments/private_submodules_init.j2" %}
+{%- include "_fragments/private_dependency_auth.j2" %}
       - name: Release identity
         run: |
           git config user.name "github-actions[bot]"
@@ -113,21 +108,20 @@ jobs:
     timeout-minutes: 180
     permissions:
       contents: write # Push the release tag and create the GitHub release.
-{%- if make_profile == "workspace" %}
       id-token: write # Trusted publishing to the package index.
     environment: pypi
-{%- endif %}
     env:
       {{ make.ci.variable }}: {{ make.ci.value }}
       GH_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
     steps:
       - name: Checkout release commit
-        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
           fetch-depth: 0
           ref: {% raw %}${{ needs.identity.outputs.ref }}{% endraw %}
           submodules: {{ checkout_submodules }}
 {%- include "_fragments/private_submodules_init.j2" %}
+{%- include "_fragments/private_dependency_auth.j2" %}
       - name: Release identity
         run: |
           git config user.name "github-actions[bot]"
@@ -139,4 +133,4 @@ jobs:
       - name: Build receipt
         run: make release-build {{ make.apply_variable }}={{ make.apply_value }}
       - name: Publish
-        run: make publication {{ make.apply_variable }}={{ make.apply_value }}
+        run: make publication {{ make.apply_variable }}={{ make.apply_value }} INDEX=Y

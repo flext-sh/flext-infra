@@ -113,11 +113,15 @@ class FlextInfraRopeImportBoundaryBase(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Run the validation against ``self.repository_root``."""
-        report_result = self.build_report(self.repository_root)
-        if report_result.failure:
-            return r[bool].from_failure(report_result)
-        report = report_result.unwrap()
-        return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
+        # Why: the inherited mapper's facade-typed signature degrades to Any
+        # under mypy's suppressed PEP-562 imports, so the same mapping is
+        # spelled here through the concrete result factory; the returned
+        # expression stays typed under both checkers with identical behavior.
+        report = self.build_report(self.repository_root)
+        if report.failure:
+            return r[bool].from_failure(report)
+        validated = report.unwrap()
+        return r[bool].ok(True) if validated.passed else r[bool].fail(validated.summary)
 
 
 __all__: t.StrSequence = ("FlextInfraRopeImportBoundaryBase",)

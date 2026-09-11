@@ -33,7 +33,7 @@ class FlextInfraConstantsCodegenProject:
         """Repository selection accepted by ``codegen conform``."""
 
         SELF = "self"
-        SUBPROJECTS = "subprojects"
+        DECLARED = "declared_repositories"
         ALL = "all"
 
     @unique
@@ -51,6 +51,21 @@ class FlextInfraConstantsCodegenProject:
 
         CHECK = "check"
         APPLY = "apply"
+
+    @unique
+    class MiseResolutionMode(StrEnum):
+        """How an apply-mode ``codegen conform`` resolves the Mise toolchain.
+
+        ``AUTO`` probes the declared release endpoint once in preflight and
+        becomes ``ONLINE`` (the newest Mise release and every moving tool
+        selector are resolved and published) or ``OFFLINE`` (the published
+        launchers and lock are kept byte-identical). The explicit values pin
+        one path; none of them is a fallback taken after a failed effect.
+        """
+
+        AUTO = "auto"
+        ONLINE = "online"
+        OFFLINE = "offline"
 
     @unique
     class MakeProfile(StrEnum):
@@ -71,6 +86,14 @@ class FlextInfraConstantsCodegenProject:
 
         ACTIVE = "active"
         EXCLUDED = "excluded"
+
+    @unique
+    class CheckoutKind(StrEnum):
+        """Physical checkout topology for one repository."""
+
+        ROOT = "root"
+        SUBMODULE = "submodule"
+        INDEPENDENT = "independent"
 
     @unique
     class CodegenKind(StrEnum):
@@ -98,6 +121,7 @@ class FlextInfraConstantsCodegenProject:
     BEADS_CONFIG_FILENAME: Final[str] = "beads.yaml"
     BEADS_DIRNAME: Final[str] = ".beads"
     BEADS_LOCAL_VERSION_FILENAME: Final[str] = ".local_version"
+    BEADS_LAST_TOUCHED_FILENAME: Final[str] = "last-touched"
     BEADS_CONFIG_VERSION: Final = 1
     WORKSPACE_MANIFEST_FILENAME: Final[str] = "workspace.yaml"
     WORKSPACE_MANIFEST_VERSION: Final[int] = 3
@@ -115,6 +139,13 @@ class FlextInfraConstantsCodegenProject:
     CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"
     TEMPLATE_MODULE_SKELETON: Final[str] = "module_skeleton.py.j2"
     "Scaffold module-skeleton template (replaces the legacy f-string)."
+    CODEGEN_CONFIG_FILENAME: Final[str] = "codegen.yaml"
+    CODEGEN_OVERRIDES_FILENAME: Final[str] = "codegen-overrides.yaml"
+    CODEGEN_GEN_FILENAME: Final[str] = "codegen.gen.yaml"
+    CODEGEN_GEN_SUFFIX: Final[str] = ".gen.yaml"
+    "File suffix for generation requirements contract files managed by conform."
+    CODEGEN_CONFIG_DIR: Final[str] = "config"
+    "Directory name for flext-infra config files relative to package root."
 
     # One base catalog serves both profiles;
     # workspace topology is read only from each repository's own .gitmodules.

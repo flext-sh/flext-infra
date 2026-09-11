@@ -5,12 +5,14 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from flext_cli import u
+from markdown.extensions.toc import slugify
+
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
+from .._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
 from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
@@ -95,14 +97,8 @@ class FlextInfraUtilitiesDocsContract:
 
     @staticmethod
     def docs_anchorize(text: str) -> str:
-        """Convert a heading title to a GitHub-compatible anchor slug."""
-        normalized: str = u.norm_str(text, case="lower")
-        alnum_only: str = c.Infra.ANCHOR_NON_ALNUM_RE.sub("", normalized)
-        collapsed_whitespace: str = c.Infra.ANCHOR_WHITESPACE_RE.sub("-", alnum_only)
-        slug: str = c.Infra.ANCHOR_DASH_COLLAPSE_RE.sub(
-            "-", collapsed_whitespace
-        ).strip("-")
-        return slug
+        """Use the Python-Markdown anchor algorithm consumed by MkDocs."""
+        return slugify(text, "-")
 
     @staticmethod
     def docs_build_toc(content: str) -> str:
@@ -124,12 +120,12 @@ class FlextInfraUtilitiesDocsContract:
         return f"{c.Infra.TOC_START}\n" + "\n".join(items) + f"\n{c.Infra.TOC_END}"
 
     @staticmethod
-    def docs_workspace_contract(workspace_root: Path) -> t.JsonMapping:
+    def docs_workspace_contract(repository_root: Path) -> t.JsonMapping:
         """Return the root docs contract using root ``pyproject.toml`` metadata."""
-        payload = FlextInfraUtilitiesDocsScope.project_payload(workspace_root)
+        payload = FlextInfraUtilitiesDocsScope.project_payload(repository_root)
         docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
         exclude_docs = FlextInfraUtilitiesDocsScope.docs_meta_list(
-            workspace_root, "exclude_docs"
+            repository_root, "exclude_docs"
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
         project_meta: t.JsonMapping = (
@@ -206,19 +202,6 @@ class FlextInfraUtilitiesDocsContract:
         return dict(validated)
 
     @staticmethod
-    def docs_snapshot_sources(
-        paths: t.SequenceOf[Path],
-    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
-        """Capture descriptor-authenticated states for every planner source."""
-        states: list[m.Cli.AtomicFileState] = []
-        for path in sorted(set(paths)):
-            state = u.Cli.atomic_read_binary_file_state(path, required=True)
-            if state.failure:
-                return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(state)
-            states.append(state.value)
-        return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(states))
-
-    @staticmethod
     def docs_file_plan(
         project: Path,
         path: Path,
@@ -242,21 +225,15 @@ class FlextInfraUtilitiesDocsContract:
             return r[m.Infra.CodegenFilePlan].fail(
                 f"docs desired bytes and mode differ: {path}"
             )
-        target = path
-        before = u.Cli.atomic_read_binary_file_state(target, required=False)
-        if before.failure:
-            return r[m.Infra.CodegenFilePlan].from_failure(before)
-        return r[m.Infra.CodegenFilePlan].ok(
-            m.Infra.CodegenFilePlan(
-                project=project,
-                path=target,
-                before=before.value,
-                desired_content=content,
-                desired_mode=desired_mode,
-                source_states=tuple(source_states),
-                owner="docs",
-                policy="full",
-            )
+        return FlextInfraUtilitiesCodegenFilePlan.planned_file(
+            project,
+            path,
+            required=False,
+            desired_content=content,
+            desired_mode=desired_mode,
+            source_states=source_states,
+            owner="docs",
+            policy="full",
         )
 
     @staticmethod

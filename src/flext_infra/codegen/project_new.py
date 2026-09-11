@@ -15,7 +15,8 @@ from typing import TYPE_CHECKING, Annotated, override
 from flext_core import r
 from flext_infra import c, config, m, u
 from flext_infra.base import s
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+
+from .conform import FlextInfraCodegenConform
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -126,6 +127,12 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
         )
         workspace = m.Infra.WorkspaceSpec(
             name=self.name,
+            beads=m.Infra.BeadsProjectSpec(
+                version=c.Infra.BEADS_CONFIG_VERSION,
+                workspace=self.name,
+                database=self.name.replace("-", "_"),
+                issue_prefix=self.name,
+            ),
             repository=repository,
             project=m.Infra.ProjectSpec(
                 package_name=package_name,
@@ -146,7 +153,6 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
                 homepage=repository_page,
                 documentation=repository_page,
                 repository_root_rel=".",
-                workspace_root_rel=".",
                 year=self.year,
             ),
         )

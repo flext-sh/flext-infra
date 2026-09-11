@@ -5,11 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from flext_tests import tm
 from tests import c, m, u
 
 
@@ -57,8 +57,8 @@ class TestCodegenManifestlessExisting:
         tm.that(derived.repository.distribution, eq=repository.distribution)
         tm.that(derived.repository.path, eq=Path())
         tm.that(derived.project, eq=None)
-        request = m.Infra.CodegenConformRequest(
-            root=root,
+        request = u.Tests.conform_request(
+            root,
             what=c.Infra.CodegenConformSurface.PYPROJECT,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,

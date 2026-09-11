@@ -8,13 +8,12 @@ from typing import TYPE_CHECKING, Annotated, override
 from flext_core import r
 from flext_infra import c, config, m, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
 
-from ._modernizer_constraints import FlextInfraPyprojectModernizerConstraintsMixin
 from ._modernizer_document import FlextInfraPyprojectModernizerDocumentMixin
 from ._modernizer_payload import FlextInfraPyprojectModernizerPayloadMixin
 from ._modernizer_run import FlextInfraPyprojectModernizerRunMixin
+from .extra_paths import FlextInfraExtraPathsManager
+from .phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -22,7 +21,6 @@ if TYPE_CHECKING:
 
 class FlextInfraPyprojectModernizer(
     FlextInfraProjectSelectionServiceBase[bool],
-    FlextInfraPyprojectModernizerConstraintsMixin,
     FlextInfraPyprojectModernizerPayloadMixin,
     FlextInfraPyprojectModernizerDocumentMixin,
     FlextInfraPyprojectModernizerRunMixin,

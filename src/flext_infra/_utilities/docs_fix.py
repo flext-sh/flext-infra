@@ -6,13 +6,14 @@ import sys
 from typing import TYPE_CHECKING
 
 from flext_cli import u
+
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
-from .._utilities.docs import FlextInfraUtilitiesDocs
-from .._utilities.docs_contract import FlextInfraUtilitiesDocsContract
+from ._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
+from .docs import FlextInfraUtilitiesDocs
+from .docs_contract import FlextInfraUtilitiesDocsContract
 
 if TYPE_CHECKING:
     import re

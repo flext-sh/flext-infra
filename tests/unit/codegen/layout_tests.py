@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_tests import tm
+
 from flext_infra import m
 from flext_infra.gates.layout import FlextInfraLayoutGate
-from flext_tests import tm
 from tests import t, u
 from tests.unit.codegen.layout_fixture import (
     archive_root,
@@ -112,15 +113,17 @@ def test_apply_override_move_then_archives_emptied_dir(tmp_path: Path) -> None:
     tm.that((project / archive_root() / project.name / "profiles").is_dir(), eq=True)
 
 
-def test_gate_reports_violations_but_passes_on_warning(tmp_path: Path) -> None:
-    """Gate posture follows the SSOT severity: warning reports, never fails."""
+def test_gate_reports_violations_and_fails_on_warning(tmp_path: Path) -> None:
+    """The shared gate contract rejects warnings without hiding their severity."""
     project = build_loose_project(tmp_path)
     gate = FlextInfraLayoutGate(tmp_path)
-    ctx = m.Infra.GateContext(workspace=tmp_path, reports_dir=tmp_path / ".reports")
+    ctx = m.Infra.GateContext(
+        repository_root=tmp_path, reports_dir=tmp_path / ".reports"
+    )
 
     execution = gate.check(project, ctx)
 
-    tm.that(execution.result.passed, eq=True)
+    tm.that(execution.result.passed, eq=False)
     tm.that(bool(execution.issues), eq=True)
     tm.that(all(issue.severity == "WARNING" for issue in execution.issues), eq=True)
 
@@ -165,7 +168,7 @@ def test_special_and_reference_root_dirs_skipped(tmp_path: Path) -> None:
     tm.that("external-docs" in paths, eq=False)
 
 
-def test_subprojects_are_canonical_root_entries(tmp_path: Path) -> None:
+def test_declared_repositories_are_canonical_root_entries(tmp_path: Path) -> None:
     """A workspace root accepts only repository directories declared by topology."""
     declared_name = "flext-declared"
     undeclared_name = "flext-undeclared"

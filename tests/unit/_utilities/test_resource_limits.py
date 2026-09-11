@@ -6,9 +6,9 @@ import sys
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c, m, u
-from flext_tests import tm
 
 
 class TestsFlextInfraUtilitiesResourceLimits:
@@ -31,15 +31,103 @@ class TestsFlextInfraUtilitiesResourceLimits:
         )
         result = u.Cli.run_raw(command, timeout=u.Infra.mypy_runner_timeout(limit))
 
-        tm.that(Path(command[0]).name, eq=c.Infra.TIMEOUT_COMMAND)
-        tm.that(command[3], eq=f"{limit.timeout_seconds}s")
-        tm.that(Path(command[4]).name, eq=c.Infra.PRLIMIT_COMMAND)
-        tm.that(
-            command[5], eq=f"--as={limit.memory_limit_bytes}:{limit.memory_limit_bytes}"
-        )
+        if sys.platform == "darwin":
+            tm.that(command[0], eq=sys.executable)
+            tm.that(Path(command[1]).name, eq="_mypy_supervisor.py")
+            tm.that(command[2], eq=str(limit.memory_limit_bytes))
+            tm.that(command[3], eq=str(limit.timeout_seconds))
+        else:
+            tm.that(Path(command[0]).name, eq=c.Infra.TIMEOUT_COMMAND)
+            tm.that(command[3], eq=f"{limit.timeout_seconds}s")
+            tm.that(Path(command[4]).name, eq=c.Infra.PRLIMIT_COMMAND)
+            tm.that(
+                command[5],
+                eq=f"--as={limit.memory_limit_bytes}:{limit.memory_limit_bytes}",
+            )
         tm.ok(result)
         tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)
         tm.that(result.value.stdout, has="bounded-process")
+
+    @pytest.mark.parametrize(
+        ("source", "memory_mb", "seconds", "expected"),
+        [
+            ("import sys; sys.exit(7)", 512, 10, 7),
+            ("import time; time.sleep(30)", 512, 1, 124),
+            ("import time; a = bytearray(128 * 1024**2); time.sleep(30)", 64, 10, 137),
+        ],
+    )
+    @pytest.mark.skipif(sys.platform != "darwin", reason="native Darwin RSS supervisor")
+    def test_darwin_supervisor_enforces_limits(
+        self, source: str, memory_mb: int, seconds: int, expected: int
+    ) -> None:
+        """Exercise a real exit, deadline and resident allocation through the owner."""
+        limit = m.Infra.MypyResourceLimit(
+            memory_limit_mb=memory_mb, timeout_seconds=seconds
+        )
+        result = u.Cli.run_raw(
+            u.Infra.mypy_limited_command((sys.executable, "-c", source), limit),
+            timeout=u.Infra.mypy_runner_timeout(limit),
+        )
+        tm.ok(result)
+        tm.that(result.value.outcome.raw_return_code, eq=expected)
+
+    @pytest.mark.parametrize(
+        ("tail", "expected"), [("sys.exit(7)", 7), ("time.sleep(30)", 124)]
+    )
+    @pytest.mark.skipif(sys.platform != "darwin", reason="native Darwin process groups")
+    def test_darwin_supervisor_cleans_resistant_descendant(
+        self, tail: str, expected: int
+    ) -> None:
+        """Kill a TERM-resistant descendant after leader exit or deadline."""
+        source = (
+            "import subprocess,sys,time; "
+            "p=subprocess.Popen([sys.executable, '-c', "
+            '"import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); '
+            "print('ready', flush=True); time.sleep(30)\"], "
+            "stdout=subprocess.PIPE, text=True); "
+            f"p.stdout.readline(); print(p.pid, flush=True); {tail}"
+        )
+        limit = m.Infra.MypyResourceLimit(memory_limit_mb=512, timeout_seconds=2)
+        result = u.Cli.run_raw(
+            u.Infra.mypy_limited_command((sys.executable, "-c", source), limit),
+            timeout=u.Infra.mypy_runner_timeout(limit),
+        )
+        tm.ok(result)
+        tm.that(result.value.outcome.raw_return_code, eq=expected)
+        pid = int(result.value.stdout.strip())
+        remaining = u.Cli.run_raw(("/bin/ps", "-p", str(pid), "-o", "stat="), timeout=2)
+        tm.ok(remaining)
+        state = remaining.value.stdout.strip()
+        tm.that(not state or state.startswith("Z"), eq=True)
+
+    @pytest.mark.skipif(
+        sys.platform != "darwin", reason="native Darwin signal forwarding"
+    )
+    def test_darwin_supervisor_forwards_termination(self) -> None:
+        """Preserve external termination and reap the running workload."""
+        limit = m.Infra.MypyResourceLimit(memory_limit_mb=512, timeout_seconds=20)
+        started = u.Cli.process_start(
+            u.Infra.mypy_limited_command(
+                (
+                    sys.executable,
+                    "-c",
+                    "import time; print('ready', flush=True); time.sleep(30)",
+                ),
+                limit,
+            )
+        )
+        tm.ok(started)
+        child = started.value
+        try:
+            tm.ok(child.stdout_read_until(b"ready", timeout=5))
+            tm.ok(child.terminate())
+            exited = child.wait(timeout=10)
+            tm.ok(exited)
+            tm.that(exited.value, eq=143)
+        finally:
+            if child.poll() is None:
+                tm.ok(child.kill())
+                tm.ok(child.wait(timeout=5))
 
     def test_mypy_resource_contract_rejects_non_positive_limits(self) -> None:
         """Reject invalid external configuration before spawning a process."""
@@ -61,19 +149,20 @@ class TestsFlextInfraUtilitiesResourceLimits:
 
     @pytest.mark.parametrize("invalid_value", ["", "1024.0", "-1", " 1024"])
     def test_mypy_resource_limit_rejects_non_integer_environment(
-        self, invalid_value: str
+        self, invalid_value: str, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Reject non-integer process text before constructing the strict model."""
-        with (
-            tm.scope(
-                env={
-                    c.Infra.MYPY_MEMORY_LIMIT_MB_ENV: invalid_value,
-                    c.Infra.MYPY_TIMEOUT_SECONDS_ENV: "120",
-                }
-            ),
-            pytest.raises(
-                ValueError, match=f"{c.Infra.MYPY_MEMORY_LIMIT_MB_ENV} must be"
-            ),
+        """Reject non-integer process text before constructing the strict model.
+
+        The value reaches the process environment verbatim: ``tm.scope`` routes
+        it through a model whose base config strips whitespace, which would
+        repair `` 1024`` into a valid limit and make the padded case untestable.
+        The contract under test is exactly that no such repair happens.
+        """
+        monkeypatch.setenv(c.Infra.MYPY_MEMORY_LIMIT_MB_ENV, invalid_value)
+        monkeypatch.setenv(c.Infra.MYPY_TIMEOUT_SECONDS_ENV, "120")
+
+        with pytest.raises(
+            ValueError, match=f"{c.Infra.MYPY_MEMORY_LIMIT_MB_ENV} must be"
         ):
             u.Infra.mypy_resource_limit()
 

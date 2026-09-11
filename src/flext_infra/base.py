@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar, Self, override
 
-from flext_core import s
+from flext_core import r, s
 from flext_infra import c, m, p, settings, t, u
 
 from ._base_payload import FlextInfraCommandPayloadMixin
@@ -39,12 +39,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         ),
     ] = m.Field(
         default_factory=u.Infra.resolve_repository_root_or_cwd,
-        alias="workspace",
-        validation_alias=t.AliasChoices(
-            "repository_root", "workspace_root", "workspace"
-        ),
-        serialization_alias="workspace",
-        description="Workspace root",
+        description="Repository root",
     )
     apply_changes: bool = m.Field(
         default=False,
@@ -68,7 +63,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         alias="module",
         description=(
             "Dotted module path to scope the verb to a single module "
-            "(e.g. flext_core.result). Composes with --workspace/--projects."
+            "(e.g. flext_core.result). Composes with --repository-root/--projects."
         ),
     )
     target_namespace: str | None = m.Field(
@@ -126,6 +121,27 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     def effective_dry_run(self) -> bool:
         """Normalized write-mode decision for CLI services."""
         return self.dry_run or self.check_only or (not self.apply_changes)
+
+    def _filtered_projects(
+        self, projects: t.SequenceOf[p.Infra.ProjectInfo]
+    ) -> t.SequenceOf[p.Infra.ProjectInfo]:
+        """Apply the comma-separated ``project_filter`` when one is configured."""
+        if self.project_filter is None:
+            return projects
+        selected = {
+            item.strip() for item in self.project_filter.split(",") if item.strip()
+        }
+        return [project for project in projects if project.name in selected]
+
+    @staticmethod
+    def _report_execution(
+        report_result: p.Result[m.Infra.ValidationReport],
+    ) -> p.Result[bool]:
+        """Map one validation report onto the boolean outcome a validator returns."""
+        if report_result.failure:
+            return r[bool].from_failure(report_result)
+        report = report_result.unwrap()
+        return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 
     @override
     def execute(self) -> p.Result[TDomainResult]:

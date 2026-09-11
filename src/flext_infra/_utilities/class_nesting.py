@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from flext_core import r
 from flext_infra import c, m
 
-from .._utilities.class_nesting_cst import FlextInfraUtilitiesClassNestingCst
+from .class_nesting_cst import FlextInfraUtilitiesClassNestingCst
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -73,7 +73,7 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
     @staticmethod
     def class_nesting_plan(
         rope_workspace: p.Infra.RopeWorkspaceDsl, file_path: Path
-    ) -> p.Result[tuple[m.Infra.ClassNestingViolation, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.ClassNestingViolation]]:
         """Return top-level classes that must move under the declared module owner."""
         resolved_file = file_path.resolve()
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(resolved_file.name)
@@ -127,7 +127,6 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
                     class_name=item.name,
                     target_namespace=target_namespace,
                     confidence=confidence,
-                    rewrite_scope=c.Infra.RK_FILE,
                 )
                 for item in top_level_classes
                 if item.name != target_namespace and item.name not in bound
@@ -140,7 +139,7 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
         *,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
-    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Plan all structural nesting and consumer rewrites without effects."""
         modules = {
             entry.file_path.resolve(): entry for entry in rope_workspace.modules()

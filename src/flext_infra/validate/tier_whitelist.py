@@ -70,13 +70,18 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
         top = self._top_module(_module_name)
         if (
             top in c.Infra.TIER_WHITELIST_SETTINGS_MODULE_LIBRARIES
-            and _file_path.name == "settings.py"
+            and _file_path.name.endswith("settings.py")
         ):
             return True
         owner = c.ENFORCEMENT_LIBRARY_OWNERS.get(top)
         if owner is None:
             return False
-        return f"/{owner}/src/" in _file_path.as_posix()
+        # Ownership is the owner's PACKAGE tree, never the checkout directory
+        # name: a lane worktree named ``flext-infra-<lane>`` is still the
+        # ``flext-infra`` source tree, so dirname matching would be blind to
+        # every governed worktree.
+        package_root = f"/src/{owner.replace('-', '_')}/"
+        return package_root in _file_path.as_posix()
 
     @override
     def _format_violation(self, file_path: Path, module_name: str) -> str:

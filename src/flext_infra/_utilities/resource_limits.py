@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import platform
 import shutil
+import sys
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
+
 from flext_infra import c, m, t
 
-from .._utilities.process import FlextInfraUtilitiesProcess
+from .process import FlextInfraUtilitiesProcess
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
@@ -17,7 +21,7 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesResourceLimits:
     """Build resource-bounded commands for memory-intensive quality tools."""
 
-    _MEMORY_FAILURE_MARKERS: ClassVar[tuple[str, ...]] = (
+    _MEMORY_FAILURE_MARKERS: ClassVar[t.VariadicTuple[str]] = (
         "cannot allocate memory",
         "failed to map segment",
         "memoryerror",
@@ -69,6 +73,15 @@ class FlextInfraUtilitiesResourceLimits:
         validated_limit = (
             limit or FlextInfraUtilitiesResourceLimits.mypy_resource_limit()
         )
+        if platform.system() == "Darwin":
+            return (
+                sys.executable,
+                str(Path(__file__).with_name("_mypy_supervisor.py")),
+                str(validated_limit.memory_limit_bytes),
+                str(validated_limit.timeout_seconds),
+                str(c.Infra.TIMEOUT_KILL_AFTER_SECONDS),
+                *command,
+            )
         prlimit_executable = FlextInfraUtilitiesResourceLimits._required_executable(
             c.Infra.PRLIMIT_COMMAND
         )

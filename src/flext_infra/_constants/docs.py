@@ -16,11 +16,14 @@ class FlextInfraConstantsDocs:
     DOCS_CONFIG_FILENAME: Final[str] = "docs_config.json"
     DOCS_INSECURE_WEB_SCHEME: Final[str] = "http"
     DOCS_SECURE_WEB_SCHEME: Final[str] = "https"
+    # A generated document may point outward, never carry a payload: a `data:`
+    # target embeds its content in the link and can execute in a rendered page,
+    # which is why the sanitizer has always stripped it. Declaring it here as a
+    # preserved scheme made the catalog disagree with the only consumer.
     DOCS_EXTERNAL_SCHEMES: Final[frozenset[str]] = frozenset({
         DOCS_SECURE_WEB_SCHEME,
         "mailto",
         "tel",
-        "data",
     })
     DOCS_FRAGMENT_PREFIX: Final[str] = "#"
     PYTHON_FENCE_RUFF_EXTEND_IGNORE: Final[t.StrSequence] = (
@@ -53,8 +56,14 @@ class FlextInfraConstantsDocs:
         "agent",
         "barman",
         "scanner",
+        "argocd",
     )
-    """Container/CI identities whose home is part of the image contract, not a machine."""
+    """Container/CI identities whose home is part of the image contract, not a machine.
+
+    ``argocd`` is the in-container HOME of the Argo CD side images
+    (argocd-cmp-plugin / repo-server) referenced in ADR_024 and the release
+    convergence plan; it is an image contract, not an operator machine
+    (flext-9v0d.3 / cosmos-iracn.7)."""
     PYTHON_FENCE_RE: Final[t.RegexPattern] = re.compile(
         r"^```python\s*\n(?P<body>.*?)^```\s*$", re.MULTILINE | re.DOTALL
     )

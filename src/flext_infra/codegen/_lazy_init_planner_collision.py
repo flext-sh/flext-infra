@@ -57,6 +57,8 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             score += 15
         if attr == name:
             score += 3
+        if name in c.Infra.ALIAS_NAMES and "." not in module_path:
+            score -= 80
         part_number = module_file.stem.rpartition("_part_")[2]
         if part_number.isdecimal():
             # flext-pulj (codex): the final public facade owns the external
@@ -178,7 +180,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return None
 
     @staticmethod
-    def _module_parts(module_path: str) -> tuple[str, ...]:
+    def _module_parts(module_path: str) -> t.VariadicTuple[str]:
         """Return normalized dotted module path parts."""
         return tuple(part for part in module_path.split(".") if part)
 
@@ -213,8 +215,8 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         if a_index < 0 and b_index < 0:
             return False
         if a_index >= 0 and b_index >= 0:
-            a_family: tuple[str, ...] = tuple(a_parts[: a_index + 1])
-            b_family: tuple[str, ...] = tuple(b_parts[: b_index + 1])
+            a_family: t.VariadicTuple[str] = tuple(a_parts[: a_index + 1])
+            b_family: t.VariadicTuple[str] = tuple(b_parts[: b_index + 1])
             return a_family == b_family
         part_parts, part_index, facade_parts = (
             (a_parts, a_index, b_parts) if a_index >= 0 else (b_parts, b_index, a_parts)
@@ -224,11 +226,11 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             return True
         if not owner_package or not owner_package[-1].startswith("_"):
             return False
-        expected_facade_parts: tuple[str, ...] = (
+        expected_facade_parts: t.VariadicTuple[str] = (
             *tuple(owner_package[:-1]),
             owner_package[-1].removeprefix("_"),
         )
-        facade_tuple: tuple[str, ...] = tuple(facade_parts)
+        facade_tuple: t.VariadicTuple[str] = tuple(facade_parts)
         return facade_tuple == expected_facade_parts
 
     @classmethod
@@ -252,7 +254,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return False
 
     @classmethod
-    def _private_segments(cls, parts: t.StrSequence) -> frozenset[tuple[int, str]]:
+    def _private_segments(cls, parts: t.StrSequence) -> frozenset[t.Pair[int, str]]:
         """Return private implementation segments with their path positions."""
         return frozenset(
             (index, part)

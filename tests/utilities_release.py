@@ -54,6 +54,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
             (
                 "[project]\n"
                 'name = "workspace"\n'
+                'description = "Release workflow fixture"\n'
                 f'version = "{version}"\n'
                 "dependencies = []\n"
             ),
@@ -99,6 +100,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
                     "\n"
                     "[project]\n"
                     f'name = "{name}"\n'
+                    'description = "Release member fixture"\n'
                     'version = "0.1.0"\n'
                     'license = "MIT"\n'
                     'dependencies = ["flext-core @ '
@@ -142,17 +144,23 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         return workspace
 
     @staticmethod
-    def run_release_main(workspace_root: Path, *arguments: str) -> int:
+    def run_release_main(repository_root: Path, *arguments: str) -> int:
         """Run the public release CLI against one real test workspace."""
-        return main(["release", "run", "--workspace", str(workspace_root), *arguments])
+        return main([
+            "release",
+            "run",
+            "--repository-root",
+            str(repository_root),
+            *arguments,
+        ])
 
     @staticmethod
     def run_release_build(
-        workspace_root: Path, project_name: str, *, dry_run: bool = False
+        repository_root: Path, project_name: str, *, dry_run: bool = False
     ) -> int:
         """Run the release build phase for one project through the public CLI."""
         return TestsFlextInfraUtilitiesReleaseMixin.run_release_main(
-            workspace_root,
+            repository_root,
             "--phase",
             c.Tests.RELEASE_PHASE_BUILD,
             "--projects",
@@ -172,11 +180,11 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         )
 
     @staticmethod
-    def release_build_report(workspace_root: Path) -> m.Infra.BuildReport:
+    def release_build_report(repository_root: Path) -> m.Infra.BuildReport:
         """Read the strict build report the last build phase wrote."""
         report_path = (
             TestsFlextInfraUtilitiesReleaseMixin.release_report_dir(
-                workspace_root, c.Tests.RELEASE_VERSION_BASE
+                repository_root, c.Tests.RELEASE_VERSION_BASE
             )
             / "build-report.json"
         )
@@ -185,37 +193,37 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         )
 
     @staticmethod
-    def release_build_log_text(workspace_root: Path, project_name: str) -> str:
+    def release_build_log_text(repository_root: Path, project_name: str) -> str:
         """Read one release project's build log at the base release version."""
         return TestsFlextInfraUtilitiesReleaseMixin.release_build_log(
-            workspace_root, c.Tests.RELEASE_VERSION_BASE, project_name
+            repository_root, c.Tests.RELEASE_VERSION_BASE, project_name
         ).read_text(encoding="utf-8")
 
     @staticmethod
-    def release_report_dir(workspace_root: Path, version: str) -> Path:
+    def release_report_dir(repository_root: Path, version: str) -> Path:
         """Return the public release report directory for one version."""
-        return workspace_root / ".reports" / "release" / f"v{version}"
+        return repository_root / ".reports" / "release" / f"v{version}"
 
     @staticmethod
     def release_build_log(
-        workspace_root: Path, version: str, project_name: str
+        repository_root: Path, version: str, project_name: str
     ) -> Path:
         """Return one release project's observable build log path."""
         return (
             TestsFlextInfraUtilitiesReleaseMixin.release_report_dir(
-                workspace_root, version
+                repository_root, version
             )
             / f"build-{project_name}.log"
         )
 
     @staticmethod
     def release_artifact_dir(
-        workspace_root: Path, version: str, project_name: str
+        repository_root: Path, version: str, project_name: str
     ) -> Path:
         """Return one release project's immutable artifact-set directory."""
         return (
             TestsFlextInfraUtilitiesReleaseMixin.release_report_dir(
-                workspace_root, version
+                repository_root, version
             )
             / "artifacts"
             / project_name

@@ -6,11 +6,11 @@ import sys
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import config, u
 from flext_infra.services.cli_routes_validate_commands import ValidationCommandRoutes
 from flext_infra.validate.cprofile_report import FlextInfraCProfileReport
-from flext_tests import tm
 
 
 class TestsFlextInfraCProfileReport:

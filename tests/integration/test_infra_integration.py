@@ -14,12 +14,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import m, r, u
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-from flext_tests import tm
 from tests import TestsFlextInfraUtilities as tu
 
 if TYPE_CHECKING:
@@ -81,8 +81,9 @@ class TestsFlextInfraIntegrationInfraIntegration:
         project_dir = tu.Tests.mk_project(tmp_path, "markdown-fmt-contract")
         document = project_dir / "README.md"
         document.write_text("not a heading   \n", encoding="utf-8")
+        tu.Tests.initialize_git_repo(project_dir)
         context = m.Infra.GateContext(
-            workspace=tmp_path, reports_dir=tmp_path, apply_fixes=True
+            repository_root=tmp_path, reports_dir=tmp_path, apply_fixes=True
         )
 
         execution = FlextInfraMarkdownGate(tmp_path).fix(project_dir, context)
@@ -91,34 +92,13 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(document.read_text(encoding="utf-8"), eq="not a heading\n")
 
     @pytest.mark.integration
-    def test_output_singleton_has_expected_methods(self) -> None:
-        """Test that reporting/output methods are exposed through u.Infra.
-
-        Validates u.Infra FLEXT output methods are available:
-        - status, summary, error, warning, info, header, progress
-        """
-        tm.that(callable(u.Cli.status), eq=True)
-        tm.that(callable(u.Cli.summary), eq=True)
-        tm.that(callable(u.Cli.error), eq=True)
-        tm.that(callable(u.Cli.warning), eq=True)
-        tm.that(callable(u.Cli.info), eq=True)
-        tm.that(callable(u.Cli.header), eq=True)
-        tm.that(callable(u.Cli.progress), eq=True)
-
-    @pytest.mark.integration
-    def test_output_methods_are_callable_via_u_infra(self) -> None:
-        """Test that reporting methods are callable through the real facade.
-
-        Validates:
-        - All methods are callable through u.Infra
-        """
-        tm.that(callable(u.Cli.status), eq=True)
-        tm.that(callable(u.Cli.summary), eq=True)
-        tm.that(callable(u.Cli.error), eq=True)
-        tm.that(callable(u.Cli.warning), eq=True)
-        tm.that(callable(u.Cli.info), eq=True)
-        tm.that(callable(u.Cli.header), eq=True)
-        tm.that(callable(u.Cli.progress), eq=True)
+    @pytest.mark.parametrize(
+        "method_name",
+        ["status", "summary", "error", "warning", "info", "header", "progress"],
+    )
+    def test_output_singleton_has_expected_methods(self, method_name: str) -> None:
+        """Every public output operation is callable on the real CLI facade."""
+        tm.that(callable(getattr(u.Cli, method_name)), eq=True)
 
     @pytest.mark.integration
     def test_service_result_chaining_with_map(self) -> None:

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_tests import tm
+
 from flext_infra import u
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_tests import tm
 from tests import c, m, t
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
@@ -39,6 +40,19 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             project_dir, name
         )
         return project_dir
+
+    @staticmethod
+    def demo_project(root: Path, *, name: str = "demo-project") -> tuple[Path, Path]:
+        """Create one minimal buildable project; return its root and package dir."""
+        project = root / name
+        package_dir = project / "src" / name.replace("-", "_")
+        package_dir.mkdir(parents=True)
+        (project / "pyproject.toml").write_text(
+            f"[project]\nname='{name}'\n", encoding="utf-8"
+        )
+        (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        return project, package_dir
 
     @staticmethod
     def src_package(project_dir: Path, package_name: str, *, pyproject: str) -> Path:
@@ -91,6 +105,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         root_modules: t.StrSequence = (),
         root_packages: t.StrSequence = (),
         extra_verbs: tuple[m.Infra.MakeVerbSpec, ...] = (),
+        gascity_enabled: bool | None = None,
     ) -> Path:
         """Write the declared ``config/workspace.yaml`` of one standalone repository.
 
@@ -102,6 +117,9 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         ``extra_verbs`` declares the repository-owned public Make verbs the
         managed Makefile renders into its help block, so a caller controls
         real rendered content through the declaration the loader validates.
+
+        ``gascity_enabled`` declares the repository policy overlay's Gas City
+        participation; ``None`` writes no overlay at all (the fleet default).
         """
         repository = TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
             name, role=c.Infra.MakeProfile.STANDALONE
@@ -128,6 +146,16 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             repository=repository,
             project=project,
         )
+        if gascity_enabled is not None:
+            manifest = manifest.model_copy(
+                update={
+                    "repository_policy_overlays": (
+                        m.Infra.RepositoryPolicyOverlaySpec(
+                            project=name, gascity_enabled=gascity_enabled
+                        ),
+                    )
+                }
+            )
         config_dir = project_dir / c.CONFIG_DIR_NAME
         config_dir.mkdir(parents=True, exist_ok=True)
         manifest_path = config_dir / c.Infra.WORKSPACE_MANIFEST_FILENAME
@@ -262,7 +290,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         tmp_path: Path, *, project_name: str = "p1", with_src: bool = False
     ) -> tuple[FlextInfraWorkspaceChecker, Path]:
         """Provide the typed test helper `create_checker_project`."""
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
         project_dir = TestsFlextInfraUtilitiesWorkspaceFixtureMixin.mk_project(
             tmp_path, project_name
         )

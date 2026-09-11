@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import ast
+from importlib.util import find_spec, resolve_name
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
+
+from .rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
@@ -18,46 +21,229 @@ class FlextInfraUtilitiesPrivateImportFacades:
     """Derive public paths from live facade inheritance, never a registry."""
 
     @staticmethod
-    def private_owner(module: str) -> str | None:
-        """Return the owner preceding the first private module segment."""
-        parts = module.split(".")
-        private_index = next(
-            (
+    def source_modules(
+        sources: t.MappingKV[Path, str], statements: t.SequenceOf[str]
+    ) -> dict[str, tuple[str, bool]]:
+        """Index editable sources and referenced installed packages without imports.
+
+        Installed files are discovery inputs only. Resolving a top-level spec
+        never imports its package initializer or dependency business modules.
+        """
+        modules: dict[str, tuple[str, bool]] = {}
+        for path, source in sorted(sources.items()):
+            indices = [
                 index
-                for index, part in enumerate(parts)
-                if len(part) > 1 and part.startswith("_") and part[1].isalpha()
-            ),
-            None,
-        )
-        if private_index in {None, 0}:
+                for index, part in enumerate(path.parts)
+                if part == c.Infra.DEFAULT_SRC_DIR
+            ]
+            if not indices:
+                continue
+            parts = path.parts[indices[-1] + 1 :]
+            module = ".".join(
+                parts[:-1] if path.name == c.Infra.INIT_PY else (*parts[:-1], path.stem)
+            )
+            if not module:
+                continue
+            if module in modules:
+                msg = f"ambiguous source module identity: {module}"
+                raise ValueError(msg)
+            modules[module] = (source, path.name == c.Infra.INIT_PY)
+        supplied = {module.split(".")[0] for module in modules}
+        referenced = {
+            node.module.split(".")[0]
+            for statement in statements
+            for node in ast.walk(ast.parse(statement))
+            if isinstance(node, ast.ImportFrom) and not node.level and node.module
+        }
+        for package in sorted(referenced - supplied):
+            spec = find_spec(package)
+            if spec is None or spec.submodule_search_locations is None:
+                continue
+            for location in spec.submodule_search_locations:
+                package_root = Path(location)
+                for path in sorted(package_root.rglob("*.py")):
+                    parts = path.relative_to(package_root).parts
+                    suffix = (
+                        parts[:-1]
+                        if path.name == c.Infra.INIT_PY
+                        else (*parts[:-1], path.stem)
+                    )
+                    module = ".".join((package, *suffix))
+                    if module in modules:
+                        msg = f"ambiguous installed module identity: {module}"
+                        raise ValueError(msg)
+                    modules[module] = (
+                        path.read_text(encoding="utf-8"),
+                        path.name == c.Infra.INIT_PY,
+                    )
+        return modules
+
+    @staticmethod
+    def declared_exports(
+        sources: t.MappingKV[str, t.Pair[str, bool]],
+    ) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
+        """Index declared public exports and module-scope import identities."""
+        bindings: dict[str, set[str]] = {}
+        exports: dict[str, set[str]] = {}
+        for module, (source, is_package) in sorted(sources.items()):
+            package = module if is_package else module.rpartition(".")[0]
+            tree = ast.parse(source, filename=module)
+            public_names = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
+                source
+            )
+            lazy_exports, lazy_name = (
+                FlextInfraUtilitiesRopeAnalysis.lazy_public_exports_source(source)
+            )
+
+            def collect(
+                statements: list[ast.stmt],
+                package: str,
+                module: str,
+                lazy_exports: t.StrSequence,
+                lazy_name: str,
+            ) -> None:
+                for node in statements:
+                    if isinstance(node, ast.ImportFrom):
+                        imported_module = (
+                            resolve_name(
+                                "." * node.level + (node.module or ""), package
+                            )
+                            if node.level
+                            else node.module or ""
+                        )
+                        for imported in node.names:
+                            if imported.name != "*":
+                                bindings.setdefault(
+                                    f"{module}.{imported.asname or imported.name}",
+                                    set(),
+                                ).add(f"{imported_module}.{imported.name}")
+                    elif isinstance(
+                        node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
+                    ):
+                        identity = f"{module}.{node.name}"
+                        bindings.setdefault(identity, set()).add(identity)
+                    elif isinstance(node, ast.Assign | ast.AnnAssign):
+                        targets = (
+                            node.targets
+                            if isinstance(node, ast.Assign)
+                            else [node.target]
+                        )
+                        for target in targets:
+                            if isinstance(target, ast.Name):
+                                identity = f"{module}.{target.id}"
+                                destination = (
+                                    f"{module}.{node.value.id}"
+                                    if isinstance(node.value, ast.Name)
+                                    else identity
+                                )
+                                bindings.setdefault(identity, set()).add(destination)
+                    elif isinstance(node, ast.If):
+                        type_only = (
+                            isinstance(node.test, ast.Name)
+                            and node.test.id == "TYPE_CHECKING"
+                        )
+                        if not type_only or lazy_exports or lazy_name:
+                            collect(node.body, package, module, lazy_exports, lazy_name)
+                        collect(node.orelse, package, module, lazy_exports, lazy_name)
+
+            collect(tree.body, package, module, lazy_exports, lazy_name)
+            if not any(part.startswith("_") for part in module.split(".")):
+                exports.setdefault(module.split(".")[0], set()).update(
+                    f"{module}.{name}"
+                    for name in public_names
+                    if not name.startswith("_") and f"{module}.{name}" in bindings
+                )
+        return bindings, exports
+
+    @staticmethod
+    def declared_public_reference(
+        qualified: str,
+        bindings: t.MappingKV[str, set[str]],
+        exports: t.MappingKV[str, set[str]],
+    ) -> tuple[str, str] | None:
+        """Resolve re-export chains by identity, preferring an explicit root ABI."""
+
+        def identities(name: str, visiting: frozenset[str]) -> set[str]:
+            if name in visiting:
+                msg = f"cyclic public export identity: {name}"
+                raise ValueError(msg)
+            targets = bindings.get(name, {name})
+            resolved: set[str] = set()
+            for target in targets:
+                if target == name:
+                    resolved.add(name)
+                else:
+                    resolved.update(identities(target, visiting | {name}))
+            return resolved
+
+        expected = identities(qualified, frozenset())
+        if len(expected) != 1:
+            msg = (
+                f"ambiguous private symbol identity for {qualified}: {sorted(expected)}"
+            )
+            raise ValueError(msg)
+        reverse: dict[str, set[str]] = {}
+        for binding, targets in bindings.items():
+            for target in targets:
+                reverse.setdefault(target, set()).add(binding)
+        reachable = set(expected)
+        pending = list(expected)
+        while pending:
+            for binding in reverse.get(pending.pop(), set()):
+                if binding not in reachable:
+                    reachable.add(binding)
+                    pending.append(binding)
+        candidates = exports.get(qualified.split(".", maxsplit=1)[0], set()) & reachable
+        roots = {candidate for candidate in candidates if candidate.count(".") == 1}
+        canonical = roots or candidates
+        for export in canonical:
+            targets = identities(export, frozenset())
+            if targets != expected:
+                msg = (
+                    f"ambiguous public export identity for {export}: {sorted(targets)}"
+                )
+                raise ValueError(msg)
+        if len(canonical) > 1:
+            msg = f"ambiguous declared public exports for {qualified}: {sorted(canonical)}"
+            raise ValueError(msg)
+        if not canonical:
             return None
-        return ".".join(parts[:private_index])
+        module, _, name = canonical.pop().rpartition(".")
+        return module, name
+
+    @staticmethod
+    def private_owner(module: str) -> str | None:
+        """Return the distribution root owning ``module``.
+
+        The owner is the module's top-level package (the first segment),
+        unless that segment is itself private. Nested private segments
+        (``pkg.servers._oid.x``) belong to the same distribution root — the
+        importer is a same-project sibling and must rewire relatively, never
+        hunt a facade cross-owner.
+        """
+        parts = module.split(".")
+        root = parts[0] if parts else ""
+        if not root or (len(root) > 1 and root.startswith("_") and root[1].isalpha()):
+            return None
+        return root
 
     @staticmethod
     def discover(
-        sources: t.MappingKV[Path, str],
-    ) -> t.MappingKV[str, tuple[tuple[ast.Module, str, str, str], ...]]:
+        sources: t.MappingKV[str, t.Pair[str, bool]],
+    ) -> t.MappingKV[str, t.VariadicTuple[t.Quad[ast.Module, str, str, str]]]:
         """Discover facade aliases and roots from live source assignments."""
         discovered: dict[str, list[tuple[ast.Module, str, str, str]]] = {}
-        for path, source in sorted(sources.items()):
-            source_index = next(
-                (
-                    index
-                    for index in range(len(path.parts) - 1, -1, -1)
-                    if path.parts[index] == c.Infra.DEFAULT_SRC_DIR
-                ),
-                None,
-            )
-            if source_index is None or path.name == c.Infra.INIT_PY:
+        for module, (source, is_package) in sorted(sources.items()):
+            if is_package:
                 continue
-            package = ".".join(path.parts[source_index + 1 : -1])
+            package, _, name = module.rpartition(".")
             if not package:
                 continue
-            tree = ast.parse(source, filename=str(path))
+            tree = ast.parse(source, filename=module)
             class_names = {
                 node.name for node in tree.body if isinstance(node, ast.ClassDef)
             }
-            owners: set[tuple[str, str]] = set()
+            owners: set[t.Pair[str, str]] = set()
             for node in tree.body:
                 target: ast.expr | None = None
                 value: ast.expr | None = None
@@ -89,7 +275,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     tree,
                     alias,
                     root_name,
-                    path.name,
+                    f"{name}.py",
                 ))
         return {
             package: tuple(owners) for package, owners in sorted(discovered.items())
@@ -98,25 +284,39 @@ class FlextInfraUtilitiesPrivateImportFacades:
     @staticmethod
     def public_reference(
         *,
-        owners: t.SequenceOf[tuple[ast.Module, str, str, str]],
+        owners: t.SequenceOf[t.Quad[ast.Module, str, str, str]],
         package: str,
         qualified: str,
+        bindings: t.MappingKV[str, set[str]],
+        class_bases: t.MappingKV[str, tuple[str, ...]],
     ) -> str | None:
         """Resolve one private class to exactly one inherited facade path."""
         references: set[str] = set()
+
+        def inherits(identity: str, visiting: frozenset[str]) -> bool:
+            if identity == qualified:
+                return True
+            if identity in visiting:
+                msg = f"cyclic public facade inheritance: {identity}"
+                raise ValueError(msg)
+            prefix = identity
+            while prefix:
+                targets = bindings.get(prefix)
+                if targets is not None:
+                    if len(targets) != 1:
+                        msg = f"ambiguous public facade base identity: {identity}"
+                        raise ValueError(msg)
+                    target = next(iter(targets)) + identity[len(prefix) :]
+                    if target != identity:
+                        return inherits(target, visiting | {identity})
+                    break
+                prefix = prefix.rpartition(".")[0]
+            return any(
+                inherits(base, visiting | {identity})
+                for base in class_bases.get(identity, ())
+            )
+
         for tree, facade_alias, root_name, facade_file in owners:
-            imports: dict[str, str] = {}
-            for node in tree.body:
-                if not isinstance(node, ast.ImportFrom) or not node.module:
-                    continue
-                if node.level > 1:
-                    msg = f"ambiguous relative facade import in {package}.{facade_file}"
-                    raise ValueError(msg)
-                module = f"{package}.{node.module}" if node.level else node.module
-                imports.update({
-                    imported.asname or imported.name: f"{module}.{imported.name}"
-                    for imported in node.names
-                })
             root_class = next(
                 (
                     node
@@ -128,19 +328,22 @@ class FlextInfraUtilitiesPrivateImportFacades:
             if root_class is None:
                 continue
 
-            def collect(
-                node: ast.ClassDef, public_path: str, imports: dict[str, str] = imports
-            ) -> None:
-                if any(
-                    isinstance(base, ast.Name) and imports.get(base.id) == qualified
-                    for base in node.bases
-                ):
+            def collect(node: ast.ClassDef, public_path: str, identity: str) -> None:
+                if any(inherits(base, frozenset()) for base in class_bases[identity]):
                     references.add(public_path)
                 for child in node.body:
                     if isinstance(child, ast.ClassDef):
-                        collect(child, f"{public_path}.{child.name}")
+                        collect(
+                            child,
+                            f"{public_path}.{child.name}",
+                            f"{identity}.{child.name}",
+                        )
 
-            collect(root_class, facade_alias)
+            collect(
+                root_class,
+                facade_alias,
+                f"{package}.{Path(facade_file).stem}.{root_name}",
+            )
         if not references:
             return None
         deepest = max(reference.count(".") for reference in references)
@@ -156,8 +359,30 @@ class FlextInfraUtilitiesPrivateImportFacades:
         return canonical.pop()
 
     @staticmethod
+    def facade_alias_binding(
+        *, owners: t.SequenceOf[tuple[ast.Module, str, str, str]], alias: str | None
+    ) -> str | None:
+        """Return the alias when the owning package publishes it as a facade.
+
+        A private symbol imported under a name the owner already publishes is a
+        facade binding, not a class reference: the consumer writes ``m.X``
+        against the facade, so the cutover swaps the import statement and every
+        usage stays exactly as written.
+        """
+        if alias is None:
+            return None
+        return next(
+            (
+                facade_alias
+                for _tree, facade_alias, _root_name, _facade_file in owners
+                if facade_alias == alias
+            ),
+            None,
+        )
+
+    @staticmethod
     def public_root_name(
-        *, owners: t.SequenceOf[tuple[ast.Module, str, str, str]], facade_alias: str
+        *, owners: t.SequenceOf[t.Quad[ast.Module, str, str, str]], facade_alias: str
     ) -> str | None:
         """Return the public long name assigned to a canonical facade alias."""
         roots = {
@@ -190,7 +415,8 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     and imported.asname is None
                 )
                 or (
-                    node.module in removals
+                    node.module is not None
+                    and node.module in removals
                     and imported.name in removals[node.module]
                     and (imported.asname or imported.name) == alias
                 )

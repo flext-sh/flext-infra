@@ -11,9 +11,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import main
 from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
-from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -30,7 +31,7 @@ class TestConstantsQualityGateCLIDispatch:
         result = main([
             "codegen",
             "constants-quality-gate",
-            "--workspace",
+            "--repository-root",
             str(tmp_path),
         ])
         tm.that(result, is_=int)
@@ -40,7 +41,7 @@ class TestConstantsQualityGateCLIDispatch:
         result = main([
             "codegen",
             "constants-quality-gate",
-            "--workspace",
+            "--repository-root",
             str(tmp_path),
             "--format",
             "json",
@@ -52,7 +53,7 @@ class TestConstantsQualityGateCLIDispatch:
         result = main([
             "codegen",
             "constants-quality-gate",
-            "--workspace",
+            "--repository-root",
             str(tmp_path),
             "--format",
             "text",
@@ -104,7 +105,6 @@ class TestConstantsQualityGateVerdict:
                     "typings.py": '"""Empty typing fixture."""\n',
                 },
             )
-
         gate = FlextInfraCodegenQualityGate(repository_root=tmp_path)
         report_result = gate.build_report()
         tm.ok(report_result)

@@ -5,10 +5,8 @@ from __future__ import annotations
 from flext_infra.constants import c
 from flext_infra.typings import t
 
-from .._utilities._rope_bracket_balance import (
-    FlextInfraUtilitiesRopeBracketBalanceMixin,
-)
-from .._utilities._rope_method_order import FlextInfraUtilitiesRopeMethodOrderMixin
+from ._rope_bracket_balance import FlextInfraUtilitiesRopeBracketBalanceMixin
+from ._rope_method_order import FlextInfraUtilitiesRopeMethodOrderMixin
 
 
 class FlextInfraUtilitiesRopeHelpers(

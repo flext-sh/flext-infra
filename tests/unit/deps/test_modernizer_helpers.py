@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-
 from flext_tests import tm
+
 from tests import c, u
 
 _FULL_OPTIONAL_DEPS: dict[str, list[str]] = {
@@ -53,7 +53,7 @@ class TestsFlextInfraDepsModernizerHelpers:
             ("requests>=2.0", "requests"),
             ("requests @ git+https://github.com/psf/requests.git", "requests"),
             ("../flext-core", "flext-core"),
-            ("my_package", "my_package"),
+            ("my_package", "my-package"),
             ("  requests  ", "requests"),
             ("", None),
             ("Django>=3.0,<4.0", "django"),

@@ -8,13 +8,12 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.codegen import (
-    _mise_artifacts_files as files,
-    _mise_artifacts_process as process,
-)
+
+from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
+from ._mise_artifacts_process import FlextInfraMiseArtifactsProcess as process
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 _PHASES = frozenset({"conform", "lazy-init", "docs"})
@@ -23,8 +22,8 @@ _PHASES = frozenset({"conform", "lazy-init", "docs"})
 def stage_file_plans(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
     phase: str,
-    plans: tuple[m.Infra.CodegenFilePlan, ...],
-) -> p.Result[tuple[m.Infra.CodegenStagedFile, ...]]:
+    plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]:
     """Stage one exact phase without changing any live destination."""
     result_type = r[tuple[m.Infra.CodegenStagedFile, ...]]
     if phase not in _PHASES:
@@ -38,13 +37,6 @@ def stage_file_plans(
     publications: list[m.Infra.CodegenStagedFile] = []
     phase_roots: set[Path] = set()
     for index, file_plan in enumerate(changed):
-        before_result = u.Infra.codegen_file_before_state(file_plan)
-        if before_result.failure:
-            return result_type.fail(
-                f"{phase} destination parent was not materialized before staging: "
-                f"{file_plan.path.parent}"
-            )
-        before = before_result.value
         project = next(
             (item for item in layout.projects if item.root == file_plan.project), None
         )
@@ -55,6 +47,14 @@ def stage_file_plans(
         current = files.read_state(file_plan.path, required=False)
         if current.failure:
             return result_type.from_failure(current)
+        if isinstance(file_plan.before, m.Cli.AtomicDirectoryChainPlan):
+            before = current.value
+            if before.content is not None:
+                return result_type.fail(
+                    f"{phase} destination appeared after planning: {file_plan.path}"
+                )
+        else:
+            before = file_plan.before
         if current.value != before:
             return result_type.fail(
                 f"{phase} destination changed after planning: {file_plan.path}"

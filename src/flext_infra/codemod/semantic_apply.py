@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import cli
+
 from flext_infra import u
 from flext_infra.api import infra
 from flext_infra.constants import c
@@ -128,7 +129,7 @@ class FlextInfraCodemodSemanticApply:
     @staticmethod
     def _deferred_model_edits(
         sources: t.MappingKV[Path, str],
-    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Normalize every handwritten canonical model source from its AST."""
         edits: list[m.Infra.SemanticMigrationEdit] = []
         model_directories = c.Infra.FLEXT_MODELS_DIRECTORIES
@@ -190,7 +191,7 @@ class FlextInfraCodemodSemanticApply:
             u.Cli.atomic_write_text_file_guarded(state, updated[path]).unwrap()
 
     @staticmethod
-    def _path_key(path: Path) -> tuple[bool, str]:
+    def _path_key(path: Path) -> t.Pair[bool, str]:
         """Sort consumers before the public API owner in a typed key."""
         return (path.name == c.Infra.API_PY, path.as_posix())
 

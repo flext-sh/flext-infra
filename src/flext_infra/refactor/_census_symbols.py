@@ -49,7 +49,7 @@ class FlextInfraRefactorCensusSymbolsMixin:
         for name, pyname in attributes.items():
             if u.Infra.is_imported_name(pyname):
                 continue
-            line = cls._lightweight_symbol_line(pyname, resource)
+            line = u.Infra.pyname_definition_line(pyname, resource)
             if line is None:
                 continue
             candidates.append((line, name, pyname))
@@ -62,18 +62,6 @@ class FlextInfraRefactorCensusSymbolsMixin:
             if kind in {"class", "function"}:
                 object_kinds[id(obj)] = kind
         return symbols
-
-    @staticmethod
-    def _lightweight_symbol_line(
-        pyname: t.Infra.RopePyName, resource: t.Infra.RopeResource
-    ) -> int | None:
-        """Return the local definition line for one top-level Rope symbol."""
-        location = pyname.get_definition_location()
-        module, line = location
-        origin = module.get_resource() if module is not None else None
-        if not isinstance(line, int) or line < 1 or origin is None:
-            return None
-        return line if origin.path == resource.path else None
 
     @staticmethod
     def _lightweight_symbol_kind(

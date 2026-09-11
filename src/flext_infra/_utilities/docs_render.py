@@ -8,9 +8,10 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
+
 from flext_infra import c, config, m, t
 
-from .._utilities.docs import FlextInfraUtilitiesDocs
+from .docs import FlextInfraUtilitiesDocs
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -382,18 +383,13 @@ class FlextInfraUtilitiesDocsRender:
         ])
 
     @staticmethod
-    def docs_guides_index(scope: m.Infra.DocScope) -> str:
-        """Return a guides index that lists the guides the project really has.
-
-        The index is generated, so every link it renders must resolve. Naming a
-        curated guide the generator never writes produced a broken relative
-        link in every project that had no such file.
-        """
-        guides_dir = scope.path / "docs/guides"
+    def docs_guides_index(
+        scope: m.Infra.DocScope, *, guide_paths: t.SequenceOf[Path]
+    ) -> str:
+        """Index the planned guide inventory, including retained custom guides."""
         entries = [
             f"- [{path.stem.replace('-', ' ').capitalize()}]({path.name})"
-            for path in sorted(guides_dir.glob("*.md"))
-            if path.name != "README.md"
+            for path in sorted(guide_paths)
         ]
         return FlextInfraUtilitiesDocsRender._render_markdown([
             f"# {scope.name} Guides",

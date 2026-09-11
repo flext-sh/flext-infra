@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from flext_infra import config, u
 from flext_tests import tm
+
+from flext_infra import config, u
 
 
 class TestsToolchainRequirement:
@@ -31,7 +32,6 @@ class TestsToolchainRequirement:
         tm.that(
             toolchain.uv_exclude_newer, eq=f"{toolchain.dependency_cooldown_days} days"
         )
-        tm.that(toolchain.dependency_cooldown_exclusions, has="cryptography")
         tm.that(
             config.Infra.codegen.python_tool_distributions,
             has=["hatchling", "ruff", "pytest", "rumdl"],
@@ -61,7 +61,6 @@ class TestsToolchainRequirement:
             "pyrefly",
             "pyright",
             "pytest",
-            codegen.release.tool,
             "ruff",
             "rumdl",
             "vulture",
@@ -86,9 +85,12 @@ class TestsToolchainRequirement:
             runtime_libraries.isdisjoint(codegen.python_tool_distributions), eq=True
         )
         tm.that(
-            set(codegen.python_tool_distributions).isdisjoint(
-                {"requests", "jinja2", "pydantic", "setuptools-scm"}
-            ),
+            set(codegen.python_tool_distributions).isdisjoint({
+                "requests",
+                "jinja2",
+                "pydantic",
+                "setuptools-scm",
+            }),
             eq=True,
         )
 

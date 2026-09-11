@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from flext_infra import m, t
-from flext_infra.base import FlextInfraServiceBase
 
 from ._base_projects import FlextInfraProjectSelectionMixin
+from .base import FlextInfraServiceBase
 
 
 class FlextInfraProjectSelectionServiceBase[TDomainResult: t.Cli.ResultValue](

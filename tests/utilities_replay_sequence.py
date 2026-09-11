@@ -44,7 +44,7 @@ class TestsFlextInfraUtilitiesReplaySequenceMixin:
     @staticmethod
     def command_runner(
         *, stdout: str = "", stderr: str = "", returncode: int = 0
-    ) -> p.Cli.CommandRunner:
+    ) -> TestsFlextInfraUtilitiesReplayRunnerMixin.DeptryRunner:
         """Provide the typed test helper `command_runner`."""
         return TestsFlextInfraUtilitiesReplayRunnerMixin.DeptryRunner(
             r.ok(

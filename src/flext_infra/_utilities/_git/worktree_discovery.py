@@ -14,8 +14,8 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from ..._utilities._git.worktree_roots import FlextInfraUtilitiesGitWorktreeRootsMixin
-from ..._utilities.base import FlextInfraUtilitiesBase
+from ..base import FlextInfraUtilitiesBase
+from .worktree_roots import FlextInfraUtilitiesGitWorktreeRootsMixin
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -127,7 +127,9 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
         )
 
     @staticmethod
-    def _read_gitmodule_contract(gitmodules: Path, member_path: str) -> tuple[str, str]:
+    def _read_gitmodule_contract(
+        gitmodules: Path, member_path: str
+    ) -> t.Pair[str, str]:
         """Read URL and branch for one submodule from .gitmodules."""
         with GitConfigParser(file_or_files=gitmodules, read_only=True) as config:
             matching_sections = tuple(

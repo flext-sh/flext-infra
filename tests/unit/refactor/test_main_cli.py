@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import sys
+from pathlib import Path
+from types import CodeType
 
 import pytest
+from flext_tests import tm
 
+from flext_core import r
 from flext_infra import main as infra_main
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-from flext_tests import tm
 from tests import t, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 _FUTURE_INIT = "from __future__ import annotations\n"
 
@@ -205,11 +205,11 @@ _LAZY_CASCADE_TEST = (
 )
 
 
-def _parse_source_ast(source: str) -> object | None:
+def _parse_source_ast(source: str) -> r[CodeType]:
     try:
-        return compile(source, "<refactor-test-source>", "exec")
-    except SyntaxError:
-        return None
+        return r[CodeType].ok(compile(source, "<refactor-test-source>", "exec"))
+    except SyntaxError as exc:
+        return r[CodeType].fail(f"source failed to compile: {exc}", exception=exc)
 
 
 def _strings(value: t.JsonValue) -> t.StrSequence:
@@ -247,7 +247,14 @@ class TestsFlextInfraRefactorMainCli:
         cls, workspace: Path, *, rules: str, kinds: str | None = None
     ) -> None:
         """Run one applying census through the CLI, asserting a clean exit."""
-        args = ["--workspace", str(workspace), "census", "--apply", "--rules", rules]
+        args = [
+            "census",
+            "--repository-root",
+            str(workspace),
+            "--apply",
+            "--rules",
+            rules,
+        ]
         if kinds is not None:
             args = [*args, "--kinds", kinds]
         tm.that(cls._refactor_main(*args), eq=0)
@@ -384,12 +391,13 @@ class TestsFlextInfraRefactorMainCli:
         cls._write(workspace / "tests" / "test_operations.py", _LAZY_CASCADE_TEST)
         return workspace, service_file, init_path
 
-    def test_refactor_census_accepts_workspace_before_subcommand(
+    def test_refactor_census_accepts_the_repository_root_option(
         self, tmp_path: Path
     ) -> None:
+        """The root is a subcommand option, not a group flag ahead of the verb."""
         workspace = tmp_path / "workspace"
         self._write_workspace_pyproject(workspace)
-        result = self._refactor_main("--workspace", str(workspace), "census")
+        result = self._refactor_main("census", "--repository-root", str(workspace))
         tm.that(result, eq=0)
 
     def test_refactor_census_apply_fixes_missing_runtime_alias(
@@ -576,12 +584,12 @@ class TestsFlextInfraRefactorMainCli:
         test_source = test_file.read_text(encoding="utf-8")
         tm.that(service_source, lacks="only_for_tests")
         tm.that(test_source, has="only_for_tests")
-        tm.that(_parse_source_ast(service_source), none=False)
-        tm.that(_parse_source_ast(test_source), none=False)
+        tm.that(_parse_source_ast(service_source), ok=True)
+        tm.that(_parse_source_ast(test_source), ok=True)
 
         self._assert_no_unused_functions(workspace)
 
-    def test_refactor_census_apply_cascades_through_init_lazy_map_and_all(
+    def test_refactor_census_preserves_published_lazy_exports(
         self, tmp_path: Path
     ) -> None:
         workspace, helpers_file, init_path = self._build_lazy_init_cascade_workspace(
@@ -589,38 +597,44 @@ class TestsFlextInfraRefactorMainCli:
         )
         test_file = workspace / "tests" / "test_operations.py"
 
+        self._assert_no_unused_functions(workspace)
         self._apply_census(workspace, rules="unused", kinds="function")
 
         init_source = init_path.read_text(encoding="utf-8")
         helpers_source = helpers_file.read_text(encoding="utf-8")
         test_source = test_file.read_text(encoding="utf-8")
 
-        tm.that(init_source, lacks="only_for_tests")
-        tm.that(helpers_source, lacks="only_for_tests")
+        tm.that(init_source, has="only_for_tests")
+        tm.that(helpers_source, has="only_for_tests")
         tm.that(test_source, has="only_for_tests")
-        # Free functions are lazy exports only for fixture modules, so the
-        # regenerated init keeps the generated shape without function names.
-        # Why: e75d5aa6f "fix(codegen): inline immutable lazy export
-        # metadata" retired the named `_LAZY_IMPORTS` variable for generated
-        # inits; the generator now inlines build_lazy_import_map(...)
-        # directly as install_lazy_exports's third positional argument
-        # (see templates/lazy_init_root.py.j2) — align to the proven runtime.
+        # A symbol exported through the package facade is a live public contract,
+        # including when its observed consumer is a test. Census must not delete
+        # it or rewrite the generator-owned facade behind the consumer's back.
         tm.that(init_source, has="install_lazy_exports(")
         tm.that(init_source, has="build_lazy_import_map(")
-        # Why: e75d5aa6f's inlined build_lazy_import_map({".operations": (...)})
-        # lists per-function names verbatim from operations.py's __all__ — it
-        # does not drop symbols that lack an external consumer, only symbols
-        # actually deleted as dead code. helper_used stays alive (used by
-        # OBSERVED = helper_used(2)) so it stays in __all__ and the lazy map;
-        # the prior lacks="helper_used" dated from 362bbb080's now-superseded
-        # _LAZY_MODULES shape (verified: no _LAZY_MODULES emitter exists today).
         tm.that(init_source, has="helper_used")
         tm.that(helpers_source, has="helper_used")
-        tm.that(_parse_source_ast(init_source), none=False)
-        tm.that(_parse_source_ast(helpers_source), none=False)
-        tm.that(_parse_source_ast(test_source), none=False)
+        tm.that(_parse_source_ast(init_source), ok=True)
+        tm.that(_parse_source_ast(helpers_source), ok=True)
+        tm.that(_parse_source_ast(test_source), ok=True)
 
         self._assert_no_unused_functions(workspace)
+
+        probe = tm.ok(
+            u.Cli.run(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "import sample_pkg; "
+                        "print(sample_pkg.only_for_tests(1)); "
+                        "print(sample_pkg.helper_used(2))"
+                    ),
+                ],
+                cwd=workspace / "src",
+            )
+        )
+        tm.that(probe.stdout.splitlines(), eq=["2", "4"])
 
     def test_refactor_census_apply_removes_decorated_unused_function(
         self, tmp_path: Path
@@ -637,7 +651,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(service_source, lacks="only_for_tests")
         tm.that(service_source, lacks="@log_entry")
         tm.that(service_source, has="def log_entry")
-        tm.that(_parse_source_ast(service_source), none=False)
+        tm.that(_parse_source_ast(service_source), ok=True)
 
     def test_refactor_census_strip_module_all_entry_multi_line(self) -> None:
         source = (
@@ -670,8 +684,8 @@ class TestsFlextInfraRefactorMainCli:
 
         tm.that(origin_helpers.read_text(encoding="utf-8"), has="only_for_tests")
         tm.that(origin_init.read_text(encoding="utf-8"), has="only_for_tests")
-        tm.that(clone_helpers.read_text(encoding="utf-8"), lacks="only_for_tests")
-        tm.that(clone_init.read_text(encoding="utf-8"), lacks="only_for_tests")
+        tm.that(clone_helpers.read_text(encoding="utf-8"), has="only_for_tests")
+        tm.that(clone_init.read_text(encoding="utf-8"), has="only_for_tests")
         tm.that(clone_test.read_text(encoding="utf-8"), has="only_for_tests")
         # Why: e75d5aa6f retired the named `_LAZY_IMPORTS` variable for
         # generated inits in favor of an inlined build_lazy_import_map(...)
@@ -696,7 +710,7 @@ class TestsFlextInfraRefactorMainCli:
         service_source = service_file.read_text(encoding="utf-8")
         tm.that(service_source, lacks="def only_for_cleanup")
         tm.that(service_source, lacks="from collections.abc import Sequence")
-        tm.that(_parse_source_ast(service_source), none=False)
+        tm.that(_parse_source_ast(service_source), ok=True)
 
         self._assert_no_unused_functions(workspace)
 
@@ -874,9 +888,9 @@ class TestsFlextInfraRefactorMainCli:
         impact_map_path = tmp_path / "cli-impact-map.json"
 
         result = self._refactor_main(
-            "--workspace",
-            str(workspace),
             "census",
+            "--repository-root",
+            str(workspace),
             "--rules",
             "unused",
             "--kinds",

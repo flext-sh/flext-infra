@@ -9,12 +9,68 @@ from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor
 from libcst.metadata import MetadataWrapper, ParentNodeProvider, QualifiedNameProvider
 
+from .._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
+
 if TYPE_CHECKING:
     from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesPrivateImportCst:
     """Preserve source layout while moving consumers to public facades."""
+
+    class _DeclaredExports(cst.CSTTransformer):
+        """Relocate imports without renaming their consumer-side bindings."""
+
+        def __init__(self, exports: t.MappingKV[str, tuple[str, str]]) -> None:
+            self.exports = exports
+
+        @override
+        def leave_ImportFrom(
+            self, original_node: cst.ImportFrom, updated_node: cst.ImportFrom
+        ) -> cst.BaseSmallStatement | cst.FlattenSentinel[cst.BaseSmallStatement]:
+            if original_node.relative or isinstance(updated_node.names, cst.ImportStar):
+                return updated_node
+            dotted_name = FlextInfraUtilitiesPrivateImportCst._Transformer.dotted_name
+            module = dotted_name(original_node.module)
+            if not any(
+                f"{module}.{dotted_name(item.name)}" in self.exports
+                for item in updated_node.names
+            ):
+                return updated_node
+            statements: list[cst.BaseSmallStatement] = []
+            for imported in updated_node.names:
+                name = dotted_name(imported.name)
+                if name is None:
+                    msg = "declared export import requires a static symbol name"
+                    raise ValueError(msg)
+                destination = self.exports.get(f"{module}.{name}")
+                replacement = imported.with_changes(comma=cst.MaybeSentinel.DEFAULT)
+                destination_module = updated_node.module
+                if destination is not None:
+                    public_module, public_name = destination
+                    asname = imported.asname
+                    if asname is None and public_name != name:
+                        asname = cst.AsName(cst.Name(name))
+                    replacement = replacement.with_changes(
+                        name=cst.Name(public_name), asname=asname
+                    )
+                    destination_module = cst.parse_expression(public_module)
+                statements.append(
+                    updated_node.with_changes(
+                        module=destination_module,
+                        names=(replacement,),
+                        lpar=None,
+                        rpar=None,
+                    )
+                )
+            return cst.FlattenSentinel(statements)
+
+    @classmethod
+    def relocate_declared_exports(
+        cls, source: str, exports: t.MappingKV[str, tuple[str, str]]
+    ) -> str:
+        """Keep lexical scopes and ``as`` aliases while selecting public owners."""
+        return cst.parse_module(source).visit(cls._DeclaredExports(exports)).code
 
     class _Transformer(cst.CSTTransformer):
         METADATA_DEPENDENCIES = (ParentNodeProvider, QualifiedNameProvider)
@@ -68,13 +124,24 @@ class FlextInfraUtilitiesPrivateImportCst:
                 )
                 raise ValueError(msg)
             parent = self.get_metadata(ParentNodeProvider, original_node)
-            if isinstance(parent, cst.ImportAlias):
+            if FlextInfraUtilitiesQualifiedNames.rebinds_name_in_place(
+                parent, original_node
+            ):
                 return updated_node
-            if isinstance(parent, cst.Attribute) and parent.attr is original_node:
+            target = targets.pop()
+            # A consumer that binds the private symbol under the very alias its
+            # public facade already publishes (`c`, `t`, `p`, `m`, `u`) spells
+            # the final form before the cutover runs: `m.Metadata` is already
+            # the target path. Rewriting the base there appends the nested
+            # segment a second time and yields `m.Metadata.Metadata`.
+            if (
+                isinstance(parent, cst.Attribute)
+                and parent.value is original_node
+                and target.startswith(f"{original_node.value}.")
+                and target.endswith(f".{parent.attr.value}")
+            ):
                 return updated_node
-            if isinstance(parent, cst.Arg) and parent.keyword is original_node:
-                return updated_node
-            return cst.parse_expression(targets.pop())
+            return cst.parse_expression(target)
 
         @override
         def leave_ImportFrom(

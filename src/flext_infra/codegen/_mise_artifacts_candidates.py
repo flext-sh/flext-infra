@@ -7,15 +7,17 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.codegen import _mise_artifacts_files as files
+
+from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 def publication_plan(
-    projects: tuple[m.Infra.MiseToolchainProjectState, ...], stages: tuple[Path, ...]
-) -> p.Result[tuple[m.Infra.CodegenStagedFile, ...]]:
+    projects: t.VariadicTuple[m.Infra.MiseToolchainProjectState],
+    stages: t.VariadicTuple[Path],
+) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]:
     """Bind each staged artifact to its exact pre-lock destination state."""
     publications: list[m.Infra.CodegenStagedFile] = []
     for project, stage in zip(projects, stages, strict=True):
@@ -23,7 +25,6 @@ def publication_plan(
             project.config.before,
             project.artifacts.unix_launcher,
             project.artifacts.windows_launcher,
-            project.artifacts.lock,
         )
         for before, (name, mode) in zip(
             before_states, files.PUBLICATION_SPECS, strict=True

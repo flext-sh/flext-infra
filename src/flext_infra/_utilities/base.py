@@ -10,6 +10,7 @@ import re
 from pathlib import Path
 
 from flext_cli import u as cli_u
+
 from flext_infra.constants import c
 from flext_infra.typings import t
 
@@ -73,7 +74,7 @@ class FlextInfraUtilitiesBase:
         return len(path.parts)
 
     @staticmethod
-    def path_depth_then_text(path: Path) -> tuple[int, str]:
+    def path_depth_then_text(path: Path) -> t.Pair[int, str]:
         """Order paths by depth and then their stable POSIX representation."""
         return FlextInfraUtilitiesBase.path_depth(path), path.as_posix()
 
@@ -153,7 +154,7 @@ class FlextInfraUtilitiesBase:
     @staticmethod
     def ast_grep_rule_contract(
         rule_path: Path,
-    ) -> tuple[frozenset[str], frozenset[str]]:
+    ) -> t.Pair[frozenset[str], frozenset[str]]:
         """Return every document ID and the subset carrying an automatic fix."""
         rule_ids: set[str] = set()
         fixable_ids: set[str] = set()

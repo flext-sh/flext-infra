@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from flext_infra import config
 from flext_tests import tm
+
+from flext_infra import config
 
 
 class TestsToolchainGoBackend:
     """The independent Go runtime follows the moving fleet selector."""
 
     def test_go_version_tracks_latest_without_coupling_to_beads(self) -> None:
-        """Keep Go policy explicit while mise.lock owns its exact release."""
+        """Keep Go policy explicit while mise resolves its newest release."""
         toolchain = config.Infra.codegen.toolchain
 
         tm.that(toolchain.go_version, eq="latest")

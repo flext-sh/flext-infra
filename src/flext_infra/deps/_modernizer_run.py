@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, config, m, t, u
+from flext_infra import c, m, t, u
+
+from ._floor_profile_writer import FlextInfraDepsFloorProfileWriter
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -44,9 +46,6 @@ class FlextInfraPyprojectModernizerRunMixin:
             canonical_dev: t.StrSequence,
             dry_run: bool,
             skip_comments: bool,
-            rewrite_constraints: bool = False,
-            locked_versions: t.MappingKV[str, str] | None = None,
-            internal_names: t.StrSequence = (),
             root_modules: t.StrSequence = (),
             root_packages: t.StrSequence = (),
             declared_python_dirs: t.StrSequence = (),
@@ -70,7 +69,6 @@ class FlextInfraPyprojectModernizerRunMixin:
             canonical_dev=canonical_dev,
             dry_run=dry_run,
             skip_comments=skip_comments,
-            rewrite_constraints=False,
         )
 
     def run(self) -> int:
@@ -86,25 +84,25 @@ class FlextInfraPyprojectModernizerRunMixin:
             if project_names
             else list(u.Infra.workspace_project_paths(self.root))
         )
-        configured_subproject_paths = {
-            subproject_name: self.root / subproject_name
-            for subproject_name in u.Infra.workspace_project_paths(self.root)
+        configured_declared_repository_paths = {
+            declared_repository_name: self.root / declared_repository_name
+            for declared_repository_name in u.Infra.workspace_project_paths(self.root)
         }
         resolved_root = self.root.resolve()
-        outside_subproject_names = [
-            subproject_name
-            for subproject_name, declared_path in configured_subproject_paths.items()
+        outside_declared_repository_names = [
+            declared_repository_name
+            for declared_repository_name, declared_path in configured_declared_repository_paths.items()
             if not declared_path.resolve().is_relative_to(resolved_root)
         ]
-        if outside_subproject_names:
+        if outside_declared_repository_names:
             u.Cli.error(
                 "workspace subprojects outside root: "
-                f"{', '.join(sorted(outside_subproject_names))}"
+                f"{', '.join(sorted(outside_declared_repository_names))}"
             )
             return 2
         basename_aliases: dict[str, list[Path]] = {}
         declared_name_aliases: dict[str, list[Path]] = {}
-        for configured_path in configured_subproject_paths.values():
+        for configured_path in configured_declared_repository_paths.values():
             basename_aliases.setdefault(configured_path.name, []).append(
                 configured_path
             )
@@ -125,7 +123,7 @@ class FlextInfraPyprojectModernizerRunMixin:
         missing_names: t.MutableSequenceOf[str] = []
         ambiguous_names: t.MutableSequenceOf[str] = []
         for project_name in selected_names:
-            project_path = configured_subproject_paths.get(project_name)
+            project_path = configured_declared_repository_paths.get(project_name)
             if project_path is None:
                 alias_matches: t.MutableSequenceOf[Path] = []
                 for alias_path in (
@@ -198,6 +196,21 @@ class FlextInfraPyprojectModernizerRunMixin:
                     | {root_project_name}
                 )
             )
+        # If rewrite_constraints is enabled, write floors to the codegen SSOT
+        # (dependency_profiles) instead of per-pyproject payloads. This is the
+        # flext-gzfd2 cutover: single owner for floors.
+        if self.rewrite_constraints:
+            if not dry_run:
+                profile_changes = (
+                    FlextInfraDepsFloorProfileWriter.rewrite_profiles_from_lock(
+                        locked_versions=locked_versions, internal_names=internal_names
+                    )
+                )
+                if profile_changes:
+                    u.Cli.info("deps: dependency_profiles floors updated from lock")
+                    for change in profile_changes:
+                        u.Cli.info(f"  - {change}")
+            return 0
         violations: MutableMapping[str, t.StrSequence] = {}
         document_states: t.MutableSequenceOf[m.Infra.PyprojectDocumentState] = []
         invalid_paths: t.MutableSequenceOf[Path] = []
@@ -222,9 +235,6 @@ class FlextInfraPyprojectModernizerRunMixin:
                     canonical_dev=canonical_dev,
                     dry_run=dry_run,
                     skip_comments=self.skip_comments,
-                    rewrite_constraints=self.rewrite_constraints,
-                    locked_versions=locked_versions,
-                    internal_names=internal_names,
                 )
                 if changes and not first_drift_reported:
                     diff_lines = u.Infra.unified_diff_lines(
@@ -257,24 +267,6 @@ class FlextInfraPyprojectModernizerRunMixin:
             u.Cli.info(f"Total: {total} change(s) across {len(violations)} file(s)")
             if dry_run:
                 u.Cli.info("(dry-run — no files modified)")
-        if not dry_run:
-            for project_root in sorted({
-                state.pyproject_path.parent for state in document_states
-            }):
-                locked = u.Infra.update_mise_lock(
-                    project_root,
-                    platforms=config.Infra.codegen.toolchain.mise_lock_platforms,
-                    staging_parent=u.Infra.external_tool_state_dir(
-                        self.root,
-                        project_root,
-                        config.Infra.codegen.toolchain.mise_namespace,
-                    ),
-                )
-                if locked.failure:
-                    u.Cli.error(
-                        locked.error or f"Mise lock update failed for {project_root}"
-                    )
-                    return 2
         if check_mode and total > 0:
             return 1
         if not dry_run and (not self.skip_check):

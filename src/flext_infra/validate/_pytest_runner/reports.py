@@ -48,6 +48,23 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             int(match.group("count"))
             for match in c.Infra.PYTEST_DESELECTED_RE.finditer(log_text)
         )
+        if not executed and cache_restored:
+            selected = (
+                (log.parent / "testmon-selection.txt")
+                .read_text(encoding="utf-8")
+                .strip()
+            )
+            if selected:
+                msg = "pytest executed no tests from a nonempty testmon selection"
+                raise RuntimeError(msg)
+            inventory = (
+                (log.parent / "testmon-inventory.txt")
+                .read_text(encoding="utf-8")
+                .splitlines()
+            )
+            # Testmon skips stable files before pytest can count deselections.
+            # The independent collection-only inventory proves the omitted set.
+            deselected = len({node for node in inventory if node})
         accounting = m.Infra.TestmonRunAccounting(
             executed_count=executed,
             deselected_count=deselected,
@@ -92,7 +109,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         report_dir: Path, diagnostics: m.Infra.PytestDiagnostics
     ) -> None:
         """Persist each typed diagnostics channel."""
-        outputs: tuple[tuple[str, t.StrSequence, str], ...] = (
+        outputs: t.VariadicTuple[t.Triple[str, t.StrSequence, str]] = (
             ("failed-tests.txt", diagnostics.failed_cases, "\n\n"),
             ("errors.txt", diagnostics.error_traces, "\n\n"),
             ("warnings.txt", diagnostics.warning_lines, "\n"),

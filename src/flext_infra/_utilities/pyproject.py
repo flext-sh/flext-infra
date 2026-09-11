@@ -9,20 +9,38 @@ from __future__ import annotations
 import shutil
 from functools import cache, lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_cli import u
+
 from flext_core import r
-from flext_infra import c, t
+from flext_infra import c, p, t
 
-from .._utilities.git import FlextInfraUtilitiesGit
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from .git import FlextInfraUtilitiesGit
 
 
 class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
+
+    @staticmethod
+    def read_project_metadata_result(project_root: Path) -> p.Result[p.ProjectMetadata]:
+        """Read one project's metadata through the canonical owner chain.
+
+        flext-core retired its Result-returning compatibility wrapper; this is
+        the consuming project's typed ingress, keeping every metadata reader on
+        one failure contract instead of three ad-hoc try/except blocks. The
+        declared contract is the canonical structural protocol (the producer
+        builds the exact model behind it), matching every ``p.ProjectMetadata``
+        consumer.
+        """
+        try:
+            document = u.read_project_document_cached(project_root)
+            metadata = u.build_project_metadata(project_root, document)
+        except (OSError, ValueError) as exc:
+            return r[p.ProjectMetadata].fail(
+                f"cannot read project metadata from {project_root}: {exc}",
+                exception=exc,
+            )
+        return r[p.ProjectMetadata].ok(metadata)
 
     @staticmethod
     def validate_infra_payload(payload: object) -> t.JsonMapping:
@@ -134,9 +152,19 @@ class FlextInfraUtilitiesPyproject:
             cwd=execution_root,
             timeout=process_timeout_seconds,
         )
-        if identified.failure or not u.Cli.process_succeeded(identified.value.outcome):
+        if identified.failure:
             return r[Path].fail(
-                identified.error or "resolved Taplo executable failed identity check"
+                f"Taplo identity check could not run: {binary}: {identified.error}"
+            )
+        if not u.Cli.process_succeeded(identified.value.outcome):
+            # The cause belongs in the message: a shim that resolves but cannot
+            # execute reports the same generic text as a genuine version
+            # mismatch, and the two need opposite repairs.
+            detail = identified.value.stderr.strip() or identified.value.stdout.strip()
+            return r[Path].fail(
+                f"Taplo identity check failed: {binary} exited "
+                f"{identified.value.outcome.raw_return_code}: "
+                f"{detail or 'no diagnostic output'}"
             )
         observed = identified.value.stdout.strip()
         identity_matches = (
@@ -236,7 +264,7 @@ class FlextInfraUtilitiesPyproject:
             for item in packages:
                 package_path = Path(str(item).strip())
                 if package_path.parts:
-                    package_parts: tuple[str, ...] = package_path.parts
+                    package_parts: t.VariadicTuple[str] = package_path.parts
                     return package_parts[-1]
         src_dir = project_root / c.Infra.DEFAULT_SRC_DIR
         if src_dir.is_dir():

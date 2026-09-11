@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
+
+from flext_tests import tm
 
 from flext_infra import config
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
-from flext_tests import tm
 from tests import u
 
 
@@ -111,8 +111,10 @@ dependencies = ["flext-core", "flext-cli", "flext-ldap"]
             root_modernizer.conform_source(member_first, path=member_path)
         )
 
-        root_report = tomllib.loads(root_first)["tool"]["coverage"]["report"]
-        member_report = tomllib.loads(member_first)["tool"]["coverage"]["report"]
+        root_report = u.Tests.toml_table_at(root_first, "tool", "coverage", "report")
+        member_report = u.Tests.toml_table_at(
+            member_first, "tool", "coverage", "report"
+        )
         tm.that(root_second, eq=root_first)
         tm.that(member_second, eq=member_first)
         tm.that(root_report["fail_under"], eq=thresholds.platform)

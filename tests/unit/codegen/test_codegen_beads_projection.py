@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_tests import tm
-from tests import u as test_u
+from tests import u
 from tests.unit.workspace import WorktreeFixture
 
 
@@ -38,8 +37,8 @@ class TestsCodegenBeadsProjection:
         for managed in config.Infra.codegen.managed_files:
             (root / managed.path).parent.mkdir(parents=True, exist_ok=True)
         result = FlextInfraCodegenConform(repository_root=root).plan(
-            m.Infra.CodegenConformRequest(
-                root=root,
+            u.Tests.conform_request(
+                root,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.CHECK,
             )
@@ -56,7 +55,7 @@ class TestsCodegenBeadsProjection:
         return (
             None
             if match is None or match.desired_content is None
-            else test_u.Tests.codegen_file_text(match)
+            else u.Tests.codegen_file_text(match)
         )
 
     def test_local_identity_renders_only_declarative_beads_files(
@@ -74,11 +73,11 @@ class TestsCodegenBeadsProjection:
 
         if rendered_config is None:
             pytest.fail("local identity must produce the declarative Beads config")
-        tm.that(rendered_config, has='issue-prefix: "project-prefix"')
-        # The config projection carries the ISSUE prefix, not the database name;
-        # asserting a bare `prefix: <database>` kept this red against a template
-        # that is correct (see any governed .beads/config.yaml on disk).
+        # `issue_prefix` is the key bd itself resolves (`bd config get
+        # issue_prefix`); the hyphenated spelling reads as unset, so bd appended
+        # its own key on first write and left every governed checkout dirty.
         tm.that(rendered_config, has='issue_prefix: "project-prefix"')
+        tm.that(rendered_config, lacks="issue-prefix:")
         tm.that(rendered_config, has="gc.endpoint_origin: inherited_city")
         tm.that(rendered_config, has="gc.endpoint_status: verified")
         tm.that(rendered_config, has="types.custom:")
@@ -86,6 +85,41 @@ class TestsCodegenBeadsProjection:
         # that runtime artifact in a fresh checkout.
         tm.that(rendered_metadata, none=True)
         tm.that(hasattr(plan, "beads"), eq=False)
+
+    def test_gascity_disabled_renders_standalone_beads_config(
+        self, tmp_path: Path
+    ) -> None:
+        """A ``gascity_enabled: false`` overlay drops every gc endpoint key.
+
+        The repository owns its Dolt server in that shape: ``dolt.auto-start``
+        flips to ``true`` so bd materializes and starts the per-project server
+        itself, and the inherited-city endpoint keys never render.
+        """
+        root = self._project(
+            tmp_path / "project",
+            database="project_database",
+            issue_prefix="project-prefix",
+        )
+        u.Tests.write_standalone_workspace_manifest(
+            root, "fixture-project", gascity_enabled=False
+        )
+
+        plan = self._plan(root)
+        rendered_config = self._rendered(plan, c.Infra.BEADS_CONFIG_RELPATH)
+        rendered_mise = self._rendered(plan, ".mise.toml")
+
+        if rendered_config is None:
+            pytest.fail("standalone identity must produce the declarative Beads config")
+        tm.that(rendered_config, has='issue_prefix: "project-prefix"')
+        tm.that(rendered_config, lacks="issue-prefix:")
+        tm.that(rendered_config, has="dolt.auto-start: true")
+        tm.that(rendered_config, lacks="gc.endpoint_origin")
+        tm.that(rendered_config, lacks="gc.endpoint_status")
+        tm.that(rendered_config, lacks="Gas City contract")
+        if rendered_mise is None:
+            pytest.fail("standalone identity must produce the managed Mise manifest")
+        tm.that(rendered_mise, lacks="gascity")
+        tm.that(rendered_mise, has='[tools."github:marlon-costa-dc/beads"]')
 
     def test_metadata_projection_preserves_a_minted_ledger_identity(
         self, tmp_path: Path
@@ -112,7 +146,7 @@ class TestsCodegenBeadsProjection:
         rendered = self._rendered(self._plan(root), c.Infra.BEADS_METADATA_RELPATH)
         if rendered is None:
             pytest.fail("local identity must produce the Beads marker")
-        metadata = json.loads(rendered)
+        metadata = u.Tests.json_payload(rendered)
         tm.that(metadata["project_id"], eq=minted)
         tm.that(
             set(metadata),

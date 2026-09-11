@@ -5,18 +5,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flext_infra import main
 from flext_tests import tm
+
+from flext_infra import main
 from tests import u
 
 
 class TestWorkspaceCheckCLI:
     """Tests for the check CLI entry points."""
-
-    @staticmethod
-    def _run_check(workspace: Path, *extra: str) -> int:
-        """Run the check CLI once against one workspace."""
-        return main(["check", "run", "--workspace", str(workspace), *extra])
 
     @staticmethod
     def _workspace(tmp_path: Path) -> Path:
@@ -35,27 +31,51 @@ class TestWorkspaceCheckCLI:
         return workspace
 
     def test_empty_workspace_errors(self, tmp_path: Path) -> None:
-        tm.that(main(["check", "run", "--workspace", str(tmp_path)]), eq=1)
+        tm.that(main(["check", "run", "--repository-root", str(tmp_path)]), eq=1)
 
     def test_run_accepts_explicit_scope(self, tmp_path: Path) -> None:
         workspace = self._workspace(tmp_path)
         tm.that(
-            TestWorkspaceCheckCLI._run_check(
-                workspace, "--projects", "p1", "--gates", "lint"
-            ),
+            main([
+                "check",
+                "run",
+                "--repository-root",
+                str(workspace),
+                "--projects",
+                "p1",
+                "--gates",
+                "lint",
+            ]),
             eq=0,
         )
 
     def test_run_auto_discovers_workspace_projects(self, tmp_path: Path) -> None:
         workspace = self._workspace(tmp_path)
-        tm.that(TestWorkspaceCheckCLI._run_check(workspace, "--gates", "lint"), eq=0)
+        tm.that(
+            main([
+                "check",
+                "run",
+                "--repository-root",
+                str(workspace),
+                "--gates",
+                "lint",
+            ]),
+            eq=0,
+        )
 
     def test_with_projects_success(self, tmp_path: Path) -> None:
         workspace = self._workspace(tmp_path)
         tm.that(
-            TestWorkspaceCheckCLI._run_check(
-                workspace, "--projects", "p1", "--gates", "lint"
-            ),
+            main([
+                "check",
+                "run",
+                "--repository-root",
+                str(workspace),
+                "--projects",
+                "p1",
+                "--gates",
+                "lint",
+            ]),
             eq=0,
         )
 
@@ -67,7 +87,7 @@ class TestWorkspaceCheckCLI:
             main([
                 "check",
                 "run",
-                "--workspace",
+                "--repository-root",
                 str(workspace),
                 "--projects",
                 "p1",
@@ -93,7 +113,7 @@ class TestWorkspaceCheckCLI:
             exit_code = main([
                 "check",
                 "run",
-                "--workspace",
+                "--repository-root",
                 str(workspace),
                 "--gates",
                 "lint",

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import _git as _git, _rope as _rope
+    from . import _git, _rope
     from ._docs_audit_detectors import FlextInfraUtilitiesDocsAuditDetectorsMixin
     from ._docs_command_contract import FlextInfraUtilitiesDocsCommandContractMixin
     from ._docs_generate_plan import FlextInfraUtilitiesDocsGeneratePlanMixin
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from ._docs_scope_selection import FlextInfraUtilitiesDocsScopeSelectionMixin
     from ._docs_scope_state import FlextInfraUtilitiesDocsScopeStateMixin
     from ._git.attestation import FlextInfraUtilitiesGitAttestationMixin
-    from ._git.remote import canonical_origin_remote, redact_origin_remote
+    from ._git.remote import FlextInfraUtilitiesGitRemote
     from ._git.repo import FlextInfraUtilitiesGitRepo
     from ._git.scope import FlextInfraUtilitiesGitScopeMixin
     from ._git.semantic_identity import FlextInfraUtilitiesGitSemanticIdentityMixin
@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     from ._git.worktree_removal import FlextInfraUtilitiesGitWorktreeRemovalMixin
     from ._git.worktree_roots import FlextInfraUtilitiesGitWorktreeRootsMixin
     from ._git.worktree_status import FlextInfraUtilitiesGitWorktreeStatusMixin
+    from ._mypy_supervisor import MypyDarwinSupervisor
     from ._project_discovery_candidates import (
         FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
     )
@@ -100,12 +101,13 @@ if TYPE_CHECKING:
     from .namespace_config import FlextInfraUtilitiesNamespaceConfig
     from .namespace_facades import FlextInfraUtilitiesRefactorNamespaceFacades
     from .namespace_moves import FlextInfraUtilitiesRefactorNamespaceMoves
+    from .network import FlextInfraUtilitiesNetwork
+    from .private_import_ancestry import FlextInfraUtilitiesPrivateImportAncestry
     from .private_import_cst import FlextInfraUtilitiesPrivateImportCst
     from .private_import_facades import FlextInfraUtilitiesPrivateImportFacades
     from .private_import_validation import FlextInfraUtilitiesPrivateImportValidation
     from .private_imports import FlextInfraUtilitiesPrivateImports
     from .process import FlextInfraUtilitiesProcess
-    from .project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
     from .project_discovery import FlextInfraUtilitiesProjectDiscovery
     from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
     from .protected_edit import FlextInfraUtilitiesProtectedEdit
@@ -144,10 +146,7 @@ if TYPE_CHECKING:
     from .silent_failure_ast import FlextInfraUtilitiesSilentFailureAst
     from .silent_failure_ast_base import FlextInfraUtilitiesSilentFailureAstBase
     from .silent_failure_ast_rules import FlextInfraUtilitiesSilentFailureAstRules
-    from .transformer_base import (
-        FlextInfraChangeTrackingTransformer,
-        FlextInfraRopeTransformer,
-    )
+    from .transformer_base import FlextInfraChangeTrackingTransformer
     from .transformer_header import FlextInfraUtilitiesTransformerHeader
     from .transformer_header_parser import FlextInfraUtilitiesTransformerHeaderParser
     from .versioning import FlextInfraUtilitiesVersioning
@@ -156,9 +155,7 @@ if TYPE_CHECKING:
     from .worktree_provisioning import FlextInfraWorktreeProvisioning
 __all__: tuple[str, ...] = (
     "FlextInfraChangeTrackingTransformer",
-    "FlextInfraRefactorProjectAliasMigrator",
     "FlextInfraRopeProject",
-    "FlextInfraRopeTransformer",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesClassNesting",
     "FlextInfraUtilitiesClassNestingCst",
@@ -201,6 +198,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsValidate",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGitAttestationMixin",
+    "FlextInfraUtilitiesGitRemote",
     "FlextInfraUtilitiesGitRepo",
     "FlextInfraUtilitiesGitScopeMixin",
     "FlextInfraUtilitiesGitSemanticIdentityMixin",
@@ -226,6 +224,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesManagedConflicts",
     "FlextInfraUtilitiesNamespaceConfig",
+    "FlextInfraUtilitiesNetwork",
+    "FlextInfraUtilitiesPrivateImportAncestry",
     "FlextInfraUtilitiesPrivateImportCst",
     "FlextInfraUtilitiesPrivateImportFacades",
     "FlextInfraUtilitiesPrivateImportValidation",
@@ -285,11 +285,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesWorkspaceFingerprint",
     "FlextInfraWorktreeLifecycle",
     "FlextInfraWorktreeProvisioning",
+    "MypyDarwinSupervisor",
     "_git",
     "_rope",
-    "canonical_origin_remote",
     "git_stdin",
-    "redact_origin_remote",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -311,7 +310,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._docs_scope_state": ("FlextInfraUtilitiesDocsScopeStateMixin",),
             "._git": ("_git",),
             "._git.attestation": ("FlextInfraUtilitiesGitAttestationMixin",),
-            "._git.remote": ("canonical_origin_remote", "redact_origin_remote"),
+            "._git.remote": ("FlextInfraUtilitiesGitRemote",),
             "._git.repo": ("FlextInfraUtilitiesGitRepo",),
             "._git.scope": ("FlextInfraUtilitiesGitScopeMixin",),
             "._git.semantic_identity": ("FlextInfraUtilitiesGitSemanticIdentityMixin",),
@@ -338,6 +337,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._git.worktree_removal": ("FlextInfraUtilitiesGitWorktreeRemovalMixin",),
             "._git.worktree_roots": ("FlextInfraUtilitiesGitWorktreeRootsMixin",),
             "._git.worktree_status": ("FlextInfraUtilitiesGitWorktreeStatusMixin",),
+            "._mypy_supervisor": ("MypyDarwinSupervisor",),
             "._project_discovery_candidates": (
                 "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
             ),
@@ -397,6 +397,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".namespace_config": ("FlextInfraUtilitiesNamespaceConfig",),
             ".namespace_facades": ("FlextInfraUtilitiesRefactorNamespaceFacades",),
             ".namespace_moves": ("FlextInfraUtilitiesRefactorNamespaceMoves",),
+            ".network": ("FlextInfraUtilitiesNetwork",),
+            ".private_import_ancestry": ("FlextInfraUtilitiesPrivateImportAncestry",),
             ".private_import_cst": ("FlextInfraUtilitiesPrivateImportCst",),
             ".private_import_facades": ("FlextInfraUtilitiesPrivateImportFacades",),
             ".private_import_validation": (
@@ -404,7 +406,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".private_imports": ("FlextInfraUtilitiesPrivateImports",),
             ".process": ("FlextInfraUtilitiesProcess",),
-            ".project_alias_migrator": ("FlextInfraRefactorProjectAliasMigrator",),
             ".project_discovery": ("FlextInfraUtilitiesProjectDiscovery",),
             ".project_managed_artifacts": (
                 "FlextInfraUtilitiesProjectManagedArtifacts",
@@ -445,10 +446,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".silent_failure_ast": ("FlextInfraUtilitiesSilentFailureAst",),
             ".silent_failure_ast_base": ("FlextInfraUtilitiesSilentFailureAstBase",),
             ".silent_failure_ast_rules": ("FlextInfraUtilitiesSilentFailureAstRules",),
-            ".transformer_base": (
-                "FlextInfraChangeTrackingTransformer",
-                "FlextInfraRopeTransformer",
-            ),
+            ".transformer_base": ("FlextInfraChangeTrackingTransformer",),
             ".transformer_header": ("FlextInfraUtilitiesTransformerHeader",),
             ".transformer_header_parser": (
                 "FlextInfraUtilitiesTransformerHeaderParser",

@@ -10,9 +10,6 @@ from operator import itemgetter
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
-from flext_infra.refactor.class_nesting_analyzer import (
-    FlextInfraRefactorClassNestingAnalyzer,
-)
 from flext_infra.transformers.violation_census_visitor import (
     FlextInfraViolationCensusVisitor,
 )
@@ -20,6 +17,7 @@ from flext_infra.transformers.violation_census_visitor import (
 from ._violation_helper_classifier import (
     FlextInfraRefactorViolationHelperClassifierMixin,
 )
+from .class_nesting_analyzer import FlextInfraRefactorClassNestingAnalyzer
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping

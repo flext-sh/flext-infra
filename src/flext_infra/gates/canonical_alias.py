@@ -11,14 +11,15 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, config, m, r, t, u
 from flext_infra.detectors import (
     FlextInfraCompatibilityAliasDetector,
     FlextInfraCyclicImportDetector,
 )
 from flext_infra.gates import FlextInfraGate
-
-from .._utilities.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
+from flext_infra.refactor.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -46,10 +47,26 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
 
     @staticmethod
     def _alias_files(project_dir: Path) -> p.Result[t.SequenceOf[Path]]:
-        """Return Python files from configured namespace roots for alias checks."""
-        return u.Infra.iter_python_files(
-            m.Infra.SourceScanRequest(project_roots=(project_dir,))
-        )
+        """Return Python files from configured namespace roots for alias checks.
+
+        ENFORCE-080 owns every namespace a project publishes, ``tests`` included:
+        a test module reaches the canonical aliases through ``from tests import
+        c``, never through ``flext_core`` directly. Discovery therefore uses the
+        same scope owner as this gate's own cycle analysis
+        (``FlextInfraCyclicImportDetector.scan_project``), not the production-only
+        ``config.Infra.source_scan.roots`` contract, which excludes ``tests``.
+        """
+        try:
+            files = {
+                file_path
+                for directory_name in u.Infra.namespace_scan_dirs(project_dir)
+                for file_path in u.Infra.iter_directory_python_files(
+                    project_dir / directory_name
+                )
+            }
+        except OSError as exc:
+            return r[t.SequenceOf[Path]].fail_op("canonical-alias file scan", exc)
+        return r[t.SequenceOf[Path]].ok(tuple(sorted(files)))
 
     @override
     def check(
@@ -59,7 +76,10 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         _ = ctx
         started = time.monotonic()
         if self._normalized_project_name(project_dir) in self._ALIAS_SOURCE_PACKAGES:
-            return self._skip_result(project_dir, started)
+            return self._neutral_skip_result(
+                project_dir, started,
+                message=f"{self.gate_id}: source package ({c.Infra.PKG_CORE_UNDERSCORE}) excluded from rewrite",
+            )
         files_result = self._alias_files(project_dir)
         if files_result.failure:
             file_path_str = files_result.error or "canonical-alias scan failed"
@@ -77,6 +97,8 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
             issues: list[m.Infra.Issue] = []
             for file_path in files_result.value:
                 migration_context = u.Infra.alias_migration_context(file_path)
+                if migration_context.policy_owner in self._ALIAS_SOURCE_PACKAGES:
+                    continue
                 for violation in FlextInfraCompatibilityAliasDetector.detect_file(
                     m.Infra.DetectorContext(
                         file_path=file_path,
@@ -110,13 +132,8 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         finally:
             rope_project.close()
 
-        return self._build_check_gate_execution(
-            project_dir,
-            passed=len(issues) == 0,
-            issues=issues,
-            raw_output="\n".join(issue.formatted for issue in issues),
-            started=started,
-            ctx=ctx,
+        return self._detected_gate_execution(
+            project_dir, ctx, issues=issues, started=started
         )
 
     @override
@@ -126,7 +143,10 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
             return self._check_only_fix_result(project_dir)
         started = time.monotonic()
         if self._normalized_project_name(project_dir) in self._ALIAS_SOURCE_PACKAGES:
-            return self._skip_result(project_dir, started)
+            return self._neutral_skip_result(
+                project_dir, started,
+                message=f"{self.gate_id}: source package ({c.Infra.PKG_CORE_UNDERSCORE}) excluded from rewrite",
+            )
         files_result = self._alias_files(project_dir)
         if files_result.failure:
             message = files_result.error or "canonical-alias fix failed"
@@ -221,7 +241,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         project_dir: Path,
         rope_project: t.Infra.RopeProject,
         file_paths: t.SequenceOf[Path],
-    ) -> tuple[Path, ...]:
+    ) -> t.VariadicTuple[Path]:
         """Return only files containing project-owned ENFORCE-080 violations."""
         selected: list[Path] = []
         for file_path in file_paths:
@@ -245,7 +265,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
     @staticmethod
     def _plan_edits(
         file_paths: t.SequenceOf[Path],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Build immutable in-memory edits for detector-selected files."""
         edits: list[m.Infra.SemanticMigrationEdit] = []
         for file_path in file_paths:
@@ -276,7 +296,12 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         if not file_paths:
             return
         result = u.Cli.run_raw(
-            ["ruff", "format", *[str(path) for path in file_paths]],
+            [
+                "ruff",
+                "format",
+                *config.Infra.codegen.make.ruff.format_apply,
+                *[str(path) for path in file_paths],
+            ],
             timeout=c.Infra.TIMEOUT_SHORT,
         )
         if result.failure:

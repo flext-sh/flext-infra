@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
-import os
 import stat
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.codegen import _mise_artifacts_files as files
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
+from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
+
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 class FlextInfraMiseWorkspacePlanner:
@@ -115,6 +115,11 @@ class FlextInfraMiseWorkspacePlanner:
         """Build the no-effect journal layout from the descriptor-locked identity."""
         return self._layout_from_identity(identity, (".",), transaction_id=None)
 
+    @staticmethod
+    def journal_path(identity: m.Infra.GitIdentityReport) -> Path:
+        """Return the shared journal anchor without materializing layout state."""
+        return identity.git_dir / files.JOURNAL_NAME
+
     def _layout_from_identity(
         self,
         identity: m.Infra.GitIdentityReport,
@@ -143,7 +148,7 @@ class FlextInfraMiseWorkspacePlanner:
             m.Infra.MiseToolchainWorkspaceLayout(
                 scope_root=scope_root,
                 state_root=state_root.value,
-                journal_path=identity.git_dir / files.JOURNAL_NAME,
+                journal_path=self.journal_path(identity),
                 transaction_id=transaction_id,
                 projects=tuple(projects),
             )
@@ -152,7 +157,7 @@ class FlextInfraMiseWorkspacePlanner:
     def select_layout(
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        config_plans: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
         """Select only projects owned by this conform request or direct caller."""
         if config_plans:
@@ -198,7 +203,7 @@ class FlextInfraMiseWorkspacePlanner:
     def layout_for_config_plans(
         self,
         scope_root: Path,
-        config_plans: tuple[m.Infra.CodegenFilePlan, ...],
+        config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         *,
         transaction_id: str | None = None,
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
@@ -243,7 +248,7 @@ class FlextInfraMiseWorkspacePlanner:
     def snapshot(
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        config_plans: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan] = (),
     ) -> p.Result[m.Infra.MiseToolchainWorkspacePlan]:
         """Capture one complete byte-and-mode snapshot for a stable layout."""
         planned_configs = {item.path: item for item in config_plans}
@@ -278,46 +283,43 @@ class FlextInfraMiseWorkspacePlanner:
         if config_state.failure:
             return r[m.Infra.MiseToolchainProjectState].from_failure(config_state)
         if config_plan is None:
-            current_sources = u.Infra.snapshot_config_sources(layout.root)
-            if current_sources.failure:
-                return r[m.Infra.MiseToolchainProjectState].from_failure(
-                    current_sources
-                )
             if config_state.value.content is None:
                 return r[m.Infra.MiseToolchainProjectState].fail(
                     f"committed Mise configuration is absent: {layout.artifacts.config}"
                 )
             replacement_content = config_state.value.content
-            config_sources = current_sources.value
         else:
             if config_plan.desired_content is None:
                 return r[m.Infra.MiseToolchainProjectState].fail(
                     f"invalid Mise configuration plan: {config_plan.path}"
                 )
             replacement_content = config_plan.desired_content
-            config_sources = config_plan.source_states
-        artifacts: list[m.Cli.AtomicFileState] = []
-        for path in (
-            layout.artifacts.unix_launcher,
-            layout.artifacts.windows_launcher,
-            layout.artifacts.lock,
+        if (
+            config_plan is not None
+            and isinstance(config_plan.before, m.Cli.AtomicFileState)
+            and config_plan.before.content is not None
         ):
+            config_sources = config_plan.source_states
+        else:
+            # A first publication (scaffold or newly governed project) has no
+            # pre-publication provenance: the transaction itself publishes the
+            # config sources, so the authoritative barrier baseline is the
+            # on-disk reality at transaction begin.
+            current_sources = u.Infra.snapshot_config_sources(layout.root)
+            if current_sources.failure:
+                return r[m.Infra.MiseToolchainProjectState].from_failure(
+                    current_sources
+                )
+            config_sources = current_sources.value
+        artifacts: list[m.Cli.AtomicFileState] = []
+        for path in (layout.artifacts.unix_launcher, layout.artifacts.windows_launcher):
             state = files.read_state(path, required=False)
             if state.failure:
                 return r[m.Infra.MiseToolchainProjectState].from_failure(state)
             artifacts.append(state.value)
         artifact_set = m.Infra.MiseToolchainArtifactSet(
-            unix_launcher=artifacts[0], windows_launcher=artifacts[1], lock=artifacts[2]
+            unix_launcher=artifacts[0], windows_launcher=artifacts[1]
         )
-        native_seed = (
-            artifact_set.windows_launcher
-            if os.name == "nt"
-            else artifact_set.unix_launcher
-        )
-        if layout.selector == "." and native_seed.content is None:
-            return r[m.Infra.MiseToolchainProjectState].fail(
-                f"native committed Mise seed is missing: {native_seed.path}"
-            )
         return r[m.Infra.MiseToolchainProjectState].ok(
             m.Infra.MiseToolchainProjectState(
                 layout=layout,
@@ -353,7 +355,6 @@ class FlextInfraMiseWorkspacePlanner:
                     config=root.value / files.CONFIG_SPEC[0],
                     unix_launcher=root.value / files.ARTIFACT_NAMES[0],
                     windows_launcher=root.value / files.ARTIFACT_NAMES[1],
-                    lock=root.value / files.ARTIFACT_NAMES[2],
                 ),
             )
         )

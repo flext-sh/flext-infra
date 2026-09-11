@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c, main
 from flext_infra.check import FlextInfraWorkspaceChecker
-from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -73,7 +73,7 @@ class TestWorkspaceCheckCli:
         exit_code = main([
             "check",
             "run",
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "--gates",
             "lint",
@@ -94,7 +94,7 @@ class TestWorkspaceCheckCli:
         exit_code = main([
             "check",
             "run",
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "--gates",
             "lint",
@@ -114,7 +114,7 @@ class TestWorkspaceCheckCli:
         exit_code = main([
             "check",
             "run",
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "--gates",
             "lint",
@@ -135,7 +135,7 @@ class TestWorkspaceCheckCli:
         exit_code = main([
             "check",
             "run",
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "--gates",
             "lint",
@@ -161,7 +161,7 @@ class TestWorkspaceCheckCli:
         exit_code = main([
             "check",
             "run",
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "--gates",
             "lint",

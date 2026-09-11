@@ -14,9 +14,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tf, tm
 
 from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles
-from flext_tests import tf, tm
 from tests import m, u
 
 if TYPE_CHECKING:
@@ -29,13 +29,6 @@ if TYPE_CHECKING:
 def v() -> FlextInfraValidateImportCycles:
     """Shared validator instance."""
     return FlextInfraValidateImportCycles()
-
-
-def _seed_pkg(root: Path, name: str = "pkg") -> Path:
-    pkg = root / "src" / name
-    pkg.mkdir(parents=True, exist_ok=True)
-    (pkg / "__init__.py").write_text("", encoding="utf-8")
-    return pkg
 
 
 class TestImportCyclesValidatorCore:
@@ -51,7 +44,7 @@ class TestImportCyclesValidatorCore:
     def test_acyclic_graph_passes(
         self, tmp_path: Path, v: FlextInfraValidateImportCycles
     ) -> None:
-        pkg = _seed_pkg(tmp_path)
+        pkg = u.Tests.write_package_init(tmp_path / "src" / "pkg", "").parent
         tf(base_dir=pkg).create("X = 1\n", "a.py")
         tf(base_dir=pkg).create("from pkg.a import X\n", "b.py")
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
@@ -60,7 +53,7 @@ class TestImportCyclesValidatorCore:
     def test_two_module_cycle_fails(
         self, tmp_path: Path, v: FlextInfraValidateImportCycles
     ) -> None:
-        pkg = _seed_pkg(tmp_path)
+        pkg = u.Tests.write_package_init(tmp_path / "src" / "pkg", "").parent
         tf(base_dir=pkg).create("from pkg import b\n", "a.py")
         tf(base_dir=pkg).create("from pkg import a\n", "b.py")
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
@@ -72,7 +65,7 @@ class TestImportCyclesValidatorCore:
     def test_three_module_cycle_fails(
         self, tmp_path: Path, v: FlextInfraValidateImportCycles
     ) -> None:
-        pkg = _seed_pkg(tmp_path)
+        pkg = u.Tests.write_package_init(tmp_path / "src" / "pkg", "").parent
         tf(base_dir=pkg).create("from pkg import b\n", "a.py")
         tf(base_dir=pkg).create("from pkg import c\n", "b.py")
         tf(base_dir=pkg).create("from pkg import a\n", "c.py")
@@ -86,7 +79,7 @@ class TestImportCyclesValidatorCore:
     def test_type_checking_import_is_not_runtime_cycle(
         self, tmp_path: Path, v: FlextInfraValidateImportCycles
     ) -> None:
-        pkg = _seed_pkg(tmp_path)
+        pkg = u.Tests.write_package_init(tmp_path / "src" / "pkg", "").parent
         tf(base_dir=pkg).create(
             (
                 "from __future__ import annotations\n"
@@ -107,7 +100,7 @@ class TestImportCyclesValidatorSummary:
     def test_summary_reports_cycle_count(
         self, tmp_path: Path, v: FlextInfraValidateImportCycles
     ) -> None:
-        pkg = _seed_pkg(tmp_path)
+        pkg = u.Tests.write_package_init(tmp_path / "src" / "pkg", "").parent
         tf(base_dir=pkg).create("from pkg import b\n", "a.py")
         tf(base_dir=pkg).create("from pkg import a\n", "b.py")
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
@@ -117,7 +110,7 @@ class TestImportCyclesValidatorSummary:
     def test_passing_summary_is_human_readable(
         self, tmp_path: Path, v: FlextInfraValidateImportCycles
     ) -> None:
-        _seed_pkg(tmp_path)
+        u.Tests.write_package_init(tmp_path / "src" / "pkg", "")
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.summary, has="cycle")
 

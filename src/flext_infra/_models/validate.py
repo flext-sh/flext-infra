@@ -8,7 +8,7 @@ from typing import Annotated
 from flext_core import m
 from flext_infra import c, t
 
-from .._models.mixins import FlextInfraModelsMixins as mm
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsCore:
@@ -165,7 +165,7 @@ class FlextInfraModelsCore:
         extension: Annotated[str, m.Field(description="File extension")]
         role: Annotated[str, m.Field(description="Script role")]
         violations: Annotated[
-            tuple[FlextInfraModelsCore.GateContractViolation, ...],
+            t.VariadicTuple[FlextInfraModelsCore.GateContractViolation],
             m.Field(description="Violations"),
         ] = ()
 

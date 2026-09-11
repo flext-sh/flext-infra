@@ -4,25 +4,26 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.fixer import FlextInfraDocFixer
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
-from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-def test_auditor_execute_fails_in_strict_mode_on_broken_links(tmp_path: Path) -> None:
+def test_auditor_execute_fails_on_broken_links_by_default(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path)
     (workspace / "docs/README.md").write_text(
         "# Docs\n\n[Broken](missing.md)\n", encoding="utf-8"
     )
 
-    result = FlextInfraDocAuditor(repository_root=workspace, strict_mode=True).execute()
+    result = FlextInfraDocAuditor(repository_root=workspace).execute()
 
     tm.fail(result)
 
@@ -48,24 +49,12 @@ def test_fixer_execute_fails_on_unapplied_drift(tmp_path: Path) -> None:
 
 
 def test_generator_plans_root_and_selected_project(tmp_path: Path) -> None:
-    workspace = u.Tests.create_docs_workspace(
-        tmp_path, project_names=("flext-a", "flext-b")
+    workspace, generator = u.Tests.docs_workspace_generator(
+        tmp_path, project_names=("flext-a", "flext-b"), selected_projects=["flext-a"]
     )
+    plans = u.Tests.publish_docs_bundle(generator)
 
-    generator = FlextInfraDocGenerator(
-        repository_root=workspace, selected_projects=["flext-a"]
-    )
-    prepared = generator.prepare_bundle()
-    tm.ok(prepared)
-    required = generator.required_directories(prepared.value)
-    tm.ok(required)
-    for directory in required.value:
-        directory.mkdir(parents=True, exist_ok=True)
-    planned = generator.plan_files(prepared.value)
-    result = u.Tests.materialize_codegen_plans(planned)
-
-    tm.ok(result)
-    planned_paths = {plan.path for plan in planned.value}
+    planned_paths = {plan.path for plan in plans}
     tm.that(workspace / "docs/projects/generated/catalog.md" in planned_paths, eq=True)
     tm.that(workspace / "flext-a/README.md" in planned_paths, eq=True)
     tm.that(workspace / "flext-b/README.md" not in planned_paths, eq=True)
@@ -83,15 +72,7 @@ def test_validator_execute_fails_before_generation_and_succeeds_after(
     generator = FlextInfraDocGenerator(
         repository_root=workspace, selected_projects=["flext-a"]
     )
-    prepared = generator.prepare_bundle()
-    tm.ok(prepared)
-    required = generator.required_directories(prepared.value)
-    tm.ok(required)
-    for directory in required.value:
-        directory.mkdir(parents=True, exist_ok=True)
-    planned = generator.plan_files(prepared.value)
-    generated = u.Tests.materialize_codegen_plans(planned)
-    tm.ok(generated)
+    _ = u.Tests.publish_docs_bundle(generator)
     after = FlextInfraDocValidator(
         repository_root=workspace, selected_projects=["flext-a"], apply_changes=True
     ).execute()

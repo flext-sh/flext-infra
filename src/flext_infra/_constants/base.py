@@ -9,9 +9,9 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import TYPE_CHECKING, Final
 
-from .._constants.make import FlextInfraConstantsMake
-from .._constants.source_code import FlextInfraConstantsSourceCode
-from .._constants.validate import FlextInfraConstantsSharedInfra
+from .make import FlextInfraConstantsMake
+from .source_code import FlextInfraConstantsSourceCode
+from .validate import FlextInfraConstantsSharedInfra
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -119,6 +119,10 @@ class FlextInfraConstantsBase(
     "Pytest minversion settings key."
     FLEXT_SLOW_TIMEOUT_SECONDS: Final[str] = "flext_slow_timeout_seconds"
     "Enforcement-plugin ini key carrying the config-owned slow-item budget."
+    ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE: Final[str] = (
+        "asyncio_default_fixture_loop_scope"
+    )
+    "Pytest-asyncio ini key selecting the asynchronous fixture event-loop scope."
     PYTHON_CLASSES: Final[str] = "python_classes"
     "Pytest python_classes settings key."
     PYTHON_FILES: Final[str] = "python_files"
@@ -164,14 +168,14 @@ class FlextInfraConstantsBase(
     PYTHON: Final[str] = "python"
     "Python settings subsection key (in limits)."
 
-    CANONICAL_DEV_DEPENDENCY_GROUPS: Final[tuple[DependencyGroup, ...]] = (
+    CANONICAL_DEV_DEPENDENCY_GROUPS: Final[t.VariadicTuple[DependencyGroup]] = (
         DEV,
         DOCS,
         SECURITY,
         TEST,
         TYPINGS,
     )
-    LEGACY_DEV_DEPENDENCY_GROUPS: Final[tuple[DependencyGroup, ...]] = (
+    LEGACY_DEV_DEPENDENCY_GROUPS: Final[t.VariadicTuple[DependencyGroup]] = (
         DOCS,
         SECURITY,
         TEST,
@@ -212,6 +216,10 @@ class FlextInfraConstantsBase(
     "Reproducible-build timestamp environment variable."
     RELEASE_BUILD_CONSTRAINTS_PATH: Final[str] = "config/build-constraints.txt"
     "Workspace-relative hashed build-backend constraint file."
+    # Why: restored — deleted declaration with consumers left behind (worktree
+    # exclusions and mise-artifact transaction staging).
+    TRANSACTION_STATE_DIRNAME: Final[str] = ".state"
+    "Root of regenerable codegen transaction state; never repository content."
     RELEASE_BUILD_TOOLCHAIN_REQUIREMENTS: Final[frozenset[str]] = frozenset({
         "hatchling",
         "packaging",
@@ -260,6 +268,8 @@ class FlextInfraConstantsBase(
     "Canonical ast-grep configuration-file option."
     SG_FILTER_FLAG: Final[str] = "--filter"
     "Canonical ast-grep rule-ID filter option."
+    SG_GLOBS_FLAG: Final[str] = "--globs"
+    "Canonical ast-grep include/exclude glob option."
     SG_UPDATE_ALL: Final[str] = "--update-all"
     "ast-grep fixture and rewrite update flag."
     BANDIT: Final[str] = "bandit"
@@ -272,6 +282,7 @@ class FlextInfraConstantsBase(
     "ast-grep scan subcommand."
     MAKE: Final[str] = "make"
     "Make build tool binary."
+    "AI Hub code-review-graph analysis binary."
 
     CHECK: Final[str] = "check"
     "Generic check command/subcommand identifier."
@@ -358,7 +369,6 @@ class FlextInfraConstantsBase(
     RK_ID: Final[str] = "id"
     RK_URL: Final[str] = "url"
     RK_CLASS_NESTING: Final[str] = "class_nesting"
-    RK_REWRITE_SCOPE: Final[str] = "rewrite_scope"
     RK_CONFIDENCE: Final[str] = "confidence"
     RK_FIX_ACTION: Final[str] = "fix_action"
     RK_DESCRIPTION: Final[str] = "description"
@@ -379,6 +389,13 @@ class FlextInfraConstantsBase(
 
     SAFE_EXECUTION_DEFAULT_GATES: Final[str] = "lint,mypy,pyright,pyrefly"
     "Default quality gates for post-transform validation."
+    ENFORCEMENT_ADVISORY_GATES: Final[frozenset[str]] = frozenset({
+        "runtime-census",
+        "namespace",
+        "tier-whitelist",
+        "silent-failure",
+    })
+    "Gates that report violations as warnings rather than failing the pipeline."
     SAFE_EXECUTION_BAK_SUFFIX: Final[str] = ".bak"
     "File backup suffix for copy-on-write safety."
     ENV_VAR_LINT_SNAPSHOT_GATES: Final[str] = "FLEXT_INFRA_LINT_SNAPSHOT_GATES"

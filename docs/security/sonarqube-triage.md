@@ -703,10 +703,10 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
        28      """Private candidate enumeration for workspace project discovery."""
        29  
        30      @classmethod
->>>    31      def discover_external_workspace_roots(
-       32          cls, workspace_root: Path, *, scan_dirs: frozenset[str] | None = None
+>>>    31      def discover_external_repository_roots(
+       32          cls, repository_root: Path, *, scan_dirs: frozenset[str] | None = None
        33      ) -> t.SequenceOf[Path]:
-       34          """Return explicitly configured workspace roots outside ``workspace_root``.
+       34          """Return explicitly configured workspace roots outside ``repository_root``.
        35  
 ```
 
@@ -724,7 +724,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       120      @classmethod
 >>>   121      def discover_project_candidates(
       122          cls,
-      123          workspace_root: Path,
+      123          repository_root: Path,
       124          *,
       125          scan_dirs: frozenset[str] | None = None,
 ```
@@ -932,7 +932,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       274  
       275      @staticmethod
 >>>   276      def find_all_pyproject_files(
-      277          workspace_root: Path,
+      277          repository_root: Path,
       278          *,
       279          skip_dirs: frozenset[str] | None = None,
       280          project_paths: t.SequenceOf[Path] | None = None,
@@ -1105,7 +1105,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 >>>    21      def scan_workspace(
        22          cls,
        23          *,
-       24          workspace_root: Path,
+       24          repository_root: Path,
        25          target: str,
 ```
 
@@ -1597,10 +1597,10 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       169  
       170      @classmethod
 >>>   171      def index_rope_workspace(
-      172          cls, rope_project: t.Infra.RopeProject, workspace_root: Path
+      172          cls, rope_project: t.Infra.RopeProject, repository_root: Path
       173      ) -> m.Infra.RopeWorkspaceIndex:
       174          """Build a generic Rope workspace index for package-oriented planning."""
-      175          resolved_root = workspace_root.resolve()
+      175          resolved_root = repository_root.resolve()
 ```
 
 **Decisão**:
@@ -2111,7 +2111,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
        84      @classmethod
 >>>    85      def _create_complete_worktree(
        86          cls,
-       87          workspace_root: Path,
+       87          repository_root: Path,
        88          worktree_root: Path,
        89          transaction_id: str,
 ```
@@ -2163,7 +2163,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ```text
        30      if TYPE_CHECKING:
-       31          workspace_root: Path
+       31          repository_root: Path
        32          _modified_files: t.Infra.StrSet
        33  
 >>>    34      def _generate_all_inits(
@@ -2264,7 +2264,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 >>>    96      def execute(self) -> p.Result[m.Infra.CodegenResult]:
        97          """Run check or apply and require a verified fixed point."""
        98          request = self.request or m.Infra.CodegenConformRequest(
-       99              root=self.workspace_root
+       99              root=self.repository_root
       100          )
 ```
 
@@ -2379,7 +2379,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
      1040          self,
      1041          *,
      1042          root: Path,
-     1043          workspace_root: Path,
+     1043          repository_root: Path,
 ```
 
 **Decisão**:
@@ -2428,9 +2428,9 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 > Refactor this function to reduce its Cognitive Complexity from 36 to the 15 allowed.
 
 ```text
-     1560          workspace_root_rel = FlextInfraCodegenConform._workspace_root_rel(workspace)
+     1560          repository_root_rel = FlextInfraCodegenConform._repository_root_rel(workspace)
      1561          local_path: Path = local.path
-     1562          return (Path(workspace_root_rel) / local_path).as_posix()
+     1562          return (Path(repository_root_rel) / local_path).as_posix()
      1563  
 >>>  1564      def _artifact_render_context(
      1565          self,
@@ -3006,7 +3006,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       379          self,
       380          *,
       381          is_root: bool,
-      382          workspace_root: Path | None = None,
+      382          repository_root: Path | None = None,
 ```
 
 **Decisão**:
@@ -3310,7 +3310,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       259                      ),
       260                  ),
       261              )
-      262          with u.Infra.open_project(self._workspace_root) as rope_project:
+      262          with u.Infra.open_project(self._repository_root) as rope_project:
 ```
 
 **Decisão**:
@@ -3592,7 +3592,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
        27  
        28      @classmethod
 >>>    29      def _build_parent_inventory(
-       30          cls, workspace_root: Path
+       30          cls, repository_root: Path
        31      ) -> t.MappingKV[str, t.StrSequence]:
        32          """Inventory governed-package alias top-level facade names.
        33  
@@ -3853,9 +3853,9 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
 ```text
-       32      def __init__(self, *, workspace_root: Path) -> None:
+       32      def __init__(self, *, repository_root: Path) -> None:
        33          """Create migration service bound to a workspace root."""
-       34          self._workspace_root = workspace_root.resolve()
+       34          self._repository_root = repository_root.resolve()
        35  
 >>>    36      def run(
        37          self,
@@ -3991,7 +3991,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       241  
       242      @staticmethod
 >>>   243      def _resolve_list_setting(
-      244          key: str, base_entries: tuple[str, ...], *, workspace_root: Path
+      244          key: str, base_entries: tuple[str, ...], *, repository_root: Path
       245      ) -> tuple[str, ...]:
       246          """Resolve one canonical list, deriving extra globs from the topology."""
       247          if key != c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY:
@@ -4067,7 +4067,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       127  
       128      @classmethod
 >>>   129      def transaction_scoped_paths(
-      130          cls, args: t.StrSequence, workspace_root: Path
+      130          cls, args: t.StrSequence, repository_root: Path
       131      ) -> tuple[Path, ...]:
       132          """Derive workspace-relative paths the command can touch.
       133  
@@ -4349,7 +4349,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 ```text
       272          """Compose the existing JUnit/log diagnostic owner in-process."""
       273          extractor = FlextInfraPytestDiagExtractor(
-      274              workspace_root=self.root,
+      274              repository_root=self.root,
       275              junit=report_dir / "junit.xml",
 >>>   276              log_path=report_dir / "pytest.log",
       277          )
@@ -4538,14 +4538,14 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ```text
        27          """Validate one CLI request without mutating the environment."""
-       28          return cls.validate(request.workspace_root)
+       28          return cls.validate(request.repository_root)
        29  
        30      @classmethod
 >>>    31      def validate(
-       32          cls, workspace_root: Path, *, metadata_paths: t.StrSequence | None = None
+       32          cls, repository_root: Path, *, metadata_paths: t.StrSequence | None = None
        33      ) -> p.Result[int]:
        34          """Validate PEP 610 and editable path metadata for active members."""
-       35          resolved_root = workspace_root.resolve()
+       35          resolved_root = repository_root.resolve()
 ```
 
 **Decisão**:
@@ -5031,7 +5031,408 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 > Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
 
 ```text
-      170          r"<!-- TOC START -->.*?<!-- TOC END -->", re.DOTALL
+      170          r"<!-- TOC START -->
+- [Resumo](#resumo)
+- [Como usar](#como-usar)
+- [Issues](#issues)
+  - [1 · 🔴 BLOCKER · VULNERABILITY · `pythonsecurity:S2083`](#1-blocker-vulnerability-pythonsecuritys2083)
+  - [2 · 🔴 BLOCKER · VULNERABILITY · `pythonsecurity:S2083`](#2-blocker-vulnerability-pythonsecuritys2083)
+  - [3 · 🔴 BLOCKER · VULNERABILITY · `pythonsecurity:S2083`](#3-blocker-vulnerability-pythonsecuritys2083)
+  - [4 · 🔴 BLOCKER · VULNERABILITY · `pythonsecurity:S2083`](#4-blocker-vulnerability-pythonsecuritys2083)
+  - [5 · 🔴 BLOCKER · VULNERABILITY · `pythonsecurity:S2083`](#5-blocker-vulnerability-pythonsecuritys2083)
+  - [6 · 🔴 BLOCKER · CODE_SMELL · `python:S1845`](#6-blocker-code_smell-pythons1845)
+  - [7 · 🔴 BLOCKER · CODE_SMELL · `python:S1845`](#7-blocker-code_smell-pythons1845)
+  - [8 · 🔴 BLOCKER · CODE_SMELL · `python:S1845`](#8-blocker-code_smell-pythons1845)
+  - [9 · 🔴 BLOCKER · CODE_SMELL · `python:S3516`](#9-blocker-code_smell-pythons3516)
+  - [10 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#10-blocker-vulnerability-dockers8482)
+  - [11 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#11-blocker-vulnerability-dockers8482)
+  - [12 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#12-blocker-vulnerability-dockers8482)
+  - [13 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#13-blocker-vulnerability-dockers8482)
+  - [14 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#14-blocker-vulnerability-dockers8482)
+  - [15 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#15-blocker-vulnerability-dockers8482)
+  - [16 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#16-blocker-vulnerability-dockers8482)
+  - [17 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#17-blocker-vulnerability-dockers8482)
+  - [18 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#18-blocker-vulnerability-dockers8482)
+  - [19 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#19-blocker-vulnerability-dockers8482)
+  - [20 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#20-blocker-vulnerability-dockers8482)
+  - [21 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#21-blocker-vulnerability-dockers8482)
+  - [22 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#22-blocker-vulnerability-dockers8482)
+  - [23 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#23-blocker-vulnerability-dockers8482)
+  - [24 · 🔴 BLOCKER · VULNERABILITY · `docker:S8482`](#24-blocker-vulnerability-dockers8482)
+  - [25 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#25-critical-code_smell-pythons1192)
+  - [26 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#26-critical-code_smell-pythons1192)
+  - [27 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#27-critical-code_smell-pythons1192)
+  - [28 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#28-critical-code_smell-pythons1192)
+  - [29 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#29-critical-code_smell-pythons1192)
+  - [30 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#30-critical-code_smell-pythons3776)
+  - [31 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#31-critical-code_smell-pythons3776)
+  - [32 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#32-critical-code_smell-pythons3776)
+  - [33 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#33-critical-code_smell-pythons3776)
+  - [34 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#34-critical-code_smell-pythons3776)
+  - [35 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#35-critical-code_smell-pythons1192)
+  - [36 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#36-critical-code_smell-pythons3776)
+  - [37 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#37-critical-code_smell-pythons3776)
+  - [38 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#38-critical-code_smell-pythons3776)
+  - [39 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#39-critical-code_smell-pythons3776)
+  - [40 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#40-critical-code_smell-pythons3776)
+  - [41 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#41-critical-code_smell-pythons3776)
+  - [42 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#42-critical-code_smell-pythons3776)
+  - [43 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#43-critical-code_smell-pythons1192)
+  - [44 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#44-critical-code_smell-pythons3776)
+  - [45 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#45-critical-code_smell-pythons3776)
+  - [46 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#46-critical-code_smell-pythons3776)
+  - [47 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#47-critical-code_smell-pythons3776)
+  - [48 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#48-critical-code_smell-pythons3776)
+  - [49 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#49-critical-code_smell-pythons3776)
+  - [50 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#50-critical-code_smell-pythons3776)
+  - [51 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#51-critical-code_smell-pythons1192)
+  - [52 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#52-critical-code_smell-pythons1192)
+  - [53 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#53-critical-code_smell-pythons1192)
+  - [54 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#54-critical-code_smell-pythons1192)
+  - [55 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#55-critical-code_smell-pythons1192)
+  - [56 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#56-critical-code_smell-pythons3776)
+  - [57 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#57-critical-code_smell-pythons3776)
+  - [58 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#58-critical-code_smell-pythons3776)
+  - [59 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#59-critical-code_smell-pythons3776)
+  - [60 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#60-critical-code_smell-pythons1192)
+  - [61 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#61-critical-code_smell-pythons3776)
+  - [62 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#62-critical-code_smell-pythons3776)
+  - [63 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#63-critical-code_smell-pythons3776)
+  - [64 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#64-critical-code_smell-pythons3776)
+  - [65 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#65-critical-code_smell-pythons1192)
+  - [66 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#66-critical-code_smell-pythons1192)
+  - [67 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#67-critical-code_smell-pythons3776)
+  - [68 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#68-critical-code_smell-pythons3776)
+  - [69 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#69-critical-code_smell-pythons3776)
+  - [70 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#70-critical-code_smell-pythons3776)
+  - [71 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#71-critical-code_smell-pythons1192)
+  - [72 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#72-critical-code_smell-pythons3776)
+  - [73 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#73-critical-code_smell-pythons3776)
+  - [74 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#74-critical-code_smell-pythons3776)
+  - [75 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#75-critical-code_smell-pythons3776)
+  - [76 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#76-critical-code_smell-pythons3776)
+  - [77 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#77-critical-code_smell-pythons3776)
+  - [78 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#78-critical-code_smell-pythons1192)
+  - [79 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#79-critical-code_smell-pythons3776)
+  - [80 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#80-critical-code_smell-pythons3776)
+  - [81 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#81-critical-code_smell-pythons3776)
+  - [82 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#82-critical-code_smell-pythons3776)
+  - [83 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#83-critical-code_smell-pythons3776)
+  - [84 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#84-critical-code_smell-pythons3776)
+  - [85 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#85-critical-code_smell-pythons3776)
+  - [86 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#86-critical-code_smell-pythons3776)
+  - [87 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#87-critical-code_smell-pythons3776)
+  - [88 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#88-critical-code_smell-pythons3776)
+  - [89 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#89-critical-code_smell-pythons3776)
+  - [90 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#90-critical-code_smell-pythons3776)
+  - [91 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#91-critical-code_smell-pythons3776)
+  - [92 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#92-critical-code_smell-pythons3776)
+  - [93 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#93-critical-code_smell-pythons3776)
+  - [94 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#94-critical-code_smell-pythons3776)
+  - [95 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#95-critical-code_smell-pythons3776)
+  - [96 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#96-critical-code_smell-pythons3776)
+  - [97 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#97-critical-code_smell-pythons1192)
+  - [98 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#98-critical-code_smell-pythons3776)
+  - [99 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#99-critical-code_smell-pythons3776)
+  - [100 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#100-critical-code_smell-pythons3776)
+  - [101 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#101-critical-code_smell-pythons3776)
+  - [102 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#102-critical-code_smell-pythons3776)
+  - [103 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#103-critical-code_smell-pythons3776)
+  - [104 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#104-critical-code_smell-pythons3776)
+  - [105 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#105-critical-code_smell-pythons3776)
+  - [106 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#106-critical-code_smell-pythons3776)
+  - [107 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#107-critical-code_smell-pythons3776)
+  - [108 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#108-critical-code_smell-pythons3776)
+  - [109 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#109-critical-code_smell-pythons3776)
+  - [110 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#110-critical-code_smell-pythons3776)
+  - [111 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#111-critical-code_smell-pythons3776)
+  - [112 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#112-critical-code_smell-pythons3776)
+  - [113 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#113-critical-code_smell-pythons3776)
+  - [114 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#114-critical-code_smell-pythons3776)
+  - [115 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#115-critical-code_smell-pythons3776)
+  - [116 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#116-critical-code_smell-pythons3776)
+  - [117 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#117-critical-code_smell-pythons3776)
+  - [118 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#118-critical-code_smell-pythons3776)
+  - [119 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#119-critical-code_smell-pythons3776)
+  - [120 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#120-critical-code_smell-pythons3776)
+  - [121 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#121-critical-code_smell-pythons1192)
+  - [122 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#122-critical-code_smell-pythons3776)
+  - [123 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#123-critical-code_smell-pythons3776)
+  - [124 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#124-critical-code_smell-pythons3776)
+  - [125 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#125-critical-code_smell-pythons3776)
+  - [126 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#126-critical-code_smell-pythons3776)
+  - [127 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#127-critical-code_smell-pythons3776)
+  - [128 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#128-critical-code_smell-pythons1192)
+  - [129 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#129-critical-code_smell-pythons1192)
+  - [130 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#130-critical-code_smell-pythons1192)
+  - [131 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#131-critical-code_smell-pythons3776)
+  - [132 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#132-critical-code_smell-pythons3776)
+  - [133 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#133-critical-code_smell-pythons3776)
+  - [134 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#134-critical-code_smell-pythons1192)
+  - [135 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#135-critical-code_smell-pythons1192)
+  - [136 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#136-critical-code_smell-pythons3776)
+  - [137 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#137-critical-code_smell-pythons3776)
+  - [138 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#138-critical-code_smell-pythons3776)
+  - [139 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#139-critical-code_smell-pythons3776)
+  - [140 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#140-critical-code_smell-pythons3776)
+  - [141 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#141-critical-code_smell-pythons3776)
+  - [142 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#142-critical-code_smell-pythons3776)
+  - [143 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#143-critical-code_smell-pythons3776)
+  - [144 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#144-critical-code_smell-pythons3776)
+  - [145 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#145-critical-code_smell-pythons3776)
+  - [146 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#146-critical-code_smell-pythons3776)
+  - [147 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#147-critical-code_smell-pythons3776)
+  - [148 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#148-critical-code_smell-pythons3776)
+  - [149 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#149-critical-code_smell-pythons3776)
+  - [150 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#150-critical-code_smell-pythons3776)
+  - [151 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#151-critical-code_smell-pythons3776)
+  - [152 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#152-critical-code_smell-pythons3776)
+  - [153 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#153-critical-code_smell-pythons3776)
+  - [154 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#154-critical-code_smell-pythons3776)
+  - [155 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#155-critical-code_smell-pythons3776)
+  - [156 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#156-critical-code_smell-pythons3776)
+  - [157 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#157-critical-code_smell-pythons3776)
+  - [158 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#158-critical-code_smell-pythons3776)
+  - [159 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#159-critical-code_smell-pythons3776)
+  - [160 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#160-critical-code_smell-pythons3776)
+  - [161 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#161-critical-code_smell-pythons3776)
+  - [162 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#162-critical-code_smell-pythons3776)
+  - [163 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#163-critical-code_smell-pythons3776)
+  - [164 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#164-critical-code_smell-pythons3776)
+  - [165 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#165-critical-code_smell-pythons3776)
+  - [166 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#166-critical-code_smell-pythons3776)
+  - [167 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#167-critical-code_smell-pythons3776)
+  - [168 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#168-critical-code_smell-pythons3776)
+  - [169 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#169-critical-code_smell-pythons3776)
+  - [170 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#170-critical-code_smell-pythons3776)
+  - [171 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#171-critical-code_smell-pythons3776)
+  - [172 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#172-critical-code_smell-pythons3776)
+  - [173 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#173-critical-code_smell-pythons1192)
+  - [174 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#174-critical-code_smell-pythons1192)
+  - [175 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#175-critical-code_smell-pythons3776)
+  - [176 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#176-critical-code_smell-pythons3776)
+  - [177 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#177-critical-code_smell-pythons3776)
+  - [178 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#178-critical-code_smell-pythons3776)
+  - [179 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#179-critical-code_smell-pythons3776)
+  - [180 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#180-critical-code_smell-pythons3776)
+  - [181 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#181-critical-code_smell-pythons1192)
+  - [182 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#182-critical-code_smell-pythons3776)
+  - [183 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#183-critical-code_smell-pythons3776)
+  - [184 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#184-critical-code_smell-pythons3776)
+  - [185 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#185-critical-code_smell-pythons3776)
+  - [186 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#186-critical-code_smell-pythons3776)
+  - [187 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#187-critical-code_smell-pythons3776)
+  - [188 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#188-critical-code_smell-pythons3776)
+  - [189 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#189-critical-code_smell-pythons3776)
+  - [190 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#190-critical-code_smell-pythons3776)
+  - [191 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#191-critical-code_smell-pythons3776)
+  - [192 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#192-critical-code_smell-pythons3776)
+  - [193 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#193-critical-code_smell-pythons3776)
+  - [194 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#194-critical-code_smell-pythons3776)
+  - [195 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#195-critical-code_smell-pythons3776)
+  - [196 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#196-critical-code_smell-pythons3776)
+  - [197 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#197-critical-code_smell-pythons3776)
+  - [198 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#198-critical-code_smell-pythons3776)
+  - [199 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#199-critical-code_smell-pythons3776)
+  - [200 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#200-critical-code_smell-pythons3776)
+  - [201 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#201-critical-code_smell-pythons3776)
+  - [202 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#202-critical-code_smell-pythons3776)
+  - [203 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#203-critical-code_smell-pythons3776)
+  - [204 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#204-critical-code_smell-pythons3776)
+  - [205 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#205-critical-code_smell-pythons3776)
+  - [206 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#206-critical-code_smell-pythons3776)
+  - [207 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#207-critical-code_smell-pythons3776)
+  - [208 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#208-critical-code_smell-pythons3776)
+  - [209 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#209-critical-code_smell-pythons3776)
+  - [210 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#210-critical-code_smell-pythons1192)
+  - [211 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#211-critical-code_smell-pythons1192)
+  - [212 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#212-critical-code_smell-pythons1192)
+  - [213 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#213-critical-code_smell-pythons3776)
+  - [214 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#214-critical-code_smell-pythons3776)
+  - [215 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#215-critical-code_smell-pythons1192)
+  - [216 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#216-critical-code_smell-pythons1192)
+  - [217 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#217-critical-code_smell-pythons3776)
+  - [218 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#218-critical-code_smell-pythons3776)
+  - [219 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#219-critical-code_smell-pythons3776)
+  - [220 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#220-critical-code_smell-pythons1192)
+  - [221 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#221-critical-code_smell-pythons3776)
+  - [222 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#222-critical-code_smell-pythons3776)
+  - [223 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#223-critical-code_smell-pythons3776)
+  - [224 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#224-critical-code_smell-pythons3776)
+  - [225 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#225-critical-code_smell-pythons1192)
+  - [226 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#226-critical-code_smell-pythons3776)
+  - [227 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#227-critical-code_smell-pythons3776)
+  - [228 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#228-critical-code_smell-pythons1192)
+  - [229 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#229-critical-code_smell-pythons3776)
+  - [230 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#230-critical-code_smell-pythons3776)
+  - [231 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#231-critical-code_smell-pythons3776)
+  - [232 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#232-critical-code_smell-pythons3776)
+  - [233 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#233-critical-code_smell-pythons3776)
+  - [234 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#234-critical-code_smell-pythons1192)
+  - [235 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#235-critical-code_smell-pythons3776)
+  - [236 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#236-critical-code_smell-pythons3776)
+  - [237 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#237-critical-code_smell-pythons3776)
+  - [238 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#238-critical-code_smell-pythons3776)
+  - [239 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#239-critical-code_smell-pythons3776)
+  - [240 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`](#240-critical-code_smell-pythons1192)
+  - [241 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`](#241-critical-code_smell-pythons3776)
+  - [242 · 🟠 CRITICAL · VULNERABILITY · `docker:S6470`](#242-critical-vulnerability-dockers6470)
+  - [243 · 🟠 CRITICAL · VULNERABILITY · `docker:S6470`](#243-critical-vulnerability-dockers6470)
+  - [244 · 🟠 CRITICAL · VULNERABILITY · `docker:S6470`](#244-critical-vulnerability-dockers6470)
+  - [245 · 🟠 CRITICAL · VULNERABILITY · `docker:S6470`](#245-critical-vulnerability-dockers6470)
+  - [246 · 🟠 CRITICAL · VULNERABILITY · `docker:S6470`](#246-critical-vulnerability-dockers6470)
+  - [247 · 🟡 MAJOR · VULNERABILITY · `githubactions:S8264`](#247-major-vulnerability-githubactionss8264)
+  - [248 · 🟡 MAJOR · VULNERABILITY · `githubactions:S8233`](#248-major-vulnerability-githubactionss8233)
+  - [249 · 🟡 MAJOR · VULNERABILITY · `githubactions:S8233`](#249-major-vulnerability-githubactionss8233)
+  - [250 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#250-major-code_smell-pythons8786)
+  - [251 · 🟡 MAJOR · CODE_SMELL · `python:S6019`](#251-major-code_smell-pythons6019)
+  - [252 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#252-major-code_smell-pythons8786)
+  - [253 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#253-major-code_smell-pythons8786)
+  - [254 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#254-major-code_smell-pythons8786)
+  - [255 · 🟡 MAJOR · CODE_SMELL · `python:S6019`](#255-major-code_smell-pythons6019)
+  - [256 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#256-major-code_smell-pythons8786)
+  - [257 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#257-major-code_smell-pythons8786)
+  - [258 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#258-major-code_smell-pythons8786)
+  - [259 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#259-major-code_smell-pythons8786)
+  - [260 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#260-major-code_smell-pythons8786)
+  - [261 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#261-major-code_smell-pythons8786)
+  - [262 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#262-major-code_smell-pythons8786)
+  - [263 · 🟡 MAJOR · CODE_SMELL · `python:S6019`](#263-major-code_smell-pythons6019)
+  - [264 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#264-major-code_smell-pythons8786)
+  - [265 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#265-major-code_smell-pythons8786)
+  - [266 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#266-major-code_smell-pythons8786)
+  - [267 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#267-major-code_smell-pythons8786)
+  - [268 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#268-major-code_smell-pythons8786)
+  - [269 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#269-major-code_smell-pythons8786)
+  - [270 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#270-major-code_smell-pythons8786)
+  - [271 · 🟡 MAJOR · CODE_SMELL · `python:S6019`](#271-major-code_smell-pythons6019)
+  - [272 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#272-major-code_smell-pythons8786)
+  - [273 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#273-major-code_smell-pythons8786)
+  - [274 · 🟡 MAJOR · BUG · `python:S5850`](#274-major-bug-pythons5850)
+  - [275 · 🟡 MAJOR · BUG · `python:S5850`](#275-major-bug-pythons5850)
+  - [276 · 🟡 MAJOR · BUG · `python:S5850`](#276-major-bug-pythons5850)
+  - [277 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#277-major-code_smell-pythons8786)
+  - [278 · 🟡 MAJOR · CODE_SMELL · `python:S5843`](#278-major-code_smell-pythons5843)
+  - [279 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#279-major-code_smell-pythons8786)
+  - [280 · 🟡 MAJOR · CODE_SMELL · `python:S8786`](#280-major-code_smell-pythons8786)
+  - [281 · 🟡 MAJOR · CODE_SMELL · `python:S108`](#281-major-code_smell-pythons108)
+  - [282 · 🟡 MAJOR · CODE_SMELL · `python:S108`](#282-major-code_smell-pythons108)
+  - [283 · 🟡 MAJOR · CODE_SMELL · `pythonbugs:S2589`](#283-major-code_smell-pythonbugss2589)
+  - [284 · 🟡 MAJOR · CODE_SMELL · `python:S108`](#284-major-code_smell-pythons108)
+  - [285 · 🟡 MAJOR · CODE_SMELL · `python:S108`](#285-major-code_smell-pythons108)
+  - [286 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#286-major-code_smell-pythons3358)
+  - [287 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#287-major-code_smell-pythons3358)
+  - [288 · 🟡 MAJOR · BUG · `pythonbugs:S2259`](#288-major-bug-pythonbugss2259)
+  - [289 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#289-major-code_smell-pythons3358)
+  - [290 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#290-major-code_smell-pythons3358)
+  - [291 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#291-major-code_smell-pythons3358)
+  - [292 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#292-major-code_smell-pythons3358)
+  - [293 · 🟡 MAJOR · CODE_SMELL · `python:S8495`](#293-major-code_smell-pythons8495)
+  - [294 · 🟡 MAJOR · CODE_SMELL · `python:S108`](#294-major-code_smell-pythons108)
+  - [295 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#295-major-code_smell-pythons3358)
+  - [296 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#296-major-code_smell-pythons3358)
+  - [297 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#297-major-code_smell-pythons3358)
+  - [298 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#298-major-code_smell-pythons3358)
+  - [299 · 🟡 MAJOR · CODE_SMELL · `python:S1172`](#299-major-code_smell-pythons1172)
+  - [300 · 🟡 MAJOR · CODE_SMELL · `python:S1172`](#300-major-code_smell-pythons1172)
+  - [301 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#301-major-code_smell-pythons3358)
+  - [302 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#302-major-code_smell-pythons3358)
+  - [303 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#303-major-code_smell-pythons3358)
+  - [304 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#304-major-code_smell-pythons3358)
+  - [305 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#305-major-code_smell-pythons3358)
+  - [306 · 🟡 MAJOR · CODE_SMELL · `python:S8495`](#306-major-code_smell-pythons8495)
+  - [307 · 🟡 MAJOR · CODE_SMELL · `python:S1172`](#307-major-code_smell-pythons1172)
+  - [308 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#308-major-code_smell-pythons3358)
+  - [309 · 🟡 MAJOR · CODE_SMELL · `python:S8500`](#309-major-code_smell-pythons8500)
+  - [310 · 🟡 MAJOR · CODE_SMELL · `python:S1854`](#310-major-code_smell-pythons1854)
+  - [311 · 🟡 MAJOR · CODE_SMELL · `python:S107`](#311-major-code_smell-pythons107)
+  - [312 · 🟡 MAJOR · CODE_SMELL · `python:S3358`](#312-major-code_smell-pythons3358)
+  - [313 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#313-major-vulnerability-dockers6506)
+  - [314 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#314-major-vulnerability-dockers6506)
+  - [315 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#315-major-vulnerability-dockers6506)
+  - [316 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#316-major-vulnerability-dockers6506)
+  - [317 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#317-major-vulnerability-dockers6506)
+  - [318 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#318-major-vulnerability-dockers6506)
+  - [319 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#319-major-vulnerability-dockers6506)
+  - [320 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#320-major-vulnerability-dockers6506)
+  - [321 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#321-major-vulnerability-dockers6506)
+  - [322 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#322-major-vulnerability-dockers6506)
+  - [323 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#323-major-vulnerability-dockers6506)
+  - [324 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#324-major-vulnerability-dockers6506)
+  - [325 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#325-major-vulnerability-dockers6506)
+  - [326 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#326-major-vulnerability-dockers6506)
+  - [327 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#327-major-vulnerability-dockers6506)
+  - [328 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#328-major-vulnerability-dockers6506)
+  - [329 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#329-major-vulnerability-dockers6506)
+  - [330 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#330-major-vulnerability-dockers6506)
+  - [331 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#331-major-vulnerability-dockers6506)
+  - [332 · 🟡 MAJOR · VULNERABILITY · `docker:S6506`](#332-major-vulnerability-dockers6506)
+  - [333 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#333-major-code_smell-pythons5778)
+  - [334 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#334-major-code_smell-pythons5778)
+  - [335 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#335-major-code_smell-pythons5778)
+  - [336 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#336-major-code_smell-pythons5778)
+  - [337 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#337-major-code_smell-pythons5778)
+  - [338 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#338-major-code_smell-pythons5778)
+  - [339 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#339-major-code_smell-pythons5778)
+  - [340 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#340-major-code_smell-pythons5778)
+  - [341 · 🟡 MAJOR · CODE_SMELL · `python:S8997`](#341-major-code_smell-pythons8997)
+  - [342 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#342-major-code_smell-pythons5778)
+  - [343 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#343-major-code_smell-pythons5778)
+  - [344 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#344-major-code_smell-pythons5778)
+  - [345 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#345-major-code_smell-pythons5778)
+  - [346 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#346-major-code_smell-pythons5778)
+  - [347 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#347-major-code_smell-pythons5778)
+  - [348 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#348-major-code_smell-pythons5778)
+  - [349 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#349-major-code_smell-pythons5778)
+  - [350 · 🟡 MAJOR · CODE_SMELL · `python:S5778`](#350-major-code_smell-pythons5778)
+  - [351 · ⚪ MINOR · CODE_SMELL · `python:S7504`](#351-minor-code_smell-pythons7504)
+  - [352 · ⚪ MINOR · CODE_SMELL · `python:S6353`](#352-minor-code_smell-pythons6353)
+  - [353 · ⚪ MINOR · CODE_SMELL · `python:S6353`](#353-minor-code_smell-pythons6353)
+  - [354 · ⚪ MINOR · CODE_SMELL · `python:S6353`](#354-minor-code_smell-pythons6353)
+  - [355 · ⚪ MINOR · CODE_SMELL · `python:S6353`](#355-minor-code_smell-pythons6353)
+  - [356 · ⚪ MINOR · CODE_SMELL · `python:S6353`](#356-minor-code_smell-pythons6353)
+  - [357 · ⚪ MINOR · CODE_SMELL · `python:S5857`](#357-minor-code_smell-pythons5857)
+  - [358 · ⚪ MINOR · CODE_SMELL · `python:S6353`](#358-minor-code_smell-pythons6353)
+  - [359 · ⚪ MINOR · CODE_SMELL · `python:S7500`](#359-minor-code_smell-pythons7500)
+  - [360 · ⚪ MINOR · CODE_SMELL · `python:S5713`](#360-minor-code_smell-pythons5713)
+  - [361 · ⚪ MINOR · CODE_SMELL · `python:S5685`](#361-minor-code_smell-pythons5685)
+  - [362 · ⚪ MINOR · CODE_SMELL · `python:S7498`](#362-minor-code_smell-pythons7498)
+  - [363 · ⚪ MINOR · VULNERABILITY · `python:S5332`](#363-minor-vulnerability-pythons5332)
+  - [364 · ⚪ MINOR · VULNERABILITY · `python:S5332`](#364-minor-vulnerability-pythons5332)
+  - [365 · ⚪ MINOR · VULNERABILITY · `python:S5332`](#365-minor-vulnerability-pythons5332)
+  - [366 · ⚪ MINOR · VULNERABILITY · `python:S5332`](#366-minor-vulnerability-pythons5332)
+  - [367 · ⚪ MINOR · CODE_SMELL · `python:S6353`](#367-minor-code_smell-pythons6353)
+  - [368 · ⚪ MINOR · CODE_SMELL · `python:S7498`](#368-minor-code_smell-pythons7498)
+  - [369 · ⚪ MINOR · CODE_SMELL · `python:S7498`](#369-minor-code_smell-pythons7498)
+  - [370 · ⚪ MINOR · CODE_SMELL · `python:S7498`](#370-minor-code_smell-pythons7498)
+  - [371 · ⚪ MINOR · CODE_SMELL · `python:S5685`](#371-minor-code_smell-pythons5685)
+  - [372 · ⚪ MINOR · CODE_SMELL · `python:S7498`](#372-minor-code_smell-pythons7498)
+  - [373 · ⚪ MINOR · CODE_SMELL · `python:S7508`](#373-minor-code_smell-pythons7508)
+  - [374 · ⚪ MINOR · CODE_SMELL · `python:S5685`](#374-minor-code_smell-pythons5685)
+  - [375 · ⚪ MINOR · CODE_SMELL · `python:S7504`](#375-minor-code_smell-pythons7504)
+  - [376 · ⚪ MINOR · CODE_SMELL · `python:S7504`](#376-minor-code_smell-pythons7504)
+  - [377 · ⚪ MINOR · CODE_SMELL · `python:S7504`](#377-minor-code_smell-pythons7504)
+  - [378 · ⚪ MINOR · CODE_SMELL · `python:S7504`](#378-minor-code_smell-pythons7504)
+  - [379 · ⚪ MINOR · CODE_SMELL · `python:S7500`](#379-minor-code_smell-pythons7500)
+  - [380 · ⚪ MINOR · CODE_SMELL · `python:S7500`](#380-minor-code_smell-pythons7500)
+  - [381 · ⚪ MINOR · CODE_SMELL · `python:S7504`](#381-minor-code_smell-pythons7504)
+  - [382 · ⚪ MINOR · CODE_SMELL · `python:S1940`](#382-minor-code_smell-pythons1940)
+  - [383 · ⚪ MINOR · CODE_SMELL · `python:S6659`](#383-minor-code_smell-pythons6659)
+  - [384 · ⚪ MINOR · CODE_SMELL · `python:S7504`](#384-minor-code_smell-pythons7504)
+  - [385 · ⚪ MINOR · VULNERABILITY · `docker:S6471`](#385-minor-vulnerability-dockers6471)
+  - [386 · ⚪ MINOR · CODE_SMELL · `docker:S7031`](#386-minor-code_smell-dockers7031)
+  - [387 · ⚪ MINOR · CODE_SMELL · `docker:S7018`](#387-minor-code_smell-dockers7018)
+  - [388 · ⚪ MINOR · VULNERABILITY · `docker:S6471`](#388-minor-vulnerability-dockers6471)
+  - [389 · ⚪ MINOR · CODE_SMELL · `docker:S7031`](#389-minor-code_smell-dockers7031)
+  - [390 · ⚪ MINOR · VULNERABILITY · `docker:S6471`](#390-minor-vulnerability-dockers6471)
+  - [391 · ⚪ MINOR · CODE_SMELL · `docker:S7031`](#391-minor-code_smell-dockers7031)
+  - [392 · ⚪ MINOR · CODE_SMELL · `docker:S7018`](#392-minor-code_smell-dockers7018)
+  - [393 · ⚪ MINOR · VULNERABILITY · `docker:S6471`](#393-minor-vulnerability-dockers6471)
+  - [394 · ⚪ MINOR · CODE_SMELL · `docker:S7031`](#394-minor-code_smell-dockers7031)
+  - [395 · ⚪ MINOR · VULNERABILITY · `docker:S6471`](#395-minor-vulnerability-dockers6471)
+  - [396 · ⚪ MINOR · CODE_SMELL · `docker:S7031`](#396-minor-code_smell-dockers7031)
+  - [397 · ⚪ MINOR · CODE_SMELL · `docker:S7018`](#397-minor-code_smell-dockers7018)
+<!-- TOC END -->", re.DOTALL
       171      )
       172      "Regex: TOC marker block (start..end), DOTALL."
       173      DUNDER_ALL_SINGLE_LINE_RE: Final[t.RegexPattern] = re.compile(
@@ -5839,7 +6240,7 @@ there is no active source block to triage.
 > Remove the unused function parameter "project_names".
 
 ```text
-       20      _workspace_root: Path
+       20      _repository_root: Path
        21      _rope_project: t.Infra.RopeProject
        22  
        23      def _resolve_project_roots(
@@ -5921,7 +6322,7 @@ there is no active source block to triage.
        37      def __init__(
 >>>    38          self,
        39          *,
-       40          workspace_root: Path | None = None,
+       40          repository_root: Path | None = None,
        41          apply_changes: bool = False,
        42          check_only: bool = False,
 ```
@@ -6604,7 +7005,7 @@ there is no active source block to triage.
        46      )
        47      def test_file_rejects_non_normalized_or_control_text(self, file: str) -> None:
 >>>    48          with pytest.raises(c.ValidationError, match="file must"):
-       49              FlextInfraPytestSelectorValidator(workspace_root=Path.cwd(), file=file)
+       49              FlextInfraPytestSelectorValidator(repository_root=Path.cwd(), file=file)
        50  
        51      def test_what_accepts_only_canonical_test_modes(self) -> None:
        52          validator = FlextInfraPytestSelectorValidator(
@@ -6619,12 +7020,12 @@ there is no active source block to triage.
 
 ```text
        58                  FlextInfraPytestSelectorValidator(
-       59                      workspace_root=Path.cwd(), what=what
+       59                      repository_root=Path.cwd(), what=what
        60                  ).execute()
        61              )
 >>>    62          with pytest.raises(c.ValidationError, match="what must be"):
        63              FlextInfraPytestSelectorValidator(
-       64                  workspace_root=Path.cwd(), what="$(shell touch marker)"
+       64                  repository_root=Path.cwd(), what="$(shell touch marker)"
        65              )
        66          with pytest.raises(c.ValidationError, match="what must be"):
 ```
@@ -6639,10 +7040,10 @@ there is no active source block to triage.
 ```text
        62          with pytest.raises(c.ValidationError, match="what must be"):
        63              FlextInfraPytestSelectorValidator(
-       64                  workspace_root=Path.cwd(), what="$(shell touch marker)"
+       64                  repository_root=Path.cwd(), what="$(shell touch marker)"
        65              )
 >>>    66          with pytest.raises(c.ValidationError, match="what must be"):
-       67              FlextInfraPytestSelectorValidator(workspace_root=Path.cwd(), what="cov")
+       67              FlextInfraPytestSelectorValidator(repository_root=Path.cwd(), what="cov")
        68          with pytest.raises(
        69              c.ValidationError, match="cache-status rejects FILE and MATCH"
        70          ):
@@ -6656,15 +7057,15 @@ there is no active source block to triage.
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
 ```text
-       64                  workspace_root=Path.cwd(), what="$(shell touch marker)"
+       64                  repository_root=Path.cwd(), what="$(shell touch marker)"
        65              )
        66          with pytest.raises(c.ValidationError, match="what must be"):
-       67              FlextInfraPytestSelectorValidator(workspace_root=Path.cwd(), what="cov")
+       67              FlextInfraPytestSelectorValidator(repository_root=Path.cwd(), what="cov")
 >>>    68          with pytest.raises(
        69              c.ValidationError, match="cache-status rejects FILE and MATCH"
        70          ):
        71              FlextInfraPytestSelectorValidator(
-       72                  workspace_root=Path.cwd(), what="cache-status", match="x"
+       72                  repository_root=Path.cwd(), what="cache-status", match="x"
 ```
 
 **Decisão**:

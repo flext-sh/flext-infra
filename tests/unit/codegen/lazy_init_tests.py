@@ -12,8 +12,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_tests import tm
+
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from tests import u
 
 if TYPE_CHECKING:
@@ -131,7 +132,8 @@ class TestExcludedDirectories:
             tmp_path / ".test-runtime" / "invocation" / "tests", _VALID_TESTS_INIT
         )
         result = FlextInfraCodegenLazyInit(repository_root=tmp_path).plan_files()
-        tm.that({plan.path for plan in tm.ok(result).files}, lacks=scratch_init)
+        tm.ok(result)
+        tm.that({plan.path for plan in result.value.files}, lacks=scratch_init)
 
 
 class TestEdgeCases:

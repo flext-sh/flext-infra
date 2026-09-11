@@ -5,15 +5,15 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
-
-from git import GitCommandError
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
+from git import GitCommandError
+
 from flext_core import r
 from flext_infra.models import m
 
-from ..._utilities._git.remote import canonical_origin_remote
+from ..._utilities._git.remote import FlextInfraUtilitiesGitRemote
 from ..._utilities._git.semantic_identity import (
     FlextInfraUtilitiesGitSemanticIdentityMixin,
 )
@@ -21,18 +21,18 @@ from ..._utilities._git.semantic_identity import (
 if TYPE_CHECKING:
     from flext_infra import p, t
 
-_TAG_PREFIX = "attest/gates/v1"
-_SSH_SIGNATURE_MARKER = "\n-----BEGIN SSH SIGNATURE-----"
-
 
 class FlextInfraUtilitiesGitAttestationMixin(
     FlextInfraUtilitiesGitSemanticIdentityMixin
 ):
     """Create and verify immutable SSH-signed gate tags."""
 
-    @staticmethod
-    def _attestation_tag(commit_sha: str) -> str:
-        return f"{_TAG_PREFIX}/{commit_sha}"
+    _TAG_PREFIX: ClassVar[str] = "attest/gates/v1"
+    _SSH_SIGNATURE_MARKER: ClassVar[str] = "\n-----BEGIN SSH SIGNATURE-----"
+
+    @classmethod
+    def _attestation_tag(cls, commit_sha: str) -> str:
+        return f"{cls._TAG_PREFIX}/{commit_sha}"
 
     @classmethod
     def _attestation_predicate(
@@ -52,7 +52,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
             return r[m.Infra.GateAttestationPredicate].from_failure(evidence_result)
         toolchain = cls._toolchain_digest(repo_root)
         predicate = m.Infra.GateAttestationPredicate(
-            repository=canonical_origin_remote(identity.value.origin_remote or ""),
+            repository=FlextInfraUtilitiesGitRemote.canonical_origin_remote(
+                identity.value.origin_remote or ""
+            ),
             commit_sha=identity.value.head_oid,
             tree_sha=repo.head.commit.tree.hexsha,
             signer=request.signer,
@@ -65,7 +67,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
     @classmethod
     def _run_gate_evidence(
         cls, repo_root: Path, gates: t.StrSequence
-    ) -> p.Result[tuple[m.Infra.GateCommandEvidence, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.GateCommandEvidence]]:
         evidence: list[m.Infra.GateCommandEvidence] = []
         for gate in gates:
             command = f"make {gate} APPLY=Y"
@@ -219,7 +221,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 "attestation tag target does not equal selected commit: "
                 f"{target} != {commit_sha}"
             )
-        message = tag_ref.tag.message.split(_SSH_SIGNATURE_MARKER, maxsplit=1)[0]
+        message = tag_ref.tag.message.split(cls._SSH_SIGNATURE_MARKER, maxsplit=1)[0]
         parsed = u.Cli.json_loads(message)
         if parsed.failure:
             return r[m.Infra.GateAttestationPredicate].from_failure(parsed)
@@ -242,7 +244,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
         repo = cls._repo(repo_root)
         commit = repo.commit(commit_sha)
         tree_sha = commit.tree.hexsha
-        actual_repository = canonical_origin_remote(identity.value.origin_remote or "")
+        actual_repository = FlextInfraUtilitiesGitRemote.canonical_origin_remote(
+            identity.value.origin_remote or ""
+        )
         actual_toolchain = cls._toolchain_digest(repo_root, commit_sha)
         mismatches = tuple(
             field

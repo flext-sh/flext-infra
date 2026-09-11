@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-from flext_tests import tm
 from tests import c, u
 
 if TYPE_CHECKING:
@@ -84,7 +84,11 @@ class TestsFlextInfraDepsModernizerMainExtra:
             skip_comments=True,
             skip_check=False,
         )
-        tm.that(modernizer.run(), eq=1)
+        with pytest.raises(
+            ValueError, match="docs pyproject TOML is invalid"
+        ) as raised:
+            modernizer.run()
+        tm.that(str(raised.value), has=str(selected_pyproject))
 
     def test_run_rewrite_constraints_requires_uv_lock(
         self, modernizer_workspace: Path

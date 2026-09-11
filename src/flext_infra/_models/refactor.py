@@ -10,11 +10,11 @@ from typing import Annotated, ClassVar
 from flext_core import m, u
 from flext_infra import t
 
-from .._models.mixins import FlextInfraModelsMixins as mm
-from .._models.refactor_ast_grep import FlextInfraModelsRefactorGrep
-from .._models.refactor_census import FlextInfraModelsRefactorCensus
-from .._models.refactor_namespace_enforcer import FlextInfraModelsNamespaceEnforcer
-from .._models.refactor_violations import FlextInfraModelsRefactorViolations
+from .mixins import FlextInfraModelsMixins as mm
+from .refactor_ast_grep import FlextInfraModelsRefactorGrep
+from .refactor_census import FlextInfraModelsRefactorCensus
+from .refactor_namespace_enforcer import FlextInfraModelsNamespaceEnforcer
+from .refactor_violations import FlextInfraModelsRefactorViolations
 
 
 class FlextInfraModelsRefactor(
@@ -237,7 +237,7 @@ class FlextInfraModelsRefactor(
             str | None, m.Field(description="Canonical _constants module (apply only)")
         ] = None
         rewrites: Annotated[
-            t.MappingKV[str, t.SequenceOf[tuple[int, int, str]]] | None,
+            t.MappingKV[str, t.SequenceOf[t.Triple[int, int, str]]] | None,
             m.Field(description="Per-file textual edits planned (dry-run only)"),
         ] = None
 

@@ -4,16 +4,39 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Final
 
-from flext_infra import config, t
+from flext_infra import c, config, t
 
 from .base import FlextInfraPytestRunnerBase
 
+_NO_COVERAGE: Final[t.VariadicTuple[str]] = ("--no-cov",)
+
 
 class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
-    """Build the single supported pytest command."""
+    """Build the single supported pytest command family.
 
-    def build_selection_command(self) -> tuple[str, ...]:
+    One suite builder owns every flag; the testmon and coverage verbs are two
+    selections over it (testmon 2.x refuses branch coverage through the cov
+    plugin, so the two never share a process).
+    """
+
+    @staticmethod
+    def _plugin_policy_args() -> t.VariadicTuple[str]:
+        """Apply the same configured plugin contract to collection and execution."""
+        pytest = config.Infra.tooling.tools.pytest
+        return (
+            "-p",
+            pytest.enforcement_plugin,
+            "-p",
+            "no:metadata",
+            "-o",
+            f"{c.Infra.ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE}={pytest.asyncio_default_fixture_loop_scope}",
+        )
+
+    def build_selection_command(
+        self, *, complete: bool = False
+    ) -> t.VariadicTuple[str]:
         """Build the read-only argv that resolves the testmon selection once.
 
         Every xdist worker otherwise resolves the selection itself, and two
@@ -21,7 +44,6 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         sets, which xdist aborts with "Different tests were collected". This
         pass runs no test and writes nothing.
         """
-        pytest = config.Infra.tooling.tools.pytest
         return (
             sys.executable,
             "-m",
@@ -29,12 +51,10 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             str(self.target),
             "--testmon",
             "--testmon-nocollect",
+            *(("--testmon-noselect",) if complete else ()),
             "--collect-only",
             "-q",
-            "-p",
-            pytest.enforcement_plugin,
-            "-p",
-            "no:metadata",
+            *self._plugin_policy_args(),
             "-p",
             "no:randomly",
             "-n",
@@ -43,23 +63,66 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         )
 
     def build_command(
-        self, report_dir: Path, selected_node_ids: t.StrSequence | None = None
-    ) -> tuple[str, ...]:
-        """Build a whole-suite testmon argv without user selectors.
+        self,
+        report_dir: Path,
+        selected_node_ids: t.StrSequence | None = None,
+        *,
+        serialize: bool = False,
+    ) -> t.VariadicTuple[str]:
+        """Build the testmon suite argv (never the cov plugin)."""
+        pytest = config.Infra.tooling.tools.pytest
+        selection = selected_node_ids or None
+        # Nothing selected means nothing to distribute across workers; a cold
+        # cache serializes the seeding run so every worker would otherwise see
+        # a different testmon set.
+        workers = (
+            "0"
+            if serialize or selected_node_ids == ()
+            else str(self.parallel_worker_budget(pytest))
+        )
+        return self._suite_argv(
+            report_dir,
+            targets=(tuple(selection) if selection else (str(self.target),)),
+            workers=workers,
+            trailing=(
+                "--testmon",
+                *(("--testmon-noselect",) if selection else ()),
+                *_NO_COVERAGE,
+            ),
+        )
 
-        ``selected_node_ids`` is the selection the controller already resolved:
-        ``None`` when it resolved none, an empty sequence when testmon selected
-        nothing, node ids otherwise. Explicit node ids also switch testmon to
-        prioritize-only, which is what keeps every worker collecting one set.
+    def build_coverage_command(
+        self, report_dir: Path, *, serialize: bool = False
+    ) -> t.VariadicTuple[str]:
+        """Build the whole-suite coverage argv (never the testmon plugin).
+
+        The measurement source is the declared package source directory — the
+        same boundary every fleet coverage config declares — so imported
+        third-party/Cython modules can never emit parse warnings.
         """
         pytest = config.Infra.tooling.tools.pytest
-        targets: t.StrSequence = (
-            tuple(selected_node_ids) if selected_node_ids else (str(self.target),)
+        workers = "0" if serialize else str(self.parallel_worker_budget(pytest))
+        return self._suite_argv(
+            report_dir,
+            targets=(str(self.target),),
+            workers=workers,
+            trailing=(
+                f"--cov={self.root / c.Infra.DEFAULT_SRC_DIR}",
+                f"--cov-report=xml:{report_dir / 'coverage.xml'}",
+                "--no-cov-on-fail",
+            ),
         )
-        # Nothing selected means nothing to distribute across workers.
-        workers = (
-            "0" if selected_node_ids == () else str(self.parallel_worker_budget(pytest))
-        )
+
+    def _suite_argv(
+        self,
+        report_dir: Path,
+        *,
+        targets: t.StrSequence,
+        workers: str,
+        trailing: t.StrSequence,
+    ) -> t.VariadicTuple[str]:
+        """Assemble one suite invocation; ``trailing`` owns the plugin split."""
+        pytest = config.Infra.tooling.tools.pytest
         return (
             sys.executable,
             "-m",
@@ -67,17 +130,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *targets,
             *pytest.progress_args,
             *pytest.report_args,
-            "-p",
-            pytest.enforcement_plugin,
-            "-p",
-            "no:metadata",
+            *self._plugin_policy_args(),
             f"--timeout={pytest.case_timeout_seconds}",
             f"--maxfail={pytest.max_failures}",
             f"--junitxml={report_dir / 'junit.xml'}",
-            "--testmon",
-            "--cov",
-            f"--cov-report=xml:{report_dir / 'coverage.xml'}",
-            "--no-cov-on-fail",
+            *trailing,
             "-n",
             workers,
             "--dist",

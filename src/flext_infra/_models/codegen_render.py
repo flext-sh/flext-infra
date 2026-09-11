@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import t
 
-from .._models.deps_tool_config import FlextInfraModelsDepsToolSettings
+from .deps_tool_config import FlextInfraModelsDepsToolSettings
 
 
 class FlextInfraModelsCodegenRender:
@@ -78,14 +78,14 @@ class FlextInfraModelsCodegenRender:
             default_factory=str,
             description="Static declarations for public lazy exports.",
         )
-        exports: t.StrSequence = m.Field(
-            default_factory=tuple, description="Published root ``__all__`` names."
+        exports_tuple: t.NonEmptyStr = m.Field(
+            description="Canonical rendered root ``__all__`` tuple."
         )
-        lazy_module_groups: t.StrSequencePairSequence = m.Field(
-            default_factory=tuple, description="Lazy imports grouped by module."
+        lazy_module_mapping: t.NonEmptyStr = m.Field(
+            description="Canonical rendered lazy module mapping."
         )
-        lazy_alias_groups: t.StrPairSequencePairSequence = m.Field(
-            default_factory=tuple, description="Lazy aliases grouped by module."
+        lazy_alias_mapping: t.NonEmptyStr = m.Field(
+            description="Canonical rendered lazy alias mapping."
         )
 
     class StaticPackageInitRender(m.ArbitraryTypesModel):

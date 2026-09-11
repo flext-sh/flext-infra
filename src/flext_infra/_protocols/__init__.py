@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from .check import FlextInfraProtocolsCheck
     from .deps import FlextInfraProtocolsDeps
     from .docs import FlextInfraProtocolsDocs
+    from .promoted import FlextInfraProtocolsPromoted
     from .rope import FlextInfraProtocolsRope
     from .rope_runtime import FlextInfraProtocolsRopeRuntime
 __all__: tuple[str, ...] = (
@@ -20,6 +21,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraProtocolsCheck",
     "FlextInfraProtocolsDeps",
     "FlextInfraProtocolsDocs",
+    "FlextInfraProtocolsPromoted",
     "FlextInfraProtocolsRope",
     "FlextInfraProtocolsRopeRuntime",
 )
@@ -31,6 +33,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".check": ("FlextInfraProtocolsCheck",),
             ".deps": ("FlextInfraProtocolsDeps",),
             ".docs": ("FlextInfraProtocolsDocs",),
+            ".promoted": ("FlextInfraProtocolsPromoted",),
             ".rope": ("FlextInfraProtocolsRope",),
             ".rope_runtime": ("FlextInfraProtocolsRopeRuntime",),
         }),

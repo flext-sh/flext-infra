@@ -11,7 +11,7 @@ from flext_core import r
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from ..._utilities._git.repo import FlextInfraUtilitiesGitRepo
+from .repo import FlextInfraUtilitiesGitRepo
 
 _PORCELAIN_PATH_OFFSET = 3
 

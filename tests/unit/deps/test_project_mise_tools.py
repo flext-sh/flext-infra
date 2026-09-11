@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
 
-from flext_infra import m, u
+import pytest
 from flext_tests import tm
 
-_RENDERED = '[settings]\nlockfile = true\n\n[tools]\npython = "3.13"\n'
+from flext_infra import m
+from tests import u
+
+_RENDERED = '[tools]\npython = "3.13"\n'
 
 
 def _project(root: Path, tools_yaml: str) -> Path:
@@ -35,9 +37,9 @@ class TestsProjectMiseTools:
 
         composed = u.Infra.compose_mise_toml(root, _RENDERED)
 
-        document = tomllib.loads(tm.ok(composed))
-        assert document["tools"]["github:example/tool"] == "1.2.3"
-        assert document["tools"]["python"] == "3.13"
+        tools = u.Tests.toml_table_at(tm.ok(composed), "tools")
+        assert tools["github:example/tool"] == "1.2.3"
+        assert tools["python"] == "3.13"
 
     def test_version_string_shorthand_is_not_a_declaration(
         self, tmp_path: Path
@@ -50,9 +52,5 @@ class TestsProjectMiseTools:
             '      "github:example/tool": "1.2.3"\n',
         )
 
-        try:
+        with pytest.raises(m.ValidationError):
             u.Infra.load_project_managed_artifacts(root)
-        except m.ValidationError:
-            return
-        msg = "a bare version string must not validate as a project tool"
-        raise AssertionError(msg)

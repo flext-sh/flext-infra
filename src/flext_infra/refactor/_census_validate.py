@@ -49,8 +49,8 @@ class FlextInfraRefactorCensusValidateMixin:
     def _validated_project_reports(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
-        project_reports: tuple[m.Infra.Census.ProjectReport, ...],
-    ) -> tuple[m.Infra.Census.ProjectReport, ...]:
+        project_reports: t.VariadicTuple[m.Infra.Census.ProjectReport],
+    ) -> t.VariadicTuple[m.Infra.Census.ProjectReport]:
         """Keep only removal candidates that pass the configured dry-run gates.
 
         Gate rejections are surfaced as explicit ``preview_rejected``

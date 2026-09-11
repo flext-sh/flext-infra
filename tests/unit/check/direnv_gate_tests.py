@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import c, m
 from flext_infra.gates.direnv import FlextInfraDirenvGate
-from flext_infra.workspace.environment_contracts import envrc_contract_violations
-from flext_tests import tm
+from flext_infra.workspace.environment_contracts import (
+    FlextInfraWorkspaceEnvironmentContracts,
+)
 from tests import TestsFlextInfraUtilities as u
 
 if TYPE_CHECKING:
@@ -16,7 +19,7 @@ if TYPE_CHECKING:
 
 def make_ctx(root: Path) -> m.Infra.GateContext:
     """Build the minimal typed gate context for one workspace."""
-    return m.Infra.GateContext(workspace=root, reports_dir=root)
+    return m.Infra.GateContext(repository_root=root, reports_dir=root)
 
 
 class TestsDirenvContractLint:
@@ -24,7 +27,7 @@ class TestsDirenvContractLint:
 
     def test_unguarded_direnv_dir_reads_fail(self, tmp_path: Path) -> None:
         """strict_env does not export DIRENV_DIR; unguarded reads violate."""
-        violations = envrc_contract_violations(
+        violations = FlextInfraWorkspaceEnvironmentContracts.envrc_contract_violations(
             'checkout_root="${DIRENV_DIR#-}"\n'
             'other="${DIRENV_DIR}"\n'
             "bare=$DIRENV_DIR\n",
@@ -34,7 +37,7 @@ class TestsDirenvContractLint:
 
     def test_guarded_direnv_dir_reads_pass(self, tmp_path: Path) -> None:
         """Guarded reads keep working under strict_env."""
-        violations = envrc_contract_violations(
+        violations = FlextInfraWorkspaceEnvironmentContracts.envrc_contract_violations(
             'fallback="${DIRENV_DIR:-missing}"\noptional="${DIRENV_DIR-}"\n',
             root=tmp_path,
         )
@@ -43,7 +46,7 @@ class TestsDirenvContractLint:
     def test_missing_literal_target_fails(self, tmp_path: Path) -> None:
         """Literal source_env and watch_file targets must exist."""
         (tmp_path / "present.envrc").write_text("export OK=1\n", encoding="utf-8")
-        violations = envrc_contract_violations(
+        violations = FlextInfraWorkspaceEnvironmentContracts.envrc_contract_violations(
             'source_env "present.envrc"\nwatch_file "absent.envrc"\n', root=tmp_path
         )
         tm.that(len(violations), eq=1)
@@ -51,14 +54,14 @@ class TestsDirenvContractLint:
 
     def test_dynamic_targets_are_skipped(self, tmp_path: Path) -> None:
         """Runtime-derived targets cannot be validated statically."""
-        violations = envrc_contract_violations(
+        violations = FlextInfraWorkspaceEnvironmentContracts.envrc_contract_violations(
             'watch_file "$some_var/relstate.json"\n', root=tmp_path
         )
         tm.that(violations, eq=())
 
     def test_home_targets_validated_only_when_resolving(self, tmp_path: Path) -> None:
         """resolve_home=False skips $HOME targets (generation-time lint)."""
-        violations = envrc_contract_violations(
+        violations = FlextInfraWorkspaceEnvironmentContracts.envrc_contract_violations(
             'source_env "$HOME/.config/environment.d/projects/absent.envrc"\n',
             root=tmp_path,
             resolve_home=False,
@@ -69,11 +72,12 @@ class TestsDirenvContractLint:
 class TestsDirenvGate:
     """Fail-closed gate behavior over the two enforcement stages."""
 
-    def test_workspace_without_envrc_skips(self, tmp_path: Path) -> None:
-        """No .envrc means nothing to enforce."""
+    def test_workspace_without_envrc_cannot_pass(self, tmp_path: Path) -> None:
+        """A selected gate with no inputs cannot establish acceptance."""
         gate = FlextInfraDirenvGate(tmp_path)
         execution = gate.check(tmp_path, make_ctx(tmp_path))
-        tm.that(execution.result.passed, eq=True)
+        tm.that(execution.result.passed, eq=False)
+        tm.that(execution.result.errors, eq=["direnv: no check targets were collected"])
 
     def test_contract_violation_fails_before_smoke(self, tmp_path: Path) -> None:
         """The static lint fires without consuming any runner command."""

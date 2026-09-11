@@ -23,8 +23,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
-from flext_infra import c, m, u
-from flext_infra.base import s
+from flext_infra import c, m, s, u
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -162,11 +161,7 @@ class FlextInfraValidateImportCycles(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Execute the cycle-detection CLI flow using ``self.repository_root``."""
-        report_result = self.build_report(self.repository_root)
-        if report_result.failure:
-            return r[bool].from_failure(report_result)
-        report = report_result.unwrap()
-        return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
+        return self._report_execution(self.build_report(self.repository_root))
 
 
 __all__: t.StrSequence = ("FlextInfraValidateImportCycles",)

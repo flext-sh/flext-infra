@@ -12,9 +12,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_infra import c, config, p, r, t, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+from ._mise_artifacts_publication import publish_file_plan
 
 
 class FlextInfraCodegenLayoutGitignoreMixin:
@@ -53,7 +55,18 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             current = read.value
         if rendered.value == current:
             return r[t.Infra.LayoutStatus].ok("noop")
-        written = u.Cli.atomic_write_text_file(gitignore_path, rendered.value)
+        planned = u.Infra.planned_file(
+            project_dir,
+            gitignore_path,
+            required=False,
+            desired_content=rendered.value.encode(c.Cli.ENCODING_DEFAULT),
+            desired_mode=0o644,
+            owner="codegen",
+            policy="full",
+        )
+        if planned.failure:
+            return r[t.Infra.LayoutStatus].from_failure(planned)
+        written = publish_file_plan(planned.value, backup=True, phase="layout")
         if written.failure:
             return r[t.Infra.LayoutStatus].from_failure(written)
         return r[t.Infra.LayoutStatus].ok("applied")
@@ -84,28 +97,27 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             text += "\n"
         text += f"# {c.Infra.GITIGNORE_LAYOUT_SECTION_NAME}\n"
         text += "\n".join(missing) + "\n"
-        written = u.Cli.atomic_write_text_file(gitignore_path, text)
+        planned = u.Infra.planned_file(
+            project_dir,
+            gitignore_path,
+            required=False,
+            desired_content=text.encode(c.Cli.ENCODING_DEFAULT),
+            desired_mode=0o644,
+            owner="codegen",
+            policy="merge",
+        )
+        if planned.failure:
+            return r[t.Infra.LayoutStatus].from_failure(planned)
+        written = publish_file_plan(planned.value, backup=True, phase="layout")
         if written.failure:
             return r[t.Infra.LayoutStatus].from_failure(written)
         return r[t.Infra.LayoutStatus].ok("applied")
 
-    @classmethod
-    def _managed_profile(
-        cls, project_dir: Path
-    ) -> p.Result[c.Infra.MakeProfile | None]:
-        """Make profile when the project is governed by a workspace.
-
-        ``ok(None)`` means the project sits outside any Git repository and is
-        therefore external by definition. Workspace or target resolution
-        failures are never mapped to "external"; they propagate.
-        """
-        repository_root = u.Infra.git_show_toplevel(
-            m.Infra.GitRepoRequest(repo_root=project_dir)
-        )
-        if repository_root.failure:
-            return r[c.Infra.MakeProfile | None].ok(None)
+    @staticmethod
+    def _managed_profile(project_dir: Path) -> p.Result[c.Infra.MakeProfile | None]:
+        """Make profile when the project is governed by a workspace."""
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
-            repository_root.value.repository_root
+            u.Infra.resolve_repository_root_or_cwd(project_dir)
         )
         if workspace.failure:
             return r[c.Infra.MakeProfile | None].from_failure(workspace)

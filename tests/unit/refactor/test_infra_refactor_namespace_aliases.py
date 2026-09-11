@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.detectors.import_alias_detector import FlextInfraImportAliasDetector
-from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:

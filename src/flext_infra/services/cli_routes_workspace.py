@@ -6,8 +6,6 @@ from typing import ClassVar
 
 from flext_infra import c, m, p, t, u
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from flext_infra.services.cli_route_base import CliRouteBase
-from flext_infra.services.cli_routes_refactor import RefactorRoutes
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.environment_beads import FlextInfraWorkspaceEnvironmentSync
 from flext_infra.workspace.environment_provenance import (
@@ -15,6 +13,9 @@ from flext_infra.workspace.environment_provenance import (
 )
 from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
+
+from .cli_route_base import CliRouteBase
+from .cli_routes_refactor import RefactorRoutes
 
 
 class WorkspaceRoutes(RefactorRoutes):

@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import config, main, u as infra_u
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-from flext_tests import tm
 from tests import c, u
 
 if TYPE_CHECKING:
@@ -211,7 +211,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
             main([
                 "deps",
                 "modernize",
-                "--workspace",
+                "--repository-root",
                 str(modernizer_workspace_with_projects),
                 "--apply",
                 "--skip-check",

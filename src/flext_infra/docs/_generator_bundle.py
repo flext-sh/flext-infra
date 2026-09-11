@@ -21,10 +21,14 @@ class FlextInfraDocGeneratorBundleMixin:
 
     @staticmethod
     def _is_collocated_workspace_project(
-        scope: m.Infra.DocScope, *, workspace_root: Path
+        scope: m.Infra.DocScope, *, root_scope: m.Infra.DocScope
     ) -> bool:
         """Return whether a project scope shares the aggregate root path."""
-        return scope.name != c.Infra.RK_ROOT and scope.path == workspace_root
+        return (
+            root_scope.name == c.Infra.RK_ROOT
+            and scope.name != c.Infra.RK_ROOT
+            and scope.path == root_scope.path
+        )
 
     @staticmethod
     def _validate_scope_targets(
@@ -50,10 +54,10 @@ class FlextInfraDocGeneratorBundleMixin:
                 "docs publication is owned by codegen conform; "
                 "the generation transaction must publish plan_files()"
             )
-        roots = u.Infra.docs_workspace_roots(request.repository_root)
+        roots = u.Infra.docs_repository_roots(request.repository_root)
         if roots.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(roots)
-        workspace_root = roots.value[0]
+        repository_root = roots.value[0]
         selected_names = u.Infra.normalize_sequence_values(request.projects) or ()
         selected_roots: list[Path] = []
         for name in selected_names:
@@ -62,23 +66,23 @@ class FlextInfraDocGeneratorBundleMixin:
                 return r[m.Infra.DocsGenerationBundle].fail(
                     f"docs project selector escapes workspace: {name}"
                 )
-            selected_roots.append(workspace_root / selector)
+            selected_roots.append(repository_root / selector)
         output_dir = u.Cli.resolve_optional_path(
             request.output_dir, default=Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
         )
-        source_paths = u.Infra.docs_source_paths(workspace_root, tuple(selected_roots))
+        source_paths = u.Infra.docs_source_paths(repository_root, tuple(selected_roots))
         if source_paths.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(source_paths)
-        sources = u.Infra.docs_snapshot_sources(source_paths.value)
+        sources = u.Infra.required_file_states(source_paths.value)
         if sources.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(sources)
-        selected = u.Infra.build_scopes(workspace_root, request.projects, output_dir)
+        selected = u.Infra.build_scopes(repository_root, request.projects, output_dir)
         if selected.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(selected)
         selected_targets = cls._validate_scope_targets(selected.value, output_dir)
         if selected_targets.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(selected_targets)
-        aggregate = u.Infra.build_scopes(workspace_root, None, output_dir)
+        aggregate = u.Infra.build_scopes(repository_root, None, output_dir)
         if aggregate.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(aggregate)
         aggregate_targets = cls._validate_scope_targets(aggregate.value, output_dir)
@@ -87,12 +91,15 @@ class FlextInfraDocGeneratorBundleMixin:
         rendered: list[_DocsScopeArtifacts] = []
         for scope in selected.value:
             if cls._is_collocated_workspace_project(
-                scope, workspace_root=workspace_root
+                scope, root_scope=selected.value[0]
             ):
                 rendered.append((scope, ()))
                 continue
             artifacts = u.Infra.docs_scope_artifacts(
-                scope, workspace_root=workspace_root, aggregate_scopes=aggregate.value
+                scope,
+                repository_root=repository_root,
+                aggregate_scopes=aggregate.value,
+                source_states=sources.value,
             )
             if artifacts.failure:
                 return r[m.Infra.DocsGenerationBundle].from_failure(artifacts)
@@ -137,7 +144,7 @@ class FlextInfraDocGeneratorBundleMixin:
             offset += size
         scope_roots = tuple(scoped.scope.path for scoped in normalized_scopes)
         stable = u.Infra.docs_verify_sources(
-            workspace_root, sources.value, extra_roots=scope_roots
+            repository_root, sources.value, extra_roots=scope_roots
         )
         if stable.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(stable)

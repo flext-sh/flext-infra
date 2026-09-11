@@ -69,7 +69,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
             expected_includes = tuple(
                 f"{directory}/**/*.py*" for directory in declared_python_dirs
             )
-        error_values: t.SequenceOf[tuple[str, t.JsonValue]] = tuple(
+        error_values: t.SequenceOf[t.Pair[str, t.JsonValue]] = tuple(
             (error_rule, "error")
             for error_rule in self._tool_config.tools.pyrefly.strict_errors
         )

@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
 
-from .._utilities.dependencies import FlextInfraUtilitiesDependencies
-from .._utilities.pyproject import FlextInfraUtilitiesPyproject
+from .dependencies import FlextInfraUtilitiesDependencies
+from .pyproject import FlextInfraUtilitiesPyproject
 
 if TYPE_CHECKING:
     from pathlib import Path
