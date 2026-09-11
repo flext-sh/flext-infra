@@ -1010,6 +1010,7 @@ Infra:
         conflict_sections:
           - build-system
           - dependency-groups
+          - tool.flext
           - tool.uv
           - tool.ruff
           - tool.mypy
