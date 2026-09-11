@@ -69,7 +69,10 @@ Infra:
       jscpd_selector: npm:jscpd
       jscpd_version: latest
       waza_selector: github:microsoft/waza
-      waza_version: latest
+      # Pinned (F1 resumption hotfix 2026-09-11): 'latest' forces a GitHub API
+      # listing on every fresh mise install; unauthenticated CI runners hit the
+      # 60 req/h rate limit (403) and the setup gate dies before any check.
+      waza_version: "0.38.7"
       scc_selector: aqua:boyter/scc
       scc_version: latest
       go_version: latest
@@ -84,7 +87,9 @@ Infra:
         # release = always version latest (prerelease tags included).
         # branch = set track: branch and branch: <name> (required, no default main).
         track: release
-        version: latest
+        # Pinned (F1 resumption hotfix 2026-09-11): see waza_version above;
+        # @latest resolution rate-limits unauthenticated CI installs.
+        version: "1.4.1-fc2"
         # Suffixed release tag; mise only resolves it when told it is a prerelease.
         prerelease: true
         github_attestations: false
@@ -98,7 +103,9 @@ Infra:
         # Projection: .mise.toml [tools."<selector>"]. Override here.
         selector: github:marlon-costa-dc/beads
         track: release
-        version: latest
+        # Pinned (F1 resumption hotfix 2026-09-11): see waza_version above;
+        # @latest resolution rate-limits unauthenticated CI installs.
+        version: "1.2.2-fd4"
         # The fleet bd is the operator's fork carrying the hierarchy-cycle
         # guard required to prevent unbounded list traversal. Its releases use
         # prerelease tags, so mise must be allowed to resolve them.
