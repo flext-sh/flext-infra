@@ -280,7 +280,7 @@ class FlextInfraMiseRecovery:
             if action.operation == "restore":
                 if candidate is None:
                     continue
-                restored = files.write_publication(candidate, backup=False)
+                restored = files.write_publication(candidate)
                 if restored.failure:
                     return r[bool].from_failure(restored)
             elif action.operation == "delete":

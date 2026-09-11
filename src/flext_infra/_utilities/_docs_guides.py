@@ -39,7 +39,7 @@ class FlextInfraUtilitiesDocsGuidesMixin:
             break
         body = "\n".join(body_lines).lstrip()
         header = (
-            "<!-- AUTO-GENERATED FILE — regenerate through `make gen APPLY=Y` "
+            "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
             "from the workspace root. -->\n"
             f"<!-- Source of truth: `docs/guides/{guide_name}`; adjust that source, "
             "never this projection. -->\n\n"

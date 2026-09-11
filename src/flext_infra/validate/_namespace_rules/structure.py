@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, u
 
 from .base import FlextInfraNamespaceRulesBase
 
@@ -29,37 +29,48 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         statements = tuple(getattr(tree, "body", ()) or ())
         if cls.outer_classes(tree):
             return False
-        guard_functions: list[str] = []
+        entry_calls: list[str] = []
         for statement in statements:
             kind = cls.kind(statement)
             if kind in {"Import", "ImportFrom"}:
                 continue
             if cls._module_docstring(statement):
                 continue
-            if kind == "Assign" and cls._dunder_assignment(statement):
+            if kind in {"Assign", "AnnAssign"} and cls._dunder_assignment(statement):
                 continue
             if kind == "Raise":
                 continue
             if kind == "If":
-                guard_functions.extend(
-                    cls.name_of(node)
-                    for node in cls.walk(statement)
-                    if cls.kind(node) == "FunctionDef"
+                # The ``python -m`` guard holds the exit CALL (e.g.
+                # ``raise SystemExit(main())``), not a function definition —
+                # collect every call target so the entrypoint check sees it.
+                entry_calls.extend(
+                    cls.dotted_name(getattr(call, "func", None)).rsplit(".", 1)[-1]
+                    for call in cls.walk(statement)
+                    if cls.kind(call) == "Call"
                 )
                 continue
-            if kind == "Expr" and cls.kind(
-                getattr(statement, "value", None)
-            ) == "Call":
+            if kind == "Expr" and cls.kind(getattr(statement, "value", None)) == "Call":
                 called = cls.dotted_name(
                     getattr(getattr(statement, "value", None), "func", None)
                 )
-                guard_functions.append(called.rsplit(".", 1)[-1])
+                entry_calls.append(called.rsplit(".", 1)[-1])
                 continue
+            # A non-dunder assignment, a type alias or any other statement is
+            # loose data: the module is a data module and stays fully graded.
             return False
-        # A guard must terminate the process through the package entrypoint
-        # (``raise SystemExit(main())`` / ``main()``); anything else with a
-        # naked guard is a data module and stays under the class rules.
-        return all(name.endswith("main") for name in guard_functions)
+        # An ``__main__`` guard must terminate through the package
+        # entrypoint (``...main()``); a pure re-export (operational
+        # r/e/x/h/d/s) carries no call at all and is functional too.
+        # Terminal wrappers (``SystemExit``/``sys.exit``/``builtins.exit``)
+        # only forward the entrypoint's return code, so the real terminator is
+        # the ``...main()`` call nested inside them.
+        entrypoint_calls = [
+            name for name in entry_calls if not name.lower().endswith("exit")
+        ]
+        return not entrypoint_calls or all(
+            name.endswith("main") for name in entrypoint_calls
+        )
 
     @classmethod
     def check_structure(
@@ -231,15 +242,15 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         ):
             return False
         alias, suffix = spec
+        canonical_alias = u.Infra.package_alias(package_name=package_name)
+        accepted_aliases = {alias, canonical_alias}
         classes = cls.outer_classes(tree)
         # Secondary support classes at module level are allowed (see the loop
         # in check_structure); only the facade class itself must exist with the
         # canonical stem+suffix name.
         facade_class_name = f"{class_stem}{suffix}"
         facade_classes = [
-            node
-            for node in classes
-            if getattr(node, "name", "") == facade_class_name
+            node for node in classes if getattr(node, "name", "") == facade_class_name
         ]
         if not facade_classes:
             return False
@@ -258,7 +269,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             cls.kind(node) in {"Assign", "AnnAssign"}
             and len(targets) == 1
             and cls.kind(targets[0]) == "Name"
-            and cls.name_of(targets[0]) == alias
+            and cls.name_of(targets[0]) in accepted_aliases
             and (value_is_class or value_is_global_singleton)
             and cls.line(node) > cls.line(facade)
         ):

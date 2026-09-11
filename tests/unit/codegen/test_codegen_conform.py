@@ -236,11 +236,7 @@ class TestCodegenConform:
         u.Tests.write_standalone_workspace_manifest(
             root,
             config.Infra.name,
-            extra_verbs=(
-                m.Infra.MakeVerbSpec(
-                    name="probe", description=help_text, requires_apply=False
-                ),
-            ),
+            extra_verbs=(m.Infra.MakeVerbSpec(name="probe", description=help_text),),
         )
         return FlextInfraCodegenConform.execute_request(
             u.Tests.conform_request(
@@ -1079,6 +1075,7 @@ class TestCodegenConform:
             workspace,
             config.Infra.codegen,
             tooling_runtime=tooling_runtime,
+            repository_root=tmp_path,
         )
         rendered = tm.ok(context)
         tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)
@@ -1287,7 +1284,7 @@ class TestCodegenConform:
         u.Tests.write_executable(
             root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 0\n"
         )
-        outcome = u.Cli.run_raw(["make", "-C", str(root), "check", "APPLY=Y"])
+        outcome = u.Cli.run_raw(["make", "-C", str(root), "check", ""])
         output = tm.ok(outcome)
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
         combined = output.stdout + output.stderr
@@ -1412,12 +1409,10 @@ class TestScriptDispatchMakefile:
                 m.Infra.MakeVerbSpec(
                     name="incidente",
                     description="Dispatch incidente through the declared script dispatcher.",
-                    requires_apply=True,
                 ),
                 m.Infra.MakeVerbSpec(
                     name="charts",
                     description="Dispatch charts through the declared script dispatcher.",
-                    requires_apply=True,
                 ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
@@ -1481,7 +1476,7 @@ class TestScriptDispatchMakefile:
         gen = next(verb for verb in make_config.verbs if verb.name == "gen")
         # WHAT selectors were exterminated: one verb, one meaning, declared once.
         tm.that(hasattr(gen, "default_what"), eq=False)
-        tm.that(gen.requires_apply, eq=True)
+        tm.that(hasattr(gen, "_apply_flag_exterminated"), eq=False)
         tm.that("initialize" in verb_names, eq=True)
         tm.that(hasattr(make_config, "serialization"), eq=False)
         rendered = self._render_root_makefile(
@@ -1561,7 +1556,7 @@ class TestScriptDispatchMakefile:
         tm.that(gen_init_body.count("codegen init"), eq=2)
         tm.that(gen_init_body, lacks=["codegen conform", "REPOSITORY_ROOT", "bd"])
         # The regeneration contract published on every projection speaks gen.
-        tm.that("# @flext-regenerate: make gen APPLY=Y" in rendered, eq=True)
+        tm.that("# @flext-regenerate: make gen" in rendered, eq=True)
         # The custom-surface policy names gen (not codegen) for hooks/handlers.
         handler_policies: dict[str, m.Infra.CustomHandlerPolicy] = dict(
             config.Infra.codegen.make.custom_handler_policies
@@ -1618,7 +1613,7 @@ class TestScriptDispatchMakefile:
                 str(makefile),
                 "gen",
                 "WHAT=init",
-                "APPLY=Y",
+                "",
                 f"PROJECT_FLEXT_INFRA={driver}",
             ],
             cwd=root,
@@ -1665,17 +1660,14 @@ class TestScriptDispatchMakefile:
                 m.Infra.MakeVerbSpec(
                     name="charts",
                     description="Dispatch charts through the declared script dispatcher.",
-                    requires_apply=True,
                 ),
                 m.Infra.MakeVerbSpec(
                     name="chart-release",
                     description="Dispatch chart-release through the declared script dispatcher.",
-                    requires_apply=True,
                 ),
                 m.Infra.MakeVerbSpec(
                     name="bead",
                     description="Dispatch bead through the declared script dispatcher.",
-                    requires_apply=True,
                 ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
