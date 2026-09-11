@@ -372,9 +372,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         Returns failure if any requirement is violated, or if the ``.gen`` file
         itself is absent or malformed.
         """
-        requirements_result = u.Infra.load_gen_requirements(
-            Path(__file__).resolve().parent
-        )
+        requirements_result = u.Infra.load_gen_requirements(Path(__file__))
         if requirements_result.failure:
             return r[bool].from_failure(requirements_result)
         requirements = requirements_result.unwrap()
@@ -1493,6 +1491,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if workspace.project is not None
                 else None
             ),
+            gate_budgets=dict(codegen.budget),
         )
 
     @staticmethod
@@ -1665,7 +1664,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if rendered.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(rendered)
-            rendered_content = self._compose_project_artifact(
+            rendered_content = self.compose_project_artifact(
                 root,
                 destination,
                 rendered.value,
@@ -1924,7 +1923,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if rendered.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(rendered)
             rendered_content = rendered.value
-            composed = self._compose_project_artifact(
+            composed = self.compose_project_artifact(
                 root,
                 entry.destination,
                 rendered_content,
@@ -1964,7 +1963,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
     @staticmethod
-    def _compose_project_artifact(
+    def compose_project_artifact(
         repository_root: Path,
         destination: str,
         rendered: str,
@@ -2587,7 +2586,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
 
     @staticmethod
-    def _resolve_gate_budgets(
+    def resolve_gate_budgets(
         configured_budgets: Mapping[str, m.Infra.ProjectGateBudgetSpec],
     ) -> p.Result[Mapping[str, Mapping[str, int]]]:
         """Project config budget rows; registry divergence fails loud.
@@ -2772,7 +2771,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if version_result.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(version_result)
-        gate_budgets_result = FlextInfraCodegenConform._resolve_gate_budgets(
+        gate_budgets_result = FlextInfraCodegenConform.resolve_gate_budgets(
             codegen.budget
         )
         if gate_budgets_result.failure:

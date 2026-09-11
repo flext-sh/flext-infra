@@ -3240,7 +3240,7 @@ class FlextInfraConfigModels:
                     "Per-gate execution budgets projected as the managed "
                     "[tool.flext.project.budget] table; rows must cover "
                     "exactly the gate registry"
-                ),
+                )
             ),
         ]
         toolchain: Annotated[
