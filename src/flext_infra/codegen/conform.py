@@ -372,35 +372,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         Returns failure if any requirement is violated, or if the ``.gen`` file
         itself is absent or malformed.
         """
-        package_root = Path(__file__).resolve().parent.parent
-        # Installed (wheel) layout ships config inside the package; the source
-        # checkout keeps it at the repository root next to src/.
-        gen_path = (
-            package_root / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_GEN_FILENAME
-        )
-        if not gen_path.is_file():
-            gen_path = (
-                package_root.parent.parent
-                / c.Infra.CODEGEN_CONFIG_DIR
-                / c.Infra.CODEGEN_GEN_FILENAME
-            )
-        if not gen_path.is_file():
-            return r[bool].fail(
-                f"generation requirements contract is absent: {gen_path}; "
-                f"{c.Infra.CODEGEN_GEN_FILENAME} is the mandatory conformance gate"
-            )
-        loaded = u.Cli.config_load(gen_path, expand_env=False)
-        if loaded.failure:
-            return r[bool].fail(
-                f"failed to load generation requirements: {loaded.error or gen_path}"
-            )
-        try:
-            requirements = m.Infra.GenRequirementsSpec.model_validate(loaded.value.data)
-        except c.ValidationError as exc:
-            return r[bool].fail(
-                f"invalid .gen requirements contract at {gen_path}: {exc}",
-                exception=exc,
-            )
+        requirements_result = u.Infra.load_gen_requirements(Path(__file__))
+        if requirements_result.failure:
+            return r[bool].from_failure(requirements_result)
+        requirements = requirements_result.unwrap()
         bypass_policies = c.Infra.MANAGED_FILE_POLICIES_BYPASS
         forbidden_in_contract = frozenset(
             requirements.requirements.managed_file_policies.forbidden
@@ -1516,6 +1491,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if workspace.project is not None
                 else None
             ),
+            gate_budgets=dict(codegen.budget),
         )
 
     @staticmethod
@@ -1688,7 +1664,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if rendered.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(rendered)
-            rendered_content = self._compose_project_artifact(
+            rendered_content = self.compose_project_artifact(
                 root,
                 destination,
                 rendered.value,
@@ -1947,7 +1923,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if rendered.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(rendered)
             rendered_content = rendered.value
-            composed = self._compose_project_artifact(
+            composed = self.compose_project_artifact(
                 root,
                 entry.destination,
                 rendered_content,
@@ -1987,7 +1963,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
     @staticmethod
-    def _compose_project_artifact(
+    def compose_project_artifact(
         repository_root: Path,
         destination: str,
         rendered: str,
@@ -2610,7 +2586,35 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
 
     @staticmethod
+    def resolve_gate_budgets(
+        configured_budgets: Mapping[str, m.Infra.ProjectGateBudgetSpec],
+    ) -> p.Result[Mapping[str, Mapping[str, int]]]:
+        """Project config budget rows; registry divergence fails loud.
+
+        The budget gate requires one row per registry gate; the config SSOT is
+        the single budget owner and a missing or unknown gate id is a declared
+        generation error, never a silent skip.
+        """
+        allowed_gates = c.Infra.ALLOWED_GATES
+        missing_budget_rows = sorted(allowed_gates - configured_budgets.keys())
+        unknown_budget_rows = sorted(configured_budgets.keys() - allowed_gates)
+        if missing_budget_rows or unknown_budget_rows:
+            return r[Mapping[str, Mapping[str, int]]].fail(
+                "budget configuration diverges from the gate registry: "
+                f"missing rows={missing_budget_rows}; "
+                f"unknown rows={unknown_budget_rows}"
+            )
+        return r[Mapping[str, Mapping[str, int]]].ok({
+            gate_id: {
+                "time-seconds": configured_budgets[gate_id].time_seconds,
+                "memory-mb": configured_budgets[gate_id].memory_mb,
+                "tokens": configured_budgets[gate_id].tokens,
+            }
+            for gate_id in sorted(configured_budgets)
+        })
+
     def _project_render_context(
+        self,
         repository: m.Infra.RepositoryRef,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
@@ -2767,6 +2771,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if version_result.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(version_result)
+        gate_budgets_result = FlextInfraCodegenConform.resolve_gate_budgets(
+            codegen.budget
+        )
+        if gate_budgets_result.failure:
+            return r[m.Infra.ProjectRenderContext].from_failure(gate_budgets_result)
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 **make_context.value.model_dump(
@@ -2807,6 +2816,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 package_name=project.package_name,
                 packaged_data_dirs=packaged_data_dirs,
                 namespace_scan_dirs=project.namespace_scan_dirs,
+                gate_budgets=gate_budgets_result.value,
                 class_stem=project.class_stem,
                 ns=project.namespace,
                 ns_attr=project.namespace_attribute,

@@ -81,6 +81,16 @@ jobs:
 
 {%- for step in make.workflow if "ci" in step.contexts %}
       - name: {{ step.verb }} (blocking)
+{%- if step.verb == "setup" %}
+        # Why (resumption-f1 2026-09-11): GitHub-hosted runners share egress
+        # IPs, so the unauthenticated 60 req/h REST budget is exhausted before
+        # mise finishes resolving the moving @latest backends (observed 403 on
+        # beads/waza: setup died before any gate). The job token authenticates
+        # resolution without changing the moving-release toolchain contract.
+        env:
+          GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
+          MISE_GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
+{%- endif %}
         # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
         run: {{ make.ci.variable }}={{ make.ci.value }} make {{ step.verb }}
 {%- if step.verb == "setup" %}

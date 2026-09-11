@@ -123,6 +123,7 @@ class FlextInfraUtilitiesPyprojectConform:
         uv_link_mode: str | None = None,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
         namespace_scan_dirs: t.StrSequence | None = None,
+        gate_budgets: t.MappingKV[str, m.Infra.ProjectGateBudgetSpec] | None = None,
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and root workspace."""
         parsed = cls._parsed_pyproject(pyproject_content)
@@ -153,6 +154,9 @@ class FlextInfraUtilitiesPyprojectConform:
         namespace_scope = cls._sync_namespace_scope(source, namespace_scan_dirs)
         if namespace_scope.failure:
             return r[str].from_failure(namespace_scope)
+        budget_sync = cls._sync_budget_table(source, gate_budgets)
+        if budget_sync.failure:
+            return r[str].from_failure(budget_sync)
         sources_result = cls._sync_uv_sources(
             source,
             project_name=project_name,
@@ -577,6 +581,29 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[bool].ok(True)
         namespace = u.Cli.toml_ensure_path(document, ("tool", "flext", "namespace"))
         u.Cli.toml_sync_string_list(namespace, "scan_dirs", list(namespace_scan_dirs))
+        return r[bool].ok(True)
+
+    @staticmethod
+    def _sync_budget_table(
+        document: t.Cli.TomlDocument,
+        gate_budgets: t.MappingKV[str, m.Infra.ProjectGateBudgetSpec] | None,
+    ) -> p.Result[bool]:
+        """Sync the managed ``[tool.flext.project.budget]`` table from the SSOT.
+
+        ``None`` leaves the section untouched: only codegen configs that
+        declare per-gate budgets project the managed table.
+        """
+        if gate_budgets is None:
+            return r[bool].ok(True)
+        budget_table = u.Cli.toml_ensure_path(
+            document, ("tool", "flext", "project", "budget")
+        )
+        for gate_id, row in sorted(gate_budgets.items()):
+            budget_table[gate_id] = {
+                "time-seconds": row.time_seconds,
+                "memory-mb": row.memory_mb,
+                "tokens": row.tokens,
+            }
         return r[bool].ok(True)
 
     @staticmethod
