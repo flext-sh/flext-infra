@@ -82,7 +82,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             m.Infra.MakeVerbSpec(
                 name=entry.name,
                 description=f"Script command: {entry.name}",
-                requires_apply=True,
             )
             for entry in sorted(scripts_dir.iterdir())
             if entry.is_dir() and (entry / "all.sh").is_file()

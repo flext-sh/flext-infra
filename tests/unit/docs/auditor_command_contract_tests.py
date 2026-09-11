@@ -39,7 +39,7 @@ class TestsDocsCommandContract:
     def test_accepts_every_declared_verb_rendered_from_the_ssot() -> None:
         """Each declared verb, written exactly as its own spec requires, passes."""
         lines = "\n".join(
-            f"make {spec.name} APPLY=Y" if spec.requires_apply else f"make {spec.name}"
+            f"make {spec.name}" if spec._apply_flag_exterminated else f"make {spec.name}"
             for spec in config.Infra.codegen.make.verbs
         )
         content = f"# Commands\n\n```bash\n{lines}\n```\n"
@@ -88,7 +88,7 @@ make test PROJECT=flext-demo MATCH=unit
     def test_reads_apply_requirement_from_config_ssot() -> None:
         """A mutating verb documented without the apply token is rejected."""
         mutating = next(
-            spec.name for spec in config.Infra.codegen.make.verbs if spec.requires_apply
+            spec.name for spec in config.Infra.codegen.make.verbs if spec._apply_flag_exterminated
         )
         content = f"```bash\nmake {mutating}\n```\n"
 
@@ -99,25 +99,31 @@ make test PROJECT=flext-demo MATCH=unit
         )
 
         tm.that(len(issues), eq=1)
-        tm.that(issues[0].message, has="requires `APPLY=Y`")
+        tm.that(issues[0].message, has="requires ``")
 
     @staticmethod
-    def test_accepts_optional_apply_for_declared_verbs() -> None:
-        """An optional effect token is not a forbidden token at the Make boundary."""
-        lines = "\n".join(
-            f"make {spec.name} APPLY=Y"
-            for spec in config.Infra.codegen.make.verbs
-            if not spec.requires_apply
+    def test_accepts_plain_verbs_and_rejects_legacy_apply() -> None:
+        """Plain verbs pass; the exterminated `APPLY` flag is a forbidden token."""
+        plain = "\n".join(
+            f"make {spec.name}" for spec in config.Infra.codegen.make.verbs
         )
-        content = f"```bash\n{lines}\n```\n"
+        legacy = "\n".join(
+            f"make {spec.name} " for spec in config.Infra.codegen.make.verbs
+        )
 
-        issues = u.Infra.docs_command_contract_content_issues(
-            content,
+        ok = u.Infra.docs_command_contract_content_issues(
+            f"```bash\n{plain}\n```\n",
             relative_path="docs/guides/getting-started.md",
             effective_verbs=config.Infra.codegen.make.verbs,
         )
+        tm.that(ok, eq=[])
 
-        tm.that(issues, eq=[])
+        bad = u.Infra.docs_command_contract_content_issues(
+            f"```bash\n{legacy}\n```\n",
+            relative_path="docs/guides/getting-started.md",
+            effective_verbs=config.Infra.codegen.make.verbs,
+        )
+        tm.that(len(bad), eq=len(config.Infra.codegen.make.verbs))
 
     @staticmethod
     def test_rejects_raw_pytest_execution() -> None:
@@ -133,7 +139,7 @@ PYTHONPATH=src python -m pytest tests/unit
         )
 
         tm.that(len(issues), eq=1)
-        tm.that(issues[0].message, has="bypasses `make test APPLY=Y`")
+        tm.that(issues[0].message, has="bypasses `make test`")
 
     @staticmethod
     def test_rejects_direct_tool_execution() -> None:
@@ -196,7 +202,7 @@ ruff check src
         ("declared", "requires_apply", "apply", "expected"),
         [
             (True, True, True, ""),
-            (True, True, False, "requires `APPLY=Y`"),
+            (True, True, False, "requires ``"),
             (True, False, False, ""),
             (False, True, True, "not declared"),
         ],
@@ -221,7 +227,7 @@ ruff check src
         )
         guide = scope.path / "docs/guides/commands.md"
         guide.parent.mkdir(parents=True)
-        token = " APPLY=Y" if apply else ""
+        token = "" if apply else ""
         u.write_file(guide, f"```bash\nmake {verb_name}{token}\n```\n")
 
         issues = u.Infra.docs_command_contract_issues(scope)
@@ -239,8 +245,8 @@ ruff check src
         scope = command_contract_scope
         spec = m.Infra.MakeVerbSpec(
             name="publish-preview",
-            description="Repository-owned operation",
-            requires_apply=True,
+            description="Repository-owned operation"
+            
         )
         guide = scope.path / "docs/guides/commands.md"
         guide.parent.mkdir(parents=True)
@@ -250,7 +256,7 @@ ruff check src
         )
         required = u.Infra.docs_command_contract_issues(scope)
         tm.that(len(required), eq=1)
-        tm.that(required[0].message, has="requires `APPLY=Y`")
+        tm.that(required[0].message, has="requires ``")
 
         optional = spec.model_copy(update={"requires_apply": False})
         u.Tests.write_standalone_workspace_manifest(
@@ -278,7 +284,7 @@ ruff check src
             guide = scope.path / "docs/guides/commands.md"
             guide.parent.mkdir(parents=True)
             spec = config.Infra.codegen.make.verbs[0]
-            u.write_file(guide, f"```bash\nmake {spec.name} APPLY=Y\n```\n")
+            u.write_file(guide, f"```bash\nmake {spec.name}\n```\n")
         manifest = u.Tests.write_standalone_workspace_manifest(scope.path, scope.name)
         u.write_file(manifest, "version: [\n")
         loaded = u.Infra.workspace_spec_load(scope.path)
@@ -297,15 +303,15 @@ ruff check src
         source_scope = command_contract_scope
         spec = m.Infra.MakeVerbSpec(
             name="publish-preview",
-            description="Source repository operation",
-            requires_apply=True,
+            description="Source repository operation"
+            
         )
         manifest = u.Tests.write_standalone_workspace_manifest(
             source_scope.path, source_scope.name, extra_verbs=(spec,)
         )
         guide = source_scope.path / "docs/guides/commands.md"
         guide.parent.mkdir(parents=True)
-        u.write_file(guide, f"```bash\nmake {spec.name} APPLY=Y\n```\n")
+        u.write_file(guide, f"```bash\nmake {spec.name}\n```\n")
         state = u.Cli.atomic_read_binary_file_state(guide, required=True)
         tm.ok(state)
         destination = source_scope.path / "member"
@@ -321,7 +327,7 @@ ruff check src
         tm.ok(projected)
         tm.that(len(projected.value), eq=1)
         tm.that(projected.value[0][1], eq=destination / "docs/guides/commands.md")
-        tm.that(projected.value[0][2], has=f"make {spec.name} APPLY=Y")
+        tm.that(projected.value[0][2], has=f"make {spec.name}")
 
         u.write_file(manifest, "version: [\n")
         loaded = u.Infra.workspace_spec_load(source_scope.path)

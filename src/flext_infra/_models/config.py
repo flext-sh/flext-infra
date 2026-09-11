@@ -1032,23 +1032,11 @@ class FlextInfraConfigModels:
         description: Annotated[
             t.NonEmptyStr, m.Field(description="Operator-facing help text")
         ]
-        requires_apply: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Whether the public boundary requires the one effect token APPLY=Y"
-                )
-            ),
-        ]
 
     class MakeWorkflowStepSpec(_ConfigContract):
-        """One canonical workflow step and its explicit mutation intent."""
+        """One canonical workflow step."""
 
         verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public verb")]
-        apply: Annotated[
-            bool,
-            m.Field(description="Whether the step supplies the configured apply token"),
-        ] = False
         contexts: Annotated[
             t.VariadicTuple[Literal["local", "ci", "pre_commit", "pre_push"]],
             m.Field(
@@ -1264,7 +1252,7 @@ class FlextInfraConfigModels:
         ]
         mutable_actions: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
-            m.Field(min_length=1, description="Docs actions guarded by APPLY=Y"),
+            m.Field(min_length=1, description="Docs actions that mutate"),
         ]
         reports_dir: Annotated[
             Path, m.Field(description="Repository-relative docs reports directory")
@@ -1417,7 +1405,7 @@ class FlextInfraConfigModels:
         """Ruff CLI contract for generated Make verbs and quality gates.
 
         Operator 2026-09-08: ruff is the style and autofix rule. Every
-        invocation uses preview. ``make fmt APPLY=Y`` also applies unsafe
+        invocation uses preview. ``make fmt`` also applies unsafe
         autofixes. Never weaken ruff to keep a file; change the code.
         """
 
@@ -1438,7 +1426,7 @@ class FlextInfraConfigModels:
             m.Field(
                 description=(
                     "Flags for ruff check --fix including unsafe-fixes; used by "
-                    "make fmt APPLY=Y and make fix APPLY=Y"
+                    "make fmt and make fix"
                 )
             ),
         ]
@@ -1454,25 +1442,9 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.MakeWorkInProgressSpec,
             m.Field(description="WIP branch and draft PR gate predicate"),
         ]
-        apply_variable: Annotated[
-            t.NonEmptyStr, m.Field(description="Write-enable variable name")
-        ]
-        apply_value: Annotated[
-            t.NonEmptyStr, m.Field(description="Only accepted write-enable value")
-        ]
-        apply_absent_value: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                default="Y",
-                description=(
-                    "Value the generated Makefile seeds when the caller passes "
-                    "no inputs. The operator elected apply-by-default for "
-                    "0.12.0-dev: every public verb mutates through its declared "
-                    "owner with zero variables; APPLY=N is the explicit "
-                    "check-mode opt-out where the verb supports one"
-                ),
-            ),
-        ] = "Y"
+        # Why (operator law 2026-09-11): the APPLY write-enable flag is
+        # exterminated — every public verb mutates by default with zero
+        # variables; read-only verification lives in dedicated verbs (check).
         # Why (operator law 2026-08-24): git-hook stages are OFF by default and
         # re-enabled case by case via these config gates. The workflow keeps
         # owning WHICH steps belong to each stage; the booleans only govern
@@ -1603,20 +1575,6 @@ class FlextInfraConfigModels:
                     f"{', '.join(sorted(unknown_workflow))}"
                 )
                 raise ValueError(msg)
-            invalid_apply = [
-                step.verb
-                for step in self.workflow
-                if step.apply
-                != next(
-                    verb.requires_apply for verb in self.verbs if verb.name == step.verb
-                )
-            ]
-            if invalid_apply:
-                msg = (
-                    "make workflow apply intent must match verb contract: "
-                    f"{', '.join(sorted(invalid_apply))}"
-                )
-                raise ValueError(msg)
             if "docs" not in declared:
                 msg = "make docs verb must be declared"
                 raise ValueError(msg)
@@ -1660,7 +1618,7 @@ class FlextInfraConfigModels:
         @m.computed_field
         @property
         def check_gates_fixable(self) -> t.VariadicTuple[str]:
-            """Gates ``make fix APPLY=Y`` can actually repair.
+            """Gates ``make fix`` can actually repair.
 
             Asking for a gate that cannot fix anything still pays its full cost;
             a fix pass built from the ALLOWED vocabulary once timed out doing
