@@ -50,9 +50,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
                     if cls.kind(call) == "Call"
                 )
                 continue
-            if kind == "Expr" and cls.kind(
-                getattr(statement, "value", None)
-            ) == "Call":
+            if kind == "Expr" and cls.kind(getattr(statement, "value", None)) == "Call":
                 called = cls.dotted_name(
                     getattr(getattr(statement, "value", None), "func", None)
                 )
@@ -242,9 +240,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         # canonical stem+suffix name.
         facade_class_name = f"{class_stem}{suffix}"
         facade_classes = [
-            node
-            for node in classes
-            if getattr(node, "name", "") == facade_class_name
+            node for node in classes if getattr(node, "name", "") == facade_class_name
         ]
         if not facade_classes:
             return False

@@ -1079,6 +1079,7 @@ class TestCodegenConform:
             workspace,
             config.Infra.codegen,
             tooling_runtime=tooling_runtime,
+            repository_root=tmp_path,
         )
         rendered = tm.ok(context)
         tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)

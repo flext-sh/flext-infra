@@ -66,7 +66,7 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         )
         if planned.failure:
             return r[t.Infra.LayoutStatus].from_failure(planned)
-        written = publish_file_plan(planned.value, backup=True, phase="layout")
+        written = publish_file_plan(planned.value, phase="layout")
         if written.failure:
             return r[t.Infra.LayoutStatus].from_failure(written)
         return r[t.Infra.LayoutStatus].ok("applied")
@@ -108,7 +108,7 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         )
         if planned.failure:
             return r[t.Infra.LayoutStatus].from_failure(planned)
-        written = publish_file_plan(planned.value, backup=True, phase="layout")
+        written = publish_file_plan(planned.value, phase="layout")
         if written.failure:
             return r[t.Infra.LayoutStatus].from_failure(written)
         return r[t.Infra.LayoutStatus].ok("applied")
