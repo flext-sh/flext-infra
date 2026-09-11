@@ -516,7 +516,7 @@ class FlextInfraConfigModels:
         uv_exclude_newer: Annotated[
             t.NonEmptyStr,
             m.Field(
-                description="uv [tool.uv] exclude-newer cutoff (exterminated fleet-wide, rendered then conform-stripped)",
+                description="uv [tool.uv] exclude-newer cutoff (exterminated fleet-wide, rendered then conform-stripped)"
             ),
         ]
         dependency_cooldown_exclusions: Annotated[
@@ -2658,7 +2658,7 @@ class FlextInfraConfigModels:
         uv_exclude_newer: Annotated[
             t.NonEmptyStr,
             m.Field(
-                description="uv [tool.uv] exclude-newer cutoff rendered into pyproject.toml",
+                description="uv [tool.uv] exclude-newer cutoff rendered into pyproject.toml"
             ),
         ]
         dependency_cooldown_exclusions: Annotated[
@@ -2667,7 +2667,7 @@ class FlextInfraConfigModels:
                 description=(
                     "Fleet-wide package distributions frozen at their current floor "
                     "by the dependency cooldown policy"
-                ),
+                )
             ),
         ] = ()
         dependency_cooldown_overrides: Annotated[

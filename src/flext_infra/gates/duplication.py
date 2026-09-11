@@ -128,9 +128,10 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         """
         # Read project-specific config from [tool.flext.project]
         project_config = self._read_project_config(project_dir)
-        scope_dirnames = project_config.get("duplication", {}).get(
-            "scope", c.Infra.JSCPD_SCOPE_DIRNAMES
+        duplication_config = u.Cli.json_as_mapping(
+            project_config.get("duplication", {})
         )
+        scope_dirnames = duplication_config.get("scope", c.Infra.JSCPD_SCOPE_DIRNAMES)
 
         discovered = u.Infra.resolve_projects(self._repository_root, ())
         if discovered.failure:
@@ -221,7 +222,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         content (idempotent).
         """
         project_config = self._read_project_config(project_dir)
-        dup_config = project_config.get("duplication", {})
+        dup_config = u.Cli.json_as_mapping(project_config.get("duplication", {}))
         min_lines = dup_config.get("min-lines", c.Infra.JSCPD_MIN_LINES)
         min_tokens = dup_config.get("min-tokens", c.Infra.JSCPD_MIN_TOKENS)
         threshold = dup_config.get("threshold-percent", c.Infra.JSCPD_THRESHOLD_PERCENT)

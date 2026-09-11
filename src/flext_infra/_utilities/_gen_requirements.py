@@ -55,9 +55,7 @@ class GenRequirementsLoader:
                 f"failed to load generation requirements: {loaded.error or gen_path}"
             )
         try:
-            requirements = m.Infra.GenRequirementsSpec.model_validate(
-                loaded.value.data
-            )
+            requirements = m.Infra.GenRequirementsSpec.model_validate(loaded.value.data)
         except c.ValidationError as exc:
             return r[m.Infra.GenRequirementsSpec].fail(
                 f"invalid .gen requirements contract at {gen_path}: {exc}",
