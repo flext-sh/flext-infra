@@ -69,9 +69,7 @@ class TestsTemplateFormatterFixedPoint:
             u.Cli.template_render(
                 _TEMPLATES / ".github/dependabot.yml.j2",
                 m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo",
-                    workspace_repositories=(),
-                    has_devcontainer=True,
+                    dist="demo", workspace_repositories=(), has_devcontainer=True
                 ),
             )
         )
