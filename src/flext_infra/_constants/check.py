@@ -83,6 +83,7 @@ class FlextInfraConstantsCheck:
             "internal://flext-infra/direnv",
         ),
         "duplication": ("jscpd", "https://github.com/kucherenko/jscpd"),
+        "budget": ("Flext Execution Budget Gate", "internal://flext-infra/budget"),
     })
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
@@ -254,10 +255,21 @@ class FlextInfraConstantsCheck:
     JSCPD_BINARY: Final[str] = "jscpd"
     "Provisioned by mise from codegen.toolchain.jscpd_version; never a runner or a version here."
     JSCPD_MODE: Final[str] = "strict"
-    JSCPD_MIN_LINES: Final[int] = 8
-    JSCPD_MIN_TOKENS: Final[int] = 50
+    JSCPD_MIN_LINES: Final[int] = 10
+    "Minimum lines for a clone (R2: 10 lines = 62 tokens per consumption-law.md)."
+    JSCPD_MIN_TOKENS: Final[int] = 62
+    "Minimum tokens for a clone (R2: 10 lines ≈ 62 tokens)."
     JSCPD_THRESHOLD_PERCENT: Final[int] = 0
-    JSCPD_SCOPE_DIRNAMES: Final[t.StrSequence] = ("src", "tests", "config", "templates")
+    "Zero tolerance — every owned clone is an error."
+    JSCPD_SCOPE_DIRNAMES: Final[t.StrSequence] = (
+        "src",
+        "tests",
+        "scripts",
+        "examples",
+        "templates",
+        "config",
+    )
+    "Canonical scope: source, tests, scripts, examples, templates, config (R2 consumer+family)."
     JSCPD_REPORT_DIRNAME: Final[str] = ".reports/jscpd"
     JSCPD_CONFIG_FILENAME: Final[str] = ".jscpd.generated.json"
     JSCPD_REPORT_FILENAME: Final[str] = "jscpd-report.json"
@@ -275,6 +287,12 @@ class FlextInfraConstantsCheck:
     )
     "Generated Python surfaces and structured test-case parameterization files "
     "excluded semantically; Git owns artifact visibility."
+
+    # --- Extended duplication gate (R2 consumer+family scope) ---
+    JSCPD_CONSUMER_FAMILY_SCOPE: Final[bool] = True
+    "When true, extend scan scope to consumer+family via [tool.flext.project] keys."
+    JSCPD_STRUCTURAL_BAN_FORMS: Final[bool] = True
+    "When true, ban structural forms only for mechanisms with published canonical owner."
 
     # --- Manual-command blocker (AGENTS.md `Build & Test`) SSOT ---
     MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset({
