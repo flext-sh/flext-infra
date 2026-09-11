@@ -944,7 +944,7 @@ Infra:
         policy: full
       - path: .env.example
         owner: codegen
-        policy: full
+        policy: create-only
       - path: .gitignore
         owner: codegen
         policy: merge
