@@ -5,15 +5,13 @@ from __future__ import annotations
 import stat
 import tarfile
 import zipfile
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import config, u
+from flext_infra import c, config, u
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import p, t
 
 
@@ -21,11 +19,46 @@ class FlextInfraReleaseArtifactArchiveMixin:
     """Validate release archive boundaries before artifact persistence."""
 
     @staticmethod
+    def _gen_exists_or_absent(name: str) -> bool:
+        """Return whether ``name`` is a .gen externally-managed exists_or_absent file.
+
+        Why: such files are template projections whose existence the .gen
+        contract validates without owning content; their names can match
+        sensitive-path patterns (``.env.example``) while never carrying
+        secrets, so the release archive exempts them.
+        """
+        package_root = Path(__file__).resolve().parent.parent
+        gen_path = (
+            package_root / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_GEN_FILENAME
+        )
+        if not gen_path.is_file():
+            gen_path = (
+                package_root.parent.parent
+                / c.Infra.CODEGEN_CONFIG_DIR
+                / c.Infra.CODEGEN_GEN_FILENAME
+            )
+        if not gen_path.is_file():
+            return False
+        loaded = u.Cli.config_load(gen_path, expand_env=False)
+        if loaded.failure:
+            return False
+        try:
+            from flext_infra import m
+
+            requirements = m.Infra.GenRequirementsSpec.model_validate(loaded.value.data)
+        except Exception:  # noqa: BLE001 — a malformed contract falls back to blocking
+            return False
+        entry = requirements.requirements.externally_managed.get(name)
+        return entry is not None and entry.validation == "exists_or_absent"
+
+    @staticmethod
     def _staged_member_path_error(name: str) -> str:
         """Return a staged-source sensitivity error, or an empty string."""
         path = PurePosixPath(name)
         if not name or "\\" in name or path.is_absolute() or ".." in path.parts:
             return f"unsafe staged source path: {name}"
+        if FlextInfraReleaseArtifactArchiveMixin._gen_exists_or_absent(name):
+            return ""
         # Why: a file codegen owns (`.env.example`) is a projection of the
         # fleet template, never a secret; only its name matches the pattern.
         if any(
