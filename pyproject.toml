@@ -548,6 +548,8 @@ split-on-trailing-comma = false
   "assert",
   "compare-to-empty-string",
   "magic-value-comparison",
+  "PLC2801",
+  "SLF001",
   "undocumented-public-class",
   "undocumented-public-function",
   "undocumented-public-method",

@@ -70,8 +70,14 @@ class FlextInfraBudgetGate(FlextInfraGate):
         """Validate one budget row per ``c.Infra.ALLOWED_GATES`` entry."""
         required_fields = c.Infra.BUDGET_REQUIRED_FIELDS
         return tuple(
-            FlextInfraBudgetGate._budget_issue(gate_id, budget_config, required_fields=required_fields)
-            for gate_id in sorted(c.Infra.ALLOWED_GATES)
+            issue
+            for issue in (
+                FlextInfraBudgetGate._budget_issue(
+                    gate_id, budget_config, required_fields=required_fields
+                )
+                for gate_id in sorted(c.Infra.ALLOWED_GATES)
+            )
+            if issue is not None
         )
 
     @staticmethod
