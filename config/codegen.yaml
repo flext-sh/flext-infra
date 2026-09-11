@@ -8,6 +8,35 @@ Infra:
     loc_cap:
       max_lines: 1000
 
+    # Per-gate execution budgets (flext-cpzjo.3): the budget gate requires one
+    # row per registry gate and the generator projects this table into every
+    # governed pyproject as the managed [tool.flext.project.budget] section.
+    # Rows must cover exactly c.Infra.ALLOWED_GATES: a missing or unknown gate
+    # id fails the generation loud (registry divergence is a hard error).
+    # Values are config-owned policy; tune per gate without touching code.
+    budget:
+      lint: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      format: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      pyrefly: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      mypy: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      pyright: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      silent-failure: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      deferred-self-reference: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      security: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      markdown: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      loc-cap: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      boundary: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      runtime-census: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      namespace: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      tier-whitelist: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      smells: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      codemod: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      layout: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      canonical-alias: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      direnv: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      duplication: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      budget: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+
     toolchain:
       # Single-source Python minor line. The environment resolves the newest
       # compatible 3.13 patch; no patch is pinned in generated repositories.

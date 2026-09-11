@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Mapping
 from pathlib import Path
 from typing import ClassVar, override
 
@@ -88,10 +89,17 @@ class FlextInfraBudgetGate(FlextInfraGate):
         gate_budget = budget_config.get(gate_id)
         if gate_budget is None:
             return FlextInfraBudgetGate._issue(gate_id, "missing budget row")
+        if not isinstance(gate_budget, Mapping):
+            return FlextInfraBudgetGate._issue(gate_id, "budget row must be a table")
         for field in required_fields:
-            if field not in u.Cli.json_as_mapping(gate_budget):
+            if field not in gate_budget:
                 return FlextInfraBudgetGate._issue(
                     gate_id, f"missing required field {field!r}"
+                )
+            value = gate_budget[field]
+            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                return FlextInfraBudgetGate._issue(
+                    gate_id, f"field {field!r} must be a positive integer"
                 )
         return None
 

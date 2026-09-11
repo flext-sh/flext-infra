@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
+from pydantic import AliasChoices
 
 from flext_infra import t
 
@@ -2693,6 +2694,16 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ()
+        gate_budgets: Annotated[
+            Mapping[str, Mapping[str, int]],
+            m.Field(
+                description=(
+                    "Per-gate budget rows rendered as the managed "
+                    "[tool.flext.project.budget] table; keys cover exactly "
+                    "the gate registry"
+                )
+            ),
+        ] = {}
 
         @m.computed_field
         @property
@@ -3182,6 +3193,38 @@ class FlextInfraConfigModels:
             ),
         ] = 1000
 
+    class ProjectGateBudgetSpec(_ConfigContract):
+        """Resource ceiling for one registered gate's execution.
+
+        Keys accept both spellings because the config SSOT and the emitted
+        TOML table share the gate vocabulary (``time-seconds``), while the
+        typed fields stay pythonic.
+        """
+
+        model_config = m.ConfigDict(populate_by_name=True)
+
+        time_seconds: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                alias="time-seconds",
+                validation_alias=AliasChoices("time-seconds", "time_seconds"),
+                description="Wall-clock ceiling in seconds",
+            ),
+        ]
+        memory_mb: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                alias="memory-mb",
+                validation_alias=AliasChoices("memory-mb", "memory_mb"),
+                description="Resident memory ceiling in MiB",
+            ),
+        ]
+        tokens: Annotated[
+            int, m.Field(ge=1, description="LLM token ceiling for the gate run")
+        ]
+
     class CodegenConfigSpec(_ConfigContract):
         """Fully modeled content of ``config/codegen.yaml``."""
 
@@ -3189,6 +3232,16 @@ class FlextInfraConfigModels:
         loc_cap: Annotated[
             FlextInfraConfigModels.CodegenLocCapSpec,
             m.Field(description="Per-module code-LOC ceiling policy"),
+        ]
+        budget: Annotated[
+            Mapping[str, FlextInfraConfigModels.ProjectGateBudgetSpec],
+            m.Field(
+                description=(
+                    "Per-gate execution budgets projected as the managed "
+                    "[tool.flext.project.budget] table; rows must cover "
+                    "exactly the gate registry"
+                ),
+            ),
         ]
         toolchain: Annotated[
             FlextInfraConfigModels.ToolchainSpec,

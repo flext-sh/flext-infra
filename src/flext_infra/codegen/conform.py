@@ -2588,7 +2588,35 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
 
     @staticmethod
+    def _resolve_gate_budgets(
+        configured_budgets: Mapping[str, m.Infra.ProjectGateBudgetSpec],
+    ) -> p.Result[Mapping[str, Mapping[str, int]]]:
+        """Project config budget rows; registry divergence fails loud.
+
+        The budget gate requires one row per registry gate; the config SSOT is
+        the single budget owner and a missing or unknown gate id is a declared
+        generation error, never a silent skip.
+        """
+        allowed_gates = c.Infra.ALLOWED_GATES
+        missing_budget_rows = sorted(allowed_gates - configured_budgets.keys())
+        unknown_budget_rows = sorted(configured_budgets.keys() - allowed_gates)
+        if missing_budget_rows or unknown_budget_rows:
+            return r[Mapping[str, Mapping[str, int]]].fail(
+                "budget configuration diverges from the gate registry: "
+                f"missing rows={missing_budget_rows}; "
+                f"unknown rows={unknown_budget_rows}"
+            )
+        return r[Mapping[str, Mapping[str, int]]].ok({
+            gate_id: {
+                "time-seconds": configured_budgets[gate_id].time_seconds,
+                "memory-mb": configured_budgets[gate_id].memory_mb,
+                "tokens": configured_budgets[gate_id].tokens,
+            }
+            for gate_id in sorted(configured_budgets)
+        })
+
     def _project_render_context(
+        self,
         repository: m.Infra.RepositoryRef,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
@@ -2745,6 +2773,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if version_result.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(version_result)
+        gate_budgets_result = FlextInfraCodegenConform._resolve_gate_budgets(
+            codegen.budget
+        )
+        if gate_budgets_result.failure:
+            return r[m.Infra.ProjectRenderContext].from_failure(gate_budgets_result)
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 **make_context.value.model_dump(
@@ -2785,6 +2818,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 package_name=project.package_name,
                 packaged_data_dirs=packaged_data_dirs,
                 namespace_scan_dirs=project.namespace_scan_dirs,
+                gate_budgets=gate_budgets_result.value,
                 class_stem=project.class_stem,
                 ns=project.namespace,
                 ns_attr=project.namespace_attribute,
