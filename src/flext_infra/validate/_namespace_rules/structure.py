@@ -41,12 +41,14 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             if kind == "Raise":
                 continue
             if kind == "If":
-                guard_calls = [
-                    node
-                    for node in cls.walk(statement)
-                    if cls.kind(node) == "FunctionDef"
-                ]
-                entry_calls.extend(cls.name_of(node) for node in guard_calls)
+                # The ``python -m`` guard holds the exit CALL (e.g.
+                # ``raise SystemExit(main())``), not a function definition —
+                # collect every call target so the entrypoint check sees it.
+                entry_calls.extend(
+                    cls.dotted_name(getattr(call, "func", None)).rsplit(".", 1)[-1]
+                    for call in cls.walk(statement)
+                    if cls.kind(call) == "Call"
+                )
                 continue
             if kind == "Expr" and cls.kind(
                 getattr(statement, "value", None)
@@ -59,12 +61,10 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             # A non-dunder assignment, a type alias or any other statement is
             # loose data: the module is a data module and stays fully graded.
             return False
-        # A guard must terminate the process through the package entrypoint
-        # (``raise SystemExit(main())`` / ``main()``); without it the module
-        # is not an entrypoint and stays under the class rules.
-        return bool(entry_calls) and all(
-            name.endswith("main") for name in entry_calls
-        )
+        # An ``__main__`` guard must terminate through the package
+        # entrypoint (``...main()``); a pure re-export (operational
+        # r/e/x/h/d/s) carries no call at all and is functional too.
+        return all(name.endswith("main") for name in entry_calls)
 
     @classmethod
     def check_structure(
