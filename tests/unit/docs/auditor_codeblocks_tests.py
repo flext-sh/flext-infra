@@ -44,6 +44,31 @@ def test_docs_python_codeblock_issues_report_invalid_python(tmp_path: Path) -> N
     tm.that(issues[0].file, eq="docs/broken.md")
 
 
+def test_scanner_excerpt_requires_non_executable_text_fence(tmp_path: Path) -> None:
+    """Keep numbered scanner evidence intact without presenting it as Python."""
+    docs_dir = tmp_path / "docs"
+    docs_dir.mkdir(parents=True, exist_ok=True)
+    excerpt = (
+        "      157                  continue\n"
+        ">>>   158              rewritten = rewrite(lines)\n"
+    )
+    evidence = docs_dir / "scanner-triage.md"
+    evidence.write_text(f"```python\n{excerpt}```\n", encoding="utf-8")
+    scope = m.Infra.DocScope(
+        name="test", path=tmp_path, report_dir=tmp_path / "reports"
+    )
+
+    python_issues = u.Infra.docs_python_codeblock_issues(scope)
+
+    tm.that(len(python_issues), eq=1)
+    tm.that(python_issues[0].issue_type, eq="python_codeblock")
+
+    evidence.write_text(f"```text\n{excerpt}```\n", encoding="utf-8")
+
+    tm.that(evidence.read_text(encoding="utf-8"), has=excerpt)
+    tm.that(u.Infra.docs_python_codeblock_issues(scope), eq=[])
+
+
 def test_docstring_issues_accept_assignment_docstrings(tmp_path: Path) -> None:
     package_root = tmp_path / "src" / "demo_pkg"
     package_root.mkdir(parents=True, exist_ok=True)
