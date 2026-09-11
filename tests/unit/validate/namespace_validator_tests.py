@@ -376,21 +376,16 @@ class TestFlextInfraNamespaceValidator:
         ("fixture_name", "module_name", "expected_violation_substr"),
         [
             pytest.param(
-                "rule0_multiple_classes.py",
-                "models.py",
-                "module must declare exactly one top-level class; found 2",
-                id="rule0-multiple-classes",
-            ),
-            pytest.param(
                 "rule0_no_class.py",
                 "models.py",
-                "module must declare exactly one top-level class; found 0",
+                "module must declare at least one top-level class; found 0",
                 id="rule0-no-class",
             ),
             pytest.param(
                 "rule0_wrong_prefix.py",
                 "constants.py",
-                "class 'WrongPrefix' must start with 'FlextTest'",
+                "module must declare at least one class starting with"
+                " 'FlextTest'",
                 id="rule0-wrong-prefix",
             ),
             pytest.param(
@@ -405,12 +400,6 @@ class TestFlextInfraNamespaceValidator:
                 "module alias/data declaration is forbidden; use the canonical "
                 "facade class",
                 id="rule1-loose-constant",
-            ),
-            pytest.param(
-                "rule1_loose_enum.py",
-                "models.py",
-                "module must declare exactly one top-level class; found 2",
-                id="rule1-loose-enum",
             ),
             pytest.param(
                 "rule1_method_in_constants.py",
