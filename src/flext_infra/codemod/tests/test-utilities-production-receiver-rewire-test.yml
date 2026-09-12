@@ -19,4 +19,4 @@ invalid:
     from flext_infra import u
     from tests import u as test_u
 
-    value = test_u.Tests.codegen_file_text(plan)
+    value = u.Tests.codegen_file_text(plan)
