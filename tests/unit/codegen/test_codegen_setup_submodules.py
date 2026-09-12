@@ -49,29 +49,34 @@ class TestsCodegenSetupSubmodules:
     ) -> dict[str, str]:
         bin_dir = root / "fixture-bin"
         bin_dir.mkdir()
+        # The bootstrap re-enters Make under a sanitized environment (only the
+        # declared passthrough keys survive), so the shim carries its own
+        # paths instead of reading ambient variables.
+        submodule_guard = (
+            ""
+            if expected_submodule_file is None
+            else (
+                f'if [ ! -f "{expected_submodule_file}" ]; then\n'
+                '  printf "submodule missing before uv\\n" >&2\n'
+                "  exit 70\n"
+                "fi\n"
+            )
+        )
         (bin_dir / "uv").write_text(
             "#!/bin/sh\n"
             "set -eu\n"
-            'if [ -n "${EXPECTED_SUBMODULE_FILE:-}" ] && '
-            '[ ! -f "$EXPECTED_SUBMODULE_FILE" ]; then\n'
-            '  printf "submodule missing before uv\\n" >&2\n'
-            "  exit 70\n"
-            "fi\n"
-            'printf "%s\\n" "$*" >> "$UV_LOG"\n',
+            f"{submodule_guard}"
+            f'printf "%s\\n" "$*" >> "{root / "uv.log"}"\n',
             encoding="utf-8",
         )
         (bin_dir / "uv").chmod(0o755)
         test_u.Tests.write_mise_stub(root / "bin" / "mise")
-        environment = {
+        return {
             **os.environ,
             "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
             "UV": str(bin_dir / "uv"),
-            "UV_LOG": str(root / "uv.log"),
             "GIT_ALLOW_PROTOCOL": "file",
         }
-        if expected_submodule_file is not None:
-            environment["EXPECTED_SUBMODULE_FILE"] = str(expected_submodule_file)
-        return environment
 
     @classmethod
     def _add_submodule(

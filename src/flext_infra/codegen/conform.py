@@ -586,6 +586,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if planned.failure:
             return r[m.Infra.CodegenResult].from_failure(planned)
         plan = planned.value
+        # Why (X-47): DECLARED scope excludes the workspace root repository
+        # from `plan.repositories`; docs generation must not render the root
+        # as an output scope either, or its report_dir escapes the transaction
+        # layout that already excludes root for that same scope. Root guides
+        # remain readable sources for members regardless of this flag.
+        docs_include_root = any(
+            repository.name == plan.workspace.repository.name
+            for repository in plan.repositories
+        )
         ancestry = self._validate_ancestry(plan)
         if ancestry.failure:
             return r[m.Infra.CodegenResult].from_failure(ancestry)
@@ -628,6 +637,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             docs_generator = FlextInfraDocGenerator(
                 repository_root=request.root,
                 projects=tuple(repository.name for repository in plan.repositories),
+                include_root=docs_include_root,
             )
             docs_bundle = docs_generator.prepare_bundle()
             if docs_bundle.failure:
@@ -666,6 +676,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         docs_generator = FlextInfraDocGenerator(
             repository_root=request.root,
             projects=tuple(repository.name for repository in plan.repositories),
+            include_root=docs_include_root,
         )
         docs_bundle = docs_generator.prepare_bundle()
         if docs_bundle.failure:

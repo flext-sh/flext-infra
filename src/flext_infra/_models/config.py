@@ -1023,6 +1023,18 @@ class FlextInfraConfigModels:
         description: Annotated[
             t.NonEmptyStr, m.Field(description="Operator-facing help text")
         ]
+        # Why (operator law 2026-09-12, option A'): APPLY=N selects this verb's
+        # read-only recipe. False is the correct default for every verb that
+        # has no check/apply distinction (setup, test, check, build, clean,
+        # release phases, conform, audit, status, waza, duplication,
+        # initialize) — APPLY=N fails loud on those instead of no-op/mutate.
+        check_mode: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description="APPLY=N runs this verb's declared check recipe",
+            ),
+        ] = False
 
     class MakeWorkflowStepSpec(_ConfigContract):
         """One canonical workflow step."""
@@ -1433,9 +1445,12 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.MakeWorkInProgressSpec,
             m.Field(description="WIP branch and draft PR gate predicate"),
         ]
-        # Why (operator law 2026-09-11): the APPLY write-enable flag is
-        # exterminated — every public verb mutates by default with zero
-        # variables; read-only verification lives in dedicated verbs (check).
+        # Why (operator law 2026-09-12, option A', supersedes 2026-09-11): the
+        # binary APPLY write-enable flag stays exterminated, but APPLY is a
+        # public input again with a narrower job — unset/empty still mutates
+        # by default, APPLY=N selects the check recipe of a verb that
+        # declares one (MakeVerbSpec.check_mode); an unknown Make input is a
+        # hard error, never a warning-plus-mutation.
         # Why (operator law 2026-08-24): git-hook stages are OFF by default and
         # re-enabled case by case via these config gates. The workflow keeps
         # owning WHICH steps belong to each stage; the booleans only govern

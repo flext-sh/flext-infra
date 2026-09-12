@@ -431,7 +431,11 @@ class TestsFlextInfraCodegenLazyInitService:
             str(init_path),
         ])
         tm.that(ruff_check.success, eq=True)
-        tm.that(u.Cli.process_succeeded(ruff_check.value.outcome), eq=True)
+        tm.that(
+            u.Cli.process_succeeded(ruff_check.value.outcome),
+            eq=True,
+            msg=f"{ruff_check.value.stdout}\n{ruff_check.value.stderr}",
+        )
 
     def test_execute_command_rejects_publication_outside_conform(
         self, tmp_path: Path

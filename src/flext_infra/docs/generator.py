@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 from flext_infra import c, m, t, u
@@ -22,6 +22,13 @@ class FlextInfraDocGenerator(
 ):
     """Generate managed docs artifacts from package exports and docstrings."""
 
+    # Why (X-47): standalone `docs generate` renders the workspace root by
+    # default; codegen conform overrides this per plan (DECLARED scope
+    # excludes the root repository from the render entirely).
+    include_root: Annotated[
+        bool, m.Field(description="Render the workspace root as a docs output scope")
+    ] = True
+
     def generate(
         self, request: m.Infra.DocsGenerateRequest
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
@@ -33,7 +40,8 @@ class FlextInfraDocGenerator(
         if planned.failure:
             return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(planned)
         reports: list[m.Infra.DocsPhaseReport] = []
-        root_scope = prepared.value.scopes[0].scope
+        first_scope = prepared.value.scopes[0].scope
+        root_scope = first_scope if first_scope.name == c.Infra.RK_ROOT else None
         for scope, plans in planned.value:
             changed = tuple(
                 plan for plan in plans if u.Infra.codegen_file_requires_effect(plan)
@@ -84,9 +92,11 @@ class FlextInfraDocGenerator(
         self, bundle: m.Infra.DocsGenerationBundle
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Derive target parent chains from the exact prepared render bundle."""
-        repository_root = bundle.scopes[0].scope.path
+        # Why (X-47): the physical workspace root is not necessarily
+        # `bundle.scopes[0]` once the root is excluded as an output scope
+        # (DECLARED conform scope); use the bundle's own authenticated root.
         stable = u.Infra.docs_verify_sources(
-            repository_root,
+            bundle.repository_root,
             bundle.source_states,
             extra_roots=tuple(scoped.scope.path for scoped in bundle.scopes),
         )
@@ -109,6 +119,7 @@ class FlextInfraDocGenerator(
                     projects=self.selected_projects,
                     output_dir=self.output_dir,
                     apply=self.apply_changes,
+                    include_root=self.include_root,
                 )
             ),
             failure_predicate=lambda report: not report.passed,
@@ -121,6 +132,7 @@ class FlextInfraDocGenerator(
             projects=self.selected_projects,
             output_dir=self.output_dir,
             apply=False,
+            include_root=self.include_root,
         )
 
     @staticmethod

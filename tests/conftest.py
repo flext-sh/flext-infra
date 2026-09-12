@@ -183,12 +183,6 @@ def infra_selection() -> u.Infra:
 
 
 @pytest.fixture
-def infra_reporting() -> u.Infra:
-    """Provide the public infrastructure utility facade for reporting tests."""
-    return u.Infra()
-
-
-@pytest.fixture
 def infra_safe_command_output(
     infra_subprocess: u.Cli, infra_test_workspace: Path
 ) -> str:

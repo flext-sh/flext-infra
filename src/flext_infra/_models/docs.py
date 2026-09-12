@@ -68,6 +68,18 @@ class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContra
             m.Field(description="Optional docs output directory override"),
         ] = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
         apply: Annotated[bool, m.Field(description="Apply writes to disk")] = False
+        # Why (X-47): conform's DECLARED scope excludes the workspace root
+        # repository, so the docs generator must not render root as an output
+        # scope either; standalone docs commands keep including it.
+        include_root: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Render the workspace root as a docs output scope (root "
+                    "guides remain readable sources regardless of this flag)"
+                )
+            ),
+        ] = True
 
     class DocsPhaseItemModel(m.Value):
         """Unified item payload for docs phase reports."""

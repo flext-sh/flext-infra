@@ -116,6 +116,21 @@ class FlextInfraModelsDocsGeneration:
             t.VariadicTuple[cli_m.Cli.AtomicFileState],
             m.Field(min_length=1, description="Exact sources consumed by rendering"),
         ]
+        # Why (X-47): the physical workspace root is required for source
+        # verification even when the root is excluded from `scopes` (DECLARED
+        # conform scope), so it can no longer be inferred from `scopes[0]`.
+        repository_root: Annotated[
+            Path,
+            m.Field(description="Absolute lexical physical workspace root"),
+        ]
+
+        @u.field_validator("repository_root")
+        @classmethod
+        def _validate_absolute_repository_root(cls, value: Path) -> Path:
+            if not value.is_absolute() or ".." in value.parts:
+                msg = f"docs generation repository root must be absolute and lexical: {value}"
+                raise ValueError(msg)
+            return value
 
         @u.model_validator(mode="after")
         def _validate_unique_complete_inputs(self) -> Self:

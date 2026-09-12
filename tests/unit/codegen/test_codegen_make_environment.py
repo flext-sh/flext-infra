@@ -183,9 +183,11 @@ class TestsCodegenMakeEnvironment:
                     f'[tool.uv.workspace]\nmembers = ["{project_root.name}"]\n',
                 )
             )
+        # Why (operator law 2026-09-12, option A'): setup has no check_mode —
+        # it mutates with zero variables; APPLY=Y is no longer a valid token.
         setup = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "setup", "APPLY=Y"], cwd=project_root
+                ["--no-print-directory", "setup"], cwd=project_root
             )
         )
         tm.that(
@@ -271,7 +273,7 @@ class TestsCodegenMakeEnvironment:
         tm.that((project_root / ".venv").exists(), eq=False)
         process = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "setup", "APPLY=Y"],
+                ["--no-print-directory", "setup"],
                 cwd=project_root,
                 env=active_env,
             )
@@ -298,7 +300,9 @@ class TestsCodegenMakeEnvironment:
                 ".PHONY: post-setup\npost-setup:\n"
                 '\t@test -x "$(MAKE_COMMAND)"\n'
                 '\t@test "$(MAKE_COMMAND)" = "$(SELF_MAKE_EXECUTABLE)"\n'
-                '\t@test "$(APPLY)" = "Y"\n'
+                # setup has no check_mode; zero variables still mutates, so
+                # APPLY reaches the recipe empty (operator law 2026-09-12).
+                '\t@test -z "$(APPLY)"\n'
                 f'\t@test "$({make.ci.variable})" = "{make.ci.value}"\n'
                 "\t@printf '%s\\n' 'ci-runtime-provisioned'\n",
             )
@@ -306,7 +310,7 @@ class TestsCodegenMakeEnvironment:
         ci_env = {**active_env, make.ci.variable: make.ci.value}
         locked = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "setup", "APPLY=Y"],
+                ["--no-print-directory", "setup"],
                 cwd=project_root,
                 env=ci_env,
             )
@@ -331,7 +335,7 @@ class TestsCodegenMakeEnvironment:
         tm.ok(u.Cli.atomic_write_text_file(pyproject_path, u.Cli.toml_dumps(document)))
         stale = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "setup", "APPLY=Y"],
+                ["--no-print-directory", "setup"],
                 cwd=project_root,
                 env=ci_env,
             )
@@ -409,11 +413,11 @@ class TestsCodegenMakeEnvironment:
             "VIRTUAL_ENV": str(hostile_venv),
         }
 
-        # `test` requires the write-enable token (APPLY=Y) because every verb
-        # mutates by default with zero variables.
+        # `test` has no check_mode; every verb mutates by default with zero
+        # variables, so no APPLY token is needed (operator law 2026-09-12).
         process = tm.ok(
             u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "test", "APPLY=Y"],
+                [c.Infra.MAKE, "--no-print-directory", "test"],
                 cwd=project_root,
                 env=active_env,
                 remove_env_keys=(*c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, "UV"),
@@ -497,11 +501,11 @@ class TestsCodegenMakeEnvironment:
         """Every declared gate is scheduled by the one check handler, both profiles.
 
         The Make layer no longer publishes a per-gate `WHAT=` selector with a
-        `_builtin_check_<gate>` target behind it; the public boundary accepts
-        only APPLY. Reachability is therefore proved where it now lives: the
-        single generated handler passes the complete declared gate list to the
-        typed `check run` owner, so a gate the owner declares cannot be left
-        unscheduled by the projection.
+        `_builtin_check_<gate>` target behind it; `check` has no check_mode of
+        its own (it is already read-only). Reachability is therefore proved
+        where it now lives: the single generated handler passes the complete
+        declared gate list to the typed `check run` owner, so a gate the
+        owner declares cannot be left unscheduled by the projection.
         """
         project_root, _repository_root = self._render_makefile(tmp_path, profile)
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
@@ -549,12 +553,12 @@ class TestsCodegenMakeEnvironment:
         uv = tmp_path / "bin" / "uv"
         test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
 
-        # APPLY is the ONLY public Make input; the generated boundary rejects
-        # every other command-line variable by name, so the uv override that
-        # used to ride on the command line is supplied through the environment.
+        # `check` has no check_mode (it is already read-only); the generated
+        # boundary rejects every undeclared command-line variable by name, so
+        # the uv override rides the environment instead of the command line.
         process = tm.ok(
             u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "check", "APPLY=Y"],
+                [c.Infra.MAKE, "--no-print-directory", "check"],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
@@ -589,7 +593,7 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(
             u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "deps", "APPLY=Y"],
+                [c.Infra.MAKE, "--no-print-directory", "deps"],
                 cwd=project_root,
                 # PATH takes the DIRECTORY holding the stub, never the stub
                 # itself: pointing it at the executable makes every lookup miss.
@@ -616,14 +620,16 @@ class TestsCodegenMakeEnvironment:
             ),
         )
 
-    def test_dependency_upgrade_requires_the_write_enable_token(
+    def test_dependency_upgrade_selects_check_mode_via_apply_n(
         self, tmp_path: Path
     ) -> None:
-        """Deps applies with zero inputs; APPLY=N remains the explicit opt-out.
+        """Deps mutates with zero inputs; APPLY=N runs its declared check recipe.
 
-        Operator law 2026-09-10 seeds the write-enable token to its apply
-        value, so the plain `make deps` invocation must reach uv. Only the
-        explicit APPLY=N run keeps the fail-closed write-enable diagnostic.
+        Operator law 2026-09-12 (option A') makes deps one of the check_mode
+        verbs: unset APPLY still upgrades and locks (plain `make deps` reaches
+        uv with `--upgrade --refresh` then `--check`), while `APPLY=N` routes
+        to `_builtin_deps_check` — a single `uv lock --check` per project,
+        never touching the upgrade/modernize path.
         """
         project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
@@ -645,7 +651,17 @@ class TestsCodegenMakeEnvironment:
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
-        authenticated = tm.ok(
+        tm.that(u.Cli.process_succeeded(plain.outcome), eq=True)
+        tm.that(
+            [line for line in uv_log.read_text(encoding="utf-8").splitlines() if line],
+            eq=(
+                f"lock --project {project_root} --upgrade --refresh",
+                f"lock --project {project_root} --check",
+            ),
+        )
+        uv_log.write_text("", encoding="utf-8")
+
+        checked = tm.ok(
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", "deps", "APPLY=N"],
                 cwd=project_root,
@@ -653,18 +669,15 @@ class TestsCodegenMakeEnvironment:
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
-
-        tm.that(u.Cli.process_succeeded(plain.outcome), eq=True)
-        tm.that(uv_log.exists(), eq=True)
-        # APPLY is binary now: the apply value is the only valid token, so the
-        # explicit opt-out attempt fails at the generated public boundary
-        # before any recipe runs, keeping uv off the mutation path.
-        tm.that(authenticated.outcome.raw_return_code, ne=0)
         tm.that(
-            authenticated.stdout + authenticated.stderr,
-            has="ERROR: this action requires",
+            u.Cli.process_succeeded(checked.outcome),
+            eq=True,
+            msg=checked.stdout + checked.stderr,
         )
-        tm.that(authenticated.stdout + authenticated.stderr, has="Makefile")
+        tm.that(
+            uv_log.read_text(encoding="utf-8").splitlines(),
+            eq=(f"lock --project {project_root} --check",),
+        )
 
     def test_public_gate_fails_closed_before_managed_environment_exists(
         self, tmp_path: Path
@@ -750,13 +763,13 @@ class TestsCodegenMakeEnvironment:
     def test_generated_boundary_rejects_forbidden_makeflags_overrides(
         self, tmp_path: Path
     ) -> None:
-        """Hostile MAKEFLAGS assignments are ignored, never fatal.
+        """Hostile MAKEFLAGS assignments are fatal, never a silent mutation.
 
         GNU Make propagates any variable on MAKEFLAGS (or the command line) as
-        ``command line override`` to every child process. Since operator law
-        2026-09-10 ordinary usage must always start with zero variables, so
-        the boundary warns about every override that is not a declared public
-        input and continues; it can no longer block a run.
+        ``command line override`` to every child process. Operator law
+        2026-09-12 (option A') makes an undeclared override a hard error
+        instead of a warning-plus-mutation, so a hostile MAKEFLAGS entry must
+        stop the run before any recipe executes — even for `help`.
         """
         project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
@@ -776,11 +789,14 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(u.Cli.process_succeeded(process.outcome), eq=True)
-        tm.that(
-            process.stdout + process.stderr,
-            has="Ignoring unsupported Make input(s): APPLY FORBIDDEN_VAR",
-        )
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
+        output = process.stdout + process.stderr
+        tm.that(output, has="Unsupported Make input(s)")
+        tm.that(output, has="FORBIDDEN_VAR")
+        tm.that(output, has="declared public inputs are")
+        # APPLY is a declared public input again (option A'), never listed
+        # as unsupported alongside a genuinely hostile override.
+        tm.that(output, lacks="Ignoring unsupported")
 
     def test_generated_make_dispatches_script_verbs_to_builtin_targets(
         self, tmp_path: Path
@@ -809,3 +825,63 @@ class TestsCodegenMakeEnvironment:
         tm.that("_builtin-sync:" in makefile, eq=True)
         tm.that("scripts/dispatch.py" in makefile, eq=True)
         tm.that("sync" in makefile, eq=True)
+
+    def test_apply_rejects_every_value_except_n(self, tmp_path: Path) -> None:
+        """APPLY accepts only empty/unset or N (operator law 2026-09-12)."""
+        project_root, _repository_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "help", "APPLY=Y"],
+                cwd=project_root,
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            )
+        )
+
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
+        tm.that(process.stdout + process.stderr, has="APPLY must be N or unset")
+
+    def test_apply_n_fails_loud_on_a_verb_without_check_mode(
+        self, tmp_path: Path
+    ) -> None:
+        """A verb outside make.verbs[].check_mode never no-ops or mutates."""
+        project_root, _repository_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "test", "APPLY=N"],
+                cwd=project_root,
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            )
+        )
+
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
+        tm.that(process.stdout + process.stderr, has="test has no check mode")
+
+    def test_generated_makefile_routes_apply_n_to_declared_check_recipes(
+        self, tmp_path: Path
+    ) -> None:
+        """Every check_mode verb's public mapping selects its check sibling."""
+        project_root, _repository_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
+
+        check_capable = tuple(
+            verb.name
+            for verb in config.Infra.codegen.make.verbs
+            if verb.check_mode
+        )
+        tm.that(check_capable, eq=("deps", "fmt", "fix", "fix-enforcement", "docs", "gen", "mod"))
+        for verb in ("deps", "fmt", "fix", "mod"):
+            tm.that(makefile, has=f"_builtin-{verb}: $(if $(CHECK_ONLY),")
+        tm.that(makefile, has="_builtin-fix-enforcement: $(if $(CHECK_ONLY),")
+        tm.that(
+            makefile,
+            has='--mode $(if $(CHECK_ONLY),check,apply)',
+        )
+        tm.that(makefile, has="mode=$(if $(CHECK_ONLY),,--apply)")
