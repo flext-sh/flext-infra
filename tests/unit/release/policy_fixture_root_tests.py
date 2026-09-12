@@ -21,27 +21,20 @@ from tests import u
 class TestsReleasePolicyOwner:
     """Policies have exactly one owner and one transport each."""
 
-    def test_build_constraints_template_resolves_from_the_checkout_in_use(
-        self,
-    ) -> None:
+    def test_build_constraints_template_resolves_from_the_checkout_in_use(self) -> None:
         """The release template must exist for the current checkout.
 
         This holds in a plain clone and must equally hold in a linked worktree,
         where the repository sits deeper in the filesystem.
         """
         template_root = u.Tests.release_policy_root()
-        template = (
-            template_root / Path(c.Infra.RELEASE_BUILD_CONSTRAINTS_TEMPLATE).name
-        )
+        template = template_root / Path(c.Infra.RELEASE_BUILD_CONSTRAINTS_TEMPLATE).name
         tm.that(template.is_file(), eq=True)
 
     def test_release_template_root_is_the_release_owned_root(self) -> None:
         """The constraint policy owner is the release template tree."""
         expected_root = (
-            Path(__file__).resolve().parents[3]
-            / "src"
-            / "flext_infra"
-            / "release"
+            Path(__file__).resolve().parents[3] / "src" / "flext_infra" / "release"
         )
         tm.that(u.Tests.release_policy_root(), eq=expected_root / "templates")
 
@@ -66,12 +59,10 @@ class TestsReleasePolicyOwner:
         time into the release policy directory.
         """
         managed = {
-            entry.path.as_posix()
-            for entry in config.Infra.codegen.managed_files
+            entry.path.as_posix() for entry in config.Infra.codegen.managed_files
         }
         entries = {
-            entry.destination
-            for entry in config.Infra.codegen.templates.entries
+            entry.destination for entry in config.Infra.codegen.templates.entries
         }
         banned = c.Infra.RELEASE_BUILD_CONSTRAINTS_BANNED_PATH
         tm.that(banned not in managed, eq=True)

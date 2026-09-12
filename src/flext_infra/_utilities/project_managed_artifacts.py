@@ -7,14 +7,8 @@ import stat
 from fnmatch import fnmatchcase
 from pathlib import Path
 
-from git import (
-    GitCommandError,
-    InvalidGitRepositoryError,
-    NoSuchPathError,
-    Repo,
-)
-
 from flext_cli import u
+from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Repo
 
 from flext_core import r
 from flext_infra import c, config, m, p, t
@@ -215,14 +209,29 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         immutable commit catalog; uncommitted declarations never enter a
         projection.
         """
+        snapshot = cls.snapshot_committed_project_managed_artifacts(project_dir)
+        if snapshot.failure:
+            return r[m.Infra.ProjectManagedArtifactsResolution].from_failure(snapshot)
+        return r[m.Infra.ProjectManagedArtifactsResolution].ok(
+            snapshot.value.resolution
+        )
+
+    @classmethod
+    def snapshot_committed_project_managed_artifacts(
+        cls, project_dir: Path
+    ) -> p.Result[m.Infra.ProjectManagedArtifactsSnapshot]:
+        """Capture and parse the committed catalog without physical source states.
+
+        ``sources`` stays empty because Git objects are already immutable: they
+        must not enter the transaction's live-file source barrier, and their
+        object identity makes a physical re-read meaningless.
+        """
         resolved = project_dir.expanduser().resolve()
         try:
             repo = Repo(resolved, search_parent_directories=True)
             config_tree = repo.head.commit.tree / c.CONFIG_DIR_NAME
         except KeyError:
-            return r[m.Infra.ProjectManagedArtifactsResolution].ok(
-                cls.empty_snapshot().resolution
-            )
+            return r[m.Infra.ProjectManagedArtifactsSnapshot].ok(cls.empty_snapshot())
         except (
             GitCommandError,
             InvalidGitRepositoryError,
@@ -230,7 +239,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             OSError,
             ValueError,
         ) as exc:
-            return r[m.Infra.ProjectManagedArtifactsResolution].fail(
+            return r[m.Infra.ProjectManagedArtifactsSnapshot].fail(
                 f"cannot open committed project config catalog at {resolved}: {exc}",
                 exception=exc,
             )
@@ -242,11 +251,18 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                         blob.data_stream.read()
                     )
         except (OSError, ValueError) as exc:
-            return r[m.Infra.ProjectManagedArtifactsResolution].fail_op(
+            return r[m.Infra.ProjectManagedArtifactsSnapshot].fail_op(
                 f"read committed project config sources {resolved / c.CONFIG_DIR_NAME}",
                 exc,
             )
-        return cls._load_project_managed_artifacts_from_payloads(payloads)
+        resolution = cls._load_project_managed_artifacts_from_payloads(payloads)
+        if resolution.failure:
+            return r[m.Infra.ProjectManagedArtifactsSnapshot].from_failure(resolution)
+        return r[m.Infra.ProjectManagedArtifactsSnapshot].ok(
+            m.Infra.ProjectManagedArtifactsSnapshot(
+                sources=(), resolution=resolution.value
+            )
+        )
 
     @classmethod
     def load_project_managed_artifacts_from_snapshot(
@@ -343,12 +359,19 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         resolved = cls.load_project_managed_artifacts_from_snapshot(source_snapshot)
         if resolved.failure:
             return r[str].from_failure(resolved)
-        local_tools = resolved.value.artifacts.Mise.tools
+        return cls.compose_mise_toml_from_resolution(resolved.value, rendered)
+
+    @classmethod
+    def compose_mise_toml_from_resolution(
+        cls, resolution: m.Infra.ProjectManagedArtifactsResolution, rendered: str
+    ) -> p.Result[str]:
+        """Add local tools from one caller-owned immutable parsed catalog."""
+        local_tools = resolution.artifacts.Mise.tools
         if not local_tools:
             return r[str].ok(rendered)
         for selector in local_tools:
             selector_validation = cls.validate_mise_tool_selectors(
-                (selector,), source=resolved.value.mise_tool_sources[selector]
+                (selector,), source=resolution.mise_tool_sources[selector]
             )
             if selector_validation.failure:
                 return r[str].from_failure(selector_validation)
@@ -358,7 +381,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         tools = u.Cli.toml_ensure_table(doc, "tools")
         for selector, tool in local_tools.items():
             if selector in tools:
-                source = resolved.value.mise_tool_sources[selector]
+                source = resolution.mise_tool_sources[selector]
                 return r[str].fail(
                     "project Mise selector collides with fleet tool "
                     f"{selector!r}: global .mise.toml template and {source}"

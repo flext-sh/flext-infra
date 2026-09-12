@@ -225,9 +225,7 @@ class FlextInfraReleaseOrchestratorPhases(
             return r[m.Infra.BuildPolicy].from_failure(constraints_render)
         constraints_path = policy_dir / "build-constraints.txt"
         constraints_result = cls._persist_release_policy(
-            constraints_render.value,
-            constraints_path,
-            policy_root=policy_dir,
+            constraints_render.value, constraints_path, policy_root=policy_dir
         )
         if constraints_result.failure:
             return r[m.Infra.BuildPolicy].from_failure(constraints_result)

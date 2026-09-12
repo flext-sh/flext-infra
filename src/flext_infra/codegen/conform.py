@@ -1719,7 +1719,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 "PEP 621 project name does not match catalog distribution: "
                 f"{dist} != {repository.distribution}"
             )
-        managed_artifacts = u.Infra.snapshot_project_managed_artifacts(root)
+        managed_artifacts = u.Infra.snapshot_committed_project_managed_artifacts(root)
         if managed_artifacts.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
                 managed_artifacts
@@ -2022,18 +2022,29 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         resolved_artifacts = managed_artifacts
         if resolved_artifacts is None:
-            snapshot = u.Infra.snapshot_project_managed_artifacts(repository_root)
+            snapshot = u.Infra.snapshot_committed_project_managed_artifacts(
+                repository_root
+            )
             if snapshot.failure:
                 return r[m.Infra.CodegenArtifactComposition].from_failure(snapshot)
             resolved_artifacts = snapshot.value
-        composed = u.Infra.compose_mise_toml_from_snapshot(
-            resolved_artifacts.sources, rendered
+        composed = (
+            u.Infra.compose_mise_toml_from_snapshot(
+                resolved_artifacts.sources, rendered
+            )
+            if resolved_artifacts.sources
+            else u.Infra.compose_mise_toml_from_resolution(
+                resolved_artifacts.resolution, rendered
+            )
         )
         if composed.failure:
             return r[m.Infra.CodegenArtifactComposition].from_failure(composed)
+        config_sources = u.Infra.snapshot_config_sources(repository_root)
+        if config_sources.failure:
+            return r[m.Infra.CodegenArtifactComposition].from_failure(config_sources)
         return r[m.Infra.CodegenArtifactComposition].ok(
             m.Infra.CodegenArtifactComposition(
-                rendered=composed.value, source_states=resolved_artifacts.sources
+                rendered=composed.value, source_states=config_sources.value
             )
         )
 
@@ -2624,7 +2635,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         repository_root: Path,
         managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
-        *,
         use_committed_artifacts: bool = True,
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed context consumed by project templates."""
@@ -2754,8 +2764,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             for section in codegen.gitignore_sections
             if not section.profiles or profile in section.profiles
         ]
-        if managed_artifacts is not None:
-            project_patterns = managed_artifacts.artifacts.Gitignore.patterns
+        catalog_artifacts = managed_artifacts
+        if use_committed_artifacts:
+            committed = u.Infra.load_committed_project_managed_artifacts(
+                repository_root
+            )
+            if committed.failure:
+                return r[m.Infra.ProjectRenderContext].from_failure(committed)
+            catalog_artifacts = committed.value
+        if catalog_artifacts is not None:
+            project_patterns = catalog_artifacts.artifacts.Gitignore.patterns
             if project_patterns:
                 profile_gitignore_sections.append(
                     m.Infra.ScaffoldGitignoreSectionSpec(
@@ -2779,14 +2797,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if gate_budgets_result.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(gate_budgets_result)
-        catalog_artifacts = managed_artifacts
-        if use_committed_artifacts:
-            committed = u.Infra.load_committed_project_managed_artifacts(
-                repository_root
-            )
-            if committed.failure:
-                return r[m.Infra.ProjectRenderContext].from_failure(committed)
-            catalog_artifacts = committed.value
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 **make_context.value.model_dump(
@@ -2812,8 +2822,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 # projection.
                 ruff_per_file_ignores=(
                     FlextInfraEnsureRuffConfigPhase.compose_per_file_ignores(
-                        repository_root,
-                        managed_artifacts=catalog_artifacts
+                        repository_root, managed_artifacts=catalog_artifacts
                     )
                 ),
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),

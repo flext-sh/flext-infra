@@ -1,4 +1,4 @@
-# FLEXT Infra API Overview
+# flext-infra API Overview
 
 <!-- TOC START -->
 - [Next Pages](#next-pages)

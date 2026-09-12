@@ -116,9 +116,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
             validated, output_dir / "artifacts" / project
         )
         if persistence_result.failure:
-            return r[tuple[m.Infra.BuildArtifact, ...]].from_failure(
-                persistence_result
-            )
+            return r[tuple[m.Infra.BuildArtifact, ...]].from_failure(persistence_result)
         return r[tuple[m.Infra.BuildArtifact, ...]].ok(
             tuple(
                 m.Infra.BuildArtifact(

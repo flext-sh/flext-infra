@@ -112,15 +112,12 @@ class TestsFlextInfraUtilitiesGitMixin:
         tm.ok(
             u.Infra.git_push_upstream(
                 m.Infra.GitPushRequest(
-                    repo_root=repo_root,
-                    remote=c.Infra.GIT_ORIGIN,
-                    branch=branch,
+                    repo_root=repo_root, remote=c.Infra.GIT_ORIGIN, branch=branch
                 )
             )
         )
         bootstrap(
-            bare_remote,
-            ("symbolic-ref", c.Infra.GIT_HEAD, f"refs/heads/{branch}"),
+            bare_remote, ("symbolic-ref", c.Infra.GIT_HEAD, f"refs/heads/{branch}")
         )
         return bare_remote
 

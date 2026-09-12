@@ -61,18 +61,13 @@ class TestsFlextInfraReleaseDag:
 
             report = u.Tests.release_build_report(workspace)
             tm.that(result, eq=0)
-            tm.that(
-                constraints_path.read_text(encoding="utf-8"),
-                eq=rendered,
-            )
+            tm.that(constraints_path.read_text(encoding="utf-8"), eq=rendered)
             tm.that(report.build_constraints_sha256, eq=expected_digest)
             tm.that(report.gitleaks_policy_sha256, eq=expected_gitleaks_digest)
             tm.that(report.records[0].exit_code, eq=0)
 
         @staticmethod
-        def test_release_never_carries_the_constraints_file(
-            tmp_path: Path,
-        ) -> None:
+        def test_release_never_carries_the_constraints_file(tmp_path: Path) -> None:
             """No repository checkout ever carries the constraints file."""
             workspace = u.Tests.release_internal_workspace(tmp_path, "flext-a")
             u.Tests.run_release_build(workspace, "flext-a")
