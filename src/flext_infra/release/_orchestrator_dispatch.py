@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -61,7 +62,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         self.logger.info(
             "release_phase_started", phase=str(ctx.phase), current=ctx.version
         )
-        handlers: dict[
+        handlers: MutableMapping[
             c.Infra.ReleasePhase,
             Callable[[m.Infra.ReleasePhaseDispatchConfig], p.Result[bool]],
         ] = {

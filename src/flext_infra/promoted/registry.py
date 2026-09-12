@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra.promoted.base import RegistryError
@@ -22,8 +23,10 @@ class Registry:
 
     def __init__(self) -> None:
         """Initialize an empty command registry."""
-        self._commands: dict[str, dict[str, p.Infra.Promoted.Command]] = {}
-        self._aliases: dict[str, p.Infra.Promoted.AliasTarget] = {}
+        self._commands: MutableMapping[
+            str, MutableMapping[str, p.Infra.Promoted.Command]
+        ] = {}
+        self._aliases: MutableMapping[str, p.Infra.Promoted.AliasTarget] = {}
 
     def add(self, command: p.Infra.Promoted.Command) -> None:
         """Add one command and its aliases to the registry.

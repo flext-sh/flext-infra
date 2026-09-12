@@ -141,7 +141,7 @@ class FlextInfraPyprojectModernizerPayloadMixin:
         root_keys = [str(key) for key in doc]
         ordered_root = self._ordered_keys(root_keys, preferred_first=preferred_first)
         if ordered_root != root_keys:
-            root_items: dict[str, t.Cli.TomlItem | t.Cli.TomlContainer] = {
+            root_items: MutableMapping[str, t.Cli.TomlItem | t.Cli.TomlContainer] = {
                 key: doc[key] for key in root_keys
             }
             for key in root_keys:

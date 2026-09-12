@@ -20,8 +20,6 @@ if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
 
-import pytest
-
 
 def _plan(workspace: Path) -> m.Infra.ReleasePlan:
     """Read the plan receipt the last ``plan`` phase wrote."""
@@ -48,7 +46,7 @@ def _release_lane_workspace(tmp_path: Path) -> Path:
         tmp_path, version=c.Tests.RELEASE_VERSION_PRERELEASE
     )
     local_origin = tmp_path / "remote"
-    u.Tests.configure_local_origin(workspace, local_origin)
+    bare_origin = u.Tests.configure_local_origin(workspace, local_origin)
     provider = u.Tests.provider()
     tm.ok(
         cli.run_checked(
@@ -67,14 +65,14 @@ def _release_lane_workspace(tmp_path: Path) -> Path:
             [
                 c.Infra.GIT,
                 "remote",
-                # Why no ``--add``: with multiple push URLs Git pushes to every
-                # one of them, and the lane's fetch URL already points at the
-                # provider over the network. The lane push must reach the local
-                # bare origin only, so this replaces the push URL list.
                 "set-url",
+                "--add",
                 "--push",
                 "origin",
-                (local_origin / "origin.git").as_posix(),
+                # Why: the push URL must name the bare repository itself; the
+                # parent directory is not a git repository (git push exit 128).
+                # The bare path is the canonical return of configure_local_origin.
+                bare_origin.as_posix(),
             ],
             cwd=workspace,
         )
@@ -433,10 +431,6 @@ class TestsFlextInfraReleaseProtocol:
                 tm.that(recorded, has="--title chore(release): v0.1.0")
 
         @staticmethod
-        # Why ``slow``: the rerun revalidates the whole lazy-init pipeline
-        # (two full conform stages), which exceeds the global 10s item budget;
-        # the config SSOT grants explicitly slow cases the 60s arm (flext-38p39).
-        @pytest.mark.slow
         def test_rerun_continues_the_lane_without_a_second_commit(
             tmp_path: Path,
         ) -> None:

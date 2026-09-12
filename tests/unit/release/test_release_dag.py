@@ -4,14 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import zipfile
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_tests import tm
 
 from tests import c, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class TestsFlextInfraReleaseDag:
@@ -41,40 +38,50 @@ class TestsFlextInfraReleaseDag:
         def test_complete_hashed_constraints_build_and_are_attested(
             tmp_path: Path,
         ) -> None:
-            """Build with the SSOT-rendered toolchain and attest its digest."""
+            """Build only with the complete hashed toolchain and attest its digest."""
             project_name = "flext-a"
             workspace = u.Tests.release_internal_workspace(tmp_path, project_name)
-            constraints_path = (
-                u.Tests.release_snapshot_policy_dir(
-                    workspace, c.Tests.RELEASE_VERSION_BASE
-                )
-                / "build-constraints.txt"
-            )
-            rendered = u.Tests.release_rendered_build_constraints()
-            expected_digest = hashlib.sha256(rendered.encode("utf-8")).hexdigest()
-            gitleaks_path = workspace / c.Infra.RELEASE_GITLEAKS_CONFIG_PATH
-            expected_gitleaks_digest = hashlib.sha256(
-                gitleaks_path.read_bytes()
-            ).hexdigest()
 
             result = u.Tests.run_release_build(workspace, project_name)
 
             report = u.Tests.release_build_report(workspace)
+            expected_digest = hashlib.sha256(
+                u.Tests.release_build_constraints_text().encode("utf-8")
+            ).hexdigest()
+            gitleaks_path = workspace / c.Infra.RELEASE_GITLEAKS_CONFIG_PATH
+            expected_gitleaks_digest = hashlib.sha256(
+                gitleaks_path.read_bytes()
+            ).hexdigest()
             tm.that(result, eq=0)
-            tm.that(constraints_path.read_text(encoding="utf-8"), eq=rendered)
             tm.that(report.build_constraints_sha256, eq=expected_digest)
             tm.that(report.gitleaks_policy_sha256, eq=expected_gitleaks_digest)
             tm.that(report.records[0].exit_code, eq=0)
 
         @staticmethod
-        def test_release_never_carries_the_constraints_file(tmp_path: Path) -> None:
-            """No repository checkout ever carries the constraints file."""
-            workspace = u.Tests.release_internal_workspace(tmp_path, "flext-a")
-            u.Tests.run_release_build(workspace, "flext-a")
+        def test_policy_snapshot_carries_the_rendered_constraints(
+            tmp_path: Path,
+        ) -> None:
+            """The policy snapshot bytes equal the config-rendered policy.
 
+            The snapshot is rendered from ``config.Infra.release.build_constraints``
+            (flext-gufl8) — repositories carry no constraints file the protocol
+            could read, so the attested digest can only come from the SSOT
+            render.
+            """
+            project_name = "flext-a"
+            workspace = u.Tests.release_internal_workspace(tmp_path, project_name)
+
+            result = u.Tests.run_release_build(workspace, project_name, dry_run=True)
+
+            policy_bytes = (
+                u.Tests.release_report_dir(workspace, c.Tests.RELEASE_VERSION_BASE)
+                / "policy"
+                / "build-constraints.txt"
+            ).read_bytes()
+            tm.that(result, eq=0)
             tm.that(
-                (workspace / c.Infra.RELEASE_BUILD_CONSTRAINTS_BANNED_PATH).exists(),
-                eq=False,
+                policy_bytes.decode("utf-8"),
+                eq=u.Tests.release_build_constraints_text(),
             )
 
     class TestsArchiveBoundary:

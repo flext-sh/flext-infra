@@ -106,8 +106,21 @@ class FlextInfraUtilitiesCodegenFilePlan:
         desired_content: bytes | None,
         desired_mode: int | None,
     ) -> bool:
-        """Whether desired content or mode differs from an observed leaf state."""
-        return before.content != desired_content or before.mode != desired_mode
+        """Whether desired content or mode differs from an observed leaf state.
+
+        Observed states are read binary (``bytes``) while some plan builders
+        hand over rendered text (``str``); representations of the same content
+        must not report drift, so both sides are reconciled to text before the
+        comparison while real content differences still fail loud.
+        """
+        before_content: str | bytes = before.content or b""
+        desired: str | bytes = desired_content if desired_content is not None else b""
+        if isinstance(before_content, bytes) or isinstance(desired, str):
+            if isinstance(before_content, bytes):
+                before_content = before_content.decode("utf-8", errors="replace")
+            if isinstance(desired, bytes):
+                desired = desired.decode("utf-8", errors="replace")
+        return before_content != desired or before.mode != desired_mode
 
     @staticmethod
     def codegen_file_requires_effect(plan: m.Infra.CodegenFilePlan) -> bool:

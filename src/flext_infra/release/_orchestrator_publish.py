@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -124,7 +125,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
         are skipped, never overwritten, so a re-run after a partial failure
         resumes instead of failing on the first duplicate.
         """
-        artifacts: dict[str, t.StrSequence] = {
+        artifacts: MutableMapping[str, t.StrSequence] = {
             record.project: tuple(artifact.path for artifact in record.artifacts)
             for record in report.records
         }

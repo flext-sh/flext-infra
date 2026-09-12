@@ -18,13 +18,13 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
 
     # An annotation states the capability required, and the read-only
     # abstractions are the ones that generalize: Mapping and Sequence are
-    # covariant in their element type, so a concrete dict[str, dict[str, str]]
+    # covariant in their element type, so a concrete MutableMapping[str, MutableMapping[str, str]]
     # satisfies MappingKV[str, MappingKV[str, str]]. MutableMapping and
     # MutableSequence are invariant, so rewriting to them rejected the very
     # concrete containers callers already pass — every nested case became a
     # bad-argument-type. Code that needs to mutate keeps its concrete type.
     _CONTAINER_REWRITES: ClassVar[t.StrPairTuple] = (
-        ("dict[", "t.MappingKV"),
+        ("MutableMapping[", "t.MappingKV"),
         ("Dict[", "t.MappingKV"),
         ("list[", "t.SequenceOf"),
         ("List[", "t.SequenceOf"),

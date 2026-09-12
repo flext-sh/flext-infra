@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 import sys
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -63,7 +64,7 @@ def run(command: p.Infra.Promoted.Command) -> int:
 
 def command_env(
     command: p.Infra.Promoted.Command, project_root: Path
-) -> dict[str, str]:
+) -> MutableMapping[str, str]:
     """Return the canonical environment for a promoted command.
 
     Raises:

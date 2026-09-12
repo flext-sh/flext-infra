@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import operator
+from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_infra import config
@@ -155,17 +156,17 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
     def _collect_modules(
         cls, rope_project: t.Infra.RopeProject, resolved_root: Path
     ) -> tuple[
-        dict[str, m.Infra.RopeModuleIndexEntry],
-        dict[Path, list[m.Infra.RopeModuleIndexEntry]],
-        dict[str, Path],
-        dict[str, str],
+        MutableMapping[str, m.Infra.RopeModuleIndexEntry],
+        MutableMapping[Path, list[m.Infra.RopeModuleIndexEntry]],
+        MutableMapping[str, Path],
+        MutableMapping[str, str],
         set[Path],
     ]:
         """Collect modules."""
-        modules_by_path: dict[str, m.Infra.RopeModuleIndexEntry] = {}
-        modules_by_dir: dict[Path, list[m.Infra.RopeModuleIndexEntry]] = {}
-        package_dir_by_name: dict[str, Path] = {}
-        project_package_by_root: dict[str, str] = {}
+        modules_by_path: MutableMapping[str, m.Infra.RopeModuleIndexEntry] = {}
+        modules_by_dir: MutableMapping[Path, list[m.Infra.RopeModuleIndexEntry]] = {}
+        package_dir_by_name: MutableMapping[str, Path] = {}
+        project_package_by_root: MutableMapping[str, str] = {}
         package_dirs: set[Path] = set()
         for file_path in cls._python_and_stub_file_paths(rope_project, resolved_root):
             resolved_file_path = file_path.resolve()
@@ -238,10 +239,10 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         ) = cls._collect_modules(rope_project, resolved_root)
         sorted_package_dirs = tuple(sorted(package_dirs))
         package_dir_set = frozenset(sorted_package_dirs)
-        direct_children_by_dir: dict[Path, list[Path]] = {
+        direct_children_by_dir: MutableMapping[Path, list[Path]] = {
             package_dir: [] for package_dir in sorted_package_dirs
         }
-        descendants_by_dir: dict[Path, list[Path]] = {
+        descendants_by_dir: MutableMapping[Path, list[Path]] = {
             package_dir: [] for package_dir in sorted_package_dirs
         }
         for package_dir in sorted_package_dirs:
@@ -253,7 +254,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                     continue
                 if ancestor_dir in package_dir_set:
                     descendants_by_dir[ancestor_dir].append(package_dir)
-        packages_by_dir: dict[str, m.Infra.RopePackageIndexEntry] = {}
+        packages_by_dir: MutableMapping[str, m.Infra.RopePackageIndexEntry] = {}
         for package_dir in sorted_package_dirs:
             dir_modules = tuple(
                 sorted(

@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
+from flext_infra import config
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from tests import c, m, t, u
 
@@ -371,6 +372,32 @@ class TestFlextInfraNamespaceValidator:
         tm.ok(result)
         tm.that(result.value.passed, eq=True)
         tm.that(result.value.violations, empty=True)
+
+    def test_logical_loc_ceiling_reads_config_ssot(self, tmp_path: Path) -> None:
+        """The per-module ceiling is the loc_cap SSOT, never a constant.
+
+        The fixture size derives from the configured value, so this test
+        tracks the SSOT instead of pinning either the old 200 or the current
+        1000 number.
+        """
+        cap = config.Infra.codegen.loc_cap.max_lines
+        assignments = "\n".join(
+            f"        attr_{index} = {index}" for index in range(cap + 1)
+        )
+        module_source = _read_fixture("rule0_valid.py").replace(
+            "        pass\n", f"        pass\n{assignments}\n"
+        )
+        project_root = _make_project_with_module(
+            tmp_path, module_source=module_source, module_name="models.py"
+        )
+
+        result = FlextInfraNamespaceValidator().validate_project(project_root)
+
+        tm.ok(result)
+        locator = f"exceed the {cap} limit"
+        tm.that(
+            any(locator in violation for violation in result.value.violations), eq=True
+        )
 
     @pytest.mark.parametrize(
         ("fixture_name", "module_name", "expected_violation_substr"),

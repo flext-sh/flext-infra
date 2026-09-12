@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util as _importlib_util
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -30,10 +31,12 @@ class FlextInfraUtilitiesRopeAnalysis:
 
     _parse_project: ClassVar[t.Infra.RopeProject | None] = None
     _SEMANTIC_STATE_CACHE: ClassVar[
-        dict[tuple[str, str, int], m.Infra.ModuleSemanticState]
+        MutableMapping[tuple[str, str, int], m.Infra.ModuleSemanticState]
     ] = {}
     _EXPORT_NAMES_CACHE: ClassVar[
-        dict[tuple[str, str, int, bool, bool, bool, bool, bool], t.StrSequence]
+        MutableMapping[
+            tuple[str, str, int, bool, bool, bool, bool, bool], t.StrSequence
+        ]
     ] = {}
 
     @staticmethod
@@ -226,10 +229,10 @@ class FlextInfraUtilitiesRopeAnalysis:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         current_package: str,
-    ) -> tuple[dict[str, str], dict[str, str]]:
+    ) -> tuple[MutableMapping[str, str], MutableMapping[str, str]]:
         """Return declared and semantic import maps for one module."""
-        semantic_imports: dict[str, str] = {}
-        declared_imports: dict[str, str] = {}
+        semantic_imports: MutableMapping[str, str] = {}
+        declared_imports: MutableMapping[str, str] = {}
         module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
             rope_project, resource
         )
@@ -248,9 +251,9 @@ class FlextInfraUtilitiesRopeAnalysis:
     def _merge_import_statement(
         *,
         current_package: str,
-        declared_imports: dict[str, str],
+        declared_imports: MutableMapping[str, str],
         import_stmt: t.Infra.RopeImportStatement,
-        semantic_imports: dict[str, str],
+        semantic_imports: MutableMapping[str, str],
     ) -> None:
         """Merge one Rope import statement into the import maps."""
         info = import_stmt.import_info
@@ -288,10 +291,10 @@ class FlextInfraUtilitiesRopeAnalysis:
         *,
         alias_name: str,
         alias_as: str | None,
-        declared_imports: dict[str, str],
+        declared_imports: MutableMapping[str, str],
         module_name: str,
         resolved_module: str,
-        semantic_imports: dict[str, str],
+        semantic_imports: MutableMapping[str, str],
     ) -> None:
         """Merge one import alias into declared and semantic maps."""
         if alias_name == "*":
@@ -1492,10 +1495,10 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def export_target_modules_source(
         source: str, package_name: str, exports: t.StrSequence
-    ) -> dict[str, str]:
+    ) -> MutableMapping[str, str]:
         """Map exports → defining module via rope's parsed-source import table."""
         export_names = {name for name in exports if name}
-        target_map: dict[str, str] = dict.fromkeys(export_names, package_name)
+        target_map: MutableMapping[str, str] = dict.fromkeys(export_names, package_name)
         pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
         module_ast = pymodule.get_ast()
         for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(module_ast):
@@ -1608,13 +1611,13 @@ class FlextInfraUtilitiesRopeAnalysis:
         return collected
 
     @staticmethod
-    def ast_parent_map(root: p.AttributeProbe) -> dict[int, p.AttributeProbe]:
+    def ast_parent_map(root: p.AttributeProbe) -> MutableMapping[int, p.AttributeProbe]:
         """Return a child-id -> parent map for the full AST reachable from ``root``.
 
         Uses only public ``_fields`` access (no ``import ast``); the shared SSOT
         for parent lookups across every rope detector.
         """
-        parent_map: dict[int, p.AttributeProbe] = {}
+        parent_map: MutableMapping[int, p.AttributeProbe] = {}
         stack: list[p.AttributeProbe] = [root]
         while stack:
             parent = stack.pop()
@@ -1632,7 +1635,7 @@ class FlextInfraUtilitiesRopeAnalysis:
 
     @classmethod
     def is_module_level_node(
-        cls, node: p.AttributeProbe, parent_map: dict[int, p.AttributeProbe]
+        cls, node: p.AttributeProbe, parent_map: MutableMapping[int, p.AttributeProbe]
     ) -> bool:
         """Return True when ``node`` is a direct child of the module body.
 
@@ -1932,10 +1935,10 @@ class FlextInfraUtilitiesRopeAnalysis:
         file_path: Path,
         package_name: str,
         exports: t.StrSequence,
-    ) -> dict[str, str]:
+    ) -> MutableMapping[str, str]:
         """Map exports → defining module via rope's import table."""
         export_names = {name for name in exports if name}
-        target_map: dict[str, str] = dict.fromkeys(export_names, package_name)
+        target_map: MutableMapping[str, str] = dict.fromkeys(export_names, package_name)
         opened = cls._open_pymodule(project_root, file_path)
         if opened is None:
             return target_map

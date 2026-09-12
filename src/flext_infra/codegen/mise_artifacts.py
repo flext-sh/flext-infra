@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
@@ -52,7 +52,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         raw_tools = payload.get("tools")
         if not isinstance(raw_tools, Mapping):
             return r[t.StrMapping].fail(".mise.toml must declare [tools]")
-        specifiers: dict[str, str] = {}
+        specifiers: MutableMapping[str, str] = {}
         for raw_selector, raw_tool in raw_tools.items():
             if not raw_selector.strip():
                 return r[t.StrMapping].fail(".mise.toml contains an invalid tool name")

@@ -100,8 +100,8 @@ class FlextInfraPyprojectModernizerRunMixin:
                 f"{', '.join(sorted(outside_declared_repository_names))}"
             )
             return 2
-        basename_aliases: dict[str, list[Path]] = {}
-        declared_name_aliases: dict[str, list[Path]] = {}
+        basename_aliases: MutableMapping[str, list[Path]] = {}
+        declared_name_aliases: MutableMapping[str, list[Path]] = {}
         for configured_path in configured_declared_repository_paths.values():
             basename_aliases.setdefault(configured_path.name, []).append(
                 configured_path

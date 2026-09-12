@@ -11,6 +11,7 @@ from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import m, t
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
+from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
 
 
 class TestsFlextInfraUtilitiesDocsFixtureMixin:
@@ -85,6 +86,26 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
             TestsFlextInfraUtilitiesProjectFixtureMixin.declare_workspace_projects(
                 workspace, project_names
             )
+        # Why: the doc generator and audits resolve a Git identity from the
+        # workspace; a bare temp directory is not an auditable/generated
+        # project. initialize_git_repo is the single owner of fixture Git
+        # identity and is idempotent. A workspace that declares members in
+        # .gitmodules must realize each member as a governed repository whose
+        # origin matches the declared URL ("owner must resolve exactly once").
+        TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(
+            workspace,
+            origin_url=TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
+                "workspace"
+            ).url,
+        )
+        if project_names:
+            for name in project_names:
+                TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(
+                    workspace / name,
+                    origin_url=TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
+                        name
+                    ).url,
+                )
 
         return workspace
 

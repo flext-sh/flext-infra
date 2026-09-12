@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import tarfile
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
 
@@ -297,7 +297,7 @@ class FlextInfraUtilitiesRelease:
         wave may upload in parallel while the sequence between waves is strict.
         """
         selected = {name for name, _ in targets}
-        edges: dict[str, t.StrSequence] = {}
+        edges: MutableMapping[str, t.StrSequence] = {}
         for name, path in targets:
             declared = cls._release_runtime_dependencies(path)
             if declared.failure:

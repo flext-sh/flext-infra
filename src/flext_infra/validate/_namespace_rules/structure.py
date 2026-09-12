@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
+from flext_infra import c, config, u
 
 from .base import FlextInfraNamespaceRulesBase
 
@@ -160,10 +160,13 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             for node in cls.walk(tree)
             if cls.kind(node) in c.Infra.NAMESPACE_LOGICAL_STATEMENT_KINDS
         )
-        if logical > c.Infra.NAMESPACE_MAX_LOGICAL_LOC:
+        # Why (operator 2026-09-07, codegen.yaml loc_cap): the per-module
+        # ceiling is config-owned SSOT — the superseded hardcoded 200 constant
+        # is retired, so this rule and the loc-cap gate share one source.
+        cap = config.Infra.codegen.loc_cap.max_lines
+        if logical > cap:
             messages.append(
-                f"{filepath}:1 — {logical} logical statements exceed the "
-                f"{c.Infra.NAMESPACE_MAX_LOGICAL_LOC} limit"
+                f"{filepath}:1 — {logical} logical statements exceed the {cap} limit"
             )
         messages.extend(cls._facade_shape(tree, filepath))
         return cls.violations("NS-STRUCT", messages)

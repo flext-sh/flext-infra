@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c
@@ -23,7 +24,7 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
 
         def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext: ...
 
-        _source_plan_cache: dict[str, m.Infra.LazyInitPlan]
+        _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan]
 
         def _add(
             self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair

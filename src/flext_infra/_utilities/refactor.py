@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_cli import r, u
@@ -100,9 +101,9 @@ class FlextInfraUtilitiesRefactor:
                 f"findings={report.findings} entries={len(report.entries)} "
                 f"classified={classified}"
             )
-        repository_totals: dict[str, int] = {}
-        rule_totals: dict[str, int] = {}
-        class_totals: dict[c.Infra.ModScanFindingClass, int] = dict.fromkeys(
+        repository_totals: MutableMapping[str, int] = {}
+        rule_totals: MutableMapping[str, int] = {}
+        class_totals: MutableMapping[c.Infra.ModScanFindingClass, int] = dict.fromkeys(
             c.Infra.ModScanFindingClass, 0
         )
         for finding in report.entries:

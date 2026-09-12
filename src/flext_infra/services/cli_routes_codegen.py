@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import ClassVar
 
 from flext_infra import c, m
@@ -32,7 +33,9 @@ from .cli_route_base import CliRouteBase
 class CodegenRoutes(CliRouteBase):
     """Own check, codegen, and dependency command routes."""
 
-    codegen_routes: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
+    codegen_routes: ClassVar[
+        MutableMapping[str, tuple[m.Cli.ResultCommandRoute, ...]]
+    ] = {
         c.Infra.CLI_GROUP_CHECK: (
             m.Cli.ResultCommandRoute(
                 name=c.Infra.VERB_RUN,

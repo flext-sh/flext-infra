@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import operator
 from collections import defaultdict
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c
@@ -63,7 +64,7 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
         import_map: t.LazyAliasMap,
     ) -> t.MappingKV[str, t.MutableSequenceOf[t.StrPair]]:
         """Group import map entries by module."""
-        groups: dict[str, list[t.StrPair]] = defaultdict(list)
+        groups: MutableMapping[str, list[t.StrPair]] = defaultdict(list)
         for export_name in sorted(import_map):
             mod, attr = import_map[export_name]
             groups[mod].append((export_name, attr))

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -49,7 +50,9 @@ class FlextInfraCyclicImportDetector:
         file_map: t.MutableStrMapping = {
             module_name: file_path for module_name, file_path, _ in module_resources
         }
-        graph: dict[str, t.Infra.StrSet] = {module: set() for module in file_map}
+        graph: MutableMapping[str, t.Infra.StrSet] = {
+            module: set() for module in file_map
+        }
         for module_name, file_path, resource in module_resources:
             resolved_file = Path(file_path).resolve()
             semantic_targets = (

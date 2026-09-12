@@ -997,7 +997,10 @@ Infra:
       - path: .vscode/settings.json
         owner: vscode
         policy: merge
-    # Release build policy (flext-to3n7): fully generated fleet-wide bytes.
+    # Release build policies (flext-to3n7): fully generated fleet-wide bytes.
+    # config/build-constraints.txt is NO LONGER projected into repositories
+    # (flext-gufl8): the release policy phase renders the pins at build time
+    # from config.Infra.release.build_constraints; no repository copy exists.
       - path: config/gitleaks-release.toml
         owner: codegen
         policy: full
@@ -1010,7 +1013,6 @@ Infra:
         conflict_sections:
           - build-system
           - dependency-groups
-          - tool.flext
           - tool.uv
           - tool.ruff
           - tool.mypy
@@ -1497,6 +1499,18 @@ Infra:
           patterns:
             - "/.aihub/"
             - "/.cursor/mcp.json"
+      # Residue extermination (flext-gufl8): none of these are root source.
+      # config/build-constraints.txt is rendered by the release policy phase
+      # from config.Infra.release.build_constraints — repositories never
+      # carry it. *.bak are safety-cycle backup residue (cleaned by design;
+      # ignore guards against interrupted runs). *aihub-prior* are ai-hub
+      # sync prior-state backups that must never land in git.
+        - name: "RESIDUE: never track backups or repo-local policy copies"
+          profiles: [workspace, standalone]
+          patterns:
+            - "*.bak"
+            - "config/build-constraints.txt"
+            - "*aihub-prior*"
         - name: "Aider AI data"
           patterns:
             - ".aider/"
@@ -1634,7 +1648,6 @@ Infra:
         - name: "Backup files inside allowed directories"
           patterns:
             - "**/*.bak"
-            - "**/*.bak.*"
             - "**/*.bkp"
             - "**/*.bkp?"
             - "**/*.backup"
@@ -1643,14 +1656,6 @@ Infra:
             - "**/*_backup_*"
             - "**/*.md.backup"
             - "**/archived/"
-        # Operator ruling 2026-09-11: editor-lane residue (.bak.*) and AI Hub
-        # capture artifacts are never source; they stay untracked everywhere
-        # even inside whitelisted subtrees.
-        - name: "Banned residue (never source, any profile)"
-          profiles: [workspace, standalone]
-          patterns:
-            - "*aihub-prior*"
-            - "config/build-constraints.txt"
         - name: "Autofix rejection artifacts (run_skill_autofix.sh rollback output)"
           patterns:
             - "**/*.rej-*.bak"
@@ -1827,13 +1832,10 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-      # Why (flext-to3n7): the release build phase snapshots the Gitleaks policy
-      # before the first artifact build. It is one fleet-wide policy owned here
-      # and projected into every repository; a repository never hand-writes its
-      # own (overwrite: true). The build constraints are NOT projected: the
-      # release phase renders them straight from the checked-out flext-infra
-      # config SSOT into the release policy directory, so no repository ever
-      # carries ``config/build-constraints.txt``.
+      # Why (flext-to3n7/flext-gufl8): the release build phase snapshots the
+      # Gitleaks policy before the first artifact build, and renders the
+      # hash-pinned build backend for `uv build --require-hashes` directly
+      # from config.Infra.release.build_constraints (no repository copy).
         - source: base/config/gitleaks-release.toml.j2
           destination: config/gitleaks-release.toml
           profiles: [workspace, standalone]

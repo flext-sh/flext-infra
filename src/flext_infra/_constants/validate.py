@@ -233,6 +233,9 @@ class FlextInfraConstantsSharedInfra:
         DIR_TESTS,
         DIR_EXAMPLES,
         DIR_SCRIPTS,
+        "evaluate",
+        "flext-infra-worktrees",
+        ".flext-runtime",
     })
     TIER_WHITELIST_SETTINGS_MODULE_LIBRARIES: Final[frozenset[str]] = frozenset({
         "pydantic_settings"
