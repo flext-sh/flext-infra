@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from collections.abc import Mapping
 from fnmatch import fnmatchcase
 from pathlib import Path
@@ -341,6 +340,15 @@ class FlextInfraConfigModels:
         scratch_namespace: Annotated[
             t.NonEmptyStr, m.Field(description="Scratch directory namespace")
         ]
+        scratch_home_relative: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Home-relative scratch root; scratch never lives inside a "
+                    "versioned tree, so it mirrors the checkout path below it"
+                )
+            ),
+        ]
         pycache_namespace: Annotated[
             t.NonEmptyStr, m.Field(description="Python bytecode cache namespace")
         ]
@@ -358,13 +366,6 @@ class FlextInfraConfigModels:
                     "Marker expressions limiting the environments uv resolves "
                     "for the generated lock. Empty resolves every environment."
                 )
-            ),
-        ] = ()
-        additional_python_tool_distributions: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                default=(),
-                description="Tool identities outside the scaffold requirement owners",
             ),
         ] = ()
         uv_constraint_dependencies: Annotated[
@@ -943,6 +944,9 @@ class FlextInfraConfigModels:
         ]
         scratch_namespace: Annotated[
             t.NonEmptyStr, m.Field(description="External scratch namespace")
+        ]
+        scratch_home_relative: Annotated[
+            t.NonEmptyStr, m.Field(description="Home-relative scratch root")
         ]
         pycache_namespace: Annotated[
             t.NonEmptyStr, m.Field(description="External bytecode cache namespace")
@@ -2166,7 +2170,10 @@ class FlextInfraConfigModels:
         ]
         scratch_namespace: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Scratch namespace below external project state"),
+            m.Field(description="Scratch namespace below the home scratch root"),
+        ]
+        scratch_home_relative: Annotated[
+            t.NonEmptyStr, m.Field(description="Home-relative scratch root")
         ]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
@@ -3389,35 +3396,6 @@ class FlextInfraConfigModels:
                 if artifact.source_scan_ignore
             )
 
-        @m.computed_field
-        @property
-        def python_tool_distributions(self) -> t.VariadicTuple[str]:
-            """Tool catalog for owned tools.
-
-            One catalog projects every owned tool: the scaffold requirement
-            owners (build and dev tables) plus the toolchain's declared
-            additional tool identities. Runtime dependency profiles never
-            enter it.
-            """
-            scaffold_owners: set[str] = set()
-            for requirement in (
-                *self.scaffold.build.requirements,
-                *self.scaffold.project.dev,
-            ):
-                if (name := self._distribution_name(requirement)) is not None:
-                    scaffold_owners.add(name)
-            return tuple(
-                sorted(
-                    scaffold_owners
-                    | set(self.toolchain.additional_python_tool_distributions)
-                )
-            )
-
-        @staticmethod
-        def _distribution_name(requirement: str) -> str | None:
-            """Resolve the distribution name of one PEP 508 requirement line."""
-            match = re.match(r"[A-Za-z0-9][A-Za-z0-9._-]*", requirement)
-            return match.group(0) if match else None
 
         # The canonical .gitignore body is ONE computed
         # projection — the artifact SSOT feeds the Python/build section and the

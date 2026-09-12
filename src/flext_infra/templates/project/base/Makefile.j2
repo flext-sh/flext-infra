@@ -110,7 +110,13 @@ endif
 override SETUP_MISE := $(TRACKED_MISE)
 override export FLEXT_PYTEST_TARGET_RAW := {{ make.testmon_cache.target_directory }}
 PROJECT_STATE_ROOT := $(abspath $(PROJECT_ROOT)/../{{ state_directory_name }}/$(notdir $(PROJECT_ROOT)))
-PROJECT_SCRATCH_ROOT := $(PROJECT_STATE_ROOT)/{{ scratch_namespace }}
+# Scratch never lives inside a versioned tree: the home scratch root mirrors
+# the absolute checkout path so a sandbox is never a tracked scope of any
+# enclosing repository (workspace or linked worktree).
+ifeq ($(strip $(HOME)),)
+$(error HOME is required to derive the scratch root)
+endif
+PROJECT_SCRATCH_ROOT := $(HOME)/{{ scratch_home_relative }}/{{ state_directory_name }}$(abspath $(PROJECT_ROOT))/{{ scratch_namespace }}
 TESTMON_DATAFILE := $(PROJECT_STATE_ROOT)/{{ make.testmon_cache.namespace }}/{{ make.testmon_cache.database_filename }}
 export TESTMON_DATAFILE
 # === SECTION: REPOSITORY_ROOT isolation (managed) ===
@@ -348,13 +354,6 @@ define _dispatch
 endef
 {% endif %}
 
-define _require_apply
-	@if [ "$(APPLY)" = "N" ]; then \
-		printf 'ERROR: this action requires\n' >&2; \
-		exit 2; \
-	fi
-endef
-
 define _run_for_all_projects
 	@set -eu; \
 	for project in $(SELECTED_PROJECTS); do \
@@ -369,7 +368,6 @@ endef
 
 {% for verb in make.verbs if verb.name != "setup" %}
 {{ verb.name }}:{% if verb.name != "help" %} _builtin_require_environment{% endif %}
-	$(call _require_apply)
 	$(call RUN_PUBLIC,{{ verb.name }})
 {% endfor %}
 
@@ -377,7 +375,6 @@ endef
 # project declares them (help, .PHONY) and must also be able to run them.
 {% for verb in extra_verbs %}
 {{ verb.name }}: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,{{ verb.name }})
 {% endfor %}
 
@@ -385,8 +382,7 @@ endef
 # project declares them (help, .PHONY) and must also be able to run them.
 {% for verb in extra_verbs %}
 {{ verb.name }}: _builtin_require_environment
-{% if verb.requires_apply %}	$(call _require_apply)
-{% endif %}	$(call RUN_PUBLIC,{{ verb.name }})
+	$(call RUN_PUBLIC,{{ verb.name }})
 {% endfor %}
 
 # `setup` keeps its own recipe (it must not require the environment it is about
@@ -413,7 +409,7 @@ _builtin-help:
 {% endfor %}{% for verb in extra_verbs %}
 	@printf '  %-16s %s\n' '{{ verb.name }}' '{{ verb.description | replace("\n", " ") | trim }}';
 {% endfor %}
-	@printf '%s\n' 'Verbs apply by default; pass =N where the verb supports a check mode.';
+	@printf '%s\n' 'Verbs mutate by default; read-only verification lives in the dedicated check verbs.';
 
 # A project owns the sources declared by its manifest. The generated setup
 # reconciler validates every initialized checkout before mutation, initializes
@@ -454,11 +450,9 @@ _builtin_deps_check: _builtin_require_environment
 	$(call _run_for_all_projects,--check)
 
 _builtin_deps_lock:
-	$(call _require_apply)
 	$(call _run_for_all_projects,)
 
 _builtin_deps_upgrade: _builtin_require_environment
-	$(call _require_apply)
 	# Branch-tracked git dependencies are moving sources by declaration
 	# (workspace.yaml owns the branch): --refresh re-reads their metadata so a
 	# stale cached requires-dist can never block or skew the resolution
@@ -499,12 +493,10 @@ _builtin-self-check: _builtin_require_environment
 	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects .
 
 _builtin-self-fmt: _builtin_require_environment
-	$(call _require_apply)
 	@$(UV_RUN) ruff format {{ make.ruff.format_apply | join(" ") }} $(RUFF_PATHS)
 	@$(UV_RUN) ruff check {{ make.ruff.lint_fix | join(" ") }} $(RUFF_PATHS)
 
 _builtin-self-fix: _builtin_require_environment
-	$(call _require_apply)
 	@$(UV_RUN) ruff check {{ make.ruff.lint_fix | join(" ") }} $(RUFF_PATHS)
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "{% for gate in make.check_gates_fixable %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}" --projects . --apply
 
@@ -530,19 +522,16 @@ _builtin_test_all: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb test $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
 _builtin_fmt_all: _builtin_require_environment
-	$(call _require_apply)
 	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
 _builtin_fmt_apply: _builtin_fmt_all
 
 _builtin_fix_all: _builtin_require_environment
-	$(call _require_apply)
 	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
 _builtin_fix_apply: _builtin_fix_all
 
 _builtin_fix_enforcement: _builtin_require_environment
-	$(call _require_apply)
 	@$(WORKSPACE_ORCHESTRATE) --verb fix-enforcement $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 {% else %}
 _builtin_build_artifacts:
@@ -580,7 +569,6 @@ _builtin_fmt_check: _builtin_require_environment
 	@$(UV_RUN) ruff format {{ make.ruff.format_check | join(" ") }} $(RUFF_PATHS)
 
 _builtin_fmt_all: _builtin_require_environment
-	$(call _require_apply)
 	@$(UV_RUN) ruff format {{ make.ruff.format_apply | join(" ") }} $(RUFF_PATHS)
 	@$(UV_RUN) ruff check {{ make.ruff.lint_fix | join(" ") }} $(RUFF_PATHS)
 
@@ -590,7 +578,6 @@ _builtin_fix_check: _builtin_require_environment
 	@$(UV_RUN) ruff check {{ make.ruff.lint_check | join(" ") }} $(RUFF_PATHS)
 
 _builtin_fix_all: _builtin_require_environment
-	$(call _require_apply)
 	@$(UV_RUN) ruff check {{ make.ruff.lint_fix | join(" ") }} $(RUFF_PATHS)
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "{% for gate in make.check_gates_fixable %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}" --projects . --apply
 
@@ -599,7 +586,6 @@ _builtin_fix_apply: _builtin_fix_all
 # Catalog-driven enforcement fixes: every ENFORCE rule whose fix action is
 # declared safe, applied through its registered adapter.
 _builtin_fix_enforcement: _builtin_require_environment
-	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) check fix-enforcement --repository-root "$(PROJECT_ROOT)" --safe-only --apply
 
 
@@ -621,12 +607,11 @@ _builtin_status_diagnostics: _builtin_require_environment
 _builtin_docs_all:
 	@set -eu; \
 	for action in $(DOCS_ACTIONS); do \
-		case "$$action" in {% for action in make.docs.mutable_actions %}{{ action }}{% if not loop.last %}|{% endif %}{% endfor %}) mode=$(if $(filter ,$()),--apply,--check) ;; *) mode= ;; esac; \
+		case "$$action" in {% for action in make.docs.mutable_actions %}{{ action }}{% if not loop.last %}|{% endif %}{% endfor %}) mode=--apply ;; *) mode= ;; esac; \
 		$(PROJECT_FLEXT_INFRA) docs "$$action" --repository-root "$(PROJECT_ROOT)" --output-dir "{{ make.docs.reports_dir }}" $$mode $(DOCS_PROJECT_ARGS); \
 	done
 
 _builtin_clean_generated:
-	$(call _require_apply)
 {% if make.clean.cache_dirs %}
 	@find "$(PROJECT_ROOT)" -type d \
 		\( {% for directory in make.clean.cache_dirs %}-name {{ directory }}{% if not loop.last %} -o {% endif %}{% endfor %} \) \
@@ -661,18 +646,15 @@ _builtin_release_plan: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) release run --phase plan $(if $(strip $(PR_TITLE)),--pr-title "$(PR_TITLE)")
 
 _builtin_release_version: _builtin_require_environment
-	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) release run --phase version --apply
 
 _builtin_release_tag: _builtin_require_environment
-	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) release run --phase tag --apply
 
 _builtin_release_build: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) release run --phase build --apply
 
 _builtin_release_publish: _builtin_require_environment
-	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) release run --phase publish --apply $(if $(filter Y,$(INDEX)),--index)
 
 # Generation has one transaction owner. Conform preserves the caller's scope and
@@ -683,12 +665,10 @@ _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 
 _builtin_gen_init:
-	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --apply
 	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --check
 
 _builtin_gen_all:
-	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
 _builtin_gen_apply: _builtin_gen_all

@@ -39,12 +39,12 @@ class TestsFlextInfraUtilitiesGitMixin:
         )
         if already_on_branch:
             return branch
-        local_exists = TestsFlextInfraUtilitiesGitMixin.git_capture(
-            repo_root, "show-ref", "--branches", branch
-        ).strip()
         # Why: the fixture may carry the branch locally already (the release
-        # workspace renames the checkout to the provider baseline); a plain
-        # switch is the safe route then, and --create only as a fallback.
+        # workspace renames the checkout to the provider baseline); an absent
+        # branch is a legitimate answer of the ref owner, never a failed probe.
+        local_exists = TestsFlextInfraUtilitiesGitMixin.git_ref_exists(
+            repo_root, f"refs/heads/{branch}"
+        )
         arguments = (
             ("switch", branch) if local_exists else ("switch", "--create", branch)
         )

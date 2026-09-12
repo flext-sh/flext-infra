@@ -30,34 +30,6 @@ from flext_infra.typings import t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
-def resolve_gate_budgets(
-    configured_budgets: Mapping[str, m.Infra.ProjectGateBudgetSpec],
-) -> p.Result[Mapping[str, Mapping[str, int]]]:
-    """Project config budget rows; registry divergence fails loud.
-
-    The budget gate requires one row per registry gate; the config SSOT is
-    the single budget owner and a missing or unknown gate id is a declared
-    generation error, never a silent skip.
-    """
-    allowed_gates = c.Infra.ALLOWED_GATES
-    missing_budget_rows = sorted(allowed_gates - configured_budgets.keys())
-    unknown_budget_rows = sorted(configured_budgets.keys() - allowed_gates)
-    if missing_budget_rows or unknown_budget_rows:
-        return r[Mapping[str, Mapping[str, int]]].fail(
-            "budget configuration diverges from the gate registry: "
-            f"missing rows={missing_budget_rows}; "
-            f"unknown rows={unknown_budget_rows}"
-        )
-    return r[Mapping[str, Mapping[str, int]]].ok({
-        gate_id: {
-            "time-seconds": configured_budgets[gate_id].time_seconds,
-            "memory-mb": configured_budgets[gate_id].memory_mb,
-            "tokens": configured_budgets[gate_id].tokens,
-        }
-        for gate_id in sorted(configured_budgets)
-    })
-
-
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
 
@@ -864,8 +836,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if residual:
             paths = ", ".join(str(file.path) for file in residual)
+            drift = u.Infra.codegen_file_drift_report(residual)
             return r[bool].fail(
-                f"codegen publication did not reach a fixed point: {paths}"
+                f"codegen publication did not reach a fixed point: {paths}\n{drift}"
             )
         u.Cli.info("stage=verify-lazy-init-receipt")
         lazy_fixed_point = transaction.validate_phase_analysis_locked(lazy_analysis)
@@ -2251,6 +2224,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.EnvrcRenderSpec(
                     state_directory_name=codegen.toolchain.state_directory_name,
                     scratch_namespace=codegen.toolchain.scratch_namespace,
+                    scratch_home_relative=codegen.toolchain.scratch_home_relative,
                     pycache_namespace=codegen.toolchain.pycache_namespace,
                     environment_path_prepends=(
                         codegen.toolchain.environment_path_prepends
@@ -2398,6 +2372,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     dist=dist,
                     state_directory_name=codegen.toolchain.state_directory_name,
                     scratch_namespace=codegen.toolchain.scratch_namespace,
+                    scratch_home_relative=codegen.toolchain.scratch_home_relative,
                     infra_cli=config.Infra.name,
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -37,15 +36,9 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         """Execute dependency detection and generate workspace report (orchestrator)."""
         detector = self._detector
         root = params.repository_root
-        venv_relative = Path(c.Infra.VENV_BIN_REL)
-        venv_bin = (
-            Path(
-                os.environ.get(
-                    "UV_PROJECT_ENVIRONMENT", str(root / venv_relative.parent)
-                )
-            )
-            / venv_relative.name
-        )
+        # The environment under inspection is the repository's own; an ambient
+        # UV_PROJECT_ENVIRONMENT would silently redirect detection elsewhere.
+        venv_bin = root / Path(c.Infra.VENV_BIN_REL)
         env_result = self._validate_environment(params, root, venv_bin)
         if env_result.failure:
             return r[bool].from_failure(env_result)

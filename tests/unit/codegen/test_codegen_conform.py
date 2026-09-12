@@ -1543,7 +1543,6 @@ class TestScriptDispatchMakefile:
                 "deps modernize",
             ],
         )
-        tm.that("_require_apply" in gen_all_body, eq=True)
         tm.that(gen_all_body, lacks="MISE_GITHUB_CREDENTIAL_COMMAND")
         tm.that(
             gen_all_body,

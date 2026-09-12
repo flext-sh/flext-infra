@@ -38,9 +38,22 @@ class FlextInfraRopeImportBoundaryBase(s[bool]):
     _SCAN_KIND: ClassVar[str] = ""
 
     def build_report(self, repository_root: Path) -> p.Result[m.Infra.ValidationReport]:
-        """Scan ``repository_root`` and return a ``ValidationReport``."""
+        """Scan ``repository_root`` and return a ``ValidationReport``.
+
+        Files under a member repository declared by this root's ``.gitmodules``
+        are out of scope: each member is an independent project with its own
+        boundary run, so scanning it from the parent produces cross-boundary
+        false positives. Membership comes from the declared topology, never from
+        ``.git`` ancestry probes, which a linked worktree (``.git`` file) would
+        misclassify for the whole checkout.
+        """
+        declared = u.Infra.git_declared_submodule_paths(repository_root)
+        if declared.failure:
+            return r[m.Infra.ValidationReport].from_failure(declared)
+        root = repository_root.resolve()
+        members = tuple(root / path for path in declared.value)
         try:
-            violations = self._collect_violations(repository_root)
+            violations = self._collect_violations(repository_root, members)
         except OSError as exc:
             return r[m.Infra.ValidationReport].fail(
                 f"{self._SCAN_KIND} scan failed: {exc}", exception=exc
@@ -57,13 +70,19 @@ class FlextInfraRopeImportBoundaryBase(s[bool]):
             )
         )
 
-    def _collect_violations(self, repository_root: Path) -> t.StrSequence:
+    def _collect_violations(
+        self, repository_root: Path, members: t.SequenceOf[Path]
+    ) -> t.StrSequence:
         """Traverse the rope project and accumulate boundary violations."""
         violations: t.MutableSequenceOf[str] = []
         with u.Infra.open_project(repository_root) as project:
             for resource in u.Infra.python_resources(project):
                 file_path = u.Infra.resource_file_path(project, resource)
-                if file_path is None or not self._is_in_scope(file_path):
+                if (
+                    file_path is None
+                    or any(file_path.is_relative_to(member) for member in members)
+                    or not self._is_in_scope(file_path)
+                ):
                     continue
                 module_imports = u.Infra.get_module_imports(project, resource)
                 violations.extend(

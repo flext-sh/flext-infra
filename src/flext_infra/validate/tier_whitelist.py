@@ -19,7 +19,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c
@@ -38,6 +37,7 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
     Banned-lib set + per-library ownership are both derived from
     ``c.ENFORCEMENT_LIBRARY_OWNERS`` (flext-core SSOT): each banned library's
     owning project tree is the only place that library may be imported.
+    Declared member repositories are excluded by the shared boundary base.
     """
 
     _BANNED: ClassVar[frozenset[str]] = frozenset(c.ENFORCEMENT_LIBRARY_OWNERS)
@@ -46,56 +46,6 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
     )
     _VIOLATION_KIND: ClassVar[str] = "abstraction-boundary"
     _SCAN_KIND: ClassVar[str] = "tier-whitelist"
-
-    _submodule_cache: dict[Path, frozenset[Path]] = {}
-
-    @classmethod
-    def _submodule_dirs(cls, repository_root: Path) -> frozenset[Path]:
-        """Return cached set of git submodule root directories."""
-        cached = cls._submodule_cache.get(repository_root)
-        if cached is not None:
-            return cached
-        import subprocess
-
-        try:
-            result = subprocess.run(
-                ["git", "submodule", "foreach", "--quiet", "echo $name"],
-                capture_output=True,
-                text=True,
-                cwd=repository_root,
-                timeout=30,
-            )
-            if result.returncode == 0:
-                names = [
-                    line.strip()
-                    for line in result.stdout.strip().split("\n")
-                    if line.strip()
-                ]
-                dirs = frozenset(
-                    repository_root / name for name in names
-                )
-                cls._submodule_cache[repository_root] = dirs
-                return dirs
-        except Exception:
-            pass
-        dirs = frozenset()
-        cls._submodule_cache[repository_root] = dirs
-        return dirs
-
-    @override
-    def _is_in_scope(self, file_path: Path) -> bool:
-        """Skip files inside git submodule directories.
-
-        Submodule directories are independent projects with their own
-        tier-whitelist runs; scanning them from the workspace level is
-        redundant and produces cross-boundary false positives.
-        """
-        repo = file_path
-        while repo != repo.parent:
-            if (repo / ".git").is_file():
-                return False
-            repo = repo.parent
-        return True
 
     @override
     def _is_allowlisted(self, _file_path: Path, _module_name: str) -> bool:

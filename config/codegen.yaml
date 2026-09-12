@@ -49,15 +49,16 @@ Infra:
       python_version: "3.13"
       state_directory_name: .flext-runtime
       scratch_namespace: scratch
+      # Scratch (TMPDIR, test basetemp, Mise bootstrap staging) never lives
+      # inside a versioned tree: in workspace mode the sibling state root sits
+      # under the superproject, so every sandbox became a tracked-scope of the
+      # enclosing repository. The scratch root is the platform home plus this
+      # path, mirroring the absolute checkout path below it (storage law).
+      scratch_home_relative: tmp
       pycache_namespace: pycache
       mise_namespace: mise-artifacts
       uv_link_mode: copy
       uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
-      # Complete tool catalog. The
-      # codegen model projects the closure of this list with the scaffold
-      # requirement owners derived from the build and dev tables; runtime
-      # dependency profiles never enter it.
-      additional_python_tool_distributions: [actionlint-py, bandit, deptry, flext-tests, hatchling, mypy, pip-audit, pre-commit, pyrefly, pyright, pytest, pytest-testmon, ruff, rumdl, vulture, yamlfix]
       # Global compatibility exceptions become [tool.uv] constraint-dependencies
       # in every project, including projects using the dependency transitively.
       # Keep reasons here; an empty list removes constraints from all projections.

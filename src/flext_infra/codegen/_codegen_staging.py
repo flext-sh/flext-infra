@@ -47,7 +47,17 @@ def stage_file_plans(
         current = files.read_state(file_plan.path, required=False)
         if current.failure:
             return result_type.from_failure(current)
-        if isinstance(file_plan.before, m.Cli.AtomicDirectoryChainPlan):
+        # A plan captured before its parent chain existed carries no parent
+        # identity (chain plan, or file state with ``parent_device`` None); the
+        # parent may legitimately appear before staging, and the journal owns
+        # its identity check. Staging only proves the file itself stayed absent.
+        planned_before_parent = isinstance(
+            file_plan.before, m.Cli.AtomicDirectoryChainPlan
+        ) or (
+            isinstance(file_plan.before, m.Cli.AtomicFileState)
+            and file_plan.before.parent_device is None
+        )
+        if planned_before_parent:
             before = current.value
             if before.content is not None:
                 return result_type.fail(

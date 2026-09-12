@@ -107,7 +107,13 @@ endif
 override SETUP_MISE := $(TRACKED_MISE)
 override export FLEXT_PYTEST_TARGET_RAW := tests
 PROJECT_STATE_ROOT := $(abspath $(PROJECT_ROOT)/../.flext-runtime/$(notdir $(PROJECT_ROOT)))
-PROJECT_SCRATCH_ROOT := $(PROJECT_STATE_ROOT)/scratch
+# Scratch never lives inside a versioned tree: the home scratch root mirrors
+# the absolute checkout path so a sandbox is never a tracked scope of any
+# enclosing repository (workspace or linked worktree).
+ifeq ($(strip $(HOME)),)
+$(error HOME is required to derive the scratch root)
+endif
+PROJECT_SCRATCH_ROOT := $(HOME)/tmp/.flext-runtime$(abspath $(PROJECT_ROOT))/scratch
 TESTMON_DATAFILE := $(PROJECT_STATE_ROOT)/testmon/.testmondata
 export TESTMON_DATAFILE
 # === SECTION: REPOSITORY_ROOT isolation (managed) ===
@@ -547,13 +553,6 @@ define _dispatch
 endef
 
 
-define _require_apply
-	@if [ "$(APPLY)" = "N" ]; then \
-		printf 'ERROR: this action requires\n' >&2; \
-		exit 2; \
-	fi
-endef
-
 define _run_for_all_projects
 	@set -eu; \
 	for project in $(SELECTED_PROJECTS); do \
@@ -568,96 +567,77 @@ endef
 
 
 help:
-	$(call _require_apply)
 	$(call RUN_PUBLIC,help)
 
 deps: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,deps)
 
 build: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,build)
 
 check: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,check)
 
 test: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,test)
 
 fmt: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,fmt)
 
 fix: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,fix)
 
 fix-enforcement: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,fix-enforcement)
 
 audit: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,audit)
 
 status: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,status)
 
 docs: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,docs)
 
 clean: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,clean)
 
 release-plan: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,release-plan)
 
 release-version: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,release-version)
 
 release-tag: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,release-tag)
 
 release-build: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,release-build)
 
 publication: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,publication)
 
 gen: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,gen)
 
 conform: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,conform)
 
 initialize: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,initialize)
 
 mod: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,mod)
 
 waza: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,waza)
 
 duplication: _builtin_require_environment
-	$(call _require_apply)
 	$(call RUN_PUBLIC,duplication)
+
+
+# Repository-owned extra verbs dispatch exactly like canonical ones: the
+# project declares them (help, .PHONY) and must also be able to run them.
 
 
 # Repository-owned extra verbs dispatch exactly like canonical ones: the
@@ -732,7 +712,7 @@ _builtin-help:
 
 	@printf '  %-16s %s\n' 'duplication' 'Run the canonical jscpd duplicate-code gate.';
 
-	@printf '%s\n' 'Verbs apply by default; pass =N where the verb supports a check mode.';
+	@printf '%s\n' 'Verbs mutate by default; read-only verification lives in the dedicated check verbs.';
 
 # A project owns the sources declared by its manifest. The generated setup
 # reconciler validates every initialized checkout before mutation, initializes
@@ -905,11 +885,9 @@ _builtin_deps_check: _builtin_require_environment
 	$(call _run_for_all_projects,--check)
 
 _builtin_deps_lock:
-	$(call _require_apply)
 	$(call _run_for_all_projects,)
 
 _builtin_deps_upgrade: _builtin_require_environment
-	$(call _require_apply)
 	# Branch-tracked git dependencies are moving sources by declaration
 	# (workspace.yaml owns the branch): --refresh re-reads their metadata so a
 	# stale cached requires-dist can never block or skew the resolution
@@ -954,12 +932,10 @@ _builtin-self-check: _builtin_require_environment
 	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects .
 
 _builtin-self-fmt: _builtin_require_environment
-	$(call _require_apply)
 	@$(UV_RUN) ruff format --preview $(RUFF_PATHS)
 	@$(UV_RUN) ruff check --preview --fix --unsafe-fixes $(RUFF_PATHS)
 
 _builtin-self-fix: _builtin_require_environment
-	$(call _require_apply)
 	@$(UV_RUN) ruff check --preview --fix --unsafe-fixes $(RUFF_PATHS)
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,canonical-alias,smells" --projects . --apply
 
@@ -1010,7 +986,6 @@ _builtin_fmt_check: _builtin_require_environment
 	@$(UV_RUN) ruff format --preview --check $(RUFF_PATHS)
 
 _builtin_fmt_all: _builtin_require_environment
-	$(call _require_apply)
 	@$(UV_RUN) ruff format --preview $(RUFF_PATHS)
 	@$(UV_RUN) ruff check --preview --fix --unsafe-fixes $(RUFF_PATHS)
 
@@ -1020,7 +995,6 @@ _builtin_fix_check: _builtin_require_environment
 	@$(UV_RUN) ruff check --preview --no-fix $(RUFF_PATHS)
 
 _builtin_fix_all: _builtin_require_environment
-	$(call _require_apply)
 	@$(UV_RUN) ruff check --preview --fix --unsafe-fixes $(RUFF_PATHS)
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,canonical-alias,smells" --projects . --apply
 
@@ -1029,7 +1003,6 @@ _builtin_fix_apply: _builtin_fix_all
 # Catalog-driven enforcement fixes: every ENFORCE rule whose fix action is
 # declared safe, applied through its registered adapter.
 _builtin_fix_enforcement: _builtin_require_environment
-	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) check fix-enforcement --repository-root "$(PROJECT_ROOT)" --safe-only --apply
 
 
@@ -1051,12 +1024,11 @@ _builtin_status_diagnostics: _builtin_require_environment
 _builtin_docs_all:
 	@set -eu; \
 	for action in $(DOCS_ACTIONS); do \
-		case "$$action" in fix) mode=$(if $(filter ,$()),--apply,--check) ;; *) mode= ;; esac; \
+		case "$$action" in fix) mode=--apply ;; *) mode= ;; esac; \
 		$(PROJECT_FLEXT_INFRA) docs "$$action" --repository-root "$(PROJECT_ROOT)" --output-dir ".reports/docs" $$mode $(DOCS_PROJECT_ARGS); \
 	done
 
 _builtin_clean_generated:
-	$(call _require_apply)
 
 	@find "$(PROJECT_ROOT)" -type d \
 		\( -name __pycache__ -o -name .mypy_cache -o -name .pytest_cache -o -name .ruff_cache -o -name .pyrefly_cache -o -name .benchmarks -o -name .hypothesis \) \
@@ -1091,18 +1063,15 @@ _builtin_release_plan: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) release run --phase plan $(if $(strip $(PR_TITLE)),--pr-title "$(PR_TITLE)")
 
 _builtin_release_version: _builtin_require_environment
-	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) release run --phase version --apply
 
 _builtin_release_tag: _builtin_require_environment
-	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) release run --phase tag --apply
 
 _builtin_release_build: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) release run --phase build --apply
 
 _builtin_release_publish: _builtin_require_environment
-	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) release run --phase publish --apply $(if $(filter Y,$(INDEX)),--index)
 
 # Generation has one transaction owner. Conform preserves the caller's scope and
@@ -1113,12 +1082,10 @@ _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 
 _builtin_gen_init:
-	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --apply
 	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --check
 
 _builtin_gen_all:
-	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
 _builtin_gen_apply: _builtin_gen_all
