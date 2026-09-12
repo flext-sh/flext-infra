@@ -2375,16 +2375,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             )
         if destination == c.Infra.RELEASE_GITLEAKS_CONFIG_PATH:
-            # Why (flext-to3n7): the release build phase snapshots this policy
-            # from the repository. The build constraints are NOT projected: the
-            # release phase renders them straight from the checked-out
-            # flext-infra config SSOT (flext-boot), so no repository ever
-            # carries ``config/build-constraints.txt``.
-            return r[p.Model].ok(
-                m.Infra.ReleasePolicyRenderSpec(
-                    build_constraints=config.Infra.release.build_constraints
-                )
-            )
+            # Why (flext-to3n7/flext-gufl8): the Gitleaks policy is a
+            # variable-free fleet template snapshotted by the release build
+            # phase; build constraints are rendered at release time from
+            # config.Infra.release.build_constraints and never projected, so
+            # this destination carries the empty typed context only.
+            return r[p.Model].ok(m.Infra.StaticTextRenderSpec())
         if destination == c.Infra.MAKEFILE_FILENAME:
             profile = target.make_profile
             subprojects = (
