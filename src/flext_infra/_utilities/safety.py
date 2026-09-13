@@ -51,7 +51,7 @@ class FlextInfraUtilitiesSafety:
             if status_result.failure or not u.Cli.process_succeeded(
                 status_result.value.outcome
             ):
-                result = r[str].fail(status_result.error or "git status failed")
+                result = r[str].from_failure(status_result)
             elif not status_result.value.stdout.strip():
                 result = r[str].ok("")
             else:
