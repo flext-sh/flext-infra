@@ -76,7 +76,11 @@ class FlextInfraUtilitiesCompatibilityAliases:
             qualified_aliases = dict(local_aliases)
             target_bindings = cls._bound_names(tree)
             for node in ast.walk(tree):
-                if isinstance(node, ast.ImportFrom) and node.module in specs_by_module:
+                if (
+                    isinstance(node, ast.ImportFrom)
+                    and node.module is not None
+                    and node.module in specs_by_module
+                ):
                     module_rewrites = specs_by_module[node.module]
                     for imported in node.names:
                         # Distinct name: `target` is already bound as a plain
