@@ -76,9 +76,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             )
         preflight = self._preflight_projects(projects)
         if preflight.failure:
-            return r[t.SequenceOf[p.Cli.CommandOutput]].fail(
-                preflight.error or "workspace orchestration preflight failed"
-            )
+            return r[t.SequenceOf[p.Cli.CommandOutput]].from_failure(preflight)
         results: t.MutableSequenceOf[p.Cli.CommandOutput] = []
         total = len(projects)
         # flext-9v0d: emit a deterministic, machine-parseable orchestration report

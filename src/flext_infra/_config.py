@@ -32,6 +32,7 @@ class _FlextInfraConfig(FlextCliConfig):
         return cls._config_dir()
 
 
+_FlextInfraConfig.model_rebuild()
 config: _FlextInfraConfig = _FlextInfraConfig()
 """Pre-instantiated frozen config singleton — ``from flext_infra import config``."""
 

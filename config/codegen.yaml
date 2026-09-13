@@ -1438,6 +1438,7 @@ Infra:
             - ".claude/statsig/"
             - ".claude/projects/"
             - ".claude/shell-snapshots/"
+            - ".claude/worktrees/"
             - ".claude/settings.local.json.bak"
       # Provider surfaces are REAL files, so the ArgoCD symlink hazard that
       # once justified blocking `.agents/` in non-root checkouts no longer

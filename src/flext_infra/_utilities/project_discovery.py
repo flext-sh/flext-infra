@@ -159,7 +159,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         ):
             msg = f"tool_name must be one relative directory name: {tool_name!r}"
             raise ValueError(msg)
-        state_root = (
+        state_root: Path = (
             resolved_workspace.parent
             / config.Infra.codegen.toolchain.state_directory_name
             / resolved_workspace.name

@@ -66,7 +66,7 @@ class FlextInfraWorktreeLifecycle:
             m.Infra.GitRepoRequest(repo_root=lane)
         )
         if current_branch.failure:
-            return r[str].fail(current_branch.error or f"failed to inspect lane {lane}")
+            return r[str].from_failure(current_branch)
         if current_branch.value.text != branch:
             return r[str].fail(
                 f"worktree lane branch mismatch: expected {branch}, "
@@ -74,7 +74,7 @@ class FlextInfraWorktreeLifecycle:
             )
         status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=lane))
         if status.failure:
-            return r[str].fail(status.error or f"failed to inspect lane state: {lane}")
+            return r[str].from_failure(status)
         if status.value.dirty:
             return r[str].fail(
                 "worktree update requires a clean lane; commit the owned WIP "
@@ -84,27 +84,20 @@ class FlextInfraWorktreeLifecycle:
             m.Infra.GitCommitishRequest(repo_root=lane, commitish=base)
         )
         if resolved_base.failure:
-            return r[str].fail(
-                resolved_base.error or f"cannot resolve update base: {base}"
-            )
+            return r[str].from_failure(resolved_base)
         base_oid = resolved_base.value.oid
         contains_base = u.Infra.git_is_ancestor(
             m.Infra.GitCommitishRequest(repo_root=lane, commitish=base_oid)
         )
         if contains_base.failure:
-            return r[str].fail(
-                contains_base.error or "failed to inspect update ancestry"
-            )
+            return r[str].from_failure(contains_base)
         if contains_base.value.value:
             return r[str].ok(str(lane))
         updated = u.Infra.git_merge_no_edit(
             m.Infra.GitCommitishRequest(repo_root=lane, commitish=base_oid)
         )
         if updated.failure:
-            return r[str].fail(
-                updated.error
-                or f"worktree update cannot merge-forward {branch} to {base_oid}"
-            )
+            return r[str].from_failure(updated)
         return r[str].ok(str(lane))
 
 
