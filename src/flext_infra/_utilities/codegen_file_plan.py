@@ -168,13 +168,27 @@ class FlextInfraUtilitiesCodegenFilePlan:
                     limit,
                 )
             )
-            parts.append(
-                "\n".join((header, *diff))
-                if diff
-                else (
+            if diff:
+                parts.append("\n".join((header, *diff)))
+                continue
+            old_bytes = (
+                raw_before.encode("utf-8")
+                if isinstance(raw_before, str)
+                else (raw_before or b"")
+            )
+            new_bytes = plan.desired_content or b""
+            if old_bytes == new_bytes:
+                parts.append(
                     f"{header}\n(content equal: mode-only drift "
                     f"observed={committed_mode} desired={rendered_mode})"
                 )
+                continue
+            # Lines are equal but bytes are not: name the exact tail difference
+            # (line endings / trailing newline) instead of a false mode claim.
+            parts.append(
+                f"{header}\n(lines equal, bytes differ: committed {len(old_bytes)}B "
+                f"tail={old_bytes[-24:]!r}; rendered {len(new_bytes)}B "
+                f"tail={new_bytes[-24:]!r})"
             )
         return "\n----\n".join(parts)
 
