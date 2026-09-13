@@ -10,7 +10,6 @@ from flext_tests import tm
 
 from flext_infra import c, config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import u
 from tests.unit.codegen._helpers import _conformed_root
 
 
