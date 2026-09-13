@@ -1102,7 +1102,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 config_spec,
                 contract,
                 profile=target.make_profile,
-                workspace=local_workspace,
             )
             if governed.failure:
                 return r[m.Infra.CodegenPlan].from_failure(governed)
@@ -1157,7 +1156,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         contract: m.Infra.CodegenConformSurfaceContract,
         *,
         profile: c.Infra.MakeProfile,
-        workspace: m.Infra.WorkspaceSpec | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Attach ownership metadata and represent every governed root artifact.
 

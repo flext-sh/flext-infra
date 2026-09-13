@@ -181,6 +181,34 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
                 return f"{base}.{node.attr}"
         return ""
 
+    def _handler_exception_names(self, node: ast.ExceptHandler) -> t.VariadicTuple[str]:
+        """Return the exception names one ``except`` clause declares.
+
+        Single owner for every handler rule. A bare ``except:`` declares none.
+        ``except (A, B):`` declares both -- the tuple form is exactly as narrow
+        as the single form. Resolving only ``ast.Name``/``ast.Attribute``
+        collapsed a tuple to the empty name, which is also what an unresolvable
+        expression yields, so narrow handlers were indistinguishable from bare
+        ones and were all reported broad.
+        """
+        if node.type is None:
+            return ()
+        declared = (
+            tuple(node.type.elts) if isinstance(node.type, ast.Tuple) else (node.type,)
+        )
+        return tuple(self._expression_name(element) for element in declared)
+
+    def _declares_broad_exception(self, node: ast.ExceptHandler) -> bool:
+        """Whether the clause declares no exception, or any broad one.
+
+        An unresolvable expression keeps its conservative broad reading: the
+        rule cannot prove it narrow, so it does not claim it is.
+        """
+        names = self._handler_exception_names(node)
+        return not names or any(
+            not name or name in self._BROAD_EXCEPTION_NAMES for name in names
+        )
+
     @classmethod
     def _is_unwrap_or_call(cls, node: ast.Call) -> bool:
         function = node.func

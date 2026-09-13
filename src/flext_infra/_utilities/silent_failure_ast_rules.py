@@ -92,12 +92,10 @@ class FlextInfraUtilitiesSilentFailureAstRules(FlextInfraUtilitiesSilentFailureA
     def _is_broad_unhandled_except(self, node: ast.ExceptHandler) -> bool:
         if self._body_has_raise_or_fail(node.body):
             return False
-        name = self._expression_name(node.type)
-        return not name or name in self._BROAD_EXCEPTION_NAMES
+        return self._declares_broad_exception(node)
 
     def _is_except_sentinel(self, node: ast.ExceptHandler) -> bool:
-        name = self._expression_name(node.type)
-        if node.type is not None and (not name or name in self._BROAD_EXCEPTION_NAMES):
+        if node.type is not None and self._declares_broad_exception(node):
             return False
         return (
             not self._body_has_raise_or_fail(node.body)

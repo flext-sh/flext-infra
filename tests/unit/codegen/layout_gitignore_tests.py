@@ -11,12 +11,12 @@ from flext_infra import c, config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
 from tests import t, u
-from tests.unit.workspace import WorktreeFixture
 from tests.unit.codegen.layout_fixture import (
     archive_root,
     build_loose_project,
     layout_engine,
 )
+from tests.unit.workspace import WorktreeFixture
 
 
 def test_apply_adds_gitignore_entries_exactly_once(tmp_path: Path) -> None:
