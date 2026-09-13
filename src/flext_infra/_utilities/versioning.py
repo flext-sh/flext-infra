@@ -250,7 +250,7 @@ class FlextInfraUtilitiesVersioning:
             content, version
         )
         if rendered.failure:
-            return r[bool].fail(f"{rendered.error} in {pyproject}")
+            return r[bool].from_failure(rendered)
         written = u.Cli.atomic_write_text_file(pyproject, rendered.value)
         if written.failure:
             return written

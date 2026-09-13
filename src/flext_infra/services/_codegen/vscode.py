@@ -170,7 +170,7 @@ class FlextInfraCodegenVscodeMixin:
             repository_root=repository_root,
         )
         if changed.failure:
-            return r[bool].fail(changed.error)
+            return r[bool].from_failure(changed)
         # The three exclude maps are complete projections of the artifact SSOT.
         # Replacing them removes retired artifacts instead of preserving stale
         # generated keys forever. Only explicitly declared non-artifact maps use
@@ -219,7 +219,7 @@ class FlextInfraCodegenVscodeMixin:
                 key, list_value, repository_root=repository_root
             )
             if entries.failure:
-                return r[bool].fail(entries.error)
+                return r[bool].from_failure(entries)
             canonical: list[t.JsonValue] = [
                 u.normalize_to_json_value(entry) for entry in entries.value
             ]

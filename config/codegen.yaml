@@ -15,27 +15,27 @@ Infra:
     # id fails the generation loud (registry divergence is a hard error).
     # Values are config-owned policy; tune per gate without touching code.
     budget:
-      lint: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      format: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      pyrefly: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      mypy: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      pyright: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      silent-failure: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      deferred-self-reference: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      security: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      markdown: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      loc-cap: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      boundary: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      runtime-census: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      namespace: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      tier-whitelist: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      smells: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      codemod: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      layout: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      canonical-alias: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      direnv: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      duplication: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
-      budget: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      lint: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      format: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      pyrefly: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      mypy: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      pyright: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      silent-failure: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      deferred-self-reference: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      security: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      markdown: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      loc-cap: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      boundary: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      runtime-census: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      namespace: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      tier-whitelist: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      smells: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      codemod: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      layout: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      canonical-alias: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      direnv: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      duplication: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      budget: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
 
     toolchain:
       # Single-source Python minor line. The environment resolves the newest
@@ -1173,7 +1173,7 @@ Infra:
             runtime: [flext-web, httpx>=0.28.1, msgpack>=1.2.2]
           - upstream: flext_core
             project: flext-auth
-            runtime: [flext-api, bcrypt>=5.0.0, PyJWT>=2.13.0]
+            runtime: [flext-api, bcrypt>=5.0.0, PyJWT>=2.14.0]
           - upstream: flext_core
             project: flext-cli
           # click floor mirrors the shared fleet lock (8.3.3); meltano upstream
@@ -1211,7 +1211,7 @@ Infra:
             runtime: [flext-ldif, ldap3>=2.9.1]
           - upstream: flext_cli
             project: flext-meltano
-            runtime: [flext-cli, meltano>=4.2.2, singer-sdk>=0.54.5, sqlalchemy>=2.0.52, psycopg2-binary>=2.9.10, redis>=5.2.0]
+            runtime: [flext-cli, meltano>=4.2.2, singer-sdk>=0.54.5, sqlalchemy>=2.0.52, psycopg2-binary>=2.9.13, redis>=8.1.0]
           - upstream: flext_cli
             project: flext-oracle-oic
             runtime: [flext-cli, flext-auth, flext-api]
@@ -1438,6 +1438,7 @@ Infra:
             - ".claude/statsig/"
             - ".claude/projects/"
             - ".claude/shell-snapshots/"
+            - ".claude/worktrees/"
             - ".claude/settings.local.json.bak"
       # Provider surfaces are REAL files, so the ArgoCD symlink hazard that
       # once justified blocking `.agents/` in non-root checkouts no longer

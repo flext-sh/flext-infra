@@ -28,7 +28,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             ).unwrap()
             pending_count = pending.findings
             if pending_count:
-                return r.fail(
+                return r[t.Cli.ResultValue].fail(
                     f"{pending_count} pending ast-grep finding(s), "
                     f"{pending.actionable} actionable and "
                     f"{pending.detection_only} detection-only and "
@@ -37,7 +37,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 )
             FlextInfraModGateEngine.validate(self.repository_root).unwrap()
             cli.display_text("mod: no pending ast-grep fixes")
-            return r.ok(True)
+            return r[t.Cli.ResultValue].ok(True)
         return self._execute_apply(self.repository_root, rules)
 
     @staticmethod
@@ -70,7 +70,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 stalled_rules = {
                     finding.rule_id for finding in current.entries if finding.actionable
                 }
-                return r.fail(
+                return r[t.Cli.ResultValue].fail(
                     f"mod iteration {iteration} made no progress since iteration {prev_iter}; "
                     f"stalled actionable rules: {', '.join(sorted(stalled_rules)) or 'none'}; "
                     f"{current.actionable} actionable, {current.detection_only} detection-only, "
@@ -98,7 +98,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         )
         FlextInfraModGateEngine.validate(root).unwrap()
         cli.display_text("mod: AST fixed point verified with zero findings")
-        return r.ok(True)
+        return r[t.Cli.ResultValue].ok(True)
 
     @staticmethod
     def _validate_fix_match(
