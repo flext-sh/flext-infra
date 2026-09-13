@@ -99,8 +99,270 @@ class FlextInfraModelsMiseToolchain:
                 raise ValueError(msg)
             return self
 
-    ToolchainSpec = MiseToolSpec
-    """Alias for the base mise toolchain specification."""
+    class ToolchainSpec(_ConfigContract):
+        """Language-runtime and native-tool versions shared by generated projects.
+
+        Language runtimes and native tools are declared as moving ``latest``
+        selectors or a major.minor line. No mise.lock: setup resolves the
+        newest published release. Python linters/type-checkers remain owned
+        by pyproject and uv.lock.
+        """
+
+        # Selector families rejected while their capabilities are suspended.
+        # Operator order 2026-09-07: nothing stays suspended -- gc and beads are
+        # operator-owned forks resolved as latest, so the default frees every
+        # selector family and the vocabulary stays declared on this owner.
+        suspended_mise_selector_patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Mise selector families rejected while suspended; empty "
+                    "frees every toolchain"
+                ),
+            ),
+        ] = ()
+        python_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[0-9]+\.[0-9]+$",
+                description="Python major.minor line, e.g. '3.13'",
+            ),
+        ]
+        state_directory_name: Annotated[
+            t.NonEmptyStr, m.Field(description="Runtime state directory beside the checkout"),
+        ]
+        scratch_namespace: Annotated[
+            t.NonEmptyStr, m.Field(description="Scratch directory namespace")
+        ]
+        scratch_home_relative: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Home-relative scratch root; scratch never lives inside a "
+                    "versioned tree, so it mirrors the checkout path below it"
+                )
+            ),
+        ]
+        pycache_namespace: Annotated[
+            t.NonEmptyStr, m.Field(description="Python bytecode cache namespace")
+        ]
+        mise_namespace: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Mise publication namespace under runtime state"),
+        ]
+        uv_link_mode: Annotated[
+            t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
+        ]
+        uv_environments: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Marker expressions limiting the environments uv resolves "
+                    "for the generated lock. Empty resolves every environment."
+                )
+            ),
+        ] = ()
+        uv_constraint_dependencies: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "PEP 508 constraints rendered into every generated "
+                    "[tool.uv] constraint-dependencies from this SSOT. The "
+                    "declared value replaces any retained value; empty "
+                    "removes the key so no orphan cap survives without an "
+                    "owner (operator directive 2026-09-08: artificial pins "
+                    "are exterminated, never retained)."
+                )
+            ),
+        ] = ()
+        kubectl_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Exact kubectl version, e.g. '1.32.0'")
+        ]
+        helm_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Exact Helm version, e.g. '3.19.4'")
+        ]
+        kind_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Exact kind version, e.g. '0.31.0'")
+        ]
+        direnv_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Compatible direnv major.minor line")
+        ]
+        environment_path_prepends: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Extra directories the generated shell activation prepends "
+                    "to PATH when they exist. Installation data expressed as "
+                    "shell-expandable paths; empty by default so the engine "
+                    "never names a specific tool installation."
+                ),
+            ),
+        ] = ()
+        uv_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Compatible uv major.minor line")
+        ]
+        mise_lockfile: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Rendered as [settings] lockfile in .mise.toml. Keep false. "
+                    "Override toolchain.mise_lockfile; never run mise lock; "
+                    "never edit the projection."
+                )
+            ),
+        ] = False
+        mise_locked: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Rendered as [settings] locked and [tool_config] locked. "
+                    "Keep false so new SHAs/releases install without a lockfile. "
+                    "Override toolchain.mise_locked."
+                )
+            ),
+        ] = False
+        qlty_selector: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Mise selector for qlty. Override toolchain.qlty_selector; "
+                    "never the .mise.toml key."
+                )
+            ),
+        ]
+        qlty_version: Annotated[
+            t.NonEmptyStr,
+            _tool_version_field("Moving qlty release selector, e.g. 'latest'"),
+        ]
+        node_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Compatible Node.js major.minor line")
+        ]
+        jscpd_selector: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Mise selector for jscpd. Override toolchain.jscpd_selector; "
+                    "never the .mise.toml key."
+                )
+            ),
+        ]
+        jscpd_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Moving jscpd release selector, e.g. 'latest'"),
+        ]
+        waza_selector: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Mise selector for Waza. Override toolchain.waza_selector; "
+                    "never the .mise.toml key."
+                )
+            ),
+        ]
+        waza_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Moving Waza release selector, e.g. 'latest'"),
+        ]
+        taplo_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
+        ]
+        ast_grep_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Exact ast-grep analyzer version")
+        ]
+        gitleaks_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Exact Gitleaks scanner version")
+        ]
+        scc_selector: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Mise selector for scc. Override toolchain.scc_selector; "
+                    "never the .mise.toml key."
+                )
+            ),
+        ]
+        scc_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("scc release selector (latest)")
+        ]
+        kubeconform_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Compatible kubeconform minor line")
+        ]
+        go_version: Annotated[
+            t.NonEmptyStr,
+            _tool_version_field(
+                "Go runtime selector; mise resolves the go backend through it"
+            ),
+        ]
+        beads: Annotated[
+            FlextInfraConfigModels.BeadsToolSpec,
+            m.Field(description="Official Beads CLI installed through mise"),
+        ]
+        gascity: Annotated[
+            FlextInfraConfigModels.ProtectedMiseToolSpec,
+            m.Field(description="Gas City CLI (gc) installed through mise"),
+        ]
+        protected_mise_tools: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description="Toolchain field names protected from alternate distributions",
+            ),
+        ]
+        uv_exclude_newer: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="uv [tool.uv] exclude-newer cutoff (exterminated fleet-wide, rendered then conform-stripped)"
+            ),
+        ]
+        dependency_cooldown_exclusions: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Package distributions frozen at their current floor by the "
+                    "fleet-wide dependency cooldown policy; absent frees all packages"
+                ),
+            ),
+        ] = ()
+        dependency_cooldown_overrides: Annotated[
+            t.MappingKV[str, str],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Per-package cooldown cutoff dates overriding the fleet default; "
+                    "maps distribution name to a PEP 440 version cutoff string"
+                ),
+            ),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_protected_mise_tools(self) -> Self:
+            """Resolve every protected owner to the generic identity contract."""
+            if len(set(self.protected_mise_tools)) != len(self.protected_mise_tools):
+                msg = "protected_mise_tools must be unique"
+                raise ValueError(msg)
+            for owner in self.protected_mise_tools:
+                if not isinstance(
+                    getattr(self, owner, None),
+                    FlextInfraConfigModels.ProtectedMiseToolSpec,
+                ):
+                    msg = f"protected_mise_tools references invalid owner: {owner}"
+                    raise TypeError(msg)
+            return self
+
+        @m.computed_field
+        @property
+        def python_required_version(self) -> str:
+            """PEP 440 requirement spanning the configured Python minor line."""
+            major, _, minor = self.python_version.partition(".")
+            next_minor = int(minor) + 1
+            return f">={self.python_version},<{major}.{next_minor}"
+
+        @m.computed_field
+        @property
+        def python_selector(self) -> str:
+            """Mise/pyenv-style selector for the configured Python minor line."""
+            return self.python_version
 
     class ProtectedMiseToolSpec(MiseToolSpec):
         """One fleet-owned mise distribution identity."""
