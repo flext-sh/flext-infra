@@ -8,14 +8,9 @@ from __future__ import annotations
 import time
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import p
-from flext_infra import c, m, t, u
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraWorkspaceOrchestratorExecutionMixin:
@@ -76,10 +71,14 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         allowed_verbs = c.Infra.ORCHESTRATED_VERBS
         if verb not in allowed_verbs:
             allowed = ", ".join(allowed_verbs)
-            return r.fail(f"unsupported orchestrate verb '{verb}' (allowed: {allowed})")
+            return r[t.SequenceOf[p.Cli.CommandOutput]].fail(
+                f"unsupported orchestrate verb '{verb}' (allowed: {allowed})"
+            )
         preflight = self._preflight_projects(projects)
         if preflight.failure:
-            return r.fail(preflight.error or "workspace orchestration preflight failed")
+            return r[t.SequenceOf[p.Cli.CommandOutput]].fail(
+                preflight.error or "workspace orchestration preflight failed"
+            )
         results: t.MutableSequenceOf[p.Cli.CommandOutput] = []
         total = len(projects)
         # flext-9v0d: emit a deterministic, machine-parseable orchestration report
@@ -104,7 +103,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
                     f"total={total} completed={idx} passed={idx - 1} failed=1 "
                     f"exit={cmd_output.outcome.raw_return_code}\n"
                 )
-                return r.fail(
+                return r[t.SequenceOf[p.Cli.CommandOutput]].fail(
                     f"orchestration stopped at first failure: {project} "
                     f"exit={cmd_output.outcome.raw_return_code}"
                     f"{self._exit_classification(cmd_output.outcome.raw_return_code)}"
@@ -113,7 +112,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             f"summary scope={c.Infra.RK_WORKSPACE} verb={verb} total={total} "
             f"completed={total} passed={total} failed=0 exit=0\n"
         )
-        return r.ok(results)
+        return r[t.SequenceOf[p.Cli.CommandOutput]].ok(results)
 
     def _run_project(
         self, project: str, verb: str, _index: int
