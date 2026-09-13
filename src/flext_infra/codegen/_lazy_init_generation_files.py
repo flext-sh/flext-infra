@@ -94,12 +94,12 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                     )
                     snapshots[path] = current.value
             elif expected_content != current_content:
-                u.Cli.warning(
-                    f"lazy-init snapshot drift detected (updating): {path}"
-                )
+                u.Cli.warning(f"lazy-init snapshot drift detected (updating): {path}")
                 snapshots[path] = current.value
             if current.value.mode != expected.mode:
-                return r[bool].fail(f"lazy-init source mode changed during planning: {path}")
+                return r[bool].fail(
+                    f"lazy-init source mode changed during planning: {path}"
+                )
         return r[bool].ok(True)
 
     @staticmethod
