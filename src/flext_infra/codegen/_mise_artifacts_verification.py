@@ -276,10 +276,8 @@ class FlextInfraMiseArtifactsVerification:
         fields (device, inode, link_count, parent_*) may vary during read-only
         operations due to filesystem access patterns and are not semantically
         significant for source-code stability. Content is normalized to handle
-        whitespace/line-ending differences. If normalized content differs, the
-        snapshot is updated to the current state to maintain pipeline idempotence
-        — the drift is logged but does not block the pipeline, as the planner
-        operates on the current state.
+        whitespace/line-ending differences. Drift is logged but does not block
+        the pipeline, as the planner operates on the current state.
         """
         for expected in states:
             observed = files.read_state(
@@ -295,22 +293,16 @@ class FlextInfraMiseArtifactsVerification:
                 observed_norm = observed_content.rstrip(b"\r\n") + b"\n"
                 if expected_norm != observed_norm:
                     u.Cli.warning(
-                        f"mise artifacts snapshot drift detected (updating): {expected.path}"
+                        f"mise artifacts snapshot drift detected: {expected.path}"
                     )
-                    # Update snapshot to current state for idempotence
-                    expected.content = observed.value.content
-                    expected.mode = observed.value.mode
             elif expected_content != observed_content:
                 u.Cli.warning(
-                    f"mise artifacts snapshot drift detected (updating): {expected.path}"
+                    f"mise artifacts snapshot drift detected: {expected.path}"
                 )
-                expected.content = observed.value.content
-                expected.mode = observed.value.mode
             if observed.value.mode != expected.mode:
                 u.Cli.warning(
-                    f"mise artifacts snapshot mode changed (updating): {expected.path}"
+                    f"mise artifacts snapshot mode changed: {expected.path}"
                 )
-                expected.mode = observed.value.mode
         return r[bool].ok(True)
 
     @classmethod
