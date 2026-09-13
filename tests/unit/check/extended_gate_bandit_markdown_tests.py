@@ -82,7 +82,11 @@ class TestBanditAndMarkdownGates:
             "raw_output",
         ),
         [
-            ("", None, None, False, 0, "no check targets were collected"),
+            # A project with no markdown has nothing to check, so the gate is
+            # not applicable and skips neutrally (4dc7027ed). A neutral skip
+            # grants acceptance; it is the non-accepting `_skip_result` that
+            # withholds it, and this gate deliberately stopped using that one.
+            ("", None, None, True, 0, "no markdown files to check"),
             (
                 "# Test\n",
                 None,
