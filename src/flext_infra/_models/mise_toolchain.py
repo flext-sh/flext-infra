@@ -10,19 +10,6 @@ from flext_cli import m, u
 from flext_infra import t
 
 
-def _tool_version_field(description: str) -> object:
-    """Shared ``Annotated[t.NonEmptyStr, ...]`` metadata for one tool version.
-
-    Every native-toolchain version field in ``ToolchainSpec`` and its
-    ``ProjectRenderContext`` render mirror previously repeated an identical
-    ``m.Field(description=...)`` shape, differing only in the description
-    text -- a structural clone SonarCloud's duplication detector flags as one
-    family regardless of the literal string. One owned factory collapses
-    every call site to this single declaration (SSOT, DRY).
-    """
-    return m.Field(description=description)
-
-
 class _ConfigContract(m.ContractModel):
     """Private declarative base for schema-loaded codegen records."""
 
