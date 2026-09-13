@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -143,8 +144,8 @@ class FlextInfraUtilitiesPrivateImports:
         class_bases = FlextInfraUtilitiesPrivateImportAncestry.class_bases(
             discovery_sources
         )
-        direct_specs: dict[Path, dict[str, tuple[str, str]]] = {}
-        specs: dict[Path, list[tuple[str, str, str, str, str]]] = {}
+        direct_specs: MutableMapping[Path, MutableMapping[str, tuple[str, str]]] = {}
+        specs: MutableMapping[Path, list[tuple[str, str, str, str, str]]] = {}
         for finding in findings:
             parsed = ast.parse(finding.text)
             statement = parsed.body[0] if len(parsed.body) == 1 else None
@@ -215,12 +216,12 @@ class FlextInfraUtilitiesPrivateImports:
             if source.startswith("# AUTO-GENERATED FILE"):
                 continue
             tree = ast.parse(source, filename=str(file_path))
-            relative_imports: dict[str, str] = {}
-            relative_symbols: dict[str, set[str]] = {}
-            removals: dict[str, set[str]] = {}
-            obsolete_imports: dict[str, set[str]] = {}
-            replacements: dict[str, str] = {}
-            public_imports: dict[str, str] = {}
+            relative_imports: MutableMapping[str, str] = {}
+            relative_symbols: MutableMapping[str, set[str]] = {}
+            removals: MutableMapping[str, set[str]] = {}
+            obsolete_imports: MutableMapping[str, set[str]] = {}
+            replacements: MutableMapping[str, str] = {}
+            public_imports: MutableMapping[str, str] = {}
             for private_module, symbol, qualified, package, reference in file_specs:
                 if reference.startswith("."):
                     previous_relative = relative_imports.get(private_module)
@@ -303,7 +304,7 @@ class FlextInfraUtilitiesPrivateImports:
                     runtime_public_imports=runtime_public_imports,
                 )
             )
-            direct_removals: dict[str, set[str]] = {}
+            direct_removals: MutableMapping[str, set[str]] = {}
             for qualified in direct_specs.get(file_path, {}):
                 module, _, name = qualified.rpartition(".")
                 direct_removals.setdefault(module, set()).add(name)

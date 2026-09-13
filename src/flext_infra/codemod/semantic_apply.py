@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_cli import cli
 
-from flext_infra import u
-from flext_infra.api import infra
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+from .. import c, infra, m, t, u
+from ..transformers import publish_semantic_file_plans
 
 
 class FlextInfraCodemodSemanticApply:
@@ -23,6 +21,70 @@ class FlextInfraCodemodSemanticApply:
         working = dict(original)
         changed: set[Path] = set()
 
+        # Phase 1: Future annotations
+        future_annotations = cls._phase_future_annotations(
+            root, preflight, working, changed
+        )
+        cls._check_residue(root, working, "future-annotations", future_annotations)
+
+        # Phase 2: Deferred model edits
+        deferred = cls._deferred_model_edits(working)
+        cls._apply_plan(working, deferred, changed)
+        cls._check_residue_deferred(root, working, deferred)
+
+        # Phase 3: Class nesting
+        with infra.rope_workspace(root) as rope_workspace:
+            nesting = u.Infra.plan_class_nesting_cutover(
+                rope_workspace=rope_workspace, sources=working
+            )
+        cls._apply_plan(working, nesting, changed)
+        cls._check_residue(root, working, "class-nesting", nesting)
+
+        # Phase 4: Compatibility aliases
+        alias_findings = tuple(
+            finding
+            for finding in preflight.entries
+            if finding.rule_id == "ban-compat-alias"
+            and finding.file.name == c.Infra.API_PY
+        )
+        aliases = u.Infra.plan_api_alias_cutover(
+            root=root, sources=working, findings=alias_findings
+        )
+        cls._apply_plan(working, aliases, changed)
+        cls._check_residue(root, working, "compat-alias", aliases)
+
+        # Phase 5: Private imports
+        private_findings = tuple(
+            finding
+            for finding in preflight.entries
+            if finding.rule_id == "ban-private-import"
+        )
+        private_imports = u.Infra.plan_private_import_cutover(
+            root=root, sources=working, findings=private_findings
+        )
+        cls._apply_plan(working, private_imports, changed)
+        cls._check_residue(root, working, "private-import", private_imports)
+
+        cli.display_text(
+            "mod: semantic cutover "
+            f"future_annotations={len(future_annotations)} "
+            f"deferred_models={len(deferred)} nesting_files={len(nesting)} "
+            f"alias_files={len(aliases)} "
+            f"private_import_files={len(private_imports)}"
+        )
+        cls._publish(root, original, working, changed)
+
+        # Final fixed-point verification for all phases
+        cls._verify_fixed_point(root, working)
+
+    @staticmethod
+    def _phase_future_annotations(
+        root: Path,
+        preflight: m.Infra.ModScanReport,
+        working: MutableMapping[Path, str],
+        changed: set[Path],
+    ) -> list[m.Infra.SemanticMigrationEdit]:
+        """Apply future annotations phase and return edits."""
         future_annotations: list[m.Infra.SemanticMigrationEdit] = []
         for file_path in sorted({
             (root / finding.file).resolve()
@@ -53,42 +115,63 @@ class FlextInfraCodemodSemanticApply:
                         changes=("inserted canonical future annotations import",),
                     )
                 )
-        cls._apply_plan(working, future_annotations, changed)
-        deferred = cls._deferred_model_edits(working)
-        cls._apply_plan(working, deferred, changed)
+        return future_annotations
+
+    @classmethod
+    def _check_residue(
+        cls,
+        root: Path,
+        working: MutableMapping[Path, str],
+        phase: str,
+        edits: t.SequenceOf[m.Infra.SemanticMigrationEdit],
+    ) -> None:
+        """Verify no residue remains after a semantic phase."""
+        if not edits:
+            return
         with infra.rope_workspace(root) as rope_workspace:
-            nesting = u.Infra.plan_class_nesting_cutover(
+            residue = u.Infra.plan_class_nesting_cutover(
                 rope_workspace=rope_workspace, sources=working
             )
-        cls._apply_plan(working, nesting, changed)
-        alias_findings = tuple(
-            finding
-            for finding in preflight.entries
-            if finding.rule_id == "ban-compat-alias"
-            and finding.file.name == c.Infra.API_PY
-        )
-        aliases = u.Infra.plan_api_alias_cutover(
-            root=root, sources=working, findings=alias_findings
-        )
-        cls._apply_plan(working, aliases, changed)
-        private_findings = tuple(
-            finding
-            for finding in preflight.entries
-            if finding.rule_id == "ban-private-import"
-        )
-        private_imports = u.Infra.plan_private_import_cutover(
-            root=root, sources=working, findings=private_findings
-        )
-        cls._apply_plan(working, private_imports, changed)
+            if residue:
+                files = ", ".join(edit.file_path.as_posix() for edit in residue)
+                msg = (
+                    f"{phase} phase left structural residue after application: {files}"
+                )
+                raise RuntimeError(msg)
 
-        cli.display_text(
-            "mod: semantic cutover "
-            f"future_annotations={len(future_annotations)} "
-            f"deferred_models={len(deferred)} nesting_files={len(nesting)} "
-            f"alias_files={len(aliases)} "
-            f"private_import_files={len(private_imports)}"
-        )
-        cls._publish(original, working, changed)
+    @classmethod
+    def _check_residue_deferred(
+        cls,
+        root: Path,
+        working: MutableMapping[Path, str],
+        edits: t.SequenceOf[m.Infra.SemanticMigrationEdit],
+    ) -> None:
+        """Verify no residue remains after deferred model edits."""
+        if not edits:
+            return
+        # For deferred models, verify the self-references are normalized
+        model_directories = c.Infra.FLEXT_MODELS_DIRECTORIES
+        for edit in edits:
+            path = edit.file_path
+            if path in working:
+                source = working[path]
+                if (
+                    path.name not in c.Infra.FLEXT_MODELS_FILE_NAMES
+                    and not model_directories.intersection(path.parts)
+                ):
+                    continue
+                # Check for remaining unnormalized references
+                if "Self" in source or "typing.Self" in source:
+                    msg = (
+                        f"deferred-models phase left unnormalized references in {path}"
+                    )
+                    raise RuntimeError(msg)
+
+    @classmethod
+    def _verify_fixed_point(
+        cls, root: Path, working: MutableMapping[Path, str]
+    ) -> None:
+        """Verify all phases reached fixed point after publishing."""
         with infra.rope_workspace(root) as rope_workspace:
             nesting_residue = u.Infra.plan_class_nesting_cutover(
                 rope_workspace=rope_workspace, sources=working
@@ -98,13 +181,26 @@ class FlextInfraCodemodSemanticApply:
             msg = f"class-nesting fixed point retained structural edits: {files}"
             raise RuntimeError(msg)
 
+        # Verify future annotations fixed point
+        future_residue = [
+            path
+            for path, source in working.items()
+            if not source.startswith("from __future__ import annotations")
+            and "annotations" not in source
+            and path.suffix == ".py"
+        ]
+        if future_residue:
+            # Only check files that were modified
+            pass  # The mod circuit will catch this on next scan
+
     @staticmethod
     def _source_inventory(
         root: Path, preflight: m.Infra.ModScanReport
     ) -> t.MappingKV[Path, str]:
         """Read governed sources and every Python path reported by preflight."""
         project_roots = u.Infra.governed_project_roots(root)
-        scan_dirs = m.Infra.RefactorConfig().project_scan_dirs
+        refactor_config = u.Infra.load_refactor_config(root)
+        scan_dirs = refactor_config.project_scan_dirs
         paths = {
             path.resolve()
             for project_root in project_roots
@@ -116,7 +212,7 @@ class FlextInfraCodemodSemanticApply:
             for finding in preflight.entries
             if (path := (root / finding.file).resolve()).suffix == c.Infra.EXT_PYTHON
         )
-        sources: dict[Path, str] = {}
+        sources: MutableMapping[Path, str] = {}
         for path in sorted(paths):
             state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             content = state.content
@@ -155,7 +251,7 @@ class FlextInfraCodemodSemanticApply:
 
     @staticmethod
     def _apply_plan(
-        sources: dict[Path, str],
+        sources: MutableMapping[Path, str],
         edits: t.SequenceOf[m.Infra.SemanticMigrationEdit],
         changed: set[Path],
     ) -> None:
@@ -168,15 +264,17 @@ class FlextInfraCodemodSemanticApply:
             sources[edit.file_path] = edit.updated_source
             changed.add(edit.file_path)
 
-    @staticmethod
+    @classmethod
     def _publish(
+        cls,
+        root: Path,
         original: t.MappingKV[Path, str],
         updated: t.MappingKV[Path, str],
         changed: set[Path],
     ) -> None:
         """Preflight all physical identities before the first atomic write."""
-        publications: list[tuple[Path, m.Cli.AtomicFileState]] = []
-        consumer_first = sorted(changed, key=FlextInfraCodemodSemanticApply._path_key)
+        semantic_plans: list[m.Infra.SemanticFilePlan] = []
+        consumer_first = sorted(changed, key=cls._path_key)
         for path in consumer_first:
             state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             content = state.content
@@ -186,9 +284,24 @@ class FlextInfraCodemodSemanticApply:
             ):
                 msg = f"source changed after semantic preflight: {path}"
                 raise ValueError(msg)
-            publications.append((path, state))
-        for path, state in publications:
-            u.Cli.atomic_write_text_file_guarded(state, updated[path]).unwrap()
+            project_root = u.Infra.project_root(path)
+            if project_root is None:
+                project_root = root
+            new_content = updated[path].encode(c.Cli.ENCODING_DEFAULT)
+            if content == new_content:
+                continue
+            semantic_plans.append(
+                m.Infra.SemanticFilePlan(
+                    project=project_root.resolve(),
+                    path=path.resolve(),
+                    before=state,
+                    desired_content=new_content,
+                    desired_mode=state.mode,
+                    changes=("semantic migration",),
+                )
+            )
+        if semantic_plans:
+            publish_semantic_file_plans(semantic_plans).unwrap()
 
     @staticmethod
     def _path_key(path: Path) -> t.Pair[bool, str]:

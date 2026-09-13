@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from configparser import Error as ConfigParserError
 from typing import TYPE_CHECKING
 
@@ -81,7 +82,7 @@ class FlextInfraUtilitiesGitSemanticSubmoduleMixin(
             return r[t.StrMapping].fail(
                 f"failed to read submodule declarations: {exc}", exception=exc
             )
-        sections: dict[str, str] = {}
+        sections: MutableMapping[str, str] = {}
         for declared, section in declarations:
             if not declared:
                 continue

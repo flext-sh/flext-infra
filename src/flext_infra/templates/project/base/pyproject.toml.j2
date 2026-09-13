@@ -412,3 +412,12 @@ exclude-newer-package = { {% for package in dependency_cooldown_exclusions if pa
 # surfaces, so projects declare their production scope here.
 scan_dirs = [{% for item in namespace_scan_dirs %}{{ item | tojson }}{{ ", " if not loop.last }}{% endfor %}]
 {% endif %}
+
+# [MANAGED] tool.flext.project.budget
+{% if gate_budgets %}
+[tool.flext.project.budget]
+# Per-gate execution budgets projected from the codegen SSOT (flext-cpzjo.3);
+# the budget gate validates every registry row against this table.
+{% for gate, fields in gate_budgets | dictsort %}"{{ gate }}" = { {% for field, value in fields | dictsort %}{{ field }} = {{ value }}{% if not loop.last %}, {% endif %}{% endfor %} }
+{% endfor %}
+{% endif %}

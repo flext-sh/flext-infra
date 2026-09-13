@@ -7,14 +7,16 @@ from collections.abc import MutableMapping, MutableSequence, MutableSet
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import m, u
-from flext_infra import t
+from flext_cli import m, u
 
-from .mixins import FlextInfraModelsMixins as mm
-from .refactor_ast_grep import FlextInfraModelsRefactorGrep
-from .refactor_census import FlextInfraModelsRefactorCensus
-from .refactor_namespace_enforcer import FlextInfraModelsNamespaceEnforcer
-from .refactor_violations import FlextInfraModelsRefactorViolations
+from .. import t
+from . import (
+    FlextInfraModelsMixins as mm,
+    FlextInfraModelsNamespaceEnforcer,
+    FlextInfraModelsRefactorCensus,
+    FlextInfraModelsRefactorGrep,
+    FlextInfraModelsRefactorViolations,
+)
 
 
 class FlextInfraModelsRefactor(

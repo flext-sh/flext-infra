@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -60,7 +61,7 @@ class FlextInfraRefactorCensusValidateMixin:
         validated_reports: list[m.Infra.Census.ProjectReport] = []
         # Preview writes are restored before the next candidate, so one shared
         # source cache stays valid for the entire dry-run validation pass.
-        source_cache: dict[Path, str] = {}
+        source_cache: MutableMapping[Path, str] = {}
         for report in project_reports:
             if not report.removal_candidates:
                 validated_reports.append(report)

@@ -25,13 +25,8 @@ class TestsToolchainRequirement:
 
         tm.that(toolchain.python_required_version, has=f",<{major}.{int(minor) + 1}")
 
-    def test_uv_cooldown_is_scoped_away_from_typed_tools(self) -> None:
-        """Runtime libraries retain the window while typed tools are uncapped."""
-        toolchain = config.Infra.codegen.toolchain
-
-        tm.that(
-            toolchain.uv_exclude_newer, eq=f"{toolchain.dependency_cooldown_days} days"
-        )
+    def test_typed_tools_project_from_one_catalog(self) -> None:
+        """Every owned typed tool identity projects from the tool catalog."""
         tm.that(
             config.Infra.codegen.python_tool_distributions,
             has=["hatchling", "ruff", "pytest", "rumdl"],

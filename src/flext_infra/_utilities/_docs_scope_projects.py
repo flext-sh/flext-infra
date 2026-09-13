@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import operator
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -47,7 +48,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
             return r[t.SequenceOf[mw.ProjectInfo]].ok(
                 sorted(projects, key=operator.attrgetter("name"))
             )
-        by_name: dict[str, mw.ProjectInfo] = {}
+        by_name: MutableMapping[str, mw.ProjectInfo] = {}
         for project in projects:
             by_name.setdefault(project.name, project)
             by_name.setdefault(project.path.name, project)

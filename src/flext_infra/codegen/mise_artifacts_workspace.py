@@ -6,14 +6,12 @@ import stat
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import r
-from flext_infra import m, u
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-
-from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
+from .. import m, r, u
+from ..workspace import FlextInfraWorkspaceDetector
+from . import FlextInfraMiseArtifactsFiles as files
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from .. import p, t
 
 
 class FlextInfraMiseWorkspacePlanner:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -28,22 +29,24 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
     @staticmethod
     def _snapshot_paths(
         required_paths: AbstractSet[Path], optional_paths: AbstractSet[Path]
-    ) -> p.Result[dict[Path, m.Cli.AtomicFileState]]:
+    ) -> p.Result[MutableMapping[Path, m.Cli.AtomicFileState]]:
         """Capture one descriptor-authenticated state for every planner input."""
-        snapshots: dict[Path, m.Cli.AtomicFileState] = {}
+        snapshots: MutableMapping[Path, m.Cli.AtomicFileState] = {}
         for path in sorted(required_paths | optional_paths):
             snapshot = u.Cli.atomic_read_binary_file_state(
                 path, required=path in required_paths
             )
             if snapshot.failure:
-                return r[dict[Path, m.Cli.AtomicFileState]].from_failure(snapshot)
+                return r[MutableMapping[Path, m.Cli.AtomicFileState]].from_failure(
+                    snapshot
+                )
             snapshots[path] = snapshot.value
-        return r[dict[Path, m.Cli.AtomicFileState]].ok(snapshots)
+        return r[MutableMapping[Path, m.Cli.AtomicFileState]].ok(snapshots)
 
     @classmethod
     def _snapshot_planner_inputs(
         cls, index: m.Infra.RopeWorkspaceIndex
-    ) -> p.Result[dict[Path, m.Cli.AtomicFileState]]:
+    ) -> p.Result[MutableMapping[Path, m.Cli.AtomicFileState]]:
         """Snapshot Python, project, target, and template inputs before planning."""
         module_paths = {
             entry.file_path.resolve() for entry in index.modules_by_path.values()
@@ -142,7 +145,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         snapshots: t.MappingKV[Path, m.Cli.AtomicFileState],
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Build, deduplicate, and source-bind every lazy-init file plan."""
-        by_path: dict[Path, m.Infra.CodegenFilePlan] = {}
+        by_path: MutableMapping[Path, m.Infra.CodegenFilePlan] = {}
         for plan in plans:
             package_key = str(plan.context.pkg_dir.resolve())
             package_entry = index.packages_by_dir.get(package_key)

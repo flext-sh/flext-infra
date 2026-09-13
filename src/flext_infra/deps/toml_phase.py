@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import Annotated, override
 
 from flext_infra import m, p, r, t, u
@@ -33,7 +34,7 @@ class FlextInfraTomlPhaseService(
             description="Ordered TOML transformation phases to apply.",
         ),
     ]
-    _table_cache: dict[t.StrSequence, t.Cli.TomlTable] = u.PrivateAttr(
+    _table_cache: MutableMapping[t.StrSequence, t.Cli.TomlTable] = u.PrivateAttr(
         default_factory=dict
     )
 

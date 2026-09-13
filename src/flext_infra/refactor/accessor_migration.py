@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import Annotated, override
 
 from flext_cli import cli
@@ -61,9 +62,9 @@ class FlextInfraAccessorMigrationOrchestrator(
         files_with_changes = 0
         automated_change_count = 0
         warning_count = 0
-        lint_before_totals: dict[str, int] = {}
-        lint_after_totals: dict[str, int] = {}
-        new_lint_error_totals: dict[str, int] = {}
+        lint_before_totals: MutableMapping[str, int] = {}
+        lint_after_totals: MutableMapping[str, int] = {}
+        new_lint_error_totals: MutableMapping[str, int] = {}
         with u.Infra.open_project(self.repository_root) as rope_project:
             for py_file in iter_result.value:
                 read = u.Cli.files_read_text(py_file)

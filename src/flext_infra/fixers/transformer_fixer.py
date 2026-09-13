@@ -367,8 +367,8 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             )
             canonical_map: t.MutableMappingKV[frozenset[str], str] = {}
             if "dict" in targets:
-                canonical_map[frozenset({"dict[K, V]"})] = "t.MappingKV[K, V]"
-                canonical_map[frozenset({"dict[str, Any]"})] = (
+                canonical_map[frozenset({"MutableMapping[K, V]"})] = "t.MappingKV[K, V]"
+                canonical_map[frozenset({"MutableMapping[str, Any]"})] = (
                     "t.MappingKV[str, t.JsonValue]"
                 )
             return FlextInfraRefactorTypingUnifier(

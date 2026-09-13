@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -84,8 +85,8 @@ class FlextInfraUtilitiesDocsGuidesMixin:
             return r[tuple[DocsRenderedArtifactTuple, ...]].fail(
                 f"docs guide scope escapes repository {repository_root}: {scope.path}"
             )
-        sources: dict[Path, str] = {}
-        destinations: dict[Path, str] = {}
+        sources: MutableMapping[Path, str] = {}
+        destinations: MutableMapping[Path, str] = {}
         for state in source_states:
             path = state.path
             if (

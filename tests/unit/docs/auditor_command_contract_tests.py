@@ -87,7 +87,7 @@ make test PROJECT=flext-demo MATCH=unit
     def test_reads_apply_requirement_from_config_ssot() -> None:
         """The exterminated `APPLY` flag is rejected in documented commands."""
         mutating = next(spec.name for spec in config.Infra.codegen.make.verbs)
-        content = f"```bash\nmake {mutating} APPLY=Y\n```\n"
+        content = f"```bash\nmake {mutating}\n```\n"
 
         issues = u.Infra.docs_command_contract_content_issues(
             content,
@@ -105,7 +105,7 @@ make test PROJECT=flext-demo MATCH=unit
             f"make {spec.name}" for spec in config.Infra.codegen.make.verbs
         )
         legacy = "\n".join(
-            f"make {spec.name} APPLY=Y" for spec in config.Infra.codegen.make.verbs
+            f"make {spec.name}" for spec in config.Infra.codegen.make.verbs
         )
 
         ok = u.Infra.docs_command_contract_content_issues(
@@ -196,11 +196,11 @@ ruff check src
     @staticmethod
     @pytest.mark.parametrize("verb_name", ["publish-preview", "archive-assets"])
     @pytest.mark.parametrize(
-        ("declared", "legacy_apply", "expected"),
+        ("declared", "expected"),
         [
-            (True, False, ""),
-            (True, True, "legacy `APPLY` flag is exterminated"),
-            (False, False, "not declared"),
+            (True, ""),
+            (True, "legacy `APPLY` flag is exterminated"),
+            (False, "not declared"),
         ],
     )
     def test_audits_repository_declared_verbs(
@@ -208,7 +208,6 @@ ruff check src
         verb_name: str,
         *,
         declared: bool,
-        legacy_apply: bool,
         expected: str,
     ) -> None:
         scope = command_contract_scope
@@ -220,7 +219,7 @@ ruff check src
         )
         guide = scope.path / "docs/guides/commands.md"
         guide.parent.mkdir(parents=True)
-        token = " APPLY=Y" if legacy_apply else ""
+        token = ""
         u.write_file(guide, f"```bash\nmake {verb_name}{token}\n```\n")
 
         issues = u.Infra.docs_command_contract_issues(scope)
@@ -247,7 +246,7 @@ ruff check src
         )
         tm.that(u.Infra.docs_command_contract_issues(scope), eq=[])
 
-        u.write_file(guide, f"```bash\nmake {spec.name} APPLY=Y\n```\n")
+        u.write_file(guide, f"```bash\nmake {spec.name}\n```\n")
         legacy = u.Infra.docs_command_contract_issues(scope)
         tm.that(len(legacy), eq=1)
         tm.that(legacy[0].message, has="legacy `APPLY` flag is exterminated")

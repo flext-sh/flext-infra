@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import ClassVar
 
 from flext_infra import c, m, p, t, u
@@ -44,7 +45,9 @@ class WorkspaceRoutes(RefactorRoutes):
             CliRouteBase.as_route_value
         )
 
-    workspace_routes: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
+    workspace_routes: ClassVar[
+        MutableMapping[str, tuple[m.Cli.ResultCommandRoute, ...]]
+    ] = {
         c.Infra.CLI_GROUP_REFACTOR: RefactorRoutes.refactor_routes,
         c.Infra.CLI_GROUP_RELEASE: (
             m.Cli.ResultCommandRoute(

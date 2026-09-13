@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import ClassVar
 
 from flext_infra import c, m
@@ -20,7 +21,9 @@ from .cli_routes_validate_commands import ValidationCommandRoutes
 class ValidationRoutes(ValidationCommandRoutes):
     """Own documentation, GitHub workflow, maintenance, and validation routes."""
 
-    validation_routes: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
+    validation_routes: ClassVar[
+        MutableMapping[str, tuple[m.Cli.ResultCommandRoute, ...]]
+    ] = {
         c.Infra.CLI_GROUP_DOCS: tuple(
             m.Cli.ResultCommandRoute(
                 name=route_name,

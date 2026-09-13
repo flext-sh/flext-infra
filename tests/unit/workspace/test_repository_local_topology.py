@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import shutil
-from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -58,24 +57,19 @@ class TestsRepositoryLocalTopology:
     ) -> None:
         """Preserve typed local policy after reconciling it with observed Git."""
         root = _self_named_governed_root(tmp_path, "manifest-policy")
-        exclusion = "fixture-manifest-policy-excluded"
-        override = "fixture-manifest-policy-overridden"
-        cutoff = datetime.now(UTC).isoformat()
         observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        cooldown_manifest: dict[str, t.JsonValue] = {
+        manifest: dict[str, t.JsonValue] = {
             "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
             "name": observed.name,
             "repository": {
                 **observed.repository.model_dump(mode="json"),
                 "kind": c.Infra.ProjectKind.THIRD_PARTY_FORK.value,
                 "uv_link_mode": "clone",
-                "dependency_cooldown_exclusions": [exclusion],
-                "dependency_cooldown_overrides": {override: cutoff},
             },
         }
         tm.ok(
             u.Cli.yaml_dump(
-                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME, cooldown_manifest
+                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME, manifest
             )
         )
 
@@ -83,10 +77,6 @@ class TestsRepositoryLocalTopology:
 
         tm.that(workspace.repository.kind, eq=c.Infra.ProjectKind.THIRD_PARTY_FORK)
         tm.that(workspace.repository.uv_link_mode, eq="clone")
-        tm.that(workspace.repository.dependency_cooldown_exclusions, eq=(exclusion,))
-        tm.that(
-            workspace.repository.dependency_cooldown_overrides, eq={override: cutoff}
-        )
 
     def test_selected_workspace_manifest_rejects_git_contradiction(
         self, tmp_path: Path

@@ -6,6 +6,7 @@ and regex-based attribute access detection for usage collection.
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m
@@ -28,7 +29,7 @@ class FlextInfraCensusImportDiscoveryVisitor:
         self.family_alias = family_alias
         self.facade_class_prefix = facade_class_prefix
         self.alias_locals: t.Infra.StrSet = set()
-        self.direct_imports: dict[str, str] = {}
+        self.direct_imports: MutableMapping[str, str] = {}
 
     def scan_source(self, source: str) -> None:
         """Scan source text to discover imports matching family/facade patterns."""
