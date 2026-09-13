@@ -126,5 +126,60 @@ class TestCodegenManifestlessExisting:
     # non-regular-file rejection this test exercised is unreachable through
     # the public conform surface. Removed as retired-contract coverage.
 
+    def test_root_distribution_owns_its_dependency_profile(
+        self, tmp_path: Path
+    ) -> None:
+        """The tree's root declares no flext dependency and still conforms."""
+        profile = next(
+            item
+            for item in config.Infra.codegen.scaffold.project.dependency_profiles
+            if item.project is None
+            and not any(
+                other.upstream.replace("_", "-")
+                in {u.Infra.dep_name(dependency) for dependency in item.runtime}
+                for other in config.Infra.codegen.scaffold.project.dependency_profiles
+                if other is not item and other.project is None
+            )
+        )
+        distribution = profile.upstream.replace("_", "-")
+        root = tmp_path / distribution
+        package = root / c.Infra.DEFAULT_SRC_DIR / profile.upstream
+        package.mkdir(parents=True)
+        tm.ok(u.Cli.atomic_write_text_file(package / "__init__.py", ""))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "pyproject.toml",
+                f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
+                f'description = "{distribution} root fixture"\n'
+                'requires-python = ">=3.13,<3.14"\n'
+                'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+                "dependencies = []\n",
+            )
+        )
+        u.Tests.write_project_beads_config(root, distribution)
+        u.Tests.initialize_git_repo(
+            root, origin_url=u.Tests.repository_ref(distribution).url
+        )
+
+        plan = tm.ok(
+            FlextInfraCodegenConform(repository_root=root).plan(
+                u.Tests.conform_request(
+                    root,
+                    what=c.Infra.CodegenConformSurface.PYPROJECT,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    mode=c.Infra.CodegenConformMode.CHECK,
+                )
+            )
+        )
+        rendered = u.Tests.codegen_file_text(
+            next(file for file in plan.files if file.path.name == "pyproject.toml")
+        )
+        owned_runtime = tuple(
+            dependency
+            for dependency in profile.runtime
+            if u.Infra.dep_name(dependency) != distribution
+        )
+        tm.that(owned_runtime[0] in rendered, eq=True)
+
 
 __all__: list[str] = []
