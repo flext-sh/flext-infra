@@ -22,7 +22,13 @@ if TYPE_CHECKING:
     from .make_bootstrap import FlextInfraCodegenMakeBootstrap
     from .mise_artifacts import FlextInfraCodegenMiseArtifacts
     from .mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
-    from .pipeline import FlextInfraCodegenPipeline
+    from .pipeline import (
+        FlextInfraCodegenLazyInitGenerationMixin,
+        FlextInfraCodegenPipeline,
+        FlextInfraCodegenPipelineStagesMixin,
+        FlextInfraMiseArtifactsFiles,
+        publish_file_plan,
+    )
     from .project_new import FlextInfraCodegenProjectNew
     from .py_typed import FlextInfraCodegenPyTyped
     from .scaffolder import FlextInfraCodegenScaffolder
@@ -35,17 +41,21 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenGeneration",
     "FlextInfraCodegenLayout",
     "FlextInfraCodegenLazyInit",
+    "FlextInfraCodegenLazyInitGenerationMixin",
     "FlextInfraCodegenLazyInitPlanner",
     "FlextInfraCodegenMakeBootstrap",
     "FlextInfraCodegenMiseArtifacts",
     "FlextInfraCodegenPipeline",
+    "FlextInfraCodegenPipelineStagesMixin",
     "FlextInfraCodegenProjectNew",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenQualityGate",
     "FlextInfraCodegenScaffolder",
     "FlextInfraCodegenTransaction",
     "FlextInfraCodegenVersionFile",
+    "FlextInfraMiseArtifactsFiles",
     "FlextInfraMiseWorkspacePlanner",
+    "publish_file_plan",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -64,7 +74,13 @@ _LAZY_IMPORTS = MappingProxyType(
             ".make_bootstrap": ("FlextInfraCodegenMakeBootstrap",),
             ".mise_artifacts": ("FlextInfraCodegenMiseArtifacts",),
             ".mise_artifacts_workspace": ("FlextInfraMiseWorkspacePlanner",),
-            ".pipeline": ("FlextInfraCodegenPipeline",),
+            ".pipeline": (
+                "FlextInfraCodegenLazyInitGenerationMixin",
+                "FlextInfraCodegenPipeline",
+                "FlextInfraCodegenPipelineStagesMixin",
+                "FlextInfraMiseArtifactsFiles",
+                "publish_file_plan",
+            ),
             ".project_new": ("FlextInfraCodegenProjectNew",),
             ".py_typed": ("FlextInfraCodegenPyTyped",),
             ".scaffolder": ("FlextInfraCodegenScaffolder",),
