@@ -2,38 +2,16 @@
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
-from flext_infra import c
+from flext_infra import c, config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import u
-from tests.unit.workspace import WorktreeFixture
-
-
-def _conformed_root(tmp_path: Path) -> Path:
-    """Materialize one governed project and conform it to a fixed point."""
-    root = tmp_path / "repo"
-    WorktreeFixture.initialize_governed_project(
-        root,
-        "fixture-project",
-        workspace="fixture-workspace",
-        database="fixture-database",
-        issue_prefix="fixture-prefix",
-    )
-    u.Tests.commit_git_changes(root, "Declare project identity")
-    tm.ok(
-        FlextInfraCodegenConform.execute_request(
-            u.Tests.conform_request(
-                root,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.APPLY,
-            )
-        )
-    )
-    return root
+from tests.unit.codegen._helpers import _conformed_root
 
 
 class TestsFlextInfraBudgetProjection:
@@ -48,8 +26,6 @@ class TestsFlextInfraBudgetProjection:
         self, tmp_path: Path
     ) -> None:
         """Every ALLOWED_GATES id renders a complete positive-int budget row."""
-        import tomllib
-
         root = _conformed_root(tmp_path)
         rendered = (root / c.Infra.PYPROJECT_FILENAME).read_text(encoding="utf-8")
         parsed = tomllib.loads(rendered)
@@ -83,8 +59,6 @@ class TestsFlextInfraBudgetProjection:
 
     def test_budget_config_must_cover_the_registry(self) -> None:
         """A registry gate without a configured row fails generation loud."""
-        from flext_infra import config
-
         budgets = {
             gate_id: row
             for gate_id, row in config.Infra.codegen.budget.items()
@@ -96,8 +70,6 @@ class TestsFlextInfraBudgetProjection:
 
     def test_unknown_budget_row_fails_loud(self) -> None:
         """A configured row outside the registry fails generation loud."""
-        from flext_infra import config
-
         unknown = min(c.Infra.ALLOWED_GATES) + "-unknown"
         first_row = next(iter(config.Infra.codegen.budget.values()))
         result = FlextInfraCodegenConform.resolve_gate_budgets({

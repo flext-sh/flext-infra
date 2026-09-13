@@ -92,13 +92,53 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
 
     @override
     def _is_in_scope(self, _file_path: Path, *, repository_root: Path) -> bool:
-        """Skip files inside git submodule directories.
+        """Skip files inside git submodule directories and cache/temp directories.
 
         Submodule directories are independent projects with their own
         tier-whitelist runs; scanning them from the workspace level is
         redundant and produces cross-boundary false positives.
+
+        Cache/temp/state directories (virtual envs, tool caches, test temp dirs,
+        IDE/editor dirs, etc.) are not project source and must not be scanned.
         """
         _ = repository_root
+        # Skip cache/temp/state directories at any level
+        excluded_dirs = {
+            ".test-tmp",
+            ".venv",
+            ".mypy_cache",
+            ".pytest_cache",
+            ".ruff_cache",
+            ".cache",
+            ".github",
+            ".kilo",
+            ".vscode",
+            ".worktrees",
+            "worktrees",
+            "flext-infra-worktrees",
+            ".flext-runtime",
+            "dist",
+            ".agents-sync-home",
+            ".beads",
+            ".benchmarks",
+            ".claude",
+            ".codex",
+            ".mimosa",
+            ".poolside",
+            ".qlty",
+            ".reports",
+            ".ropeproject",
+            ".rumdl_cache",
+            ".snapshots",
+            ".state",
+            ".gc",
+            ".agents",
+        }
+        for part in _file_path.parts:
+            if part in excluded_dirs:
+                return False
+
+        # Skip git submodule directories
         repo = _file_path
         while repo != repo.parent:
             if (repo / ".git").is_file():
