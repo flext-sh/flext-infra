@@ -31,8 +31,11 @@ class FlextInfraCodegenLayoutPlanMixin:
         allowed = self._allowed_root_names(spec, project_dir, project_name, override)
         override_roots = self._override_root_names(override)
         findings: list[m.Infra.LayoutFinding] = []
+        git_root_names = u.Infra.git_tracked_top_level_dir_names(project_dir)
         for entry in sorted(project_dir.iterdir()):
             name = entry.name
+            if git_root_names is not None and name not in git_root_names:
+                continue
             if spec.allow_hidden and name.startswith("."):
                 continue
             if self._is_ignored_root(spec, override, name):

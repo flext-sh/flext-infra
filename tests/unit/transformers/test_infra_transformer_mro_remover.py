@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.transformers.mro_remover import FlextInfraRefactorMroRemover
 from flext_tests import tm
+
+from flext_infra.transformers.mro_remover import FlextInfraRefactorMroRemover
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

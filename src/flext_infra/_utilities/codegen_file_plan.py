@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+import difflib
+from collections.abc import Generator
+from contextlib import contextmanager
+from itertools import islice
 from typing import TYPE_CHECKING, Literal
 
+from filelock import FileLock
 from flext_cli import m as cli_m, u
+
 from flext_core import r
 from flext_infra import m, p, t
 
@@ -14,6 +20,22 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesCodegenFilePlan:
     """Derive generated-file effects from immutable planning data."""
+
+    @staticmethod
+    @contextmanager
+    def codegen_transaction_lease(journal_path: Path) -> Generator[None]:
+        """Hold native ownership without unlinking the journal's lock identity."""
+        lock_path = journal_path.with_name(f"{journal_path.name}.lock")
+        with FileLock(
+            lock_path,
+            timeout=0,
+            blocking=False,
+            mode=0o600,
+            fallback_to_soft=False,
+            preserve_lock_file=True,
+            close_error_policy="raise",
+        ):
+            yield
 
     @staticmethod
     def planned_file(
@@ -84,8 +106,21 @@ class FlextInfraUtilitiesCodegenFilePlan:
         desired_content: bytes | None,
         desired_mode: int | None,
     ) -> bool:
-        """Whether desired content or mode differs from an observed leaf state."""
-        return before.content != desired_content or before.mode != desired_mode
+        """Whether desired content or mode differs from an observed leaf state.
+
+        Observed states are read binary (``bytes``) while some plan builders
+        hand over rendered text (``str``); representations of the same content
+        must not report drift, so both sides are reconciled to text before the
+        comparison while real content differences still fail loud.
+        """
+        before_content: str | bytes = before.content or b""
+        desired: str | bytes = desired_content if desired_content is not None else b""
+        if isinstance(before_content, bytes) or isinstance(desired, str):
+            if isinstance(before_content, bytes):
+                before_content = before_content.decode("utf-8", errors="replace")
+            if isinstance(desired, bytes):
+                desired = desired.decode("utf-8", errors="replace")
+        return before_content != desired or before.mode != desired_mode
 
     @staticmethod
     def codegen_file_requires_effect(plan: m.Infra.CodegenFilePlan) -> bool:
@@ -97,6 +132,56 @@ class FlextInfraUtilitiesCodegenFilePlan:
             desired_content=plan.desired_content,
             desired_mode=plan.desired_mode,
         )
+
+    @staticmethod
+    def codegen_file_drift_report(
+        plans: t.SequenceOf[m.Infra.CodegenFilePlan], *, limit: int = 40
+    ) -> str:
+        """Bounded unified diff per drifted plan, for fail-loud drift diagnosis.
+
+        The committed (before) side is compared against the rendered
+        (desired) side so a red gate names the exact delta instead of a bare
+        path list; mode-only drift is stated explicitly.
+        """
+        parts: list[str] = []
+        for plan in plans:
+            if isinstance(plan.before, cli_m.Cli.AtomicDirectoryChainPlan):
+                parts.append(f"{plan.path}: absent parent chain gains content")
+                continue
+            raw_before = plan.before.content
+            old_text = (
+                raw_before
+                if isinstance(raw_before, str)
+                else (raw_before or b"").decode("utf-8", errors="replace")
+            )
+            new_text = (plan.desired_content or b"").decode("utf-8", errors="replace")
+            committed_mode = (
+                oct(plan.before.mode) if plan.before.mode is not None else "absent"
+            )
+            rendered_mode = (
+                oct(plan.desired_mode) if plan.desired_mode is not None else "absent"
+            )
+            header = (
+                f"--- {plan.path} (committed mode={committed_mode})"
+                f"\n+++ {plan.path} (rendered mode={rendered_mode})"
+            )
+            diff = tuple(
+                islice(
+                    difflib.unified_diff(
+                        old_text.splitlines(), new_text.splitlines(), lineterm=""
+                    ),
+                    limit,
+                )
+            )
+            parts.append(
+                "\n".join((header, *diff))
+                if diff
+                else (
+                    f"{header}\n(content equal: mode-only drift "
+                    f"observed={committed_mode} desired={rendered_mode})"
+                )
+            )
+        return "\n----\n".join(parts)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesCodegenFilePlan"]

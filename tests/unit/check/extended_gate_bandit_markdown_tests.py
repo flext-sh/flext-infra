@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import m, p, r, t
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
-from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u
 
 if TYPE_CHECKING:
@@ -305,11 +305,11 @@ class TestBanditAndMarkdownGates:
         tm.that(second.issues[0].code, eq="MD057")
 
     def test_markdown_fix_applies_the_auto_fixable_rules(self, tmp_path: Path) -> None:
-        """`make fix APPLY=Y` repairs the markdown findings that check blocks on.
+        """`make fix` repairs the markdown findings that check blocks on.
 
         flext-38p39: the markdown gate reports MD009/MD012 with the linter's own
         `[*]` auto-fixable marker, but declared can_fix=False. So `make check`
-        blocked on ten findings while `make fmt APPLY=Y` and `make fix APPLY=Y`
+        blocked on ten findings while `make fmt` and `make fix`
         both exited 0 without repairing any of them -- the canonical sequence
         could never reach green, and the only way out was hand-editing a file
         the gate owns.

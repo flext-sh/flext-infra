@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import os
 import stat
+from collections.abc import MutableMapping
 from fnmatch import fnmatchcase
 from pathlib import Path
 
 from flext_cli import u
+
 from flext_core import r
 from flext_infra import c, config, m, p, t
 
@@ -205,9 +207,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             return r[m.Infra.ProjectManagedArtifactsResolution].ok(
                 cls.empty_snapshot().resolution
             )
-        ruff_ignores: dict[str, set[str]] = {}
-        mise_tools: dict[str, m.Infra.ProjectMiseTool] = {}
-        mise_sources: dict[str, Path] = {}
+        ruff_ignores: MutableMapping[str, set[str]] = {}
+        mise_tools: MutableMapping[str, m.Infra.ProjectMiseTool] = {}
+        mise_sources: MutableMapping[str, Path] = {}
         gitignore_patterns: list[str] = []
 
         for source_state in source_snapshot:

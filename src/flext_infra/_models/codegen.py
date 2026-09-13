@@ -8,35 +8,18 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
-from flext_infra import c, p, t
 
-from ._defaults import ImmutableEmptyMapping
-from .codegen_render import FlextInfraModelsCodegenRender
-from .config import FlextInfraConfigModels
-from .mixins import FlextInfraModelsMixins as mm
+from .. import c, p, t
+from . import (
+    FlextInfraConfigModels,
+    FlextInfraModelsCodegenRender,
+    FlextInfraModelsMixins as mm,
+    ImmutableEmptyMapping,
+)
 
 
 class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
-
-    class MiseToolchainLockLease(m.ArbitraryTypesModel):
-        """Authenticated Git HEAD state plus its locked native descriptor."""
-
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-
-        descriptor: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                strict=True,
-                exclude=True,
-                description="Caller-owned locked descriptor",
-            ),
-        ]
-        state: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(description="Exact HEAD bytes, mode, leaf, and parent identity"),
-        ]
 
     class MiseToolchainArtifactPaths(m.ArbitraryTypesModel):
         """Canonical live toolchain-bundle destinations for one project."""
@@ -1331,6 +1314,22 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         fix_results: Annotated[
             t.SequenceOf[FlextInfraModelsCodegen.AutoFixResult],
             m.Field(description="Auto-fix stage results"),
+        ] = ()
+        conform_plan: Annotated[
+            FlextInfraConfigModels.CodegenPlan | None,
+            m.Field(description="Validated conform plan from ParseSSOTStage"),
+        ] = None
+        rendered_artifacts: Annotated[
+            t.SequenceOf[FlextInfraConfigModels.CodegenFilePlan],
+            m.Field(description="Rendered artifacts before overlay preservation"),
+        ] = ()
+        composed_artifacts: Annotated[
+            t.SequenceOf[FlextInfraConfigModels.CodegenFilePlan],
+            m.Field(description="Artifacts after overlay preservation"),
+        ] = ()
+        publication_staged: Annotated[
+            t.SequenceOf[FlextInfraModelsCodegen.CodegenStagedFile],
+            m.Field(description="Files staged for atomic publication"),
         ] = ()
 
 

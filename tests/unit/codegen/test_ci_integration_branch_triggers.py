@@ -5,8 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, config
 from flext_tests import tm
+
+from flext_infra import c, config
 
 from ._support import CodegenTestSupport
 
@@ -21,7 +22,7 @@ class TestsCiIntegrationBranchTriggers:
     baseline_branches = tuple(config.Infra.codegen.branch_policy.ci_trigger_branches)
 
     @classmethod
-    def _render_ci(cls, *, repository_branch: str) -> str:
+    def render_ci(cls, *, repository_branch: str) -> str:
         spec = CodegenTestSupport.Ci.workflow_spec(
             dist="mcb",
             make_profile=c.Infra.MakeProfile.STANDALONE,
@@ -45,7 +46,7 @@ class TestsCiIntegrationBranchTriggers:
     def test_ci_triggers_include_custom_workspace_integration_branch(self) -> None:
         custom_branch = "feature/v0-4-0-multitenant-weaviate"
         triggers = self._trigger_section(
-            self._render_ci(repository_branch=custom_branch)
+            self.render_ci(repository_branch=custom_branch)
         )
 
         tm.that(self._branch_count(triggers, custom_branch), eq=2)
@@ -53,7 +54,7 @@ class TestsCiIntegrationBranchTriggers:
             tm.that(self._branch_count(triggers, baseline), eq=2)
 
     def test_ci_triggers_deduplicate_integration_branch_against_baselines(self) -> None:
-        triggers = self._trigger_section(self._render_ci(repository_branch="develop"))
+        triggers = self._trigger_section(self.render_ci(repository_branch="develop"))
 
         for branch in self.baseline_branches:
             tm.that(self._branch_count(triggers, branch), eq=2)

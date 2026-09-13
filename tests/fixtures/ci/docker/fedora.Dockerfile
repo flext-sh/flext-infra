@@ -8,11 +8,7 @@
 FROM fedora:41
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-
-# === SECTION: base packages (managed) ===
-# Source: template (distro-specific seed contract)
-# The seed is the whole host contract: curl fetches mise, git is what uv shells
-# out to for the flext-infra git+https requirement, make invokes the verbs.
+# === SECTION: base packages (dnf) ===
 RUN dnf install -y \
       bash ca-certificates curl git make libatomic \
     && dnf clean all \
@@ -23,11 +19,8 @@ RUN dnf install -y \
 # Source: generated bin/mise + .mise.toml
 # The canonical make setup verb below owns the official newest-Mise bootstrap
 # and every latest tool installation as the same unprivileged runtime user.
-# GITHUB_TOKEN (passed by ci-matrix as a build-arg) authenticates Mise's
-# GitHub API reads so provisioning never trips anonymous rate limits; mise
-# consumes it through MISE_GITHUB_TOKEN natively.
-ARG GITHUB_TOKEN
-ENV MISE_GITHUB_TOKEN=${GITHUB_TOKEN}
+# The setup RUN receives Mise's credential only through a BuildKit secret.
+# Never persist build credentials in ARG, ENV, layers, or image configuration.
 ENV HOME=/home/runner \
     XDG_DATA_HOME=/home/runner/.local/share \
     XDG_CACHE_HOME=/home/runner/.cache \
@@ -50,7 +43,8 @@ ENV PATH="/home/runner/.local/share/mise/shims:${PATH}"
 # mentioned uv.lock/flext-core, which turned the proof into a bypass -- a
 # broken bootstrap still produced a green image.
 ENV CI=Y
-RUN make setup
+RUN --mount=type=secret,id=github_token,env=MISE_GITHUB_TOKEN,required=true \
+    make setup
 # End SECTION: bootstrap proof
 
 ENTRYPOINT []

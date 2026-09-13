@@ -9,8 +9,9 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from flext_infra import c, m, u
 from flext_tests import tm
+
+from flext_infra import c, m, u
 from tests import u as test_u
 
 

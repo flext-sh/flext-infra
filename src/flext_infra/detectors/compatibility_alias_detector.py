@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
@@ -77,7 +78,7 @@ class FlextInfraCompatibilityAliasDetector:
         alias_renames = c.ENFORCEMENT_COMPATIBILITY_ALIAS_RENAMES
         local_alias_targets = cls._local_alias_targets(source)
         imported_long_names: set[str] = set()
-        canonical_aliases_by_module: dict[str, set[str]] = {}
+        canonical_aliases_by_module: MutableMapping[str, set[str]] = {}
         current_module = u.Infra.package_name(file_path)
         for from_import in cls._all_from_imports(ctx.rope_project, resource):
             module_name = cls._resolve_imported_module(
@@ -256,7 +257,7 @@ class FlextInfraCompatibilityAliasDetector:
     @staticmethod
     def _local_alias_targets(source: str) -> t.StrMapping:
         """Collect ``canonical_alias = LongFacadeName`` assignments in source."""
-        targets: dict[str, str] = {}
+        targets: MutableMapping[str, str] = {}
         for match in c.Infra.FACADE_ALIAS_RE.finditer(source):
             alias = match.group(1)
             target = match.group(2)

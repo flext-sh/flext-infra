@@ -151,8 +151,20 @@ class FlextInfraNamespaceRulesImports(FlextInfraNamespaceRulesBase):
     def _reverse_import(
         owner: str | None, imported: str | None, *, type_only: bool
     ) -> str | None:
-        """Describe a backward runtime edge, allowing it only for type checking."""
+        """Describe a backward runtime edge, allowing it only for type checking.
+
+        Settings/config owners legitimately declare nested Pydantic namespace
+        models and so require the declaration facades ``m``/``t``/``u`` at
+        runtime (BaseModel, Field, MappingKV, model_validator, JsonValue).
+        Direct ``pydantic`` remains prohibited (ENFORCE-070); only the project
+        facades are permitted. The forward chain still applies to ``c``/``p``
+        and to every operational facade ``r/e/x/h/d/s``.
+        """
         if owner is None or imported is None or type_only:
+            return None
+        if owner in c.Infra.NAMESPACE_SETTINGS_IMPORT_ALLOWED_OWNERS and (
+            imported in _DECLARATION_FACADES_RUNTIME
+        ):
             return None
         order = c.Infra.NAMESPACE_LAYER_ORDER
         owner_rank = order.index(owner) if owner in order else len(order)
@@ -162,6 +174,24 @@ class FlextInfraNamespaceRulesImports(FlextInfraNamespaceRulesBase):
         if imported_rank > owner_rank:
             return "reverse runtime import; later layers are TYPE_CHECKING-only"
         return None
+
+
+# Why (cosmos-3flk9): settings/config are Pydantic declaration layers —
+# their field and factory surface (BaseModel, Field, ConfigDict,
+# model_validator, JsonValue, resolve_env_file) legitimately lives on the
+# class/types/utility facades. ``c`` and ``p`` stay forward-chain-only and
+# the operational r/e/x/h/d/s keep their base-layer rank (below).
+# Derived from the canonical chain law (NAMESPACE_LAYER_ORDER): the
+# declaration facades sit between c and base, and p is excluded because the
+# protocols facade is TYPE_CHECKING-only — never a runtime import.
+_DECLARATION_FACADES_RUNTIME: frozenset[str] = frozenset(
+    layer
+    for layer in c.Infra.NAMESPACE_LAYER_ORDER[
+        c.Infra.NAMESPACE_LAYER_ORDER.index("c")
+        + 1 : c.Infra.NAMESPACE_LAYER_ORDER.index("base")
+    ]
+    if layer != "p"
+)
 
 
 __all__: list[str] = ["FlextInfraNamespaceRulesImports"]

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import flext_infra
 from flext_tests import tm
+
+import flext_infra
 from tests import u
 
 ROOT = Path(flext_infra.__file__).resolve().parents[2]
@@ -74,7 +75,7 @@ def test_flext_law_requires_automated_structural_rewires() -> None:
     )
 
     for required in (
-        "`make mod APPLY=Y`",
+        "`make mod`",
         "`ast-grep` rewrites",
         "Rope semantic refactors",
         "`pyright-langserver` diagnostics",

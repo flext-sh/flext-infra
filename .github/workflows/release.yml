@@ -6,7 +6,7 @@
 #
 # - A push to the integration branch whose head is NOT the protocol's release
 #   commit opens or updates the release pull request (`make release-version
-#   APPLY=Y`); when nothing is releasable the run is a no-op.
+#   `); when nothing is releasable the run is a no-op.
 # - A push whose head IS the release commit (the merged release pull request)
 #   tags it, builds the receipt and publishes exactly what the receipt attests.
 # - `workflow_dispatch` re-runs build and publication for an existing tag.
@@ -41,7 +41,7 @@ jobs:
       ref: ${{ steps.head.outputs.ref }}
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -84,7 +84,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           submodules: false
@@ -96,7 +96,7 @@ jobs:
       - name: Boot
         run: make setup
       - name: Release pull request
-        run: make release-version APPLY=Y
+        run: make release-version 
 
   publish:
     name: Tag, build and publish the release commit
@@ -106,12 +106,14 @@ jobs:
     timeout-minutes: 180
     permissions:
       contents: write # Push the release tag and create the GitHub release.
+      id-token: write # Trusted publishing to the package index.
+    environment: pypi
     env:
       CI: Y
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout release commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ needs.identity.outputs.ref }}
@@ -120,13 +122,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      - name: Bootstrap the pinned toolchain
-        run: make setup BOOTSTRAP_ONLY=Y
       - name: Boot
         run: make setup
       - name: Tag
-        run: make release-tag APPLY=Y
+        run: make release-tag 
       - name: Build receipt
-        run: make release-build APPLY=Y
+        run: make release-build 
       - name: Publish
-        run: make publication APPLY=Y
+        run: make publication  INDEX=Y

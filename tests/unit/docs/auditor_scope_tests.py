@@ -8,9 +8,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.docs.auditor import FlextInfraDocAuditor
+import pytest
 from flext_tests import tm
-from tests import m
+
+from flext_infra.docs.auditor import FlextInfraDocAuditor
+from tests import c, m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -85,7 +87,7 @@ class TestAuditorScope:
             name="test", path=tmp_path, report_dir=tmp_path / "reports"
         )
         report = auditor.audit_scope(
-            scope, params=m.Infra.AuditScopeParams(check="links", strict=True)
+            scope, params=m.Infra.AuditScopeParams(check="links")
         )
         tm.that(report.phase, eq="audit")
         tm.that(report.checks, has="links")
@@ -97,58 +99,99 @@ class TestAuditorScope:
             name="test", path=tmp_path, report_dir=tmp_path / "reports"
         )
         report = auditor.audit_scope(
-            scope, params=m.Infra.AuditScopeParams(check="forbidden-terms", strict=True)
+            scope, params=m.Infra.AuditScopeParams(check="forbidden-terms")
         )
         tm.that(report.phase, eq="audit")
         tm.that(report.checks, has="forbidden-terms")
 
-    def test_audit_scope_strict_mode_passes(self, tmp_path: Path) -> None:
-        """Test audit_scope passes in strict mode with no issues."""
+    def test_audit_scope_without_issues_passes(self, tmp_path: Path) -> None:
+        """An issue-free audit passes without opting into a mode.
+
+        Why: the all-check resolves the Make verb contract from repository
+        policy, so a realistic scope is a git repository carrying an
+        identity — a bare temp directory is not an auditable project.
+        """
+        u.Tests.write_project_beads_config(tmp_path, "test-project")
+        u.Tests.initialize_git_repo(
+            tmp_path, origin_url=u.Tests.repository_ref("test-project").url
+        )
+        _ = (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "test-project"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
         auditor = FlextInfraDocAuditor()
         scope = m.Infra.DocScope(
             name="test", path=tmp_path, report_dir=tmp_path / "reports"
         )
         report = auditor.audit_scope(
-            scope, params=m.Infra.AuditScopeParams(check="all", strict=True)
+            scope, params=m.Infra.AuditScopeParams(check="all")
         )
         tm.that(report.passed, eq=True)
+        tm.that(report.result, eq=c.Infra.ResultStatus.OK)
 
-    def test_audit_scope_non_strict_mode_always_passes(self, tmp_path: Path) -> None:
-        """Test audit_scope passes in non-strict mode."""
+    def test_audit_scope_with_issues_fails_by_default(self, tmp_path: Path) -> None:
+        """A broken link fails and remains visible in persisted evidence."""
         auditor = FlextInfraDocAuditor()
+        (tmp_path / "README.md").write_text("[Broken](missing.md)\n", encoding="utf-8")
         scope = m.Infra.DocScope(
             name="test", path=tmp_path, report_dir=tmp_path / "reports"
         )
         report = auditor.audit_scope(
-            scope, params=m.Infra.AuditScopeParams(check="all", strict=False)
+            scope, params=m.Infra.AuditScopeParams(check="links")
         )
-        tm.that(report.passed, eq=True)
+        tm.that(report.passed, eq=False)
+        tm.that(report.result, eq=c.Infra.ResultStatus.FAIL)
+        tm.that(report.reason, eq="issues:1")
+        tm.that(report.items[0].issue_type, eq="broken_link")
+        summary = u.Tests.json_payload(
+            (scope.report_dir / "audit-summary.json").read_text(encoding="utf-8")
+        )
+        tm.that(u.Tests.toml_mapping(summary["summary"])["issues"], eq=1)
+        tm.that(
+            (scope.report_dir / "audit-report.md").read_text(encoding="utf-8"),
+            has="missing.md",
+        )
 
-    def test_audit_scope_with_budget_limit(self, tmp_path: Path) -> None:
-        """Test audit_scope respects issue budget."""
+    @pytest.mark.parametrize(
+        ("check", "markdown"),
+        [
+            ("links", "[Broken](missing.md)\n"),
+            ("machine-paths", "Run from /home/someone/flext\n"),
+        ],
+    )
+    def test_audit_findings_fail_from_public_checks(
+        self, tmp_path: Path, check: str, markdown: str
+    ) -> None:
+        """Real finding categories cannot grant permission to pass."""
         auditor = FlextInfraDocAuditor()
         scope = m.Infra.DocScope(
             name="test", path=tmp_path, report_dir=tmp_path / "reports"
         )
+        (tmp_path / "README.md").write_text(markdown, encoding="utf-8")
         report = auditor.audit_scope(
-            scope,
-            params=m.Infra.AuditScopeParams(check="all", strict=True, budgets=(0, {})),
+            scope, params=m.Infra.AuditScopeParams(check=check)
         )
         tm.that(report.phase, eq="audit")
+        tm.that(report.passed, eq=False)
+        tm.that(report.result, eq=c.Infra.ResultStatus.FAIL)
+        tm.that(report.items, empty=False)
 
-    def test_audit_scope_with_scope_specific_budget(self, tmp_path: Path) -> None:
-        """Test audit_scope uses scope-specific budget."""
+    @pytest.mark.parametrize("scope_name", ["root", "flext-demo", "test"])
+    def test_audit_report_scope_cannot_permit_findings(
+        self, tmp_path: Path, scope_name: str
+    ) -> None:
+        """Every scope applies the same zero-finding requirement."""
         auditor = FlextInfraDocAuditor()
         scope = m.Infra.DocScope(
-            name="test", path=tmp_path, report_dir=tmp_path / "reports"
+            name=scope_name, path=tmp_path, report_dir=tmp_path / "reports"
         )
+        (tmp_path / "README.md").write_text("[Broken](missing.md)\n", encoding="utf-8")
         report = auditor.audit_scope(
-            scope,
-            params=m.Infra.AuditScopeParams(
-                check="all", strict=True, budgets=(10, {"test": 5})
-            ),
+            scope, params=m.Infra.AuditScopeParams(check="links")
         )
         tm.that(report.phase, eq="audit")
+        tm.that(report.scope, eq=scope_name)
+        tm.that(report.passed, eq=False)
+        tm.that(report.result, eq=c.Infra.ResultStatus.FAIL)
 
 
 class TestAuditorMachinePaths:

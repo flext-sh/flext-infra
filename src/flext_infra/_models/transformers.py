@@ -10,9 +10,9 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m
-from flext_infra import t
 
-from ._defaults import ImmutableEmptyMapping
+from .. import t
+from . import ImmutableEmptyMapping
 
 
 class FlextInfraModelsTransformers:
@@ -27,6 +27,36 @@ class FlextInfraModelsTransformers:
         ]
         import_root: Annotated[
             str, m.Field(description="Public facade root from which consumers import")
+        ]
+
+    class SemanticFilePlan(m.ContractModel):
+        """Exact before state and desired state for one semantic migration file."""
+
+        project: Annotated[Path, m.Field(description="Physical owning project root")]
+        path: Annotated[Path, m.Field(description="Absolute managed file path")]
+        before: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Descriptor-authenticated file state before migration"),
+        ]
+        desired_content: Annotated[
+            bytes | None,
+            m.Field(
+                strict=True,
+                description="Exact desired bytes after migration, or None for no change",
+            ),
+        ]
+        desired_mode: Annotated[
+            int | None,
+            m.Field(
+                ge=0,
+                le=0o7777,
+                strict=True,
+                description="Exact desired mode, or None for no change",
+            ),
+        ]
+        changes: Annotated[
+            t.VariadicTuple[str],
+            m.Field(default_factory=tuple, description="Recorded migration operations"),
         ]
 
     class SemanticMigrationEdit(m.ContractModel):

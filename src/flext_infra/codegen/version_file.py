@@ -17,13 +17,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_core import r
 from flext_core.__version__ import FlextVersion
-from flext_infra import c, u
-from flext_infra.base import s
+
+from .. import c, r, s, u
+from . import publish_file_plan
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from .. import p
 
 
 class FlextInfraCodegenVersionFile(s[bool]):
@@ -91,7 +91,18 @@ class FlextInfraCodegenVersionFile(s[bool]):
                 generated += 1
                 continue
 
-            write_result = u.Cli.atomic_write_text_file(target, content)
+            planned = u.Infra.planned_file(
+                project_info.path,
+                target,
+                required=False,
+                desired_content=content.encode(c.Cli.ENCODING_DEFAULT),
+                desired_mode=0o644,
+                owner="codegen",
+                policy="full",
+            )
+            if planned.failure:
+                return r[bool].from_failure(planned)
+            write_result = publish_file_plan(planned.value, phase="version-file")
             if write_result.failure:
                 return r[bool].from_failure(write_result)
             generated += 1

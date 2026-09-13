@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import r, u
+
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
@@ -27,7 +28,9 @@ class FlextInfraUtilitiesCodegenNamespace:
     # flext-perf.1 (agent: codex): cache __all__ AST extraction by path+mtime
     # so the 4-5 redundant _declared_exports calls per policy() hit memory
     # instead of re-reading + re-parsing the same file from disk each time.
-    _declared_exports_cache: ClassVar[dict[str, tuple[int, t.StrSequence]]] = {}
+    _declared_exports_cache: ClassVar[
+        MutableMapping[str, tuple[int, t.StrSequence]]
+    ] = {}
 
     @staticmethod
     def _is_rule_fixable(rule_id: str, module: str) -> bool:
@@ -40,6 +43,10 @@ class FlextInfraUtilitiesCodegenNamespace:
             case "NS-002":
                 typings_filename: str = c.Infra.TYPINGS_PY
                 return Path(module).name != typings_filename
+            # Validator-reported families with no auto-fix keyed to their
+            # codes: reported as violations, never claimed as fixed.
+            case "NS-STRUCT" | "NS-IMPORT" | "NS-CONTRACT" | "NS-PARSE" | "NS-LAYOUT":
+                return False
 
             case _:
                 msg = f"unsupported namespace rule: {rule_id}"
@@ -145,7 +152,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         tree: ast.Module, value: ast.expr, file_path: Path
     ) -> t.StrSequence:
         """Resolve a literal ``__all__`` or the former generated tuple alias."""
-        assignments: dict[str, ast.expr] = {}
+        assignments: MutableMapping[str, ast.expr] = {}
         for node in tree.body:
             if isinstance(node, ast.Assign):
                 assignments.update(

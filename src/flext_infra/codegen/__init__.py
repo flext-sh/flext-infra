@@ -9,6 +9,10 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
+    from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles
+    from ._mise_artifacts_publication import publish_file_plan
+    from ._pipeline_stages import FlextInfraCodegenPipelineStagesMixin
     from .census import FlextInfraCodegenCensus
     from .codegen_generation import FlextInfraCodegenGeneration
     from .codegen_transaction import FlextInfraCodegenTransaction
@@ -21,7 +25,6 @@ if TYPE_CHECKING:
     from .lazy_init_planner import FlextInfraCodegenLazyInitPlanner
     from .make_bootstrap import FlextInfraCodegenMakeBootstrap
     from .mise_artifacts import FlextInfraCodegenMiseArtifacts
-    from .mise_artifacts_lock import FlextInfraMiseLock
     from .mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
     from .pipeline import FlextInfraCodegenPipeline
     from .project_new import FlextInfraCodegenProjectNew
@@ -36,18 +39,21 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenGeneration",
     "FlextInfraCodegenLayout",
     "FlextInfraCodegenLazyInit",
+    "FlextInfraCodegenLazyInitGenerationMixin",
     "FlextInfraCodegenLazyInitPlanner",
     "FlextInfraCodegenMakeBootstrap",
     "FlextInfraCodegenMiseArtifacts",
     "FlextInfraCodegenPipeline",
+    "FlextInfraCodegenPipelineStagesMixin",
     "FlextInfraCodegenProjectNew",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenQualityGate",
     "FlextInfraCodegenScaffolder",
     "FlextInfraCodegenTransaction",
     "FlextInfraCodegenVersionFile",
-    "FlextInfraMiseLock",
+    "FlextInfraMiseArtifactsFiles",
     "FlextInfraMiseWorkspacePlanner",
+    "publish_file_plan",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -65,8 +71,11 @@ _LAZY_IMPORTS = MappingProxyType(
             ".lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
             ".make_bootstrap": ("FlextInfraCodegenMakeBootstrap",),
             ".mise_artifacts": ("FlextInfraCodegenMiseArtifacts",),
-            ".mise_artifacts_lock": ("FlextInfraMiseLock",),
             ".mise_artifacts_workspace": ("FlextInfraMiseWorkspacePlanner",),
+            "._mise_artifacts_files": ("FlextInfraMiseArtifactsFiles",),
+            "._mise_artifacts_publication": ("publish_file_plan",),
+            "._lazy_init_generation": ("FlextInfraCodegenLazyInitGenerationMixin",),
+            "._pipeline_stages": ("FlextInfraCodegenPipelineStagesMixin",),
             ".pipeline": ("FlextInfraCodegenPipeline",),
             ".project_new": ("FlextInfraCodegenProjectNew",),
             ".py_typed": ("FlextInfraCodegenPyTyped",),

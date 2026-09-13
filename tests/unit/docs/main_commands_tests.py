@@ -4,25 +4,26 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.fixer import FlextInfraDocFixer
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
-from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-def test_auditor_execute_fails_in_strict_mode_on_broken_links(tmp_path: Path) -> None:
+def test_auditor_execute_fails_on_broken_links_by_default(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path)
     (workspace / "docs/README.md").write_text(
         "# Docs\n\n[Broken](missing.md)\n", encoding="utf-8"
     )
 
-    result = FlextInfraDocAuditor(repository_root=workspace, strict_mode=True).execute()
+    result = FlextInfraDocAuditor(repository_root=workspace).execute()
 
     tm.fail(result)
 

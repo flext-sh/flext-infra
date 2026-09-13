@@ -6,18 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, MutableMapping
 from importlib.metadata import requires
 from importlib.resources import files
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
+from flext_cli import u
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
-from flext_cli import u
 from flext_core import r
 from flext_infra.constants import c
 
@@ -99,7 +99,7 @@ class FlextInfraUtilitiesDependencies:
         normalize: Callable[[str], str] = canonicalize_name,
     ) -> t.StrSequence:
         """Return a dependency-first order for any named dependency graph."""
-        graph: dict[str, tuple[str, ...]] = {}
+        graph: MutableMapping[str, tuple[str, ...]] = {}
 
         def collect(dependency_name: str) -> None:
             normalized = normalize(dependency_name)
@@ -220,7 +220,7 @@ class FlextInfraUtilitiesDependencies:
                 prefix=distribution_prefix,
             )
         )
-        package_names: dict[str, str] = {
+        package_names: MutableMapping[str, str] = {
             name: name.replace("-", "_") for name in ordered
         }
         if not distribution_prefix or project_name.startswith(distribution_prefix):
@@ -294,7 +294,7 @@ class FlextInfraUtilitiesDependencies:
                 )
                 raw_packages = payload.get("package")
                 if isinstance(raw_packages, list):
-                    versions: dict[str, str] = {}
+                    versions: MutableMapping[str, str] = {}
                     for raw_package in raw_packages:
                         if not isinstance(raw_package, Mapping):
                             continue
@@ -375,7 +375,7 @@ class FlextInfraUtilitiesDependencies:
     @staticmethod
     def dedupe_specs(specs: t.StrSequence) -> t.StrSequence:
         """Return deterministic unique dependency specs keyed by normalized name."""
-        selected_by_name: dict[str, str] = {}
+        selected_by_name: MutableMapping[str, str] = {}
         for raw in specs:
             item = raw.strip()
             if not item:
@@ -523,7 +523,7 @@ class FlextInfraUtilitiesDependencies:
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
         if not normalized:
             # flext-j47u (codex): keep the empty mapping immutable and fully typed.
-            return MappingProxyType(dict[str, tuple[str, ...]]())
+            return MappingProxyType(MutableMapping[str, tuple[str, ...]]())
         return cls.project_dev_groups_from_payload(normalized)
 
     @classmethod

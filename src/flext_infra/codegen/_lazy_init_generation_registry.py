@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -51,7 +52,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         self, plan: m.Infra.LazyInitPlan
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         """Return the complete physical file set selected for deletion."""
-        states: dict[Path, m.Cli.AtomicFileState] = {}
+        states: MutableMapping[Path, m.Cli.AtomicFileState] = {}
         for result in (
             self._obsolete_generated_file_states(plan),
             self._obsolete_root_support_states(plan),

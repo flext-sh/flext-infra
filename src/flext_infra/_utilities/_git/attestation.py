@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_cli import u
 from git import GitCommandError
 
-from flext_cli import u
 from flext_core import r
 from flext_infra.models import m
 
@@ -70,7 +70,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
     ) -> p.Result[t.VariadicTuple[m.Infra.GateCommandEvidence]]:
         evidence: list[m.Infra.GateCommandEvidence] = []
         for gate in gates:
-            command = f"make {gate} APPLY=Y"
+            command = f"make {gate}"
             started = datetime.now(UTC)
             outcome = u.Cli.run_raw(command.split(), cwd=repo_root)
             completed = datetime.now(UTC)

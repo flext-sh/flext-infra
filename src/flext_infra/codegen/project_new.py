@@ -12,14 +12,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_core import r
-from flext_infra import c, config, m, u
-from flext_infra.base import s
-
-from .conform import FlextInfraCodegenConform
+from .. import c, config, m, r, s, u
+from . import FlextInfraCodegenConform
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from .. import p
 
 
 class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
@@ -127,6 +124,12 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
         )
         workspace = m.Infra.WorkspaceSpec(
             name=self.name,
+            beads=m.Infra.BeadsProjectSpec(
+                version=c.Infra.BEADS_CONFIG_VERSION,
+                workspace=self.name,
+                database=self.name.replace("-", "_"),
+                issue_prefix=self.name,
+            ),
             repository=repository,
             project=m.Infra.ProjectSpec(
                 package_name=package_name,

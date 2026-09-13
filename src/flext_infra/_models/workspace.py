@@ -6,12 +6,14 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m
-from flext_infra import c, t
 
-from ._defaults import ImmutableEmptyMapping
-from ._git.identity import FlextInfraModelsGitIdentity
-from .config import FlextInfraConfigModels
-from .mixins import FlextInfraModelsMixins as mm
+from .. import c, t
+from . import (
+    FlextInfraConfigModels,
+    FlextInfraModelsMixins as mm,
+    ImmutableEmptyMapping,
+)
+from ._git import FlextInfraModelsGitIdentity
 
 
 class FlextInfraModelsWorkspace:

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Annotated, Literal, Self
 
 from flext_cli import m, u
+
 from flext_infra import t
 
 from ._defaults import ImmutableEmptyMapping
@@ -141,6 +142,13 @@ class FlextInfraModelsDepsToolSettings(
             m.Field(
                 alias="enforcement-plugin",
                 description="Required pytest11 enforcement plugin loaded by Make.",
+            ),
+        ]
+        asyncio_default_fixture_loop_scope: Annotated[
+            Literal["function", "class", "module", "package", "session"],
+            m.Field(
+                alias="asyncio-default-fixture-loop-scope",
+                description="Explicit event-loop lifetime for asynchronous pytest fixtures.",
             ),
         ]
         progress_args: Annotated[

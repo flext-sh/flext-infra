@@ -13,10 +13,11 @@ from typing import TYPE_CHECKING
 
 from flext_cli import cli
 from flext_tests import tm
+
 from tests import TestsFlextInfraUtilities as u, c, m
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator
     from pathlib import Path
 
 
@@ -45,7 +46,7 @@ def _release_lane_workspace(tmp_path: Path) -> Path:
         tmp_path, version=c.Tests.RELEASE_VERSION_PRERELEASE
     )
     local_origin = tmp_path / "remote"
-    u.Tests.configure_local_origin(workspace, local_origin)
+    bare_origin = u.Tests.configure_local_origin(workspace, local_origin)
     provider = u.Tests.provider()
     tm.ok(
         cli.run_checked(
@@ -68,7 +69,10 @@ def _release_lane_workspace(tmp_path: Path) -> Path:
                 "--add",
                 "--push",
                 "origin",
-                local_origin.as_posix(),
+                # Why: the push URL must name the bare repository itself; the
+                # parent directory is not a git repository (git push exit 128).
+                # The bare path is the canonical return of configure_local_origin.
+                bare_origin.as_posix(),
             ],
             cwd=workspace,
         )
@@ -93,7 +97,7 @@ def _planned_release(workspace: Path) -> m.Infra.ReleasePlan:
 
 
 @contextmanager
-def _lane_with_shim(tmp_path: Path) -> Iterator[tuple[Path, Path]]:
+def _lane_with_shim(tmp_path: Path) -> Generator[tuple[Path, Path]]:
     """Yield the release-lane fixture with the recording ``gh`` shim on PATH.
 
     Why: PATH is restored by the public ``env_vars_context`` facade rather than

@@ -111,16 +111,18 @@ class FlextInfraMiseRecovery:
                         f"committed generated file changed: {entry.path}"
                     )
                 operation = "noop"
-            elif (
-                (journal.state == "recovering" and identity == rollback)
-                or identity == original
-                or identity != desired
+            elif identity == original or (
+                journal.state == "recovering" and identity == rollback
             ):
                 operation = "noop"
+            elif identity == desired:
+                operation = "noop" if entry.original_exists else "delete"
             elif entry.original_exists:
                 operation = "restore"
             else:
-                operation = "delete"
+                return result_type.fail(
+                    f"new generated file changed before recovery: {entry.path}"
+                )
             actions.append(
                 m.Infra.CodegenRecoveryAction(
                     entry=entry, current=current.value, operation=operation
@@ -136,7 +138,17 @@ class FlextInfraMiseRecovery:
         result_type = r[tuple[m.Infra.CodegenStagedFile | None, ...]]
         candidates: list[m.Infra.CodegenStagedFile | None] = []
         for action in actions:
-            if not action.entry.original_exists:
+            if not action.entry.original_exists or action.entry.original_backup is None:
+                candidates.append(None)
+                continue
+            backup_path = files.resolve_relative(
+                layout.scope_root,
+                action.entry.original_backup,
+                purpose="generation recovery backup",
+            )
+            if backup_path.failure:
+                return result_type.from_failure(backup_path)
+            if not backup_path.value.exists():
                 candidates.append(None)
                 continue
             prepared = self._prepare_restore_candidate(layout, action)
@@ -267,9 +279,7 @@ class FlextInfraMiseRecovery:
         for action, candidate in reversed(paired):
             if action.operation == "restore":
                 if candidate is None:
-                    return r[bool].fail(
-                        f"generation restore candidate is absent: {action.entry.path}"
-                    )
+                    continue
                 restored = files.write_publication(candidate)
                 if restored.failure:
                     return r[bool].from_failure(restored)

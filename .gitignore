@@ -22,14 +22,7 @@
 .agents/skills/*/report.json
 
 # Agent hooks and operator config (runtime state, never source)
-.agents/aihub-hooks/
-.claude/aihub-hooks/
-.codex/aihub-hooks/
-.cursor/aihub-hooks/
-.gemini/aihub-hooks/
-.opencode/aihub-hooks/
 .github/hooks/
-*/hooks.json
 */.hooks.json.agents-governance.json
 .claude/settings.local.json
 
@@ -54,6 +47,11 @@
 # AI Hub workspace projections (runtime state, never source)
 /.aihub/
 /.cursor/mcp.json
+
+# RESIDUE: never track backups or repo-local policy copies
+*.bak
+config/build-constraints.txt
+*aihub-prior*
 
 # Aider AI data
 .aider/
@@ -267,6 +265,9 @@ legado/
 *.tpl.rej
 
 # --- codegen conform: generated runtime ignores ---
+mise.lock
+.mise.lock
+**/.mise.lock
 .direnv/
 .reports/
 .venv
@@ -353,5 +354,4 @@ CLAUDE.local.md
 !.qlty/qlty.toml
 !.vscode/settings.json
 !config/
-!config/build-constraints.txt
 !config/gitleaks-release.toml

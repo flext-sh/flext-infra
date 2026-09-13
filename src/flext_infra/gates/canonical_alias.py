@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, config, m, r, t, u
 from flext_infra.detectors import (
     FlextInfraCompatibilityAliasDetector,
     FlextInfraCyclicImportDetector,
@@ -76,7 +76,11 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         _ = ctx
         started = time.monotonic()
         if self._normalized_project_name(project_dir) in self._ALIAS_SOURCE_PACKAGES:
-            return self._skip_result(project_dir, started)
+            return self._neutral_skip_result(
+                project_dir,
+                started,
+                message=f"{self.gate_id}: source package ({c.Infra.PKG_CORE_UNDERSCORE}) excluded from rewrite",
+            )
         files_result = self._alias_files(project_dir)
         if files_result.failure:
             file_path_str = files_result.error or "canonical-alias scan failed"
@@ -94,6 +98,8 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
             issues: list[m.Infra.Issue] = []
             for file_path in files_result.value:
                 migration_context = u.Infra.alias_migration_context(file_path)
+                if migration_context.policy_owner in self._ALIAS_SOURCE_PACKAGES:
+                    continue
                 for violation in FlextInfraCompatibilityAliasDetector.detect_file(
                     m.Infra.DetectorContext(
                         file_path=file_path,
@@ -138,7 +144,11 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
             return self._check_only_fix_result(project_dir)
         started = time.monotonic()
         if self._normalized_project_name(project_dir) in self._ALIAS_SOURCE_PACKAGES:
-            return self._skip_result(project_dir, started)
+            return self._neutral_skip_result(
+                project_dir,
+                started,
+                message=f"{self.gate_id}: source package ({c.Infra.PKG_CORE_UNDERSCORE}) excluded from rewrite",
+            )
         files_result = self._alias_files(project_dir)
         if files_result.failure:
             message = files_result.error or "canonical-alias fix failed"
@@ -288,7 +298,12 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         if not file_paths:
             return
         result = u.Cli.run_raw(
-            ["ruff", "format", *[str(path) for path in file_paths]],
+            [
+                "ruff",
+                "format",
+                *config.Infra.codegen.make.ruff.format_apply,
+                *[str(path) for path in file_paths],
+            ],
             timeout=c.Infra.TIMEOUT_SHORT,
         )
         if result.failure:

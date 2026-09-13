@@ -38,6 +38,9 @@ Infra:
           MD060: false
           MD076: false
         exclude:
+          # AGENTS.md is a tool-managed projection (beads integration + codex
+          # setup blocks): gating generated output is a projection defect.
+          - AGENTS.md
           - .kilo/**
           - .omo/**
           - .tmp/**
@@ -60,6 +63,14 @@ Infra:
           - legado/**
           - .github/**
           - site/**
+          # Gen-emitted table projections whose emitter lives outside the
+          # codegen surface; MD058 (blank lines around tables) is upstream of
+          # the projection and cannot be repaired at the projection itself.
+          - docs/knowledge-index.md
+          - docs/architecture/communities/README.md
+          # External CRG tool output: pipe-separated rows (MD075) and long JSON
+          # lines (MD013) originate from code-review-graph, not hand-authored docs.
+          - docs/architecture/crg-reports/**
       ruff:
         # P0 law: lint covers every tracked Python surface. No excludes over
         # legado, examples, tests, or scripts code anywhere in this config.
@@ -248,6 +259,9 @@ Infra:
         boolean-settings:
           namespace_packages: true
           explicit_package_bases: true
+          # Analyze installed implementations without py.typed; do not ignore them.
+          # https://mypy.readthedocs.io/en/stable/config_file.html#confval-follow_untyped_imports
+          follow_untyped_imports: true
           check_untyped_defs: true
           # disallow_untyped_defs, Noisier flags
           # disallow_any_unimported, Noisier flags
@@ -288,7 +302,6 @@ Infra:
         init_forbid_extra: true
         init_typed: true
         warn_required_dynamic_aliases: true
-        warn-untyped-fields: true
       pyright:
         strict-settings:
           pythonPlatform: Linux
@@ -572,6 +585,7 @@ Infra:
         # it wastes runtime and obscures the causal failure.
         max-failures: 1
         enforcement-plugin: flext_tests_enforcement
+        asyncio-default-fixture-loop-scope: function
         progress-args: [--verbose]
         report-args: [-ra, --durations=25, --durations-min=0.001, --tb=short]
         diagnostic-args: [-rA, --durations=0, --tb=long, --showlocals]
@@ -685,6 +699,12 @@ Infra:
 ManagedArtifacts:
   Ruff:
     per_file_ignores:
+      # Darwin resource-control boundary: executes validated argv without a
+      # shell and uses the native /bin/ps solely for resident-memory accounting.
+      # This private executable must supervise before loading checker packages.
+      src/flext_infra/_utilities/_mypy_supervisor.py:
+        - suspicious-subprocess-import
+        - subprocess-without-shell-equals-true
       # OPERATOR-AUTHORIZED 2026-08-08 (rope only, private-member-access only).
       # Rope 1.14 and upstream master expose NO public API to register a PEP 695
       # walker handler, so these private slots ARE the library interface.

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, MutableMapping
 from types import MappingProxyType
 from typing import Any, Never, override
 
@@ -34,9 +34,9 @@ class ImmutableEmptyMapping[K, V](Mapping[K, V]):
 
 def immutable_empty_mapping() -> Mapping[Any, Never]:
     """Return a fresh immutable empty mapping."""
-    empty: dict[Any, Never] = {}
+    empty: MutableMapping[Any, Never] = {}
     return MappingProxyType(empty)
 
 
 # Internal owner: direct module imports are intentional; no facade ABI is published.
-__all__: t.VariadicTuple[str] = ()
+__all__: t.VariadicTuple[str] = ("ImmutableEmptyMapping", "immutable_empty_mapping")

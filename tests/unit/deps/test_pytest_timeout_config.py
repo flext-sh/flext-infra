@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import config
-from flext_tests import tm
 from tests import c
 
 
@@ -161,7 +161,7 @@ class TestsFlextInfraPytestTimeoutConfig:
             "--timeout=999",
             "-n=auto",
             "--dist=load",
-            "-p=no:flext_tests_enforcement",
+            f"-p=no:{config.Infra.tooling.tools.pytest.enforcement_plugin}",
             "--junitxml=elsewhere.xml",
             "--cov=unowned",
             "--tb=short\n-o=addopts=",

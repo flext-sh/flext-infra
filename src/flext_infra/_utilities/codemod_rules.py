@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from importlib.metadata import Distribution, distributions, packages_distributions
 from importlib.util import find_spec
 from pathlib import Path
 
+from flext_cli import p, r, u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
-from flext_cli import p, r, u
 from flext_infra import c, m, t
 
 from .dependencies import FlextInfraUtilitiesDependencies
@@ -112,8 +112,8 @@ class FlextInfraUtilitiesCodemodRules:
         ))
 
     @staticmethod
-    def _distributions() -> dict[str, Distribution]:
-        indexed: dict[str, Distribution] = {}
+    def _distributions() -> MutableMapping[str, Distribution]:
+        indexed: MutableMapping[str, Distribution] = {}
         for installed in distributions():
             raw_name = installed.metadata.get("Name")
             if not isinstance(raw_name, str) or not raw_name.strip():
@@ -160,8 +160,8 @@ class FlextInfraUtilitiesCodemodRules:
         *,
         scope: str,
         selected: frozenset[str],
-    ) -> dict[str, Path]:
-        providers: dict[str, Path] = {}
+    ) -> MutableMapping[str, Path]:
+        providers: MutableMapping[str, Path] = {}
         for name in sorted(selected):
             if name not in indexed:
                 continue
@@ -271,7 +271,7 @@ class FlextInfraUtilitiesCodemodRules:
     def _compose(
         cls, providers: t.SequenceOf[t.Pair[str, Path]]
     ) -> p.Result[m.Infra.CodemodRulePlan]:
-        selected: dict[str, m.Infra.CodemodRule] = {}
+        selected: MutableMapping[str, m.Infra.CodemodRule] = {}
         rulesets: list[m.Infra.CodemodRuleset] = []
         provider_order: list[str] = []
         for provider, config in providers:

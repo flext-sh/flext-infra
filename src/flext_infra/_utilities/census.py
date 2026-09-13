@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import shutil
 from collections import defaultdict
-from collections.abc import Callable as _CensusCallable
+from collections.abc import Callable as _CensusCallable, MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from flext_cli import u
+
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -27,6 +28,9 @@ if TYPE_CHECKING:
     from flext_infra.protocols import p
 
 _log = u.fetch_logger(__name__)
+
+_UNSUPPORTED_SIMPLE_REMOVAL_CODE: Final[str] = "CENSUS_UNSUPPORTED_SIMPLE_REMOVAL"
+"Error code marking a candidate outside the simple-removal contract (not a failure)."
 
 
 class FlextInfraUtilitiesRefactorCensus:
@@ -77,7 +81,7 @@ class FlextInfraUtilitiesRefactorCensus:
         rope: p.Infra.RopeWorkspaceDsl,
         file_path: Path,
         *,
-        source_cache: dict[Path, str] | None = None,
+        source_cache: MutableMapping[Path, str] | None = None,
     ) -> str:
         """Return one original source snapshot, optionally cached by path."""
         resolved_path = file_path.resolve()
@@ -96,7 +100,7 @@ class FlextInfraUtilitiesRefactorCensus:
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
         *,
-        source_cache: dict[Path, str] | None = None,
+        source_cache: MutableMapping[Path, str] | None = None,
     ) -> t.MappingKV[Path, t.VariadicTuple[t.IntPair]] | None:
         """Plan safe line-range removals for simple top-level removal candidates."""
         if candidate.scope_path != candidate.object_name:
@@ -112,10 +116,10 @@ class FlextInfraUtilitiesRefactorCensus:
         )
         if definition_range is None:
             return None
-        ranges_by_file: dict[Path, list[t.IntPair]] = defaultdict(list)
+        ranges_by_file: MutableMapping[Path, list[t.IntPair]] = defaultdict(list)
         ranges_by_file[definition_path].append(definition_range)
-        sites_by_path: dict[Path, list[m.Infra.Census.ReferenceSite]] = defaultdict(
-            list
+        sites_by_path: MutableMapping[Path, list[m.Infra.Census.ReferenceSite]] = (
+            defaultdict(list)
         )
         for site in FlextInfraUtilitiesRefactorCensus._supporting_reference_sites(
             candidate
@@ -240,7 +244,7 @@ class FlextInfraUtilitiesRefactorCensus:
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
         *,
-        source_cache: dict[Path, str] | None = None,
+        source_cache: MutableMapping[Path, str] | None = None,
     ) -> p.Result[t.MappingKV[Path, str]]:
         """Return projected sources or a loud failure for broken planning.
 
@@ -263,7 +267,7 @@ class FlextInfraUtilitiesRefactorCensus:
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
         *,
-        source_cache: dict[Path, str] | None = None,
+        source_cache: MutableMapping[Path, str] | None = None,
     ) -> t.MappingKV[Path, str] | None:
         """Build updated sources for a simple removal candidate without writing."""
         edit_plan = FlextInfraUtilitiesRefactorCensus.plan_simple_removal_edits(
@@ -272,7 +276,7 @@ class FlextInfraUtilitiesRefactorCensus:
         if edit_plan is None:
             return None
         definition_path = Path(candidate.file_path).resolve()
-        updates: dict[Path, str] = {}
+        updates: MutableMapping[Path, str] = {}
         for file_path, ranges in edit_plan.items():
             original_source = FlextInfraUtilitiesRefactorCensus._source_snapshot(
                 rope, file_path, source_cache=source_cache
@@ -393,7 +397,7 @@ class FlextInfraUtilitiesRefactorCensus:
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
         *,
-        source_cache: dict[Path, str] | None = None,
+        source_cache: MutableMapping[Path, str] | None = None,
     ) -> t.MappingKV[Path, str] | None:
         """Drop ``candidate`` from class-base lists in facade modules.
 
@@ -404,7 +408,7 @@ class FlextInfraUtilitiesRefactorCensus:
         """
         target_name = candidate.object_name
         definition_path = Path(candidate.file_path).resolve()
-        updates: dict[Path, str] = {}
+        updates: MutableMapping[Path, str] = {}
         definition_resource = rope.resource(definition_path)
         if definition_resource is None:
             return None
@@ -634,19 +638,25 @@ class FlextInfraUtilitiesRefactorCensus:
         rope: p.Infra.RopeWorkspaceDsl,
         candidate: m.Infra.Census.RemovalCandidate,
         *,
-        source_cache: dict[Path, str] | None = None,
-    ) -> p.Result[t.Pair[t.MappingKV[Path, str], _CensusCallable[[], None]] | None]:
+        source_cache: MutableMapping[Path, str] | None = None,
+    ) -> p.Result[t.Pair[t.MappingKV[Path, str], _CensusCallable[[], None]]]:
         """Plan one simple removal and bind its post-write Rope cleanup.
 
-        ``r.ok(None)`` when the candidate is outside the simple-removal
-        contract, so both the preview and the apply path report the same
-        "unsupported" outcome from one owner.
+        A candidate outside the simple-removal contract yields a typed
+        failure carrying ``_UNSUPPORTED_SIMPLE_REMOVAL_CODE`` — never a
+        ``None`` payload, which success results forbid. The preview and
+        apply paths translate that code into their own "unsupported"
+        outcome so both report the same result from one owner.
         """
-        planned = r[t.Pair[t.MappingKV[Path, str], _CensusCallable[[], None]] | None]
+        planned = r[t.Pair[t.MappingKV[Path, str], _CensusCallable[[], None]]]
         if not FlextInfraUtilitiesRefactorCensus._supports_simple_removal_candidate(
             candidate
         ):
-            return planned.ok(None)
+            return planned.fail(
+                "candidate is outside the simple-removal contract: "
+                f"{candidate.file_path}:{candidate.line} {candidate.object_name}",
+                error_code=_UNSUPPORTED_SIMPLE_REMOVAL_CODE,
+            )
         updates_result = (
             FlextInfraUtilitiesRefactorCensus._simple_removal_sources_result(
                 rope, candidate, source_cache=source_cache
@@ -672,7 +682,7 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.Census.RemovalCandidate,
         *,
         gates: t.StrSequence,
-        source_cache: dict[Path, str] | None = None,
+        source_cache: MutableMapping[Path, str] | None = None,
     ) -> p.Result[bool]:
         """Preview one simple removal candidate, requiring clean gates.
 
@@ -685,11 +695,10 @@ class FlextInfraUtilitiesRefactorCensus:
             rope, candidate, source_cache=source_cache
         )
         if planned.failure:
+            if planned.error_code == _UNSUPPORTED_SIMPLE_REMOVAL_CODE:
+                return r[bool].ok(False)
             return r[bool].from_failure(planned)
-        plan = planned.unwrap()
-        if plan is None:
-            return r[bool].ok(False)
-        updates, post_write = plan
+        updates, post_write = planned.unwrap()
         try:
             applied, reports = FlextInfraUtilitiesProtectedEdit.preview_source_writes(
                 updates, workspace=workspace, gates=gates, post_write=post_write
@@ -733,11 +742,10 @@ class FlextInfraUtilitiesRefactorCensus:
             rope, candidate
         )
         if planned.failure:
+            if planned.error_code == _UNSUPPORTED_SIMPLE_REMOVAL_CODE:
+                return r[bool].ok(False)
             return r[bool].from_failure(planned)
-        plan = planned.unwrap()
-        if plan is None:
-            return r[bool].ok(False)
-        updates, cleanup = plan
+        updates, cleanup = planned.unwrap()
 
         def _post_write() -> None:
             """Post write."""

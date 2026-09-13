@@ -6,11 +6,12 @@ Executes per-project make calls, progress reporting, and error summarization.
 from __future__ import annotations
 
 import time
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, config, m, t, u
+from flext_infra import c, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -34,7 +35,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             for entry in path.split(c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR)
             if entry and entry not in blocked_path_entries
         )
-        env: dict[str, str] = {c.Infra.ORCHESTRATOR_ENV_NO_COLOR: "1"}
+        env: MutableMapping[str, str] = {c.Infra.ORCHESTRATOR_ENV_NO_COLOR: "1"}
         if path_entries:
             env[c.Infra.ORCHESTRATOR_ENV_PATH] = (
                 c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(path_entries)
@@ -128,16 +129,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             else verb
         )
         proc_result = u.Cli.run_to_file(
-            [
-                c.Infra.MAKE,
-                "-C",
-                project,
-                target,
-                (
-                    f"{config.Infra.codegen.make.apply_variable}="
-                    f"{config.Infra.codegen.make.apply_value}"
-                ),
-            ],
+            [c.Infra.MAKE, "-C", project, target],
             log_path,
             env=self._project_child_env(),
             remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,

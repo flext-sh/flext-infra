@@ -22,7 +22,7 @@ class FlextInfraConstantsCensus:
         DICT_INVARIANCE_RE: Final[t.RegexPattern] = re.compile(
             r"\bdict\s*\[\s*str\s*,\s*(?:t\.Container|t\.JsonValue|object)"
         )
-        "Detect invariant dict[str, ...] patterns."
+        "Detect invariant MutableMapping[str, ...] patterns."
         DIRECT_SUBMODULE_RE: Final[t.RegexPattern] = re.compile(
             r"^from\s+flext_core\.\S+\s+import\s+", re.MULTILINE
         )

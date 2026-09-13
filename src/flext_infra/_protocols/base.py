@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 # Declaration-only protocol types stay
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_cli import p
+
     from flext_infra import m, t
 
 
@@ -323,39 +325,19 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def dependency_cooldown_days(self) -> int:
-            """Supply-chain cooldown for uv-resolved runtime libraries."""
-            ...
-
-        @property
-        def dependency_cooldown_exclusions(self) -> t.StrSequence:
-            """Packages exempted from cooldown for urgent security floors."""
-            ...
-
-        @property
         def additional_python_tool_distributions(self) -> t.StrSequence:
-            """Tool identities outside the scaffold requirement owners."""
+            """Declared tool identities outside the scaffold requirement owners."""
             ...
 
         @property
-        def dependency_cooldown_overrides(self) -> t.StrMapping:
-            """Per-package cooldown cutoffs as RFC 3339 timestamps."""
+        def uv_environments(self) -> t.StrSequence:
+            """Marker expressions limiting the uv-resolved lock environments."""
             ...
 
         @property
         def uv_constraint_dependencies(self) -> t.StrSequence:
             """SSOT-declared [tool.uv] constraints; empty exterminates the key."""
             ...
-
-        @property
-        def uv_exclude_newer(self) -> str:
-            """Uv exclude-newer window scoped away from development tools."""
-            ...
-
-        # `uv_exclude_newer_package` used to sit here, undocumented and with no
-        # implementation on ToolchainSpec, so the model never satisfied its own
-        # protocol. `dependency_cooldown_overrides` above is that concept, named
-        # for the policy rather than the uv key it renders into.
 
         @property
         def kubectl_version(self) -> str:
@@ -415,11 +397,6 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def go_version(self) -> str:
             """Exact Go runtime version backing go: mise selectors."""
-            ...
-
-        @property
-        def mise_version(self) -> str:
-            """Exact mise binary version."""
             ...
 
         @property
@@ -746,7 +723,7 @@ class FlextInfraProtocolsBase(Protocol):
     class XmlElementLike(Protocol):
         """Typed subset of the safe XML element API returned by defusedxml."""
 
-        attrib: dict[str, str]
+        attrib: MutableMapping[str, str]
         text: str | None
 
         def find(self, path: str) -> FlextInfraProtocolsBase.XmlElementLike | None:

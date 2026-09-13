@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import docs_main, main as infra_main
-from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -53,8 +53,9 @@ class TestsDocsCli:
     def test_audit_projects_filter_writes_selected_reports(
         self, tmp_path: Path
     ) -> None:
-        """Write audit reports only for explicitly selected projects."""
+        """Keep custom relative reports under each explicitly selected project."""
         workspace = self._workspace(tmp_path)
+        output_dir = tmp_path.name
 
         tm.that(
             infra_main([
@@ -62,15 +63,19 @@ class TestsDocsCli:
                 "audit",
                 "--repository-root",
                 str(workspace),
+                "--output-dir",
+                output_dir,
                 "--projects",
                 "flext-a",
             ]),
             eq=0,
         )
-        tm.that((workspace / ".reports/docs/audit-report.md").exists(), eq=True)
-        tm.that((workspace / "flext-a/.reports/docs/audit-report.md").exists(), eq=True)
+        tm.that((workspace / output_dir / "audit-report.md").exists(), eq=True)
         tm.that(
-            (workspace / "flext-b/.reports/docs/audit-report.md").exists(), eq=False
+            (workspace / "flext-a" / output_dir / "audit-report.md").exists(), eq=True
+        )
+        tm.that(
+            (workspace / "flext-b" / output_dir / "audit-report.md").exists(), eq=False
         )
 
     def test_fix_uses_public_route(self, tmp_path: Path) -> None:

@@ -15,10 +15,7 @@ class FlextInfraDepsFloorProfileWriter:
 
     @classmethod
     def rewrite_profiles_from_lock(
-        cls,
-        *,
-        locked_versions: t.MappingKV[str, str],
-        internal_names: t.StrSequence,
+        cls, *, locked_versions: t.MappingKV[str, str], internal_names: t.StrSequence
     ) -> t.StrSequence:
         """Update dependency_profiles in config/codegen.yaml with raised floors.
 
@@ -50,7 +47,9 @@ class FlextInfraDepsFloorProfileWriter:
             return ()
         project = scaffold.get("project")
         if not project or not isinstance(project, dict):
-            u.Cli.error("Infra.codegen.scaffold.project section missing in codegen.yaml")
+            u.Cli.error(
+                "Infra.codegen.scaffold.project section missing in codegen.yaml"
+            )
             return ()
         profiles = project.get("dependency_profiles")
         if not profiles or not isinstance(profiles, list):
@@ -66,7 +65,10 @@ class FlextInfraDepsFloorProfileWriter:
             upstream = str(profile.get("upstream", ""))
             runtime_reqs = profile.get("runtime")
             codegen_reqs = profile.get("codegen")
-            for key_name, reqs in (("runtime", runtime_reqs), ("codegen", codegen_reqs)):
+            for key_name, reqs in (
+                ("runtime", runtime_reqs),
+                ("codegen", codegen_reqs),
+            ):
                 if not isinstance(reqs, list):
                     continue
                 for idx, req in enumerate(reqs):
@@ -80,7 +82,9 @@ class FlextInfraDepsFloorProfileWriter:
                     if rewritten is not None and rewritten != req:
                         # Update in place preserves surrounding comments/keys
                         reqs[idx] = rewritten
-                        changes.append(f"profile({upstream}).{key_name}: {req} -> {rewritten}")
+                        changes.append(
+                            f"profile({upstream}).{key_name}: {req} -> {rewritten}"
+                        )
 
         if not changes:
             return ()

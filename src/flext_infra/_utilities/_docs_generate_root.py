@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -36,12 +37,33 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
         exclude_docs = FlextInfraUtilitiesDocsRender.as_string_sequence(
             workspace_contract, "exclude_docs"
         )
-        project_scopes = [scope for scope in scopes if scope.name != c.Infra.RK_ROOT]
-        catalog_entries: t.MutableSequenceOf[dict[str, str]] = []
-        class_counts: dict[str, int] = {}
-        scope_modules: dict[str, list[str]] = {}
+        project_scopes = [scope for scope in scopes if scope.path != repository_root]
+        catalog_entries: t.MutableSequenceOf[MutableMapping[str, str]] = []
+        class_counts: MutableMapping[str, int] = {}
+        scope_modules: MutableMapping[str, list[str]] = {}
         src_paths: t.MutableSequenceOf[str] = []
-        for scope in project_scopes:
+        root_api: list[tuple[Path, str]] = []
+        for scope in scopes:
+            if scope.name == c.Infra.RK_ROOT:
+                continue
+            src_dir = scope.path / "src"
+            src_exists = (
+                FlextInfraUtilitiesDocsGenerateRootMixin._source_directory_exists(
+                    src_dir
+                )
+            )
+            if src_exists.failure:
+                return r[tuple[DocsRenderedArtifactTuple, ...]].from_failure(src_exists)
+            if src_exists.value:
+                src_paths.append(src_dir.relative_to(repository_root).as_posix())
+            if scope.path == repository_root:
+                if scope.package_name:
+                    root_api.extend(
+                        FlextInfraUtilitiesDocsGenerateRootMixin.docs_project_api_artifacts(
+                            scope
+                        )
+                    )
+                continue
             class_counts[scope.project_class] = (
                 class_counts.get(scope.project_class, 0) + 1
             )
@@ -56,16 +78,6 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
             scope_modules[scope.name] = (
                 FlextInfraUtilitiesDocsGenerateRootMixin._module_names(scope)
             )
-            src_dir = scope.path / "src"
-            src_exists = (
-                FlextInfraUtilitiesDocsGenerateRootMixin._source_directory_exists(
-                    src_dir
-                )
-            )
-            if src_exists.failure:
-                return r[tuple[DocsRenderedArtifactTuple, ...]].from_failure(src_exists)
-            if src_exists.value:
-                src_paths.append(src_dir.relative_to(repository_root).as_posix())
             catalog_entries.append({
                 "name": scope.name,
                 "project_class": scope.project_class,
@@ -74,6 +86,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
                 "api_page": f"../../api-reference/generated/{scope.name}.md",
             })
         rendered: list[tuple[Path, str]] = [
+            *root_api,
             (
                 repository_root / "mkdocs.yml",
                 FlextInfraUtilitiesDocsRender.docs_root_mkdocs(
@@ -95,7 +108,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
                 ),
             ),
         ]
-        projects_index_entries: t.MutableSequenceOf[dict[str, str]] = []
+        projects_index_entries: t.MutableSequenceOf[MutableMapping[str, str]] = []
         for scope in project_scopes:
             rendered.append((
                 repository_root / "docs/api-reference/generated" / f"{scope.name}.md",
@@ -164,13 +177,16 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
         *,
         repository_root: Path,
         aggregate_scopes: t.SequenceOf[m.Infra.DocScope],
+        source_states: t.SequenceOf[m.Cli.AtomicFileState],
     ) -> p.Result[t.VariadicTuple[DocsRenderedArtifactTuple]]:
         """Return the rendered artifact inventory for one docs scope."""
         if scope.name == c.Infra.RK_ROOT:
             return FlextInfraUtilitiesDocsGenerateRootMixin.docs_root_artifacts(
                 repository_root, aggregate_scopes
             )
-        return FlextInfraUtilitiesDocsGenerateRootMixin.docs_project_artifacts(scope)
+        return FlextInfraUtilitiesDocsGenerateRootMixin.docs_project_artifacts(
+            scope, repository_root=repository_root, source_states=source_states
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsGenerateRootMixin"]

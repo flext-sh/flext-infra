@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -66,11 +67,11 @@ class FlextInfraMiseArtifactsProcess:
         storage_root: Path,
         release: str,
         contract: m.Infra.MiseBootstrapEnvironmentSpec,
-    ) -> p.Result[dict[str, str]]:
+    ) -> p.Result[MutableMapping[str, str]]:
         """Build one isolated environment backed by release-addressed storage."""
         install_path = u.Infra.mise_runtime_install_path(storage_root, release)
         if install_path.failure:
-            return r[dict[str, str]].from_failure(install_path)
+            return r[MutableMapping[str, str]].from_failure(install_path)
         isolated = dict(contract.fixed_environment)
         isolated.update({
             name: str(scratch / relative)
@@ -92,10 +93,12 @@ class FlextInfraMiseArtifactsProcess:
         credential_command = os.environ.get("MISE_GITHUB_CREDENTIAL_COMMAND")
         if credential_command:
             isolated["MISE_GITHUB_CREDENTIAL_COMMAND"] = credential_command
-        return r[dict[str, str]].ok(isolated)
+        return r[MutableMapping[str, str]].ok(isolated)
 
     @classmethod
-    def no_config_environment(cls, environment_values: t.StrMapping) -> dict[str, str]:
+    def no_config_environment(
+        cls, environment_values: t.StrMapping
+    ) -> MutableMapping[str, str]:
         """Select Mise's documented config-free mode for runtime-only commands."""
         result = dict(environment_values)
         result["MISE_NO_CONFIG"] = "1"

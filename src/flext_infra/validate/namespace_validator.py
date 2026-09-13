@@ -49,6 +49,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
             py_file
             for py_file in files_result.value
             if not self._is_exempt_file(py_file)
+            and self._in_declared_scan_scope(py_file, project_root)
         ]
         layout = u.Infra.layout(project_root)
         prefix = layout.class_stem if layout is not None else ""
@@ -78,6 +79,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
                         rel,
                         class_stem=prefix,
                         package_name=package_name,
+                        source=filepath.read_text(encoding=c.Cli.ENCODING_DEFAULT),
                         is_test_file=self._is_test_file(rel),
                     )
                 )
@@ -104,6 +106,24 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         """Check whether a file should be skipped from validation."""
         name = filepath.name
         return name in {"__init__.py", "__version__.py"}
+
+    def _in_declared_scan_scope(self, filepath: Path, project_root: Path) -> bool:
+        """Return whether ``filepath`` lies inside the declared namespace scope.
+
+        Why (cosmos-3flk9, decision A): ``[tool.flext.namespace].scan_dirs``
+        scopes enforcement to production sources when a project declares it —
+        ``tests/`` host pytest conventions and ``scripts/`` are thin command
+        adapters, so governing them as facades contradicts their contract.
+        The cyclic-import detector and the canonical-alias gate already honor
+        ``u.Infra.namespace_scan_dirs``; the validator silently ignoring the
+        same declaration made the declared scope a no-op. Without an explicit
+        declaration every file stays in scope (previous behavior).
+        """
+        declared = u.Infra.namespace_meta(project_root).get("scan_dirs")
+        if not isinstance(declared, list) or not declared:
+            return True
+        scope = frozenset(str(item).strip() for item in declared if str(item).strip())
+        return filepath.relative_to(project_root).parts[0] in scope
 
     def _parse_file(
         self, rope_project: t.Infra.RopeProject, path: Path

@@ -10,11 +10,6 @@ from collections.abc import Callable, Container as _Container, MutableMapping
 from pathlib import Path as _Path
 from typing import Annotated, Literal
 
-from jinja2.environment import (
-    Environment as _JinjaEnvironment,
-    Template as _JinjaTemplate,
-)
-
 # Why: flext_cli owns the pipeline models/result contract; flext_core's m/p
 # have no nested Cli namespace, so the pipeline handler alias below needs
 # flext_cli's own m/p under a distinct name. The import stays at runtime on
@@ -22,6 +17,11 @@ from jinja2.environment import (
 # flext-infra (no cycle), and the runtime census gate evaluates every alias's
 # __value__, so a TYPE_CHECKING-only import would explode as NameError.
 from flext_cli import m as _cli_m, p as _cli_p
+from jinja2.environment import (
+    Environment as _JinjaEnvironment,
+    Template as _JinjaTemplate,
+)
+
 from flext_core import m, t
 
 
@@ -84,8 +84,6 @@ class FlextInfraTypesBase:
     "Result for writing generated __init__.py."
     type StrSet = set[str]
     "Mutable string set (supports .update/.intersection/etc)."
-    type Container[T] = _Container[T]
-    "Structural membership container (supports ``in``) for any item type."
     type CanonicalValue = t.Scalar | t.StrSequence
     "Canonical governance value: scalar payload or string sequence."
 
@@ -104,7 +102,7 @@ class FlextInfraTypesBase:
     "Typed service result payload: model or validated JSON value."
     type DomainResultSequence = t.SequenceOf[DomainResult]
     "Read-only sequence of typed service result payloads."
-    type StubChainRuntimeState = dict[str, t.GuardInput | None]
+    type StubChainRuntimeState = MutableMapping[str, t.GuardInput | None]
     "Canonical model-construction payload for the stub supply-chain service."
 
     # ── Transformer / edit result types ──────────────────────────────

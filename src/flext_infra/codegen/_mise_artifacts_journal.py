@@ -264,15 +264,19 @@ class FlextInfraMiseArtifactsJournal:
         entries: list[m.Infra.CodegenJournalEntry] = []
         for entry, candidate in zip(journal.entries, candidates, strict=True):
             replacement = None if candidate is None else candidate.replacement
-            if entry.original_exists and (
-                replacement is None or replacement.content is None
+            if (
+                entry.original_exists
+                and candidate is not None
+                and (replacement is None or replacement.content is None)
             ):
                 return r[m.Infra.CodegenTransactionJournal].fail(
                     f"codegen rollback candidate is incomplete: {entry.path}"
                 )
             entry_data = entry.model_dump()
             entry_data.update({
-                "rollback_exists": entry.original_exists,
+                "rollback_exists": (
+                    replacement is not None and replacement.content is not None
+                ),
                 "rollback_parent_device": entry.original_parent_device,
                 "rollback_parent_inode": entry.original_parent_inode,
                 "rollback_sha256": (
@@ -551,6 +555,10 @@ class FlextInfraMiseArtifactsJournal:
     def _journal_source(
         cls, phase: str, source: m.Cli.AtomicFileState
     ) -> p.Result[m.Infra.CodegenJournalSource]:
+        if source.parent_device is None or source.parent_inode is None:
+            return r[m.Infra.CodegenJournalSource].fail(
+                f"generation source parent identity is incomplete: {source.path}"
+            )
         if (
             source.content is None
             or source.mode is None
@@ -611,6 +619,10 @@ class FlextInfraMiseArtifactsJournal:
         recovery_roots: set[Path],
     ) -> p.Result[m.Infra.CodegenJournalEntry]:
         before = publication.before
+        if before.parent_device is None or before.parent_inode is None:
+            return r[m.Infra.CodegenJournalEntry].fail(
+                f"generation destination parent identity is incomplete: {before.path}"
+            )
         project = next(
             (item for item in plan.projects if item.layout.root == publication.project),
             None,

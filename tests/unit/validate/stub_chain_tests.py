@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import r
 from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
-from flext_tests import tm
 from tests import c, m, u
 
 if TYPE_CHECKING:
@@ -127,19 +128,8 @@ class TestStubChain:
         tm.that(result.value.summary, eq="typed dependency chain: 1 projects, 0 issues")
 
     def test_build_report_includes_untracked_git_projects(self, tmp_path: Path) -> None:
-        init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
-        tm.ok(init_result)
-        tm.that(u.Cli.process_succeeded(init_result.value.outcome), eq=True)
-        email_result = u.Cli.run_raw(
-            ["git", "config", "user.email", "test@example.com"], cwd=tmp_path
-        )
-        tm.ok(email_result)
-        tm.that(u.Cli.process_succeeded(email_result.value.outcome), eq=True)
-        name_result = u.Cli.run_raw(
-            ["git", "config", "user.name", "Test User"], cwd=tmp_path
-        )
-        tm.ok(name_result)
-        tm.that(u.Cli.process_succeeded(name_result.value.outcome), eq=True)
+        u.Tests.git_bootstrap(tmp_path, ("init",))
+        u.Tests.configure_git_identity(tmp_path)
         tracked_project = u.Tests.mk_project(tmp_path, "project-a", with_src=True)
         _untracked_project = u.Tests.mk_project(tmp_path, "project-b", with_src=True)
         u.Tests.declare_workspace_projects(tmp_path, ("project-a", "project-b"))

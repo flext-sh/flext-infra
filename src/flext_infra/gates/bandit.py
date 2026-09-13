@@ -47,18 +47,9 @@ class FlextInfraBanditGate(FlextInfraGate):
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         if not u.Cli.process_succeeded(result.outcome) and not result.stdout.strip():
-            detail = result.stderr.strip() or "no diagnostics"
             issues.append(
-                m.Infra.Issue(
-                    file="<bandit>",
-                    line=0,
-                    column=0,
-                    code="TOOL_ERROR",
-                    message=(
-                        "bandit exited with code "
-                        f"{result.outcome.raw_return_code}: {detail}"
-                    ),
-                    severity="ERROR",
+                self._command_error_issue(
+                    result, tool=c.Infra.BANDIT, file="<bandit>", line=0, column=0
                 )
             )
             return False, issues
@@ -83,15 +74,9 @@ class FlextInfraBanditGate(FlextInfraGate):
             return False, issues
         issues.extend(self._bandit_issues(parsed_payload.unwrap()))
         if not issues and not u.Cli.process_succeeded(result.outcome):
-            detail = (result.stderr or result.stdout).strip() or "no diagnostics"
             issues.append(
-                m.Infra.Issue(
-                    file="<bandit>",
-                    line=0,
-                    column=0,
-                    code="TOOL_ERROR",
-                    message=f"bandit exited with code {result.outcome.raw_return_code}: {detail}",
-                    severity="ERROR",
+                self._command_error_issue(
+                    result, tool=c.Infra.BANDIT, file="<bandit>", line=0, column=0
                 )
             )
         return u.Cli.process_succeeded(result.outcome), issues

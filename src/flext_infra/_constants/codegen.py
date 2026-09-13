@@ -53,9 +53,10 @@ class FlextInfraConstantsCodegen(
     )
     "Runtime singleton modules for src/: (filename, class_suffix, base_class, docstring)."
     VIOLATION_PATTERN: Final[t.RegexPattern] = re.compile(
-        r"\[(?P<rule>NS-\d{3})-\d{3}\]\s+(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)"
+        r"\[(?P<rule>NS-(?:[A-Z]+|\d{3}))-\d{3}\]\s+"
+        r"(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)"
     )
-    "Regex to parse violation strings: [NS-00X-NNN] path:line — message."
+    "Regex to parse violation strings: [NS-RULE-NNN] path:line — message."
     MISE_RELEASE_COMPONENT_COUNT: Final[int] = 3
     "Number of numeric components in a generated Mise release version."
     MISE_LAUNCHER_DIRECTORY: Final[str] = "bin"
@@ -64,7 +65,6 @@ class FlextInfraConstantsCodegen(
     "Canonical Unix Mise launcher filename."
     MISE_WINDOWS_LAUNCHER_FILENAME: Final[str] = "mise.cmd"
     "Canonical Windows Mise launcher filename."
-    GEN_BACKUP_UTC_FORMAT: Final[str] = "%Y%m%dT%H%M%SZ"
     "UTC basic stamp for `{filename}.{stamp}.bak` written before gen apply."
     CODEGEN_TRANSACTION_LOCK_FILENAME: Final[str] = "flext-infra-codegen.lock"
     "Worktree-specific administrative lock for complete generation."
@@ -72,6 +72,16 @@ class FlextInfraConstantsCodegen(
     "Owner-private mode required for the generation lock."
     MISE_BOOTSTRAP_SEED_DIRECTORY: Final[str] = "templates/bootstrap"
     "Package-local bootstrap seed directory for the authenticated launcher."
+    MISE_UNLOCKED_RESOLUTION_URL: Final[str] = (
+        "https://github.com/jdx/mise/releases/latest"
+    )
+    "Upstream resolution endpoint the unlocked launcher must carry."
+    MISE_UNLOCKED_FAIL_LOUD_CLAUSE: Final[str] = (
+        "could not resolve the latest mise release"
+    )
+    "Fail-loud clause emitted when the releases/latest resolution fails."
+    MISE_UNLOCKED_CHECKSUM_URI: Final[str] = "SHASUMS256.txt"
+    "Release checksum payload the unlocked launcher always verifies."
     MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE: Final[str] = "MISE_DATA_DIR"
     "Required caller-owned persistent root for generated Mise setup."
     MISE_BOOTSTRAP_FIXED_ENVIRONMENT: Final[t.StrPairSequence] = (
@@ -149,6 +159,18 @@ class FlextInfraConstantsCodegen(
         "PATHEXT",
         "SYSTEMROOT",
         "WINDIR",
+        # Credential and network-policy keys the lock-time provenance fetch
+        # requires: without them the shared-host GitHub rate limit fails the
+        # lock generation closed. Reinjection stays explicit (allowlist).
+        "GITHUB_TOKEN",
+        "GH_TOKEN",
+        "MISE_GITHUB_TOKEN",
+        "MISE_GITHUB_CREDENTIAL_COMMAND",
+        "MISE_HTTP_TIMEOUT",
+        # Launcher pin knob: hosts whose curl resolves through Mise shims
+        # cannot resolve "latest" inside the sanitized bootstrap env; an
+        # explicit MISE_VERSION skips that resolution entirely.
+        "MISE_VERSION",
     )
     "Only host environment keys eligible for explicit reinjection."
 
@@ -159,6 +181,10 @@ class FlextInfraConstantsCodegen(
 
         DISCOVER = "discover"
         TOOLCHAIN = "toolchain"
+        PARSE_SSOT = "parse_ssot"
+        RENDER_TEMPLATES = "render_templates"
+        OVERLAY_PRESERVATION = "overlay_preservation"
+        WRITE_PUBLICATION = "write_publication"
         PY_TYPED = "py_typed"
         CENSUS_BEFORE = "census_before"
         SCAFFOLD = "scaffold"
@@ -169,13 +195,16 @@ class FlextInfraConstantsCodegen(
 
     PIPELINE_STAGE_ORDER: Final[t.VariadicTuple[PipelineStage]] = (
         PipelineStage.DISCOVER,
-        PipelineStage.TOOLCHAIN,
+        PipelineStage.PARSE_SSOT,
+        PipelineStage.RENDER_TEMPLATES,
+        PipelineStage.OVERLAY_PRESERVATION,
+        PipelineStage.WRITE_PUBLICATION,
         PipelineStage.PY_TYPED,
         PipelineStage.CENSUS_BEFORE,
         PipelineStage.SCAFFOLD,
+        PipelineStage.LAZY_INIT,
         PipelineStage.AUTO_FIX,
         PipelineStage.DEPS,
-        PipelineStage.LAZY_INIT,
         PipelineStage.CENSUS_AFTER,
     )
     "Ordered sequence of pipeline stage identifiers."

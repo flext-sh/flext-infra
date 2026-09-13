@@ -3,16 +3,21 @@
 from __future__ import annotations
 
 import re
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m
+from flext_core import r
+from flext_infra import c, config, m
 
 from ._docs_command_contract import FlextInfraUtilitiesDocsCommandContractMixin
-from .docs_contract import FlextInfraUtilitiesDocsContract
+from ._docs_generate_plan import (
+    DocsRenderedArtifactTuple,
+    FlextInfraUtilitiesDocsGeneratePlanMixin,
+)
 
 if TYPE_CHECKING:
-    from flext_infra import t
+    from flext_infra import p, t
 
 
 class FlextInfraUtilitiesDocsGuidesMixin:
@@ -35,7 +40,7 @@ class FlextInfraUtilitiesDocsGuidesMixin:
             break
         body = "\n".join(body_lines).lstrip()
         header = (
-            "<!-- AUTO-GENERATED FILE — regenerate through `make gen APPLY=Y` "
+            "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
             "from the workspace root. -->\n"
             f"<!-- Source of truth: `docs/guides/{guide_name}`; adjust that source, "
             "never this projection. -->\n\n"
@@ -62,35 +67,68 @@ class FlextInfraUtilitiesDocsGuidesMixin:
         return re.sub(c.Infra.MARKDOWN_LINK_RE, sanitize_link, content)
 
     @staticmethod
-    def docs_project_guides_files(
-        scope: m.Infra.DocScope, *, repository_root: Path, apply: bool
-    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
-        """Project every canonical root guide into one member docs tree."""
+    def docs_project_guides_artifacts(
+        scope: m.Infra.DocScope,
+        *,
+        repository_root: Path,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState],
+    ) -> p.Result[t.VariadicTuple[DocsRenderedArtifactTuple]]:
+        """Plan root-owned guide projections from authenticated snapshot bytes."""
+        from flext_infra import u
+
         source_root = repository_root / c.Infra.DIR_DOCS / "guides"
         destination_root = scope.path / c.Infra.DIR_DOCS / "guides"
-        if source_root.resolve() == destination_root.resolve():
-            # A standalone package has no distinct workspace guide source. Its
-            # own ``docs/guides`` tree is already the generated projection, so
-            # reading it as input would prepend another heading/profile on each
-            # generation. The workspace root remains the only source for member
-            # guide projections; a direct package run must be a fixed point.
-            return []
-        if not source_root.is_dir():
-            msg = f"canonical guide source not found: {source_root}"
-            raise FileNotFoundError(msg)
-        source_paths = sorted(
-            path for path in source_root.glob("*.md") if path.name != "README.md"
+        if source_root == destination_root:
+            # Same-root inputs are authoritative, never their own projections.
+            return r[tuple[DocsRenderedArtifactTuple, ...]].ok(())
+        if not scope.path.is_relative_to(repository_root):
+            return r[tuple[DocsRenderedArtifactTuple, ...]].fail(
+                f"docs guide scope escapes repository {repository_root}: {scope.path}"
+            )
+        sources: MutableMapping[Path, str] = {}
+        destinations: MutableMapping[Path, str] = {}
+        for state in source_states:
+            path = state.path
+            if (
+                path.parent not in {source_root, destination_root}
+                or path.suffix != ".md"
+                or path.name == "README.md"
+            ):
+                continue
+            if state.content is None:
+                return r[tuple[DocsRenderedArtifactTuple, ...]].fail(
+                    f"docs guide source is absent: {path}"
+                )
+            content = state.content.decode(c.Cli.ENCODING_DEFAULT)
+            if path.parent == source_root:
+                sources[path] = content
+            else:
+                destinations[path] = content
+        owned: set[Path] = set()
+        for path, content in destinations.items():
+            ownership = FlextInfraUtilitiesDocsGuidesMixin.docs_project_guide_content(
+                "", scope.name, path.name
+            ).partition("\n\n")[0]
+            if content.startswith(ownership + "\n\n"):
+                owned.add(path)
+        artifacts: list[DocsRenderedArtifactTuple] = []
+        expected_paths = {destination_root / path.name for path in sources}
+        loaded = u.Infra.workspace_spec_load(repository_root)
+        if loaded.failure:
+            return r[tuple[DocsRenderedArtifactTuple, ...]].from_failure(loaded)
+        effective_verbs = (
+            *config.Infra.codegen.make.verbs,
+            *loaded.value.repository.extra_verbs,
         )
-        expected_paths = {
-            destination_root / "README.md",
-            *(destination_root / path.name for path in source_paths),
-        }
-        files: t.MutableSequenceOf[m.Infra.GeneratedFile] = []
-        for source_path in source_paths:
-            source = source_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        for source_path, source in sorted(sources.items()):
+            destination = destination_root / source_path.name
+            if destination in destinations and destination not in owned:
+                return r[tuple[DocsRenderedArtifactTuple, ...]].fail(
+                    f"canonical guide collides with protected custom guide: {destination}"
+                )
             relative_path = source_path.relative_to(repository_root).as_posix()
             issues = FlextInfraUtilitiesDocsCommandContractMixin.docs_command_contract_content_issues(
-                source, relative_path=relative_path
+                source, relative_path=relative_path, effective_verbs=effective_verbs
             )
             if issues:
                 first = issues[0]
@@ -99,31 +137,19 @@ class FlextInfraUtilitiesDocsGuidesMixin:
             rendered = FlextInfraUtilitiesDocsGuidesMixin.docs_project_guide_content(
                 source, scope.name, source_path.name
             )
-            files.append(
-                FlextInfraUtilitiesDocsContract.docs_write_if_needed(
-                    destination_root / source_path.name,
-                    FlextInfraUtilitiesDocsGuidesMixin.docs_sanitize_internal_anchor_links(
-                        rendered
-                    ),
-                    apply=apply,
-                )
-            )
-        for destination_path in sorted(destination_root.glob("*.md")):
-            if destination_path in expected_paths:
-                continue
-            existing = destination_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            if not existing.startswith(
-                "<!-- AUTO-GENERATED FILE"
-            ) and not existing.startswith("<!-- Generated from docs/guides/"):
-                continue
-            if apply:
-                destination_path.unlink()
-            files.append(
-                m.Infra.GeneratedFile(
-                    path=destination_path.as_posix(), changed=True, written=apply
-                )
-            )
-        return files
+            artifacts.append((
+                scope.path,
+                destination,
+                FlextInfraUtilitiesDocsGuidesMixin.docs_sanitize_internal_anchor_links(
+                    rendered
+                ),
+            ))
+        artifacts.extend(
+            (scope.path, path, None) for path in sorted(owned - expected_paths)
+        )
+        return FlextInfraUtilitiesDocsGeneratePlanMixin.docs_normalize_artifacts(
+            artifacts
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsGuidesMixin"]

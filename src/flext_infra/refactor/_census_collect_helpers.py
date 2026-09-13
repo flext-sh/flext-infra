@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -43,11 +44,13 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             module: m.Infra.RopeModuleIndexEntry,
             config: m.Infra.Census.ScanConfig,
             *,
-            project_objects: t.MappingKV[str, t.SequenceOf[m.Infra.Census.Object]],
-            project_violations: t.MappingKV[
-                str, t.SequenceOf[m.Infra.Census.Violation]
+            project_objects: t.MappingKV[
+                str, t.MutableSequenceOf[m.Infra.Census.Object]
             ],
-            project_fixes: t.MappingKV[str, t.SequenceOf[m.Infra.Census.Fix]],
+            project_violations: t.MappingKV[
+                str, t.MutableSequenceOf[m.Infra.Census.Violation]
+            ],
+            project_fixes: t.MappingKV[str, t.MutableSequenceOf[m.Infra.Census.Fix]],
             report_projects: set[str],
         ) -> None:
             """Scan through the composed census collection mixin."""
@@ -237,11 +240,13 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             include_local_scopes=include_local_scopes,
             applied=applied,
         )
-        project_objects: dict[str, list[m.Infra.Census.Object]] = defaultdict(list)
-        project_violations: dict[str, list[m.Infra.Census.Violation]] = defaultdict(
+        project_objects: MutableMapping[str, list[m.Infra.Census.Object]] = defaultdict(
             list
         )
-        project_fixes: dict[str, list[m.Infra.Census.Fix]] = defaultdict(list)
+        project_violations: MutableMapping[str, list[m.Infra.Census.Violation]] = (
+            defaultdict(list)
+        )
+        project_fixes: MutableMapping[str, list[m.Infra.Census.Fix]] = defaultdict(list)
         report_projects: set[str] = set()
         for module in self._modules_for_rules(
             rope, project_names=project_names, rule_names=rule_names

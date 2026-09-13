@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import shutil
-from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c, m, t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_tests import tm
 from tests import u
 from tests.unit.workspace import WorktreeFixture
 
@@ -58,27 +57,26 @@ class TestsRepositoryLocalTopology:
     ) -> None:
         """Preserve typed local policy after reconciling it with observed Git."""
         root = _self_named_governed_root(tmp_path, "manifest-policy")
-        exclusion = "fixture-manifest-policy-excluded"
-        override = "fixture-manifest-policy-overridden"
-        cutoff = datetime.now(UTC).isoformat()
-        _ = WorktreeFixture.override_repository_manifest(
-            root,
-            {
-                "kind": c.Infra.ProjectKind.THIRD_PARTY_FORK,
+        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        manifest: dict[str, t.JsonValue] = {
+            "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
+            "name": observed.name,
+            "repository": {
+                **observed.repository.model_dump(mode="json"),
+                "kind": c.Infra.ProjectKind.THIRD_PARTY_FORK.value,
                 "uv_link_mode": "clone",
-                "dependency_cooldown_exclusions": (exclusion,),
-                "dependency_cooldown_overrides": {override: cutoff},
             },
+        }
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME, manifest
+            )
         )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
         tm.that(workspace.repository.kind, eq=c.Infra.ProjectKind.THIRD_PARTY_FORK)
         tm.that(workspace.repository.uv_link_mode, eq="clone")
-        tm.that(workspace.repository.dependency_cooldown_exclusions, eq=(exclusion,))
-        tm.that(
-            workspace.repository.dependency_cooldown_overrides, eq={override: cutoff}
-        )
 
     def test_selected_workspace_manifest_rejects_git_contradiction(
         self, tmp_path: Path
@@ -199,7 +197,7 @@ class TestsRepositoryLocalTopology:
         """Fail closed on values outside the typed local contract."""
         root = _beads_fixture_root(tmp_path, field)
         payload = _beads_fixture_payload()
-        payload["custom_issue_types"] = []
+        payload["custom_issue_types"] = list[t.JsonValue]()
         payload[field] = invalid_value
         tm.ok(u.Cli.yaml_dump(root / "config" / "beads.yaml", payload))
 

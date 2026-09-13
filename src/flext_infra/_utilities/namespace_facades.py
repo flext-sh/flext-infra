@@ -10,6 +10,7 @@ from types import MappingProxyType
 from typing import ClassVar
 
 from flext_cli import u
+
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -50,14 +51,14 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         """Compute base chains."""
         pyproject_path = project_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject_path.exists():
-            return MappingProxyType(dict[str, tuple[str, ...]]())
+            return MappingProxyType(MutableMapping[str, tuple[str, ...]]())
         try:
             raw = pyproject_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError:
-            return MappingProxyType(dict[str, tuple[str, ...]]())
+            return MappingProxyType(MutableMapping[str, tuple[str, ...]]())
         payload = u.Cli.toml_mapping_from_text(raw)
         if payload is None:
-            return MappingProxyType(dict[str, tuple[str, ...]]())
+            return MappingProxyType(MutableMapping[str, tuple[str, ...]]())
         dep_names = (
             FlextInfraUtilitiesDependencies.declared_dependency_names_from_payload(
                 t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)

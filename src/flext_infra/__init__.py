@@ -32,6 +32,7 @@ if TYPE_CHECKING:
         fixers,
         gates,
         maintenance,
+        promoted,
         refactor,
         release,
         services,
@@ -62,7 +63,6 @@ if TYPE_CHECKING:
     from .codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
     from .codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
     from .codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
-    from .codegen.mise_artifacts_lock import FlextInfraMiseLock
     from .codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
     from .codegen.pipeline import FlextInfraCodegenPipeline
     from .codegen.project_new import FlextInfraCodegenProjectNew
@@ -100,6 +100,9 @@ if TYPE_CHECKING:
     from .detectors.class_placement_detector import FlextInfraClassPlacementDetector
     from .detectors.compatibility_alias_detector import (
         FlextInfraCompatibilityAliasDetector,
+    )
+    from .detectors.consumer_import_violations_detector import (
+        FlextInfraConsumerImportViolationsDetector,
     )
     from .detectors.cyclic_import_detector import FlextInfraCyclicImportDetector
     from .detectors.deferred_self_reference_detector import (
@@ -141,6 +144,7 @@ if TYPE_CHECKING:
     from .gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
     from .gates.bandit import FlextInfraBanditGate
     from .gates.base_gate import FlextInfraGate, FlextInfraScannerGateMixin
+    from .gates.budget import FlextInfraBudgetGate
     from .gates.canonical_alias import FlextInfraCanonicalAliasGate
     from .gates.deferred_self_reference import FlextInfraDeferredSelfReferenceGate
     from .gates.direnv import FlextInfraDirenvGate
@@ -184,6 +188,7 @@ if TYPE_CHECKING:
     from .refactor.wrapper_root_namespace import FlextInfraWrapperRootNamespaceRefactor
     from .release.orchestrator import FlextInfraReleaseOrchestrator
     from .release.orchestrator_phases import FlextInfraReleaseOrchestratorPhases
+    from .release.policy_render import FlextInfraReleasePolicyRender
     from .services.cli_dispatch import CliDispatchService
     from .services.cli_route_base import CliRouteBase
     from .services.cli_routes import CliRouteService
@@ -272,6 +277,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraAccessorMigrationOrchestrator",
     "FlextInfraBanditGate",
     "FlextInfraBooleanLogicFixer",
+    "FlextInfraBudgetGate",
     "FlextInfraCProfileReport",
     "FlextInfraCanonicalAliasGate",
     "FlextInfraCensusImportDiscoveryVisitor",
@@ -304,6 +310,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraConfigFixer",
     "FlextInfraConsolidateGroupsPhase",
     "FlextInfraConstants",
+    "FlextInfraConsumerImportViolationsDetector",
     "FlextInfraCyclicImportDetector",
     "FlextInfraDeferredSelfReferenceDetector",
     "FlextInfraDeferredSelfReferenceGate",
@@ -360,7 +367,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraManualProtocolDetector",
     "FlextInfraManualTypingAliasDetector",
     "FlextInfraMarkdownGate",
-    "FlextInfraMiseLock",
     "FlextInfraMiseWorkspacePlanner",
     "FlextInfraModGateEngine",
     "FlextInfraModels",
@@ -406,6 +412,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorViolationAnalyzer",
     "FlextInfraReleaseOrchestrator",
     "FlextInfraReleaseOrchestratorPhases",
+    "FlextInfraReleasePolicyRender",
     "FlextInfraRopeWorkspace",
     "FlextInfraRuffFormatGate",
     "FlextInfraRuffLintGate",
@@ -479,6 +486,7 @@ __all__: tuple[str, ...] = (
     "main",
     "maintenance",
     "p",
+    "promoted",
     "r",
     "refactor",
     "release",
@@ -521,7 +529,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen.lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
             ".codegen.make_bootstrap": ("FlextInfraCodegenMakeBootstrap",),
             ".codegen.mise_artifacts": ("FlextInfraCodegenMiseArtifacts",),
-            ".codegen.mise_artifacts_lock": ("FlextInfraMiseLock",),
             ".codegen.mise_artifacts_workspace": ("FlextInfraMiseWorkspacePlanner",),
             ".codegen.pipeline": ("FlextInfraCodegenPipeline",),
             ".codegen.project_new": ("FlextInfraCodegenProjectNew",),
@@ -566,6 +573,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".detectors.compatibility_alias_detector": (
                 "FlextInfraCompatibilityAliasDetector",
+            ),
+            ".detectors.consumer_import_violations_detector": (
+                "FlextInfraConsumerImportViolationsDetector",
             ),
             ".detectors.cyclic_import_detector": ("FlextInfraCyclicImportDetector",),
             ".detectors.deferred_self_reference_detector": (
@@ -616,6 +626,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates.abstraction_boundary": ("FlextInfraAbstractionBoundaryGate",),
             ".gates.bandit": ("FlextInfraBanditGate",),
             ".gates.base_gate": ("FlextInfraGate", "FlextInfraScannerGateMixin"),
+            ".gates.budget": ("FlextInfraBudgetGate",),
             ".gates.canonical_alias": ("FlextInfraCanonicalAliasGate",),
             ".gates.deferred_self_reference": ("FlextInfraDeferredSelfReferenceGate",),
             ".gates.direnv": ("FlextInfraDirenvGate",),
@@ -638,6 +649,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".maintenance.clean": ("FlextInfraCleanService",),
             ".maintenance.python_version": ("FlextInfraPythonVersionEnforcer",),
             ".models": ("FlextInfraModels", "m"),
+            ".promoted": ("promoted",),
             ".protocols": ("FlextInfraProtocols", "FlextInfraProtocolsBase", "p"),
             ".refactor": ("refactor",),
             ".refactor.accessor_migration": (
@@ -666,6 +678,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".release": ("release",),
             ".release.orchestrator": ("FlextInfraReleaseOrchestrator",),
             ".release.orchestrator_phases": ("FlextInfraReleaseOrchestratorPhases",),
+            ".release.policy_render": ("FlextInfraReleasePolicyRender",),
             ".services": ("services",),
             ".services.cli_dispatch": ("CliDispatchService",),
             ".services.cli_route_base": ("CliRouteBase",),

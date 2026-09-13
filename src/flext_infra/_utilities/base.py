@@ -7,9 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_cli import u as cli_u
+
 from flext_infra.constants import c
 from flext_infra.typings import t
 
@@ -188,8 +190,8 @@ class FlextInfraUtilitiesBase:
         """Return every strongly connected component in one directed graph."""
         next_index = 0
         stack: list[str] = []
-        indexes: dict[str, int] = {}
-        lowlinks: dict[str, int] = {}
+        indexes: MutableMapping[str, int] = {}
+        lowlinks: MutableMapping[str, int] = {}
         on_stack: set[str] = set()
         components: list[t.StrSequence] = []
 
@@ -232,6 +234,27 @@ class FlextInfraUtilitiesBase:
         if exit_code >= c.Infra.PROCESS_SIGNAL_EXIT_OFFSET:
             return f"signal={exit_code - c.Infra.PROCESS_SIGNAL_EXIT_OFFSET}"
         return "failure"
+
+    @staticmethod
+    def resolve_gen_path(package_root: Path) -> Path | None:
+        """Return the ``.gen`` requirements contract path, or None.
+
+        Searches the installed layout (``<pkg>/config/<dir>/<file>.gen``)
+        and the source checkout layout (``<repo>/config/<dir>/<file>.gen``).
+        """
+        gen_path = (
+            package_root / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_GEN_FILENAME
+        )
+        if gen_path.is_file():
+            return gen_path
+        source_gen = (
+            package_root.parent.parent
+            / c.Infra.CODEGEN_CONFIG_DIR
+            / c.Infra.CODEGEN_GEN_FILENAME
+        )
+        if source_gen.is_file():
+            return source_gen
+        return None
 
 
 __all__: list[str] = ["FlextInfraUtilitiesBase"]

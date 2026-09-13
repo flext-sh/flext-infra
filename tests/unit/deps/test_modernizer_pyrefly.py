@@ -5,11 +5,12 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import c, config
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
-from flext_tests import tm
 from tests import t, u
 from tests.unit.deps import ExtraPathsTestSupport
 
@@ -19,12 +20,25 @@ if TYPE_CHECKING:
     from tests import m
 
 
+def _live_table(value: t.JsonValue) -> MutableMapping[str, t.JsonValue]:
+    """Narrow one live TOML table reference without copying it.
+
+    The tests below mutate these tables and observe the mutations through
+    the owning document, so a copied plain dict would silently detach the
+    assertion target from the phase's write surface.
+    """
+    tm.that(value, is_=MutableMapping)
+    if not isinstance(value, MutableMapping):
+        msg = "expected a live mutable TOML table"
+        raise TypeError(msg)
+    return value
+
+
 def _pyrefly_document() -> tuple[t.Cli.TomlDocument, MutableMapping[str, t.JsonValue]]:
     """Create one fresh TOML document carrying an empty tool.pyrefly table."""
     doc = u.Cli.toml_document()
     doc["tool"] = u.Cli.toml_table()
-    tool = doc["tool"]
-    tm.that(tool, is_=MutableMapping)
+    tool = _live_table(doc["tool"])
     tool["pyrefly"] = u.Cli.toml_table()
     return doc, tool
 
@@ -36,9 +50,7 @@ def _pyrefly_section() -> tuple[
 ]:
     """Create the document plus its typed tool and tool.pyrefly tables."""
     doc, tool = _pyrefly_document()
-    pyrefly = tool["pyrefly"]
-    tm.that(pyrefly, is_=MutableMapping)
-    return doc, tool, pyrefly
+    return doc, tool, _live_table(tool["pyrefly"])
 
 
 def _apply_pyrefly_phase(
@@ -56,9 +68,7 @@ def _apply_pyrefly_phase(
         project_dir=project_dir,
         paths_manager=FlextInfraExtraPathsManager(repository_root=repository_root),
     )
-    pyrefly = tool["pyrefly"]
-    tm.that(pyrefly, is_=MutableMapping)
-    return pyrefly
+    return _live_table(tool["pyrefly"])
 
 
 def _apply_pyrefly_declared_roots(
@@ -78,11 +88,8 @@ def _apply_pyrefly_declared_roots(
         declared_python_dirs=declared_python_dirs,
         declared_python_dirs_are_complete=True,
     )
-    tool = doc["tool"]
-    tm.that(tool, is_=MutableMapping)
-    pyrefly = tool["pyrefly"]
-    tm.that(pyrefly, is_=MutableMapping)
-    return pyrefly
+    tool = _live_table(doc["tool"])
+    return _live_table(tool["pyrefly"])
 
 
 class TestsFlextInfraModernizerPyrefly:
@@ -225,8 +232,7 @@ class TestsFlextInfraModernizerPyrefly:
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
-        pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
+        pyrefly = _live_table(tool["pyrefly"])
         tm.that(u.Cli.toml_unwrap_item(pyrefly["python-version"]), eq="3.13")
 
     def test_ensure_pyrefly_config_removes_generated_code_suppression(
@@ -256,8 +262,7 @@ class TestsFlextInfraModernizerPyrefly:
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
-        pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
+        pyrefly = _live_table(tool["pyrefly"])
         tm.that(u.Cli.toml_unwrap_item(pyrefly["search-path"]), eq=["src"])
 
     def test_ensure_pyrefly_config_phase_apply_search_path_with_project_context(
@@ -420,10 +425,8 @@ class TestsFlextInfraModernizerPyrefly:
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
-        pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
-        errors = pyrefly["errors"]
-        tm.that(errors, is_=MutableMapping)
+        pyrefly = _live_table(tool["pyrefly"])
+        errors = _live_table(pyrefly["errors"])
         tm.that(len(errors), gt=0)
 
     def test_ensure_pyrefly_config_phase_removes_stale_error_keys(
@@ -432,8 +435,7 @@ class TestsFlextInfraModernizerPyrefly:
         """Verify stale error keys are removed from TOML documents."""
         doc, _, pyrefly = _pyrefly_section()
         pyrefly["errors"] = u.Cli.toml_table()
-        errors = pyrefly["errors"]
-        tm.that(errors, is_=MutableMapping)
+        errors = _live_table(pyrefly["errors"])
         errors["annotation-mismatch"] = "error"
 
         changes = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -47,6 +48,9 @@ class FlextInfraMiseArtifactsVerification:
                 return result_type.fail(
                     f"temporary tree has no created identity: {directory.path}"
                 )
+            if not target.value.exists() and not target.value.is_symlink():
+                registered.append(directory)
+                continue
             observed = u.Cli.atomic_inventory_physical_tree(target.value)
             if observed.failure:
                 return result_type.from_failure(observed)
@@ -97,7 +101,10 @@ class FlextInfraMiseArtifactsVerification:
             return result_type.fail(
                 f"temporary tree has no authorized manifest: {directory.path}"
             )
-        observed = u.Cli.atomic_inventory_physical_tree(directory.manifest.root.path)
+        root = directory.manifest.root.path
+        if not root.exists() and not root.is_symlink():
+            return result_type.ok(directory.manifest)
+        observed = u.Cli.atomic_inventory_physical_tree(root)
         if observed.failure:
             return result_type.from_failure(observed)
         if any(entry.kind == "symlink" for entry in observed.value.entries):
@@ -109,7 +116,7 @@ class FlextInfraMiseArtifactsVerification:
             journal,
             directory.manifest,
             observed.value,
-            allow_registered_additions=False,
+            allow_registered_additions=True,
         )
         if transition.failure:
             return result_type.from_failure(transition)
@@ -136,7 +143,7 @@ class FlextInfraMiseArtifactsVerification:
                 "generation journal project topology differs from layout"
             )
         by_selector = {project.selector: project for project in layout.projects}
-        directory_targets: dict[Path, m.Infra.CodegenJournalDirectory] = {}
+        directory_targets: MutableMapping[Path, m.Infra.CodegenJournalDirectory] = {}
         for directory in journal.directories:
             target = files.resolve_relative(
                 layout.scope_root,
@@ -320,6 +327,12 @@ class FlextInfraMiseArtifactsVerification:
     def sources(cls, plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
         """Prove every Mise config source still equals its full snapshot."""
         for project in plan.projects:
+            if project.config.before.content is None:
+                # First publication: the config sources are themselves created
+                # by this transaction, so their post-transaction bytes cannot
+                # equal a pre-publication snapshot. Integrity for these is
+                # owned by the publication-receipt verification.
+                continue
             current = u.Infra.snapshot_config_sources(project.layout.root)
             if current.failure:
                 return r[bool].from_failure(current)
@@ -350,6 +363,17 @@ class FlextInfraMiseArtifactsVerification:
             observed = files.read_state(publication.before.path, required=False)
             if observed.failure:
                 return r[bool].from_failure(observed)
+            current = observed.value
+            before = publication.before
+            if (
+                current.parent_device is None
+                or current.parent_inode is None
+                or before.parent_device is None
+                or before.parent_inode is None
+            ):
+                return r[bool].fail(
+                    f"generation destination parent identity is incomplete: {before.path}"
+                )
             replacement = publication.replacement
             if replacement is None:
                 if (
@@ -362,15 +386,14 @@ class FlextInfraMiseArtifactsVerification:
                         f"{publication.before.path}"
                     )
                 continue
-            current = observed.value
             if cls._file_identity(
                 current,
                 parent_device=current.parent_device,
                 parent_inode=current.parent_inode,
             ) != cls._file_identity(
                 replacement,
-                parent_device=publication.before.parent_device,
-                parent_inode=publication.before.parent_inode,
+                parent_device=before.parent_device,
+                parent_inode=before.parent_inode,
             ):
                 return r[bool].fail(
                     f"live generation destination differs from staged identity: {current.path}"
@@ -388,7 +411,7 @@ class FlextInfraMiseArtifactsVerification:
         source_before = cls.sources(plan)
         if source_before.failure:
             return source_before
-        replacements: dict[Path, tuple[bytes, int | None]] = {}
+        replacements: MutableMapping[Path, tuple[bytes, int | None]] = {}
         for publication in publications or ():
             replacement = publication.replacement
             if replacement is None or replacement.content is None:
@@ -483,11 +506,15 @@ class FlextInfraMiseArtifactsVerification:
         cls,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
-    ) -> p.Result[dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]]]:
+    ) -> p.Result[
+        MutableMapping[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]]
+    ]:
         result_type = r[
-            dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]]
+            MutableMapping[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]]
         ]
-        specs: dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]] = {}
+        specs: MutableMapping[
+            Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]
+        ] = {}
         for entry in journal.entries:
             selectors: t.VariadicTuple[t.Pair[_JournalFileRole, str | None]] = (
                 ("desired", entry.desired_staging),
@@ -636,7 +663,7 @@ class FlextInfraMiseArtifactsVerification:
     def _artifact_snapshot(
         cls,
         plan: m.Infra.MiseToolchainWorkspacePlan,
-        replacements: dict[Path, tuple[bytes, int | None]],
+        replacements: MutableMapping[Path, tuple[bytes, int | None]],
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         root_launchers: t.Pair[bytes, bytes] | None = None
         states: list[m.Cli.AtomicFileState] = []
@@ -656,6 +683,10 @@ class FlextInfraMiseArtifactsVerification:
                         current.error
                         or f"published Mise artifact is absent: {expected.path}"
                     )
+                if current.value.mode is None:
+                    return r[tuple[m.Cli.AtomicFileState, ...]].fail(
+                        f"published Mise artifact mode is unreadable: {expected.path}"
+                    )
                 expected_state = replacements.get(
                     expected.path, (expected.content, expected.mode)
                 )
@@ -665,7 +696,10 @@ class FlextInfraMiseArtifactsVerification:
                     )
                 if current.value.mode != required_mode:
                     return r[tuple[m.Cli.AtomicFileState, ...]].fail(
-                        f"published Mise artifact mode is noncanonical: {expected.path}"
+                        "published Mise artifact mode is noncanonical:"
+                        f" {expected.path}"
+                        f" (observed {oct(current.value.mode) if current.value.mode is not None else 'none'},"
+                        f" canonical {oct(required_mode)})"
                     )
                 observed.append(current.value.content)
                 states.append(current.value)

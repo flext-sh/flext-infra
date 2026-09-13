@@ -77,3 +77,33 @@ else
   unset VIRTUAL_ENV
 fi
 # End SECTION: virtual environment
+{% if gascity %}
+# === SECTION: beads dolt server (managed) ===
+# Source: template + config:codegen.toolchain.beads (gascity_enabled)
+# Keep this repository's Beads identity/database while using Gas City's single
+# managed Dolt server. Its runtime publication is the only port authority.
+{% for var in gascity.unset_vars %}
+unset {{ var }}
+{% endfor %}
+if [[ -v {{ gascity.identity_var }} ]] && [[ -n "${{ gascity.identity_var }}" ]]; then
+  gas_city_root="$(cd "${{ gascity.identity_var }}" && pwd -P)"
+  watch_file "${PROJECT_ROOT}/{{ gascity.beads_metadata_relpath }}"
+  watch_file "$gas_city_root/{{ gascity.city_state_relpath }}"
+  export BEADS_DOLT_SERVER_HOST=127.0.0.1
+  export BEADS_DOLT_SERVER_PORT="$(
+    jq -r 'if .running == true and (.port | type == "number") and .port > 0 then
+      .port
+    else
+      error("Gas City managed Dolt state is not healthy")
+    end' "$gas_city_root/{{ gascity.city_state_relpath }}"
+  )"
+  export BEADS_DOLT_SERVER_DATABASE="$(
+    jq -r 'if .dolt_database != null and .dolt_database != "" then
+      .dolt_database
+    else
+      error("this repository has no Beads dolt_database identity")
+    end' "${PROJECT_ROOT}/{{ gascity.beads_metadata_relpath }}"
+  )"
+fi
+# End SECTION: beads dolt server
+{% endif %}

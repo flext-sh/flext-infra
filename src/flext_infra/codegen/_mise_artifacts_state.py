@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import stat
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -82,9 +83,92 @@ class FlextInfraMiseArtifactsState:
                     f"Mise state is not on destination filesystem: {project.selector}"
                 )
             roots.append(transaction_root)
-        return cls.plan_directories(
+        temporary = cls.plan_directories(
             layout, phase="transaction", requested=tuple(roots), disposition="temporary"
         )
+        if temporary.failure:
+            return temporary
+        parents = tuple(
+            dict.fromkeys(
+                artifact.parent
+                for project in layout.projects
+                for artifact in (
+                    project.artifacts.config,
+                    project.artifacts.unix_launcher,
+                    project.artifacts.windows_launcher,
+                )
+                if artifact.parent != project.root
+            )
+        )
+        generated = cls.plan_directories(
+            layout, phase="mise", requested=parents, disposition="generated"
+        )
+        if generated.failure:
+            return generated
+        return r[tuple[m.Infra.CodegenJournalDirectory, ...]].ok((
+            *temporary.value,
+            *generated.value,
+        ))
+
+    @classmethod
+    def bind_created_parents(
+        cls,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        directories: t.VariadicTuple[m.Infra.CodegenJournalDirectory],
+        publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]:
+        """Bind absent destinations only to parents created by this journal."""
+        result_type = r[tuple[m.Infra.CodegenStagedFile, ...]]
+        bound: list[m.Infra.CodegenStagedFile] = []
+        for publication in publications:
+            before = publication.before
+            parent = next(
+                (
+                    entry.created
+                    for entry in directories
+                    if layout.scope_root / entry.path == before.path.parent
+                    and entry.disposition == "generated"
+                ),
+                None,
+            )
+            if before.parent_device is not None and before.parent_inode is not None:
+                if parent is not None and (
+                    before.parent_device,
+                    before.parent_inode,
+                ) != (parent.device, parent.inode):
+                    return result_type.fail(
+                        f"generation destination parent differs from journal: {before.path}"
+                    )
+                bound.append(publication)
+                continue
+            if (
+                before.content is not None
+                or parent is None
+                or parent.device is None
+                or parent.inode is None
+            ):
+                return result_type.fail(
+                    f"generation destination has no created parent authority: {before.path}"
+                )
+            expected = m.Cli.AtomicFileState.model_validate({
+                **before.model_dump(),
+                "parent_device": parent.device,
+                "parent_inode": parent.inode,
+            })
+            observed = files.read_state(before.path, required=False)
+            if observed.failure:
+                return result_type.from_failure(observed)
+            if observed.value != expected:
+                return result_type.fail(
+                    f"generation destination changed after parent creation: {before.path}"
+                )
+            bound.append(
+                m.Infra.CodegenStagedFile.model_validate({
+                    **publication.model_dump(),
+                    "before": expected,
+                })
+            )
+        return result_type.ok(tuple(bound))
 
     @classmethod
     def plan_directories(
@@ -100,7 +184,7 @@ class FlextInfraMiseArtifactsState:
         if len(set(requested)) != len(requested):
             return result_type.fail(f"duplicate {phase} directory request")
         projects = tuple(sorted(layout.projects, key=cls._project_depth))
-        planned: dict[Path, m.Infra.CodegenJournalDirectory] = {}
+        planned: MutableMapping[Path, m.Infra.CodegenJournalDirectory] = {}
         for target in requested:
             path = target.expanduser().absolute()
             project = next(
@@ -298,6 +382,77 @@ class FlextInfraMiseArtifactsState:
                 if child.name.startswith(files.TRANSACTION_DIR_PREFIX)
             )
         return tuple(sorted(set(residue)))
+
+    @classmethod
+    def scope_transaction_residue(cls, scope_root: Path) -> t.VariadicTuple[Path]:
+        """Find unowned transaction trees across the entire scope identity.
+
+        One scope identity shares exactly one journal lease. Reconciliation
+        sees only the projects selected by the current layout, so a staged
+        tree left under any other governed member's ``.state/mise-artifacts``
+        (for example after a crash between layout selection and staging)
+        would never be reconciled and would block every later begin. With the
+        journal lease held, no live transaction may stage inside this scope
+        identity, so every journal-less transaction directory present at
+        reconciliation time is owned by a dead process and is stale by
+        definition.
+        """
+        residue: list[Path] = []
+        scope = scope_root.expanduser().absolute()
+        state_parts = files.STATE_DIRECTORY.parts
+        # A transaction tree always sits at `<member-root>/.state/mise-artifacts/
+        # transaction-<id>`. The scope identity itself may also stage at
+        # `<scope-root>/.state/mise-artifacts`.
+        members = (scope, *(child for child in scope.iterdir() if child.is_dir()))
+        for member in members:
+            state_root = member.joinpath(*state_parts)
+            if not state_root.is_dir() or state_root.is_symlink():
+                continue
+            residue.extend(
+                path
+                for path in state_root.iterdir()
+                if path.name.startswith(files.TRANSACTION_DIR_PREFIX)
+            )
+        return tuple(sorted(set(residue)))
+
+    @classmethod
+    def cleanup_scope_residue(cls, scope_root: Path) -> p.Result[bool]:
+        """Delete every unowned transaction tree across the scope identity.
+
+        Only apply mode under the held journal lease runs this: lease
+        exclusivity proves no live transaction controls this scope identity,
+        so the trees belong to dead processes (operator law: a crashed
+        process must never leave locks or staging that block later runs).
+        """
+        residue = cls.scope_transaction_residue(scope_root)
+        if not residue:
+            return r[bool].ok(True)
+        return cls.cleanup_orphan_paths(residue)
+
+    @classmethod
+    def cleanup_orphan_paths(cls, paths: t.VariadicTuple[Path]) -> p.Result[bool]:
+        """Remove orphaned physical trees through the guarded cleanup owner."""
+        for path in paths:
+            observed = u.Cli.atomic_inventory_physical_tree(path)
+            if observed.failure:
+                if not path.exists() and not path.is_symlink():
+                    continue
+                return r[bool].from_failure(observed)
+            removed = u.Cli.atomic_cleanup_physical_tree_guarded(observed.value)
+            if removed.failure:
+                return r[bool].from_failure(removed)
+        return r[bool].ok(True)
+
+    @classmethod
+    def cleanup_orphan_residue(
+        cls, layout: m.Infra.MiseToolchainWorkspaceLayout
+    ) -> p.Result[bool]:
+        """Delete journal-less transaction trees left by a crashed apply.
+
+        Staging dirs without a journal are not live destinations. Check mode
+        still fails closed; apply reconciles them before begin.
+        """
+        return cls.cleanup_orphan_paths(cls.transaction_residue(layout))
 
     @classmethod
     def cleanup_journaled_directories(

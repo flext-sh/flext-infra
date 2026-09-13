@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import m, u
@@ -29,8 +30,8 @@ class FlextInfraRefactorCensusFiltersMixin:
         def object_location(item: m.Infra.Census.Object) -> t.Triple[str, str, int]:
             return item.project, item.file_path, item.line
 
-        groups: dict[tuple[str, str, str], list[m.Infra.Census.Object]] = defaultdict(
-            list
+        groups: MutableMapping[tuple[str, str, str], list[m.Infra.Census.Object]] = (
+            defaultdict(list)
         )
         for item in (obj for objects in project_objects for obj in objects):
             owner = item.scope_path.rpartition(".")[0]

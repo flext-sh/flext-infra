@@ -48,7 +48,10 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
             bool,
             m.Field(
                 alias="apply-typings",
-                description="Install missing typing packages into the typings group",
+                description=(
+                    "Declare project.optional-dependencies.typings "
+                    "and install through UV"
+                ),
             ),
         ] = False
         no_pip_check: Annotated[

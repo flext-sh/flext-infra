@@ -111,17 +111,3 @@ snapshots:
       style: primary
       start: 0
       end: 1340
-  ? |
-    def _process_exit_result(command: str, *, timed_out: bool, timeout_exit_code: int) -> Result:
-        return outcome
-  : fixed: |+
-      def _process_exit_result(command: str, *, timed_out: bool) -> Result:
-          return outcome
-
-    labels:
-    - source: |-
-        def _process_exit_result(command: str, *, timed_out: bool, timeout_exit_code: int) -> Result:
-            return outcome
-      style: primary
-      start: 0
-      end: 112

@@ -4,17 +4,20 @@ from __future__ import annotations
 
 import re
 import shutil
+import stat
 import sys
 import tempfile
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
-from flext_infra.detectors.lsp_diagnostics import FlextInfraLspDiagnosticsDetector
-from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
-from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
-from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
+from .. import c, m, p, r, settings, t, u
+from ..detectors import FlextInfraLspDiagnosticsDetector
+from ..gates import (
+    FlextInfraPyreflyGate,
+    FlextInfraRuffFormatGate,
+    FlextInfraRuffLintGate,
+)
+from . import FlextInfraCodemodSnapshotReconciler
 
 
 class FlextInfraModGateEngine:
@@ -28,7 +31,7 @@ class FlextInfraModGateEngine:
         governed_roots = frozenset(
             project.resolve() for project in u.Infra.governed_project_roots(root)
         )
-        rules_by_owner: dict[Path, list[Path]] = {}
+        rules_by_owner: MutableMapping[Path, list[Path]] = {}
         for rule in rules:
             owner = FlextInfraCodemodSnapshotReconciler.config_root(rule)
             rules_by_owner.setdefault(owner, []).append(rule)
@@ -43,19 +46,22 @@ class FlextInfraModGateEngine:
             for rule in owner_rules:
                 rule_ids, _fixable_ids = u.Infra.ast_grep_rule_contract(rule)
                 active_rule_ids.update(rule_ids)
-            if owner_is_governed:
-                FlextInfraCodemodSnapshotReconciler.reconcile(
-                    config_root, frozenset(active_rule_ids)
-                )
+            scratch = settings.work_dir
+            if scratch.resolve().is_relative_to(config_root.resolve()):
+                return r.fail("rule fixture scratch must be outside its source root")
+            scratch.mkdir(parents=True, exist_ok=True)
             with tempfile.TemporaryDirectory(
-                prefix="mod-rule-fixtures-", dir=config_root.parent
+                prefix="mod-rule-fixtures-", dir=scratch
             ) as temp_dir:
                 temp_root = Path(temp_dir) / config_root.name
-                shutil.copytree(
-                    config_root,
-                    temp_root,
-                    ignore=shutil.ignore_patterns(c.Infra.DUNDER_PYCACHE),
+                cls.stage_rule_fixture_root(
+                    config_root=config_root, temp_root=temp_root
                 )
+                if owner_is_governed:
+                    for fixture_root in (config_root, temp_root):
+                        FlextInfraCodemodSnapshotReconciler.reconcile(
+                            fixture_root, frozenset(active_rule_ids)
+                        )
                 split_rules = cls._materialize_split_rule_files(
                     config_root=config_root,
                     temp_root=temp_root,
@@ -75,6 +81,45 @@ class FlextInfraModGateEngine:
         return r.ok(True)
 
     @staticmethod
+    def stage_rule_fixture_root(*, config_root: Path, temp_root: Path) -> None:
+        """Copy declared ast-grep inputs only, rejecting links and special files."""
+        directories = FlextInfraCodemodSnapshotReconciler.fixture_directories(
+            config_root
+        )
+        pending = [config_root / c.Infra.CODEMOD_CONFIG_FILENAME]
+        pending.extend((
+            *directories.rule_dirs,
+            *directories.util_dirs,
+            *directories.test_dirs,
+        ))
+        files: set[Path] = set()
+        folders: set[Path] = set()
+        while pending:
+            path = pending.pop()
+            mode = path.lstat().st_mode
+            if stat.S_ISDIR(mode):
+                if path in folders:
+                    continue
+                folders.add(path)
+                pending.extend(path.iterdir())
+            elif stat.S_ISREG(mode):
+                files.add(path)
+            else:
+                msg = f"ast-grep fixture must be a regular file or directory: {path}"
+                raise ValueError(msg)
+        temp_root.mkdir()
+        for directory in sorted(folders):
+            (temp_root / directory.relative_to(config_root)).mkdir(
+                parents=True, exist_ok=True
+            )
+        for source in sorted(files):
+            shutil.copy2(
+                source,
+                temp_root / source.relative_to(config_root),
+                follow_symlinks=False,
+            )
+
+    @staticmethod
     def _rule_documents(rule: Path) -> t.VariadicTuple[str]:
         """Return every non-empty YAML document in one rule file."""
         documents = tuple(rule.read_text(encoding="utf-8").split("\n---"))
@@ -90,30 +135,15 @@ class FlextInfraModGateEngine:
     @classmethod
     def _materialize_split_rule_files(
         cls, *, config_root: Path, temp_root: Path, owner_rules: t.SequenceOf[Path]
-    ) -> dict[Path, tuple[Path, ...]]:
+    ) -> MutableMapping[Path, tuple[Path, ...]]:
         """Replace multi-document rule files with single-document temp copies."""
-        split_rules: dict[Path, tuple[Path, ...]] = {}
+        split_rules: MutableMapping[Path, tuple[Path, ...]] = {}
         source_rules = set(owner_rules)
-        config_path = config_root / c.Infra.CODEMOD_CONFIG_FILENAME
-        config = u.Cli.yaml_safe_load(config_path).unwrap()
-        for key in (c.Infra.CODEMOD_RULE_DIRS_KEY, c.Infra.CODEMOD_UTIL_DIRS_KEY):
-            raw_directories = config.get(key)
-            if not isinstance(raw_directories, Sequence) or isinstance(
-                raw_directories, str
-            ):
-                msg = f"invalid ast-grep {key} contract: {config_path}"
-                raise TypeError(msg)
-            for raw_directory in raw_directories:
-                if not isinstance(raw_directory, str) or not raw_directory.strip():
-                    msg = f"invalid ast-grep {key} entry: {config_path}"
-                    raise ValueError(msg)
-                directory = Path(raw_directory)
-                if directory.is_absolute() or ".." in directory.parts:
-                    msg = f"ast-grep {key} escapes its owner: {raw_directory}"
-                    raise ValueError(msg)
-                source_rules.update(
-                    (config_root / directory).rglob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}")
-                )
+        directories = FlextInfraCodemodSnapshotReconciler.fixture_directories(
+            config_root
+        )
+        for directory in (*directories.rule_dirs, *directories.util_dirs):
+            source_rules.update(directory.rglob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}"))
         for rule in sorted(source_rules):
             documents = cls._rule_documents(rule)
             if len(documents) <= 1:
@@ -137,7 +167,10 @@ class FlextInfraModGateEngine:
 
     @staticmethod
     def _sync_rule_fixture_root(
-        *, config_root: Path, temp_root: Path, split_rules: dict[Path, tuple[Path, ...]]
+        *,
+        config_root: Path,
+        temp_root: Path,
+        split_rules: MutableMapping[Path, tuple[Path, ...]],
     ) -> None:
         """Mirror validated fixture updates from the temp copy back to source."""
         split_temp_paths = {
@@ -294,6 +327,14 @@ class FlextInfraModGateEngine:
             if severity not in {"error", "warning", "info", "hint"}:
                 return r.fail(f"invalid ast-grep finding severity: {line}")
             file_path = Path(file)
+            resolved_file = (root / file_path).resolve()
+            if resolved_file.is_file():
+                try:
+                    source = resolved_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                    if source.startswith(c.Infra.AUTOGEN_HEADERS):
+                        continue
+                except OSError:
+                    pass
             files.add(file_path)
             replacement = raw_replacement if isinstance(raw_replacement, str) else None
             actionable = False
@@ -314,7 +355,6 @@ class FlextInfraModGateEngine:
                     )
                 detection_only_findings += 1
                 classification = c.Infra.ModScanFindingClass.DETECTION_ONLY
-            resolved_file = (root / file_path).resolve()
             repository = next(
                 (
                     candidate.name
@@ -395,7 +435,7 @@ class FlextInfraModGateEngine:
                 execution = gate_type(owner).check(owner, context)
                 if not execution.result.passed:
                     return r.fail(
-                        execution.raw_output or "\n".join(execution.result.errors)
+                        "\n".join((execution.raw_output, *execution.result.errors))
                     )
             files = u.Infra.iter_python_files(
                 m.Infra.SourceScanRequest(project_roots=(owner,))

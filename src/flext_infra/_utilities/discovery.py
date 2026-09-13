@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from functools import cache
 from importlib import util as importlib_util
 from pathlib import Path
@@ -31,7 +32,9 @@ class FlextInfraUtilitiesDiscovery(
 ):
     """Canonical discovery helpers for path, package, and Rope-backed scans."""
 
-    _PARENT_CONSTANTS_FLEXT_CACHE: ClassVar[dict[tuple[str, bool], t.StrSequence]] = {}
+    _PARENT_CONSTANTS_FLEXT_CACHE: ClassVar[
+        MutableMapping[tuple[str, bool], t.StrSequence]
+    ] = {}
 
     @staticmethod
     def _workspace_project_roots(repository_root: str) -> t.VariadicTuple[Path]:
@@ -214,6 +217,10 @@ class FlextInfraUtilitiesDiscovery(
         """Return the explicit ABI published by one installed package root."""
         try:
             spec = importlib_util.find_spec(package_name)
+        except ModuleNotFoundError:
+            # A submodule name imports its parent first: a missing parent
+            # package means the name cannot resolve in this environment.
+            return frozenset()
         except c.EXC_OS_TYPE_VALUE:
             return frozenset()
         if spec is None or spec.submodule_search_locations is None or not spec.origin:
@@ -298,7 +305,7 @@ class FlextInfraUtilitiesDiscovery(
                 if name not in skip_dirs and not name.startswith(".")
             ]
             for file_name in file_names:
-                if file_name.endswith(c.Infra.EXT_PYTHON):
+                if file_name.endswith((c.Infra.EXT_PYTHON, ".pyi")):
                     yield parent / file_name
 
     @staticmethod

@@ -4,20 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
-from flext_tests import tm
 from tests import m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-
-def _publish_docs(workspace: Path) -> None:
-    """Publish one generated docs bundle through the transaction adapter."""
-    _ = u.Tests.publish_docs_bundle(
-        FlextInfraDocGenerator(repository_root=workspace, selected_projects=["flext-a"])
-    )
 
 
 def test_validate_report_model_fields() -> None:

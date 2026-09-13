@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Final
 
 from flext_infra import c
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
 # via python -X importtime), even though exactly one command group is ever
 # dispatched per invocation. Only the owning module for the RESOLVED group is
 # imported now, cutting startup to that one module's cost.
-_GROUP_OWNERS: Final[dict[str, tuple[str, str, str]]] = {
+_GROUP_OWNERS: Final[MutableMapping[str, tuple[str, str, str]]] = {
     c.Infra.CLI_GROUP_CHECK: (
         "flext_infra.services.cli_routes_codegen",
         "CodegenRoutes",

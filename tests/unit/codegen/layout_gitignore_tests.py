@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_tests import tm
+
 from flext_infra import c, config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_tests import tm
 from tests import t, u
 from tests.unit.codegen.layout_fixture import (
     archive_root,
@@ -41,7 +42,6 @@ def test_apply_adds_gitignore_entries_exactly_once(tmp_path: Path) -> None:
 def test_apply_uses_git_mv_for_tracked_files(tmp_path: Path) -> None:
     """Tracked sources move through git so history follows the rename."""
     project = build_loose_project(tmp_path)
-    u.Tests.initialize_git_repo(project)
     engine = layout_engine(tmp_path, apply_changes=True)
 
     result = engine.execute()
@@ -66,6 +66,29 @@ def test_managed_gitignore_render_includes_layout_additions() -> None:
     tm.ok(rendered)
     tm.that(rendered.value, has="settings.json")
     tm.that(rendered.value, has=f"{archive_root()}/")
+
+
+def test_layout_preserves_tracked_ignored_files_and_ignores_local_artifacts(
+    tmp_path: Path,
+) -> None:
+    """Local ignored files are not layout inputs; tracked files remain reviewable."""
+    project = build_loose_project(tmp_path)
+    local = project / "local-artifact"
+    tracked = project / "tracked-artifact"
+    local.write_text("local\n", encoding="utf-8")
+    tracked.write_text("tracked\n", encoding="utf-8")
+    ignore = project / c.Infra.GITIGNORE
+    content = ignore.read_text(encoding="utf-8") if ignore.exists() else ""
+    ignore.write_text(f"{content}\n{local.name}\n{tracked.name}\n", encoding="utf-8")
+    tm.ok(
+        u.Cli.capture([c.Infra.GIT, "add", "--force", "--", tracked.name], cwd=project)
+    )
+
+    report = layout_engine(tmp_path, apply_changes=False).plan_project(project)
+
+    paths = {finding.path for finding in report.findings}
+    tm.that(local.name in paths, eq=False)
+    tm.that(tracked.name in paths, eq=True)
 
 
 __all__: t.StrSequence = []

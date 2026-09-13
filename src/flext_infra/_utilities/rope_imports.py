@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import ast
 from collections import defaultdict
+from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_cli import u
+
 from flext_infra import c, m, p, r, t
 
 from . import FlextInfraUtilitiesRopeCore, FlextInfraUtilitiesRopeRuntime
@@ -235,7 +237,7 @@ class FlextInfraUtilitiesRopeImports:
         existing_paths = tuple(path.resolve() for path in file_paths if path.is_file())
         if not existing_paths:
             return r[bool].ok(False)
-        canonical_imports: dict[Path, list[tuple[str, tuple[str, ...]]]] = {}
+        canonical_imports: MutableMapping[Path, list[tuple[str, tuple[str, ...]]]] = {}
         if preserve_canonical_aliases:
             try:
                 canonical_imports = cls._collect_canonical_alias_imports(
@@ -278,14 +280,14 @@ class FlextInfraUtilitiesRopeImports:
     @classmethod
     def _collect_canonical_alias_imports(
         cls, rope_project: t.Infra.RopeProject, file_paths: t.SequenceOf[Path]
-    ) -> dict[Path, list[tuple[str, tuple[str, ...]]]]:
+    ) -> MutableMapping[Path, list[tuple[str, tuple[str, ...]]]]:
         """Collect canonical runtime-alias imports eligible for semantic restore."""
         runtime_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
         canonical_modules = frozenset({
             c.Infra.PKG_CORE_UNDERSCORE,
             c.Infra.PKG_INFRA_UNDERSCORE,
         })
-        collected: dict[Path, list[tuple[str, tuple[str, ...]]]] = {}
+        collected: MutableMapping[Path, list[tuple[str, tuple[str, ...]]]] = {}
         for file_path in file_paths:
             resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                 rope_project, file_path
@@ -359,7 +361,7 @@ class FlextInfraUtilitiesRopeImports:
     def _ensure_canonical_alias_imports(
         cls,
         rope_project: t.Infra.RopeProject,
-        collected: dict[Path, list[tuple[str, tuple[str, ...]]]],
+        collected: MutableMapping[Path, list[tuple[str, tuple[str, ...]]]],
     ) -> p.Result[bool]:
         """Re-add canonical runtime-alias imports removed by Ruff F401 cleanup."""
         changed_any = False
@@ -379,7 +381,7 @@ class FlextInfraUtilitiesRopeImports:
             if referenced_aliases_result.failure:
                 return r[bool].from_failure(referenced_aliases_result)
             referenced_aliases = referenced_aliases_result.unwrap_or(frozenset())
-            current: dict[str, set[str]] = defaultdict(set)
+            current: MutableMapping[str, set[str]] = defaultdict(set)
             for import_stmt in cls.import_statements(module_imports):
                 import_info = import_stmt.import_info
                 if (
@@ -867,7 +869,7 @@ class FlextInfraUtilitiesRopeImports:
         # owner from the path instead would silently do nothing whenever the
         # file does not sit inside a recognized project tree, which is exactly
         # the case the detector reports.
-        declared_owners: dict[Path, set[str]] = defaultdict(set)
+        declared_owners: MutableMapping[Path, set[str]] = defaultdict(set)
         for violation in violations:
             declared_owners[Path(violation.file)].add(violation.module_name)
         for file_path, owners in declared_owners.items():

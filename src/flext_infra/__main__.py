@@ -6,6 +6,7 @@ from __future__ import annotations
 def _run() -> None:
     """Load and execute the sole facade-backed CLI."""
     from flext_cli import cli
+
     from flext_infra.cli import main
 
     cli.exit(main())

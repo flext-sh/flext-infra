@@ -33,7 +33,10 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
 
     @staticmethod
     def docs_command_contract_content_issues(
-        content: str, *, relative_path: str
+        content: str,
+        *,
+        relative_path: str,
+        effective_verbs: t.SequenceOf[m.Infra.MakeVerbSpec],
     ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Return command-contract issues from one Markdown document."""
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
@@ -60,7 +63,7 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
             ):
                 make_match = c.Infra.DOCS_MAKE_COMMAND_RE.match(candidate)
                 if c.Infra.DOCS_RAW_PYTEST_COMMAND_RE.match(candidate):
-                    issue = "direct pytest command bypasses `make test APPLY=Y`"
+                    issue = "direct pytest command bypasses `make test`"
                 elif c.Infra.DOCS_RAW_TOOL_COMMAND_RE.match(candidate):
                     issue = "direct tool command bypasses the root Make dispatcher"
                 elif make_match is not None:
@@ -69,28 +72,24 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
                     )
                     verb = make_match.group("verb").lower()
                     verb_spec = next(
-                        (
-                            spec
-                            for spec in config.Infra.codegen.make.verbs
-                            if spec.name == verb
-                        ),
-                        None,
+                        (spec for spec in effective_verbs if spec.name == verb), None
                     )
-                    has_apply = (
+                    legacy_apply = (
                         c.Infra.DOCS_APPLY_RE.search(make_match.group("args"))
                         is not None
                     )
-                    if verb_spec is None:
+                    if legacy_apply:
+                        issue = (
+                            "legacy `APPLY` flag is exterminated: verbs mutate "
+                            "by default with zero variables"
+                        )
+                    elif verb_spec is None:
                         issue = f"Make verb `{verb}` is not declared by the config SSOT"
                     elif selector is not None:
                         selector_name = (
                             selector.group(0).split("=", maxsplit=1)[0].strip()
                         )
                         issue = f"invented Make selector `{selector_name}`"
-                    elif verb_spec.requires_apply and not has_apply:
-                        issue = f"`make {verb}` requires `APPLY=Y`"
-                    elif not verb_spec.requires_apply and has_apply:
-                        issue = f"`make {verb}` does not accept `APPLY=Y`"
                 if issue:
                     break
             if not issue and c.Infra.DOCS_TEST_DOUBLE_HEADING_RE.match(line):
@@ -122,6 +121,15 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
         ``iter_scope_markdown_files`` owns every formal scope exclusion; this
         detector carries no path allowlist or bypass.
         """
+        from flext_infra import u
+
+        loaded = u.Infra.workspace_spec_load(scope.path)
+        if loaded.failure:
+            raise ValueError(loaded.error)
+        effective_verbs = (
+            *config.Infra.codegen.make.verbs,
+            *loaded.value.repository.extra_verbs,
+        )
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         docs_root = scope.path / c.Infra.DIR_DOCS
         for path in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
@@ -140,7 +148,9 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
             )
             issues.extend(
                 FlextInfraUtilitiesDocsCommandContractMixin.docs_command_contract_content_issues(
-                    content, relative_path=relative_path
+                    content,
+                    relative_path=relative_path,
+                    effective_verbs=effective_verbs,
                 )
             )
         return issues

@@ -9,3 +9,8 @@ from flext_test._models.domain import FlextTestModelsDomain
 class FlextTestModels(m):
     class Test(FlextTestModelsBase, FlextTestModelsDomain):
         pass
+
+
+m = FlextTestModels
+
+__all__ = ["FlextTestModels", "m"]

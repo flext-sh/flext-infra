@@ -29,15 +29,20 @@ class FlextInfraNamespaceRules(
         *,
         class_stem: str,
         package_name: str,
+        source: str,
         is_test_file: bool,
     ) -> t.StrSequence:
         """Evaluate the complete strict contract for one Rope AST module."""
         return (
             *cls.check_structure(
-                tree, filepath, class_stem=class_stem, is_test_file=is_test_file
+                tree,
+                filepath,
+                class_stem=class_stem,
+                package_name=package_name,
+                is_test_file=is_test_file,
             ),
             *cls.check_imports(tree, filepath, package_name=package_name),
-            *cls.check_contracts(tree, filepath),
+            *cls.check_contracts(tree, filepath, source=source),
         )
 
 

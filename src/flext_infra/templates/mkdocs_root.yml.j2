@@ -5,14 +5,7 @@ site_description: Workspace documentation generated from code and curated root d
 site_url: {{ site_url }}
 repo_name: {{ repo_name }}
 repo_url: {{ repo_url }}
-docs_dir: docs
-site_dir: .reports/docs/site
-
-{{ exclude_docs_block }}{{ mk.material_theme() }}
-
-{{ mk.plugins_block(exclude_plugin_block, mkdocstrings_paths_block) }}
-
-{{ mk.markdown_extensions_block() }}
+{{ mk.site_components(exclude_docs_block, exclude_plugin_block, mkdocstrings_paths_block) }}
 
 nav:
   - Home: index.md

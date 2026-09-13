@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, config, m, u
 
 from .base_gate import FlextInfraGate
 
@@ -23,7 +23,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
     check_module_command_prefix: ClassVar[t.StrSequence] = (
         c.Infra.RUFF,
         c.Infra.FORMAT,
-        "--check",
+        *config.Infra.codegen.make.ruff.format_check,
     )
 
     @override
@@ -72,7 +72,12 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Build fix command."""
         _ = project_dir, ctx
-        return self._python_module_command(c.Infra.RUFF, c.Infra.FORMAT, *targets)
+        return self._python_module_command(
+            c.Infra.RUFF,
+            c.Infra.FORMAT,
+            *config.Infra.codegen.make.ruff.format_apply,
+            *targets,
+        )
 
 
 __all__: list[str] = ["FlextInfraRuffFormatGate"]

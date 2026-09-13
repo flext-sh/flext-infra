@@ -119,6 +119,10 @@ class FlextInfraConstantsBase(
     "Pytest minversion settings key."
     FLEXT_SLOW_TIMEOUT_SECONDS: Final[str] = "flext_slow_timeout_seconds"
     "Enforcement-plugin ini key carrying the config-owned slow-item budget."
+    ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE: Final[str] = (
+        "asyncio_default_fixture_loop_scope"
+    )
+    "Pytest-asyncio ini key selecting the asynchronous fixture event-loop scope."
     PYTHON_CLASSES: Final[str] = "python_classes"
     "Pytest python_classes settings key."
     PYTHON_FILES: Final[str] = "python_files"
@@ -211,9 +215,7 @@ class FlextInfraConstantsBase(
     SOURCE_DATE_EPOCH: Final[str] = "SOURCE_DATE_EPOCH"
     "Reproducible-build timestamp environment variable."
     RELEASE_BUILD_CONSTRAINTS_PATH: Final[str] = "config/build-constraints.txt"
-    "Workspace-relative hashed build-backend constraint file."
-    # Why: restored — deleted declaration with consumers left behind (worktree
-    # exclusions and mise-artifact transaction staging).
+    "Workspace-relative release build constraints snapshot path."
     TRANSACTION_STATE_DIRNAME: Final[str] = ".state"
     "Root of regenerable codegen transaction state; never repository content."
     RELEASE_BUILD_TOOLCHAIN_REQUIREMENTS: Final[frozenset[str]] = frozenset({
@@ -264,6 +266,8 @@ class FlextInfraConstantsBase(
     "Canonical ast-grep configuration-file option."
     SG_FILTER_FLAG: Final[str] = "--filter"
     "Canonical ast-grep rule-ID filter option."
+    SG_GLOBS_FLAG: Final[str] = "--globs"
+    "Canonical ast-grep include/exclude glob option."
     SG_UPDATE_ALL: Final[str] = "--update-all"
     "ast-grep fixture and rewrite update flag."
     BANDIT: Final[str] = "bandit"

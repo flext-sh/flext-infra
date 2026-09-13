@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from flext_infra import c, m, u
+from pathlib import Path
+
 from flext_tests import tm
+
+from flext_infra import c, m, u
 
 _SOURCE = (
     "from typing import ClassVar, TYPE_CHECKING\n"
@@ -25,6 +28,29 @@ _MULTILINE_IMPORT = (
 
 class TestsFlextInfraRopeStructure:
     """Behavior contract for the LogicalLineFinder-backed structure boundary."""
+
+    def test_first_party_namespaces_require_live_python_sources(
+        self, tmp_path: Path
+    ) -> None:
+        src = tmp_path / c.Infra.DEFAULT_SRC_DIR
+        for name in ("empty", "cache_only", "regular", "namespace", "stubs"):
+            (src / name).mkdir(parents=True)
+        for relative in (
+            "cache_only/__pycache__/removed.pyc",
+            "cache_only/__pycache__/removed.py",
+            "regular/__init__.py",
+            "namespace/nested/module.py",
+            "stubs/module.pyi",
+            "invalid-name/module.py",
+        ):
+            path = src / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("value: int\n", encoding="utf-8")
+
+        tm.that(
+            u.Infra.discover_first_party_namespaces(tmp_path),
+            eq=["namespace", "regular", "stubs"],
+        )
 
     @staticmethod
     def _by_line() -> dict[int, m.Infra.LogicalStatement]:

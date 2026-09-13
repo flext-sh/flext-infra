@@ -5,7 +5,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from flext_cli import cli as cli_facade
+from flext_cli import u
+
 from tests import c, p, t
 
 
@@ -104,7 +105,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         args: t.StrSequence, *, cwd: Path, env: t.StrMapping | None = None
     ) -> p.Result[p.Cli.CommandOutput]:
         """Run Make without undeclared state inherited from outer pytest."""
-        return cli_facade.run_raw(
+        return u.Cli.run_raw(
             [c.Infra.MAKE, *args],
             cwd=cwd,
             env=env,
