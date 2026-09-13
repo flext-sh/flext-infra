@@ -5,7 +5,7 @@
 #   model_config: ClassVar[p.ConfigDict] = m.ConfigDict(...)   # defect
 #   model_config: ClassVar[m.ConfigDict] = m.ConfigDict(...)   # defect (m as type)
 #                       ->
-#   model_config: ClassVar[m.ConfigDict] = m.ConfigDict(...)   # canonical
+#   model_config: ClassVar[t.ConfigDict] = m.ConfigDict(...)   # canonical
 #
 # ConfigDict is exposed as a t.* TypeAlias in flext-core (FlextTypes.ConfigDict);
 # p.* (protocols) does NOT carry it, so `p.ConfigDict` crashes at import

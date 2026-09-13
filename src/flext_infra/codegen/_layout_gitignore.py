@@ -16,6 +16,7 @@ from flext_infra import c, config, p, r, t, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
+from ._layout_plan import FlextInfraCodegenLayoutPlanMixin
 from ._mise_artifacts_publication import publish_file_plan
 
 
@@ -41,7 +42,9 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         rendered = FlextInfraCodegenConform.render_project_gitignore(
             config.Infra.codegen,
             profile=profile,
-            project_name=project_dir.name,
+            project_name=FlextInfraCodegenLayoutPlanMixin.layout_project_name(
+                project_dir
+            ),
             project_dir=project_dir,
         )
         if rendered.failure:
