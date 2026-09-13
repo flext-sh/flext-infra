@@ -602,6 +602,7 @@ mi_min = "B"
 project_class = "infra"
 site_title = "FLEXT Infra"
 
+
 [tool.flext.project.budget.boundary]
 time-seconds = 600
 memory-mb = 2048

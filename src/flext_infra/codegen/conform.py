@@ -2334,18 +2334,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     mise_bootstrap=self._mise_bootstrap_environment(),
                 )
             )
-        if destination in {
-            c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
-            c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
-        }:
-            # Why (flext-to3n7): the release build phase snapshots these two
-            # policies from the repository; they are fleet policy owned by
+        if destination == c.Infra.RELEASE_GITLEAKS_CONFIG_PATH:
+            # Why (flext-to3n7): the release build phase snapshots the gitleaks
+            # policy from the repository; it is fleet policy owned by
             # config/infra.yaml, never scaffold-only project metadata.
-            return r[p.Model].ok(
-                m.Infra.ReleasePolicyRenderSpec(
-                    build_constraints=config.Infra.release.build_constraints
-                )
-            )
+            # Build constraints are now rendered at release time from
+            # config.Infra.release.build_constraints via policy_render.py.
+            # The gitleaks template is variable-free; StaticTextRenderSpec suffices.
+            return r[p.Model].ok(m.Infra.StaticTextRenderSpec())
         if destination == c.Infra.MAKEFILE_FILENAME:
             profile = target.make_profile
             subprojects = (
