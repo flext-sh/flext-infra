@@ -1432,6 +1432,24 @@ class TestScriptDispatchMakefile:
         # Script dispatch roots are recorded for operator visibility.
         tm.that("apps/demo-app/scripts" in rendered, eq=True)
 
+    def test_extra_verb_dispatch_target_is_emitted_exactly_once(
+        self, tmp_path: Path
+    ) -> None:
+        """Every extra verb owns one public recipe; a second one is a Make warning.
+
+        Two integrations of the same dispatch block once rendered every extra
+        verb twice, and GNU Make reported ``overriding recipe for target`` on
+        each parse of the consumer's Makefile.
+        """
+        rendered = self._render_root_makefile(
+            tmp_path,
+            extra_verbs=(
+                m.Infra.MakeVerbSpec(name="deploy", description="Publish the runtime."),
+            ),
+            script_dispatch=None,
+        )
+        tm.that(rendered.count("\ndeploy: _builtin_require_environment\n"), eq=1)
+
     def test_dispatch_routes_custom_what_before_allowlist(self, tmp_path: Path) -> None:
         """Custom ``_custom_<verb>`` handlers bypass the builtin allowlist.
 
