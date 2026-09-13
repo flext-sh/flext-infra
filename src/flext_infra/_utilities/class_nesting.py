@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -144,8 +145,10 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
         modules = {
             entry.file_path.resolve(): entry for entry in rope_workspace.modules()
         }
-        plans_by_file: dict[Path, tuple[m.Infra.ClassNestingViolation, ...]] = {}
-        bindings_by_module: dict[str, dict[str, str]] = {}
+        plans_by_file: MutableMapping[
+            Path, tuple[m.Infra.ClassNestingViolation, ...]
+        ] = {}
+        bindings_by_module: MutableMapping[str, MutableMapping[str, str]] = {}
         for file_path, source in sorted(sources.items()):
             resolved_file = file_path.resolve()
             module = modules.get(resolved_file)

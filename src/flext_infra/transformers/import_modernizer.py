@@ -6,6 +6,7 @@ and adds missing runtime alias imports to the module header.
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, u
@@ -36,7 +37,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         self.modified_imports = False
         self.aliases_needed: t.Infra.StrSet = set()
         self.aliases_present: t.Infra.StrSet = set()
-        self.active_symbol_replacements: dict[str, str] = {}
+        self.active_symbol_replacements: MutableMapping[str, str] = {}
 
     @override
     def transform(

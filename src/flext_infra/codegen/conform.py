@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 import re
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Annotated, override
@@ -28,6 +28,34 @@ from flext_infra.models import m
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.typings import t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+
+def resolve_gate_budgets(
+    configured_budgets: Mapping[str, m.Infra.ProjectGateBudgetSpec],
+) -> p.Result[Mapping[str, Mapping[str, int]]]:
+    """Project config budget rows; registry divergence fails loud.
+
+    The budget gate requires one row per registry gate; the config SSOT is
+    the single budget owner and a missing or unknown gate id is a declared
+    generation error, never a silent skip.
+    """
+    allowed_gates = c.Infra.ALLOWED_GATES
+    missing_budget_rows = sorted(allowed_gates - configured_budgets.keys())
+    unknown_budget_rows = sorted(configured_budgets.keys() - allowed_gates)
+    if missing_budget_rows or unknown_budget_rows:
+        return r[Mapping[str, Mapping[str, int]]].fail(
+            "budget configuration diverges from the gate registry: "
+            f"missing rows={missing_budget_rows}; "
+            f"unknown rows={unknown_budget_rows}"
+        )
+    return r[Mapping[str, Mapping[str, int]]].ok({
+        gate_id: {
+            "time-seconds": configured_budgets[gate_id].time_seconds,
+            "memory-mb": configured_budgets[gate_id].memory_mb,
+            "tokens": configured_budgets[gate_id].tokens,
+        }
+        for gate_id in sorted(configured_budgets)
+    })
 
 
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
@@ -52,7 +80,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     @staticmethod
     def _dependency_cooldown_policy(
         repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
-    ) -> tuple[tuple[str, ...], dict[str, str]]:
+    ) -> tuple[tuple[str, ...], MutableMapping[str, str]]:
         """Compose fleet defaults with the repository's narrower policy."""
         exclusions = dict.fromkeys(toolchain.dependency_cooldown_exclusions)
         overrides = dict(toolchain.dependency_cooldown_overrides)
@@ -102,7 +130,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         builtin, whose native ``_builtin-<verb>`` implementation is the only
         owner of that name in the generated Makefile.
         """
-        merged: dict[str, m.Infra.MakeVerbSpec] = {}
+        merged: MutableMapping[str, m.Infra.MakeVerbSpec] = {}
         for verb in discovered:
             if verb.name in canonical_names:
                 continue
@@ -1154,7 +1182,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         governed_by_path = {item.path: item for item in codegen.managed_files}
         completed: list[m.Infra.CodegenFilePlan] = []
         represented: set[Path] = set()
-        represented_indexes: dict[Path, int] = {}
+        represented_indexes: MutableMapping[Path, int] = {}
         for file in planned:
             relative = file.path.relative_to(root)
             governed = governed_by_path.get(relative)
@@ -2338,10 +2366,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Why (flext-to3n7): the release build phase snapshots the gitleaks
             # policy from the repository; it is fleet policy owned by
             # config/infra.yaml, never scaffold-only project metadata.
-            # Build constraints are now rendered at release time from
-            # config.Infra.release.build_constraints via policy_render.py.
-            # The gitleaks template is variable-free; StaticTextRenderSpec suffices.
-            return r[p.Model].ok(m.Infra.StaticTextRenderSpec())
+            return r[p.Model].ok(
+                m.Infra.ReleasePolicySpec(
+                    build_constraints=config.Infra.release.build_constraints
+                )
+            )
         if destination == c.Infra.MAKEFILE_FILENAME:
             profile = target.make_profile
             subprojects = (

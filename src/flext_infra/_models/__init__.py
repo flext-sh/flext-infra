@@ -10,6 +10,7 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from . import _git
+    from ._defaults import ImmutableEmptyMapping, immutable_empty_mapping
     from ._git.identity import FlextInfraModelsGitIdentity
     from .base import FlextInfraModelsBase
     from .census import FlextInfraModelsCensus
@@ -97,7 +98,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsWorkspace",
     "FlextInfraModelsWorktree",
     "FlextInfraSettingsModels",
+    "ImmutableEmptyMapping",
     "_git",
+    "immutable_empty_mapping",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -105,6 +108,7 @@ _LAZY_IMPORTS = MappingProxyType(
         MappingProxyType({
             "._git": ("_git",),
             "._git.identity": ("FlextInfraModelsGitIdentity",),
+            "._defaults": ("ImmutableEmptyMapping", "immutable_empty_mapping"),
             ".base": ("FlextInfraModelsBase",),
             ".census": ("FlextInfraModelsCensus",),
             ".check": ("FlextInfraModelsCheck",),

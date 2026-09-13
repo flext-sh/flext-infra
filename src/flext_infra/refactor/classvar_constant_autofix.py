@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import re
 import textwrap
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -151,7 +152,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
         finder = u.Infra.create_occurrence_finder(
             project, plan.constant_name, pyname, imports=True, in_hierarchy=False
         )
-        rewrites: dict[str, list[tuple[int, int, str]]] = {}
+        rewrites: MutableMapping[str, list[tuple[int, int, str]]] = {}
         # Iterate over concrete project resources to avoid rope crashing when
         # an occurrence cannot be resolved to a resource (resource=None).
         for resource in project.get_python_files():

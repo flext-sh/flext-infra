@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra import m, u
@@ -32,7 +33,7 @@ class FlextInfraAccessorMigrationReportMixin:
 
     @staticmethod
     def _accumulate_lint_totals(
-        totals: dict[str, int], snapshot: t.Infra.LintSnapshot
+        totals: MutableMapping[str, int], snapshot: t.Infra.LintSnapshot
     ) -> None:
         """Accumulate lint totals."""
         for tool, lines in snapshot.items():
@@ -49,9 +50,9 @@ class FlextInfraAccessorMigrationReportMixin:
         include_preview: bool,
     ) -> m.Infra.AccessorMigrationFile:
         """Process file."""
-        lint_before: dict[str, t.StrSequence] = {}
-        lint_after: dict[str, t.StrSequence] = {}
-        new_lint_errors: dict[str, t.StrSequence] = {}
+        lint_before: MutableMapping[str, t.StrSequence] = {}
+        lint_after: MutableMapping[str, t.StrSequence] = {}
+        new_lint_errors: MutableMapping[str, t.StrSequence] = {}
         before: t.Infra.LintSnapshot = {}
         after: t.Infra.LintSnapshot = {}
         if automated_changes:
@@ -121,7 +122,9 @@ class FlextInfraAccessorMigrationReportMixin:
         )
 
     @staticmethod
-    def _freeze_lints(snapshot: t.Infra.LintSnapshot) -> dict[str, t.StrSequence]:
+    def _freeze_lints(
+        snapshot: t.Infra.LintSnapshot,
+    ) -> MutableMapping[str, t.StrSequence]:
         """Freeze lints."""
         return {tool: tuple(lines) for tool, lines in snapshot.items()}
 

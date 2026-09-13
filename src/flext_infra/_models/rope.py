@@ -9,12 +9,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from flext_core import m
-from flext_infra import c, p, t
+from flext_cli import m
 
-from ._defaults import ImmutableEmptyMapping
-from .codegen import FlextInfraModelsCodegen
-from .mixins import FlextInfraModelsMixins as mm
+from .. import c, p, t
+from . import (
+    FlextInfraModelsCodegen,
+    FlextInfraModelsMixins as mm,
+    ImmutableEmptyMapping,
+)
 
 
 class FlextInfraModelsRope:

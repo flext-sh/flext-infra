@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import shutil
 import time
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -31,9 +32,9 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     scanner_binary: ClassVar[str] = c.Infra.JSCPD_BINARY
 
     # flext-pulj: process results stay structural outside the Pydantic boundary.
-    _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
+    _scan_cache: ClassVar[MutableMapping[str, p.Cli.CommandOutput]] = {}
     _python_behavior_cache: ClassVar[
-        dict[tuple[str, int, int], tuple[tuple[int, int], ...]]
+        MutableMapping[tuple[str, int, int], tuple[tuple[int, int], ...]]
     ] = {}
 
     @override

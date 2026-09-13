@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_core import r
-from flext_infra import c, config, m, t, u
-from flext_infra.base import s
+from .. import c, config, m, r, s, t, u
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from .. import p
 
 
 class FlextInfraCodegenMiseArtifacts(s[bool]):
@@ -52,7 +50,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         raw_tools = payload.get("tools")
         if not isinstance(raw_tools, Mapping):
             return r[t.StrMapping].fail(".mise.toml must declare [tools]")
-        specifiers: dict[str, str] = {}
+        specifiers: MutableMapping[str, str] = {}
         for raw_selector, raw_tool in raw_tools.items():
             if not raw_selector.strip():
                 return r[t.StrMapping].fail(".mise.toml contains an invalid tool name")

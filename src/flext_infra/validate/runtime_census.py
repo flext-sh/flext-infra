@@ -14,6 +14,7 @@ import importlib
 import inspect
 import pkgutil
 import sys
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
@@ -197,7 +198,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         import re
         from collections import defaultdict
 
-        rule_buckets: dict[str, list[str]] = defaultdict(list)
+        rule_buckets: MutableMapping[str, list[str]] = defaultdict(list)
         for violation in report.violations:
             match = re.search(r"\[(ENFORCE-\d+)\]", violation)
             rule_id = match.group(1) if match else "UNKNOWN"

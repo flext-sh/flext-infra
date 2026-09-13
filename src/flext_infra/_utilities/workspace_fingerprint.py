@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import os
 import stat
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -78,7 +79,7 @@ class FlextInfraUtilitiesWorkspaceFingerprint:
         index_result_value = inputs.value.index_z
         head = inputs.value.head
 
-        index_entries: dict[bytes, list[bytes]] = {}
+        index_entries: MutableMapping[bytes, list[bytes]] = {}
         for record in index_result_value.split(b"\0"):
             if not record:
                 continue
