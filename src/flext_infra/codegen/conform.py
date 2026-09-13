@@ -2370,7 +2370,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # policies from the repository; they are fleet policy owned by
             # config/infra.yaml, never scaffold-only project metadata.
             return r[p.Model].ok(
-                m.Infra.ReleasePolicyRenderSpec(
+                m.Infra.ReleasePolicySpec(
                     build_constraints=config.Infra.release.build_constraints
                 )
             )

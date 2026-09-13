@@ -27,8 +27,6 @@ from flext_infra import c
 from ._rope_import_boundary import FlextInfraRopeImportBoundaryBase
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import t
 
 
@@ -71,9 +69,7 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
                     for line in result.stdout.strip().split("\n")
                     if line.strip()
                 ]
-                dirs = frozenset(
-                    repository_root / name for name in names
-                )
+                dirs = frozenset(repository_root / name for name in names)
                 cls._submodule_cache[repository_root] = dirs
                 return dirs
         except Exception:

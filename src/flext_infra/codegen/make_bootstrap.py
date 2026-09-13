@@ -4,14 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_core import r
-from flext_infra import c, m
-from flext_infra.base import s
-
-from .conform import FlextInfraCodegenConform
+from .. import c, m, r, s
+from . import FlextInfraCodegenConform
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from .. import p
 
 
 class FlextInfraCodegenMakeBootstrap(s[bool]):
