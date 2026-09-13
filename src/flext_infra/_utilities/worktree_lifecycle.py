@@ -23,10 +23,7 @@ class FlextInfraWorktreeLifecycle:
 
         status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=lane))
         if status.failure:
-            return r[str].fail(
-                f"worktree setup failed: {setup_error}; preserving lane {lane}: "
-                f"{status.error or 'cannot prove the new lane is clean'}"
-            )
+            return r[str].from_failure(status)
         if status.value.dirty:
             return r[str].fail(
                 f"worktree setup failed: {setup_error}; preserving lane {lane} "
@@ -34,10 +31,7 @@ class FlextInfraWorktreeLifecycle:
             )
         cleanup = u.Infra.git_remove_clean_worktree(primary_root, lane)
         if cleanup.failure:
-            return r[str].fail(
-                f"worktree setup failed: {setup_error}; preserving lane {lane}: "
-                f"{cleanup.error or 'clean lane rollback failed'}"
-            )
+            return r[str].from_failure(cleanup)
         if created_branch_oid is not None:
             branch_cleanup = u.Infra.git_delete_ref(
                 m.Infra.GitDeleteRefRequest(
@@ -47,11 +41,7 @@ class FlextInfraWorktreeLifecycle:
                 )
             )
             if branch_cleanup.failure:
-                return r[str].fail(
-                    f"worktree setup failed: {setup_error}; "
-                    "created branch cleanup failed: "
-                    f"{branch_cleanup.error or 'unknown branch cleanup failure'}"
-                )
+                return r[str].from_failure(branch_cleanup)
         return r[str].fail(
             f"worktree setup failed: {setup_error}; clean lane rolled back"
         )

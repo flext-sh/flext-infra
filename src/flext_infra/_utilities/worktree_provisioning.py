@@ -30,10 +30,7 @@ class FlextInfraWorktreeProvisioning:
             m.Infra.GitRefRequest(repo_root=lane, reference=reference)
         )
         if initialized.failure:
-            return r[bool].fail(
-                initialized.error
-                or f"failed to initialize governed gitlink: {reference}"
-            )
+            return r[bool].from_failure(initialized)
         return r[bool].ok(True)
 
     @staticmethod
