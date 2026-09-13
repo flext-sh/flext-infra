@@ -66,7 +66,7 @@ class FlextInfraWorktreeLifecycle:
             m.Infra.GitRepoRequest(repo_root=lane)
         )
         if current_branch.failure:
-            return r[str].fail(current_branch.error or f"failed to inspect lane {lane}")
+            return r[str].from_failure(current_branch)
         if current_branch.value.text != branch:
             return r[str].fail(
                 f"worktree lane branch mismatch: expected {branch}, "
@@ -74,7 +74,7 @@ class FlextInfraWorktreeLifecycle:
             )
         status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=lane))
         if status.failure:
-            return r[str].fail(status.error or f"failed to inspect lane state: {lane}")
+            return r[str].from_failure(status)
         if status.value.dirty:
             return r[str].fail(
                 "worktree update requires a clean lane; commit the owned WIP "

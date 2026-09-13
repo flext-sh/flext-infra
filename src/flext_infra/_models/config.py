@@ -199,3 +199,11 @@ class FlextInfraConfigModels:
 
 
 __all__: list[str] = ["FlextInfraConfigModels", "_tool_version_field"]
+
+# Re-export mise toolchain models from single source of truth (module level)
+MiseToolSpec = FlextInfraModelsMiseToolchain.MiseToolSpec
+ProtectedMiseToolSpec = FlextInfraModelsMiseToolchain.ProtectedMiseToolSpec
+BeadsEndpointSpec = FlextInfraModelsMiseToolchain.BeadsEndpointSpec
+BeadsToolSpec = FlextInfraModelsMiseToolchain.BeadsToolSpec
+MiseBootstrapEnvironmentSpec = FlextInfraModelsMiseToolchain.MiseBootstrapEnvironmentSpec
+ToolchainSpec = FlextInfraModelsMiseToolchain.ToolchainSpec

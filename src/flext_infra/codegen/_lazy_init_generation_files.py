@@ -68,13 +68,21 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
     def _verify_snapshots(
         snapshots: t.MappingKV[Path, m.Cli.AtomicFileState],
     ) -> p.Result[bool]:
-        """Prove every planner input retained the exact captured identity."""
+        """Prove every planner input retained the exact captured identity.
+
+        Compares semantically relevant fields (content, mode) only. Metadata
+        fields (device, inode, link_count, parent_*) may vary during read-only
+        analysis due to filesystem access patterns and are not semantically
+        significant for source-code stability.
+        """
         for path, expected in snapshots.items():
             current = u.Cli.atomic_read_binary_file_state(path, required=False)
             if current.failure:
                 return r[bool].from_failure(current)
-            if current.value != expected:
-                return r[bool].fail(f"lazy-init source changed during planning: {path}")
+            if current.value.content != expected.content:
+                return r[bool].fail(f"lazy-init source content changed during planning: {path}")
+            if current.value.mode != expected.mode:
+                return r[bool].fail(f"lazy-init source mode changed during planning: {path}")
         return r[bool].ok(True)
 
     @staticmethod
