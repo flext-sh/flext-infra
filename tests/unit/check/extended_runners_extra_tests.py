@@ -209,17 +209,19 @@ class TestExtendedRunnerExtras:
         tm.that(result.raw_output.startswith("{"), eq=True)
         tm.that(result.raw_output, lacks="Working...")
 
-    def test_markdown_rejects_project_without_markdown_targets(
+    def test_markdown_skips_project_without_markdown_targets(
         self, tmp_path: Path
     ) -> None:
         _, project_dir = u.Tests.create_checker_project(tmp_path)
 
         result = u.Tests.run_gate_check(FlextInfraMarkdownGate, tmp_path, project_dir)
 
-        # A selected gate with no collected targets does not establish
-        # acceptance: exactly one error, no issues.
-        tm.that(result.result.passed, eq=False)
-        tm.that(len(result.result.errors), eq=1)
+        # A project with no markdown has nothing to check, so this gate is not
+        # applicable and skips neutrally (4dc7027ed). A neutral skip grants
+        # acceptance and reports nothing; it is the non-accepting `_skip_result`
+        # that withholds it, and this gate deliberately stopped using that one.
+        tm.that(result.result.passed, eq=True)
+        tm.that(len(result.result.errors), eq=0)
         tm.that(len(result.issues), eq=0)
 
     def test_markdown_parses_cli_errors(self, tmp_path: Path) -> None:
