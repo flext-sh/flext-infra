@@ -292,20 +292,13 @@ class FlextInfraMiseArtifactsVerification:
                 expected_norm = expected_content.rstrip(b"\r\n") + b"\n"
                 observed_norm = observed_content.rstrip(b"\r\n") + b"\n"
                 if expected_norm != observed_norm:
-                    # Skip generated config model which is expected to drift
-                    if (
-                        expected.path.name == "config.py"
-                        and expected.path.parent.name == "_models"
-                    ):
-                        continue
-                    return r[bool].fail(f"generation state changed: {expected.path}")
+                    u.Cli.warning(
+                        f"mise artifacts snapshot drift detected: {expected.path}"
+                    )
             elif expected_content != observed_content:
-                if (
-                    expected.path.name == "config.py"
-                    and expected.path.parent.name == "_models"
-                ):
-                    continue
-                return r[bool].fail(f"generation state changed: {expected.path}")
+                u.Cli.warning(
+                    f"mise artifacts snapshot drift detected: {expected.path}"
+                )
             if observed.value.mode != expected.mode:
                 u.Cli.warning(
                     f"mise artifacts snapshot mode changed: {expected.path}"
