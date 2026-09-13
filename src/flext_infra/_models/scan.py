@@ -11,11 +11,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
-from flext_core import m
-from flext_infra import c, t
+from flext_cli import m
 
-from .mixins import FlextInfraModelsMixins as mm
-from .refactor_namespace_enforcer import FlextInfraModelsNamespaceEnforcer
+from .. import c, t
+from . import FlextInfraModelsMixins as mm, FlextInfraModelsNamespaceEnforcer
 
 
 class FlextInfraModelsScan:

@@ -602,6 +602,7 @@ mi_min = "B"
 package_name = "flext_infra"
 
 
+
 [tool.flext.project.budget.boundary]
 time-seconds = 600
 memory-mb = 2048

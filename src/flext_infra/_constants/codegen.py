@@ -181,6 +181,10 @@ class FlextInfraConstantsCodegen(
 
         DISCOVER = "discover"
         TOOLCHAIN = "toolchain"
+        PARSE_SSOT = "parse_ssot"
+        RENDER_TEMPLATES = "render_templates"
+        OVERLAY_PRESERVATION = "overlay_preservation"
+        WRITE_PUBLICATION = "write_publication"
         PY_TYPED = "py_typed"
         CENSUS_BEFORE = "census_before"
         SCAFFOLD = "scaffold"
@@ -191,13 +195,16 @@ class FlextInfraConstantsCodegen(
 
     PIPELINE_STAGE_ORDER: Final[t.VariadicTuple[PipelineStage]] = (
         PipelineStage.DISCOVER,
-        PipelineStage.TOOLCHAIN,
+        PipelineStage.PARSE_SSOT,
+        PipelineStage.RENDER_TEMPLATES,
+        PipelineStage.OVERLAY_PRESERVATION,
+        PipelineStage.WRITE_PUBLICATION,
         PipelineStage.PY_TYPED,
         PipelineStage.CENSUS_BEFORE,
         PipelineStage.SCAFFOLD,
+        PipelineStage.LAZY_INIT,
         PipelineStage.AUTO_FIX,
         PipelineStage.DEPS,
-        PipelineStage.LAZY_INIT,
         PipelineStage.CENSUS_AFTER,
     )
     "Ordered sequence of pipeline stage identifiers."

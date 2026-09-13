@@ -21,10 +21,12 @@ from .._constants import (
     FlextInfraConstantsRelease,
     FlextInfraConstantsSharedInfra,
 )
-from . import FlextInfraModelsDepsToolSettings, FlextInfraModelsLayout
-from ._defaults import ImmutableEmptyMapping, immutable_empty_mapping
-
-__all__: list[str] = ["FlextInfraConfigModels"]
+from . import (
+    FlextInfraModelsDepsToolSettings,
+    FlextInfraModelsLayout,
+    ImmutableEmptyMapping,
+    immutable_empty_mapping,
+)
 
 
 def _tool_version_field(description: str) -> object:
@@ -3002,6 +3004,24 @@ class FlextInfraConfigModels:
         path: Annotated[Path, m.Field(description="Workspace-relative path")]
         reason: Annotated[t.NonEmptyStr, m.Field(description="Exclusion rationale")]
 
+    class RefactorConfigSpec(_ConfigContract):
+        """Refactor file-selection configuration."""
+
+        project_scan_dirs: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default_factory=lambda: ("src", "tests", "scripts", "examples"),
+                description="Relative directories scanned for candidate files",
+            ),
+        ]
+        file_extensions: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default_factory=tuple,
+                description="Allowed file extensions (empty = all by pattern)",
+            ),
+        ]
+
     class WorkspaceManifestSpec(_ConfigContract):
         """Complete versioned input contract for ``config/workspace.yaml``."""
 
@@ -3057,6 +3077,10 @@ class FlextInfraConfigModels:
             t.VariadicTuple[FlextInfraConfigModels.RepositoryPolicyOverlaySpec],
             m.Field(description="Repository-local policy overlays"),
         ] = ()
+        refactor: Annotated[
+            FlextInfraConfigModels.RefactorConfigSpec | None,
+            m.Field(description="Refactor file-selection configuration"),
+        ] = None
 
         @u.model_validator(mode="after")
         def _validate_references(self) -> Self:
@@ -4356,3 +4380,6 @@ class FlextInfraConfigModels:
             t.VariadicTuple[str],
             m.Field(description="Fail-closed validation or write errors"),
         ] = ()
+
+
+__all__: list[str] = ["FlextInfraConfigModels"]
