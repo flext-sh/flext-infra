@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, override
 import time
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
 
@@ -91,7 +91,9 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         check_dirs = self._get_check_dirs(project_dir, ctx)
         if not check_dirs:
             return self._neutral_skip_result(
-                project_dir, started, message=f"{self.gate_id}: no markdown files to check"
+                project_dir,
+                started,
+                message=f"{self.gate_id}: no markdown files to check",
             )
         return self._execute_check_command(project_dir, ctx, check_dirs, started)
 

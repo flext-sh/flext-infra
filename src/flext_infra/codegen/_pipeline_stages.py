@@ -4,23 +4,23 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, t, u
-from flext_infra.codegen.census import FlextInfraCodegenCensus
-from flext_infra.codegen.conform import (
+from .. import c, config, m, t, u
+from ..deps import FlextInfraRuntimeDevDependencyDetector
+from . import (
+    FlextInfraCodegenCensus,
     FlextInfraCodegenConform,
+    FlextInfraCodegenFixer,
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenPyTyped,
+    FlextInfraCodegenScaffolder,
     FlextInfraCodegenTransaction,
 )
-from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
-from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from flext_infra import p
+    from .. import p
 
 
 class FlextInfraCodegenPipelineStagesMixin:

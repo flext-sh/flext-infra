@@ -53,11 +53,19 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         file: Annotated[str, m.Field(description="Diagnostic source file path")]
         line: Annotated[int, m.Field(description="Diagnostic start line")]
         column: Annotated[int, m.Field(description="Diagnostic start column")]
-        end_line: Annotated[int | None, m.Field(default=None, description="Diagnostic end line")]
-        end_column: Annotated[int | None, m.Field(default=None, description="Diagnostic end column")]
+        end_line: Annotated[
+            int | None, m.Field(default=None, description="Diagnostic end line")
+        ]
+        end_column: Annotated[
+            int | None, m.Field(default=None, description="Diagnostic end column")
+        ]
         message: Annotated[t.NonEmptyStr, m.Field(description="Diagnostic message")]
-        hint: Annotated[str | None, m.Field(default=None, description="Diagnostic hint")]
-        code: Annotated[str | None, m.Field(default=None, description="Mypy diagnostic code")]
+        hint: Annotated[
+            str | None, m.Field(default=None, description="Diagnostic hint")
+        ]
+        code: Annotated[
+            str | None, m.Field(default=None, description="Mypy diagnostic code")
+        ]
         severity: Annotated[
             Literal["error", "note"], m.Field(description="Mypy diagnostic severity")
         ]

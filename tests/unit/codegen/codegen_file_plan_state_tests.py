@@ -117,9 +117,9 @@ class TestsCodegenFilePlanStateDiffers:
         if planned.failure:
             raise AssertionError(planned.error)
 
-        report = FlextInfraUtilitiesCodegenFilePlan.codegen_file_drift_report(
-            (planned.value,)
-        )
+        report = FlextInfraUtilitiesCodegenFilePlan.codegen_file_drift_report((
+            planned.value,
+        ))
 
         assert repr(content) in report
         assert repr(desired_content) in report
@@ -137,9 +137,9 @@ class TestsCodegenFilePlanStateDiffers:
         if planned.failure:
             raise AssertionError(planned.error)
 
-        report = FlextInfraUtilitiesCodegenFilePlan.codegen_file_drift_report(
-            (planned.value,)
-        )
+        report = FlextInfraUtilitiesCodegenFilePlan.codegen_file_drift_report((
+            planned.value,
+        ))
 
         assert "mode-only drift" in report
         assert "desired=0o755" in report

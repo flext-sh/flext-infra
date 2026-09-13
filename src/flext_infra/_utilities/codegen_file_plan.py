@@ -167,10 +167,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
                 f"\n+++ {plan.path} (rendered mode={rendered_mode})"
             )
             diff = tuple(
-                islice(
-                    difflib.unified_diff(old_lines, new_lines, lineterm=""),
-                    limit,
-                )
+                islice(difflib.unified_diff(old_lines, new_lines, lineterm=""), limit)
             )
             if diff:
                 parts.append("\n".join((header, *diff)))

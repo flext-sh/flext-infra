@@ -280,9 +280,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             None,
         )
         declared_exports = cls._declared_exports(file_path)
-        uppercase_names = tuple(
-            name for name in declared_exports if name[:1].isupper()
-        )
+        uppercase_names = tuple(name for name in declared_exports if name[:1].isupper())
         lowercase_alias_names = tuple(
             name
             for name in declared_exports

@@ -6,9 +6,8 @@ from fnmatch import fnmatchcase
 from typing import Annotated, Literal, Self
 
 from flext_cli import m, u
-from flext_infra import t
 
-from ._defaults import ImmutableEmptyMapping
+from flext_infra import t
 
 
 class _ConfigContract(m.ContractModel):
@@ -100,7 +99,6 @@ class FlextInfraModelsMiseToolchain:
                 raise ValueError(msg)
             return self
 
-
     class ProtectedMiseToolSpec(MiseToolSpec):
         """One fleet-owned mise distribution identity."""
 
@@ -129,7 +127,6 @@ class FlextInfraModelsMiseToolchain:
                 raise ValueError(msg)
             return self
 
-
     class BeadsEndpointSpec(_ConfigContract):
         """Static network endpoint projected into Beads configuration."""
 
@@ -142,7 +139,6 @@ class FlextInfraModelsMiseToolchain:
                 description="Beads server TCP port declared by deployment",
             ),
         ]
-
 
     class BeadsToolSpec(ProtectedMiseToolSpec):
         """Canonical Beads distribution and Gas City projection contract."""
@@ -205,7 +201,6 @@ class FlextInfraModelsMiseToolchain:
                 msg = "beads required_custom_types must be unique"
                 raise ValueError(msg)
             return self
-
 
     class MiseBootstrapEnvironmentSpec(_ConfigContract):
         """Validated environment contract rendered into generated Mise setup."""
