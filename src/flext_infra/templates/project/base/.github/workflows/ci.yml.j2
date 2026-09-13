@@ -185,7 +185,11 @@ jobs:
 {{ custom_steps }}
 {%- endif %}
       - name: Boot
-        run: make setup
+        # Toolchain resolution needs the same authenticated API budget as ci.
+        env:
+          GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
+          MISE_GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
+        run: {{ make.ci.variable }}={{ make.ci.value }} make setup
       - name: Release plan and guard
         env:
           PR_TITLE: {% raw %}${{ github.event.pull_request.title }}{% endraw %}

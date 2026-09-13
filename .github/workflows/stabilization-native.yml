@@ -1,0 +1,56 @@
+# Copyright (c) 2026 Datacosmos. All rights reserved.
+# SPDX-License-Identifier: MIT
+# Isolated generation evidence only; this driver is not part of the landing PR.
+name: Stabilization native generation
+
+"on":
+  push:
+    branches:
+      - fix/green-green-native-validation
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stabilization-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: Y
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: false
+      - name: Normalize checkout modes
+        run: chmod -R go-w .
+      - name: Native setup
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MISE_GITHUB_TOKEN: ${{ github.token }}
+        run: CI=Y make setup
+      - name: Generate through canonical owner
+        run: CI=Y make gen
+      - name: Prove generated fixed point
+        run: CI=Y make conform
+      - name: Record generated tracked changes
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/flext-stabilization"
+          mkdir -p "$evidence"
+          git rev-parse HEAD > "$evidence/head.txt"
+          git status --short > "$evidence/git-status.txt"
+          git diff --name-only > "$evidence/generated-paths.txt"
+          git diff --binary > "$evidence/generated.patch"
+      - name: Upload generated evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: flext-generated-${{ github.sha }}
+          path: ${{ runner.temp }}/flext-stabilization/
+          if-no-files-found: error
+          retention-days: 7
