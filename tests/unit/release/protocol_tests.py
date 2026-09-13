@@ -22,6 +22,18 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+# Why (flext-oftik class, flext-2j4lr): 15 of this module's 21 cases drive real
+# release phases over a real Git repository, and one phase costs ~8-9 s today
+# because pydantic rebuilds every r[T] generic per call (profiled 73% of the
+# phase). That is the slow HARNESS the 60 s arm of OPERATOR LAW flext-38p39
+# declares an exception for -- the per-case ceiling itself is never raised.
+# Declared once for the module, exactly as the three sibling real-harness
+# modules under tests/unit/deps already declare it. The previous per-case
+# expression drifted: two cases fired `Timeout (>10.0s)` while identical-cost
+# siblings carried no marker at all.
+pytestmark = pytest.mark.slow
+
+
 def _plan(workspace: Path) -> m.Infra.ReleasePlan:
     """Read the plan receipt the last ``plan`` phase wrote."""
     payload = workspace / ".reports" / "release" / c.Infra.RELEASE_PLAN_FILENAME
@@ -431,12 +443,7 @@ class TestsFlextInfraReleaseProtocol:
                 )
                 tm.that(recorded, has="--title chore(release): v0.1.0")
 
-        # Why (flext-oftik class, flext-2j4lr): two real release phases, each
-        # ~8-9 s today because pydantic rebuilds every r[T] generic per call
-        # (profiled 73% of the phase); the SSOT slow budget owns the ceiling
-        # until the owner hotspot lands. Not a slow test, a slow harness.
         @staticmethod
-        @pytest.mark.slow
         def test_rerun_continues_the_lane_without_a_second_commit(
             tmp_path: Path,
         ) -> None:

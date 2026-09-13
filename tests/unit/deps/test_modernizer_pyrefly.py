@@ -350,6 +350,55 @@ class TestsFlextInfraModernizerPyrefly:
         )
         tm.that(u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES]), eq=[])
 
+    def test_render_context_includes_live_roots_the_scaffold_never_creates(
+        self, tmp_path: Path
+    ) -> None:
+        """A real env dir reaches project-includes even if no template creates it.
+
+        The render context used to derive the includes from the scaffold's
+        declared dirs alone -- the directories its templates generate -- while
+        the analyzer-path sync derived them from the live tree. Two producers,
+        divergent inputs: `examples/` holds real modules in most members and is
+        a declared env dir, yet `make gen` wrote includes without it and every
+        example reported missing-import.
+        """
+        rules = config.Infra.tooling.tools.pyrefly.path_rules
+        source_dir = rules.source_dir
+        # An env dir the scaffold does not generate, chosen from the SSOT
+        # rather than named here, so the contract follows the declared policy.
+        undeclared_env_dir = next(
+            directory
+            for directory in rules.env_dirs
+            if directory not in {source_dir, "tests"}
+        )
+        project_dir = tmp_path / "flext-consumer"
+        (project_dir / source_dir).mkdir(parents=True)
+        (project_dir / source_dir / "module.py").write_text(
+            "VALUE = 1\n", encoding="utf-8"
+        )
+        (project_dir / undeclared_env_dir).mkdir()
+        (project_dir / undeclared_env_dir / "demo.py").write_text(
+            "VALUE = 2\n", encoding="utf-8"
+        )
+
+        tooling_runtime = tm.ok(
+            FlextInfraPyprojectModernizer(
+                repository_root=tmp_path, skip_check=True
+            ).resolve_tooling_context(
+                project_name="flext-consumer",
+                package_name="flext_consumer",
+                path=project_dir / c.Infra.PYPROJECT_FILENAME,
+                declared_python_dirs=(source_dir,),
+                declared_python_dirs_are_complete=True,
+            )
+        )
+
+        tm.that(
+            tooling_runtime.pyrefly_project_includes,
+            has=f"{undeclared_env_dir}/**/*.py*",
+        )
+        tm.that(tooling_runtime.pyrefly_project_includes, has=f"{source_dir}/**/*.py*")
+
     def test_ensure_pyrefly_config_uses_pyright_include_when_available(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:

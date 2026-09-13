@@ -71,6 +71,54 @@ class TestSilentFailureDetector:
         tm.that(codes, has="silent-failure-except")
         tm.that(codes, has="silent-failure-unwrap-or")
 
+    def test_tuple_form_handler_is_as_narrow_as_the_single_form(self) -> None:
+        """``except (A, B):`` declares narrow exceptions, exactly like ``except A:``.
+
+        Both handler rules resolved the clause through the expression resolver,
+        which returns the empty name for an ``ast.Tuple`` -- the same value a
+        bare ``except:`` yields. Every tuple handler was therefore reported as
+        a broad handler that fails to propagate.
+        """
+        import ast
+
+        source = (
+            "def narrow_tuple(path):\n"
+            "    try:\n"
+            "        return parse(path)\n"
+            "    except (ValueError, KeyError) as exc:\n"
+            "        raise RuntimeError(path) from exc\n"
+            "\n"
+            "\n"
+            "def narrow_single(path):\n"
+            "    try:\n"
+            "        return parse(path)\n"
+            "    except ValueError as exc:\n"
+            "        raise RuntimeError(path) from exc\n"
+            "\n"
+            "\n"
+            "def broad_tuple(path):\n"
+            "    try:\n"
+            "        return parse(path)\n"
+            "    except (ValueError, Exception):\n"
+            "        return None\n"
+        )
+        findings = infra_u.Infra.collect_silent_failure_findings(
+            ast.parse(source), source
+        )
+
+        broad_lines = tuple(
+            finding.line
+            for finding in findings
+            if finding.kind == "silent-failure-broad-except"
+        )
+        # The narrow handlers propagate, so neither form is reported; the one
+        # that names Exception among its types still is.
+        tm.that(len(broad_lines), eq=1)
+        tm.that(
+            source.splitlines()[broad_lines[0] - 1].strip(),
+            eq="except (ValueError, Exception):",
+        )
+
     def test_relaxations_for_collectors_predicates_and_test_teardown(self) -> None:
         """Only production failure paths are flagged, per cosmos-3flk9 relaxations."""
         import ast

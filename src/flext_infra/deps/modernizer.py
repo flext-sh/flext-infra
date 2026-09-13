@@ -229,10 +229,15 @@ class FlextInfraPyprojectModernizer(
             raw_environments = FlextInfraEnsurePyrightConfigPhase(
                 config.Infra.tooling
             ).environment_payloads_for_dirs(declared_python_dirs)
-        declared_pyrefly_includes = (
-            FlextInfraExtraPathsManager.pyrefly_include_globs(declared_python_dirs)
-            if declared_python_dirs
-            else ()
+        # One owner for the includes: the live tree intersected with the
+        # declared env dirs, with the scaffold's own roots passed as the
+        # generated roots they are so a plan that is still materializing
+        # tests/ converges on its first write.
+        declared_pyrefly_includes = FlextInfraExtraPathsManager(
+            repository_root=self.repository_root,
+            generated_python_roots=declared_python_dirs,
+        ).pyrefly_project_includes(
+            project_dir=path.parent, is_root=not declared_python_dirs_are_complete
         )
         # Seed for a project whose analyzer paths were never synced yet.
         #
@@ -321,10 +326,7 @@ class FlextInfraPyprojectModernizer(
                     if declared_roots
                     else (pyrefly.get(c.Infra.SEARCH_PATH) or derived_search_path)
                 ),
-                "pyrefly_project_includes": (
-                    declared_pyrefly_includes
-                    or pyrefly.get(c.Infra.PROJECT_INCLUDES, ())
-                ),
+                "pyrefly_project_includes": declared_pyrefly_includes,
                 "pyright_exclude": pyright.get(c.Infra.EXCLUDE, ()),
                 "pyright_ignore": pyright.get(c.Infra.IGNORE, ()),
                 "pyright_include": (
