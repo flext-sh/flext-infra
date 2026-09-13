@@ -104,7 +104,7 @@ class FlextInfraWorktreeProvisioning:
             m.Infra.GitRepoRequest(repo_root=lane)
         )
         if sections.failure:
-            return r[bool].fail(sections.error or "failed to classify lane gitlinks")
+            return r[bool].from_failure(sections)
         for member_path in declared.value:
             section = sections.value.get(member_path.as_posix())
             if section is None:
@@ -152,7 +152,7 @@ class FlextInfraWorktreeProvisioning:
             remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
         )
         if setup.failure:
-            return r[bool].fail(setup.error or "make setup execution failed")
+            return r[bool].from_failure(setup)
         interpreter = (
             lane_venv / "Scripts" / "python.exe"
             if os.name == "nt"

@@ -99,6 +99,9 @@ class FlextInfraModelsMiseToolchain:
                 raise ValueError(msg)
             return self
 
+    ToolchainSpec = MiseToolSpec
+    """Alias for the base mise toolchain specification."""
+
     class ProtectedMiseToolSpec(MiseToolSpec):
         """One fleet-owned mise distribution identity."""
 
