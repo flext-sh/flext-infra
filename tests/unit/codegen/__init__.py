@@ -11,6 +11,7 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 if TYPE_CHECKING:
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
+    from ._support import CodegenTestSupport
     from .layout_fixture import archive_root, build_loose_project, layout_engine
     from .lazy_init_alias_inheritance_tests import (
         TestsFlextInfraLazyInitAliasInheritance,
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
     from .test_codegen_render_purity_golden import TestsCodegenRenderPurityGolden
     from .test_utility_facade_projection import TestsFlextInfraUtilityFacadeProjection
 __all__: tuple[str, ...] = (
+    "CodegenTestSupport",
     "TestGitHookConformance",
     "TestsCodegenRenderPurityGolden",
     "TestsFlextInfraCodegenGeneration",
@@ -59,6 +61,7 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
+            "._support": ("CodegenTestSupport",),
             ".layout_fixture": ("archive_root", "build_loose_project", "layout_engine"),
             ".lazy_init_alias_inheritance_tests": (
                 "TestsFlextInfraLazyInitAliasInheritance",

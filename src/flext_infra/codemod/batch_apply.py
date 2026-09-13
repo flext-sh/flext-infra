@@ -91,7 +91,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 FlextInfraModGateEngine.scan(root, fix=True).unwrap()
             # Fix!=match validation: check that ast-grep apply actually changed what was expected
             after_apply = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-            cls._validate_fix_match(current, after_apply, after_semantic)
+            FlextInfraCodemodBatchApply._validate_fix_match(
+                current, after_semantic, after_apply
+            )
             current = after_apply
         cli.display_text(
             "mod: require canonical formatting and zero Ruff, Pyrefly, and LSP diagnostics"
@@ -118,6 +120,22 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             for f in after_apply.entries
             if f.actionable
         }
+        after_semantic_actionable = {
+            (f.rule_id, f.file.as_posix(), f.text, f.replacement)
+            for f in after_semantic.entries
+            if f.actionable
+        }
+        # The semantic phase may only reduce the actionable set, never grow it
+        semantic_new = after_semantic_actionable - before_actionable
+        if semantic_new:
+            rule_ids = {r for r, _, _, _ in semantic_new}
+            files = {p for _, p, _, _ in semantic_new}
+            msg = (
+                f"fix!=match: semantic phase introduced {len(semantic_new)} new "
+                f"actionable findings in rules {sorted(rule_ids)} across files "
+                f"{sorted(files)}"
+            )
+            raise RuntimeError(msg)
         # Actionable findings should be resolved
         unresolved = before_actionable & after_apply_actionable
         if unresolved:

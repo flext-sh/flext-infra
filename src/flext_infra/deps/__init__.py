@@ -10,6 +10,15 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from . import phases
+    from ._detection_runners import FlextInfraDependencyDetectionRunnersMixin
+    from ._detector_runtime_steps import FlextInfraDependencyDetectorRuntimeSteps
+    from ._extra_paths_sync import FlextInfraExtraPathsSyncMixin
+    from ._floor_profile_writer import FlextInfraDepsFloorProfileWriter
+    from ._modernizer_document import FlextInfraPyprojectModernizerDocumentMixin
+    from ._modernizer_payload import FlextInfraPyprojectModernizerPayloadMixin
+    from ._modernizer_run import FlextInfraPyprojectModernizerRunMixin
+    from ._pyrefly_fix_steps import FlextInfraConfigFixerSteps
+    from ._toml_phase_ops import FlextInfraTomlPhaseOps
     from .detection import FlextInfraDependencyDetectionService
     from .detection_analysis import FlextInfraDependencyDetectionAnalysis
     from .detector import FlextInfraRuntimeDevDependencyDetector
@@ -33,10 +42,14 @@ if TYPE_CHECKING:
     from .toml_phase import FlextInfraTomlPhaseService
 __all__: tuple[str, ...] = (
     "FlextInfraConfigFixer",
+    "FlextInfraConfigFixerSteps",
     "FlextInfraConsolidateGroupsPhase",
     "FlextInfraDependencyDetectionAnalysis",
+    "FlextInfraDependencyDetectionRunnersMixin",
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyDetectorRuntime",
+    "FlextInfraDependencyDetectorRuntimeSteps",
+    "FlextInfraDepsFloorProfileWriter",
     "FlextInfraEnsureCoverageConfigPhase",
     "FlextInfraEnsureFormattingToolingPhase",
     "FlextInfraEnsureMypyConfigPhase",
@@ -49,9 +62,14 @@ __all__: tuple[str, ...] = (
     "FlextInfraEnsureRuffConfigPhase",
     "FlextInfraEnsureVultureConfigPhase",
     "FlextInfraExtraPathsManager",
+    "FlextInfraExtraPathsSyncMixin",
     "FlextInfraInjectCommentsPhase",
     "FlextInfraPyprojectModernizer",
+    "FlextInfraPyprojectModernizerDocumentMixin",
+    "FlextInfraPyprojectModernizerPayloadMixin",
+    "FlextInfraPyprojectModernizerRunMixin",
     "FlextInfraRuntimeDevDependencyDetector",
+    "FlextInfraTomlPhaseOps",
     "FlextInfraTomlPhaseService",
     "phases",
 )
@@ -59,6 +77,15 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
+            "._detection_runners": ("FlextInfraDependencyDetectionRunnersMixin",),
+            "._detector_runtime_steps": ("FlextInfraDependencyDetectorRuntimeSteps",),
+            "._extra_paths_sync": ("FlextInfraExtraPathsSyncMixin",),
+            "._floor_profile_writer": ("FlextInfraDepsFloorProfileWriter",),
+            "._modernizer_document": ("FlextInfraPyprojectModernizerDocumentMixin",),
+            "._modernizer_payload": ("FlextInfraPyprojectModernizerPayloadMixin",),
+            "._modernizer_run": ("FlextInfraPyprojectModernizerRunMixin",),
+            "._pyrefly_fix_steps": ("FlextInfraConfigFixerSteps",),
+            "._toml_phase_ops": ("FlextInfraTomlPhaseOps",),
             ".detection": ("FlextInfraDependencyDetectionService",),
             ".detection_analysis": ("FlextInfraDependencyDetectionAnalysis",),
             ".detector": ("FlextInfraRuntimeDevDependencyDetector",),

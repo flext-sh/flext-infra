@@ -435,15 +435,20 @@ class FlextInfraUtilitiesCodegenNamespace:
             or is_root_namespace
         )
         is_private_module = file_path.stem.startswith("_")
+        declared_exports = cls._declared_exports(file_path)
+        # A private module that declares ``__all__`` publishes those names
+        # through its package's lazy facade: siblings import them as
+        # ``from . import Name`` (R33), never through a relative module path.
         include_in_lazy_init = not file_path.stem[:1].isdigit() and (
             not is_private_module
             or is_fixture_module
             or is_family_package
             or is_root_namespace
+            or bool(declared_exports)
         )
         type_checking_imports = tuple(
             name
-            for name in cls._declared_exports(file_path)
+            for name in declared_exports
             if (
                 name.isidentifier()
                 and name.islower()
