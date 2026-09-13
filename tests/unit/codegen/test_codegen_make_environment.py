@@ -752,6 +752,7 @@ class TestsCodegenMakeEnvironment:
 
         tm.that(makefile, has="deps modernize")
         tm.that(makefile, has="--rewrite-constraints")
+        tm.that(makefile, has="--upgrade --refresh")
         tm.that(makefile, lacks="--constraint-policy")
 
     def test_generated_boundary_rejects_forbidden_makeflags_overrides(
@@ -875,5 +876,8 @@ class TestsCodegenMakeEnvironment:
         for verb in ("deps", "fmt", "fix", "mod"):
             tm.that(makefile, has=f"_builtin-{verb}: $(if $(CHECK_ONLY),")
         tm.that(makefile, has="_builtin-fix-enforcement: $(if $(CHECK_ONLY),")
-        tm.that(makefile, has="--mode $(if $(CHECK_ONLY),check,apply)")
+        tm.that(
+            makefile,
+            has="--mode $(if $(CHECK_ONLY),check,apply)",
+        )
         tm.that(makefile, has="mode=$(if $(CHECK_ONLY),,--apply)")

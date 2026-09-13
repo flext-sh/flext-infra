@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from .. import c, m, r, s
-from . import FlextInfraCodegenConform
+from .conform import FlextInfraCodegenConform
 
 if TYPE_CHECKING:
     from .. import p

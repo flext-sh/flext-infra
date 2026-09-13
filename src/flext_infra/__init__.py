@@ -64,7 +64,13 @@ if TYPE_CHECKING:
     from .codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
     from .codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
     from .codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
-    from .codegen.pipeline import FlextInfraCodegenPipeline
+    from .codegen.pipeline import (
+        FlextInfraCodegenLazyInitGenerationMixin,
+        FlextInfraCodegenPipeline,
+        FlextInfraCodegenPipelineStagesMixin,
+        FlextInfraMiseArtifactsFiles,
+        publish_file_plan,
+    )
     from .codegen.project_new import FlextInfraCodegenProjectNew
     from .codegen.py_typed import FlextInfraCodegenPyTyped
     from .codegen.scaffolder import FlextInfraCodegenScaffolder
@@ -293,10 +299,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenGeneration",
     "FlextInfraCodegenLayout",
     "FlextInfraCodegenLazyInit",
+    "FlextInfraCodegenLazyInitGenerationMixin",
     "FlextInfraCodegenLazyInitPlanner",
     "FlextInfraCodegenMakeBootstrap",
     "FlextInfraCodegenMiseArtifacts",
     "FlextInfraCodegenPipeline",
+    "FlextInfraCodegenPipelineStagesMixin",
     "FlextInfraCodegenProjectNew",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenQualityGate",
@@ -367,6 +375,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraManualProtocolDetector",
     "FlextInfraManualTypingAliasDetector",
     "FlextInfraMarkdownGate",
+    "FlextInfraMiseArtifactsFiles",
     "FlextInfraMiseWorkspacePlanner",
     "FlextInfraModGateEngine",
     "FlextInfraModels",
@@ -487,6 +496,7 @@ __all__: tuple[str, ...] = (
     "maintenance",
     "p",
     "promoted",
+    "publish_file_plan",
     "r",
     "refactor",
     "release",
@@ -530,7 +540,13 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen.make_bootstrap": ("FlextInfraCodegenMakeBootstrap",),
             ".codegen.mise_artifacts": ("FlextInfraCodegenMiseArtifacts",),
             ".codegen.mise_artifacts_workspace": ("FlextInfraMiseWorkspacePlanner",),
-            ".codegen.pipeline": ("FlextInfraCodegenPipeline",),
+            ".codegen.pipeline": (
+                "FlextInfraCodegenLazyInitGenerationMixin",
+                "FlextInfraCodegenPipeline",
+                "FlextInfraCodegenPipelineStagesMixin",
+                "FlextInfraMiseArtifactsFiles",
+                "publish_file_plan",
+            ),
             ".codegen.project_new": ("FlextInfraCodegenProjectNew",),
             ".codegen.py_typed": ("FlextInfraCodegenPyTyped",),
             ".codegen.scaffolder": ("FlextInfraCodegenScaffolder",),

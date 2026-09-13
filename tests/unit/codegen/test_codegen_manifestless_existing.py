@@ -93,7 +93,9 @@ class TestCodegenManifestlessExisting:
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
             tm.that((root / required).is_file(), eq=True)
         fixed_point = FlextInfraCodegenConform(repository_root=root).plan(
-            request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK})
+            request.model_copy(
+                update={"mode": c.Infra.CodegenConformMode.CHECK}
+            )
         )
         verified = tm.ok(fixed_point)
         tm.that(

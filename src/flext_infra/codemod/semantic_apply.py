@@ -78,7 +78,9 @@ class FlextInfraCodemodSemanticApply:
 
     @staticmethod
     def _phase_future_annotations(
-        root: Path, preflight: m.Infra.ModScanReport, working: MutableMapping[Path, str]
+        root: Path,
+        preflight: m.Infra.ModScanReport,
+        working: MutableMapping[Path, str],
     ) -> list[m.Infra.SemanticMigrationEdit]:
         """Plan the future-annotations phase; the pipeline applies the edits."""
         future_annotations: list[m.Infra.SemanticMigrationEdit] = []

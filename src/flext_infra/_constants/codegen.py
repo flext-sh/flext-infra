@@ -202,8 +202,8 @@ class FlextInfraConstantsCodegen(
         PipelineStage.PY_TYPED,
         PipelineStage.CENSUS_BEFORE,
         PipelineStage.SCAFFOLD,
-        PipelineStage.LAZY_INIT,
         PipelineStage.AUTO_FIX,
+        PipelineStage.LAZY_INIT,
         PipelineStage.DEPS,
         PipelineStage.CENSUS_AFTER,
     )
