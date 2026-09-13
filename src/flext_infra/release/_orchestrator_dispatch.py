@@ -345,14 +345,40 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
     def _stamp_release(
         self, ctx: m.Infra.ReleasePhaseDispatchConfig, plan: m.Infra.ReleasePlan
     ) -> p.Result[bool]:
-        """Write the version SSOT, the release notes, and the changelog."""
+        """Write the version SSOT, conform its projections, then the notes.
+
+        Codegen conform runs before the lock and the release notes read the
+        tree: it is the owner that settles pyproject.toml's dependencies and
+        every other rendered projection. Locking and resolving
+        the packaged-project list beforehand read a mid-conform tree that a
+        rerun never reproduces — the lock goes stale against the dependencies
+        conform adds afterward, and the packaged-project count changes once
+        conform materializes `tests/` on the workspace root. Ordering the
+        stamp as version -> conform -> lock -> notes makes every step a pure
+        function of the SSOT already on disk, so a rerun against an unchanged
+        SSOT regenerates identical bytes and commits nothing.
+        """
         root = ctx.repository_root
         stamped = u.Infra.replace_project_version(root, plan.next)
         if stamped.failure:
             return stamped
+        # Why: README, docs/index and the API overview render the version,
+        # and the docs generator owns them; conforming first settles every
+        # projection derived from the SSOT before the lock and notes below
+        # read the tree.
+        conformed = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.ALL,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        )
+        if conformed.failure:
+            return r[bool].from_failure(conformed)
         # Why: the lock records the project's own version, so the stamp
-        # refreshes it the way `make deps` does; otherwise
-        # `make deps` (uv lock --check) is red on the release lane.
+        # refreshes it the way `make deps` does; it runs after conform so the
+        # lock matches the dependencies conform just settled, never a
+        # pre-conform snapshot that goes stale the moment conform runs.
         locked = u.Cli.run_checked(
             [c.Infra.UV, "lock", "--project", str(root)], cwd=root
         )
@@ -363,6 +389,9 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             / plan.tag
             / c.Infra.RELEASE_NOTES_FILENAME
         )
+        # Why: resolved after conform so the packaged-project list reflects
+        # the settled tree conform just wrote, not a pre-conform snapshot
+        # that a rerun would resolve differently.
         projects = u.Infra.resolve_projects(root, ctx.project_names)
         if projects.failure:
             return r[bool].from_failure(projects)
@@ -378,16 +407,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         changelog = u.Infra.update_changelog(root, plan.next, plan.tag, notes_path)
         if changelog.failure:
             return changelog
-        # Why: README, docs/index and the API overview render the version, and
-        # the docs generator owns them; the stamp regenerates its projections
-        # so `make gen` stays a fixed point on the release lane.
-        return FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
-                scope=c.Infra.CodegenConformScope.ALL,
-                mode=c.Infra.CodegenConformMode.APPLY,
-            )
-        ).map(lambda _result: True)
+        return r[bool].ok(True)
 
     def _commit_release(self, root: Path, plan: m.Infra.ReleasePlan) -> p.Result[bool]:
         """Commit the stamped SSOT and every projection regenerated from it.
