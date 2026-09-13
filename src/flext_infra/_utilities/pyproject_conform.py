@@ -803,7 +803,9 @@ class FlextInfraUtilitiesPyprojectConform:
                 distribution, repositories=candidates, providers=providers
             )
             if reference_result.failure:
-                return r[MutableMapping[str, MutableMapping[str, t.JsonValue]]].from_failure(reference_result)
+                return r[
+                    MutableMapping[str, MutableMapping[str, t.JsonValue]]
+                ].from_failure(reference_result)
         return r[MutableMapping[str, MutableMapping[str, t.JsonValue]]].ok({
             member.distribution: {"workspace": True} for member in workspace.subprojects
         })
