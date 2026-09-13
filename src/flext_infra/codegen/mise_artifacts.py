@@ -121,7 +121,11 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             / c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME
         )
         if shell.failure or windows.failure:
-            return r[bool].from_failure(shell) if shell.failure else r[bool].from_failure(windows)
+            return (
+                r[bool].from_failure(shell)
+                if shell.failure
+                else r[bool].from_failure(windows)
+            )
         return r[bool].ok(True)
 
     def validate_artifacts(self, project_root: Path) -> p.Result[bool]:
