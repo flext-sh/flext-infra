@@ -80,9 +80,16 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                     result, tool=c.Infra.PYREFLY, file=str(json_file), line=0, column=0
                 ),
             )
-        report = m.Infra.PyreflyReport.model_validate_json(
-            json_file.read_text(encoding="utf-8"), strict=True
-        )
+        try:
+            report = m.Infra.PyreflyReport.model_validate_json(
+                json_file.read_text(encoding="utf-8"), strict=True
+            )
+        except c.ValidationError as exc:
+            return False, (
+                self._malformed_report_issue(
+                    exc, tool=c.Infra.PYREFLY, file=str(json_file)
+                ),
+            )
         issues: t.MutableSequenceOf[m.Infra.Issue] = [
             m.Infra.Issue(
                 file=diag.path,

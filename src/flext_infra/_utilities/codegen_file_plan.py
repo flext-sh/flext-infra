@@ -113,14 +113,9 @@ class FlextInfraUtilitiesCodegenFilePlan:
         must not report drift, so both sides are reconciled to text before the
         comparison while real content differences still fail loud.
         """
-        before_content: str | bytes = before.content or b""
-        desired: str | bytes = desired_content if desired_content is not None else b""
-        if isinstance(before_content, bytes) or isinstance(desired, str):
-            if isinstance(before_content, bytes):
-                before_content = before_content.decode("utf-8", errors="replace")
-            if isinstance(desired, bytes):
-                desired = desired.decode("utf-8", errors="replace")
-        return before_content != desired or before.mode != desired_mode
+        before_text = (before.content or b"").decode("utf-8", errors="replace")
+        desired_text = (desired_content or b"").decode("utf-8", errors="replace")
+        return before_text != desired_text or before.mode != desired_mode
 
     @staticmethod
     def codegen_file_requires_effect(plan: m.Infra.CodegenFilePlan) -> bool:
@@ -173,13 +168,27 @@ class FlextInfraUtilitiesCodegenFilePlan:
                     limit,
                 )
             )
-            parts.append(
-                "\n".join((header, *diff))
-                if diff
-                else (
+            if diff:
+                parts.append("\n".join((header, *diff)))
+                continue
+            old_bytes = (
+                raw_before.encode("utf-8")
+                if isinstance(raw_before, str)
+                else (raw_before or b"")
+            )
+            new_bytes = plan.desired_content or b""
+            if old_bytes == new_bytes:
+                parts.append(
                     f"{header}\n(content equal: mode-only drift "
                     f"observed={committed_mode} desired={rendered_mode})"
                 )
+                continue
+            # Lines are equal but bytes are not: name the exact tail difference
+            # (line endings / trailing newline) instead of a false mode claim.
+            parts.append(
+                f"{header}\n(lines equal, bytes differ: committed {len(old_bytes)}B "
+                f"tail={old_bytes[-24:]!r}; rendered {len(new_bytes)}B "
+                f"tail={new_bytes[-24:]!r})"
             )
         return "\n----\n".join(parts)
 

@@ -82,7 +82,16 @@ class FlextInfraPyrightGate(FlextInfraGate):
                     column=0,
                 ),
             )
-        report = m.Infra.PyrightReport.model_validate_json(result.stdout, strict=True)
+        try:
+            report = m.Infra.PyrightReport.model_validate_json(
+                result.stdout, strict=True
+            )
+        except c.ValidationError as exc:
+            return False, (
+                self._malformed_report_issue(
+                    exc, tool=c.Infra.PYRIGHT, file=str(project_dir)
+                ),
+            )
         issues: t.MutableSequenceOf[m.Infra.Issue] = [
             m.Infra.Issue(
                 file=diag.file,

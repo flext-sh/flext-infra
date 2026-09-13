@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import MutableSequence
 from pathlib import Path
 from typing import override
 
 from flext_infra import r
-from tests import c, m, p, t
+from tests import c, m, p, t, u
 from tests.utilities_replay import TestsFlextInfraUtilitiesReplayRunnerMixin
 
 
@@ -87,10 +86,10 @@ class TestsFlextInfraUtilitiesReplaySequenceMixin:
         counts = {"error": 0, "warning": 0, "information": 0}
         for diagnostic in diagnostics:
             counts[str(diagnostic["severity"])] += 1
-        return json.dumps({
+        return u.Cli.json_dumps({
             "version": "1.1.411",
             "time": "1",
-            "generalDiagnostics": list(diagnostics),
+            "generalDiagnostics": [dict(diagnostic) for diagnostic in diagnostics],
             "summary": {
                 "filesAnalyzed": files_analyzed,
                 "errorCount": counts["error"],
@@ -98,7 +97,7 @@ class TestsFlextInfraUtilitiesReplaySequenceMixin:
                 "informationCount": counts["information"],
                 "timeInSec": 0.1,
             },
-        })
+        }).unwrap()
 
     @staticmethod
     def create_command_output(

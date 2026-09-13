@@ -523,7 +523,7 @@ class FlextInfraUtilitiesDependencies:
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
         if not normalized:
             # flext-j47u (codex): keep the empty mapping immutable and fully typed.
-            return MappingProxyType(MutableMapping[str, tuple[str, ...]]())
+            return MappingProxyType(dict[str, tuple[str, ...]]())
         return cls.project_dev_groups_from_payload(normalized)
 
     @classmethod

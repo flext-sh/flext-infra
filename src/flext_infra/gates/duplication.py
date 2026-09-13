@@ -94,7 +94,16 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                     raw_return_code=1, timed_out=False, forwarded_signal=None
                 ),
             )
-        config_path = self._render_config(project_dir)
+        rendered_config = self._render_config(project_dir)
+        if rendered_config.failure:
+            return m.Cli.CommandOutput(
+                stdout="",
+                stderr=rendered_config.error or "project duplication config invalid",
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=1, timed_out=False, forwarded_signal=None
+                ),
+            )
+        config_path = rendered_config.value
         report_dir = self._repository_root / c.Infra.JSCPD_REPORT_DIRNAME
         report_path = report_dir / c.Infra.JSCPD_REPORT_FILENAME
         if report_path.is_symlink() or (
@@ -129,10 +138,9 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         """
         # Read project-specific config from [tool.flext.project]
         project_config = self._read_project_config(project_dir)
-        duplication_config = u.Cli.json_as_mapping(
-            project_config.get("duplication", {})
-        )
-        scope_dirnames = duplication_config.get("scope", c.Infra.JSCPD_SCOPE_DIRNAMES)
+        if project_config.failure:
+            return r[t.StrSequence].from_failure(project_config)
+        scope_dirnames = project_config.value.scope
 
         discovered = u.Infra.resolve_projects(self._repository_root, ())
         if discovered.failure:
@@ -160,23 +168,41 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             )
         )
 
-    def _read_project_config(self, project_dir: Path) -> dict[str, t.JsonValue]:
-        """Read [tool.flext.project] from project's pyproject.toml.
+    def _read_project_config(
+        self, project_dir: Path
+    ) -> p.Result[m.Infra.ProjectDuplicationOverrides]:
+        """Read ``[tool.flext.project.duplication]`` from pyproject.toml.
 
         Why: a malformed manifest is a declared error, never an empty config —
-        returning a sentinel here would silently disable the duplication gate
-        for a broken project (silent-failure law).
+        silently returning the default model for a broken manifest would
+        disable the operator's overrides without a trace (silent-failure law).
+        An absent manifest or absent ``duplication`` table is not malformed;
+        it legitimately yields the default overrides.
         """
         pyproject_path = project_dir / "pyproject.toml"
         if not pyproject_path.is_file():
-            return {}
+            return r[m.Infra.ProjectDuplicationOverrides].ok(
+                m.Infra.ProjectDuplicationOverrides()
+            )
         loaded = u.Cli.config_load(pyproject_path, expand_env=False)
         if loaded.failure:
-            return {}
+            return r[m.Infra.ProjectDuplicationOverrides].fail(
+                f"invalid project manifest ({pyproject_path}): {loaded.error}"
+            )
         tool = u.Cli.json_as_mapping(loaded.value.data).get("tool", {})
         flext = u.Cli.json_as_mapping(tool).get("flext", {})
         project = u.Cli.json_as_mapping(flext).get("project", {})
-        return dict(u.Cli.json_as_mapping(project))
+        duplication = u.Cli.json_as_mapping(project).get("duplication", {})
+        try:
+            return r[m.Infra.ProjectDuplicationOverrides].ok(
+                m.Infra.ProjectDuplicationOverrides.model_validate(
+                    u.Cli.json_as_mapping(duplication)
+                )
+            )
+        except c.ValidationError as exc:
+            return r[m.Infra.ProjectDuplicationOverrides].fail_op(
+                f"[tool.flext.project.duplication] validation ({pyproject_path})", exc
+            )
 
     def _declared_duplication_trees(self) -> p.Result[t.StrSequence]:
         """Read ``repository.duplication_trees`` from the governed manifest."""
@@ -214,7 +240,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             raise ValueError(msg)
         return scope
 
-    def _render_config(self, project_dir: Path) -> Path:
+    def _render_config(self, project_dir: Path) -> p.Result[Path]:
         """Materialize the jscpd config from this gate's typed SSOT.
 
         R2: Reads thresholds from [tool.flext.project] config SSOT.
@@ -223,11 +249,9 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         content (idempotent).
         """
         project_config = self._read_project_config(project_dir)
-        dup_config = u.Cli.json_as_mapping(project_config.get("duplication", {}))
-        min_lines = dup_config.get("min-lines", c.Infra.JSCPD_MIN_LINES)
-        min_tokens = dup_config.get("min-tokens", c.Infra.JSCPD_MIN_TOKENS)
-        threshold = dup_config.get("threshold-percent", c.Infra.JSCPD_THRESHOLD_PERCENT)
-        mode = dup_config.get("mode", c.Infra.JSCPD_MODE)
+        if project_config.failure:
+            return r[Path].from_failure(project_config)
+        overrides = project_config.value
 
         config = m.Infra.JscpdConfig(
             absolute=True,
@@ -236,13 +260,13 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 for name, extensions in c.Infra.JSCPD_FORMAT_EXTENSIONS.items()
             },
             ignore=tuple(c.Infra.JSCPD_IGNORE_PATTERNS),
-            minLines=min_lines,
-            minTokens=min_tokens,
-            mode=mode,
+            minLines=overrides.min_lines,
+            minTokens=overrides.min_tokens,
+            mode=overrides.mode,
             noColors=True,
             noTips=True,
             reporters=(c.Infra.OUTPUT_JSON,),
-            threshold=threshold,
+            threshold=overrides.threshold_percent,
         )
         config_path = (
             self._repository_root
@@ -252,7 +276,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         u.Cli.ensure_dir(config_path.parent).unwrap()
         rendered = config.model_dump_json(by_alias=True)
         u.Cli.atomic_write_text_file(config_path, rendered).unwrap()
-        return config_path
+        return r[Path].ok(config_path)
 
     @staticmethod
     def _load_report(

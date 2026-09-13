@@ -289,6 +289,7 @@ class FlextInfraModelsDepsToolSettings(
         def external_gate_deselection(self) -> str:
             """Pytest ``-m`` expression that skips external gates."""
             return f"not ({' or '.join(self.external_gate_markers)})"
+
         process_timeout_seconds: Annotated[
             int,
             m.Field(

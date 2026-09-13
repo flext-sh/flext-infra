@@ -4,16 +4,25 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from git import BaseIndexEntry, GitCommandError, Repo
+from git import (
+    BaseIndexEntry,
+    GitCommandError,
+    InvalidGitRepositoryError,
+    NoSuchPathError,
+    Repo,
+)
 
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
+from flext_infra.typings import t
 
 from .semantic_paths import FlextInfraUtilitiesGitSemanticPathsMixin
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from pathlib import Path
+
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesGitSemanticIndexMixin(
@@ -23,6 +32,41 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
 
     _GITLINK_MODE: ClassVar[str] = "160000"
     _STAGED_GITLINK_FIELDS: ClassVar[int] = 2
+
+    @classmethod
+    def git_committed_directory_blobs(
+        cls, repo_root: Path, relative_dir: str
+    ) -> p.Result[t.MappingKV[str, bytes]]:
+        """Read every blob directly under ``relative_dir`` in HEAD.
+
+        Git objects are immutable, so the content is returned by name without
+        a physical source state. A directory absent from HEAD is the typed
+        empty mapping; an unreadable repository or object fails loud.
+        """
+        try:
+            repo = Repo(repo_root, search_parent_directories=True)
+            tree = repo.head.commit.tree / relative_dir
+        except KeyError:
+            return r[t.MappingKV[str, bytes]].ok({})
+        except (
+            GitCommandError,
+            InvalidGitRepositoryError,
+            NoSuchPathError,
+            OSError,
+            ValueError,
+        ) as exc:
+            return r[t.MappingKV[str, bytes]].fail(
+                f"cannot open committed directory {relative_dir} at {repo_root}: {exc}",
+                exception=exc,
+            )
+        try:
+            return r[t.MappingKV[str, bytes]].ok({
+                blob.name: blob.data_stream.read() for blob in tree.blobs
+            })
+        except (OSError, ValueError) as exc:
+            return r[t.MappingKV[str, bytes]].fail_op(
+                f"read committed blobs {relative_dir} at {repo_root}", exc
+            )
 
     @classmethod
     def git_head_numstat(

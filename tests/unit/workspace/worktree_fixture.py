@@ -9,6 +9,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import c, m, t
+from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.worktree import FlextInfraWorktreeService
 from tests import u
@@ -110,6 +111,29 @@ class WorktreeFixture:
         tm.ok(u.Cli.run_checked([c.Infra.GIT, "commit", "-m", message], cwd=repository))
 
     @staticmethod
+    def conformed_root(tmp_path: Path) -> Path:
+        """Materialize one governed project and conform it to a fixed point."""
+        root = tmp_path / "repo"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-project",
+            workspace="fixture-workspace",
+            database="fixture-database",
+            issue_prefix="fixture-prefix",
+        )
+        u.Tests.commit_git_changes(root, "Declare project identity")
+        tm.ok(
+            FlextInfraCodegenConform.execute_request(
+                u.Tests.conform_request(
+                    root,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                )
+            )
+        )
+        return root
+
+    @staticmethod
     def write_python_project(root: Path, distribution: str) -> Path:
         """Write the minimum typed project used by real Git fixtures.
 
@@ -124,10 +148,15 @@ class WorktreeFixture:
         # A governed project always declares its description: the derived
         # render identity reads it and rejects an empty one, exactly as it
         # does for a real checkout.
+        # Why: conform's existing-checkout ProjectSpec now derives authors and
+        # upstream from live PEP 621 metadata (no fabricated spec) — every
+        # governed fixture must declare both.
         pyproject.write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
             f'description = "{distribution} governed fixture"\n'
             'requires-python = ">=3.13,<3.14"\n'
+            'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+            'dependencies = ["flext-core>=0.1.0"]\n'
             f'[project.urls]\nRepository = "{repository_url}"\n',
             encoding="utf-8",
         )

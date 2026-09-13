@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.codegen import _mise_artifacts_candidates as candidates
 
+from ._mise_artifacts_candidates import publication_plan
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 from ._mise_artifacts_process import FlextInfraMiseArtifactsProcess as process
 
@@ -54,7 +54,7 @@ class FlextInfraMiseStaging:
             if staged.failure:
                 return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(staged)
             stages.append(stage_root)
-        return candidates.publication_plan(plan.projects, tuple(stages))
+        return publication_plan(plan.projects, tuple(stages))
 
     def _stage_project(
         self,

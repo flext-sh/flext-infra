@@ -35,9 +35,18 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             f'"{pattern}" = [{", ".join(f'"{rule}"' for rule in rules)}]'
             for pattern, rules in sorted(ruff_cfg.lint.per_file_ignores.items())
         )
+        isort = ruff_cfg.lint.isort
+        # Why: without the fleet's isort settings (combine-as-imports in
+        # particular), a fixture-generated `X, X as alias` combined import —
+        # the real lazy-facade pattern flext-infra's own __init__.py uses —
+        # fails ruff's default isort split, unlike production.
         return (
             f"[tool.ruff]\npreview = {str(ruff_cfg.preview).lower()}\n\n"
             f"[tool.ruff.lint]\nselect = [{select}]\nignore = [{ignore}]\n\n"
+            "[tool.ruff.lint.isort]\n"
+            f"combine-as-imports = {str(isort.combine_as_imports).lower()}\n"
+            f"force-single-line = {str(isort.force_single_line).lower()}\n"
+            f"split-on-trailing-comma = {str(isort.split_on_trailing_comma).lower()}\n\n"
             f"[tool.ruff.lint.per-file-ignores]\n{rows}\n"
         )
 

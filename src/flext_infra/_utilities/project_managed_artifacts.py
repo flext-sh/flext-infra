@@ -9,10 +9,11 @@ from fnmatch import fnmatchcase
 from pathlib import Path
 
 from flext_cli import u
-from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Repo
 
 from flext_core import r
 from flext_infra import c, config, m, p, t
+
+from .git import FlextInfraUtilitiesGit
 
 
 class FlextInfraUtilitiesProjectManagedArtifacts:
@@ -228,34 +229,21 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         object identity makes a physical re-read meaningless.
         """
         resolved = project_dir.expanduser().resolve()
-        try:
-            repo = Repo(resolved, search_parent_directories=True)
-            config_tree = repo.head.commit.tree / c.CONFIG_DIR_NAME
-        except KeyError:
-            return r[m.Infra.ProjectManagedArtifactsSnapshot].ok(cls.empty_snapshot())
-        except (
-            GitCommandError,
-            InvalidGitRepositoryError,
-            NoSuchPathError,
-            OSError,
-            ValueError,
-        ) as exc:
+        blobs = FlextInfraUtilitiesGit.git_committed_directory_blobs(
+            resolved, c.CONFIG_DIR_NAME
+        )
+        if blobs.failure:
             return r[m.Infra.ProjectManagedArtifactsSnapshot].fail(
-                f"cannot open committed project config catalog at {resolved}: {exc}",
-                exception=exc,
+                f"cannot open committed project config catalog at {resolved}: "
+                f"{blobs.error}"
             )
-        payloads: dict[Path, bytes] = {}
-        try:
-            for blob in sorted(config_tree.blobs, key=lambda entry: entry.name):
-                if blob.name.endswith(".yaml"):
-                    payloads[resolved / c.CONFIG_DIR_NAME / blob.name] = (
-                        blob.data_stream.read()
-                    )
-        except (OSError, ValueError) as exc:
-            return r[m.Infra.ProjectManagedArtifactsSnapshot].fail_op(
-                f"read committed project config sources {resolved / c.CONFIG_DIR_NAME}",
-                exc,
-            )
+        payloads: dict[Path, bytes] = {
+            resolved / c.CONFIG_DIR_NAME / name: content
+            for name, content in sorted(blobs.value.items())
+            if name.endswith(".yaml")
+        }
+        if not payloads:
+            return r[m.Infra.ProjectManagedArtifactsSnapshot].ok(cls.empty_snapshot())
         resolution = cls._load_project_managed_artifacts_from_payloads(payloads)
         if resolution.failure:
             return r[m.Infra.ProjectManagedArtifactsSnapshot].from_failure(resolution)

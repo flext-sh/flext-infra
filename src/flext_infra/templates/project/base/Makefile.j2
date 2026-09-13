@@ -30,6 +30,12 @@ SETUP_BOOTSTRAP_ONLY := Y
 export SETUP_BOOTSTRAP_ONLY
 endif
 endif
+ifeq ($(filter command line override,$(origin GEN_INIT_ONLY)),)
+ifneq ($(filter initialize,$(MAKECMDGOALS)),)
+GEN_INIT_ONLY := Y
+export GEN_INIT_ONLY
+endif
+endif
 
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
@@ -54,9 +60,9 @@ UV_LINK_MODE := {{ uv_link_mode }}
 # is now a hard error, never a warning-plus-mutation, so every declared public
 # input below MUST already be legitimate today or a live invocation breaks.
 # WHAT is the universal action selector (`make <verb> WHAT=<action>`): it
-# routes custom handlers and builtin selectors such as `gen WHAT=init` in every
-# project, and the generated `_dispatch` reads it where script dispatch is
-# active (cosmos-3flk9).
+# routes custom handlers in every project, and the generated `_dispatch` reads
+# it where script dispatch is active (cosmos-3flk9). `initialize` is the
+# hermetic bootstrap verb and derives GEN_INIT_ONLY above.
 PUBLIC_INPUTS := INDEX APPLY FAIL_FAST PR_TITLE ARGS GEN_INIT_ONLY UV PROJECT_INFRA_PYTHONPATH REPOSITORY_ROOT SETUP_BOOTSTRAP_ONLY WHAT {{ make.ci.variable }}
 COMMAND_LINE_INPUTS := $(foreach name,$(filter-out .%,$(.VARIABLES)),$(if $(filter command line override,$(origin $(name))),$(name)))
 UNKNOWN_INPUTS := $(filter-out $(PUBLIC_INPUTS),$(COMMAND_LINE_INPUTS))
@@ -138,7 +144,11 @@ export TESTMON_DATAFILE
 # run inside MAKEFILE_ROOT: run from a foreign CWD they would report THAT
 # checkout's topology and redirect the verb to the wrong tree.
 ifeq ($(filter command line override,$(origin REPOSITORY_ROOT)),)
+ifneq ($(GEN_INIT_ONLY),)
+REPOSITORY_ROOT := $(MAKEFILE_ROOT)
+else
 REPOSITORY_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$(MAKEFILE_ROOT)"; fi)
+endif
 endif
 # End SECTION: REPOSITORY_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
@@ -151,8 +161,14 @@ SCRIPT_VERBS :={% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 # verb (including every script-dispatch verb, which has no check_mode
 # concept) fails loud before dispatch instead of silently mutating or no-op.
 CHECK_CAPABLE_VERBS :={% for verb in make.verbs if verb.check_mode %} {{ verb.name }}{% endfor %}
+# Why: this file re-parses from scratch in the recursive sub-make RUN_PUBLIC
+# spawns (`$(SELF_MAKE) "_builtin-$(1)"`), so MAKECMDGOALS there is the
+# internal `_builtin-<verb>` target, never the bare public verb name. Without
+# filtering those out, every check_mode verb failed its own APPLY=N dispatch
+# (e.g. `make deps APPLY=N` errored "_builtin-deps has no check mode" from
+# inside the very recursion APPLY=N was supposed to reach).
 ifneq ($(strip $(CHECK_ONLY)),)
-$(foreach goal,$(filter-out help,$(MAKECMDGOALS)),$(if $(filter $(goal),$(CHECK_CAPABLE_VERBS)),,$(error $(goal) has no check mode; APPLY=N is not accepted for this verb)))
+$(foreach goal,$(filter-out help,$(filter-out _%,$(MAKECMDGOALS))),$(if $(filter $(goal),$(CHECK_CAPABLE_VERBS)),,$(error $(goal) has no check mode; APPLY=N is not accepted for this verb)))
 endif
 {% if script_dispatch %}
 SCRIPT_ROOTS :={{ script_dispatch.roots | join(" ") }}
@@ -320,7 +336,9 @@ SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(st
 # request 2026-09-10).
 UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups $(if $({{ make.ci.variable }}),--locked ,--refresh)
 
+ifeq ($(GEN_INIT_ONLY),)
 {{ makefile_custom_include }}
+endif
 SELF_MAKE := "$(SELF_MAKE_EXECUTABLE)" --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define RUN_PUBLIC
@@ -385,7 +403,7 @@ endef
 .PHONY: _builtin_gen_check _builtin_gen_init _builtin_gen_all _builtin_gen_apply
 
 {% for verb in make.verbs if verb.name != "setup" %}
-{{ verb.name }}:{% if verb.name != "help" %} _builtin_require_environment{% endif %}
+{{ verb.name }}:{% if verb.name not in ("help", "initialize") %} _builtin_require_environment{% endif %}
 	$(call RUN_PUBLIC,{{ verb.name }})
 {% endfor %}
 
@@ -711,7 +729,7 @@ _builtin_gen_init:
 	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --check
 
 _builtin_gen_all:
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode $(if $(CHECK_ONLY),check,apply)
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
 _builtin_gen_apply: _builtin_gen_all
 
@@ -727,11 +745,11 @@ _builtin_mod_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) refactor mod
 
 # Selector-free public verbs map one-to-one to their canonical implementation.
-# CHECK_ONLY routes deps/fmt/fix/fix-enforcement/mod (config:make.verbs[]
-# .check_mode) to their read-only sibling target below; gen and docs branch
-# on CHECK_ONLY inside their own recipe body instead (single command, one
-# --mode/--apply argument to flip). Every other mapping is unconditional
-# because CHECK_CAPABLE_VERBS already rejected APPLY=N on those verbs earlier.
+# CHECK_ONLY routes deps/fmt/fix/fix-enforcement/gen/mod (config:make.verbs[]
+# .check_mode) to their read-only sibling target below; docs branches on
+# CHECK_ONLY inside its own recipe body instead (single command, one --apply
+# argument to flip). Every other mapping is unconditional because
+# CHECK_CAPABLE_VERBS already rejected APPLY=N on those verbs earlier.
 _builtin-deps: $(if $(CHECK_ONLY),_builtin_deps_check,_builtin_deps_upgrade)
 _builtin-build: _builtin_build_artifacts
 _builtin-check: _builtin_check_all
@@ -755,7 +773,7 @@ _builtin-release-version: _builtin_release_version
 _builtin-release-tag: _builtin_release_tag
 _builtin-release-build: _builtin_release_build
 _builtin-publication: _builtin_release_publish
-_builtin-gen: _builtin_gen_all
+_builtin-gen: $(if $(CHECK_ONLY),_builtin_gen_check,_builtin_gen_all)
 _builtin-conform: _builtin_gen_check
 _builtin-initialize: _builtin_gen_init
 _builtin-mod: $(if $(CHECK_ONLY),_builtin_mod_check,_builtin_mod_apply)

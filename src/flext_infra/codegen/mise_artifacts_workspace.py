@@ -52,16 +52,13 @@ class FlextInfraMiseWorkspacePlanner:
 
     @staticmethod
     def _exact_git_identity(requested: Path) -> p.Result[m.Infra.GitIdentityReport]:
-        """Reject Git parent discovery when the requested path is not its root."""
-        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=requested))
-        if identity.failure:
-            return r[m.Infra.GitIdentityReport].from_failure(identity)
-        if identity.value.repo_root != requested:
-            return r[m.Infra.GitIdentityReport].fail(
-                "Mise workspace request is not the exact Git worktree root: "
-                f"requested={requested} resolved={identity.value.repo_root}"
-            )
-        return identity
+        """Reject Git parent discovery when the requested path is not its root.
+
+        # Why: delegates to the promoted `u.Infra.exact_worktree_root` owner
+        # (codegen `init` reuses the same exact-root contract) instead of
+        # duplicating the check locally.
+        """
+        return u.Infra.exact_worktree_root(requested)
 
     def layout(
         self, scope_root: Path | None = None, *, transaction_id: str | None = None

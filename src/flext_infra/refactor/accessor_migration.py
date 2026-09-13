@@ -7,7 +7,7 @@ from typing import Annotated, override
 
 from flext_cli import cli
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 
 from ._accessor_report import FlextInfraAccessorMigrationReportMixin
@@ -27,8 +27,13 @@ class FlextInfraAccessorMigrationOrchestrator(
     ] = 10
     gates: Annotated[
         str,
-        m.Field(description="Comma-separated lint gates for preview/apply validation"),
-    ] = c.Infra.SAFE_EXECUTION_DEFAULT_GATES
+        m.Field(
+            description=(
+                "Comma-separated lint gates for preview/apply validation; empty"
+                " selects the SSOT snapshot gates (make.ci.check_gates)."
+            )
+        ),
+    ] = ""
 
     @property
     @override

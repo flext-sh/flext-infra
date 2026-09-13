@@ -19,10 +19,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import shutil
-
-# ruff: file-ignore[suspicious-subprocess-import] - validated git path from shutil.which
-import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -49,102 +45,6 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
     )
     _VIOLATION_KIND: ClassVar[str] = "abstraction-boundary"
     _SCAN_KIND: ClassVar[str] = "tier-whitelist"
-
-    _submodule_cache: ClassVar[dict[Path, frozenset[Path]]] = {}
-
-    @classmethod
-    def _submodule_dirs(cls, repository_root: Path) -> frozenset[Path]:
-        """Return cached set of git submodule root directories."""
-        cached = cls._submodule_cache.get(repository_root)
-        if cached is not None:
-            return cached
-
-        git_path = shutil.which("git")
-        if not git_path:
-            dirs = frozenset()
-            cls._submodule_cache[repository_root] = dirs
-            return dirs
-
-        try:
-            result = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
-                [git_path, "submodule", "foreach", "--quiet", "git", "config", "--get", "submodule.$name.path"],
-                capture_output=True,
-                text=True,
-                cwd=repository_root,
-                timeout=30,
-                check=False,
-                shell=False,
-            )
-            if result.returncode == 0:
-                names = [
-                    line.strip()
-                    for line in result.stdout.strip().split("\n")
-                    if line.strip()
-                ]
-                dirs = frozenset(repository_root / name for name in names)
-                cls._submodule_cache[repository_root] = dirs
-                return dirs
-        except OSError:
-            pass
-        dirs = frozenset()
-        cls._submodule_cache[repository_root] = dirs
-        return dirs
-
-    @override
-    def _is_in_scope(self, _file_path: Path, *, repository_root: Path) -> bool:
-        """Skip files inside git submodule directories and cache/temp directories.
-
-        Submodule directories are independent projects with their own
-        tier-whitelist runs; scanning them from the workspace level is
-        redundant and produces cross-boundary false positives.
-
-        Cache/temp/state directories (virtual envs, tool caches, test temp dirs,
-        IDE/editor dirs, etc.) are not project source and must not be scanned.
-        """
-        _ = repository_root
-        # Skip cache/temp/state directories at any level
-        excluded_dirs = {
-            ".test-tmp",
-            ".venv",
-            ".mypy_cache",
-            ".pytest_cache",
-            ".ruff_cache",
-            ".cache",
-            ".github",
-            ".kilo",
-            ".vscode",
-            ".worktrees",
-            "worktrees",
-            "flext-infra-worktrees",
-            ".flext-runtime",
-            "dist",
-            ".agents-sync-home",
-            ".beads",
-            ".benchmarks",
-            ".claude",
-            ".codex",
-            ".mimosa",
-            ".poolside",
-            ".qlty",
-            ".reports",
-            ".ropeproject",
-            ".rumdl_cache",
-            ".snapshots",
-            ".state",
-            ".gc",
-            ".agents",
-        }
-        for part in _file_path.parts:
-            if part in excluded_dirs:
-                return False
-
-        # Skip git submodule directories
-        repo = _file_path
-        while repo != repo.parent:
-            if (repo / ".git").is_file():
-                return False
-            repo = repo.parent
-        return True
 
     @override
     def _is_allowlisted(

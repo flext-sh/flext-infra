@@ -97,7 +97,9 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         if rope_project is None:
             started_at = perf_counter()
             u.Cli.info(f"rope: opening workspace at {self._rope_repository_root}")
-            rope_project = u.Infra.init_rope_project(self._rope_repository_root)
+            # Why: a workspace-wide census must index every governed member
+            # project, not just the repository root (flext-infra: 0 modules bug).
+            rope_project = u.Infra.init_rope_workspace(self._rope_repository_root)
             self._rope_project = rope_project
             u.Cli.info(f"rope: workspace ready in {perf_counter() - started_at:.2f}s")
         return rope_project

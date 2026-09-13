@@ -9,6 +9,9 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from ._governance import FlextInfraWorkspaceGovernanceMixin
+    from ._orchestrator_discovery import FlextInfraWorkspaceOrchestratorDiscoveryMixin
+    from ._orchestrator_execution import FlextInfraWorkspaceOrchestratorExecutionMixin
     from .detector import FlextInfraWorkspaceDetector
     from .environment import FlextInfraWorkspaceEnvironmentMixin
     from .environment_beads import (
@@ -30,11 +33,21 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorkspaceEnvironmentMixin",
     "FlextInfraWorkspaceEnvironmentProvenance",
     "FlextInfraWorkspaceEnvironmentSync",
+    "FlextInfraWorkspaceGovernanceMixin",
+    "FlextInfraWorkspaceOrchestratorDiscoveryMixin",
+    "FlextInfraWorkspaceOrchestratorExecutionMixin",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
+            "._governance": ("FlextInfraWorkspaceGovernanceMixin",),
+            "._orchestrator_discovery": (
+                "FlextInfraWorkspaceOrchestratorDiscoveryMixin",
+            ),
+            "._orchestrator_execution": (
+                "FlextInfraWorkspaceOrchestratorExecutionMixin",
+            ),
             ".detector": ("FlextInfraWorkspaceDetector",),
             ".environment": ("FlextInfraWorkspaceEnvironmentMixin",),
             ".environment_beads": (

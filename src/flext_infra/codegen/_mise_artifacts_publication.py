@@ -6,12 +6,22 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import m, u
+from flext_infra import c, m, u
 
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 
 if TYPE_CHECKING:
     from flext_infra import p, t
+
+
+def _invalidate_project_document(path: Path) -> None:
+    """Drop the process-wide parsed pyproject after this writer replaces it.
+
+    Why: flext-core caches the parsed pyproject per process keyed by root; a
+    plan built right after publication must read the published document.
+    """
+    if path.name == c.Infra.PYPROJECT_FILENAME:
+        u.read_project_document_cached.cache_clear()
 
 
 def publish_file_plan(plan: m.Infra.CodegenFilePlan, *, phase: str) -> p.Result[bool]:
@@ -41,7 +51,7 @@ def publish_file_plan(plan: m.Infra.CodegenFilePlan, *, phase: str) -> p.Result[
         if staged.failure:
             return r[bool].from_failure(staged)
         replacement = staged.value
-    return files.write_publication(
+    published = files.write_publication(
         m.Infra.CodegenStagedFile(
             phase=phase,
             project=plan.project,
@@ -49,6 +59,8 @@ def publish_file_plan(plan: m.Infra.CodegenFilePlan, *, phase: str) -> p.Result[
             replacement=replacement,
         )
     )
+    _invalidate_project_document(plan.path)
+    return published
 
 
 def publish(
@@ -62,6 +74,7 @@ def publish(
         changed = files.write_publication(publication)
         if changed.failure:
             return r[tuple[Path, ...]].from_failure(changed)
+        _invalidate_project_document(publication.before.path)
         written.append(publication.before.path)
     return r[tuple[Path, ...]].ok(tuple(written))
 

@@ -42,7 +42,12 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
             except UnicodeDecodeError as exc:
                 msg = f"docs pyproject is not valid UTF-8: {pyproject_path}"
                 raise ValueError(msg) from exc
-            parsed = u.Cli.toml_mapping_from_text(source)
+            # The live text is read with managed merge conflicts resolved (the
+            # same owner the metadata and overlay readers use).
+            recovered = FlextInfraUtilitiesPyproject.recover_live_pyproject_text(source)
+            if recovered.failure:
+                raise ValueError(recovered.error)
+            parsed = u.Cli.toml_mapping_from_text(recovered.value)
             if parsed is None:
                 msg = f"docs pyproject TOML is invalid: {pyproject_path}"
                 raise ValueError(msg)

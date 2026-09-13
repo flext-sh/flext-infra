@@ -88,6 +88,9 @@ def _stale_symbol_scope(tmp_path: Path) -> m.Infra.DocScope:
         path=project,
         report_dir=project / ".reports" / "docs",
         package_name="flext_demo",
+        # Why: `docs_config.json` above lives at the workspace root, not
+        # under `project` — this is a genuine member-project scope.
+        repository_root_override=workspace,
     )
 
 

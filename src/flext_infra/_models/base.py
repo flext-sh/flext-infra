@@ -185,5 +185,11 @@ class FlextInfraModelsBase:
             str, m.Field(description="Transformer class name to apply")
         ]
         gates: Annotated[
-            str, m.Field(description="Comma-separated gate names for post-validation")
-        ] = c.Infra.SAFE_EXECUTION_DEFAULT_GATES
+            str,
+            m.Field(
+                description=(
+                    "Comma-separated gate names for post-validation; empty selects"
+                    " the SSOT snapshot gates (make.ci.check_gates)."
+                )
+            ),
+        ] = ""
