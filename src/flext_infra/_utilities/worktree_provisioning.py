@@ -21,18 +21,20 @@ class FlextInfraWorktreeProvisioning:
         if git_marker.is_symlink() or (
             git_marker.exists() and not git_marker.is_file()
         ):
-            return r.fail(f"governed gitlink has an invalid .git marker: {reference}")
+            return r[bool].fail(
+                f"governed gitlink has an invalid .git marker: {reference}"
+            )
         if git_marker.exists():
-            return r.ok(True)
+            return r[bool].ok(True)
         initialized = u.Infra.git_submodule_init(
             m.Infra.GitRefRequest(repo_root=lane, reference=reference)
         )
         if initialized.failure:
-            return r.fail(
+            return r[bool].fail(
                 initialized.error
                 or f"failed to initialize governed gitlink: {reference}"
             )
-        return r.ok(True)
+        return r[bool].ok(True)
 
     @staticmethod
     def _verify_gitlink_state(
@@ -45,21 +47,21 @@ class FlextInfraWorktreeProvisioning:
             m.Infra.GitRepoRequest(repo_root=lane / member_path)
         )
         if identity.failure:
-            return r.fail(
+            return r[bool].fail(
                 identity.error or f"failed to inspect governed gitlink: {reference}"
             )
         if identity.value.dirty:
-            return r.fail(f"governed gitlink is dirty: {reference}")
+            return r[bool].fail(f"governed gitlink is dirty: {reference}")
         origin = identity.value.origin_remote
         if origin is None or u.Infra.git_remote_identity(
             origin
         ) != u.Infra.git_remote_identity(declared_url):
-            return r.fail(f"governed gitlink identity mismatch: {reference}")
+            return r[bool].fail(f"governed gitlink identity mismatch: {reference}")
         if identity.value.head_oid != recorded_oid:
-            return r.fail(
+            return r[bool].fail(
                 f"governed gitlink {reference} is not at recorded oid {recorded_oid}"
             )
-        return r.ok(True)
+        return r[bool].ok(True)
 
     @classmethod
     def _validate_governed_gitlink(
@@ -72,12 +74,16 @@ class FlextInfraWorktreeProvisioning:
             m.Infra.GitSubmoduleContractRequest(repo_root=lane, member_path=reference)
         )
         if contract.failure:
-            return r.fail(contract.error or f"invalid governed gitlink: {reference}")
+            return r[bool].fail(
+                contract.error or f"invalid governed gitlink: {reference}"
+            )
         recorded = u.Infra.git_staged_gitlink_oid(
             m.Infra.GitRefRequest(repo_root=lane, reference=reference)
         )
         if recorded.failure:
-            return r.fail(recorded.error or f"missing governed gitlink: {reference}")
+            return r[bool].fail(
+                recorded.error or f"missing governed gitlink: {reference}"
+            )
         ensured = cls._ensure_gitlink_checkout(lane, member_path)
         if ensured.failure:
             return ensured
@@ -91,23 +97,27 @@ class FlextInfraWorktreeProvisioning:
 
         declared = u.Infra.git_declared_submodule_paths(lane)
         if declared.failure:
-            return r.fail(declared.error or "failed to read lane gitlink declarations")
+            return r[bool].fail(
+                declared.error or "failed to read lane gitlink declarations"
+            )
         sections = u.Infra.git_submodule_sections(
             m.Infra.GitRepoRequest(repo_root=lane)
         )
         if sections.failure:
-            return r.fail(sections.error or "failed to classify lane gitlinks")
+            return r[bool].fail(sections.error or "failed to classify lane gitlinks")
         for member_path in declared.value:
             section = sections.value.get(member_path.as_posix())
             if section is None:
-                return r.fail(f"lane gitlink declaration is missing: {member_path}")
+                return r[bool].fail(
+                    f"lane gitlink declaration is missing: {member_path}"
+                )
             managed = u.Infra.git_submodule_config_value(
                 m.Infra.GitSubmoduleConfigRequest(
                     repo_root=lane, section=section, key="flext-managed"
                 )
             )
             if managed.failure:
-                return r.fail(
+                return r[bool].fail(
                     managed.error or f"failed to classify gitlink: {member_path}"
                 )
             if managed.value.text.lower() != "true":
@@ -115,7 +125,7 @@ class FlextInfraWorktreeProvisioning:
             validated = cls._validate_governed_gitlink(lane, member_path)
             if validated.failure:
                 return validated
-        return r.ok(True)
+        return r[bool].ok(True)
 
     @classmethod
     def setup_lane(cls, lane: Path) -> p.Result[bool]:
@@ -125,14 +135,14 @@ class FlextInfraWorktreeProvisioning:
         if gitlinks.failure:
             return gitlinks
         if not (lane / c.Infra.PYPROJECT_FILENAME).is_file():
-            return r.ok(True)
+            return r[bool].ok(True)
         venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
         lane_venv = lane / venv_name
         if lane_venv.is_symlink():
             try:
                 lane_venv.unlink()
             except OSError as exc:
-                return r.fail(
+                return r[bool].fail(
                     f"failed to remove foreign lane environment link: {exc}",
                     exception=exc,
                 )
@@ -142,15 +152,17 @@ class FlextInfraWorktreeProvisioning:
             remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
         )
         if setup.failure:
-            return r.fail(setup.error or "make setup execution failed")
+            return r[bool].fail(setup.error or "make setup execution failed")
         interpreter = (
             lane_venv / "Scripts" / "python.exe"
             if os.name == "nt"
             else lane_venv / "bin" / "python"
         )
         if not interpreter.is_file() or not os.access(interpreter, os.X_OK):
-            return r.fail(f"lane setup did not create an interpreter: {interpreter}")
-        return r.ok(True)
+            return r[bool].fail(
+                f"lane setup did not create an interpreter: {interpreter}"
+            )
+        return r[bool].ok(True)
 
 
 __all__: list[str] = ["FlextInfraWorktreeProvisioning"]
