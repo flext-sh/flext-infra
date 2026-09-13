@@ -106,9 +106,9 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
+            "._defaults": ("ImmutableEmptyMapping", "immutable_empty_mapping"),
             "._git": ("_git",),
             "._git.identity": ("FlextInfraModelsGitIdentity",),
-            "._defaults": ("ImmutableEmptyMapping", "immutable_empty_mapping"),
             ".base": ("FlextInfraModelsBase",),
             ".census": ("FlextInfraModelsCensus",),
             ".check": ("FlextInfraModelsCheck",),

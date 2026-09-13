@@ -16,7 +16,8 @@ from typing import TYPE_CHECKING, override
 
 from .. import c, config, m, r, s, u
 from ..workspace.rope import FlextInfraRopeWorkspace
-from . import FlextInfraCodegenLazyInitGenerationMixin, FlextInfraCodegenLazyInitPlanner
+from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
+from .lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 
 if TYPE_CHECKING:
     from .. import p, t
