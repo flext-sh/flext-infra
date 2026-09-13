@@ -50,7 +50,9 @@ class FlextInfraConfigModels:
     ProtectedMiseToolSpec = FlextInfraModelsMiseToolchain.ProtectedMiseToolSpec
     BeadsEndpointSpec = FlextInfraModelsMiseToolchain.BeadsEndpointSpec
     BeadsToolSpec = FlextInfraModelsMiseToolchain.BeadsToolSpec
-    MiseBootstrapEnvironmentSpec = FlextInfraModelsMiseToolchain.MiseBootstrapEnvironmentSpec
+    MiseBootstrapEnvironmentSpec = (
+        FlextInfraModelsMiseToolchain.MiseBootstrapEnvironmentSpec
+    )
     ToolchainSpec = FlextInfraModelsMiseToolchain.ToolchainSpec
 
     class ProviderSpec(_ConfigContract):
@@ -3861,7 +3863,9 @@ MiseToolSpec = FlextInfraModelsMiseToolchain.MiseToolSpec
 ProtectedMiseToolSpec = FlextInfraModelsMiseToolchain.ProtectedMiseToolSpec
 BeadsEndpointSpec = FlextInfraModelsMiseToolchain.BeadsEndpointSpec
 BeadsToolSpec = FlextInfraModelsMiseToolchain.BeadsToolSpec
-MiseBootstrapEnvironmentSpec = FlextInfraModelsMiseToolchain.MiseBootstrapEnvironmentSpec
+MiseBootstrapEnvironmentSpec = (
+    FlextInfraModelsMiseToolchain.MiseBootstrapEnvironmentSpec
+)
 ToolchainSpec = FlextInfraModelsMiseToolchain.ToolchainSpec
 
 __all__: list[str] = ["FlextInfraConfigModels"]

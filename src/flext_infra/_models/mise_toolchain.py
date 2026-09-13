@@ -145,7 +145,8 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         state_directory_name: Annotated[
-            t.NonEmptyStr, m.Field(description="Runtime state directory beside the checkout"),
+            t.NonEmptyStr,
+            m.Field(description="Runtime state directory beside the checkout"),
         ]
         scratch_namespace: Annotated[
             t.NonEmptyStr, m.Field(description="Scratch directory namespace")
@@ -264,7 +265,8 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         jscpd_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Moving jscpd release selector, e.g. 'latest'"),
+            t.NonEmptyStr,
+            _tool_version_field("Moving jscpd release selector, e.g. 'latest'"),
         ]
         waza_selector: Annotated[
             t.NonEmptyStr,
@@ -276,7 +278,8 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         waza_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Moving Waza release selector, e.g. 'latest'"),
+            t.NonEmptyStr,
+            _tool_version_field("Moving Waza release selector, e.g. 'latest'"),
         ]
         taplo_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
