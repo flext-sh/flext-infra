@@ -745,6 +745,7 @@ class TestsCodegenMakeEnvironment:
 
         tm.that(makefile, has="deps modernize")
         tm.that(makefile, has="--rewrite-constraints")
+        tm.that(makefile, has="--upgrade --refresh")
         tm.that(makefile, lacks="--constraint-policy")
 
     def test_generated_boundary_rejects_forbidden_makeflags_overrides(

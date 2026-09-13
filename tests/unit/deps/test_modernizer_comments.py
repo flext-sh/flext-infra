@@ -18,6 +18,14 @@ def _owned_marker(section: str) -> str:
     return f"# [MANAGED] {owned}"
 
 
+def _pyproject_spec() -> m.Infra.ManagedFileSpec:
+    return next(
+        item
+        for item in config.Infra.codegen.managed_files
+        if item.path.as_posix() == "pyproject.toml"
+    )
+
+
 class TestsFlextInfraDepsModernizerComments:
     """Tests comment injection behavior."""
 

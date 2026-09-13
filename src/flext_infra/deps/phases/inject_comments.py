@@ -69,6 +69,18 @@ class FlextInfraInjectCommentsPhase:
         stripped = line.strip()
         return stripped.startswith("[") and stripped.endswith("]")
 
+    @staticmethod
+    def _pyproject_spec() -> m.Infra.ManagedFileSpec:
+        """Return the pyproject managed-file SSOT. Missing declaration is a bug."""
+        for item in config.Infra.codegen.managed_files:
+            if item.path.as_posix() == c.Infra.PYPROJECT_FILENAME:
+                return item
+        msg = (
+            "codegen.yaml templates.managed_files must declare "
+            f"{c.Infra.PYPROJECT_FILENAME}"
+        )
+        raise RuntimeError(msg)
+
     @classmethod
     def _managed_marker_lines(cls) -> t.Infra.StrSet:
         """Return banner and rationale lines to strip."""

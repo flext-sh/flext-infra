@@ -41,7 +41,7 @@ class FlextInfraConstantsDeps:
     )
     BANNER: Final[str] = (
         "# @flext-generated: continuous\n"
-        "# @flext-owner: flext-infra/config/codegen.yaml"
+        "# @flext-owner: flext-infra de/config/codegen.yaml"
         " + flext-infra/src/flext_infra/templates/project/base/pyproject.toml.j2\n"
         "# @flext-adjust: MANAGED=conflict_sections + overwrite_project_keys."
         " CUSTOM=preserve_project_keys and [tool.*] outside conflict_sections."
