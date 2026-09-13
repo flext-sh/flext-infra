@@ -165,8 +165,12 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
                 return
             attr = node.func.attr
             mapping = {
+                "dict": "model_dump",
+                "json": "model_dump_json",
                 "parse_obj": "model_validate",
+                "schema": "model_json_schema",
                 "schema_json": "model_json_schema",
+                "copy": "model_copy",
                 "parse_raw": "model_validate_json",
             }
             if attr not in mapping:

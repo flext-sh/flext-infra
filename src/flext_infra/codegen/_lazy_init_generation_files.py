@@ -73,37 +73,16 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         Compares semantically relevant fields (content, mode) only. Metadata
         fields (device, inode, link_count, parent_*) may vary during read-only
         analysis due to filesystem access patterns and are not semantically
-        significant for source-code stability. Content is normalized to handle
-        whitespace/line-ending differences that can arise during read-only
-        analysis. If content differs, the snapshot is updated to the current
-        state to maintain pipeline idempotence — the drift is logged but does
-        not block the pipeline, as the planner operates on the current state.
+        significant for source-code stability.
         """
         for path, expected in snapshots.items():
             current = u.Cli.atomic_read_binary_file_state(path, required=False)
             if current.failure:
                 return r[bool].from_failure(current)
-            expected_content = expected.content
-            current_content = current.value.content
-            if expected_content is not None and current_content is not None:
-                expected_norm = expected_content.rstrip(b"\r\n") + b"\n"
-                current_norm = current_content.rstrip(b"\r\n") + b"\n"
-                if expected_norm != current_norm:
-                    u.Cli.warning(
-                        f"lazy-init snapshot drift detected (updating): {path}"
-                    )
-                    # Update snapshot to current state for idempotence
-                    # The planner operates on current state, so this is safe
-                    snapshots[path] = current.value
-            elif expected_content != current_content:
-                u.Cli.warning(
-                    f"lazy-init snapshot drift detected (updating): {path}"
-                )
-                snapshots[path] = current.value
+            if current.value.content != expected.content:
+                return r[bool].fail(f"lazy-init source content changed during planning: {path}")
             if current.value.mode != expected.mode:
-                u.Cli.warning(
-                    f"lazy-init source mode changed during planning: {path}"
-                )
+                return r[bool].fail(f"lazy-init source mode changed during planning: {path}")
         return r[bool].ok(True)
 
     @staticmethod

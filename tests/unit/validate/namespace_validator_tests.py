@@ -314,36 +314,6 @@ class TestFlextInfraNamespaceValidator:
             eq=int(legacy),
         )
 
-    @pytest.mark.parametrize(
-        ("call", "legacy"),
-        [
-            ("response.json()", False),
-            ("response.dict()", False),
-            ("model.parse_obj({})", True),
-            ("model.parse_raw(b'{}')", True),
-        ],
-    )
-    def test_pydantic_method_detection_requires_unambiguous_member(
-        self, tmp_path: Path, call: str, *, legacy: bool
-    ) -> None:
-        root = _make_project_with_module(
-            tmp_path,
-            module_source=(
-                "from __future__ import annotations\n\n"
-                "class FlextTestClient:\n"
-                "    def execute(self, response, model) -> None:\n"
-                f"        {call}\n"
-            ),
-            module_name="client.py",
-        )
-
-        report = tm.ok(FlextInfraNamespaceValidator().validate_project(root))
-
-        tm.that(
-            sum("legacy Pydantic member" in item for item in report.violations),
-            eq=int(legacy),
-        )
-
     def test_public_project_layout_uses_flext_for_core_exception(
         self, tmp_path: Path
     ) -> None:

@@ -33,7 +33,7 @@ class FlextInfraLayoutGate(FlextInfraGate):
     ) -> m.Infra.GateExecution:
         """Report layout violations for ``project_dir`` from the layout SSOT."""
         started = time.monotonic()
-        spec: m.Infra.LayoutSpec = config.Infra.codegen.layout
+        spec = config.Infra.codegen.layout
         engine = FlextInfraCodegenLayout(repository_root=ctx.repository_root)
         report = engine.check_project(project_dir)
         warning = spec.severity == "warning"

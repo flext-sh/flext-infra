@@ -52,7 +52,7 @@ class FlextInfraCodegenLayoutFilesMixin:
         finding: m.Infra.LayoutFinding | None = None,
     ) -> p.Result[t.Pair[t.Infra.LayoutStatus, str]]:
         """Move one entry under ``archive_root/<project>/`` (idempotent)."""
-        spec: m.Infra.LayoutSpec = config.Infra.codegen.layout
+        spec = config.Infra.codegen.layout
         target = project_dir / spec.archive_root / project_dir.name / rel
         base_message = finding.message if finding is not None else source.name
         if target.exists():
