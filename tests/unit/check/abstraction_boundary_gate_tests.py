@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
-from tests import u
+from tests import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -85,6 +85,21 @@ class TestAbstractionBoundaryGate:
         )
 
         tm.that(result.result.passed, eq=True)
+
+    def test_declared_boundary_owner_passes_by_design(self, tmp_path: Path) -> None:
+        """A declared boundary owner is exempt: the gate passes with no issues."""
+        owner = min(c.Infra.BOUNDARY_SKIP_PROJECTS)
+        project = _project(
+            tmp_path, name=owner, filename="logic.py", src="import typer\n"
+        )
+
+        result = u.Tests.run_gate_check(
+            FlextInfraAbstractionBoundaryGate, tmp_path, project
+        )
+
+        tm.that(result.result.passed, eq=True)
+        tm.that(len(result.issues), eq=0)
+        tm.that(len(result.result.errors), eq=0)
 
 
 __all__: t.StrSequence = []

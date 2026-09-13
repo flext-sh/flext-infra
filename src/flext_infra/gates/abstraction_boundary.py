@@ -40,7 +40,13 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
         """Scan one project's Python sources for abstraction-boundary breaches."""
         started = time.monotonic()
         if project_dir.name in c.Infra.BOUNDARY_SKIP_PROJECTS:
-            return self._skip_result(project_dir, started)
+            # A declared boundary owner is exempt by design: an intentional
+            # skip passes, never a non-acceptance for missing targets.
+            return self._neutral_skip_result(
+                project_dir,
+                started,
+                message=f"{self.gate_id}: {project_dir.name} is a declared boundary owner",
+            )
         files_result = u.Infra.iter_python_files(
             m.Infra.SourceScanRequest(project_roots=(project_dir,))
         )
