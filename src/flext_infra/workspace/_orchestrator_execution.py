@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
+from flext_infra import p
 from flext_infra import c, m, t, u
 
 if TYPE_CHECKING:
@@ -174,21 +175,21 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
     def _preflight_projects(projects: t.StrSequence) -> p.Result[bool]:
         """Validate the complete fanout before starting any child effect."""
         if not projects:
-            return r.fail("workspace orchestration discovered no projects")
+            return r[bool].fail("workspace orchestration discovered no projects")
         duplicates = len(projects) != len(frozenset(projects))
         if duplicates:
-            return r.fail("workspace orchestration discovered duplicate projects")
+            return r[bool].fail("workspace orchestration discovered duplicate projects")
         missing = tuple(
             project
             for project in projects
             if not (Path(project) / c.Infra.MAKEFILE_FILENAME).is_file()
         )
         if missing:
-            return r.fail(
+            return r[bool].fail(
                 "workspace orchestration requires generated Makefiles: "
                 + ", ".join(missing)
             )
-        return r.ok(True)
+        return r[bool].ok(True)
 
 
 __all__: list[str] = ["FlextInfraWorkspaceOrchestratorExecutionMixin"]

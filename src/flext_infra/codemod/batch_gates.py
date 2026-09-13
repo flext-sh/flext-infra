@@ -36,7 +36,7 @@ class FlextInfraModGateEngine:
             owner = FlextInfraCodemodSnapshotReconciler.config_root(rule)
             rules_by_owner.setdefault(owner, []).append(rule)
         if not rules_by_owner:
-            return r.fail("discovered ast-grep rules have no fixture owner")
+            return r[bool].fail("discovered ast-grep rules have no fixture owner")
         for config_root, owner_rules in sorted(rules_by_owner.items()):
             owner_root = u.Infra.project_root(config_root)
             owner_is_governed = (
@@ -48,7 +48,7 @@ class FlextInfraModGateEngine:
                 active_rule_ids.update(rule_ids)
             scratch = settings.work_dir
             if scratch.resolve().is_relative_to(config_root.resolve()):
-                return r.fail("rule fixture scratch must be outside its source root")
+                return r[bool].fail("rule fixture scratch must be outside its source root")
             scratch.mkdir(parents=True, exist_ok=True)
             with tempfile.TemporaryDirectory(
                 prefix="mod-rule-fixtures-", dir=scratch
@@ -308,7 +308,7 @@ class FlextInfraModGateEngine:
             if parsed.failure:
                 return r.from_failure(parsed)
             if not isinstance(parsed.value, Mapping):
-                return r.fail(f"ast-grep JSONL finding is not an object: {line}")
+                return r[m.Infra.ModScanReport].fail(f"ast-grep JSONL finding is not an object: {line}")
             finding = parsed.value
             rule_id = finding.get("ruleId")
             text = finding.get("text")
@@ -317,22 +317,22 @@ class FlextInfraModGateEngine:
             raw_replacement = finding.get("replacement")
             severity = finding.get("severity")
             if not isinstance(rule_id, str) or rule_id not in rule_files_by_id:
-                return r.fail(f"invalid ast-grep finding contract: {line}")
+                return r[m.Infra.ModScanReport].fail(f"invalid ast-grep finding contract: {line}")
             if not isinstance(text, str) or not isinstance(file, str):
-                return r.fail(f"invalid ast-grep finding contract: {line}")
+                return r[m.Infra.ModScanReport].fail(f"invalid ast-grep finding contract: {line}")
             if not isinstance(source_range, Mapping):
-                return r.fail(f"invalid ast-grep finding contract: {line}")
+                return r[m.Infra.ModScanReport].fail(f"invalid ast-grep finding contract: {line}")
             if raw_replacement is not None and not isinstance(raw_replacement, str):
-                return r.fail(f"invalid ast-grep finding contract: {line}")
+                return r[m.Infra.ModScanReport].fail(f"invalid ast-grep finding contract: {line}")
             if severity not in {"error", "warning", "info", "hint"}:
-                return r.fail(f"invalid ast-grep finding severity: {line}")
+                return r[m.Infra.ModScanReport].fail(f"invalid ast-grep finding severity: {line}")
             file_path = Path(file)
             resolved_file = (root / file_path).resolve()
             if resolved_file.is_file():
                 try:
                     source = resolved_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
                 except OSError as exc:
-                    return r.fail(f"cannot read finding source {resolved_file}: {exc}")
+                    return r[m.Infra.ModScanReport].fail(f"cannot read finding source {resolved_file}: {exc}")
                 if source.startswith(c.Infra.AUTOGEN_HEADERS):
                     continue
             files.add(file_path)
@@ -340,7 +340,7 @@ class FlextInfraModGateEngine:
             actionable = False
             if rule_id in fixable_ids:
                 if not isinstance(replacement, str):
-                    return r.fail(f"fixable ast-grep finding lacks replacement: {line}")
+                    return r[m.Infra.ModScanReport].fail(f"fixable ast-grep finding lacks replacement: {line}")
                 actionable = text != replacement
                 if actionable:
                     actionable_findings += 1
@@ -350,7 +350,7 @@ class FlextInfraModGateEngine:
                     classification = c.Infra.ModScanFindingClass.NON_ACTIONABLE_WITH_FIX
             else:
                 if replacement is not None:
-                    return r.fail(
+                    return r[m.Infra.ModScanReport].fail(
                         f"detection-only ast-grep finding has replacement: {line}"
                     )
                 detection_only_findings += 1
@@ -434,7 +434,7 @@ class FlextInfraModGateEngine:
             ):
                 execution = gate_type(owner).check(owner, context)
                 if not execution.result.passed:
-                    return r.fail(
+                    return r[bool].fail(
                         "\n".join((execution.raw_output, *execution.result.errors))
                     )
             files = u.Infra.iter_python_files(
