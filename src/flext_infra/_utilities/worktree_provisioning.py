@@ -47,9 +47,7 @@ class FlextInfraWorktreeProvisioning:
             m.Infra.GitRepoRequest(repo_root=lane / member_path)
         )
         if identity.failure:
-            return r[bool].fail(
-                identity.error or f"failed to inspect governed gitlink: {reference}"
-            )
+            return r[bool].from_failure(identity)
         if identity.value.dirty:
             return r[bool].fail(f"governed gitlink is dirty: {reference}")
         origin = identity.value.origin_remote
@@ -74,16 +72,12 @@ class FlextInfraWorktreeProvisioning:
             m.Infra.GitSubmoduleContractRequest(repo_root=lane, member_path=reference)
         )
         if contract.failure:
-            return r[bool].fail(
-                contract.error or f"invalid governed gitlink: {reference}"
-            )
+            return r[bool].from_failure(contract)
         recorded = u.Infra.git_staged_gitlink_oid(
             m.Infra.GitRefRequest(repo_root=lane, reference=reference)
         )
         if recorded.failure:
-            return r[bool].fail(
-                recorded.error or f"missing governed gitlink: {reference}"
-            )
+            return r[bool].from_failure(recorded)
         ensured = cls._ensure_gitlink_checkout(lane, member_path)
         if ensured.failure:
             return ensured
@@ -97,9 +91,7 @@ class FlextInfraWorktreeProvisioning:
 
         declared = u.Infra.git_declared_submodule_paths(lane)
         if declared.failure:
-            return r[bool].fail(
-                declared.error or "failed to read lane gitlink declarations"
-            )
+            return r[bool].from_failure(declared)
         sections = u.Infra.git_submodule_sections(
             m.Infra.GitRepoRequest(repo_root=lane)
         )
@@ -117,9 +109,7 @@ class FlextInfraWorktreeProvisioning:
                 )
             )
             if managed.failure:
-                return r[bool].fail(
-                    managed.error or f"failed to classify gitlink: {member_path}"
-                )
+                return r[bool].from_failure(managed)
             if managed.value.text.lower() != "true":
                 continue
             validated = cls._validate_governed_gitlink(lane, member_path)

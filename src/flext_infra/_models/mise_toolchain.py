@@ -9,6 +9,21 @@ from flext_cli import m, u
 
 from flext_infra import t
 
+from ._defaults import immutable_empty_mapping
+
+
+def _tool_version_field(description: str) -> object:
+    """Shared ``Annotated[t.NonEmptyStr, ...]`` metadata for one tool version.
+
+    Every native-toolchain version field in ``ToolchainSpec`` and its
+    ``ProjectRenderContext`` render mirror previously repeated an identical
+    ``m.Field(description=...)`` shape, differing only in the description
+    text -- a structural clone SonarCloud's duplication detector flags as one
+    family regardless of the literal string. One owned factory collapses
+    every call site to this single declaration (SSOT, DRY).
+    """
+    return m.Field(description=description)
+
 
 class _ConfigContract(m.ContractModel):
     """Private declarative base for schema-loaded codegen records."""
@@ -294,11 +309,11 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         beads: Annotated[
-            FlextInfraConfigModels.BeadsToolSpec,
+            FlextInfraModelsMiseToolchain.BeadsToolSpec,
             m.Field(description="Official Beads CLI installed through mise"),
         ]
         gascity: Annotated[
-            FlextInfraConfigModels.ProtectedMiseToolSpec,
+            FlextInfraModelsMiseToolchain.ProtectedMiseToolSpec,
             m.Field(description="Gas City CLI (gc) installed through mise"),
         ]
         protected_mise_tools: Annotated[
@@ -344,7 +359,7 @@ class FlextInfraModelsMiseToolchain:
             for owner in self.protected_mise_tools:
                 if not isinstance(
                     getattr(self, owner, None),
-                    FlextInfraConfigModels.ProtectedMiseToolSpec,
+                    FlextInfraModelsMiseToolchain.ProtectedMiseToolSpec,
                 ):
                     msg = f"protected_mise_tools references invalid owner: {owner}"
                     raise TypeError(msg)

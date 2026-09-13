@@ -324,7 +324,7 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryRef].from_failure(metadata)
         origin = cls._git_origin_url(repository_root)
         if origin.failure:
-            return r[m.Infra.RepositoryRef].fail(origin.error)
+            return r[m.Infra.RepositoryRef].from_failure(origin)
         if declared_url is not None and u.Infra.git_remote_identity(
             origin.value
         ) != u.Infra.git_remote_identity(declared_url):
@@ -334,7 +334,7 @@ class FlextInfraWorkspaceDetector(
         effective_url = declared_url or origin.value
         provider_result = cls._provider_for_url(effective_url)
         if provider_result.failure:
-            return r[m.Infra.RepositoryRef].fail(provider_result.error)
+            return r[m.Infra.RepositoryRef].from_failure(provider_result)
         provider = provider_result.value
         role = (
             c.Infra.MakeProfile.WORKSPACE
@@ -371,9 +371,7 @@ class FlextInfraWorkspaceDetector(
         declared = u.Infra.git_declared_submodule_paths(repository_root)
         result_type = r[tuple[tuple[m.Infra.RepositoryRef, ...], tuple[Path, ...]]]
         if declared.failure:
-            return result_type.fail(
-                declared.error or "unable to read local .gitmodules"
-            )
+            return result_type.from_failure(declared)
         subprojects: list[m.Infra.RepositoryRef] = []
         external: list[Path] = []
         seen: set[Path] = set()
@@ -392,7 +390,7 @@ class FlextInfraWorkspaceDetector(
                 workspace_beads=workspace_beads,
             )
             if loaded.failure:
-                return result_type.fail(loaded.error)
+                return result_type.from_failure(loaded)
             if isinstance(loaded.value, Path):
                 external.append(loaded.value)
                 continue
@@ -423,15 +421,13 @@ class FlextInfraWorkspaceDetector(
             return result_type.fail(f"invalid .gitmodules path: {path.as_posix()}")
         contract = cls._gitmodule_contract(repository_root, path)
         if contract.failure:
-            return result_type.fail(contract.error)
+            return result_type.from_failure(contract)
         declared_url, declared_branch = contract.value
         sections = u.Infra.git_submodule_sections(
             m.Infra.GitRepoRequest(repo_root=repository_root)
         )
         if sections.failure:
-            return result_type.fail(
-                sections.error or "failed to classify submodule declarations"
-            )
+            return result_type.from_failure(sections)
         section = sections.value.get(path.as_posix())
         if section is not None:
             managed = u.Infra.git_submodule_config_value(
@@ -440,14 +436,12 @@ class FlextInfraWorkspaceDetector(
                 )
             )
             if managed.failure:
-                return result_type.fail(
-                    managed.error or f"failed to classify gitlink: {path.as_posix()}"
-                )
+                return result_type.from_failure(managed)
             if managed.value.text and managed.value.text.lower() != "true":
                 return result_type.ok(path)
         provider_result = cls._provider_for_url(declared_url)
         if provider_result.failure:
-            return result_type.fail(provider_result.error)
+            return result_type.from_failure(provider_result)
         provider = provider_result.value
         if not u.Infra.gitmodule_branch_is_governed(
             declared_branch,
@@ -480,7 +474,7 @@ class FlextInfraWorkspaceDetector(
         ):
             beads = cls.load_beads_spec(subproject_root)
             if beads.failure:
-                return result_type.fail(beads.error)
+                return result_type.from_failure(beads)
         if route_error is not None:
             return result_type.fail(
                 "composed project must follow the workspace Beads ledger: "
@@ -490,19 +484,19 @@ class FlextInfraWorkspaceDetector(
             subproject_root, path=path, composed=True, declared_url=declared_url
         )
         if repository.failure:
-            return result_type.fail(repository.error)
+            return result_type.from_failure(repository)
         if not cls._workspace_manifest_path(subproject_root).is_file():
             return result_type.ok(repository.value)
         member_beads = cls.load_beads_spec(subproject_root)
         if member_beads.failure:
-            return result_type.fail(member_beads.error)
+            return result_type.from_failure(member_beads)
         manifest = cls._manifest_repository_ref(
             subproject_root,
             observed=repository.value.model_copy(update={"path": Path()}),
             beads=member_beads.value,
         )
         if manifest.failure:
-            return result_type.fail(manifest.error)
+            return result_type.from_failure(manifest)
         # The member owns its commands. Git still owns its composed path,
         # topology and editability; do not import a second member registry.
         commands = manifest.value[0]
@@ -570,16 +564,16 @@ class FlextInfraWorkspaceDetector(
                 )
             beads_result = r[m.Infra.BeadsProjectSpec].ok(inherited_beads.value)
         if beads_result.failure:
-            return r[m.Infra.WorkspaceSpec].fail(beads_result.error)
+            return r[m.Infra.WorkspaceSpec].from_failure(beads_result)
         beads = beads_result
         repository = cls._local_repository_ref(
             resolved_root, composed=identity.value.is_attached_submodule
         )
         if repository.failure:
-            return r[m.Infra.WorkspaceSpec].fail(repository.error)
+            return r[m.Infra.WorkspaceSpec].from_failure(repository)
         topology = cls._load_subprojects(resolved_root, workspace_beads=beads.value)
         if topology.failure:
-            return r[m.Infra.WorkspaceSpec].fail(topology.error)
+            return r[m.Infra.WorkspaceSpec].from_failure(topology)
         subprojects, external = topology.value
         observed_repository = repository.value.model_copy(
             update={
@@ -594,7 +588,7 @@ class FlextInfraWorkspaceDetector(
             resolved_root, observed=observed_repository, beads=beads.value
         )
         if declared_repository.failure:
-            return r[m.Infra.WorkspaceSpec].fail(declared_repository.error)
+            return r[m.Infra.WorkspaceSpec].from_failure(declared_repository)
         repository_ref, gascity_enabled, declared_project = declared_repository.value
         return r[m.Infra.WorkspaceSpec].ok(
             m.Infra.WorkspaceSpec(
@@ -623,7 +617,7 @@ class FlextInfraWorkspaceDetector(
         if workspace is None:
             loaded = cls.load_workspace_spec(resolved_root)
             if loaded.failure:
-                return r[m.Infra.RepositoryConformTarget].fail(loaded.error)
+                return r[m.Infra.RepositoryConformTarget].from_failure(loaded)
             workspace = loaded.value
         if workspace.repository.path != Path():
             return r[m.Infra.RepositoryConformTarget].fail(
@@ -728,7 +722,7 @@ class FlextInfraWorkspaceDetector(
             return r[tuple[Path, ...]].ok(())
         workspace = cls.load_workspace_spec(resolved_root)
         if workspace.failure:
-            return r[tuple[Path, ...]].fail(workspace.error)
+            return r[tuple[Path, ...]].from_failure(workspace)
         return r[tuple[Path, ...]].ok(
             cls.workspace_analysis_exclusion_paths(workspace.value)
         )
@@ -745,7 +739,7 @@ class FlextInfraWorkspaceDetector(
             )
         workspace = self.load_workspace_spec(resolved_root)
         if workspace.failure:
-            return r[c.Infra.MakeProfile].fail(workspace.error)
+            return r[c.Infra.MakeProfile].from_failure(workspace)
         return r[c.Infra.MakeProfile].ok(workspace.value.repository.role)
 
     @override

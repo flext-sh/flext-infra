@@ -37,4 +37,3 @@ config: _FlextInfraConfig = _FlextInfraConfig()
 """Pre-instantiated frozen config singleton — ``from flext_infra import config``."""
 
 __all__: list[str] = ["config"]
-

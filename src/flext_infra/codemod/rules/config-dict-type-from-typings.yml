@@ -1,20 +1,15 @@
-# FLEXT codemod: the model_config annotation must name the same facade the
-# construction value already uses. `m` is the single owner of ConfigDict.
+# FLEXT codemod: `p.ConfigDict` in a model_config annotation crashes at import
+# (FlextProtocols carries no ConfigDict). The canonical annotation is the same
+# facade the construction value already uses:
 #
-#   model_config: ClassVar[p.ConfigDict] = m.ConfigDict(...)   # crashes at import
-#   model_config: ClassVar[t.ConfigDict] = m.ConfigDict(...)   # t no longer exports it
+#   model_config: ClassVar[p.ConfigDict] = m.ConfigDict(...)   # defect (import crash)
 #                       ->
-#   model_config: ClassVar[m.ConfigDict] = m.ConfigDict(...)   # canonical
+#   model_config: ClassVar[t.ConfigDict] = m.ConfigDict(...)   # canonical
 #
-# `p.ConfigDict` never existed (FlextProtocols carries no ConfigDict), so it
-# crashes on import. `t.ConfigDict` resolved only by accident: two facets of the
-# same `t` diamond declared it, and `FlextTypesPydantic` shadowed the dead
-# `dict[str, JsonValue]` alias of `FlextTypingConfig`. flext-core removes both,
-# leaving `m.ConfigDict` as the one owner for annotation and value alike.
-#
-# Idempotent: a canonical module yields zero matches on re-scan. The value must
-# construct through `m.ConfigDict(...)`, so the rewritten annotation never
-# introduces an unbound name. SettingsConfigDict is out of scope.
+# Idempotent: only `p.ConfigDict` matches; a canonical module yields zero
+# matches on re-scan. The value must construct through `m.ConfigDict(...)`, so
+# the rewritten annotation never introduces an unbound name. SettingsConfigDict
+# is out of scope.
 id: config-dict-type-from-typings
 language: python
 severity: error
@@ -22,9 +17,7 @@ files:
 - "src/**/*.py"
 - "tests/**/*.py"
 rule:
-  any:
-  - pattern: "model_config: ClassVar[p.ConfigDict] = $VAL"
-  - pattern: "model_config: ClassVar[t.ConfigDict] = $VAL"
+  pattern: "model_config: ClassVar[p.ConfigDict] = $VAL"
 constraints:
   VAL:
     regex: "^m\\.ConfigDict\\("
