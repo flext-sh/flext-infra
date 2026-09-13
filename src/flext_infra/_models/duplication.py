@@ -6,11 +6,45 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
 from flext_core import m, u
-from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraModelsDuplication:
     """Strict external-boundary models for jscpd 5 reports."""
+
+    class ProjectDuplicationOverrides(m.ContractModel):
+        """Validated ``[tool.flext.project.duplication]`` overrides.
+
+        One project's pyproject.toml may narrow the workspace-wide jscpd
+        defaults; every field defaults to the canonical constant so a project
+        with no overrides table gets the same behavior as the workspace scan.
+        """
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True, populate_by_name=True
+        )
+
+        min_lines: Annotated[
+            t.PositiveInt,
+            m.Field(alias="min-lines", description="Minimum duplicated line count"),
+        ] = c.Infra.JSCPD_MIN_LINES
+        min_tokens: Annotated[
+            t.PositiveInt,
+            m.Field(alias="min-tokens", description="Minimum duplicated token count"),
+        ] = c.Infra.JSCPD_MIN_TOKENS
+        threshold_percent: Annotated[
+            t.Percentage,
+            m.Field(
+                alias="threshold-percent",
+                description="Maximum allowed duplication percentage",
+            ),
+        ] = c.Infra.JSCPD_THRESHOLD_PERCENT
+        mode: Annotated[t.NonEmptyStr, m.Field(description="jscpd detection mode")] = (
+            c.Infra.JSCPD_MODE
+        )
+        scope: Annotated[
+            t.StrSequence, m.Field(description="Scope directory names")
+        ] = c.Infra.JSCPD_SCOPE_DIRNAMES
 
     class JscpdConfig(m.ContractModel):
         """Complete generated jscpd invocation configuration."""

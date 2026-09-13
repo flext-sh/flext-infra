@@ -167,6 +167,10 @@ class TestsCodegenMakeEnvironment:
     @pytest.mark.parametrize(
         "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
     )
+    # Why: `make setup` provisions a real environment from the remote
+    # index and GitHub sources (an external gate); it never runs inside
+    # the offline unit gate and is selected only by direct invocation.
+    @pytest.mark.remote
     def test_generated_make_uses_profile_runtime_venv_under_hostile_env(
         self, tmp_path: Path, profile: c.Infra.MakeProfile
     ) -> None:
@@ -248,6 +252,10 @@ class TestsCodegenMakeEnvironment:
     @pytest.mark.parametrize(
         "profile", [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE]
     )
+    # Why: `make setup` provisions a real environment from the remote
+    # index and GitHub sources (an external gate); it never runs inside
+    # the offline unit gate and is selected only by direct invocation.
+    @pytest.mark.remote
     def test_setup_provisions_environment_before_project_runtime(
         self, tmp_path: Path, profile: c.Infra.MakeProfile
     ) -> None:
@@ -409,12 +417,18 @@ class TestsCodegenMakeEnvironment:
 
         # `test` has no check_mode; every verb mutates by default with zero
         # variables, so no APPLY token is needed (operator law 2026-09-12).
+        # Root cause: `u.Cli.run_raw`'s `ProcessEnvironmentSpec.resolve()`
+        # drops any override key that also appears in `remove_env_keys` (the
+        # removal wins). `c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS` includes
+        # "VIRTUAL_ENV", so passing it alongside an explicit `VIRTUAL_ENV`
+        # override silently discarded this test's own hostile-venv override —
+        # the Makefile then saw no active venv to strip, so the hostile bin
+        # never left PATH. `run_isolated_make` (used by every other hostile-
+        # env test here) exists exactly to avoid this: it excludes from
+        # removal any key the caller already set in `env`.
         process = tm.ok(
-            u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "test"],
-                cwd=project_root,
-                env=active_env,
-                remove_env_keys=(*c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, "UV"),
+            test_u.Tests.run_isolated_make(
+                ["--no-print-directory", "test"], cwd=project_root, env=active_env
             )
         )
 
@@ -453,8 +467,15 @@ class TestsCodegenMakeEnvironment:
             in makefile,
             eq=True,
         )
+        # Root cause: storage law forbids scratch inside the versioned tree —
+        # PROJECT_SCRATCH_ROOT is HOME-rooted, mirroring the absolute checkout
+        # path under it, never nested under PROJECT_STATE_ROOT.
         tm.that(
-            f"PROJECT_SCRATCH_ROOT := $(PROJECT_STATE_ROOT)/{toolchain.scratch_namespace}"
+            (
+                f"PROJECT_SCRATCH_ROOT := $(HOME)/{toolchain.scratch_home_relative}/"
+                f"{toolchain.state_directory_name}$(abspath $(PROJECT_ROOT))/"
+                f"{toolchain.scratch_namespace}"
+            )
             in makefile,
             eq=True,
         )
@@ -873,11 +894,18 @@ class TestsCodegenMakeEnvironment:
             check_capable,
             eq=("deps", "fmt", "fix", "fix-enforcement", "docs", "gen", "mod"),
         )
-        for verb in ("deps", "fmt", "fix", "mod"):
+        # Root cause (R28): gen dispatches through the same two-recipe
+        # CHECK_ONLY selector as deps/fmt/fix/mod (`_builtin_gen_check` vs
+        # `_builtin_gen_all`, each a single fixed `--mode check`/`--mode
+        # apply` command — see test_gen_has_one_codegen_owner); only docs
+        # branches inside its own recipe body. The prior assertion here
+        # (`--mode $(if $(CHECK_ONLY),check,apply)`) matched neither route
+        # and was never generated.
+        for verb in ("deps", "fmt", "fix", "gen", "mod"):
             tm.that(makefile, has=f"_builtin-{verb}: $(if $(CHECK_ONLY),")
         tm.that(makefile, has="_builtin-fix-enforcement: $(if $(CHECK_ONLY),")
         tm.that(
             makefile,
-            has="--mode $(if $(CHECK_ONLY),check,apply)",
+            has="_builtin-gen: $(if $(CHECK_ONLY),_builtin_gen_check,_builtin_gen_all)",
         )
         tm.that(makefile, has="mode=$(if $(CHECK_ONLY),,--apply)")

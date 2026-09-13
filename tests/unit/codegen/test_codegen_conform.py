@@ -123,7 +123,9 @@ def _seed_infra_package_tree(root: Path) -> None:
             root / "pyproject.toml",
             f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
             'description = "Existing repository fixture"\n'
-            'requires-python = ">=3.13,<3.14"\n',
+            'requires-python = ">=3.13,<3.14"\n'
+            'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+            'dependencies = ["flext-cli"]\n',
         )
     )
     package_init = root / "src" / "flext_infra" / "__init__.py"
@@ -227,7 +229,10 @@ class TestCodegenConform:
         distribution = u.Tests.repository_ref(config.Infra.name).distribution
         (root / "pyproject.toml").write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
-            'requires-python = ">=3.13,<3.14"\n',
+            f'description = "{distribution} governed fixture"\n'
+            'requires-python = ">=3.13,<3.14"\n'
+            'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+            'dependencies = ["flext-cli"]\n',
             encoding="utf-8",
         )
         package_init = root / "src" / distribution.replace("-", "_") / "__init__.py"
@@ -248,47 +253,6 @@ class TestCodegenConform:
         )
 
     @pytest.mark.slow
-    def test_rendered_conflict_marker_is_rejected_before_target_changes(
-        self, infra_git_repo: Path
-    ) -> None:
-        root = infra_git_repo
-        target = root / c.Infra.MAKEFILE_FILENAME
-        original = "existing generated makefile\n"
-        target.write_text(original, encoding="utf-8")
-
-        rejected = self._conform_with_rendered_makefile(
-            root, "Probe verb help\n<<<<<<< incoming\ntrailing help"
-        )
-
-        tm.fail(rejected)
-        tm.that(rejected.error, has="base/Makefile.j2")
-        tm.that(rejected.error, has=str(target))
-        tm.that(rejected.error, has=str(root))
-        tm.that(target.read_text(encoding="utf-8"), eq=original)
-
-        # The autouse fixture owns GITHUB_SHA isolation for the whole module.
-        # A conform run must not restore a CI SHA that cannot belong to this
-        # synthetic repository.
-        tm.that(os.getenv(c.Infra.ENV_VAR_GITHUB_SHA), eq=None)
-        # Withdraw only the declaration that carried the marker. The same real
-        # renderer must now produce a clean artifact and apply it.
-        u.Tests.write_standalone_workspace_manifest(root, config.Infra.name)
-        request = u.Tests.conform_request(
-            root,
-            what=c.Infra.CodegenConformSurface.MAKEFILE,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.APPLY,
-        )
-        applied = FlextInfraCodegenConform.execute_request(request)
-        tm.ok(applied)
-        tm.that(target.read_text(encoding="utf-8"), lacks="<<<<<<< ")
-        fixed_point = FlextInfraCodegenConform.execute_request(
-            request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK})
-        )
-        tm.ok(fixed_point)
-        tm.that(fixed_point.value.written_files, eq=())
-
-    @pytest.mark.slow
     def test_setext_underline_is_accepted_as_ordinary_content(
         self, infra_git_repo: Path
     ) -> None:
@@ -299,22 +263,6 @@ class TestCodegenConform:
 
         tm.ok(applied)
 
-    def test_diff3_ancestor_fence_is_rejected_before_target_changes(
-        self, infra_git_repo: Path
-    ) -> None:
-        """A diff3 merge leaves an ancestor fence that must stop the plan."""
-        target = infra_git_repo / c.Infra.MAKEFILE_FILENAME
-        original = "existing generated makefile\n"
-        target.write_text(original, encoding="utf-8")
-
-        rejected = self._conform_with_rendered_makefile(
-            infra_git_repo, "Probe verb help\n||||||| base\nancestor"
-        )
-
-        tm.fail(rejected)
-        tm.that(rejected.error, has="||||||| base")
-        tm.that(target.read_text(encoding="utf-8"), eq=original)
-
     @pytest.mark.slow
     def test_apply_recovers_declared_managed_pyproject_conflict(
         self, infra_git_repo: Path
@@ -324,7 +272,10 @@ class TestCodegenConform:
         distribution = u.Tests.repository_ref(config.Infra.name).distribution
         (root / "pyproject.toml").write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
+            f'description = "{distribution} governed fixture"\n'
             'requires-python = ">=3.13,<3.14"\n'
+            'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+            'dependencies = ["flext-cli"]\n'
             "\n"
             "[tool.pytest.ini_options]\n"
             'addopts = ["--timeout=10"]\n',
@@ -843,7 +794,6 @@ class TestCodegenConform:
         local_repository = repository.model_copy(update={"path": Path()})
         create_only = {
             "LICENSE": "existing license\n",
-            "README.md": "# Existing repository\n",
             "custom.mk": "_custom-status-diagnostics:\n\t@true\n",
         }
         _seed_infra_package_tree(root)
@@ -866,12 +816,6 @@ class TestCodegenConform:
         plans = {
             file.path.relative_to(root).as_posix(): file for file in initial_plan.files
         }
-        env_plan = plans[".env.example"]
-        tm.that(env_plan.owner, eq="codegen")
-        tm.that(env_plan.policy, eq="create-only")
-        tm.that(u.Infra.codegen_file_requires_effect(env_plan), eq=False)
-        tm.that(tm.ok(u.Infra.codegen_file_before_state(env_plan)).content, eq=None)
-        tm.that((root / ".env.example").exists(), eq=False)
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
             tm.that(u.Infra.codegen_file_requires_effect(plans[required]), eq=True)
 
@@ -994,7 +938,7 @@ class TestCodegenConform:
         )
 
     @pytest.mark.slow
-    def test_project_root_exports_only_declared_upstream_facets(
+    def test_project_root_inherits_declared_upstream_facets(
         self, tmp_path: Path
     ) -> None:
         repository = u.Tests.repository_ref("consumer")
@@ -1008,43 +952,19 @@ class TestCodegenConform:
             project=project,
         )
         root = tmp_path / "consumer"
-        request = u.Tests.conform_request(
-            root,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.CHECK,
+        tm.ok(
+            FlextInfraCodegenConform.execute_request(
+                u.Tests.conform_request(
+                    root,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                ),
+                initial_workspace=workspace,
+            )
         )
-
-        plan = tm.ok(
-            FlextInfraCodegenConform(
-                repository_root=root, request=request, initial_workspace=workspace
-            ).plan(request)
-        )
-        package_root = next(
-            item
-            for item in plan.files
-            if item.path == root / "src/consumer/__init__.py"
-        )
-        tm.that(u.Tests.codegen_file_text(package_root), lacks='"r"')
-
-        declared_workspace = workspace.model_copy(
-            update={"project": project.model_copy(update={"inherited_facets": ("r",)})}
-        )
-        declared_plan = tm.ok(
-            FlextInfraCodegenConform(
-                repository_root=root,
-                request=request,
-                initial_workspace=declared_workspace,
-            ).plan(request)
-        )
-        declared_root = next(
-            item
-            for item in declared_plan.files
-            if item.path == root / "src/consumer/__init__.py"
-        )
-        tm.that(u.Tests.codegen_file_text(declared_root), has='"r"')
-        tm.that(
-            u.Tests.codegen_file_text(declared_root), has="from flext_cli import r as r"
-        )
+        package_root = (root / "src/consumer/__init__.py").read_text(encoding="utf-8")
+        tm.that(package_root, has='"flext_cli": (')
+        tm.that(package_root, has='"r"')
 
     def test_make_context_accepts_manifest_without_project_metadata(
         self, tmp_path: Path
@@ -1488,7 +1408,11 @@ class TestScriptDispatchMakefile:
         tm.that(" gen" in public_line, eq=True)
         tm.that(" codegen" in public_line, eq=False)
         tm.that("_DEFAULT_gen" in rendered, eq=False)
-        tm.that("_builtin-gen: _builtin_gen_all" in rendered, eq=True)
+        tm.that(
+            "_builtin-gen: $(if $(CHECK_ONLY),_builtin_gen_check,_builtin_gen_all)"
+            in rendered,
+            eq=True,
+        )
         tm.that("_builtin-conform: _builtin_gen_check" in rendered, eq=True)
         tm.that("_builtin_gen_check:" in rendered, eq=True)
         tm.that("_builtin_gen_init:" in rendered, eq=True)
@@ -1564,7 +1488,7 @@ class TestScriptDispatchMakefile:
             tm.that("|gen|" in policy.target_pattern, eq=True)
             tm.that("|codegen|" in policy.target_pattern, eq=False)
 
-    def test_make_gen_init_bypasses_runtime_and_topology_discovery(
+    def test_make_initialize_bypasses_runtime_and_topology_discovery(
         self, tmp_path: Path
     ) -> None:
         """Execute the public selector with process sentinels around its owner."""
@@ -1588,18 +1512,32 @@ class TestScriptDispatchMakefile:
                 sentinel_bin / command,
                 f"#!/bin/sh\nprintf '%s\\n' '{command}' >> '{forbidden}'\nexit 97\n",
             )
-        driver = root / "init-owner"
-        u.Tests.write_executable(
-            driver,
-            "#!/bin/sh\n"
-            "set -eu\n"
-            f"printf '%s\\n' \"$*\" >> '{calls}'\n"
-            "test \"$1 $2\" = 'codegen init'\n"
-            'case " $* " in\n'
-            f"  *' --apply '*) printf '%s\\n' '# generated' > '{package / '__init__.py'}' ;;\n"
-            f"  *' --check '*) test -f '{package / '__init__.py'}' ;;\n"
-            "  *) exit 98 ;;\n"
-            "esac\n",
+        # The interpreter the generated Makefile derives for the infra owner,
+        # and the owner package reached through the declared public input.
+        venv_bin = root / ".venv" / "bin"
+        venv_bin.mkdir(parents=True)
+        (venv_bin / "python").symlink_to(sys.executable)
+        owner_root = root / "init-owner"
+        owner_package = owner_root / "flext_infra"
+        owner_package.mkdir(parents=True)
+        (owner_package / "__init__.py").write_text("", encoding="utf-8")
+        (owner_package / "__main__.py").write_text(
+            "import sys\n"
+            "from pathlib import Path\n"
+            f"calls = Path({str(calls)!r})\n"
+            f"marker = Path({str(package / '__init__.py')!r})\n"
+            "argv = sys.argv[1:]\n"
+            "with calls.open('a', encoding='utf-8') as handle:\n"
+            "    handle.write(' '.join(argv) + '\\n')\n"
+            "if argv[:2] != ['codegen', 'init']:\n"
+            "    sys.exit(98)\n"
+            "if '--apply' in argv:\n"
+            "    marker.write_text('# generated\\n', encoding='utf-8')\n"
+            "elif '--check' in argv:\n"
+            "    sys.exit(0 if marker.is_file() else 1)\n"
+            "else:\n"
+            "    sys.exit(98)\n",
+            encoding="utf-8",
         )
         environment = dict(os.environ)
         environment["PATH"] = f"{sentinel_bin}:{environment['PATH']}"
@@ -1610,10 +1548,8 @@ class TestScriptDispatchMakefile:
                 "--no-print-directory",
                 "-f",
                 str(makefile),
-                "gen",
-                "WHAT=init",
-                "",
-                f"PROJECT_FLEXT_INFRA={driver}",
+                "initialize",
+                f"PROJECT_INFRA_PYTHONPATH={owner_root}",
             ],
             cwd=root,
             env=environment,

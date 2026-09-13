@@ -219,7 +219,7 @@ ruff check src
         )
         guide = scope.path / "docs/guides/commands.md"
         guide.parent.mkdir(parents=True)
-        token = ""
+        token = " APPLY=Y" if "APPLY" in expected else ""
         u.write_file(guide, f"```bash\nmake {verb_name}{token}\n```\n")
 
         issues = u.Infra.docs_command_contract_issues(scope)
@@ -246,7 +246,7 @@ ruff check src
         )
         tm.that(u.Infra.docs_command_contract_issues(scope), eq=[])
 
-        u.write_file(guide, f"```bash\nmake {spec.name}\n```\n")
+        u.write_file(guide, f"```bash\nmake {spec.name} APPLY=Y\n```\n")
         legacy = u.Infra.docs_command_contract_issues(scope)
         tm.that(len(legacy), eq=1)
         tm.that(legacy[0].message, has="legacy `APPLY` flag is exterminated")

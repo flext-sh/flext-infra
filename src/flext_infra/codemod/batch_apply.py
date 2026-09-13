@@ -102,8 +102,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
 
     @staticmethod
     def _validate_fix_match(
-        before: m.Infra.ModScanReport,
-        after_apply: m.Infra.ModScanReport,
+        before: m.Infra.ModScanReport, after_apply: m.Infra.ModScanReport
     ) -> None:
         """Validate that applied fixes match expected changes (fix!=match)."""
         # Check that actionable findings were actually resolved

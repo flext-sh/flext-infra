@@ -83,9 +83,9 @@ class FlextInfraWorkspaceChecker(
         if project_targets_result.failure:
             return r[bool].from_failure(project_targets_result)
         project_targets = project_targets_result.value
-        gates = list(params.gates)
-        if not gates:
-            return r[bool].fail("check requires at least one registered gate")
+        # An omitted gate selection is the typed SSOT default: every default
+        # check gate (the set an unset CI token runs), never an empty run.
+        gates = list(params.gates) or list(c.Infra.CANONICAL_DEFAULT_GATE_IDS)
         gate_ctx = m.Infra.GateContext(
             repository_root=params.repository_root,
             reports_dir=params.reports_dir_path,

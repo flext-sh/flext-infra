@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
-from pydantic import AliasChoices
 
 from .. import t
 from .._constants import (
@@ -3252,19 +3251,13 @@ class FlextInfraConfigModels:
         time_seconds: Annotated[
             int,
             m.Field(
-                ge=1,
-                alias="time-seconds",
-                validation_alias=AliasChoices("time-seconds", "time_seconds"),
-                description="Wall-clock ceiling in seconds",
+                ge=1, alias="time-seconds", description="Wall-clock ceiling in seconds"
             ),
         ]
         memory_mb: Annotated[
             int,
             m.Field(
-                ge=1,
-                alias="memory-mb",
-                validation_alias=AliasChoices("memory-mb", "memory_mb"),
-                description="Resident memory ceiling in MiB",
+                ge=1, alias="memory-mb", description="Resident memory ceiling in MiB"
             ),
         ]
         tokens: Annotated[

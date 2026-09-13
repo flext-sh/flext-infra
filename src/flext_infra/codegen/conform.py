@@ -754,7 +754,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if not workspace.subprojects:
             return r[bool].ok(False)
         owner = root / c.Infra.BEADS_DIRNAME
-        if not owner.is_dir() or owner.is_symlink():
+        # The ledger directory is a conform projection: absent before the
+        # first render is normal; a link, or a non-directory, is not physical.
+        if owner.is_symlink() or (owner.exists() and not owner.is_dir()):
             return r[bool].fail(
                 f"workspace Beads ledger owner is not physical: {owner}"
             )
@@ -1949,14 +1951,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if composed.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(composed)
             rendered_content = composed.value.rendered
-            conflict_marker = next(
-                (
-                    line
-                    for line in rendered_content.splitlines()
-                    if line.startswith(("<<<<<<< ", "||||||| ", ">>>>>>> "))
-                ),
-                None,
-            )
+            conflict_marker = u.Infra.first_merge_conflict_marker(rendered_content)
             if conflict_marker is not None:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     "rendered template contains a merge conflict marker: "
@@ -1990,9 +1985,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Apply typed project overlays after canonical template rendering."""
         if destination == c.Infra.PYPROJECT_FILENAME:
             live_path = repository_root / c.Infra.PYPROJECT_FILENAME
-            live = (
-                live_path.read_text(encoding="utf-8") if live_path.is_file() else None
-            )
+            live: str | None = None
+            if live_path.is_file():
+                # Overlay reads the live text (managed merge conflicts
+                # resolved) and never writes it.
+                recovered_live = u.Infra.live_pyproject_text(live_path)
+                if recovered_live.failure:
+                    return r[m.Infra.CodegenArtifactComposition].from_failure(
+                        recovered_live
+                    )
+                live = recovered_live.value
             overlaid = u.Infra.overlay_preserved(rendered, live)
             if overlaid.failure:
                 return r[m.Infra.CodegenArtifactComposition].from_failure(overlaid)
@@ -2573,20 +2575,38 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             name for item in pep621.dependencies if (name := u.Infra.dep_name(item))
         }
         profiles = codegen.scaffold.project.dependency_profiles
-        upstream = next(
-            (
-                item.upstream
-                for item in profiles
-                if item.project is None
-                and item.upstream.replace("_", "-") in runtime_names
-            ),
-            None,
+        candidates = tuple(
+            item
+            for item in profiles
+            if item.project is None and item.upstream.replace("_", "-") in runtime_names
         )
-        if upstream is None:
-            return r[m.Infra.ProjectSpec].fail(
-                "no scaffold.project.dependency_profiles.upstream matches live "
-                f"dependencies at {repository_root}"
+        # A profile whose upstream is itself a runtime dependency of another
+        # candidate is implied by it; the declared upstream is the most
+        # specific candidate, never the first catalog row that happens to match.
+        runtime_of = {
+            item.upstream: {
+                name
+                for dependency in item.runtime
+                if (name := u.Infra.dep_name(dependency))
+            }
+            for item in candidates
+        }
+        direct = tuple(
+            item
+            for item in candidates
+            if not any(
+                item.upstream.replace("_", "-") in runtime_of[other.upstream]
+                for other in candidates
+                if other is not item
             )
+        )
+        if len(direct) != 1:
+            return r[m.Infra.ProjectSpec].fail(
+                "scaffold.project.dependency_profiles.upstream must match live "
+                f"dependencies exactly once at {repository_root}: "
+                f"{tuple(item.upstream for item in direct)}"
+            )
+        upstream = direct[0].upstream
         licenses = codegen.scaffold.project.supported_licenses
         return r[m.Infra.ProjectSpec].ok(
             m.Infra.ProjectSpec(
@@ -2655,38 +2675,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # identity from the live project metadata instead of failing, so
             # conforming a governed repository never depends on scaffold-only
             # declarations.
-            metadata = u.Infra.read_project_metadata_result(repository_root)
-            if metadata.failure:
-                return r[m.Infra.ProjectRenderContext].from_failure(metadata)
-            repository_provider = FlextInfraCodegenConform._repository_provider(
-                repository, codegen
+            derived = FlextInfraCodegenConform._project_spec_from_existing(
+                repository, repository_root, codegen
             )
-            if repository_provider.failure:
-                return r[m.Infra.ProjectRenderContext].from_failure(repository_provider)
-            live_name = metadata.value.package_name
-            class_stem = u.derive_class_stem(live_name)
-            project = m.Infra.ProjectSpec(
-                package_name=live_name,
-                class_stem=class_stem,
-                namespace=class_stem.removeprefix("Flext") or class_stem,
-                constant_name=live_name,
-                namespace_attribute=live_name,
-                alias=u.Infra.package_alias(package_name=live_name),
-                environment_prefix=f"{live_name.upper()}_",
-                license=config.Infra.codegen.scaffold.project.supported_licenses[0],
-                author_name="FLEXT Team",
-                author_email="team@flext.dev",
-                upstream=(
-                    config.Infra.codegen.scaffold.project.dependency_profiles[
-                        0
-                    ].upstream
-                ),
-                homepage=f"{repository_provider.value.base_url.rstrip('/')}/",
-                documentation=f"{repository_provider.value.base_url.rstrip('/')}/",
-                repository_root_rel=".",
-                year=codegen.scaffold.project.copyright_year,
-                description=metadata.value.project.description,
-            )
+            if derived.failure:
+                return r[m.Infra.ProjectRenderContext].from_failure(derived)
+            project = derived.value
         else:
             project = workspace.project
         dependency_profile = next(

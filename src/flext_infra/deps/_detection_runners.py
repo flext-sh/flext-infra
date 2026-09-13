@@ -110,6 +110,12 @@ class FlextInfraDependencyDetectionRunnersMixin:
         self, project_path: Path
     ) -> p.Result[t.Pair[t.StrSequence, t.StrSequence]]:
         """Run mypy via the command runner to detect missing stubs and hint packages."""
+        # Why: current mypy emits ANSI color codes around quoted module/package
+        # names even when stdout is a pipe, splicing escape sequences inside
+        # the literal `for "name"` text that MYPY_STUB_RE/MYPY_HINT_RE match —
+        # silently zeroing every detected stub hint. `--no-color-output`
+        # matches the plain-text contract the regexes already assume (see
+        # gates/mypy.py, which disables color for the same reason).
         cmd = u.Infra.mypy_limited_command((
             sys.executable,
             "-m",
@@ -118,6 +124,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
             "--config-file",
             c.Infra.PYPROJECT_FILENAME,
             "--no-error-summary",
+            "--no-color-output",
         ))
         result = self._run_raw(
             cmd, cwd=project_path, timeout=u.Infra.mypy_runner_timeout()

@@ -46,6 +46,10 @@ def test_build_scopes_returns_root_and_selected_projects(tmp_path: Path) -> None
 
 
 def test_build_scopes_without_filter_still_returns_root_scope(tmp_path: Path) -> None:
+    # Why (X-70): a member-less workspace root that declares its own
+    # pyproject.toml is a governed single-project scope named after itself
+    # ("workspace"), not the synthetic "root" scope used for a member-bearing
+    # workspace.
     workspace = u.Tests.create_docs_workspace(tmp_path)
 
     result = u.Infra.build_scopes(
@@ -53,7 +57,7 @@ def test_build_scopes_without_filter_still_returns_root_scope(tmp_path: Path) ->
     )
 
     tm.ok(result)
-    tm.that([scope.name for scope in result.value], eq=["root"])
+    tm.that([scope.name for scope in result.value], eq=["workspace"])
 
 
 def test_build_scopes_treats_non_flext_project_as_its_own_root(tmp_path: Path) -> None:
@@ -150,6 +154,7 @@ def test_build_scopes_uses_custom_output_dir(tmp_path: Path) -> None:
 
 
 def test_build_scopes_skips_missing_projects(tmp_path: Path) -> None:
+    # Why (X-70): see test_build_scopes_without_filter_still_returns_root_scope.
     workspace = u.Tests.create_docs_workspace(tmp_path)
 
     result = u.Infra.build_scopes(
@@ -159,7 +164,7 @@ def test_build_scopes_skips_missing_projects(tmp_path: Path) -> None:
     )
 
     tm.ok(result)
-    tm.that([scope.name for scope in result.value], eq=["root"])
+    tm.that([scope.name for scope in result.value], eq=["workspace"])
 
 
 def test_build_scopes_preserves_discovered_package_name(tmp_path: Path) -> None:

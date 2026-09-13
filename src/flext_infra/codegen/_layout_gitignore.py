@@ -54,7 +54,8 @@ class FlextInfraCodegenLayoutGitignoreMixin:
                 return r[t.Infra.LayoutStatus].from_failure(read)
             current = read.value
         if rendered.value == current:
-            return r[t.Infra.LayoutStatus].ok("noop")
+            noop_status: t.Infra.LayoutStatus = "noop"
+            return r[t.Infra.LayoutStatus].ok(noop_status)
         planned = u.Infra.planned_file(
             project_dir,
             gitignore_path,
@@ -69,7 +70,8 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         written = publish_file_plan(planned.value, phase="layout")
         if written.failure:
             return r[t.Infra.LayoutStatus].from_failure(written)
-        return r[t.Infra.LayoutStatus].ok("applied")
+        applied_status: t.Infra.LayoutStatus = "applied"
+        return r[t.Infra.LayoutStatus].ok(applied_status)
 
     def _apply_gitignore_append(
         self, project_dir: Path, patterns: t.StrSequence
@@ -89,7 +91,8 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             if pattern not in covered and pattern.rstrip("/") not in covered
         )
         if not missing:
-            return r[t.Infra.LayoutStatus].ok("noop")
+            noop_status: t.Infra.LayoutStatus = "noop"
+            return r[t.Infra.LayoutStatus].ok(noop_status)
         text = current
         if text and not text.endswith("\n"):
             text += "\n"
@@ -111,7 +114,8 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         written = publish_file_plan(planned.value, phase="layout")
         if written.failure:
             return r[t.Infra.LayoutStatus].from_failure(written)
-        return r[t.Infra.LayoutStatus].ok("applied")
+        applied_status: t.Infra.LayoutStatus = "applied"
+        return r[t.Infra.LayoutStatus].ok(applied_status)
 
     @staticmethod
     def _managed_profile(project_dir: Path) -> p.Result[c.Infra.MakeProfile | None]:

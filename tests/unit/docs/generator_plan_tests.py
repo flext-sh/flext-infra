@@ -58,6 +58,7 @@ def test_required_directories_are_unique_parent_first_and_read_only(
             ),
         ),
         source_states=(source_state.value,),
+        repository_root=project,
     )
 
     result = u.Infra.docs_required_directories(bundle)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from flext_infra import c, config, m, u
+from flext_infra import c, u
 from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
 
 
@@ -16,14 +16,6 @@ def _owned_marker(section: str) -> str:
         if u.Infra.toml_section_is_owned(section, (item,))
     )
     return f"# [MANAGED] {owned}"
-
-
-def _pyproject_spec() -> m.Infra.ManagedFileSpec:
-    return next(
-        item
-        for item in config.Infra.codegen.managed_files
-        if item.path.as_posix() == "pyproject.toml"
-    )
 
 
 class TestsFlextInfraDepsModernizerComments:

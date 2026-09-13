@@ -65,22 +65,11 @@ class TestDuplicationGate:
             "UNIQUE_MODULE_MARKER = 'canonical-scope-only'\n", encoding="utf-8"
         )
         (root / "charts").mkdir()
-        chart_block = (
-            "apiVersion: apps/v1\n"
-            "kind: Deployment\n"
-            "metadata:\n"
-            "  name: fixture-duplication\n"
-            "  labels:\n"
-            "    app: fixture\n"
-            "spec:\n"
-            "  replicas: 3\n"
-            "  selector:\n"
-            "    matchLabels:\n"
-            "      app: fixture\n"
-            "  template:\n"
-            "    metadata:\n"
-            "      labels:\n"
-            "        app: fixture\n"
+        # The clone must clear BOTH typed gate floors (lines and tokens); a
+        # block under the token floor is skipped by the scanner, never a clone.
+        chart_block = "apiVersion: apps/v1\nkind: Deployment\nenv:\n" + "".join(
+            f"  - name: FIXTURE_SETTING_{index}\n    value: fixture-value-{index}\n"
+            for index in range(max(c.Infra.JSCPD_MIN_LINES, c.Infra.JSCPD_MIN_TOKENS))
         )
         (root / "charts" / "values.yaml").write_text(chart_block, encoding="utf-8")
         nested = root / "charts" / "workers" / "prod"

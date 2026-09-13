@@ -94,8 +94,8 @@ class TestsFlextInfraLazyInitAliasInheritance:
         tm.that(
             planned.error,
             contains=(
-                "lazy-init: declared package 'flext_ghost_parent_zzz' resolves"
-                " nowhere in the active environment"
+                "lazy-init: declared facade parent 'flext_ghost_parent_zzz'"
+                " resolves nowhere in the active environment"
             ),
         )
 

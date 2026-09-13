@@ -137,6 +137,20 @@ class FlextInfraGate:
             severity="ERROR",
         )
 
+    @staticmethod
+    def _malformed_report_issue(
+        exc: c.ValidationError, *, tool: str, file: str
+    ) -> m.Infra.Issue:
+        """Report a checker whose structured report failed typed validation."""
+        return m.Infra.Issue(
+            file=file,
+            line=0,
+            column=0,
+            code="TOOL_ERROR",
+            message=f"{tool} report is not a valid structured report: {exc}",
+            severity="ERROR",
+        )
+
     def _checker_stderr_issues(
         self, result: p.Cli.CommandOutput, project_dir: Path
     ) -> t.SequenceOf[m.Infra.Issue]:

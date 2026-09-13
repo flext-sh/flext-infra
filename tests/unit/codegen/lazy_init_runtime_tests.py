@@ -36,7 +36,7 @@ class TestsFlextInfraLazyInitRuntime:
         self, tmp_path: Path
     ) -> None:
         repository_root, package_root = self._generate_package(tmp_path)
-        with tm.scope(python_paths=(str(repository_root / c.Infra.DEFAULT_SRC_DIR),)):
+        with tm.scope(python_paths=[str(repository_root / c.Infra.DEFAULT_SRC_DIR)]):
             package = importlib.import_module("flext_runtime")
 
             tm.that("flext_runtime.api" in sys.modules, eq=False)
@@ -59,7 +59,7 @@ class TestsFlextInfraLazyInitRuntime:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
-        with tm.scope(python_paths=(str(repository_root / c.Infra.DEFAULT_SRC_DIR),)):
+        with tm.scope(python_paths=[str(repository_root / c.Infra.DEFAULT_SRC_DIR)]):
             package = importlib.import_module("flext_failure")
 
             with pytest.raises(ModuleNotFoundError, match="missing runtime dependency"):

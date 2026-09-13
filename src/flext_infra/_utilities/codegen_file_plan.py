@@ -113,14 +113,9 @@ class FlextInfraUtilitiesCodegenFilePlan:
         must not report drift, so both sides are reconciled to text before the
         comparison while real content differences still fail loud.
         """
-        before_content: str | bytes = before.content or b""
-        desired: str | bytes = desired_content if desired_content is not None else b""
-        if isinstance(before_content, bytes) or isinstance(desired, str):
-            if isinstance(before_content, bytes):
-                before_content = before_content.decode("utf-8", errors="replace")
-            if isinstance(desired, bytes):
-                desired = desired.decode("utf-8", errors="replace")
-        return before_content != desired or before.mode != desired_mode
+        before_text = (before.content or b"").decode("utf-8", errors="replace")
+        desired_text = (desired_content or b"").decode("utf-8", errors="replace")
+        return before_text != desired_text or before.mode != desired_mode
 
     @staticmethod
     def codegen_file_requires_effect(plan: m.Infra.CodegenFilePlan) -> bool:

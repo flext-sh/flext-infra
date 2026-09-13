@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shutil
+import tomllib
 from functools import cache, lru_cache
 from pathlib import Path
 
@@ -16,10 +17,42 @@ from flext_core import r
 from flext_infra import c, p, t
 
 from .git import FlextInfraUtilitiesGit
+from .managed_conflicts import FlextInfraUtilitiesManagedConflicts
 
 
 class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
+
+    @staticmethod
+    def recover_live_pyproject_text(raw: str) -> p.Result[str]:
+        """Return live pyproject text with merge-control lines resolved.
+
+        Unconflicted text is returned unchanged. A conflict is resolved only
+        inside owner-declared managed TOML sections
+        (``config.Infra.codegen.managed_files``) via
+        ``FlextInfraUtilitiesManagedConflicts.recover_managed_toml``; a
+        conflict outside those sections fails loud through that utility's
+        own contract. Read-only: no file is written here.
+        """
+        spec_result = FlextInfraUtilitiesManagedConflicts.pyproject_managed_file()
+        if spec_result.failure:
+            return r[str].from_failure(spec_result)
+        return FlextInfraUtilitiesManagedConflicts.recover_managed_toml(
+            raw, conflict_sections=spec_result.value.conflict_sections
+        )
+
+    @staticmethod
+    def live_pyproject_text(pyproject_path: Path) -> p.Result[str]:
+        """Read one live pyproject and resolve managed merge conflicts."""
+        raw = u.Cli.atomic_read_binary_file_state(pyproject_path, required=True)
+        if raw.failure:
+            return r[str].from_failure(raw)
+        content = raw.value.content
+        if content is None:
+            return r[str].fail(f"pyproject is absent: {pyproject_path}")
+        return FlextInfraUtilitiesPyproject.recover_live_pyproject_text(
+            content.decode(c.Cli.ENCODING_DEFAULT)
+        )
 
     @staticmethod
     def read_project_metadata_result(project_root: Path) -> p.Result[p.ProjectMetadata]:
@@ -31,9 +64,17 @@ class FlextInfraUtilitiesPyproject:
         declared contract is the canonical structural protocol (the producer
         builds the exact model behind it), matching every ``p.ProjectMetadata``
         consumer.
+
+        The document is the live text with managed merge conflicts resolved
+        (``live_pyproject_text``); the file is never written here.
         """
+        live = FlextInfraUtilitiesPyproject.live_pyproject_text(
+            project_root / c.Infra.PYPROJECT_FILENAME
+        )
+        if live.failure:
+            return r[p.ProjectMetadata].from_failure(live)
         try:
-            document = u.read_project_document_cached(project_root)
+            document = u.PyprojectDocument.model_validate(tomllib.loads(live.value))
             metadata = u.build_project_metadata(project_root, document)
         except (OSError, ValueError) as exc:
             return r[p.ProjectMetadata].fail(
@@ -184,21 +225,18 @@ class FlextInfraUtilitiesPyproject:
     def pyproject_payload(pyproject_path: Path) -> t.JsonMapping:
         """Return one parsed ``pyproject.toml`` payload validated against ``t.Infra``.
 
-        Disk read is delegated to ``u.Cli.toml_read_json`` (cached at
-        flext-cli utility layer); this method caches the validated typed payload.
-        ``pyproject_path`` is the file path; ``Path`` is the canonical
-        cache key (no ``str(...)`` proxy round-trip).
+        The payload is parsed from the live text with managed merge
+        conflicts resolved (``live_pyproject_text``).
         """
         if not pyproject_path.is_file():
             return {}
-        payload_result = u.Cli.toml_read_json(pyproject_path)
-        if payload_result.failure:
-            msg = (
-                f"failed to read pyproject payload at {pyproject_path}: "
-                f"{payload_result.error}"
-            )
+        live = FlextInfraUtilitiesPyproject.live_pyproject_text(pyproject_path)
+        if live.failure:
+            msg = f"failed to read pyproject payload at {pyproject_path}: {live.error}"
             raise RuntimeError(msg)
-        return FlextInfraUtilitiesPyproject.validate_infra_payload(payload_result.value)
+        return FlextInfraUtilitiesPyproject.validate_infra_payload(
+            tomllib.loads(live.value)
+        )
 
     @staticmethod
     def normalized_toml_payload(document: t.Cli.TomlDocument) -> t.JsonMapping:

@@ -174,6 +174,12 @@ def test_declared_repositories_are_canonical_root_entries(tmp_path: Path) -> Non
     undeclared_name = "flext-undeclared"
     (tmp_path / declared_name).mkdir()
     (tmp_path / undeclared_name).mkdir()
+    # Why: an empty directory carries no git-trackable content — git status
+    # never reports it, so the layout engine's git-tracked-entries scope (the
+    # current contract) would silently skip it rather than flag it. A real
+    # file makes the untracked directory visible to `git status`, matching
+    # how an actual undeclared repository shows up on disk.
+    (tmp_path / undeclared_name / "marker.txt").write_text("x", encoding="utf-8")
     u.Tests.declare_workspace_projects(tmp_path, (declared_name,))
     engine = layout_engine(tmp_path)
 

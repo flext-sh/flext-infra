@@ -178,7 +178,9 @@ class TestsAncestryNetworkBoundary:
                 root / "pyproject.toml",
                 f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
                 f'description = "{dist} governed fixture"\n'
-                'requires-python = ">=3.13,<3.14"\n',
+                'requires-python = ">=3.13,<3.14"\n'
+                'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+                'dependencies = ["flext-core>=0.1.0"]\n',
             )
         )
         package_init = root / "src" / dist.replace("-", "_") / "__init__.py"

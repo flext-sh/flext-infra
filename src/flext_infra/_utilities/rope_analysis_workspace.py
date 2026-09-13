@@ -11,6 +11,7 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
+from .project_discovery import FlextInfraUtilitiesProjectDiscovery
 from .rope_core import FlextInfraUtilitiesRopeCore
 
 
@@ -74,22 +75,46 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             c.Infra.AUTOGEN_HEADERS
         )
 
+    @classmethod
+    def _governed_roots(cls, repository_root: Path) -> frozenset[Path]:
+        """Return every declared governed project root, resolved."""
+        return frozenset(
+            FlextInfraUtilitiesProjectDiscovery.governed_project_roots(repository_root)
+        )
+
     @staticmethod
-    def _inside_nested_repository(path: Path, repository_root: Path) -> bool:
-        """Exclude nested Git repositories and registered worktrees from indexing."""
+    def _inside_nested_repository(
+        path: Path, repository_root: Path, *, governed_roots: frozenset[Path]
+    ) -> bool:
+        """Exclude foreign nested Git checkouts, never declared governed members.
+
+        A governed workspace member (a submodule declared in ``.gitmodules``,
+        or scanned as a candidate project) carries its own ``.git`` root by
+        design; that is not a foreign nested repository and must stay
+        indexed. Only a ``.git`` boundary that is not one of the workspace's
+        own governed roots — an unrelated clone, an ad hoc worktree — is
+        excluded.
+        """
         return any(
-            (parent / ".git").exists() or (parent / ".git").is_symlink()
+            ((parent / ".git").exists() or (parent / ".git").is_symlink())
+            and parent not in governed_roots
             for parent in path.parents
             if parent != repository_root and parent.is_relative_to(repository_root)
         )
 
     @classmethod
-    def _is_pruned_walk_dir(cls, directory: Path, resolved_root: Path) -> bool:
+    def _is_pruned_walk_dir(
+        cls, directory: Path, resolved_root: Path, *, governed_roots: frozenset[Path]
+    ) -> bool:
         """Return whether the pruned stub walk must not descend into ``directory``."""
         return (
-            (directory / ".git").exists()
-            or (directory / ".git").is_symlink()
-            or cls._inside_nested_repository(directory, resolved_root)
+            (
+                ((directory / ".git").exists() or (directory / ".git").is_symlink())
+                and directory not in governed_roots
+            )
+            or cls._inside_nested_repository(
+                directory, resolved_root, governed_roots=governed_roots
+            )
             or bool(
                 set(directory.relative_to(resolved_root).parts) & cls._excluded_parts()
             )
@@ -105,12 +130,15 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         the exclusion names and the nested-repository classification at every
         depth instead, and never follows symlinked directories.
         """
+        governed_roots = cls._governed_roots(resolved_root)
         stub_paths: set[Path] = set()
         for parent, dir_names, file_names in resolved_root.walk():
             dir_names[:] = [
                 name
                 for name in dir_names
-                if not cls._is_pruned_walk_dir(parent / name, resolved_root)
+                if not cls._is_pruned_walk_dir(
+                    parent / name, resolved_root, governed_roots=governed_roots
+                )
             ]
             stub_paths.update(
                 (parent / name).resolve()
@@ -124,12 +152,13 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         cls, rope_project: t.Infra.RopeProject, resolved_root: Path
     ) -> t.VariadicTuple[Path]:
         """Return indexed sources, declared wrapper modules, and typing stubs."""
+        governed_roots = cls._governed_roots(resolved_root)
         python_paths = {
             path.resolve()
             for path in FlextInfraUtilitiesRopeCore.python_file_paths(rope_project)
             if not set(path.relative_to(resolved_root).parts) & cls._excluded_parts()
-            and not FlextInfraUtilitiesRopeAnalysisWorkspace._inside_nested_repository(
-                path, resolved_root
+            and not cls._inside_nested_repository(
+                path, resolved_root, governed_roots=governed_roots
             )
         }
         # flext-pulj (codex): Rope's source roots omit tests/examples/scripts;
@@ -143,8 +172,8 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             for path in wrapper_root.rglob("*.py")
             if path.is_file()
             and not set(path.relative_to(resolved_root).parts) & cls._excluded_parts()
-            and not FlextInfraUtilitiesRopeAnalysisWorkspace._inside_nested_repository(
-                path, resolved_root
+            and not cls._inside_nested_repository(
+                path, resolved_root, governed_roots=governed_roots
             )
         }
         stub_paths = cls._pruned_stub_file_paths(resolved_root)

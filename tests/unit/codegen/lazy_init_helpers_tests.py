@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
 from tests import c, u
@@ -532,13 +533,16 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(generated, lacks='"flext_parent": ("x",)')
 
     def test_installed_parent_alias_uses_the_nearest_actual_owner(
-        self, tmp_path: Path
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Skip an importable parent that does not export the requested alias."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-child", package_name="flext_child"
         )
         installed_root = tmp_path / "installed"
+        # The parents are what the active environment declares; their
+        # exports are read by path, never imported (the modules raise).
+        monkeypatch.syspath_prepend(str(installed_root))
         nearest = installed_root / "nearest_parent"
         owner = installed_root / "owner_parent"
         nearest.mkdir(parents=True)

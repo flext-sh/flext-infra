@@ -56,7 +56,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             str(self.target),
             "--testmon",
             "--testmon-nocollect",
-            *(("--testmon-noselect",) if complete else ()),
+            # Why: the external-gate deselection is a ``-m`` expression, and
+            # testmon deactivates its selection whenever ``-m`` is present;
+            # ``--testmon-forceselect`` is testmon's declared override for
+            # exactly that case (never combined with ``--testmon-noselect``).
+            *(("--testmon-noselect",) if complete else ("--testmon-forceselect",)),
             "--collect-only",
             "-q",
             *self._plugin_policy_args(),
@@ -91,7 +95,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             workers=workers,
             trailing=(
                 "--testmon",
-                *(("--testmon-noselect",) if selection else ()),
+                *(("--testmon-noselect",) if selection else ("--testmon-forceselect",)),
                 *_NO_COVERAGE,
             ),
         )
