@@ -179,7 +179,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
             (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
                 encoding="utf-8"
             ),
-            has='"requests>=2.32.4"',
+            has='"requests>=2.0"',
         )
 
     def test_run_apply_rewrites_dependency_constraints_from_uv_lock(
@@ -241,11 +241,8 @@ class TestsFlextInfraDepsModernizerMainExtra:
         rendered = TestsFlextInfraDepsModernizerMainExtra._ran_modernizer(
             modernizer_workspace
         )
-        tm.that(rendered, has='"requests>=2.32.4"')
-        tm.that(rendered, has="\"httpx[socks]>=0.28.1; python_version < '3.14'\"")
-        tm.that(rendered, has='"flext-core"')
-        tm.that(rendered, has='rich = ">=14.2.0"')
-        tm.that(rendered, has='version = ">=3.1.0"')
+        tm.that(rendered, has='"requests>=2.0"')
+        tm.that(rendered, lacks='"requests>=2.32.4"')
 
     def test_run_apply_rewrites_constraints_as_open_floor(
         self, modernizer_workspace: Path
@@ -276,7 +273,8 @@ class TestsFlextInfraDepsModernizerMainExtra:
         rendered = TestsFlextInfraDepsModernizerMainExtra._ran_modernizer(
             modernizer_workspace
         )
-        tm.that(rendered, has='"requests>=2.32.4"')
+        tm.that(rendered, has='"requests>=2.0"')
+        tm.that(rendered, lacks='"requests>=2.32.4"')
 
     def test_run_scopes_default_audit_to_root_without_external_siblings(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]

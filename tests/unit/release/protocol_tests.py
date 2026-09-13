@@ -11,6 +11,7 @@ import os
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_cli import cli
 from flext_tests import tm
 
@@ -430,7 +431,12 @@ class TestsFlextInfraReleaseProtocol:
                 )
                 tm.that(recorded, has="--title chore(release): v0.1.0")
 
+        # Why (flext-oftik class, flext-2j4lr): two real release phases, each
+        # ~8-9 s today because pydantic rebuilds every r[T] generic per call
+        # (profiled 73% of the phase); the SSOT slow budget owns the ceiling
+        # until the owner hotspot lands. Not a slow test, a slow harness.
         @staticmethod
+        @pytest.mark.slow
         def test_rerun_continues_the_lane_without_a_second_commit(
             tmp_path: Path,
         ) -> None:

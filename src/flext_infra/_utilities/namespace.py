@@ -280,19 +280,32 @@ class FlextInfraUtilitiesCodegenNamespace:
             None,
         )
         declared_exports = cls._declared_exports(file_path)
-        expected_alias = next(
-            (
-                name
-                for name in declared_exports
-                if name.islower() and len(name) <= c.Infra.MAX_ALIAS_LENGTH
-            ),
-            family_alias,
+        uppercase_names = tuple(
+            name for name in declared_exports if name[:1].isupper()
         )
-        expected_family = next(
-            (name for name in declared_exports if name[:1].isupper()),
-            c.Infra.FAMILY_SUFFIXES.get(family_alias)
-            if family_alias is not None
-            else None,
+        lowercase_alias_names = tuple(
+            name
+            for name in declared_exports
+            if name.islower() and len(name) <= c.Infra.MAX_ALIAS_LENGTH
+        )
+        # Why (defect fix): a module's ``__all__`` proves it is the single
+        # declared owner of a class/alias pair only when it names exactly one
+        # of each -- a re-export aggregator that relists many facades' names
+        # (e.g. a generated TYPE_CHECKING sidecar) must never be mistaken for
+        # the sole owner of any single name it merely forwards.
+        expected_alias = (
+            lowercase_alias_names[0]
+            if len(lowercase_alias_names) == 1
+            else family_alias
+        )
+        expected_family = (
+            uppercase_names[0]
+            if len(uppercase_names) == 1
+            else (
+                c.Infra.FAMILY_SUFFIXES.get(family_alias)
+                if family_alias is not None
+                else None
+            )
         )
         family_tokens: t.StrSequence = (expected_family,) if expected_family else ()
         return family_alias, expected_family, expected_alias, family_tokens
@@ -435,15 +448,20 @@ class FlextInfraUtilitiesCodegenNamespace:
             or is_root_namespace
         )
         is_private_module = file_path.stem.startswith("_")
+        declared_exports = cls._declared_exports(file_path)
+        # A private module that declares ``__all__`` publishes those names
+        # through its package's lazy facade: siblings import them as
+        # ``from . import Name`` (R33), never through a relative module path.
         include_in_lazy_init = not file_path.stem[:1].isdigit() and (
             not is_private_module
             or is_fixture_module
             or is_family_package
             or is_root_namespace
+            or bool(declared_exports)
         )
         type_checking_imports = tuple(
             name
-            for name in cls._declared_exports(file_path)
+            for name in declared_exports
             if (
                 name.isidentifier()
                 and name.islower()

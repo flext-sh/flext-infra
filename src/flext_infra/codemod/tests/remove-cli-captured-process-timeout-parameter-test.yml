@@ -29,7 +29,7 @@ valid:
         )
 invalid:
   - |
-    def _legacy_capture(
+    def _captured_process_result(
         cls,
         cmd: t.StrSequence,
         return_code: int | None,
@@ -43,25 +43,21 @@ invalid:
         timeout_seconds: int | None,
         timeout_exit_code: int,
     ) -> p.Result[p.Cli.CommandBytesOutput]:
-        """Legacy variant: retains timeout parameters for backward compat."""
-        legacy_timeout = timeout_seconds is not None
-        legacy_timeout_seconds = timeout_seconds
-        legacy_timeout_exit = timeout_exit_code
+        """Attach captured bytes only after the owned process boundary is empty."""
         return cls._process_exit_result(
-            cmd=cmd,
-            return_code=return_code,
-            received_signals=received_signals,
-            diagnostics=diagnostics,
+            cmd,
+            return_code,
+            received_signals,
+            diagnostics,
             timed_out=timed_out,
-            legacy_timeout=legacy_timeout,
-            legacy_timeout_seconds=legacy_timeout_seconds,
-            legacy_timeout_exit=legacy_timeout_exit,
+            legacy_timeout=timeout_seconds is not None,
+            legacy_timeout_seconds=timeout_seconds,
             timeout_exit_code=timeout_exit_code,
         ).map(
-            lambda done: m.Cli.CommandBytesOutput(
+            lambda outcome: m.Cli.CommandBytesOutput(
                 stdout=bytes(stdout_output),
                 stderr=bytes(stderr_output),
-                outcome=done,
+                outcome=outcome,
                 duration=duration,
             )
         )

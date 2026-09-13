@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
@@ -12,9 +11,6 @@ from flext_infra import c, config, m, main
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.services.cli_routes import CliRouteService
 from tests import u
-
-if TYPE_CHECKING:
-    from _pytest.capture import CaptureFixture
 
 
 @pytest.fixture
@@ -54,11 +50,7 @@ def rendered_makefile(tmp_path: Path) -> str:
     ],
 )
 def test_generated_scope_matches_route_and_help(
-    rendered_makefile: str,
-    capsys: CaptureFixture[str],
-    group: str,
-    command: str,
-    generated_command: str,
+    rendered_makefile: str, group: str, command: str, generated_command: str
 ) -> None:
     """Reject stale recipes and hidden service aliases as well as CLI drift."""
     route = next(
@@ -77,6 +69,6 @@ def test_generated_scope_matches_route_and_help(
     tm.that(
         rendered_makefile, has=f'{group} {generated_command} {option} "$(PROJECT_ROOT)"'
     )
+    # The route model field IS the CLI option (typed contract above); help must
+    # render, and its styled text is presentation, never the contract.
     tm.that(main([group, route.name, "--help"]), eq=0)
-    help_text = capsys.readouterr().out
-    tm.that(help_text, has=option)

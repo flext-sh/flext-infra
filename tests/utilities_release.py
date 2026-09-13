@@ -68,7 +68,8 @@ class TestsFlextInfraUtilitiesReleaseMixin:
                 'name = "workspace"\n'
                 'description = "Release workflow fixture"\n'
                 f'version = "{version}"\n'
-                "dependencies = []\n"
+                'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+                'dependencies = ["flext-core"]\n'
             ),
             encoding="utf-8",
         )
@@ -116,6 +117,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
                     'description = "Release member fixture"\n'
                     'version = "0.1.0"\n'
                     'license = "MIT"\n'
+                    'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
                     'dependencies = ["flext-core @ '
                     'git+https://github.com/flext-sh/flext-core.git@0.12.0-dev"]\n'
                     "\n"

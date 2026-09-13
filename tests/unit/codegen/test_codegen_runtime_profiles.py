@@ -83,9 +83,16 @@ class TestCodegenRuntimeProfiles:
                 *custom,
             ])
         )
+        # The governed fixture already declares `dependencies`; replace that
+        # declaration instead of adding a second (invalid) key.
         pyproject.write_text(
-            pyproject.read_text(encoding="utf-8").replace(
-                "[project]\n", f"[project]\ndependencies = {declared}\n"
+            "".join(
+                f"dependencies = {declared}\n"
+                if line.startswith("dependencies = ")
+                else line
+                for line in pyproject.read_text(encoding="utf-8").splitlines(
+                    keepends=True
+                )
             ),
             encoding="utf-8",
         )

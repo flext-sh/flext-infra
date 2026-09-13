@@ -39,4 +39,4 @@ def immutable_empty_mapping() -> Mapping[Any, Never]:
 
 
 # Internal owner: direct module imports are intentional; no facade ABI is published.
-__all__: t.VariadicTuple[str] = ()
+__all__: t.VariadicTuple[str] = ("ImmutableEmptyMapping", "immutable_empty_mapping")

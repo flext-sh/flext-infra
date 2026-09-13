@@ -99,7 +99,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             homepage=homepage,
             documentation=homepage,
             repository_root_rel=".",
-            year=2026,
+            year=config.Infra.codegen.scaffold.project.copyright_year,
         )
 
     @staticmethod

@@ -292,7 +292,10 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         def _emit(plan: m.Infra.CodegenPlan) -> t.JsonMapping:
             self._state.conform_plan = plan
-            self._state.discovered_projects = plan.workspace.project
+            # Why: discovered_projects (Sequence[ProjectInfo]) is already set by
+            # the DISCOVER stage; plan.workspace.project is an unrelated
+            # ProjectSpec|None used only for new-tree materialization, and
+            # assigning it here silently corrupted downstream stage state.
             return {
                 "repositories_selected": len(plan.repositories),
                 "files_planned": len(plan.files),

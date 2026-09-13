@@ -21,11 +21,16 @@ class FlextInfraDocGeneratorBundleMixin:
 
     @staticmethod
     def _is_collocated_workspace_project(
-        scope: m.Infra.DocScope, *, root_scope: m.Infra.DocScope
+        scope: m.Infra.DocScope, *, root_scope: m.Infra.DocScope | None
     ) -> bool:
-        """Return whether a project scope shares the aggregate root path."""
+        """Return whether a project scope shares the aggregate root path.
+
+        ``root_scope`` is ``None`` whenever the root does not participate as
+        a docs output scope (e.g. conform's DECLARED scope); no scope can be
+        collocated with an absent root.
+        """
         return (
-            root_scope.name == c.Infra.RK_ROOT
+            root_scope is not None
             and scope.name != c.Infra.RK_ROOT
             and scope.path == root_scope.path
         )
@@ -76,23 +81,37 @@ class FlextInfraDocGeneratorBundleMixin:
         sources = u.Infra.required_file_states(source_paths.value)
         if sources.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(sources)
-        selected = u.Infra.build_scopes(repository_root, request.projects, output_dir)
+        selected = u.Infra.build_scopes(
+            repository_root,
+            request.projects,
+            output_dir,
+            include_root=request.include_root,
+        )
         if selected.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(selected)
         selected_targets = cls._validate_scope_targets(selected.value, output_dir)
         if selected_targets.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(selected_targets)
-        aggregate = u.Infra.build_scopes(repository_root, None, output_dir)
+        # Why (X-47): the aggregate inventory always includes root (independent
+        # of `request.include_root`) because `docs_root_artifacts` needs the
+        # complete project catalog whenever the root scope IS rendered; it is
+        # simply unused when `selected` excludes root.
+        aggregate = u.Infra.build_scopes(
+            repository_root, None, output_dir, include_root=True
+        )
         if aggregate.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(aggregate)
         aggregate_targets = cls._validate_scope_targets(aggregate.value, output_dir)
         if aggregate_targets.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(aggregate_targets)
+        root_scope: m.Infra.DocScope | None = (
+            selected.value[0]
+            if selected.value and selected.value[0].name == c.Infra.RK_ROOT
+            else None
+        )
         rendered: list[_DocsScopeArtifacts] = []
         for scope in selected.value:
-            if cls._is_collocated_workspace_project(
-                scope, root_scope=selected.value[0]
-            ):
+            if cls._is_collocated_workspace_project(scope, root_scope=root_scope):
                 rendered.append((scope, ()))
                 continue
             artifacts = u.Infra.docs_scope_artifacts(
@@ -150,7 +169,9 @@ class FlextInfraDocGeneratorBundleMixin:
             return r[m.Infra.DocsGenerationBundle].from_failure(stable)
         try:
             bundle = m.Infra.DocsGenerationBundle(
-                scopes=tuple(normalized_scopes), source_states=sources.value
+                scopes=tuple(normalized_scopes),
+                source_states=sources.value,
+                repository_root=repository_root,
             )
         except c.ValidationError as exc:
             return r[m.Infra.DocsGenerationBundle].fail_op(

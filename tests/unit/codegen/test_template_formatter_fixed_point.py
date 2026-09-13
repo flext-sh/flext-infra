@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
-from flext_infra import m, u
+from ... import m, tm, u
 
 _TEMPLATES = (
     Path(__file__).resolve().parents[3]
@@ -36,9 +34,7 @@ class TestsTemplateFormatterFixedPoint:
                 ),
             )
         )
-        repository = m.Infra.RepositoryRef.model_construct(
-            package=True, path=Path("member")
-        )
+        repository = u.Tests.repository_ref("member", path=Path("member"))
         populated = tm.ok(
             u.Cli.template_render(
                 _TEMPLATES / ".github/dependabot.yml.j2",
