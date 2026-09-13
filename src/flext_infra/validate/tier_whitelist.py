@@ -19,6 +19,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shutil
+import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -45,7 +47,7 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
     _VIOLATION_KIND: ClassVar[str] = "abstraction-boundary"
     _SCAN_KIND: ClassVar[str] = "tier-whitelist"
 
-    _submodule_cache: dict[Path, frozenset[Path]] = {}
+    _submodule_cache: ClassVar[dict[Path, frozenset[Path]]] = {}
 
     @classmethod
     def _submodule_dirs(cls, repository_root: Path) -> frozenset[Path]:
@@ -53,15 +55,21 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
         cached = cls._submodule_cache.get(repository_root)
         if cached is not None:
             return cached
-        import subprocess
+
+        git_path = shutil.which("git")
+        if not git_path:
+            dirs = frozenset()
+            cls._submodule_cache[repository_root] = dirs
+            return dirs
 
         try:
             result = subprocess.run(
-                ["git", "submodule", "foreach", "--quiet", "echo $name"],
+                [git_path, "submodule", "foreach", "--quiet", "echo $name"],
                 capture_output=True,
                 text=True,
                 cwd=repository_root,
                 timeout=30,
+                check=False,
             )
             if result.returncode == 0:
                 names = [
@@ -72,7 +80,7 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
                 dirs = frozenset(repository_root / name for name in names)
                 cls._submodule_cache[repository_root] = dirs
                 return dirs
-        except Exception:
+        except OSError:
             pass
         dirs = frozenset()
         cls._submodule_cache[repository_root] = dirs
