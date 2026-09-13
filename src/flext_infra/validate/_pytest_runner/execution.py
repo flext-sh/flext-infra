@@ -115,7 +115,6 @@ class FlextInfraPytestRunnerExecution(
             diagnostics.failed_count,
             diagnostics.error_count,
             diagnostics.warning_count,
-            diagnostics.skipped_count,
         ))
         final_exit = 1 if rejected else 0
         external_gates = ",".join(

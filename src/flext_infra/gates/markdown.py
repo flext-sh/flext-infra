@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
@@ -80,6 +81,21 @@ class FlextInfraMarkdownGate(FlextInfraGate):
             str(path.relative_to(project_dir))
             for path in self._collect_markdown_files(project_dir)
         ]
+
+    @override
+    def check(
+        self, project_dir: Path, ctx: m.Infra.GateContext
+    ) -> m.Infra.GateExecution:
+        """Run rumdl only when markdown files exist; neutral-skip when empty."""
+        started = time.monotonic()
+        check_dirs = self._get_check_dirs(project_dir, ctx)
+        if not check_dirs:
+            return self._neutral_skip_result(
+                project_dir,
+                started,
+                message=f"{self.gate_id}: no markdown files to check",
+            )
+        return self._execute_check_command(project_dir, ctx, check_dirs, started)
 
     @override
     def _build_check_command(

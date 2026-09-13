@@ -78,10 +78,14 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
         has_child_projects = any(
             project.path.resolve() != resolved_root for project in discovered
         )
+        has_workspace_topology = (
+            resolved_root / c.Infra.BEADS_OVERRIDE_RELPATH
+        ).is_file()
         if (
             (resolved_root / c.Infra.PYPROJECT_FILENAME).is_file()
             and not has_declared_members
             and not has_child_projects
+            and not has_workspace_topology
             and is_enabled
         ):
             return (

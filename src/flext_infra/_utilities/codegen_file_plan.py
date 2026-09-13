@@ -1,4 +1,8 @@
-"""Generated-file plan decisions exposed through ``u.Infra``."""
+"""Generated-file plan decisions exposed through ``u.Infra``.
+
+Copyright (c) 2026 Datacosmos. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -106,12 +110,11 @@ class FlextInfraUtilitiesCodegenFilePlan:
         desired_content: bytes | None,
         desired_mode: int | None,
     ) -> bool:
-        """Whether desired content or mode differs from an observed leaf state.
+        """Compare the owner's exact bytes, absence marker, and permission bits.
 
-        Observed states are read binary (``bytes``) while some plan builders
-        hand over rendered text (``str``); representations of the same content
-        must not report drift, so both sides are reconciled to text before the
-        comparison while real content differences still fail loud.
+        Both content fields are binary contracts. Decoding with replacement
+        would hide distinct invalid UTF-8 bytes; treating None as empty bytes
+        would erase the distinction between an absent and an empty file.
         """
         before_text = (before.content or b"").decode("utf-8", errors="replace")
         desired_text = (desired_content or b"").decode("utf-8", errors="replace")
@@ -132,24 +135,27 @@ class FlextInfraUtilitiesCodegenFilePlan:
     def codegen_file_drift_report(
         plans: t.SequenceOf[m.Infra.CodegenFilePlan], *, limit: int = 40
     ) -> str:
-        """Bounded unified diff per drifted plan, for fail-loud drift diagnosis.
+        """Report a bounded byte-exact diff, including line endings and presence.
 
-        The committed (before) side is compared against the rendered
-        (desired) side so a red gate names the exact delta instead of a bare
-        path list; mode-only drift is stated explicitly.
+        Escaped byte lines preserve CRLF, missing final newlines, and non-UTF-8
+        content. Only equal bytes with different modes are mode-only drift.
         """
+        if limit <= 0:
+            msg = "codegen drift report limit must be positive"
+            raise ValueError(msg)
         parts: list[str] = []
         for plan in plans:
             if isinstance(plan.before, cli_m.Cli.AtomicDirectoryChainPlan):
                 parts.append(f"{plan.path}: absent parent chain gains content")
                 continue
             raw_before = plan.before.content
-            old_text = (
-                raw_before
-                if isinstance(raw_before, str)
-                else (raw_before or b"").decode("utf-8", errors="replace")
+            old_lines = tuple(
+                repr(line) for line in (raw_before or b"").splitlines(keepends=True)
             )
-            new_text = (plan.desired_content or b"").decode("utf-8", errors="replace")
+            new_lines = tuple(
+                repr(line)
+                for line in (plan.desired_content or b"").splitlines(keepends=True)
+            )
             committed_mode = (
                 oct(plan.before.mode) if plan.before.mode is not None else "absent"
             )
@@ -161,12 +167,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
                 f"\n+++ {plan.path} (rendered mode={rendered_mode})"
             )
             diff = tuple(
-                islice(
-                    difflib.unified_diff(
-                        old_text.splitlines(), new_text.splitlines(), lineterm=""
-                    ),
-                    limit,
-                )
+                islice(difflib.unified_diff(old_lines, new_lines, lineterm=""), limit)
             )
             if diff:
                 parts.append("\n".join((header, *diff)))
