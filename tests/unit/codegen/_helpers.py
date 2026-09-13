@@ -22,14 +22,6 @@ def _conformed_root(tmp_path: Path) -> Path:
         database="fixture-database",
         issue_prefix="fixture-prefix",
     )
-    pyproject = root / c.Infra.PYPROJECT_FILENAME
-    pyproject.write_text(
-        pyproject.read_text(encoding="utf-8").replace(
-            "\n[project.urls]",
-            '\ndescription = "Fixture governed project"\n\n[project.urls]',
-        ),
-        encoding="utf-8",
-    )
     u.Tests.commit_git_changes(root, "Declare project identity")
     tm.ok(
         FlextInfraCodegenConform.execute_request(

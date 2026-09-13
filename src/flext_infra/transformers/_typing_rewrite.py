@@ -26,6 +26,9 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
     _CONTAINER_REWRITES: ClassVar[t.StrPairTuple] = (
         ("MutableMapping[", "t.MappingKV"),
         ("Dict[", "t.MappingKV"),
+        # Why (flext-6x6jr): the built-in ``dict[`` is the same contract as
+        # ``Dict[``; NS-CONTRACT maps dict[K, V] -> t.MappingKV[K, V].
+        ("dict[", "t.MappingKV"),
         ("list[", "t.SequenceOf"),
         ("List[", "t.SequenceOf"),
     )

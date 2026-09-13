@@ -85,21 +85,20 @@ class TestsFlextInfraUtilityFacadeProjection:
             u.Infra.render_utility_facade(package)
         tm.that(facade.read_text(), eq=original)
 
-    @pytest.mark.parametrize("present", ["_utilities", "utilities.py"])
-    def test_rejects_incomplete_utility_artifact_pair(
-        self, tmp_path: Path, present: str
-    ) -> None:
-        """Reject either half of the semantic-consumer/facade contract."""
+    def test_rejects_owners_without_a_public_facade(self, tmp_path: Path) -> None:
+        """Utility owners without a facade have no public surface at all."""
         package = tmp_path / "src" / "flext_sample"
-        path = (
-            package / present / "owner.py"
-            if present == "_utilities"
-            else package / present
-        )
-        self._write(path, "class Owner:\n    pass\n")
+        self._write(package / "_utilities" / "owner.py", "class Owner:\n    pass\n")
 
-        with pytest.raises(ValueError, match="incomplete utility facade artifacts"):
+        with pytest.raises(ValueError, match="have no public facade"):
             u.Infra.render_utility_facade(package)
+
+    def test_facade_without_local_owners_is_complete(self, tmp_path: Path) -> None:
+        """A pure re-export facade with no owners directory needs no projection."""
+        package = tmp_path / "src" / "flext_sample"
+        self._write(package / "utilities.py", "class Owner:\n    pass\n")
+
+        tm.that(u.Infra.render_utility_facade(package), eq=None)
 
     def test_rejects_unsupported_facade_base_expression(self, tmp_path: Path) -> None:
         """Reject dynamic bases instead of converting them to an empty owner."""

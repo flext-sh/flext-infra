@@ -27,8 +27,10 @@ class TestsCiIntegrationBranchTriggers:
             dist="mcb",
             make_profile=c.Infra.MakeProfile.STANDALONE,
             repository_branch=repository_branch,
+            # The repository's own integration branch joins the SSOT baselines;
+            # no positional or named assumption about the baseline contents.
             ci_trigger_branches=tuple(
-                dict.fromkeys((*cls.baseline_branches[:-1], repository_branch, "main"))
+                dict.fromkeys((*cls.baseline_branches, repository_branch))
             ),
         )
         return tm.ok(u.Cli.template_render(cls.ci_template, spec))

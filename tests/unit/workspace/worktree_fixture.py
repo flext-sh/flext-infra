@@ -121,8 +121,12 @@ class WorktreeFixture:
         root.mkdir(parents=True, exist_ok=True)
         pyproject = root / "pyproject.toml"
         repository_url = WorktreeFixture.governed_repository_url(distribution)
+        # A governed project always declares its description: the derived
+        # render identity reads it and rejects an empty one, exactly as it
+        # does for a real checkout.
         pyproject.write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
+            f'description = "{distribution} governed fixture"\n'
             'requires-python = ">=3.13,<3.14"\n'
             f'[project.urls]\nRepository = "{repository_url}"\n',
             encoding="utf-8",

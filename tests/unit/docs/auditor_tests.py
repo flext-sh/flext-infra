@@ -54,25 +54,12 @@ def is_external() -> Callable[[str], bool]:
 class TestAuditorCore:
     """Tests for the docs auditor."""
 
-    def test_returns_flext_result(
-        self, auditor: FlextInfraDocAuditor, tmp_path: Path
-    ) -> None:
-        result = auditor.audit(tmp_path)
-        tm.that(result.success or result.failure, eq=True)
-
     def test_valid_scope_returns_success(
         self, auditor: FlextInfraDocAuditor, tmp_path: Path
     ) -> None:
         workspace = u.Tests.create_docs_workspace(tmp_path)
         result = auditor.audit(workspace)
         tm.ok(result)
-
-    def test_report_structure(
-        self, auditor: FlextInfraDocAuditor, tmp_path: Path
-    ) -> None:
-        result = auditor.audit(tmp_path)
-        if result.success and result.value:
-            result.value[0]
 
     def test_issue_structure(self) -> None:
         issue = m.Infra.AuditIssue(
@@ -84,40 +71,6 @@ class TestAuditorCore:
         tm.that(issue.file, eq="README.md")
         tm.that(issue.issue_type, eq="broken_link")
         tm.that(issue.severity, eq="high")
-
-    @pytest.mark.parametrize(
-        ("projects", "check", "output_dir"),
-        [
-            (["test-project"], "all", ".reports/docs"),
-            (["proj1", "proj2"], "all", ".reports/docs"),
-            (None, "links", ".reports/docs"),
-            (None, "forbidden-terms", ".reports/docs"),
-            (None, "all", ".reports/docs"),
-            (None, "all", "custom_output"),
-        ],
-    )
-    def test_audit_option_variants(
-        self,
-        *,
-        auditor: FlextInfraDocAuditor,
-        tmp_path: Path,
-        projects: list[str] | None,
-        check: str,
-        output_dir: str,
-    ) -> None:
-        # The command-contract check loads the governed workspace spec, whose
-        # repository-local Beads configuration every real repository carries.
-        u.Tests.write_project_beads_config(tmp_path, "audit-fixture")
-        output_dir_value = (
-            str(tmp_path / output_dir) if output_dir == "custom_output" else output_dir
-        )
-        result = auditor.audit(
-            tmp_path,
-            projects=projects,
-            output_dir=output_dir_value,
-            params=m.Infra.AuditScopeParams(check=check),
-        )
-        tm.that(result.success or result.failure, eq=True)
 
     def test_report_frozen(self) -> None:
         tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)

@@ -177,6 +177,7 @@ class TestsAncestryNetworkBoundary:
             u.Cli.atomic_write_text_file(
                 root / "pyproject.toml",
                 f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
+                f'description = "{dist} governed fixture"\n'
                 'requires-python = ">=3.13,<3.14"\n',
             )
         )

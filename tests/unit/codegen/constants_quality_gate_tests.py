@@ -105,6 +105,7 @@ class TestConstantsQualityGateVerdict:
                     "typings.py": '"""Empty typing fixture."""\n',
                 },
             )
+        u.Tests.declare_workspace_projects(tmp_path, ("flext-cli", "flext-core"))
         gate = FlextInfraCodegenQualityGate(repository_root=tmp_path)
         report_result = gate.build_report()
         tm.ok(report_result)

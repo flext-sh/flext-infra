@@ -18,17 +18,13 @@ class FlextInfraModelsCheck:
     class RunCommand(mm.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra check run``.
 
-        Inherits canonical ``gates`` (parsed to ``t.StrSequence``),
-        ``apply``/``dry_run``, ``projects``, ``fail_fast``, ``verbose`` from
-        ``WriteMixin`` and redeclares the scope root as ``workspace`` — the
-        option name this verb's generated CLI contract uses.
+        Inherits canonical ``repository_root`` (``--repository-root``),
+        ``gates`` (parsed to ``t.StrSequence``), ``apply``/``dry_run``,
+        ``projects``, ``fail_fast``, ``verbose`` from ``WriteMixin``; the scope
+        root has exactly one owner so an unmapped option can never fall back
+        to the current directory.
         """
 
-        workspace: Annotated[
-            Path,
-            m.BeforeValidator(lambda value: Path(value).resolve()),
-            m.Field(description="Repository root"),
-        ] = Path()
         reports_dir: Annotated[
             str,
             m.Field(
@@ -67,7 +63,7 @@ class FlextInfraModelsCheck:
     class CheckProjectTarget(m.ArbitraryTypesModel):
         """Resolved project target for workspace gate execution."""
 
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             frozen=True, validate_default=False
         )
 
@@ -84,7 +80,7 @@ class FlextInfraModelsCheck:
     class MypyResourceLimit(m.ContractModel):
         """Validated memory and wall-time limits for every Mypy process."""
 
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         memory_limit_mb: Annotated[
             int,
@@ -339,7 +335,7 @@ class FlextInfraModelsCheck:
     class SarifReport(m.ArbitraryTypesModel):
         """Complete SARIF 2.1.0 report."""
 
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
         schema_uri: c.Infra.SarifSchema = m.Field(
             c.Infra.SarifSchema.V2_1_0,

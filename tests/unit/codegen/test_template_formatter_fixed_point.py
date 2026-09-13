@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
-from flext_infra import m, u
+from ... import m, tm, u
 
 _TEMPLATES = (
     Path(__file__).resolve().parents[3]

@@ -9,6 +9,7 @@ from fnmatch import fnmatchcase
 from pathlib import Path
 
 from flext_cli import u
+from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Repo
 
 from flext_core import r
 from flext_infra import c, config, m, p, t
@@ -199,11 +200,91 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         )
 
     @classmethod
+    def load_committed_project_managed_artifacts(
+        cls, project_dir: Path
+    ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
+        """Load ManagedArtifacts from the project's committed ``HEAD`` catalog.
+
+        Render inputs are ``f(SSOT, templates, PINS)``. A worktree can carry
+        concurrent WIP, so codegen renders project overlays only from the
+        immutable commit catalog; uncommitted declarations never enter a
+        projection.
+        """
+        snapshot = cls.snapshot_committed_project_managed_artifacts(project_dir)
+        if snapshot.failure:
+            return r[m.Infra.ProjectManagedArtifactsResolution].from_failure(snapshot)
+        return r[m.Infra.ProjectManagedArtifactsResolution].ok(
+            snapshot.value.resolution
+        )
+
+    @classmethod
+    def snapshot_committed_project_managed_artifacts(
+        cls, project_dir: Path
+    ) -> p.Result[m.Infra.ProjectManagedArtifactsSnapshot]:
+        """Capture and parse the committed catalog without physical source states.
+
+        ``sources`` stays empty because Git objects are already immutable: they
+        must not enter the transaction's live-file source barrier, and their
+        object identity makes a physical re-read meaningless.
+        """
+        resolved = project_dir.expanduser().resolve()
+        try:
+            repo = Repo(resolved, search_parent_directories=True)
+            config_tree = repo.head.commit.tree / c.CONFIG_DIR_NAME
+        except KeyError:
+            return r[m.Infra.ProjectManagedArtifactsSnapshot].ok(cls.empty_snapshot())
+        except (
+            GitCommandError,
+            InvalidGitRepositoryError,
+            NoSuchPathError,
+            OSError,
+            ValueError,
+        ) as exc:
+            return r[m.Infra.ProjectManagedArtifactsSnapshot].fail(
+                f"cannot open committed project config catalog at {resolved}: {exc}",
+                exception=exc,
+            )
+        payloads: dict[Path, bytes] = {}
+        try:
+            for blob in sorted(config_tree.blobs, key=lambda entry: entry.name):
+                if blob.name.endswith(".yaml"):
+                    payloads[resolved / c.CONFIG_DIR_NAME / blob.name] = (
+                        blob.data_stream.read()
+                    )
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.ProjectManagedArtifactsSnapshot].fail_op(
+                f"read committed project config sources {resolved / c.CONFIG_DIR_NAME}",
+                exc,
+            )
+        resolution = cls._load_project_managed_artifacts_from_payloads(payloads)
+        if resolution.failure:
+            return r[m.Infra.ProjectManagedArtifactsSnapshot].from_failure(resolution)
+        return r[m.Infra.ProjectManagedArtifactsSnapshot].ok(
+            m.Infra.ProjectManagedArtifactsSnapshot(
+                sources=(), resolution=resolution.value
+            )
+        )
+
+    @classmethod
     def load_project_managed_artifacts_from_snapshot(
         cls, source_snapshot: t.VariadicTuple[m.Cli.AtomicFileState]
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Parse one caller-owned immutable project YAML snapshot."""
-        if not source_snapshot:
+        payloads: dict[Path, bytes] = {}
+        for source_state in source_snapshot:
+            if source_state.content is None:
+                return r[m.Infra.ProjectManagedArtifactsResolution].fail(
+                    f"project config snapshot is absent: {source_state.path}"
+                )
+            payloads[source_state.path] = source_state.content
+        return cls._load_project_managed_artifacts_from_payloads(payloads)
+
+    @classmethod
+    def _load_project_managed_artifacts_from_payloads(
+        cls, payloads: dict[Path, bytes]
+    ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
+        """Parse one immutable path-to-bytes project YAML catalog."""
+        if not payloads:
             return r[m.Infra.ProjectManagedArtifactsResolution].ok(
                 cls.empty_snapshot().resolution
             )
@@ -212,14 +293,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         mise_sources: MutableMapping[str, Path] = {}
         gitignore_patterns: list[str] = []
 
-        for source_state in source_snapshot:
-            source = source_state.path
-            if source_state.content is None:
-                return r[m.Infra.ProjectManagedArtifactsResolution].fail(
-                    f"project config snapshot is absent: {source}"
-                )
+        for source, content in sorted(payloads.items()):
             try:
-                source_text = source_state.content.decode(c.Cli.ENCODING_DEFAULT)
+                source_text = content.decode(c.Cli.ENCODING_DEFAULT)
             except UnicodeDecodeError as exc:
                 return r[m.Infra.ProjectManagedArtifactsResolution].fail_op(
                     f"decode project config source {source}", exc
@@ -284,12 +360,19 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         resolved = cls.load_project_managed_artifacts_from_snapshot(source_snapshot)
         if resolved.failure:
             return r[str].from_failure(resolved)
-        local_tools = resolved.value.artifacts.Mise.tools
+        return cls.compose_mise_toml_from_resolution(resolved.value, rendered)
+
+    @classmethod
+    def compose_mise_toml_from_resolution(
+        cls, resolution: m.Infra.ProjectManagedArtifactsResolution, rendered: str
+    ) -> p.Result[str]:
+        """Add local tools from one caller-owned immutable parsed catalog."""
+        local_tools = resolution.artifacts.Mise.tools
         if not local_tools:
             return r[str].ok(rendered)
         for selector in local_tools:
             selector_validation = cls.validate_mise_tool_selectors(
-                (selector,), source=resolved.value.mise_tool_sources[selector]
+                (selector,), source=resolution.mise_tool_sources[selector]
             )
             if selector_validation.failure:
                 return r[str].from_failure(selector_validation)
@@ -299,7 +382,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         tools = u.Cli.toml_ensure_table(doc, "tools")
         for selector, tool in local_tools.items():
             if selector in tools:
-                source = resolved.value.mise_tool_sources[selector]
+                source = resolution.mise_tool_sources[selector]
                 return r[str].fail(
                     "project Mise selector collides with fleet tool "
                     f"{selector!r}: global .mise.toml template and {source}"

@@ -171,8 +171,13 @@ def test_run_streams_stdout_and_stderr_before_child_completion(tmp_path: Path) -
             os.waitpid(pid, 0)
 
 
+@pytest.mark.slow
 def test_run_returns_exact_nonzero_exit_status(tmp_path: Path) -> None:
-    """Return the child's raw nonzero code without normalization."""
+    """Return the child's raw nonzero code without normalization.
+
+    A cold interpreter importing flext_infra is the declared slow class
+    (see ``_BARRIER_TIMEOUT``), the same budget its sibling probes use.
+    """
     command = _write_command(tmp_path, f"raise SystemExit({_NONZERO_EXIT})\n")
     exit_code = _wait_status(_spawn_probe(command, env=_probe_env()))
     if exit_code != _NONZERO_EXIT:

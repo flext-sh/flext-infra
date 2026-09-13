@@ -30,34 +30,6 @@ from flext_infra.typings import t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
-def resolve_gate_budgets(
-    configured_budgets: Mapping[str, m.Infra.ProjectGateBudgetSpec],
-) -> p.Result[Mapping[str, Mapping[str, int]]]:
-    """Project config budget rows; registry divergence fails loud.
-
-    The budget gate requires one row per registry gate; the config SSOT is
-    the single budget owner and a missing or unknown gate id is a declared
-    generation error, never a silent skip.
-    """
-    allowed_gates = c.Infra.ALLOWED_GATES
-    missing_budget_rows = sorted(allowed_gates - configured_budgets.keys())
-    unknown_budget_rows = sorted(configured_budgets.keys() - allowed_gates)
-    if missing_budget_rows or unknown_budget_rows:
-        return r[Mapping[str, Mapping[str, int]]].fail(
-            "budget configuration diverges from the gate registry: "
-            f"missing rows={missing_budget_rows}; "
-            f"unknown rows={unknown_budget_rows}"
-        )
-    return r[Mapping[str, Mapping[str, int]]].ok({
-        gate_id: {
-            "time-seconds": configured_budgets[gate_id].time_seconds,
-            "memory-mb": configured_budgets[gate_id].memory_mb,
-            "tokens": configured_budgets[gate_id].tokens,
-        }
-        for gate_id in sorted(configured_budgets)
-    })
-
-
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
 
@@ -614,6 +586,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if planned.failure:
             return r[m.Infra.CodegenResult].from_failure(planned)
         plan = planned.value
+        # Why (X-47): DECLARED scope excludes the workspace root repository
+        # from `plan.repositories`; docs generation must not render the root
+        # as an output scope either, or its report_dir escapes the transaction
+        # layout that already excludes root for that same scope. Root guides
+        # remain readable sources for members regardless of this flag.
+        docs_include_root = any(
+            repository.name == plan.workspace.repository.name
+            for repository in plan.repositories
+        )
         ancestry = self._validate_ancestry(plan)
         if ancestry.failure:
             return r[m.Infra.CodegenResult].from_failure(ancestry)
@@ -656,6 +637,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             docs_generator = FlextInfraDocGenerator(
                 repository_root=request.root,
                 projects=tuple(repository.name for repository in plan.repositories),
+                include_root=docs_include_root,
             )
             docs_bundle = docs_generator.prepare_bundle()
             if docs_bundle.failure:
@@ -694,6 +676,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         docs_generator = FlextInfraDocGenerator(
             repository_root=request.root,
             projects=tuple(repository.name for repository in plan.repositories),
+            include_root=docs_include_root,
         )
         docs_bundle = docs_generator.prepare_bundle()
         if docs_bundle.failure:
@@ -864,8 +847,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if residual:
             paths = ", ".join(str(file.path) for file in residual)
+            drift = u.Infra.codegen_file_drift_report(residual)
             return r[bool].fail(
-                f"codegen publication did not reach a fixed point: {paths}"
+                f"codegen publication did not reach a fixed point: {paths}\n{drift}"
             )
         u.Cli.info("stage=verify-lazy-init-receipt")
         lazy_fixed_point = transaction.validate_phase_analysis_locked(lazy_analysis)
@@ -1606,6 +1590,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             tooling_runtime=tooling_result.value,
             repository_root=pyproject.parent,
             managed_artifacts=managed_artifacts.resolution,
+            use_committed_artifacts=False,
         )
         if context_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(context_result)
@@ -1746,7 +1731,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 "PEP 621 project name does not match catalog distribution: "
                 f"{dist} != {repository.distribution}"
             )
-        managed_artifacts = u.Infra.snapshot_project_managed_artifacts(root)
+        managed_artifacts = u.Infra.snapshot_committed_project_managed_artifacts(root)
         if managed_artifacts.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
                 managed_artifacts
@@ -2049,18 +2034,29 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         resolved_artifacts = managed_artifacts
         if resolved_artifacts is None:
-            snapshot = u.Infra.snapshot_project_managed_artifacts(repository_root)
+            snapshot = u.Infra.snapshot_committed_project_managed_artifacts(
+                repository_root
+            )
             if snapshot.failure:
                 return r[m.Infra.CodegenArtifactComposition].from_failure(snapshot)
             resolved_artifacts = snapshot.value
-        composed = u.Infra.compose_mise_toml_from_snapshot(
-            resolved_artifacts.sources, rendered
+        composed = (
+            u.Infra.compose_mise_toml_from_snapshot(
+                resolved_artifacts.sources, rendered
+            )
+            if resolved_artifacts.sources
+            else u.Infra.compose_mise_toml_from_resolution(
+                resolved_artifacts.resolution, rendered
+            )
         )
         if composed.failure:
             return r[m.Infra.CodegenArtifactComposition].from_failure(composed)
+        config_sources = u.Infra.snapshot_config_sources(repository_root)
+        if config_sources.failure:
+            return r[m.Infra.CodegenArtifactComposition].from_failure(config_sources)
         return r[m.Infra.CodegenArtifactComposition].ok(
             m.Infra.CodegenArtifactComposition(
-                rendered=composed.value, source_states=resolved_artifacts.sources
+                rendered=composed.value, source_states=config_sources.value
             )
         )
 
@@ -2239,6 +2235,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.EnvrcRenderSpec(
                     state_directory_name=codegen.toolchain.state_directory_name,
                     scratch_namespace=codegen.toolchain.scratch_namespace,
+                    scratch_home_relative=codegen.toolchain.scratch_home_relative,
                     pycache_namespace=codegen.toolchain.pycache_namespace,
                     environment_path_prepends=(
                         codegen.toolchain.environment_path_prepends
@@ -2388,6 +2385,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     dist=dist,
                     state_directory_name=codegen.toolchain.state_directory_name,
                     scratch_namespace=codegen.toolchain.scratch_namespace,
+                    scratch_home_relative=codegen.toolchain.scratch_home_relative,
                     infra_cli=config.Infra.name,
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
@@ -2464,6 +2462,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             tooling_runtime=tooling_runtime,
             repository_root=repository_root,
             managed_artifacts=managed_artifacts,
+            use_committed_artifacts=project_context is None,
         )
         if context_result.failure:
             return r[p.Model].from_failure(context_result)
@@ -2648,6 +2647,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         repository_root: Path,
         managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
+        use_committed_artifacts: bool = True,
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed context consumed by project templates."""
         if workspace.project is None:
@@ -2684,7 +2684,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 homepage=f"{repository_provider.value.base_url.rstrip('/')}/",
                 documentation=f"{repository_provider.value.base_url.rstrip('/')}/",
                 repository_root_rel=".",
-                year=time.localtime().tm_year,
+                year=codegen.scaffold.project.copyright_year,
                 description=metadata.value.project.description,
             )
         else:
@@ -2776,8 +2776,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             for section in codegen.gitignore_sections
             if not section.profiles or profile in section.profiles
         ]
-        if managed_artifacts is not None:
-            project_patterns = managed_artifacts.artifacts.Gitignore.patterns
+        catalog_artifacts = managed_artifacts
+        if use_committed_artifacts:
+            committed = u.Infra.load_committed_project_managed_artifacts(
+                repository_root
+            )
+            if committed.failure:
+                return r[m.Infra.ProjectRenderContext].from_failure(committed)
+            catalog_artifacts = committed.value
+        if catalog_artifacts is not None:
+            project_patterns = catalog_artifacts.artifacts.Gitignore.patterns
             if project_patterns:
                 profile_gitignore_sections.append(
                     m.Infra.ScaffoldGitignoreSectionSpec(
@@ -2815,16 +2823,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 tooling=config.Infra.tooling,
                 # Why: the fleet policy alone is not the effective Ruff contract.
                 # A repository may carry an operator-authorized exemption in its
-                # own config/*.yaml ManagedArtifacts block, and ensure_ruff
-                # composes the two when it edits a pyproject in place. The
-                # template rendered only the fleet map, so a full render silently
-                # dropped the local overlay -- flext-infra's own _rope exemption
-                # disappeared on every conform and returned 12 SLF001 findings
-                # the operator had already ruled on. Compose here so both paths
-                # produce the same effective map.
+                # committed ``config/*.yaml`` ManagedArtifacts catalog, and
+                # ensure_ruff composes the two when it edits a pyproject in
+                # place. The template rendered only the fleet map, so a full
+                # render silently dropped the local overlay -- flext-infra's
+                # own _rope exemption disappeared on every conform and returned
+                # 12 SLF001 findings the operator had already ruled on. Compose
+                # from the commit catalog so both paths produce the same
+                # effective map and concurrent worktree WIP cannot change a
+                # projection.
                 ruff_per_file_ignores=(
                     FlextInfraEnsureRuffConfigPhase.compose_per_file_ignores(
-                        repository_root, managed_artifacts=managed_artifacts
+                        repository_root, managed_artifacts=catalog_artifacts
                     )
                 ),
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),

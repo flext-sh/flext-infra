@@ -38,6 +38,7 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
     Banned-lib set + per-library ownership are both derived from
     ``c.ENFORCEMENT_LIBRARY_OWNERS`` (flext-core SSOT): each banned library's
     owning project tree is the only place that library may be imported.
+    Declared member repositories are excluded by the shared boundary base.
     """
 
     _BANNED: ClassVar[frozenset[str]] = frozenset(c.ENFORCEMENT_LIBRARY_OWNERS)
@@ -102,7 +103,9 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
         return True
 
     @override
-    def _is_allowlisted(self, _file_path: Path, _module_name: str) -> bool:
+    def _is_allowlisted(
+        self, _file_path: Path, _module_name: str, *, repository_root: Path
+    ) -> bool:
         """Return True iff ``file_path`` owns ``module_name`` per OWNERS SSOT.
 
         Ownership comes directly from ``c.ENFORCEMENT_LIBRARY_OWNERS``
@@ -117,9 +120,10 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
         ``flext_core._settings.base`` docstring, and that base name only
         lives in ``pydantic_settings``.
         """
+        rooted = self._rooted_posix(_file_path, repository_root)
         if any(
             part in c.Infra.TIER_WHITELIST_NON_RUNTIME_DIR_PARTS
-            for part in _file_path.parts
+            for part in rooted.split("/")[:-1]
         ):
             return True
         top = self._top_module(_module_name)
@@ -135,8 +139,8 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
         # name: a lane worktree named ``flext-infra-<lane>`` is still the
         # ``flext-infra`` source tree, so dirname matching would be blind to
         # every governed worktree.
-        package_root = f"/src/{owner.replace('-', '_')}/"
-        return package_root in _file_path.as_posix()
+        package_root = f"/{c.Infra.DEFAULT_SRC_DIR}/{owner.replace('-', '_')}/"
+        return package_root in rooted
 
     @override
     def _format_violation(self, file_path: Path, module_name: str) -> str:

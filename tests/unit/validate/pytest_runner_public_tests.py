@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraPytestRunner, config, u
+from flext_infra import FlextInfraPytestRunner, c, config, u
 
 
 class TestsFlextInfraPytestRunner:
@@ -99,6 +99,56 @@ class TestsFlextInfraPytestRunner:
             second_summary,
             has=["executed=0", "deselected=1", "cache_restored=True", "exit=0"],
         )
+
+    @pytest.mark.slow
+    def test_external_gate_markers_are_not_executed_offline(
+        self, cached_runner_project: Path
+    ) -> None:
+        """An external-token gate is deselected, never a KeyError, and reported.
+
+        gate-budget/engineering-core: offline verification never runs a gate
+        whose environment only a direct invocation provides. The marker set is
+        the SSOT ``external-gate-markers``; every expectation derives from it.
+        """
+        pytest_policy = config.Infra.tooling.tools.pytest
+        markers = pytest_policy.external_gate_markers
+        cache = config.Infra.codegen.make.testmon_cache
+        marker_lines = "".join(
+            f'  "{marker}",\n' for marker in pytest_policy.standard_markers
+        )
+        (cached_runner_project / "pyproject.toml").write_text(
+            "[tool.pytest.ini_options]\n"
+            f'pythonpath = ["{c.Infra.DEFAULT_SRC_DIR}"]\n'
+            f"markers = [\n{marker_lines}]\n",
+            encoding="utf-8",
+        )
+        (cached_runner_project / cache.target_directory / "test_external.py").write_text(
+            "import os\n\nimport pytest\n\n\n"
+            f"@pytest.mark.{markers[0]}\n"
+            "def test_needs_external_environment() -> None:\n"
+            '    os.environ["RUNNER_SAMPLE_EXTERNAL_TOKEN"]\n',
+            encoding="utf-8",
+        )
+
+        exit_code = tm.ok(self._runner_for(cached_runner_project).execute())
+
+        tm.that(exit_code, eq=0)
+        reports_root = cached_runner_project / cache.reports_directory
+        latest_name = tm.ok(u.Cli.files_read_text(reports_root / "latest.txt")).strip()
+        tm.that(
+            self._summary(reports_root),
+            has=[
+                "executed=1",
+                f"not_executed_external_gates={','.join(markers)}",
+                "failed=0",
+                "errors=0",
+                "exit=0",
+            ],
+        )
+        command = tm.ok(
+            u.Cli.files_read_text(reports_root / latest_name / "command.txt")
+        )
+        tm.that(command, has=pytest_policy.external_gate_deselection)
 
     @pytest.mark.slow
     def test_coverage_verb_publishes_artifact_without_testmon(

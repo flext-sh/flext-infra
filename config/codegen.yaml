@@ -49,15 +49,16 @@ Infra:
       python_version: "3.13"
       state_directory_name: .flext-runtime
       scratch_namespace: scratch
+      # Scratch (TMPDIR, test basetemp, Mise bootstrap staging) never lives
+      # inside a versioned tree: in workspace mode the sibling state root sits
+      # under the superproject, so every sandbox became a tracked-scope of the
+      # enclosing repository. The scratch root is the platform home plus this
+      # path, mirroring the absolute checkout path below it (storage law).
+      scratch_home_relative: tmp
       pycache_namespace: pycache
       mise_namespace: mise-artifacts
       uv_link_mode: copy
       uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
-      # Complete tool catalog. The
-      # codegen model projects the closure of this list with the scaffold
-      # requirement owners derived from the build and dev tables; runtime
-      # dependency profiles never enter it.
-      additional_python_tool_distributions: [actionlint-py, bandit, deptry, flext-tests, hatchling, mypy, pip-audit, pre-commit, pyrefly, pyright, pytest, pytest-testmon, ruff, rumdl, vulture, yamlfix]
       # Global compatibility exceptions become [tool.uv] constraint-dependencies
       # in every project, including projects using the dependency transitively.
       # Keep reasons here; an empty list removes constraints from all projections.
@@ -364,10 +365,10 @@ Infra:
         block_threshold_percent: 80
         allowed_save_refs: [refs/heads/0.12.0-dev]
         key_prefix: testmon-v1
-      # Operator decision 2026-09-11: the APPLY write-enable flag is
-      # exterminated. Public verbs mutate by default with zero variables;
-      # read-only verification lives in dedicated verbs (check, conform
-      # --mode check).
+      # Operator decision 2026-09-12 (option A', supersedes 2026-09-11):
+      # public verbs still mutate by default with zero variables; APPLY=N is
+      # now the public selector for a verb's declared check_mode recipe (see
+      # verbs[].check_mode below) instead of a per-verb dedicated check verb.
       ci:
         variable: CI
         value: Y
@@ -426,8 +427,7 @@ Infra:
           - .benchmarks
           - .hypothesis
         root_dirs:
-          - .test-tmp
-          - .test-runtime
+          - .flext-runtime
           - build
           - dist
           - htmlcov
@@ -504,6 +504,7 @@ Infra:
           description: Provision the declared environment and hooks.
         - name: deps
           description: Upgrade, lock, and conform every declared dependency.
+          check_mode: true
         - name: build
           description: Build the project distribution artifacts.
         - name: check
@@ -512,16 +513,20 @@ Infra:
           description: Run the complete suite through the persistent testmon cache.
         - name: fmt
           description: Apply ruff format --preview and ruff check --fix --unsafe-fixes --preview. Ruff is the rule; change code, never ruff.
+          check_mode: true
         - name: fix
           description: Apply ruff check --fix --unsafe-fixes --preview plus every other configured safe correction. Ruff is the rule; change code, never ruff.
+          check_mode: true
         - name: fix-enforcement
           description: Apply the safe fix actions declared by the enforcement catalog.
+          check_mode: true
         - name: audit
           description: Inspect ownership, dependency, and generated-state health.
         - name: status
           description: Report the resolved runtime and repository state.
         - name: docs
           description: Generate, repair, build, and validate documentation.
+          check_mode: true
         - name: clean
           description: Remove every declared disposable artifact.
         - name: release-plan
@@ -536,12 +541,14 @@ Infra:
           description: Publish only receipt-attested release artifacts.
         - name: gen
           description: Regenerate every managed projection atomically.
+          check_mode: true
         - name: conform
           description: Prove generated projections are at their fixed point.
         - name: initialize
           description: Materialize the declared package initializer graph.
         - name: mod
           description: Apply the declared structural codemods.
+          check_mode: true
         - name: waza
           description: Validate provider-neutral governance semantics with Waza.
         - name: duplication
@@ -587,8 +594,7 @@ Infra:
       - {name: .omo}
       - {name: .pylance_cache, vscode_exclude: false}
       - {name: .pytest_cache, source_scan_ignore: true}
-      - {name: .test-tmp, source_scan_ignore: true}
-      - {name: .test-runtime, source_scan_ignore: true}
+      - {name: .flext-runtime, source_scan_ignore: true}
       - {name: .testmondata, is_dir: false, source_scan_ignore: true}
       - {name: .testmondata-wal, is_dir: false, source_scan_ignore: true}
       - {name: .testmondata-shm, is_dir: false, source_scan_ignore: true}

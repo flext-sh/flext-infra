@@ -218,15 +218,6 @@ class FlextInfraConstantsBase(
     "Workspace-relative release build constraints snapshot path."
     TRANSACTION_STATE_DIRNAME: Final[str] = ".state"
     "Root of regenerable codegen transaction state; never repository content."
-    RELEASE_BUILD_TOOLCHAIN_REQUIREMENTS: Final[frozenset[str]] = frozenset({
-        "hatchling",
-        "packaging",
-        "pathspec",
-        "pluggy",
-        "tomlkit",
-        "trove-classifiers",
-    })
-    "Complete registry package set required by the isolated Hatch build backend."
     RELEASE_GITLEAKS_CONFIG_PATH: Final[str] = "config/gitleaks-release.toml"
     "Workspace-relative trusted release secret-scan configuration."
     PYPI_SIMPLE_INDEX_URL: Final[str] = "https://pypi.org/simple"

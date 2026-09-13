@@ -87,7 +87,9 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
         bundle: m.Infra.DocsGenerationBundle,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Snapshot targets from the canonical rendered artifact inventory."""
-        repository_root = bundle.scopes[0].scope.path
+        # The physical repository root is carried by the bundle: the first output
+        # scope is a member when the root is excluded from the render.
+        repository_root = bundle.repository_root
         scope_roots = tuple(scoped.scope.path for scoped in bundle.scopes)
         stable = FlextInfraUtilitiesDocsGeneratePlanMixin.docs_verify_sources(
             repository_root, bundle.source_states, extra_roots=scope_roots

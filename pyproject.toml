@@ -435,7 +435,6 @@ testpaths = ["tests"]
 exclude = [
   "**/.archive/**",
   "**/__pyrefly_virtual__/**",
-  "**/aihub-hooks/**",
   ".archive",
   ".archive/**",
   ".git",
@@ -600,8 +599,8 @@ cc_min = "B"
 mi_min = "B"
 
 [tool.flext.docs]
-project_class = "infra"
-site_title = "FLEXT Infra"
+package_name = "flext_infra"
+
 
 
 [tool.flext.project.budget.boundary]

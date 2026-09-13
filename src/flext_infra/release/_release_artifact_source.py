@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-import hashlib
 import tarfile
 from typing import TYPE_CHECKING
 
-from packaging.requirements import InvalidRequirement, Requirement
-from packaging.utils import canonicalize_name
-
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, m, u
 
 from ._release_artifact_metadata import FlextInfraReleaseArtifactMetadataMixin
 
@@ -22,94 +18,6 @@ if TYPE_CHECKING:
 
 class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixin):
     """Prepare immutable source snapshots under trusted release policies."""
-
-    @staticmethod
-    def _constraint_records(content: str) -> p.Result[t.StrSequence]:
-        """Parse logical requirement records from a hashed constraint file."""
-        records: t.MutableSequenceOf[str] = []
-        current: t.MutableSequenceOf[str] = []
-        for raw_line in content.splitlines():
-            line = raw_line.strip()
-            if not line or line.startswith("#"):
-                continue
-            continued = line.endswith("\\")
-            current.append(line.removesuffix("\\").strip())
-            if not continued:
-                records.append(" ".join(current))
-                current = []
-        if current:
-            return r[t.StrSequence].fail(
-                "release build constraints end with a continuation"
-            )
-        if not records:
-            return r[t.StrSequence].fail("release build constraints are empty")
-        return r[t.StrSequence].ok(tuple(records))
-
-    @staticmethod
-    def _constraint_name(record: str) -> p.Result[str]:
-        """Validate one exact hashed registry pin and return its canonical name."""
-        tokens = record.split()
-        try:
-            requirement = Requirement(tokens[0])
-        except (IndexError, InvalidRequirement) as exc:
-            return r[str].fail(
-                f"parse release build constraint failed: {exc}", exception=exc
-            )
-        specifiers = tuple(requirement.specifier)
-        if (
-            requirement.url is not None
-            or requirement.extras
-            or requirement.marker is not None
-            or len(specifiers) != 1
-            or specifiers[0].operator != "=="
-        ):
-            return r[str].fail(
-                f"release build constraint is not one exact registry pin: {record}"
-            )
-        hashes = tuple(
-            token.removeprefix("--hash=sha256:")
-            for token in tokens[1:]
-            if token.startswith("--hash=sha256:")
-        )
-        if len(hashes) != len(tokens) - 1 or not hashes:
-            return r[str].fail(
-                f"release build constraint lacks only SHA-256 hashes: {record}"
-            )
-        if any(
-            len(digest) != hashlib.sha256().digest_size * 2
-            or any(character not in "0123456789abcdef" for character in digest)
-            for digest in hashes
-        ):
-            return r[str].fail(
-                f"release build constraint has invalid SHA-256: {record}"
-            )
-        return r[str].ok(canonicalize_name(requirement.name))
-
-    @classmethod
-    def _validate_build_constraints(cls, content: str) -> p.Result[bool]:
-        """Validate the complete exact and hashed build toolchain lock."""
-        records_result = cls._constraint_records(content)
-        if records_result.failure:
-            return r[bool].from_failure(records_result)
-        names: t.Infra.StrSet = set()
-        for record in records_result.value:
-            name_result = cls._constraint_name(record)
-            if name_result.failure:
-                return r[bool].from_failure(name_result)
-            name = name_result.value
-            if name in names:
-                return r[bool].fail(f"duplicate release build constraint: {name}")
-            names.add(name)
-        expected = c.Infra.RELEASE_BUILD_TOOLCHAIN_REQUIREMENTS
-        actual = frozenset(names)
-        if actual != expected:
-            missing = ", ".join(sorted(expected - actual)) or "none"
-            unexpected = ", ".join(sorted(actual - expected)) or "none"
-            return r[bool].fail(
-                f"release build toolchain mismatch: missing={missing}; "
-                f"unexpected={unexpected}"
-            )
-        return r[bool].ok(True)
 
     @staticmethod
     def _scan_staged_source(

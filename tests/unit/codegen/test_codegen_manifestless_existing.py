@@ -57,19 +57,14 @@ class TestCodegenManifestlessExisting:
         tm.that(derived.repository.distribution, eq=repository.distribution)
         tm.that(derived.repository.path, eq=Path())
         tm.that(derived.project, eq=None)
+        # Apply is complete or nothing: a partial surface is a check-only view.
         request = u.Tests.conform_request(
             root,
-            what=c.Infra.CodegenConformSurface.PYPROJECT,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         tm.ok(FlextInfraCodegenConform.execute_request(request))
-        artifact_request = request.model_copy(
-            update={"what": c.Infra.CodegenConformSurface.ALL}
-        )
-        initial_plan = tm.ok(
-            FlextInfraCodegenConform(repository_root=root).plan(artifact_request)
-        )
+        initial_plan = tm.ok(FlextInfraCodegenConform(repository_root=root).plan(request))
         plans = {
             file.path.relative_to(root).as_posix(): file for file in initial_plan.files
         }

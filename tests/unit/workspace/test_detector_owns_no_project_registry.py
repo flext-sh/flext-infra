@@ -42,8 +42,9 @@ class TestsDetectorOwnsNoProjectRegistry:
         spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
         tm.that(spec.repository.name, eq="totally-unknown")
-        tm.that(spec.name, eq="totally-unknown")
+        # The workspace identity is the repository's own declared beads
+        # projection, never a flext-infra catalog entry.
+        tm.that(spec.name, eq=u.Tests.required_beads(spec).workspace)
         tm.that(spec.repository.path, eq=Path())
         tm.that(spec.subprojects, empty=True)
         tm.that(u.Tests.required_beads(spec).workspace, eq="totally-unknown-workspace")
-        tm.that(spec.beads, none=True)
