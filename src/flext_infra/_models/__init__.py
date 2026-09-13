@@ -97,7 +97,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsWorkspace",
     "FlextInfraModelsWorktree",
     "FlextInfraSettingsModels",
+    "ImmutableEmptyMapping",
     "_git",
+    "immutable_empty_mapping",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -149,6 +151,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".validate": ("FlextInfraModelsCore",),
             ".workspace": ("FlextInfraModelsWorkspace",),
             ".worktree": ("FlextInfraModelsWorktree",),
+            "._defaults": ("ImmutableEmptyMapping", "immutable_empty_mapping"),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Annotated, ClassVar, override
 
 from flext_core import r
@@ -186,11 +187,11 @@ class FlextInfraEnforcementFixerOrchestrator(
 
     def _group_by_adapter(
         self, rules: t.SequenceOf[m.EnforcementRuleSpec]
-    ) -> dict[type[FlextInfraFixerAdapter], list[m.EnforcementRuleSpec]]:
+    ) -> MutableMapping[type[FlextInfraFixerAdapter], list[m.EnforcementRuleSpec]]:
         """Group preflighted rules by the adapter that owns their fix_action."""
-        grouped: dict[type[FlextInfraFixerAdapter], list[m.EnforcementRuleSpec]] = (
-            defaultdict(list)
-        )
+        grouped: MutableMapping[
+            type[FlextInfraFixerAdapter], list[m.EnforcementRuleSpec]
+        ] = defaultdict(list)
         for rule in rules:
             fix_action = rule.fix_action
             if fix_action is None:

@@ -100,7 +100,7 @@ class FlextInfraRefactorTypingUnifier(
 
         Only annotation spans are rewritten. Passing the whole file to the
         annotation rewriter made it edit any text that merely looked like one:
-        it rewrote the literal ``"dict["`` inside this package's own rewrite
+        it rewrote the literal ``"MutableMapping["`` inside this package's own rewrite
         tables, destroying them, and left unbalanced brackets in three
         transformer modules. An annotation is an AST position, so the AST is
         what decides which text is eligible.
@@ -183,7 +183,9 @@ class FlextInfraRefactorTypingUnifier(
                 source, annotation.lineno, annotation.col_offset
             ) : self._offset(source, end_lineno, end_col)
         ]
-        return any(prefix in text for prefix in ("dict[", "Dict[", "list[", "List["))
+        return any(
+            prefix in text for prefix in ("MutableMapping[", "Dict[", "list[", "List[")
+        )
 
     @staticmethod
     def _mutated_names(module: ast.Module) -> frozenset[str]:

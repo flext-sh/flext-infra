@@ -8,6 +8,35 @@ Infra:
     loc_cap:
       max_lines: 1000
 
+    # Per-gate execution budgets (flext-cpzjo.3): the budget gate requires one
+    # row per registry gate and the generator projects this table into every
+    # governed pyproject as the managed [tool.flext.project.budget] section.
+    # Rows must cover exactly c.Infra.ALLOWED_GATES: a missing or unknown gate
+    # id fails the generation loud (registry divergence is a hard error).
+    # Values are config-owned policy; tune per gate without touching code.
+    budget:
+      lint: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      format: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      pyrefly: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      mypy: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      pyright: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      silent-failure: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      deferred-self-reference: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      security: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      markdown: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      loc-cap: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      boundary: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      runtime-census: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      namespace: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      tier-whitelist: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      smells: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      codemod: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      layout: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      canonical-alias: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      direnv: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      duplication: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+      budget: { time-seconds: 600, memory-mb: 2048, tokens: 1000000 }
+
     toolchain:
       # Single-source Python minor line. The environment resolves the newest
       # compatible 3.13 patch; no patch is pinned in generated repositories.
@@ -24,12 +53,7 @@ Infra:
       mise_namespace: mise-artifacts
       uv_link_mode: copy
       uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
-      # Supply-chain cooldown SSOT shared by uv and generated update policy.
-      # 0 disables the window: uv resolves every version published up to now.
-      dependency_cooldown_days: 0
-      dependency_cooldown_exclusions: []
-      dependency_cooldown_overrides: {}
-      # Complete tool catalog uncapped by the uv supply-chain cooldown. The
+      # Complete tool catalog. The
       # codegen model projects the closure of this list with the scaffold
       # requirement owners derived from the build and dev tables; runtime
       # dependency profiles never enter it.
@@ -45,6 +69,11 @@ Infra:
       # this cap unless meltano upstream drops its own cap; floors derive
       # from deps against this same contract (operator 2026-09-09).
       uv_constraint_dependencies: ["structlog<26"]
+      # The supply-chain cooldown was exterminated fleet-wide (flext-fphyv):
+      # uv resolves every version published up to now. The conform phase
+      # removes the [tool.uv] exclude-newer key; this value is a fleet-wide
+      # constant that must still render for the template pipeline to succeed.
+      uv_exclude_newer: "0 days"
       # Moving selectors consumed by generated .mise.toml and CI. The fleet
       # runs unlocked: setup converges on the newest published release.
       # Override these YAML keys only. Never edit .mise.toml. Never run
@@ -969,9 +998,9 @@ Infra:
         owner: vscode
         policy: merge
     # Release build policies (flext-to3n7): fully generated fleet-wide bytes.
-      - path: config/build-constraints.txt
-        owner: codegen
-        policy: full
+    # config/build-constraints.txt is NO LONGER projected into repositories
+    # (flext-gufl8): the release policy phase renders the pins at build time
+    # from config.Infra.release.build_constraints; no repository copy exists.
       - path: config/gitleaks-release.toml
         owner: codegen
         policy: full
@@ -1094,7 +1123,7 @@ Infra:
           - types-setuptools>=84.0.0.20260812
           - types-tabulate>=0.10.0.20260508
           - types-toml>=0.10.8.20260518
-          - types-openpyxl>=3.1.5.20260910
+          - types-openpyxl>=3.1.5.20260827
           - ruff>=0.16.5
           - rumdl>=0.2.62
           - vulture>=2.16
@@ -1470,6 +1499,18 @@ Infra:
           patterns:
             - "/.aihub/"
             - "/.cursor/mcp.json"
+      # Residue extermination (flext-gufl8): none of these are root source.
+      # config/build-constraints.txt is rendered by the release policy phase
+      # from config.Infra.release.build_constraints — repositories never
+      # carry it. *.bak are safety-cycle backup residue (cleaned by design;
+      # ignore guards against interrupted runs). *aihub-prior* are ai-hub
+      # sync prior-state backups that must never land in git.
+        - name: "RESIDUE: never track backups or repo-local policy copies"
+          profiles: [workspace, standalone]
+          patterns:
+            - "*.bak"
+            - "config/build-constraints.txt"
+            - "*aihub-prior*"
         - name: "Aider AI data"
           patterns:
             - ".aider/"
@@ -1791,16 +1832,10 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-      # Why (flext-to3n7): the release build phase snapshots these two policy
-      # files before the first artifact build (hash-pinned build backend for
-      # `uv build --require-hashes`, and the Gitleaks policy). They are one
-      # fleet-wide policy owned here and projected into every repository;
-      # a repository never hand-writes its own (overwrite: true).
-        - source: base/config/build-constraints.txt.j2
-          destination: config/build-constraints.txt
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: true
+      # Why (flext-to3n7/flext-gufl8): the release build phase snapshots the
+      # Gitleaks policy before the first artifact build, and renders the
+      # hash-pinned build backend for `uv build --require-hashes` directly
+      # from config.Infra.release.build_constraints (no repository copy).
         - source: base/config/gitleaks-release.toml.j2
           destination: config/gitleaks-release.toml
           profiles: [workspace, standalone]

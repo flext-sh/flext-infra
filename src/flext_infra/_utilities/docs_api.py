@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
@@ -170,7 +171,7 @@ class FlextInfraUtilitiesDocsApi:
                 symbol_name=imported_symbol or symbol_name,
                 visited=next_visited,
             )
-        targets: dict[str, str] = {}
+        targets: MutableMapping[str, str] = {}
         for target_module, export_names in entries:
             resolved_module = cls._resolve_lazy_module_name(root_package, target_module)
             for export_name in export_names:

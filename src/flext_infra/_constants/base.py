@@ -215,9 +215,7 @@ class FlextInfraConstantsBase(
     SOURCE_DATE_EPOCH: Final[str] = "SOURCE_DATE_EPOCH"
     "Reproducible-build timestamp environment variable."
     RELEASE_BUILD_CONSTRAINTS_PATH: Final[str] = "config/build-constraints.txt"
-    "Workspace-relative hashed build-backend constraint file."
-    # Why: restored — deleted declaration with consumers left behind (worktree
-    # exclusions and mise-artifact transaction staging).
+    "Workspace-relative release build constraints snapshot path."
     TRANSACTION_STATE_DIRNAME: Final[str] = ".state"
     "Root of regenerable codegen transaction state; never repository content."
     RELEASE_BUILD_TOOLCHAIN_REQUIREMENTS: Final[frozenset[str]] = frozenset({

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -14,6 +15,7 @@ from flext_infra import c, config, m, t, u
 
 from ._orchestrator_publish import FlextInfraReleaseOrchestratorPublishMixin
 from ._release_artifact_build import FlextInfraReleaseArtifactBuildMixin
+from .policy_render import FlextInfraReleasePolicyRender
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -66,7 +68,7 @@ class FlextInfraReleaseOrchestratorPhases(
         projects = u.Infra.resolve_projects(repository_root, ())
         if projects.failure:
             return r[t.StrMapping].from_failure(projects)
-        versions: dict[str, str] = dict(
+        versions: MutableMapping[str, str] = dict(
             u.Infra.locked_dependency_versions(
                 repository_root / c.Infra.UV_LOCK_FILENAME, sources=("git",)
             )
@@ -142,8 +144,8 @@ class FlextInfraReleaseOrchestratorPhases(
         return r[t.SequenceOf[m.Infra.BuildRecord]].ok(tuple(records))
 
     @staticmethod
-    def _snapshot_policy_file(
-        source: Path, destination: Path, *, policy_root: Path
+    def _persist_policy_bytes(
+        content: bytes, destination: Path, *, policy_root: Path
     ) -> p.Result[str]:
         """Persist immutable policy bytes and return their SHA-256 digest."""
         destination = destination.resolve()
@@ -151,10 +153,6 @@ class FlextInfraReleaseOrchestratorPhases(
             return r[str].fail(
                 f"release policy destination escapes policy root: {destination}"
             )
-        try:
-            content = source.read_bytes()
-        except OSError as exc:
-            return r[str].fail_op(f"read release policy {source}", exc)
         try:
             destination.parent.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
@@ -174,14 +172,33 @@ class FlextInfraReleaseOrchestratorPhases(
             return r[str].fail_op(f"persist release policy {destination}", exc)
 
     @classmethod
+    def _snapshot_policy_file(
+        cls, source: Path, destination: Path, *, policy_root: Path
+    ) -> p.Result[str]:
+        """Snapshot a repository policy file as immutable policy bytes."""
+        try:
+            content = source.read_bytes()
+        except OSError as exc:
+            return r[str].fail_op(f"read release policy {source}", exc)
+        return cls._persist_policy_bytes(content, destination, policy_root=policy_root)
+
+    @classmethod
     def _snapshot_build_policy(
         cls, repository_root: Path, output_dir: Path
     ) -> p.Result[m.Infra.BuildPolicy]:
-        """Capture one immutable policy pair before the first project build."""
+        """Capture one immutable policy pair before the first project build.
+
+        Build constraints are rendered from the typed configuration SSOT
+        (``config.Infra.release.build_constraints``) — repositories carry no
+        ``config/build-constraints.txt`` copy (flext-gufl8). The Gitleaks
+        policy is still snapshotted from the generated repository file.
+        """
         policy_dir = output_dir / "policy"
         constraints_path = policy_dir / "build-constraints.txt"
-        constraints_result = cls._snapshot_policy_file(
-            repository_root / c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
+        constraints_result = cls._persist_policy_bytes(
+            FlextInfraReleasePolicyRender.build_constraints(
+                config.Infra.release.build_constraints
+            ).encode("utf-8"),
             constraints_path,
             policy_root=policy_dir,
         )

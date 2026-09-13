@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import operator
+from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
@@ -59,7 +60,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
         repository = u.Infra.configured_repository_ref(
             codegen=config.Infra.codegen
         ).unwrap()
-        rules_by_id: dict[str, m.Infra.SarifRule] = {}
+        rules_by_id: MutableMapping[str, m.Infra.SarifRule] = {}
         sarif_results: list[m.Infra.SarifResult] = []
         for project in results:
             for gate in gates:

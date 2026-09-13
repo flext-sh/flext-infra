@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -133,8 +134,10 @@ def _discover_verb_dir(
         registry.add(command)
 
 
-def _command_headers(verb_dir: Path) -> dict[Path, t.JsonMapping | RegistryError]:
-    headers: dict[Path, t.JsonMapping | RegistryError] = {}
+def _command_headers(
+    verb_dir: Path,
+) -> MutableMapping[Path, t.JsonMapping | RegistryError]:
+    headers: MutableMapping[Path, t.JsonMapping | RegistryError] = {}
     for path in verb_dir.iterdir():
         if not path.is_file() or path.suffix not in COMMAND_SUFFIXES:
             continue

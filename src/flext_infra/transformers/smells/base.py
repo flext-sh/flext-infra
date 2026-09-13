@@ -8,6 +8,7 @@ are provably equivalent under FLEXT law.
 from __future__ import annotations
 
 from abc import abstractmethod
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, ClassVar, Final
 
 if TYPE_CHECKING:
@@ -72,7 +73,7 @@ class FlextInfraSmellFixer:
         return tuple(_SMELL_FIXERS.keys())
 
 
-_SMELL_FIXERS: Final[dict[str, type[FlextInfraSmellFixer]]] = {}
+_SMELL_FIXERS: Final[MutableMapping[str, type[FlextInfraSmellFixer]]] = {}
 
 
 __all__: list[str] = ["FlextInfraSmellFixer"]

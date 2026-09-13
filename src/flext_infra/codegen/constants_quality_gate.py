@@ -5,6 +5,7 @@ from __future__ import annotations
 import operator
 import shutil
 import sys
+from collections.abc import MutableMapping
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import TYPE_CHECKING, override
 
@@ -201,9 +202,11 @@ class FlextInfraCodegenQualityGate(s[bool]):
             return (empty_result, empty_result)
 
         tools = (c.Infra.PYREFLY, c.Infra.RUFF)
-        results: dict[str, t.MappingKV[str, t.Infra.InfraValue]] = {}
+        results: MutableMapping[str, t.MappingKV[str, t.Infra.InfraValue]] = {}
         with ThreadPoolExecutor(max_workers=len(tools)) as executor:
-            futures: dict[Future[t.MappingKV[str, t.Infra.InfraValue]], str] = {
+            futures: MutableMapping[
+                Future[t.MappingKV[str, t.Infra.InfraValue]], str
+            ] = {
                 executor.submit(
                     cls.run_static_check, repository_root, modified_files, tool
                 ): tool
@@ -228,10 +231,10 @@ class FlextInfraCodegenQualityGate(s[bool]):
             census_report.projects, lambda project: project.violations_total == 0
         )
         modified_python_files: list[t.Infra.InfraValue] = list(modified_files)
-        violations_by_rule: dict[str, t.Infra.InfraValue] = dict(
+        violations_by_rule: MutableMapping[str, t.Infra.InfraValue] = dict(
             sorted(by_kind.items())
         )
-        summary: dict[str, t.Infra.InfraValue] = {
+        summary: MutableMapping[str, t.Infra.InfraValue] = {
             "total_violations": census_report.total_violations,
             "violations_by_rule": violations_by_rule,
             "duplicate_groups": len(census_report.duplicates),

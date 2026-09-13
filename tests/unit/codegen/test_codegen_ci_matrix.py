@@ -143,7 +143,7 @@ class TestCodegenCiMatrix:
         )
 
         ci_step_runs = tuple(
-            f"run: CI=Y make {step.verb} APPLY=Y"
+            f"run: CI=Y make {step.verb}"
             for step in config.Infra.codegen.make.workflow
             if "ci" in step.contexts
         )
@@ -230,7 +230,7 @@ class TestCodegenCiMatrix:
                     if step.verb == "check"
                     else f"make {step.verb}"
                 )
-                + (" APPLY=Y")
+                + ("")
                 for step in workflow
                 if context in step.contexts
             )

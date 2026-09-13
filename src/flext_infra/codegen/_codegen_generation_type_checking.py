@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c
@@ -27,7 +28,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         sorted_children: list[str] = sorted(
             set(child_packages or []), key=len, reverse=True
         )
-        collapsed: dict[str, list[t.StrPair]] = defaultdict(list)
+        collapsed: MutableMapping[str, list[t.StrPair]] = defaultdict(list)
         for mod, items in groups.items():
             target = mod
             for child_package in sorted_children:
@@ -66,7 +67,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
     @staticmethod
     def _merge_root_alias_groups(
         collapsed: t.MappingKV[str, t.MutableSequenceOf[t.StrPair]],
-    ) -> dict[str, t.StrPairSequence]:
+    ) -> MutableMapping[str, t.StrPairSequence]:
         """Fold direct root-child module aliases into one root-relative group.
 
         Ruff renders consecutive ``from . import <child> as <child>`` statements
@@ -74,7 +75,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         each, so every generation diverged from the formatter's canonical form
         and only a post-generation autofix converged the published initializer.
         """
-        merged: dict[str, t.StrPairSequence] = {}
+        merged: MutableMapping[str, t.StrPairSequence] = {}
         root_items: t.StrPairSequence = ()
         for mod, items in collapsed.items():
             if FlextInfraCodegenGenerationTypeCheckingMixin._is_root_module_alias_group(
@@ -187,7 +188,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             return ()
         if not groups:
             return ("if TYPE_CHECKING:", "    from flext_core import FlextTypes")
-        normalized_groups: dict[str, t.StrPairSequence] = {}
+        normalized_groups: MutableMapping[str, t.StrPairSequence] = {}
         for mod, items in groups.items():
             resolved = FlextInfraCodegenGenerationTypeCheckingMixin._normalize_type_checking_module_path(
                 mod, local_package_root
