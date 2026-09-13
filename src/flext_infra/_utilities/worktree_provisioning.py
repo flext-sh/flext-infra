@@ -21,7 +21,9 @@ class FlextInfraWorktreeProvisioning:
         if git_marker.is_symlink() or (
             git_marker.exists() and not git_marker.is_file()
         ):
-            return r[bool].fail(f"governed gitlink has an invalid .git marker: {reference}")
+            return r[bool].fail(
+                f"governed gitlink has an invalid .git marker: {reference}"
+            )
         if git_marker.exists():
             return r[bool].ok(True)
         initialized = u.Infra.git_submodule_init(
@@ -72,12 +74,16 @@ class FlextInfraWorktreeProvisioning:
             m.Infra.GitSubmoduleContractRequest(repo_root=lane, member_path=reference)
         )
         if contract.failure:
-            return r[bool].fail(contract.error or f"invalid governed gitlink: {reference}")
+            return r[bool].fail(
+                contract.error or f"invalid governed gitlink: {reference}"
+            )
         recorded = u.Infra.git_staged_gitlink_oid(
             m.Infra.GitRefRequest(repo_root=lane, reference=reference)
         )
         if recorded.failure:
-            return r[bool].fail(recorded.error or f"missing governed gitlink: {reference}")
+            return r[bool].fail(
+                recorded.error or f"missing governed gitlink: {reference}"
+            )
         ensured = cls._ensure_gitlink_checkout(lane, member_path)
         if ensured.failure:
             return ensured
@@ -91,7 +97,9 @@ class FlextInfraWorktreeProvisioning:
 
         declared = u.Infra.git_declared_submodule_paths(lane)
         if declared.failure:
-            return r[bool].fail(declared.error or "failed to read lane gitlink declarations")
+            return r[bool].fail(
+                declared.error or "failed to read lane gitlink declarations"
+            )
         sections = u.Infra.git_submodule_sections(
             m.Infra.GitRepoRequest(repo_root=lane)
         )
@@ -100,7 +108,9 @@ class FlextInfraWorktreeProvisioning:
         for member_path in declared.value:
             section = sections.value.get(member_path.as_posix())
             if section is None:
-                return r[bool].fail(f"lane gitlink declaration is missing: {member_path}")
+                return r[bool].fail(
+                    f"lane gitlink declaration is missing: {member_path}"
+                )
             managed = u.Infra.git_submodule_config_value(
                 m.Infra.GitSubmoduleConfigRequest(
                     repo_root=lane, section=section, key="flext-managed"
@@ -149,7 +159,9 @@ class FlextInfraWorktreeProvisioning:
             else lane_venv / "bin" / "python"
         )
         if not interpreter.is_file() or not os.access(interpreter, os.X_OK):
-            return r[bool].fail(f"lane setup did not create an interpreter: {interpreter}")
+            return r[bool].fail(
+                f"lane setup did not create an interpreter: {interpreter}"
+            )
         return r[bool].ok(True)
 
 

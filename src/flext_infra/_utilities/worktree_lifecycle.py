@@ -52,7 +52,9 @@ class FlextInfraWorktreeLifecycle:
                     "created branch cleanup failed: "
                     f"{branch_cleanup.error or 'unknown branch cleanup failure'}"
                 )
-        return r[str].fail(f"worktree setup failed: {setup_error}; clean lane rolled back")
+        return r[str].fail(
+            f"worktree setup failed: {setup_error}; clean lane rolled back"
+        )
 
     @staticmethod
     def update_lane(lane: Path, branch: str, base: str) -> p.Result[str]:
@@ -82,13 +84,17 @@ class FlextInfraWorktreeLifecycle:
             m.Infra.GitCommitishRequest(repo_root=lane, commitish=base)
         )
         if resolved_base.failure:
-            return r[str].fail(resolved_base.error or f"cannot resolve update base: {base}")
+            return r[str].fail(
+                resolved_base.error or f"cannot resolve update base: {base}"
+            )
         base_oid = resolved_base.value.oid
         contains_base = u.Infra.git_is_ancestor(
             m.Infra.GitCommitishRequest(repo_root=lane, commitish=base_oid)
         )
         if contains_base.failure:
-            return r[str].fail(contains_base.error or "failed to inspect update ancestry")
+            return r[str].fail(
+                contains_base.error or "failed to inspect update ancestry"
+            )
         if contains_base.value.value:
             return r[str].ok(str(lane))
         updated = u.Infra.git_merge_no_edit(

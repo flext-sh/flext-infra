@@ -48,7 +48,9 @@ class FlextInfraModGateEngine:
                 active_rule_ids.update(rule_ids)
             scratch = settings.work_dir
             if scratch.resolve().is_relative_to(config_root.resolve()):
-                return r[bool].fail("rule fixture scratch must be outside its source root")
+                return r[bool].fail(
+                    "rule fixture scratch must be outside its source root"
+                )
             scratch.mkdir(parents=True, exist_ok=True)
             with tempfile.TemporaryDirectory(
                 prefix="mod-rule-fixtures-", dir=scratch
@@ -308,7 +310,9 @@ class FlextInfraModGateEngine:
             if parsed.failure:
                 return r.from_failure(parsed)
             if not isinstance(parsed.value, Mapping):
-                return r[m.Infra.ModScanReport].fail(f"ast-grep JSONL finding is not an object: {line}")
+                return r[m.Infra.ModScanReport].fail(
+                    f"ast-grep JSONL finding is not an object: {line}"
+                )
             finding = parsed.value
             rule_id = finding.get("ruleId")
             text = finding.get("text")
@@ -317,22 +321,34 @@ class FlextInfraModGateEngine:
             raw_replacement = finding.get("replacement")
             severity = finding.get("severity")
             if not isinstance(rule_id, str) or rule_id not in rule_files_by_id:
-                return r[m.Infra.ModScanReport].fail(f"invalid ast-grep finding contract: {line}")
+                return r[m.Infra.ModScanReport].fail(
+                    f"invalid ast-grep finding contract: {line}"
+                )
             if not isinstance(text, str) or not isinstance(file, str):
-                return r[m.Infra.ModScanReport].fail(f"invalid ast-grep finding contract: {line}")
+                return r[m.Infra.ModScanReport].fail(
+                    f"invalid ast-grep finding contract: {line}"
+                )
             if not isinstance(source_range, Mapping):
-                return r[m.Infra.ModScanReport].fail(f"invalid ast-grep finding contract: {line}")
+                return r[m.Infra.ModScanReport].fail(
+                    f"invalid ast-grep finding contract: {line}"
+                )
             if raw_replacement is not None and not isinstance(raw_replacement, str):
-                return r[m.Infra.ModScanReport].fail(f"invalid ast-grep finding contract: {line}")
+                return r[m.Infra.ModScanReport].fail(
+                    f"invalid ast-grep finding contract: {line}"
+                )
             if severity not in {"error", "warning", "info", "hint"}:
-                return r[m.Infra.ModScanReport].fail(f"invalid ast-grep finding severity: {line}")
+                return r[m.Infra.ModScanReport].fail(
+                    f"invalid ast-grep finding severity: {line}"
+                )
             file_path = Path(file)
             resolved_file = (root / file_path).resolve()
             if resolved_file.is_file():
                 try:
                     source = resolved_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
                 except OSError as exc:
-                    return r[m.Infra.ModScanReport].fail(f"cannot read finding source {resolved_file}: {exc}")
+                    return r[m.Infra.ModScanReport].fail(
+                        f"cannot read finding source {resolved_file}: {exc}"
+                    )
                 if source.startswith(c.Infra.AUTOGEN_HEADERS):
                     continue
             files.add(file_path)
@@ -340,7 +356,9 @@ class FlextInfraModGateEngine:
             actionable = False
             if rule_id in fixable_ids:
                 if not isinstance(replacement, str):
-                    return r[m.Infra.ModScanReport].fail(f"fixable ast-grep finding lacks replacement: {line}")
+                    return r[m.Infra.ModScanReport].fail(
+                        f"fixable ast-grep finding lacks replacement: {line}"
+                    )
                 actionable = text != replacement
                 if actionable:
                     actionable_findings += 1
