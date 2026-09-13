@@ -205,21 +205,12 @@ class FlextInfraUtilitiesDiscovery(
         One rule, no alternative source (R32): a name outside the repository
         index is read from the environment the checkout declares (an editable
         workspace member or the pinned distribution — `find_spec`, no import
-        executed). A name that resolves nowhere raises with the exact name;
-        a name that resolves to a plain module is the typed absence ``None``
-        ("not a package, so never a facade parent").
+        executed). ``None`` is the typed absence: the name is not a package
+        in this environment (absent, or a plain module). A caller that
+        REQUIRES the package — a declared facade parent — raises.
         """
-        msg = (
-            f"lazy-init: declared package '{package_name}' resolves nowhere"
-            " in the active environment"
-        )
-        try:
-            spec = importlib_util.find_spec(package_name)
-        except ModuleNotFoundError as exc:
-            raise ValueError(msg) from exc
-        if spec is None:
-            raise ValueError(msg)
-        if not spec.submodule_search_locations:
+        spec = importlib_util.find_spec(package_name)
+        if spec is None or not spec.submodule_search_locations:
             return None
         return Path(next(iter(spec.submodule_search_locations)))
 

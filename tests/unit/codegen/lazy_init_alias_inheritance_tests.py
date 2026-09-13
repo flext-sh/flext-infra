@@ -72,9 +72,7 @@ class TestsFlextInfraLazyInitAliasInheritance:
         )
         tm.that(generated, lacks="from flext_test_inherit_parent import c, m, p, ")
 
-    def test_declared_parent_resolving_nowhere_fails_loud(
-        self, tmp_path: Path
-    ) -> None:
+    def test_declared_parent_resolving_nowhere_fails_loud(self, tmp_path: Path) -> None:
         """A declared parent that resolves nowhere in the environment is a typed failure."""
         repository_root, child_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
@@ -96,8 +94,8 @@ class TestsFlextInfraLazyInitAliasInheritance:
         tm.that(
             planned.error,
             contains=(
-                "lazy-init: declared package 'flext_ghost_parent_zzz' resolves"
-                " nowhere in the active environment"
+                "lazy-init: declared facade parent 'flext_ghost_parent_zzz'"
+                " resolves nowhere in the active environment"
             ),
         )
 

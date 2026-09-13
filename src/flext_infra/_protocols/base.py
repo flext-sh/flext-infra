@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 # Declaration-only protocol types stay
@@ -718,7 +717,7 @@ class FlextInfraProtocolsBase(Protocol):
     class XmlElementLike(Protocol):
         """Typed subset of the safe XML element API returned by defusedxml."""
 
-        attrib: MutableMapping[str, str]
+        attrib: dict[str, str]
         text: str | None
 
         def find(self, path: str) -> FlextInfraProtocolsBase.XmlElementLike | None:

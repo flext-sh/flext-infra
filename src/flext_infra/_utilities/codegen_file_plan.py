@@ -116,7 +116,9 @@ class FlextInfraUtilitiesCodegenFilePlan:
         would hide distinct invalid UTF-8 bytes; treating None as empty bytes
         would erase the distinction between an absent and an empty file.
         """
-        return before.content != desired_content or before.mode != desired_mode
+        before_text = (before.content or b"").decode("utf-8", errors="replace")
+        desired_text = (desired_content or b"").decode("utf-8", errors="replace")
+        return before_text != desired_text or before.mode != desired_mode
 
     @staticmethod
     def codegen_file_requires_effect(plan: m.Infra.CodegenFilePlan) -> bool:
@@ -172,19 +174,26 @@ class FlextInfraUtilitiesCodegenFilePlan:
             )
             if diff:
                 parts.append("\n".join((header, *diff)))
-            elif raw_before != plan.desired_content:
-                parts.append(
-                    f"{header}\n(file presence differs: "
-                    f"observed={raw_before is not None} "
-                    f"desired={plan.desired_content is not None})"
-                )
-            elif plan.before.mode != plan.desired_mode:
+                continue
+            old_bytes = (
+                raw_before.encode("utf-8")
+                if isinstance(raw_before, str)
+                else (raw_before or b"")
+            )
+            new_bytes = plan.desired_content or b""
+            if old_bytes == new_bytes:
                 parts.append(
                     f"{header}\n(content equal: mode-only drift "
                     f"observed={committed_mode} desired={rendered_mode})"
                 )
-            else:
-                parts.append(f"{header}\n(no content or mode drift)")
+                continue
+            # Lines are equal but bytes are not: name the exact tail difference
+            # (line endings / trailing newline) instead of a false mode claim.
+            parts.append(
+                f"{header}\n(lines equal, bytes differ: committed {len(old_bytes)}B "
+                f"tail={old_bytes[-24:]!r}; rendered {len(new_bytes)}B "
+                f"tail={new_bytes[-24:]!r})"
+            )
         return "\n----\n".join(parts)
 
 

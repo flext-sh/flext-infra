@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from .. import c, m, r, s
+from .. import c, m, r, s, u
 from .conform import FlextInfraCodegenConform
 
 if TYPE_CHECKING:
@@ -17,6 +17,13 @@ class FlextInfraCodegenMakeBootstrap(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Apply or check only this checkout's canonical Makefile projection."""
+        # Why: `init` bootstraps a fresh checkout, so it must reject the same
+        # non-exact/unregistered-nested roots the Mise workspace planner
+        # rejects, through the shared `u.Infra.exact_worktree_root` owner.
+        requested = self.repository_root.expanduser().absolute()
+        identity = u.Infra.exact_worktree_root(requested)
+        if identity.failure:
+            return r[bool].from_failure(identity)
         mode = (
             c.Infra.CodegenConformMode.CHECK
             if self.effective_dry_run

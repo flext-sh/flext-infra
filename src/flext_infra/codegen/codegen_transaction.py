@@ -9,13 +9,11 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.codegen import (
-    _codegen_staging as generic_staging,
-    _mise_artifacts_publication as publication,
-)
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 
+from ._codegen_staging import stage_file_plans
 from ._mise_artifacts_journal import FlextInfraMiseArtifactsJournal as journal_io
+from ._mise_artifacts_publication import publish
 from ._mise_artifacts_recovery import FlextInfraMiseRecovery
 from ._mise_artifacts_staging import FlextInfraMiseStaging
 from ._mise_artifacts_state import FlextInfraMiseArtifactsState as state
@@ -187,7 +185,7 @@ class FlextInfraCodegenTransaction:
         if materialized.failure:
             return result_type.from_failure(materialized)
         active_journal, active_state = materialized.value
-        ordinary_staged = generic_staging.stage_file_plans(layout, "conform", ordinary)
+        ordinary_staged = stage_file_plans(layout, "conform", ordinary)
         if ordinary_staged.failure:
             return result_type.from_failure(
                 self._recover_failure(
@@ -254,7 +252,7 @@ class FlextInfraCodegenTransaction:
         )
         if barriers.failure:
             return result_type.from_failure(barriers)
-        published = publication.publish(publications)
+        published = publish(publications)
         if published.failure:
             return result_type.from_failure(
                 self._recover_failure(
@@ -319,7 +317,7 @@ class FlextInfraCodegenTransaction:
                     layout, source_barrier.error or f"{phase} sources changed"
                 )
             )
-        staged = generic_staging.stage_file_plans(layout, phase, changed)
+        staged = stage_file_plans(layout, phase, changed)
         if staged.failure:
             return result_type.from_failure(
                 self._recover_failure(
@@ -348,6 +346,24 @@ class FlextInfraCodegenTransaction:
             session.plan, session.journal, staged.value, sources=sources.value
         )
         if extended.failure:
+            # Why: stage_file_plans() already created this phase's staging
+            # root on disk before append_prepared() rejected it in memory
+            # (e.g. a duplicate destination across phases). That root was
+            # never registered in the persisted journal, so leaving it
+            # behind fails the recovery's untracked-residue guard. Discard
+            # it here — it belongs to this failed attempt only — before
+            # recovering the last durably persisted journal state.
+            discarded = state.cleanup_orphan_paths(
+                self._staged_phase_roots(staged.value)
+            )
+            if discarded.failure:
+                return result_type.from_failure(
+                    self._recover_failure(
+                        layout,
+                        f"{extended.error or f'cannot append {phase} journal phase'}"
+                        f"; discard staging failed: {discarded.error}",
+                    )
+                )
             return result_type.from_failure(
                 self._recover_failure(
                     layout, extended.error or f"cannot append {phase} journal phase"
@@ -382,7 +398,7 @@ class FlextInfraCodegenTransaction:
                     or f"{phase} prepublication barrier failed",
                 )
             )
-        published = publication.publish(staged.value)
+        published = publish(staged.value)
         if published.failure:
             return result_type.from_failure(
                 self._recover_failure(
@@ -619,6 +635,17 @@ class FlextInfraCodegenTransaction:
         for file_state in states:
             by_path[file_state.path] = file_state
         return tuple(by_path.values())
+
+    @staticmethod
+    def _staged_phase_roots(
+        staged: t.VariadicTuple[m.Infra.CodegenStagedFile],
+    ) -> t.VariadicTuple[Path]:
+        """Recover the distinct staging roots this attempt created on disk."""
+        roots: dict[Path, None] = {}
+        for item in staged:
+            if item.replacement is not None:
+                roots.setdefault(item.replacement.path.parent, None)
+        return tuple(roots)
 
     @staticmethod
     def _prepublication_barriers(

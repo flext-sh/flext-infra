@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import config, m, t, u
+from flext_infra import config, m, t
 from flext_infra.services.codegen import FlextInfraCodegen
-from tests import c
+from tests import c, u
 
 
 def _project(root: Path) -> Path:
@@ -87,13 +87,13 @@ class TestsCodegenRenderPurityGolden:
             project,
             "ManagedArtifacts:\n"
             "  Ruff:\n"
-            "    per-file-ignores:\n"
+            "    per_file_ignores:\n"
             "      tests/**: [S101]\n",
         )
         (project / c.CONFIG_DIR_NAME / "wip-tooling.yaml").write_text(
             "ManagedArtifacts:\n"
             "  Ruff:\n"
-            "    per-file-ignores:\n"
+            "    per_file_ignores:\n"
             "      src/**: [SLF001]\n",
             encoding="utf-8",
         )

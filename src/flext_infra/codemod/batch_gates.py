@@ -331,10 +331,10 @@ class FlextInfraModGateEngine:
             if resolved_file.is_file():
                 try:
                     source = resolved_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-                    if source.startswith(c.Infra.AUTOGEN_HEADERS):
-                        continue
-                except OSError:
-                    pass
+                except OSError as exc:
+                    return r.fail(f"cannot read finding source {resolved_file}: {exc}")
+                if source.startswith(c.Infra.AUTOGEN_HEADERS):
+                    continue
             files.add(file_path)
             replacement = raw_replacement if isinstance(raw_replacement, str) else None
             actionable = False

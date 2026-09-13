@@ -124,7 +124,14 @@ def test_gen_has_one_codegen_owner() -> None:
 
 
 def test_gen_init_is_a_direct_hermetic_owner_route() -> None:
-    """The narrow init selector never enters conform, hooks, or topology."""
+    """The `initialize` verb never enters conform, hooks, or topology.
+
+    Root cause (R28/bff9326a3): the `gen WHAT=init` indirection was retired.
+    `initialize` is now its own declared public verb, dispatched straight to
+    `_builtin_gen_init` without `_builtin_require_environment`, and it derives
+    `GEN_INIT_ONLY` from `MAKECMDGOALS` so the repository-root probe stays
+    hermetic (`REPOSITORY_ROOT := $(MAKEFILE_ROOT)`, no git shell-out).
+    """
     text = _template_text()
     init_lines = _recipe_bodies()["_builtin_gen_init"]
     init_commands = [line for line in init_lines if "codegen init" in line]
@@ -132,23 +139,27 @@ def test_gen_init_is_a_direct_hermetic_owner_route() -> None:
     assert len(init_commands) == 2
     assert all('--repository-root "$(PROJECT_ROOT)"' in line for line in init_commands)
     assert all("codegen conform" not in line for line in init_lines)
-    assert "$(filter-out help setup gen,$(PUBLIC_VERBS)):" in text
-    assert (
-        "$(addprefix _mise_dispatch_,$(filter-out help setup,$(PUBLIC_VERBS))):" in text
-    )
-    assert '$(SELF_MAKE) "_mise_dispatch_$@"' in text
-    public_init = text.split("gen:\n", 1)[1].split("\n\n", 1)[0]
-    init_branch = public_init.split("else", 1)[0]
-    assert "_builtin_gen_init" in init_branch
-    assert "_dispatch" not in init_branch
-    assert "REPOSITORY_ROOT := $(PROJECT_ROOT)" in text
+    assert '{% if verb.name not in ("help", "initialize") %}' in text
+    assert "_builtin-initialize: _builtin_gen_init" in text
+    assert "ifneq ($(filter initialize,$(MAKECMDGOALS)),)" in text
+    assert "GEN_INIT_ONLY := Y" in text
+    assert "REPOSITORY_ROOT := $(MAKEFILE_ROOT)" in text
     assert "INIT_FLEXT_INFRA" not in text
 
 
 def test_project_selector_resolves_members_from_repository_root() -> None:
+    """Workspace members are projected as declared gitlinks, not a WORKSPACE var.
+
+    Root cause: the `override WORKSPACE := .../$(PROJECT)` selector was
+    retired in favor of `WORKSPACE_SUBPROJECTS`/`MANAGED_GITLINKS`, which the
+    template renders from config (`workspace_subprojects`), never re-derived
+    from a shell probe at `REPOSITORY_ROOT` or `PROJECT_ROOT`.
+    """
     text = _template_text()
-    assert "override WORKSPACE := $(REPOSITORY_ROOT)/$(PROJECT)" in text
+    assert "override WORKSPACE := $(REPOSITORY_ROOT)/$(PROJECT)" not in text
     assert "override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)" not in text
+    assert "WORKSPACE_SUBPROJECTS :=" in text
+    assert "MANAGED_GITLINKS :=" in text
 
 
 __all__: tuple[str, ...] = ()

@@ -9,6 +9,9 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from ._auditor_checks import FlextInfraDocAuditorChecksMixin
+    from ._auditor_report import FlextInfraDocAuditorReportMixin
+    from ._generator_bundle import FlextInfraDocGeneratorBundleMixin
     from .auditor import FlextInfraDocAuditor
     from .auditor_mixin import FlextInfraDocAuditorMixin
     from .base import FlextInfraDocServiceBase
@@ -19,10 +22,13 @@ if TYPE_CHECKING:
     from .validator import FlextInfraDocValidator
 __all__: tuple[str, ...] = (
     "FlextInfraDocAuditor",
+    "FlextInfraDocAuditorChecksMixin",
     "FlextInfraDocAuditorMixin",
+    "FlextInfraDocAuditorReportMixin",
     "FlextInfraDocBuilder",
     "FlextInfraDocFixer",
     "FlextInfraDocGenerator",
+    "FlextInfraDocGeneratorBundleMixin",
     "FlextInfraDocServer",
     "FlextInfraDocServiceBase",
     "FlextInfraDocValidator",
@@ -31,6 +37,9 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
+            "._auditor_checks": ("FlextInfraDocAuditorChecksMixin",),
+            "._auditor_report": ("FlextInfraDocAuditorReportMixin",),
+            "._generator_bundle": ("FlextInfraDocGeneratorBundleMixin",),
             ".auditor": ("FlextInfraDocAuditor",),
             ".auditor_mixin": ("FlextInfraDocAuditorMixin",),
             ".base": ("FlextInfraDocServiceBase",),

@@ -27,10 +27,8 @@ class FlextInfraReleaseArtifactArchiveMixin:
         sensitive-path patterns (``.env.example``) while never carrying
         secrets, so the release archive exempts them.
         """
-        requirements = u.Infra.load_gen_requirements(Path(__file__))
-        if requirements.failure:
-            return False
-        entry = requirements.unwrap().requirements.externally_managed.get(name)
+        requirements = u.Infra.load_gen_requirements(Path(__file__)).unwrap()
+        entry = requirements.requirements.externally_managed.get(name)
         return entry is not None and entry.validation == "exists_or_absent"
 
     @staticmethod

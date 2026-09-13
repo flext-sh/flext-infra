@@ -51,11 +51,10 @@ def stage_file_plans(
         # identity (chain plan, or file state with ``parent_device`` None); the
         # parent may legitimately appear before staging, and the journal owns
         # its identity check. Staging only proves the file itself stayed absent.
-        planned_before_parent = isinstance(
-            file_plan.before, m.Cli.AtomicDirectoryChainPlan
-        ) or (
-            isinstance(file_plan.before, m.Cli.AtomicFileState)
-            and file_plan.before.parent_device is None
+        before = file_plan.before
+        planned_before_parent = (
+            isinstance(before, m.Cli.AtomicDirectoryChainPlan)
+            or before.parent_device is None
         )
         if planned_before_parent:
             before = current.value

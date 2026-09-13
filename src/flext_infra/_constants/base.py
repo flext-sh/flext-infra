@@ -376,8 +376,6 @@ class FlextInfraConstantsBase(
         M = "m"
         U = "u"
 
-    SAFE_EXECUTION_DEFAULT_GATES: Final[str] = "lint,mypy,pyright,pyrefly"
-    "Default quality gates for post-transform validation."
     ENFORCEMENT_ADVISORY_GATES: Final[frozenset[str]] = frozenset({
         "runtime-census",
         "namespace",
@@ -387,8 +385,6 @@ class FlextInfraConstantsBase(
     "Gates that report violations as warnings rather than failing the pipeline."
     SAFE_EXECUTION_BAK_SUFFIX: Final[str] = ".bak"
     "File backup suffix for copy-on-write safety."
-    ENV_VAR_LINT_SNAPSHOT_GATES: Final[str] = "FLEXT_INFRA_LINT_SNAPSHOT_GATES"
-    "Optional override for lint-snapshot gate selection (comma-separated)."
     ENV_VAR_FORCE_COLOR: Final[str] = "FORCE_COLOR"
     "Color-forcing variable: its mere presence makes ruff emit ANSI sequences."
 

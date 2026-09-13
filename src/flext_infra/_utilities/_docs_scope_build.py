@@ -88,7 +88,7 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
         ):
             return (
                 FlextInfraUtilitiesDocsScopeBuildMixin._governed_scope(
-                    resolved_root, output_dir
+                    resolved_root, output_dir, repository_root=resolved_root
                 ),
             )
         return FlextInfraUtilitiesDocsScopeBuildMixin._workspace_scopes(
@@ -136,7 +136,7 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
             return tuple(scopes)
         scopes.extend(
             FlextInfraUtilitiesDocsScopeBuildMixin._doc_scope(
-                project=project, output_dir=output_dir
+                project=project, output_dir=output_dir, repository_root=repository_root
             )
             for project in discovered
         )

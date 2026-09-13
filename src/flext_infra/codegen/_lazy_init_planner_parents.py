@@ -37,15 +37,13 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         seen.add(str(module_path.resolve()))
         state = self.rope_workspace.semantic(module_path)
         base_packages = tuple(
-            package_name
+            self._declared_parent_package(target)
             for class_info in state.class_infos
             if "Constants" in class_info.name
             for base_name in class_info.bases
             if (
-                package_name := self._package_name_from_target(
-                    state.declared_imports.get(base_name)
-                    or state.semantic_imports.get(base_name, "")
-                )
+                target := state.declared_imports.get(base_name)
+                or state.semantic_imports.get(base_name, "")
             )
         )
         declared_packages = tuple(
@@ -78,6 +76,22 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
             ):
                 parents.append(package_name)
         return tuple(parents)
+
+    def _declared_parent_package(self, target: str) -> str:
+        """Return the package a class base declares as facade parent.
+
+        A base names a DECLARED parent: it must resolve (indexed source or the
+        active environment). Resolving nowhere is a fact to surface, never a
+        silently dropped parent (flext-b3xmn).
+        """
+        package_name = self._package_name_from_target(target)
+        if package_name:
+            return package_name
+        msg = (
+            f"lazy-init: declared facade parent '{target.split('.', 1)[0]}' "
+            "resolves nowhere in the active environment"
+        )
+        raise ValueError(msg)
 
     @staticmethod
     def _module_path_from_target(target: str) -> str:
@@ -135,7 +149,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
             return ""
         # Why (flext-27a9e.1, flext-b3xmn, R32): project-scoped Rope indexes
         # omit declared parents; u.Infra resolves the name in the declared
-        # environment — a name that resolves nowhere raises there.
+        # environment. "" is the typed answer for "not a package here".
         if u.Infra.declared_package_dir(parts[0]) is not None:
             return parts[0]
         return ""

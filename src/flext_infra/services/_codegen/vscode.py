@@ -238,7 +238,7 @@ class FlextInfraCodegenVscodeMixin:
         changed = False
         for key, canonical_map in map_union_settings.items():
             current = settings.get(key)
-            existing: MutableMapping[str, t.JsonValue] = (
+            existing: dict[str, t.JsonValue] = (
                 {
                     name: u.normalize_to_json_value(value)
                     for name, value in current.items()
@@ -246,7 +246,7 @@ class FlextInfraCodegenVscodeMixin:
                 if isinstance(current, Mapping)
                 else {}
             )
-            merged: MutableMapping[str, t.JsonValue] = existing | {
+            merged: dict[str, t.JsonValue] = existing | {
                 name: u.normalize_to_json_value(value)
                 for name, value in canonical_map.items()
             }
@@ -264,7 +264,7 @@ class FlextInfraCodegenVscodeMixin:
         """Replace generated maps so removed SSOT entries leave no residue."""
         changed = False
         for key, canonical_map in exact_maps.items():
-            exact: MutableMapping[str, t.JsonValue] = {
+            exact: dict[str, t.JsonValue] = {
                 name: u.normalize_to_json_value(value)
                 for name, value in canonical_map.items()
             }

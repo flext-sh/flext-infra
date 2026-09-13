@@ -106,6 +106,10 @@ class TestConstantsQualityGateVerdict:
                 },
             )
         u.Tests.declare_workspace_projects(tmp_path, ("flext-cli", "flext-core"))
+        # Why: the workspace-wide rope index now discovers every governed
+        # project (flext-1wjg1), so the gate's own lazy-init precheck sees the
+        # fixture's real __init__.py files and requires them conformant first.
+        tm.that(u.Tests.run_lazy_init(tmp_path), eq=0)
         gate = FlextInfraCodegenQualityGate(repository_root=tmp_path)
         report_result = gate.build_report()
         tm.ok(report_result)
