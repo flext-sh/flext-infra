@@ -48,7 +48,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         selected = project_by_name.get(name)
         if selected is not None:
             return FlextInfraUtilitiesDocsScopeSelectionMixin._doc_scope(
-                project=selected, output_dir=output_dir
+                project=selected, output_dir=output_dir, repository_root=repository_root
             )
         return FlextInfraUtilitiesDocsScopeSelectionMixin._optional_path_scope(
             repository_root, name, output_dir
@@ -87,7 +87,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         if not FlextInfraUtilitiesDocsScope.project_state(project_root).payload:
             return None
         return FlextInfraUtilitiesDocsScopeSelectionMixin._governed_scope(
-            project_root, output_dir
+            project_root, output_dir, repository_root=repository_root
         )
 
     @staticmethod
@@ -108,7 +108,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
 
     @staticmethod
     def _doc_scope(
-        *, project: m.Infra.ProjectInfo, output_dir: Path | str
+        *, project: m.Infra.ProjectInfo, output_dir: Path | str, repository_root: Path
     ) -> m.Infra.DocScope:
         """Build one canonical docs scope model."""
         resolved = project.path
@@ -120,10 +120,13 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
             ),
             project_class=project.project_class,
             package_name=project.package_name,
+            repository_root_override=repository_root,
         )
 
     @staticmethod
-    def _governed_scope(project_root: Path, output_dir: Path | str) -> m.Infra.DocScope:
+    def _governed_scope(
+        project_root: Path, output_dir: Path | str, *, repository_root: Path
+    ) -> m.Infra.DocScope:
         """Build docs scope for a governed project root."""
         payload = FlextInfraUtilitiesDocsScope.project_payload(project_root)
         docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
@@ -142,6 +145,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
             package_name=FlextInfraUtilitiesDocsScope.package_name_from_payload(
                 project_root, payload, docs_meta
             ),
+            repository_root_override=repository_root,
         )
 
 

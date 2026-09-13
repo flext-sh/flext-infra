@@ -28,7 +28,7 @@ class FlextInfraUtilitiesProcess:
     def make_hermetic_env_remove_keys() -> t.StrSequence:
         """Return every Make-owned variable a gate child process must not inherit.
 
-        GNU make exports command-line assignments (``APPLY=Y``) and its own
+        GNU make exports command-line assignments (``APPLY=N``) and its own
         recursion state to every child, so pytest and any ``make`` a test
         spawns would otherwise see the outer verb's selectors and refuse
         (``verb help is read-only and does not accept APPLY``). The generated

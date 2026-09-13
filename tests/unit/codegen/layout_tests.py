@@ -152,6 +152,35 @@ def test_keep_root_files_override(tmp_path: Path) -> None:
     tm.that("ECOSYSTEM.md" in paths, eq=False)
 
 
+def test_override_resolves_by_declared_name_not_checkout_directory(
+    tmp_path: Path,
+) -> None:
+    """A linked worktree of ai-hub keeps ai-hub's keep-list.
+
+    Overrides are keyed by ``[project].name``; the directory a project is
+    checked out in (``.claude/worktrees/<lane>``, a renamed clone) proves
+    nothing about its identity.
+    """
+    project = tmp_path / "fix-hook-runtime-p0"
+    package_dir = project / "src" / "ai_hub"
+    package_dir.mkdir(parents=True)
+    (package_dir / "__init__.py").write_text("", encoding="utf-8")
+    (project / "pyproject.toml").write_text(
+        "[project]\nname='ai-hub'\nversion='0.1.0'\n", encoding="utf-8"
+    )
+    (project / "README.md").write_text("# ai-hub\n", encoding="utf-8")
+    (project / "UNIVERSAL_CORE.md").write_text("core\n", encoding="utf-8")
+    (project / "ECOSYSTEM.md").write_text("eco\n", encoding="utf-8")
+    engine = layout_engine(tmp_path)
+
+    report = engine.check_project(project)
+
+    tm.that(report.project, eq="ai-hub")
+    paths = {finding.path for finding in report.findings}
+    tm.that("UNIVERSAL_CORE.md" in paths, eq=False)
+    tm.that("ECOSYSTEM.md" in paths, eq=False)
+
+
 def test_special_and_reference_root_dirs_skipped(tmp_path: Path) -> None:
     """data/ is skipped; external-docs/ is allowed as reference corpus."""
     project = build_loose_project(tmp_path)
@@ -174,6 +203,12 @@ def test_declared_repositories_are_canonical_root_entries(tmp_path: Path) -> Non
     undeclared_name = "flext-undeclared"
     (tmp_path / declared_name).mkdir()
     (tmp_path / undeclared_name).mkdir()
+    # Why: an empty directory carries no git-trackable content — git status
+    # never reports it, so the layout engine's git-tracked-entries scope (the
+    # current contract) would silently skip it rather than flag it. A real
+    # file makes the untracked directory visible to `git status`, matching
+    # how an actual undeclared repository shows up on disk.
+    (tmp_path / undeclared_name / "marker.txt").write_text("x", encoding="utf-8")
     u.Tests.declare_workspace_projects(tmp_path, (declared_name,))
     engine = layout_engine(tmp_path)
 

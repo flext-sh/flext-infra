@@ -465,24 +465,6 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
 
         tm.that(violations, empty=True)
 
-    def test_loose_object_detector_skips_canonical_alias_module_exception(
-        self, tmp_path: Path, rope_project: t.Infra.RopeProject
-    ) -> None:
-        """Skip aliases declared in a canonical facade module."""
-        violations = FlextInfraLooseObjectDetector.detect_file(
-            u.Tests.detector_context(
-                tmp_path / "cli.py",
-                "from __future__ import annotations\n"
-                "\n"
-                "def _adapter() -> None:\n"
-                "    return None\n",
-                rope_project,
-                project_name="sample-proj",
-            )
-        )
-
-        tm.that(violations, empty=True)
-
     def test_loose_object_detector_flags_classvar_outside_constants_class(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:

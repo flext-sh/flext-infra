@@ -68,7 +68,9 @@ class TestsFlextInfraDepsModernizerWorkspace:
                 process_timeout_seconds=process_timeout_seconds,
             )
         )
-        tm.that(formatted, eq='name = "demo"')
+        # Why (flext-50qh0): the wrapper returns Taplo's stdout unchanged and
+        # a formatted TOML document ends with the canonical trailing newline.
+        tm.that(formatted, eq='name = "demo"\n')
         tm.that(reformatted, eq=formatted)
 
     def test_taplo_uses_nearest_existing_root_for_scaffold_path(
@@ -88,7 +90,9 @@ class TestsFlextInfraDepsModernizerWorkspace:
             )
         )
 
-        tm.that(formatted, eq='name = "demo"')
+        # Why (flext-50qh0): the wrapper returns Taplo's stdout unchanged and
+        # a formatted TOML document ends with the canonical trailing newline.
+        tm.that(formatted, eq='name = "demo"\n')
 
     @pytest.mark.parametrize(
         ("content", "exists", "expected"),

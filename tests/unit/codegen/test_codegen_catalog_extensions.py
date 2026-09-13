@@ -73,8 +73,8 @@ class TestsCodegenCatalogExtensions:
         tm.that(template, lacks="latest_release_url")
         tm.that(template, lacks="curl ")
         tm.that(template, lacks="--windows --version")
-        tm.that(template, has='mise_install_path="$$scratch/runtime/seed-mise')
-        tm.that(template, has='mise_install_path="$$scratch/runtime/mise')
+        tm.that(template, lacks="mise_install_path=")
+        tm.that(template, has='latest_mise="$$mise"')
         tm.that(template, has="receipt_runtime")
         tm.that(type(config.Infra.codegen.toolchain).model_fields, lacks="mise_version")
 
@@ -130,6 +130,8 @@ class TestsCodegenCatalogExtensions:
             "ManagedArtifacts:\n  Mise:\n    tools:\n      node:\n        version: '26'\n",
             encoding="utf-8",
         )
+        # The composer reads the committed catalog: the overlay must be in HEAD.
+        u.Tests.initialize_git_repo(tmp_path)
 
         result = FlextInfraCodegenConform.compose_project_artifact(
             tmp_path, c.Infra.MISE_TOML_FILENAME, '[tools]\npython = "3.13"\n'
@@ -283,14 +285,11 @@ class TestsCodegenCatalogExtensions:
         )
         tm.that(
             u.Tests.codegen_file_text(root_makefile),
-            has=f"DECLARED_REPOSITORIES := {member.name}",
+            has=f"WORKSPACE_SUBPROJECTS := {member.name}",
         )
-        gitmodules_plan = next(
-            file for file in plan.files if file.path == gitmodules.resolve()
-        )
-        tm.that(gitmodules_plan.policy, eq="manual")
-        tm.that(u.Infra.codegen_file_requires_effect(gitmodules_plan), eq=False)
-        tm.that(gitmodules_plan.desired_content, eq=declared_gitmodules)
+        # .gitmodules is externally owned: conform plans no file for it and
+        # leaves the declared topology bytes untouched.
+        tm.that(tuple(file.path for file in plan.files), lacks=gitmodules.resolve())
         tm.that(gitmodules.read_bytes(), eq=declared_gitmodules)
 
 

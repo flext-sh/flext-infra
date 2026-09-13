@@ -6,14 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from collections.abc import Mapping
 from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
-from pydantic import AliasChoices
 
 from .. import t
 from .._constants import (
@@ -343,6 +341,15 @@ class FlextInfraConfigModels:
         scratch_namespace: Annotated[
             t.NonEmptyStr, m.Field(description="Scratch directory namespace")
         ]
+        scratch_home_relative: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Home-relative scratch root; scratch never lives inside a "
+                    "versioned tree, so it mirrors the checkout path below it"
+                )
+            ),
+        ]
         pycache_namespace: Annotated[
             t.NonEmptyStr, m.Field(description="Python bytecode cache namespace")
         ]
@@ -360,13 +367,6 @@ class FlextInfraConfigModels:
                     "Marker expressions limiting the environments uv resolves "
                     "for the generated lock. Empty resolves every environment."
                 )
-            ),
-        ] = ()
-        additional_python_tool_distributions: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                default=(),
-                description="Tool identities outside the scaffold requirement owners",
             ),
         ] = ()
         uv_constraint_dependencies: Annotated[
@@ -946,6 +946,9 @@ class FlextInfraConfigModels:
         scratch_namespace: Annotated[
             t.NonEmptyStr, m.Field(description="External scratch namespace")
         ]
+        scratch_home_relative: Annotated[
+            t.NonEmptyStr, m.Field(description="Home-relative scratch root")
+        ]
         pycache_namespace: Annotated[
             t.NonEmptyStr, m.Field(description="External bytecode cache namespace")
         ]
@@ -1021,6 +1024,18 @@ class FlextInfraConfigModels:
         description: Annotated[
             t.NonEmptyStr, m.Field(description="Operator-facing help text")
         ]
+        # Why (operator law 2026-09-12, option A'): APPLY=N selects this verb's
+        # read-only recipe. False is the correct default for every verb that
+        # has no check/apply distinction (setup, test, check, build, clean,
+        # release phases, conform, audit, status, waza, duplication,
+        # initialize) — APPLY=N fails loud on those instead of no-op/mutate.
+        check_mode: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description="APPLY=N runs this verb's declared check recipe",
+            ),
+        ] = False
 
     class MakeWorkflowStepSpec(_ConfigContract):
         """One canonical workflow step."""
@@ -1431,9 +1446,12 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.MakeWorkInProgressSpec,
             m.Field(description="WIP branch and draft PR gate predicate"),
         ]
-        # Why (operator law 2026-09-11): the APPLY write-enable flag is
-        # exterminated — every public verb mutates by default with zero
-        # variables; read-only verification lives in dedicated verbs (check).
+        # Why (operator law 2026-09-12, option A', supersedes 2026-09-11): the
+        # binary APPLY write-enable flag stays exterminated, but APPLY is a
+        # public input again with a narrower job — unset/empty still mutates
+        # by default, APPLY=N selects the check recipe of a verb that
+        # declares one (MakeVerbSpec.check_mode); an unknown Make input is a
+        # hard error, never a warning-plus-mutation.
         # Why (operator law 2026-08-24): git-hook stages are OFF by default and
         # re-enabled case by case via these config gates. The workflow keeps
         # owning WHICH steps belong to each stage; the booleans only govern
@@ -1909,7 +1927,7 @@ class FlextInfraConfigModels:
     class RepositoryRef(_ConfigContract):
         """One declared repository and its immutable Git origin contract."""
 
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Catalog key")]
         distribution: Annotated[
@@ -2057,7 +2075,7 @@ class FlextInfraConfigModels:
     class RepositoryConformTarget(_ConfigContract):
         """Runtime-derived conformance identity for one repository."""
 
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         repository: Annotated[
             FlextInfraConfigModels.RepositoryRef,
@@ -2168,7 +2186,10 @@ class FlextInfraConfigModels:
         ]
         scratch_namespace: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Scratch namespace below external project state"),
+            m.Field(description="Scratch namespace below the home scratch root"),
+        ]
+        scratch_home_relative: Annotated[
+            t.NonEmptyStr, m.Field(description="Home-relative scratch root")
         ]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
@@ -3230,19 +3251,13 @@ class FlextInfraConfigModels:
         time_seconds: Annotated[
             int,
             m.Field(
-                ge=1,
-                alias="time-seconds",
-                validation_alias=AliasChoices("time-seconds", "time_seconds"),
-                description="Wall-clock ceiling in seconds",
+                ge=1, alias="time-seconds", description="Wall-clock ceiling in seconds"
             ),
         ]
         memory_mb: Annotated[
             int,
             m.Field(
-                ge=1,
-                alias="memory-mb",
-                validation_alias=AliasChoices("memory-mb", "memory_mb"),
-                description="Resident memory ceiling in MiB",
+                ge=1, alias="memory-mb", description="Resident memory ceiling in MiB"
             ),
         ]
         tokens: Annotated[
@@ -3412,36 +3427,6 @@ class FlextInfraConfigModels:
                 for artifact in self.artifacts
                 if artifact.source_scan_ignore
             )
-
-        @m.computed_field
-        @property
-        def python_tool_distributions(self) -> t.VariadicTuple[str]:
-            """Tool catalog for owned tools.
-
-            One catalog projects every owned tool: the scaffold requirement
-            owners (build and dev tables) plus the toolchain's declared
-            additional tool identities. Runtime dependency profiles never
-            enter it.
-            """
-            scaffold_owners: set[str] = set()
-            for requirement in (
-                *self.scaffold.build.requirements,
-                *self.scaffold.project.dev,
-            ):
-                if (name := self._distribution_name(requirement)) is not None:
-                    scaffold_owners.add(name)
-            return tuple(
-                sorted(
-                    scaffold_owners
-                    | set(self.toolchain.additional_python_tool_distributions)
-                )
-            )
-
-        @staticmethod
-        def _distribution_name(requirement: str) -> str | None:
-            """Resolve the distribution name of one PEP 508 requirement line."""
-            match = re.match(r"[A-Za-z0-9][A-Za-z0-9._-]*", requirement)
-            return match.group(0) if match else None
 
         # The canonical .gitignore body is ONE computed
         # projection — the artifact SSOT feeds the Python/build section and the
@@ -3712,7 +3697,7 @@ class FlextInfraConfigModels:
 
         # The bump map is consumed as enum members by the strict release plan,
         # so the contract base's value coercion is switched off here.
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             strict=False, frozen=True, extra="forbid", use_enum_values=False
         )
 

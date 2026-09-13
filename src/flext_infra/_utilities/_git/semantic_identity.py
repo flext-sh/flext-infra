@@ -63,6 +63,41 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
         return r[m.Infra.GitIdentityReport].ok(report)
 
     @classmethod
+    def exact_worktree_root(
+        cls, requested: Path
+    ) -> p.Result[m.Infra.GitIdentityReport]:
+        """Reject Git parent discovery and unregistered nesting under a root.
+
+        Promoted from the Mise workspace planner (`flext-infra` `init` needed
+        the identical exact-root contract): the requested path must be the
+        resolved repository root itself, and — unless it is a genuine linked
+        worktree or a real Git submodule — no ancestor directory may itself be
+        a separate Git repository. An unregistered nested ``.git`` (a plain
+        ``git init`` under an existing checkout) satisfies "requested == root"
+        on its own but is never the exact worktree root callers intend.
+        """
+        identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=requested))
+        if identity.failure:
+            return r[m.Infra.GitIdentityReport].from_failure(identity)
+        if identity.value.repo_root != requested:
+            return r[m.Infra.GitIdentityReport].fail(
+                "Git request is not the exact Git worktree root: "
+                f"requested={requested} resolved={identity.value.repo_root}"
+            )
+        if identity.value.is_submodule or identity.value.is_worktree:
+            return identity
+        parent = requested.parent
+        if parent != requested:
+            outer = cls.git_identity(m.Infra.GitRepoRequest(repo_root=parent))
+            if outer.success:
+                return r[m.Infra.GitIdentityReport].fail(
+                    "Git request is nested inside another Git repository and is "
+                    "not a registered submodule or linked worktree: "
+                    f"requested={requested} outer={outer.value.repo_root}"
+                )
+        return identity
+
+    @classmethod
     def git_is_inside_work_tree(
         cls, request: m.Infra.GitRepoRequest
     ) -> p.Result[m.Infra.GitBoolReport]:

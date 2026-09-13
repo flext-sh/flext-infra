@@ -30,34 +30,6 @@ from flext_infra.typings import t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
-def resolve_gate_budgets(
-    configured_budgets: Mapping[str, m.Infra.ProjectGateBudgetSpec],
-) -> p.Result[Mapping[str, Mapping[str, int]]]:
-    """Project config budget rows; registry divergence fails loud.
-
-    The budget gate requires one row per registry gate; the config SSOT is
-    the single budget owner and a missing or unknown gate id is a declared
-    generation error, never a silent skip.
-    """
-    allowed_gates = c.Infra.ALLOWED_GATES
-    missing_budget_rows = sorted(allowed_gates - configured_budgets.keys())
-    unknown_budget_rows = sorted(configured_budgets.keys() - allowed_gates)
-    if missing_budget_rows or unknown_budget_rows:
-        return r[Mapping[str, Mapping[str, int]]].fail(
-            "budget configuration diverges from the gate registry: "
-            f"missing rows={missing_budget_rows}; "
-            f"unknown rows={unknown_budget_rows}"
-        )
-    return r[Mapping[str, Mapping[str, int]]].ok({
-        gate_id: {
-            "time-seconds": configured_budgets[gate_id].time_seconds,
-            "memory-mb": configured_budgets[gate_id].memory_mb,
-            "tokens": configured_budgets[gate_id].tokens,
-        }
-        for gate_id in sorted(configured_budgets)
-    })
-
-
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
 
@@ -614,6 +586,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if planned.failure:
             return r[m.Infra.CodegenResult].from_failure(planned)
         plan = planned.value
+        # Why (X-47): DECLARED scope excludes the workspace root repository
+        # from `plan.repositories`; docs generation must not render the root
+        # as an output scope either, or its report_dir escapes the transaction
+        # layout that already excludes root for that same scope. Root guides
+        # remain readable sources for members regardless of this flag.
+        docs_include_root = any(
+            repository.name == plan.workspace.repository.name
+            for repository in plan.repositories
+        )
         ancestry = self._validate_ancestry(plan)
         if ancestry.failure:
             return r[m.Infra.CodegenResult].from_failure(ancestry)
@@ -656,6 +637,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             docs_generator = FlextInfraDocGenerator(
                 repository_root=request.root,
                 projects=tuple(repository.name for repository in plan.repositories),
+                include_root=docs_include_root,
             )
             docs_bundle = docs_generator.prepare_bundle()
             if docs_bundle.failure:
@@ -694,6 +676,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         docs_generator = FlextInfraDocGenerator(
             repository_root=request.root,
             projects=tuple(repository.name for repository in plan.repositories),
+            include_root=docs_include_root,
         )
         docs_bundle = docs_generator.prepare_bundle()
         if docs_bundle.failure:
@@ -771,7 +754,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if not workspace.subprojects:
             return r[bool].ok(False)
         owner = root / c.Infra.BEADS_DIRNAME
-        if not owner.is_dir() or owner.is_symlink():
+        # The ledger directory is a conform projection: absent before the
+        # first render is normal; a link, or a non-directory, is not physical.
+        if owner.is_symlink() or (owner.exists() and not owner.is_dir()):
             return r[bool].fail(
                 f"workspace Beads ledger owner is not physical: {owner}"
             )
@@ -864,8 +849,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if residual:
             paths = ", ".join(str(file.path) for file in residual)
+            drift = u.Infra.codegen_file_drift_report(residual)
             return r[bool].fail(
-                f"codegen publication did not reach a fixed point: {paths}"
+                f"codegen publication did not reach a fixed point: {paths}\n{drift}"
             )
         u.Cli.info("stage=verify-lazy-init-receipt")
         lazy_fixed_point = transaction.validate_phase_analysis_locked(lazy_analysis)
@@ -1606,6 +1592,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             tooling_runtime=tooling_result.value,
             repository_root=pyproject.parent,
             managed_artifacts=managed_artifacts.resolution,
+            use_committed_artifacts=False,
         )
         if context_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(context_result)
@@ -1746,7 +1733,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 "PEP 621 project name does not match catalog distribution: "
                 f"{dist} != {repository.distribution}"
             )
-        managed_artifacts = u.Infra.snapshot_project_managed_artifacts(root)
+        managed_artifacts = u.Infra.snapshot_committed_project_managed_artifacts(root)
         if managed_artifacts.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
                 managed_artifacts
@@ -1964,14 +1951,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if composed.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(composed)
             rendered_content = composed.value.rendered
-            conflict_marker = next(
-                (
-                    line
-                    for line in rendered_content.splitlines()
-                    if line.startswith(("<<<<<<< ", "||||||| ", ">>>>>>> "))
-                ),
-                None,
-            )
+            conflict_marker = u.Infra.first_merge_conflict_marker(rendered_content)
             if conflict_marker is not None:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     "rendered template contains a merge conflict marker: "
@@ -2005,9 +1985,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Apply typed project overlays after canonical template rendering."""
         if destination == c.Infra.PYPROJECT_FILENAME:
             live_path = repository_root / c.Infra.PYPROJECT_FILENAME
-            live = (
-                live_path.read_text(encoding="utf-8") if live_path.is_file() else None
-            )
+            live: str | None = None
+            if live_path.is_file():
+                # Overlay reads the live text (managed merge conflicts
+                # resolved) and never writes it.
+                recovered_live = u.Infra.live_pyproject_text(live_path)
+                if recovered_live.failure:
+                    return r[m.Infra.CodegenArtifactComposition].from_failure(
+                        recovered_live
+                    )
+                live = recovered_live.value
             overlaid = u.Infra.overlay_preserved(rendered, live)
             if overlaid.failure:
                 return r[m.Infra.CodegenArtifactComposition].from_failure(overlaid)
@@ -2049,18 +2036,29 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         resolved_artifacts = managed_artifacts
         if resolved_artifacts is None:
-            snapshot = u.Infra.snapshot_project_managed_artifacts(repository_root)
+            snapshot = u.Infra.snapshot_committed_project_managed_artifacts(
+                repository_root
+            )
             if snapshot.failure:
                 return r[m.Infra.CodegenArtifactComposition].from_failure(snapshot)
             resolved_artifacts = snapshot.value
-        composed = u.Infra.compose_mise_toml_from_snapshot(
-            resolved_artifacts.sources, rendered
+        composed = (
+            u.Infra.compose_mise_toml_from_snapshot(
+                resolved_artifacts.sources, rendered
+            )
+            if resolved_artifacts.sources
+            else u.Infra.compose_mise_toml_from_resolution(
+                resolved_artifacts.resolution, rendered
+            )
         )
         if composed.failure:
             return r[m.Infra.CodegenArtifactComposition].from_failure(composed)
+        config_sources = u.Infra.snapshot_config_sources(repository_root)
+        if config_sources.failure:
+            return r[m.Infra.CodegenArtifactComposition].from_failure(config_sources)
         return r[m.Infra.CodegenArtifactComposition].ok(
             m.Infra.CodegenArtifactComposition(
-                rendered=composed.value, source_states=resolved_artifacts.sources
+                rendered=composed.value, source_states=config_sources.value
             )
         )
 
@@ -2239,6 +2237,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.EnvrcRenderSpec(
                     state_directory_name=codegen.toolchain.state_directory_name,
                     scratch_namespace=codegen.toolchain.scratch_namespace,
+                    scratch_home_relative=codegen.toolchain.scratch_home_relative,
                     pycache_namespace=codegen.toolchain.pycache_namespace,
                     environment_path_prepends=(
                         codegen.toolchain.environment_path_prepends
@@ -2362,12 +2361,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     mise_bootstrap=self._mise_bootstrap_environment(),
                 )
             )
-        if destination in {
-            c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
-            c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
-        }:
-            # Why (flext-to3n7): the release build phase snapshots these two
-            # policies from the repository; they are fleet policy owned by
+        if destination == c.Infra.RELEASE_GITLEAKS_CONFIG_PATH:
+            # Why (flext-to3n7): the release build phase snapshots the gitleaks
+            # policy from the repository; it is fleet policy owned by
             # config/infra.yaml, never scaffold-only project metadata.
             return r[p.Model].ok(
                 m.Infra.ReleasePolicySpec(
@@ -2391,6 +2387,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     dist=dist,
                     state_directory_name=codegen.toolchain.state_directory_name,
                     scratch_namespace=codegen.toolchain.scratch_namespace,
+                    scratch_home_relative=codegen.toolchain.scratch_home_relative,
                     infra_cli=config.Infra.name,
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
@@ -2467,6 +2464,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             tooling_runtime=tooling_runtime,
             repository_root=repository_root,
             managed_artifacts=managed_artifacts,
+            use_committed_artifacts=project_context is None,
         )
         if context_result.failure:
             return r[p.Model].from_failure(context_result)
@@ -2577,20 +2575,54 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             name for item in pep621.dependencies if (name := u.Infra.dep_name(item))
         }
         profiles = codegen.scaffold.project.dependency_profiles
-        upstream = next(
+        # The root of the dependency tree declares no upstream distribution:
+        # a distribution that IS a profile's upstream owns that profile.
+        own_profile = next(
             (
-                item.upstream
+                item
                 for item in profiles
                 if item.project is None
-                and item.upstream.replace("_", "-") in runtime_names
+                and item.upstream.replace("_", "-") == repository.distribution
             ),
             None,
         )
-        if upstream is None:
-            return r[m.Infra.ProjectSpec].fail(
-                "no scaffold.project.dependency_profiles.upstream matches live "
-                f"dependencies at {repository_root}"
+        candidates = (
+            (own_profile,)
+            if own_profile is not None
+            else tuple(
+                item
+                for item in profiles
+                if item.project is None
+                and item.upstream.replace("_", "-") in runtime_names
             )
+        )
+        # A profile whose upstream is itself a runtime dependency of another
+        # candidate is implied by it; the declared upstream is the most
+        # specific candidate, never the first catalog row that happens to match.
+        runtime_of = {
+            item.upstream: {
+                name
+                for dependency in item.runtime
+                if (name := u.Infra.dep_name(dependency))
+            }
+            for item in candidates
+        }
+        direct = tuple(
+            item
+            for item in candidates
+            if not any(
+                item.upstream.replace("_", "-") in runtime_of[other.upstream]
+                for other in candidates
+                if other is not item
+            )
+        )
+        if len(direct) != 1:
+            return r[m.Infra.ProjectSpec].fail(
+                "scaffold.project.dependency_profiles.upstream must match live "
+                f"dependencies exactly once at {repository_root}: "
+                f"{tuple(item.upstream for item in direct)}"
+            )
+        upstream = direct[0].upstream
         licenses = codegen.scaffold.project.supported_licenses
         return r[m.Infra.ProjectSpec].ok(
             m.Infra.ProjectSpec(
@@ -2651,6 +2683,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         repository_root: Path,
         managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
+        use_committed_artifacts: bool = True,
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed context consumed by project templates."""
         if workspace.project is None:
@@ -2658,38 +2691,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # identity from the live project metadata instead of failing, so
             # conforming a governed repository never depends on scaffold-only
             # declarations.
-            metadata = u.Infra.read_project_metadata_result(repository_root)
-            if metadata.failure:
-                return r[m.Infra.ProjectRenderContext].from_failure(metadata)
-            repository_provider = FlextInfraCodegenConform._repository_provider(
-                repository, codegen
+            derived = FlextInfraCodegenConform._project_spec_from_existing(
+                repository, repository_root, codegen
             )
-            if repository_provider.failure:
-                return r[m.Infra.ProjectRenderContext].from_failure(repository_provider)
-            live_name = metadata.value.package_name
-            class_stem = u.derive_class_stem(live_name)
-            project = m.Infra.ProjectSpec(
-                package_name=live_name,
-                class_stem=class_stem,
-                namespace=class_stem.removeprefix("Flext") or class_stem,
-                constant_name=live_name,
-                namespace_attribute=live_name,
-                alias=u.Infra.package_alias(package_name=live_name),
-                environment_prefix=f"{live_name.upper()}_",
-                license=config.Infra.codegen.scaffold.project.supported_licenses[0],
-                author_name="FLEXT Team",
-                author_email="team@flext.dev",
-                upstream=(
-                    config.Infra.codegen.scaffold.project.dependency_profiles[
-                        0
-                    ].upstream
-                ),
-                homepage=f"{repository_provider.value.base_url.rstrip('/')}/",
-                documentation=f"{repository_provider.value.base_url.rstrip('/')}/",
-                repository_root_rel=".",
-                year=time.localtime().tm_year,
-                description=metadata.value.project.description,
-            )
+            if derived.failure:
+                return r[m.Infra.ProjectRenderContext].from_failure(derived)
+            project = derived.value
         else:
             project = workspace.project
         dependency_profile = next(
@@ -2779,8 +2786,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             for section in codegen.gitignore_sections
             if not section.profiles or profile in section.profiles
         ]
-        if managed_artifacts is not None:
-            project_patterns = managed_artifacts.artifacts.Gitignore.patterns
+        catalog_artifacts = managed_artifacts
+        if use_committed_artifacts:
+            committed = u.Infra.load_committed_project_managed_artifacts(
+                repository_root
+            )
+            if committed.failure:
+                return r[m.Infra.ProjectRenderContext].from_failure(committed)
+            catalog_artifacts = committed.value
+        if catalog_artifacts is not None:
+            project_patterns = catalog_artifacts.artifacts.Gitignore.patterns
             if project_patterns:
                 profile_gitignore_sections.append(
                     m.Infra.ScaffoldGitignoreSectionSpec(
@@ -2818,16 +2833,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 tooling=config.Infra.tooling,
                 # Why: the fleet policy alone is not the effective Ruff contract.
                 # A repository may carry an operator-authorized exemption in its
-                # own config/*.yaml ManagedArtifacts block, and ensure_ruff
-                # composes the two when it edits a pyproject in place. The
-                # template rendered only the fleet map, so a full render silently
-                # dropped the local overlay -- flext-infra's own _rope exemption
-                # disappeared on every conform and returned 12 SLF001 findings
-                # the operator had already ruled on. Compose here so both paths
-                # produce the same effective map.
+                # committed ``config/*.yaml`` ManagedArtifacts catalog, and
+                # ensure_ruff composes the two when it edits a pyproject in
+                # place. The template rendered only the fleet map, so a full
+                # render silently dropped the local overlay -- flext-infra's
+                # own _rope exemption disappeared on every conform and returned
+                # 12 SLF001 findings the operator had already ruled on. Compose
+                # from the commit catalog so both paths produce the same
+                # effective map and concurrent worktree WIP cannot change a
+                # projection.
                 ruff_per_file_ignores=(
                     FlextInfraEnsureRuffConfigPhase.compose_per_file_ignores(
-                        repository_root, managed_artifacts=managed_artifacts
+                        repository_root, managed_artifacts=catalog_artifacts
                     )
                 ),
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),

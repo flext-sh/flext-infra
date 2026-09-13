@@ -22,7 +22,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         """Quality gate execution context and configuration."""
 
         fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = True
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             extra="forbid", arbitrary_types_allowed=True, populate_by_name=True
         )
         repository_root: Path = m.Field(description="Repository root directory")
@@ -53,11 +53,11 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         file: Annotated[str, m.Field(description="Diagnostic source file path")]
         line: Annotated[int, m.Field(description="Diagnostic start line")]
         column: Annotated[int, m.Field(description="Diagnostic start column")]
-        end_line: Annotated[int | None, m.Field(description="Diagnostic end line")]
-        end_column: Annotated[int | None, m.Field(description="Diagnostic end column")]
+        end_line: Annotated[int | None, m.Field(default=None, description="Diagnostic end line")]
+        end_column: Annotated[int | None, m.Field(default=None, description="Diagnostic end column")]
         message: Annotated[t.NonEmptyStr, m.Field(description="Diagnostic message")]
-        hint: Annotated[str | None, m.Field(description="Diagnostic hint")]
-        code: Annotated[str | None, m.Field(description="Mypy diagnostic code")]
+        hint: Annotated[str | None, m.Field(default=None, description="Diagnostic hint")]
+        code: Annotated[str | None, m.Field(default=None, description="Mypy diagnostic code")]
         severity: Annotated[
             Literal["error", "note"], m.Field(description="Mypy diagnostic severity")
         ]
@@ -247,7 +247,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
     class GateAttestationPredicate(m.ContractModel):
         """Canonical signed statement for locally completed gates."""
 
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             extra="forbid", frozen=True, strict=False
         )
 

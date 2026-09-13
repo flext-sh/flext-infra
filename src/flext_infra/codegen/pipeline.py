@@ -7,7 +7,11 @@ from typing import TYPE_CHECKING, override
 from flext_cli import cli
 
 from .. import FlextInfraServiceBase, c, m, p, r, t, u
-from . import FlextInfraCodegenPipelineStagesMixin
+from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
+from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles
+from ._mise_artifacts_publication import publish_file_plan
+from ._pipeline_stages import FlextInfraCodegenPipelineStagesMixin
+from .lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -53,7 +57,10 @@ class FlextInfraCodegenPipeline(
         """Build DAG stage specs with linear dependency chain."""
         handlers: t.MappingKV[str, p.Cli.PipelineStage] = {
             c.Infra.PipelineStage.DISCOVER: self._stage_discover,
-            c.Infra.PipelineStage.TOOLCHAIN: self._stage_toolchain,
+            c.Infra.PipelineStage.PARSE_SSOT: self._stage_parse_ssot,
+            c.Infra.PipelineStage.RENDER_TEMPLATES: self._stage_render_templates,
+            c.Infra.PipelineStage.OVERLAY_PRESERVATION: self._stage_overlay_preservation,
+            c.Infra.PipelineStage.WRITE_PUBLICATION: self._stage_write_publication,
             c.Infra.PipelineStage.PY_TYPED: self._stage_py_typed,
             c.Infra.PipelineStage.CENSUS_BEFORE: self._stage_census_before,
             c.Infra.PipelineStage.SCAFFOLD: self._stage_scaffold,
@@ -129,4 +136,11 @@ class FlextInfraCodegenPipeline(
         )
 
 
-__all__: list[str] = ["FlextInfraCodegenPipeline"]
+__all__: list[str] = [
+    "FlextInfraCodegenLazyInitGenerationMixin",
+    "FlextInfraCodegenLazyInitPlanner",
+    "FlextInfraCodegenPipeline",
+    "FlextInfraCodegenPipelineStagesMixin",
+    "FlextInfraMiseArtifactsFiles",
+    "publish_file_plan",
+]

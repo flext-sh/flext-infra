@@ -175,9 +175,10 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
             return ""
         if isinstance(node, ast.Name):
             return self._import_aliases.get(node.id, node.id)
-        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
-            base = self._import_aliases.get(node.value.id, node.value.id)
-            return f"{base}.{node.attr}"
+        if isinstance(node, ast.Attribute):
+            base = self._expression_name(node.value)
+            if base:
+                return f"{base}.{node.attr}"
         return ""
 
     @classmethod

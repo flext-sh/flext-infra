@@ -195,7 +195,6 @@ class FlextInfraConstantsCodegen(
 
     PIPELINE_STAGE_ORDER: Final[t.VariadicTuple[PipelineStage]] = (
         PipelineStage.DISCOVER,
-        PipelineStage.TOOLCHAIN,
         PipelineStage.PARSE_SSOT,
         PipelineStage.RENDER_TEMPLATES,
         PipelineStage.OVERLAY_PRESERVATION,
@@ -204,8 +203,8 @@ class FlextInfraConstantsCodegen(
         PipelineStage.CENSUS_BEFORE,
         PipelineStage.SCAFFOLD,
         PipelineStage.AUTO_FIX,
-        PipelineStage.DEPS,
         PipelineStage.LAZY_INIT,
+        PipelineStage.DEPS,
         PipelineStage.CENSUS_AFTER,
     )
     "Ordered sequence of pipeline stage identifiers."

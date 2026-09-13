@@ -28,7 +28,7 @@ class FlextInfraModelsMixins:
         command.
         """
 
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
         repository_root: Annotated[
             Path,
@@ -117,12 +117,11 @@ class FlextInfraModelsMixins:
             ),
         ] = False
         gates: t.StrSequence = m.Field(
-            default_factory=lambda: tuple(
-                gate.strip()
-                for gate in c.Infra.SAFE_EXECUTION_DEFAULT_GATES.split(",")
-                if gate.strip()
+            default=(),
+            description=(
+                "Gate names for post-transform validation; empty selects the SSOT"
+                " snapshot gates (make.ci.check_gates)."
             ),
-            description="Gate names for post-transform validation",
         )
 
         @m.field_validator("gates", mode="before")

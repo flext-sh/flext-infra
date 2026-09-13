@@ -80,7 +80,6 @@ Infra:
           - .git
           - .github/hooks
           - .github/hooks/**
-          - "**/aihub-hooks/**"
           - .mypy_cache
           - .pytest_cache
           - .ruff_cache
@@ -638,6 +637,11 @@ Infra:
           - "edge_cases: edge case tests"
           - "stress: stress tests"
           - "resilience: resilience tests"
+        # gate-budget/engineering-core: external-token gates never run inside
+        # offline verification (`make test`); they are deselected here and the
+        # runner records them as NOT EXECUTED. Direct invocation (`pytest -m
+        # remote`) selects them and then their required environment is exact.
+        external-gate-markers: [remote, docker]
         standard-addopts:
           - --benchmark-disable
           - --strict-markers

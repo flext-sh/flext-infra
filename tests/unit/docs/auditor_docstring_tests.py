@@ -51,6 +51,11 @@ def _write_project(tmp_path: Path) -> Path:
         database="flext-demo",
         issue_prefix="flext-demo",
     )
+    # The audit resolves the project's own Git identity; the fixture never
+    # borrows an enclosing repository.
+    u.Tests.initialize_git_repo(
+        project, origin_url=u.Tests.repository_ref("flext-demo").url
+    )
     return project
 
 

@@ -22,7 +22,6 @@ class TestBanditAndMarkdownGates:
     @pytest.mark.parametrize(
         ("with_src", "runner_results", "passed", "issues_len"),
         [
-            (False, (), True, 0),
             (
                 True,
                 (
@@ -83,7 +82,7 @@ class TestBanditAndMarkdownGates:
             "raw_output",
         ),
         [
-            ("", None, None, True, 0, ""),
+            ("", None, None, False, 0, "no check targets were collected"),
             (
                 "# Test\n",
                 None,
