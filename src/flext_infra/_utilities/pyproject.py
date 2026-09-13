@@ -109,7 +109,8 @@ class FlextInfraUtilitiesPyproject:
         command = [str(taplo.value), "format", "-", "--stdin-filepath", relative_path]
         if config_path is not None:
             command.extend(("--config", str(config_path)))
-        result = u.Cli.run_raw(
+        # Generated content must not pass through normalized text model fields.
+        result = u.Cli.run_bytes(
             command,
             cwd=execution_root,
             input_data=source.encode(c.Cli.ENCODING_DEFAULT),
@@ -119,11 +120,21 @@ class FlextInfraUtilitiesPyproject:
             return r[str].from_failure(result)
         output = result.value
         if not u.Cli.process_succeeded(output.outcome):
-            detail = (output.stderr or output.stdout).strip()
+            detail = (
+                (output.stderr or output.stdout)
+                .decode(c.Cli.ENCODING_DEFAULT, errors="backslashreplace")
+                .strip()
+            )
             return r[str].fail(
                 f"taplo format failed ({output.outcome.raw_return_code}): {detail}"
             )
-        return r[str].ok(output.stdout)
+        try:
+            formatted = output.stdout.decode(c.Cli.ENCODING_DEFAULT)
+        except UnicodeDecodeError as exc:
+            return r[str].fail(
+                f"taplo format returned non-UTF-8 output: {exc}", exception=exc
+            )
+        return r[str].ok(formatted)
 
     @staticmethod
     @cache
