@@ -147,8 +147,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                 timeout=c.Infra.TIMEOUT_SHORT,
             )
             if compile_result.failure:
-                error = compile_result.error or "py_compile failed"
-                return r[bool].fail(error[:300])
+                return r[bool].from_failure(compile_result)
             return r[bool].ok(True)
         run_result = u.Cli.run_raw(
             [
@@ -164,12 +163,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             timeout=c.Infra.TIMEOUT_MEDIUM,
         )
         if run_result.failure:
-            error = (run_result.error or "pytest execution failed")[:300]
-            return (
-                r[bool].ok(True)
-                if cls._has_no_tests_marker(error)
-                else r[bool].fail(error)
-            )
+            return r[bool].from_failure(run_result)
         output = (run_result.value.stdout + run_result.value.stderr)[:300]
         passed_or_no_tests = u.Cli.process_succeeded(run_result.value.outcome) or (
             run_result.value.outcome.raw_return_code == cls._NO_TESTS_EXIT_CODE

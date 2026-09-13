@@ -196,10 +196,7 @@ class FlextInfraWorktreeService(s[str]):
             m.Infra.GitCommitishRequest(repo_root=primary_root, commitish=base)
         )
         if resolved.failure:
-            return r[str].fail(
-                f"cannot resolve worktree base {base}: "
-                f"{resolved.error or 'unknown commitish'}"
-            )
+            return r[str].from_failure(resolved)
         base_oid = resolved.value.oid
         if self.epic_lane is not None:
             if self.epic_lane.is_symlink():
