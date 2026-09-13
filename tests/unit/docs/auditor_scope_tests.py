@@ -105,7 +105,19 @@ class TestAuditorScope:
         tm.that(report.checks, has="forbidden-terms")
 
     def test_audit_scope_without_issues_passes(self, tmp_path: Path) -> None:
-        """An issue-free audit passes without opting into a mode."""
+        """An issue-free audit passes without opting into a mode.
+
+        Why: the all-check resolves the Make verb contract from repository
+        policy, so a realistic scope is a git repository carrying an
+        identity — a bare temp directory is not an auditable project.
+        """
+        u.Tests.write_project_beads_config(tmp_path, "test-project")
+        u.Tests.initialize_git_repo(
+            tmp_path, origin_url=u.Tests.repository_ref("test-project").url
+        )
+        _ = (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "test-project"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
         auditor = FlextInfraDocAuditor()
         scope = m.Infra.DocScope(
             name="test", path=tmp_path, report_dir=tmp_path / "reports"

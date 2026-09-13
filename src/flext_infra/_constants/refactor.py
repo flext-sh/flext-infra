@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import MutableMapping, Sequence
 from enum import StrEnum, unique
 from pathlib import Path
 from types import MappingProxyType
@@ -21,7 +21,7 @@ def _build_namespace_file_to_family(
     mapping: Sequence[t.Pair[str, Sequence[str]]],
 ) -> t.StrMapping:
     """Build file name → family alias mapping from (alias, file_names) pairs."""
-    result: dict[str, str] = {}
+    result: MutableMapping[str, str] = {}
     for alias, file_names in mapping:
         for file_name in file_names:
             result[file_name] = alias
@@ -32,7 +32,7 @@ def _build_namespace_family_expected_alias(
     mapping: Sequence[t.Pair[str, Sequence[str]]], suffixes: t.StrMapping
 ) -> t.MappingKV[str, t.StrPair]:
     """Build file name → (alias, suffix) mapping from family specs."""
-    result: dict[str, t.StrPair] = {}
+    result: MutableMapping[str, t.StrPair] = {}
     for alias, file_names in mapping:
         for file_name in file_names:
             result[file_name] = (alias, suffixes[alias])

@@ -16,8 +16,12 @@
 #       Nested gitlinks belong to their own setup.
 # Free: no
 # End SECTION: submodule setup
+# Why (flext-mphw1): runners expose umask 002 and `submodule update --init`
+# materializes tracked files as 0664; canonical Mise artifact gates demand
+# exact modes, so provisioning normalizes the umask before checkout.
 {{ target }}:
 	@set -eu; \
+	umask 022; \
 	root="{{ project_root }}"; \
 	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
 	profile="$(MAKE_PROFILE)"; \

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
@@ -15,11 +16,11 @@ if TYPE_CHECKING:
 class FlextInfraCodegenLazyInitPlannerCacheMixin:
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
-        _package_exports_cache: dict[str, frozenset[str]]
-        _source_exports_cache: dict[str, frozenset[str]]
-        _source_plan_cache: dict[str, m.Infra.LazyInitPlan]
+        _package_exports_cache: MutableMapping[str, frozenset[str]]
+        _source_exports_cache: MutableMapping[str, frozenset[str]]
+        _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan]
         _source_exports_visiting: set[str]
-        _module_file_by_name: dict[str, Path]
+        _module_file_by_name: MutableMapping[str, Path]
 
         def build_plan(
             self, pkg_dir: Path, *, dir_exports: t.MappingKV[str, t.LazyAliasMap]

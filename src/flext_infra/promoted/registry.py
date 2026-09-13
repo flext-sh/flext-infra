@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra.promoted.base import RegistryError
@@ -22,8 +23,10 @@ class Registry:
 
     def __init__(self) -> None:
         """Initialize an empty command registry."""
-        self._commands: dict[str, dict[str, p.Infra.Promoted.Command]] = {}
-        self._aliases: dict[str, p.Infra.Promoted.AliasTarget] = {}
+        self._commands: MutableMapping[
+            str, MutableMapping[str, p.Infra.Promoted.Command]
+        ] = {}
+        self._aliases: MutableMapping[str, p.Infra.Promoted.AliasTarget] = {}
 
     def add(self, command: p.Infra.Promoted.Command) -> None:
         """Add one command and its aliases to the registry.
@@ -80,7 +83,7 @@ class Registry:
 
         """
         if "all" not in commands:
-            msg = f"verbo '{verb}' sem WHAT=all"
+            msg = f"verbo '{verb}' sem"
             raise RegistryError(msg)
         domains = {command.domain for command in commands.values()}
         if len(domains) != 1:
@@ -89,7 +92,7 @@ class Registry:
             raise RegistryError(msg)
         for command in commands.values():
             if command.what != "all" and command.aliases:
-                msg = f"{command.path}: aliases devem ser declarados apenas em WHAT=all"
+                msg = f"{command.path}: aliases devem ser declarados apenas em"
                 raise RegistryError(msg)
             validate_command_contract(command)
         validate_all_choices(verb, commands)

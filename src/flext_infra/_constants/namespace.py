@@ -27,11 +27,6 @@ class FlextInfraConstantsNamespace:
         "conftest.py",
         "py.typed",
     })
-    NAMESPACE_CANONICAL_ALIAS_MODULE_STEMS: Final[frozenset[str]] = frozenset({
-        "ldif",
-        "cli",
-        "main",
-    })
     NAMESPACE_LAYER_ORDER: Final[t.VariadicTuple[str]] = (
         "settings",
         "config",
@@ -64,14 +59,6 @@ class FlextInfraConstantsNamespace:
     NAMESPACE_SETTINGS_IMPORT_ALLOWED_OWNERS: Final[t.VariadicTuple[str]] = (
         "settings",
         "config",
-    )
-    NAMESPACE_SETTINGS_IMPORT_ALLOWED_FACADES: Final[t.VariadicTuple[str]] = (
-        "t",
-        "m",
-        "u",
-    )
-    NAMESPACE_SETTINGS_IMPORT_ALLOWED_FACADES_SET: Final[frozenset[str]] = frozenset(
-        NAMESPACE_SETTINGS_IMPORT_ALLOWED_FACADES
     )
     # Platform service-facade singletons emitted by codegen (api.py.j2:20
     # ``{{ alias }} = {{ class_stem }}.fetch_global()``) and the canonical
@@ -165,7 +152,6 @@ class FlextInfraConstantsNamespace:
         "Yield",
         "YieldFrom",
     })
-    NAMESPACE_MAX_LOGICAL_LOC: Final[int] = 200
 
 
 __all__: list[str] = ["FlextInfraConstantsNamespace"]

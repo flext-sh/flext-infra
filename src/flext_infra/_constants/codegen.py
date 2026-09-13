@@ -65,7 +65,6 @@ class FlextInfraConstantsCodegen(
     "Canonical Unix Mise launcher filename."
     MISE_WINDOWS_LAUNCHER_FILENAME: Final[str] = "mise.cmd"
     "Canonical Windows Mise launcher filename."
-    GEN_BACKUP_UTC_FORMAT: Final[str] = "%Y%m%dT%H%M%SZ"
     "UTC basic stamp for `{filename}.{stamp}.bak` written before gen apply."
     CODEGEN_TRANSACTION_LOCK_FILENAME: Final[str] = "flext-infra-codegen.lock"
     "Worktree-specific administrative lock for complete generation."
@@ -182,6 +181,10 @@ class FlextInfraConstantsCodegen(
 
         DISCOVER = "discover"
         TOOLCHAIN = "toolchain"
+        PARSE_SSOT = "parse_ssot"
+        RENDER_TEMPLATES = "render_templates"
+        OVERLAY_PRESERVATION = "overlay_preservation"
+        WRITE_PUBLICATION = "write_publication"
         PY_TYPED = "py_typed"
         CENSUS_BEFORE = "census_before"
         SCAFFOLD = "scaffold"
@@ -193,6 +196,10 @@ class FlextInfraConstantsCodegen(
     PIPELINE_STAGE_ORDER: Final[t.VariadicTuple[PipelineStage]] = (
         PipelineStage.DISCOVER,
         PipelineStage.TOOLCHAIN,
+        PipelineStage.PARSE_SSOT,
+        PipelineStage.RENDER_TEMPLATES,
+        PipelineStage.OVERLAY_PRESERVATION,
+        PipelineStage.WRITE_PUBLICATION,
         PipelineStage.PY_TYPED,
         PipelineStage.CENSUS_BEFORE,
         PipelineStage.SCAFFOLD,

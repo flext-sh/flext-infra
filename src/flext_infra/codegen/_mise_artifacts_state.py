@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import stat
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -183,7 +184,7 @@ class FlextInfraMiseArtifactsState:
         if len(set(requested)) != len(requested):
             return result_type.fail(f"duplicate {phase} directory request")
         projects = tuple(sorted(layout.projects, key=cls._project_depth))
-        planned: dict[Path, m.Infra.CodegenJournalDirectory] = {}
+        planned: MutableMapping[Path, m.Infra.CodegenJournalDirectory] = {}
         for target in requested:
             path = target.expanduser().absolute()
             project = next(
@@ -383,9 +384,7 @@ class FlextInfraMiseArtifactsState:
         return tuple(sorted(set(residue)))
 
     @classmethod
-    def scope_transaction_residue(
-        cls, scope_root: Path
-    ) -> t.VariadicTuple[Path]:
+    def scope_transaction_residue(cls, scope_root: Path) -> t.VariadicTuple[Path]:
         """Find unowned transaction trees across the entire scope identity.
 
         One scope identity shares exactly one journal lease. Reconciliation
@@ -431,9 +430,7 @@ class FlextInfraMiseArtifactsState:
         return cls.cleanup_orphan_paths(residue)
 
     @classmethod
-    def cleanup_orphan_paths(
-        cls, paths: t.VariadicTuple[Path]
-    ) -> p.Result[bool]:
+    def cleanup_orphan_paths(cls, paths: t.VariadicTuple[Path]) -> p.Result[bool]:
         """Remove orphaned physical trees through the guarded cleanup owner."""
         for path in paths:
             observed = u.Cli.atomic_inventory_physical_tree(path)

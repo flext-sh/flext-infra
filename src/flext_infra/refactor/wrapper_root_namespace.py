@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, ClassVar, override
 
@@ -69,7 +70,9 @@ class FlextInfraWrapperRootNamespaceRefactor(
 
     def _scan_workspace(
         self,
-    ) -> p.Result[tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]]:
+    ) -> p.Result[
+        tuple[t.SequenceOf[Path], MutableMapping[str, frozenset[str]], frozenset[str]]
+    ]:
         """Resolve project paths and discover Python files + runtime alias map."""
         selected_projects: t.StrSequence = (
             self.project_names if self.project_names is not None else ()
@@ -77,7 +80,11 @@ class FlextInfraWrapperRootNamespaceRefactor(
         resolved = u.Infra.resolve_projects(self.repository_root, selected_projects)
         if resolved.failure:
             return r[
-                tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
+                tuple[
+                    t.SequenceOf[Path],
+                    MutableMapping[str, frozenset[str]],
+                    frozenset[str],
+                ]
             ].from_failure(resolved)
         iter_result = u.Infra.iter_python_files(
             m.Infra.SourceScanRequest(
@@ -86,7 +93,11 @@ class FlextInfraWrapperRootNamespaceRefactor(
         )
         if iter_result.failure:
             return r[
-                tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
+                tuple[
+                    t.SequenceOf[Path],
+                    MutableMapping[str, frozenset[str]],
+                    frozenset[str],
+                ]
             ].from_failure(iter_result)
         project_runtime_aliases = {
             project.path.name: frozenset(layout.runtime_aliases)
@@ -94,7 +105,9 @@ class FlextInfraWrapperRootNamespaceRefactor(
             if (layout := u.Infra.layout(project.path)) is not None
         }
         return r[
-            tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
+            tuple[
+                t.SequenceOf[Path], MutableMapping[str, frozenset[str]], frozenset[str]
+            ]
         ].ok((
             iter_result.value,
             project_runtime_aliases,

@@ -9,12 +9,13 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 
-from flext_infra import c, p, t
-
-from ._defaults import ImmutableEmptyMapping
-from .codegen_render import FlextInfraModelsCodegenRender
-from .config import FlextInfraConfigModels
-from .mixins import FlextInfraModelsMixins as mm
+from .. import c, p, t
+from . import (
+    FlextInfraConfigModels,
+    FlextInfraModelsCodegenRender,
+    FlextInfraModelsMixins as mm,
+    ImmutableEmptyMapping,
+)
 
 
 class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
@@ -1313,6 +1314,22 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         fix_results: Annotated[
             t.SequenceOf[FlextInfraModelsCodegen.AutoFixResult],
             m.Field(description="Auto-fix stage results"),
+        ] = ()
+        conform_plan: Annotated[
+            FlextInfraConfigModels.CodegenPlan | None,
+            m.Field(description="Validated conform plan from ParseSSOTStage"),
+        ] = None
+        rendered_artifacts: Annotated[
+            t.SequenceOf[FlextInfraConfigModels.CodegenFilePlan],
+            m.Field(description="Rendered artifacts before overlay preservation"),
+        ] = ()
+        composed_artifacts: Annotated[
+            t.SequenceOf[FlextInfraConfigModels.CodegenFilePlan],
+            m.Field(description="Artifacts after overlay preservation"),
+        ] = ()
+        publication_staged: Annotated[
+            t.SequenceOf[FlextInfraModelsCodegen.CodegenStagedFile],
+            m.Field(description="Files staged for atomic publication"),
         ] = ()
 
 

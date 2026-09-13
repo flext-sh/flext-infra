@@ -59,7 +59,7 @@ class FlextInfraConstantsMake:
     # (c.Infra.SARIF_TOOL_INFO) so registering a gate makes it reachable
     # through `make check` in the same edit and no second list can drift.
     # Mutating gates (`format`) are excluded: they rewrite files, so they are
-    # owned by `make fmt APPLY=Y` / `make fix APPLY=Y` and a read-only verb
+    # owned by `make fmt` / `make fix` and a read-only verb
     # must never invoke them.
     CANONICAL_GATE_IDS: Final[t.VariadicTuple[str]] = tuple(
         gate

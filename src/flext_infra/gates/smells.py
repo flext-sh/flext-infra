@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -33,7 +34,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     scanner_binary: ClassVar[str] = c.Infra.QLTY_BINARY
 
     # flext-pulj: process results stay structural outside the Pydantic boundary.
-    _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
+    _scan_cache: ClassVar[MutableMapping[str, p.Cli.CommandOutput]] = {}
 
     @override
     def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
@@ -188,8 +189,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         )
         if not config_path.is_file():
             return self._unrunnable_scan_output(
-                f"generated qlty configuration is absent: {config_path}; "
-                "run make gen"
+                f"generated qlty configuration is absent: {config_path}; run make gen"
             )
         return self._run(
             [binary, *c.Infra.SMELLS_QLTY_ARGS],

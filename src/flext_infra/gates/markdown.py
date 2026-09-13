@@ -21,8 +21,8 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     gate_name: ClassVar[str] = "Markdown"
     # flext-38p39: the linter flags MD009/MD012 and friends with its own `[*]`
     # auto-fixable marker, so `make check` blocked on findings that no canonical
-    # verb could repair -- `make fmt APPLY=Y` covers Python only and `make fix
-    # APPLY=Y` skipped this gate, both exiting 0. The tool supports `--fix`, so
+    # verb could repair -- `make fmt` covers Python only and `make fix
+    # ` skipped this gate, both exiting 0. The tool supports `--fix`, so
     # the gate offers it and the canonical sequence can reach green.
     can_fix: ClassVar[bool] = True
 
@@ -109,14 +109,14 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
         ``rumdl check --fix`` is a linter: it exits non-zero whenever a finding
         has no autofix, so a run that repaired every fixable file still failed
-        the verb and `make fix APPLY=Y` could never reach green. ``rumdl fmt``
+        the verb and `make fix` could never reach green. ``rumdl fmt``
         applies the same fixes with formatter-style exit codes, which is the
         contract the mutating verb promises. It accepts neither
         ``--output-format`` nor ``--deny-config-warnings`` (both are check-only
         reporting flags), so the fix surface carries only what it defines.
         """
         _ = ctx
-        return self._python_console_script_command(
+        args: t.SequenceOf[str] = [
             c.Infra.RUMDL,
             "fmt",
             "--no-cache",
@@ -124,8 +124,9 @@ class FlextInfraMarkdownGate(FlextInfraGate):
             "never",
             *self._resolve_config_args(project_dir),
             *self._resolve_exclude_args(project_dir),
-            *targets,
-        )
+            *list(targets),
+        ]
+        return self._python_console_script_command(*args)
 
     @override
     def _parse_check_output(

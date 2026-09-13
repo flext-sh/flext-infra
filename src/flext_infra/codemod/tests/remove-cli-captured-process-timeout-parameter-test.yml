@@ -1,34 +1,35 @@
 id: remove-cli-captured-process-timeout-parameter
 valid:
   - |
-    def _captured_process_result(
-        cls,
-        return_code: int | None,
-        received_signals: list[int],
-        diagnostics: tuple[str, ...],
-        stdout_output: bytearray,
-        stderr_output: bytearray,
-        duration: float,
+    def _finalize_capture(
+        handler,
+        exit_status,
+        signal_list,
+        diag_data,
+        buf_out,
+        buf_err,
+        elapsed,
         *,
-        timed_out: bool,
+        is_timed_out,
     ) -> p.Result[p.Cli.CommandBytesOutput]:
-        """Attach captured bytes only after the owned process boundary is empty."""
-        return cls._process_exit_result(
-            return_code,
-            received_signals,
-            diagnostics,
-            timed_out=timed_out,
-        ).map(
-            lambda outcome: m.Cli.CommandBytesOutput(
-                stdout=bytes(stdout_output),
-                stderr=bytes(stderr_output),
-                outcome=outcome,
-                duration=duration,
+        """Build the final command bytes output after process completion (variant A)."""
+        step_one = handler._process_exit_result(
+            exit_status,
+            signal_list,
+            diag_data,
+            timed_out=is_timed_out,
+        )
+        return step_one.map(
+            lambda item: m.Cli.CommandBytesOutput(
+                stdout=bytes(buf_out),
+                stderr=bytes(buf_err),
+                outcome=item,
+                duration=elapsed,
             )
         )
 invalid:
   - |
-    def _captured_process_result(
+    def _legacy_capture(
         cls,
         cmd: t.StrSequence,
         return_code: int | None,
@@ -42,21 +43,25 @@ invalid:
         timeout_seconds: int | None,
         timeout_exit_code: int,
     ) -> p.Result[p.Cli.CommandBytesOutput]:
-        """Attach captured bytes only after the owned process boundary is empty."""
+        """Legacy variant: retains timeout parameters for backward compat."""
+        legacy_timeout = timeout_seconds is not None
+        legacy_timeout_seconds = timeout_seconds
+        legacy_timeout_exit = timeout_exit_code
         return cls._process_exit_result(
-            cmd,
-            return_code,
-            received_signals,
-            diagnostics,
+            cmd=cmd,
+            return_code=return_code,
+            received_signals=received_signals,
+            diagnostics=diagnostics,
             timed_out=timed_out,
-            legacy_timeout=timeout_seconds is not None,
-            legacy_timeout_seconds=timeout_seconds,
+            legacy_timeout=legacy_timeout,
+            legacy_timeout_seconds=legacy_timeout_seconds,
+            legacy_timeout_exit=legacy_timeout_exit,
             timeout_exit_code=timeout_exit_code,
         ).map(
-            lambda outcome: m.Cli.CommandBytesOutput(
+            lambda done: m.Cli.CommandBytesOutput(
                 stdout=bytes(stdout_output),
                 stderr=bytes(stderr_output),
-                outcome=outcome,
+                outcome=done,
                 duration=duration,
             )
         )

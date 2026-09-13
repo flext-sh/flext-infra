@@ -13,18 +13,21 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
+from pydantic import AliasChoices
 
-from flext_infra import t
-
-from .._constants.codegen_project import FlextInfraConstantsCodegenProject
-from .._constants.make import FlextInfraConstantsMake
-from .._constants.release import FlextInfraConstantsRelease
-from .._constants.validate import FlextInfraConstantsSharedInfra
-from ._defaults import ImmutableEmptyMapping, immutable_empty_mapping
-from .deps_tool_config import FlextInfraModelsDepsToolSettings
-from .layout import FlextInfraModelsLayout
-
-__all__: list[str] = ["FlextInfraConfigModels"]
+from .. import t
+from .._constants import (
+    FlextInfraConstantsCodegenProject,
+    FlextInfraConstantsMake,
+    FlextInfraConstantsRelease,
+    FlextInfraConstantsSharedInfra,
+)
+from . import (
+    FlextInfraModelsDepsToolSettings,
+    FlextInfraModelsLayout,
+    ImmutableEmptyMapping,
+    immutable_empty_mapping,
+)
 
 
 def _tool_version_field(description: str) -> object:
@@ -359,33 +362,11 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ()
-        dependency_cooldown_days: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                le=90,
-                description="Supply-chain cooldown shared by uv and update policy",
-            ),
-        ]
-        dependency_cooldown_exclusions: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(description="Packages exempted from the fleet cooldown"),
-        ] = ()
-        dependency_cooldown_overrides: Annotated[
-            t.StrMapping,
-            m.Field(
-                default_factory=immutable_empty_mapping,
-                description="Per-package RFC 3339 cooldown cutoffs",
-            ),
-        ]
         additional_python_tool_distributions: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
-                description=(
-                    "Tool identities outside the scaffold requirement owners; "
-                    "every entry is uncapped by the uv supply-chain cooldown"
-                ),
+                description="Tool identities outside the scaffold requirement owners",
             ),
         ] = ()
         uv_constraint_dependencies: Annotated[
@@ -535,6 +516,32 @@ class FlextInfraConfigModels:
                 description="Toolchain field names protected from alternate distributions",
             ),
         ]
+        uv_exclude_newer: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="uv [tool.uv] exclude-newer cutoff (exterminated fleet-wide, rendered then conform-stripped)"
+            ),
+        ]
+        dependency_cooldown_exclusions: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Package distributions frozen at their current floor by the "
+                    "fleet-wide dependency cooldown policy; absent frees all packages"
+                ),
+            ),
+        ] = ()
+        dependency_cooldown_overrides: Annotated[
+            t.MappingKV[str, str],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Per-package cooldown cutoff dates overriding the fleet default; "
+                    "maps distribution name to a PEP 440 version cutoff string"
+                ),
+            ),
+        ]
 
         @u.model_validator(mode="after")
         def _validate_protected_mise_tools(self) -> Self:
@@ -564,12 +571,6 @@ class FlextInfraConfigModels:
         def python_selector(self) -> str:
             """Mise/pyenv-style selector for the configured Python minor line."""
             return self.python_version
-
-        @m.computed_field
-        @property
-        def uv_exclude_newer(self) -> str:
-            """Render the shared dependency cooldown in uv duration syntax."""
-            return f"{self.dependency_cooldown_days} days"
 
     class ProviderSpec(_ConfigContract):
         """One GitHub organization and its mandatory branch policy."""
@@ -803,18 +804,6 @@ class FlextInfraConfigModels:
         state_directory_name: Annotated[
             t.NonEmptyStr, m.Field(description="External runtime state directory name")
         ]
-        dependency_cooldown_days: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                le=90,
-                description=(
-                    "Shared uv and Dependabot dependency cooldown rendered into "
-                    "dependabot.yml; the template reads it on every ecosystem "
-                    "block, so the spec must declare it or the whole render dies"
-                ),
-            ),
-        ]
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
@@ -1032,23 +1021,11 @@ class FlextInfraConfigModels:
         description: Annotated[
             t.NonEmptyStr, m.Field(description="Operator-facing help text")
         ]
-        requires_apply: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Whether the public boundary requires the one effect token APPLY=Y"
-                )
-            ),
-        ]
 
     class MakeWorkflowStepSpec(_ConfigContract):
-        """One canonical workflow step and its explicit mutation intent."""
+        """One canonical workflow step."""
 
         verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public verb")]
-        apply: Annotated[
-            bool,
-            m.Field(description="Whether the step supplies the configured apply token"),
-        ] = False
         contexts: Annotated[
             t.VariadicTuple[Literal["local", "ci", "pre_commit", "pre_push"]],
             m.Field(
@@ -1264,7 +1241,7 @@ class FlextInfraConfigModels:
         ]
         mutable_actions: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
-            m.Field(min_length=1, description="Docs actions guarded by APPLY=Y"),
+            m.Field(min_length=1, description="Docs actions that mutate"),
         ]
         reports_dir: Annotated[
             Path, m.Field(description="Repository-relative docs reports directory")
@@ -1417,7 +1394,7 @@ class FlextInfraConfigModels:
         """Ruff CLI contract for generated Make verbs and quality gates.
 
         Operator 2026-09-08: ruff is the style and autofix rule. Every
-        invocation uses preview. ``make fmt APPLY=Y`` also applies unsafe
+        invocation uses preview. ``make fmt`` also applies unsafe
         autofixes. Never weaken ruff to keep a file; change the code.
         """
 
@@ -1438,7 +1415,7 @@ class FlextInfraConfigModels:
             m.Field(
                 description=(
                     "Flags for ruff check --fix including unsafe-fixes; used by "
-                    "make fmt APPLY=Y and make fix APPLY=Y"
+                    "make fmt and make fix"
                 )
             ),
         ]
@@ -1454,25 +1431,9 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.MakeWorkInProgressSpec,
             m.Field(description="WIP branch and draft PR gate predicate"),
         ]
-        apply_variable: Annotated[
-            t.NonEmptyStr, m.Field(description="Write-enable variable name")
-        ]
-        apply_value: Annotated[
-            t.NonEmptyStr, m.Field(description="Only accepted write-enable value")
-        ]
-        apply_absent_value: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                default="Y",
-                description=(
-                    "Value the generated Makefile seeds when the caller passes "
-                    "no inputs. The operator elected apply-by-default for "
-                    "0.12.0-dev: every public verb mutates through its declared "
-                    "owner with zero variables; APPLY=N is the explicit "
-                    "check-mode opt-out where the verb supports one"
-                ),
-            ),
-        ] = "Y"
+        # Why (operator law 2026-09-11): the APPLY write-enable flag is
+        # exterminated — every public verb mutates by default with zero
+        # variables; read-only verification lives in dedicated verbs (check).
         # Why (operator law 2026-08-24): git-hook stages are OFF by default and
         # re-enabled case by case via these config gates. The workflow keeps
         # owning WHICH steps belong to each stage; the booleans only govern
@@ -1603,20 +1564,6 @@ class FlextInfraConfigModels:
                     f"{', '.join(sorted(unknown_workflow))}"
                 )
                 raise ValueError(msg)
-            invalid_apply = [
-                step.verb
-                for step in self.workflow
-                if step.apply
-                != next(
-                    verb.requires_apply for verb in self.verbs if verb.name == step.verb
-                )
-            ]
-            if invalid_apply:
-                msg = (
-                    "make workflow apply intent must match verb contract: "
-                    f"{', '.join(sorted(invalid_apply))}"
-                )
-                raise ValueError(msg)
             if "docs" not in declared:
                 msg = "make docs verb must be declared"
                 raise ValueError(msg)
@@ -1660,7 +1607,7 @@ class FlextInfraConfigModels:
         @m.computed_field
         @property
         def check_gates_fixable(self) -> t.VariadicTuple[str]:
-            """Gates ``make fix APPLY=Y`` can actually repair.
+            """Gates ``make fix`` can actually repair.
 
             Asking for a gate that cannot fix anything still pays its full cost;
             a fix pass built from the ALLOWED vocabulary once timed out doing
@@ -2027,15 +1974,6 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
-        dependency_cooldown_exclusions: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Repository-scoped packages explicitly exempted from the "
-                    "fleet dependency cooldown"
-                )
-            ),
-        ] = ()
         duplication_trees: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
@@ -2046,16 +1984,6 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ()
-        dependency_cooldown_overrides: Annotated[
-            t.StrMapping,
-            m.Field(
-                default_factory=immutable_empty_mapping,
-                description=(
-                    "Repository-scoped package cutoffs projected to uv "
-                    "exclude-newer-package"
-                ),
-            ),
-        ]
         extra_verbs: Annotated[
             t.VariadicTuple[FlextInfraConfigModels.MakeVerbSpec],
             m.Field(
@@ -2074,32 +2002,26 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
-
-        @u.model_validator(mode="after")
-        def _validate_dependency_cooldown_policy(self) -> Self:
-            """Reject duplicate or contradictory repository cooldown entries."""
-            if len(set(self.dependency_cooldown_exclusions)) != len(
-                self.dependency_cooldown_exclusions
-            ):
-                msg = "repository dependency cooldown exclusions must be unique"
-                raise ValueError(msg)
-            overlap = set(self.dependency_cooldown_exclusions).intersection(
-                self.dependency_cooldown_overrides
-            )
-            if overlap:
-                msg = (
-                    "repository dependency cooldown package cannot be both excluded "
-                    f"and overridden: {', '.join(sorted(overlap))}"
-                )
-                raise ValueError(msg)
-            return self
-
-        @u.field_serializer("dependency_cooldown_overrides", when_used="json")
-        def _serialize_dependency_cooldown_overrides(
-            self, value: t.StrMapping
-        ) -> dict[str, str]:
-            """Project the immutable mapping through JSON/template boundaries."""
-            return dict(value)
+        dependency_cooldown_exclusions: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Repository-specific package distributions frozen at their "
+                    "current floor by the dependency cooldown policy"
+                ),
+            ),
+        ] = ()
+        dependency_cooldown_overrides: Annotated[
+            t.MappingKV[str, str],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Repository-specific per-package cooldown override cutoff dates; "
+                    "maps distribution name to a PEP 440 version cutoff string"
+                ),
+            ),
+        ]
 
     class BeadsProjectSpec(_ConfigContract):
         """Repository-local Beads identity from ``config/beads.yaml``."""
@@ -2273,21 +2195,6 @@ class FlextInfraConfigModels:
         uv_version: Annotated[
             t.NonEmptyStr,
             m.Field(description="mise-owned uv version used by bootstrap validation"),
-        ]
-        uv_exclude_newer: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="uv exclude-newer cooldown window for [tool.uv]"),
-        ]
-        dependency_cooldown_exclusions: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(description="Packages exempted from uv dependency cooldown"),
-        ] = ()
-        dependency_cooldown_overrides: Annotated[
-            t.StrMapping,
-            m.Field(
-                default_factory=immutable_empty_mapping,
-                description="Per-package cooldown cutoffs as RFC 3339 timestamps",
-            ),
         ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
@@ -2579,6 +2486,15 @@ class FlextInfraConfigModels:
         upstream: Annotated[
             t.NonEmptyStr, m.Field(description="Upstream FLEXT facade module")
         ]
+        namespace_scan_dirs: Annotated[
+            t.StrSequence,
+            m.Field(
+                description=(
+                    "Production source roots the namespace validator enforces; "
+                    "empty keeps every root in scope (previous behavior)"
+                )
+            ),
+        ] = ()
         inherited_facets: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
@@ -2689,21 +2605,6 @@ class FlextInfraConfigModels:
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
         ]
-        uv_exclude_newer: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="uv exclude-newer cooldown window for [tool.uv]"),
-        ]
-        dependency_cooldown_exclusions: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(description="Packages exempted from uv dependency cooldown"),
-        ] = ()
-        dependency_cooldown_overrides: Annotated[
-            t.StrMapping,
-            m.Field(
-                default_factory=immutable_empty_mapping,
-                description="Per-package cooldown cutoffs as RFC 3339 timestamps",
-            ),
-        ]
         ruff_per_file_ignores: Annotated[
             t.MappingKV[str, t.StrSequence],
             m.Field(
@@ -2757,9 +2658,54 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ""
+        uv_exclude_newer: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="uv [tool.uv] exclude-newer cutoff rendered into pyproject.toml"
+            ),
+        ]
+        dependency_cooldown_exclusions: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Fleet-wide package distributions frozen at their current floor "
+                    "by the dependency cooldown policy"
+                )
+            ),
+        ] = ()
+        dependency_cooldown_overrides: Annotated[
+            t.MappingKV[str, str],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Per-package cooldown cutoff dates overriding the fleet default"
+                ),
+            ),
+        ]
 
     class ProjectRenderContext(MakeRenderContext):
         """Complete typed input consumed by project scaffold templates."""
+
+        namespace_scan_dirs: Annotated[
+            t.StrSequence,
+            m.Field(
+                description=(
+                    "Production source roots rendered as the namespace "
+                    "validator's declared scan scope; empty keeps every root "
+                    "in scope"
+                )
+            ),
+        ] = ()
+        gate_budgets: Annotated[
+            Mapping[str, Mapping[str, int]],
+            m.Field(
+                description=(
+                    "Per-gate budget rows rendered as the managed "
+                    "[tool.flext.project.budget] table; keys cover exactly "
+                    "the gate registry"
+                )
+            ),
+        ] = {}
 
         @m.computed_field
         @property
@@ -3036,6 +2982,24 @@ class FlextInfraConfigModels:
         path: Annotated[Path, m.Field(description="Workspace-relative path")]
         reason: Annotated[t.NonEmptyStr, m.Field(description="Exclusion rationale")]
 
+    class RefactorConfigSpec(_ConfigContract):
+        """Refactor file-selection configuration."""
+
+        project_scan_dirs: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default_factory=lambda: ("src", "tests", "scripts", "examples"),
+                description="Relative directories scanned for candidate files",
+            ),
+        ]
+        file_extensions: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default_factory=tuple,
+                description="Allowed file extensions (empty = all by pattern)",
+            ),
+        ]
+
     class WorkspaceManifestSpec(_ConfigContract):
         """Complete versioned input contract for ``config/workspace.yaml``."""
 
@@ -3091,6 +3055,10 @@ class FlextInfraConfigModels:
             t.VariadicTuple[FlextInfraConfigModels.RepositoryPolicyOverlaySpec],
             m.Field(description="Repository-local policy overlays"),
         ] = ()
+        refactor: Annotated[
+            FlextInfraConfigModels.RefactorConfigSpec | None,
+            m.Field(description="Refactor file-selection configuration"),
+        ] = None
 
         @u.model_validator(mode="after")
         def _validate_references(self) -> Self:
@@ -3249,6 +3217,38 @@ class FlextInfraConfigModels:
             ),
         ] = 1000
 
+    class ProjectGateBudgetSpec(_ConfigContract):
+        """Resource ceiling for one registered gate's execution.
+
+        Keys accept both spellings because the config SSOT and the emitted
+        TOML table share the gate vocabulary (``time-seconds``), while the
+        typed fields stay pythonic.
+        """
+
+        model_config = m.ConfigDict(populate_by_name=True)
+
+        time_seconds: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                alias="time-seconds",
+                validation_alias=AliasChoices("time-seconds", "time_seconds"),
+                description="Wall-clock ceiling in seconds",
+            ),
+        ]
+        memory_mb: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                alias="memory-mb",
+                validation_alias=AliasChoices("memory-mb", "memory_mb"),
+                description="Resident memory ceiling in MiB",
+            ),
+        ]
+        tokens: Annotated[
+            int, m.Field(ge=1, description="LLM token ceiling for the gate run")
+        ]
+
     class CodegenConfigSpec(_ConfigContract):
         """Fully modeled content of ``config/codegen.yaml``."""
 
@@ -3256,6 +3256,16 @@ class FlextInfraConfigModels:
         loc_cap: Annotated[
             FlextInfraConfigModels.CodegenLocCapSpec,
             m.Field(description="Per-module code-LOC ceiling policy"),
+        ]
+        budget: Annotated[
+            Mapping[str, FlextInfraConfigModels.ProjectGateBudgetSpec],
+            m.Field(
+                description=(
+                    "Per-gate execution budgets projected as the managed "
+                    "[tool.flext.project.budget] table; rows must cover "
+                    "exactly the gate registry"
+                )
+            ),
         ]
         toolchain: Annotated[
             FlextInfraConfigModels.ToolchainSpec,
@@ -3406,7 +3416,7 @@ class FlextInfraConfigModels:
         @m.computed_field
         @property
         def python_tool_distributions(self) -> t.VariadicTuple[str]:
-            """Tool catalog uncapped by the uv supply-chain cooldown.
+            """Tool catalog for owned tools.
 
             One catalog projects every owned tool: the scaffold requirement
             owners (build and dev tables) plus the toolchain's declared
@@ -3755,14 +3765,6 @@ class FlextInfraConfigModels:
             m.Field(min_length=1, description="Accepted sha256 digests"),
         ]
 
-    class ReleasePolicyRenderSpec(_ConfigContract):
-        """Typed input consumed by the generated release policy files."""
-
-        build_constraints: Annotated[
-            t.VariadicTuple[FlextInfraConfigModels.BuildConstraintSpec],
-            m.Field(min_length=1, description="Pins rendered into the constraints"),
-        ]
-
     # This
     # field-only namespace is the sole validated owner exposed as config.Infra.
     class Infra(_ConfigContract):
@@ -3977,14 +3979,6 @@ class FlextInfraConfigModels:
             ),
         ]
 
-    class CodegenToolchainOverridesSpec(_ConfigContract):
-        """Override section of ToolchainSpec: per-distribution cooldown deltas."""
-
-        dependency_cooldown_overrides: Annotated[
-            Mapping[str, t.VariadicTuple[t.NonEmptyStr]],
-            m.Field(description="Per-package RFC 3339 cooldown override cutoffs"),
-        ] = immutable_empty_mapping()
-
     class CodegenOverridesRoot(_ConfigContract):
         """Override root mirroring the Infra.codegen structure with override-only fields.
 
@@ -4001,10 +3995,6 @@ class FlextInfraConfigModels:
     class _CodegenOverridesSection(_ConfigContract):
         """Override deltas that deep-merge onto CodegenConfigSpec fields."""
 
-        toolchain: Annotated[
-            FlextInfraConfigModels.CodegenToolchainOverridesSpec | None,
-            m.Field(default=None, description="Toolchain override deltas"),
-        ] = None
         checkout_submodules_overrides: Annotated[
             Mapping[str, str],
             m.Field(
@@ -4398,3 +4388,6 @@ class FlextInfraConfigModels:
             t.VariadicTuple[str],
             m.Field(description="Fail-closed validation or write errors"),
         ] = ()
+
+
+__all__: list[str] = ["FlextInfraConfigModels"]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shlex
 import sys
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
@@ -33,7 +34,7 @@ class FlextInfraPytestRunnerExecution(
             repository_root=self.root, db_path=self.testmon_db, pre_run_digest=digest
         ).execute()
 
-    def _selection_env(self) -> dict[str, str]:
+    def _selection_env(self) -> MutableMapping[str, str]:
         """Return the child environment shared by every runner invocation."""
         return u.Cli.process_env(
             remove_keys=c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,

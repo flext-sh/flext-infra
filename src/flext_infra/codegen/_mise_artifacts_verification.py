@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -142,7 +143,7 @@ class FlextInfraMiseArtifactsVerification:
                 "generation journal project topology differs from layout"
             )
         by_selector = {project.selector: project for project in layout.projects}
-        directory_targets: dict[Path, m.Infra.CodegenJournalDirectory] = {}
+        directory_targets: MutableMapping[Path, m.Infra.CodegenJournalDirectory] = {}
         for directory in journal.directories:
             target = files.resolve_relative(
                 layout.scope_root,
@@ -410,7 +411,7 @@ class FlextInfraMiseArtifactsVerification:
         source_before = cls.sources(plan)
         if source_before.failure:
             return source_before
-        replacements: dict[Path, tuple[bytes, int | None]] = {}
+        replacements: MutableMapping[Path, tuple[bytes, int | None]] = {}
         for publication in publications or ():
             replacement = publication.replacement
             if replacement is None or replacement.content is None:
@@ -505,11 +506,15 @@ class FlextInfraMiseArtifactsVerification:
         cls,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
-    ) -> p.Result[dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]]]:
+    ) -> p.Result[
+        MutableMapping[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]]
+    ]:
         result_type = r[
-            dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]]
+            MutableMapping[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]]
         ]
-        specs: dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]] = {}
+        specs: MutableMapping[
+            Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]
+        ] = {}
         for entry in journal.entries:
             selectors: t.VariadicTuple[t.Pair[_JournalFileRole, str | None]] = (
                 ("desired", entry.desired_staging),
@@ -658,7 +663,7 @@ class FlextInfraMiseArtifactsVerification:
     def _artifact_snapshot(
         cls,
         plan: m.Infra.MiseToolchainWorkspacePlan,
-        replacements: dict[Path, tuple[bytes, int | None]],
+        replacements: MutableMapping[Path, tuple[bytes, int | None]],
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         root_launchers: t.Pair[bytes, bytes] | None = None
         states: list[m.Cli.AtomicFileState] = []
@@ -678,6 +683,10 @@ class FlextInfraMiseArtifactsVerification:
                         current.error
                         or f"published Mise artifact is absent: {expected.path}"
                     )
+                if current.value.mode is None:
+                    return r[tuple[m.Cli.AtomicFileState, ...]].fail(
+                        f"published Mise artifact mode is unreadable: {expected.path}"
+                    )
                 expected_state = replacements.get(
                     expected.path, (expected.content, expected.mode)
                 )
@@ -687,7 +696,10 @@ class FlextInfraMiseArtifactsVerification:
                     )
                 if current.value.mode != required_mode:
                     return r[tuple[m.Cli.AtomicFileState, ...]].fail(
-                        f"published Mise artifact mode is noncanonical: {expected.path}"
+                        "published Mise artifact mode is noncanonical:"
+                        f" {expected.path}"
+                        f" (observed {oct(current.value.mode) if current.value.mode is not None else 'none'},"
+                        f" canonical {oct(required_mode)})"
                     )
                 observed.append(current.value.content)
                 states.append(current.value)

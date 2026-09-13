@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from sys import stdlib_module_names
 from typing import TYPE_CHECKING
 
@@ -37,7 +38,7 @@ class FlextInfraCodegenGenerationStandardMixin(
         wildcard_modules = frozenset(plan.wildcard_runtime_modules)
         # flext-pulj (codex): direct imports outside __all__ remain statically
         # declared because they are part of the established root interface.
-        filtered: dict[str, t.StrPair] = {
+        filtered: MutableMapping[str, t.StrPair] = {
             name: target
             for name, target in source.items()
             if name in public_names

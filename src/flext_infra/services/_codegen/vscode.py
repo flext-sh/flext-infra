@@ -12,7 +12,7 @@ by ``FlextInfraCodegenConform``.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_core import r
@@ -176,7 +176,7 @@ class FlextInfraCodegenVscodeMixin:
         # generated keys forever. Only explicitly declared non-artifact maps use
         # merge semantics.
         codegen = config.Infra.codegen
-        artifact_maps: dict[str, Mapping[str, str | bool]] = {
+        artifact_maps: MutableMapping[str, Mapping[str, str | bool]] = {
             "files.exclude": dict(codegen.vscode_files_exclude_map),
             "files.watcherExclude": dict(codegen.vscode_watcher_exclude_map),
             "search.exclude": dict(codegen.vscode_search_exclude_map),
@@ -238,7 +238,7 @@ class FlextInfraCodegenVscodeMixin:
         changed = False
         for key, canonical_map in map_union_settings.items():
             current = settings.get(key)
-            existing: dict[str, t.JsonValue] = (
+            existing: MutableMapping[str, t.JsonValue] = (
                 {
                     name: u.normalize_to_json_value(value)
                     for name, value in current.items()
@@ -246,7 +246,7 @@ class FlextInfraCodegenVscodeMixin:
                 if isinstance(current, Mapping)
                 else {}
             )
-            merged: dict[str, t.JsonValue] = existing | {
+            merged: MutableMapping[str, t.JsonValue] = existing | {
                 name: u.normalize_to_json_value(value)
                 for name, value in canonical_map.items()
             }
@@ -264,7 +264,7 @@ class FlextInfraCodegenVscodeMixin:
         """Replace generated maps so removed SSOT entries leave no residue."""
         changed = False
         for key, canonical_map in exact_maps.items():
-            exact: dict[str, t.JsonValue] = {
+            exact: MutableMapping[str, t.JsonValue] = {
                 name: u.normalize_to_json_value(value)
                 for name, value in canonical_map.items()
             }

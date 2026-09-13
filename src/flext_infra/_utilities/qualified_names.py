@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, override
 
 import libcst as cst
 from libcst.metadata import (
+    CodePosition,
+    CodeRange,
     MetadataWrapper,
     PositionProvider,
     QualifiedNameProvider,
@@ -46,7 +48,11 @@ class FlextInfraUtilitiesQualifiedNames:
         def _collect(self, node: cst.BaseExpression) -> None:
             if not isinstance(node, (cst.Name, cst.Attribute)):
                 return
-            location = self.get_metadata(PositionProvider, node)
+            location = self.get_metadata(
+                PositionProvider,
+                node,
+                CodeRange(CodePosition(0, 0), CodePosition(0, 0)),
+            )
             position = location.start
             # Python AST columns count UTF-8 bytes; LibCST columns count characters.
             column = len(self.lines[position.line - 1][: position.column].encode())

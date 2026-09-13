@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -37,9 +38,9 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
             workspace_contract, "exclude_docs"
         )
         project_scopes = [scope for scope in scopes if scope.path != repository_root]
-        catalog_entries: t.MutableSequenceOf[dict[str, str]] = []
-        class_counts: dict[str, int] = {}
-        scope_modules: dict[str, list[str]] = {}
+        catalog_entries: t.MutableSequenceOf[MutableMapping[str, str]] = []
+        class_counts: MutableMapping[str, int] = {}
+        scope_modules: MutableMapping[str, list[str]] = {}
         src_paths: t.MutableSequenceOf[str] = []
         root_api: list[tuple[Path, str]] = []
         for scope in scopes:
@@ -107,7 +108,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
                 ),
             ),
         ]
-        projects_index_entries: t.MutableSequenceOf[dict[str, str]] = []
+        projects_index_entries: t.MutableSequenceOf[MutableMapping[str, str]] = []
         for scope in project_scopes:
             rendered.append((
                 repository_root / "docs/api-reference/generated" / f"{scope.name}.md",

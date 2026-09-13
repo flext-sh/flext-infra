@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, config, u
 
 from .base import FlextInfraNamespaceRulesBase
 
@@ -15,6 +15,62 @@ if TYPE_CHECKING:
 
 class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
     """Enforce one-class modules and explicit facade composition."""
+
+    @classmethod
+    def _is_functional_module(cls, tree: object) -> bool:
+        """Return whether a module only re-exports symbols or runs an entry.
+
+        Why (cosmos-3flk9): the operational ``r/e/x/h/d/s`` re-export modules
+        and the ``python -m`` entrypoint stub carry no class by law. The shape
+        is derived from the AST — imports, the export manifest, the ``__main__``
+        guard and one exit call — so the exemption follows what the module IS,
+        never a hardcoded list of file names.
+        """
+        statements = tuple(getattr(tree, "body", ()) or ())
+        if cls.outer_classes(tree):
+            return False
+        entry_calls: list[str] = []
+        for statement in statements:
+            kind = cls.kind(statement)
+            if kind in {"Import", "ImportFrom"}:
+                continue
+            if cls._module_docstring(statement):
+                continue
+            if kind in {"Assign", "AnnAssign"} and cls._dunder_assignment(statement):
+                continue
+            if kind == "Raise":
+                continue
+            if kind == "If":
+                # The ``python -m`` guard holds the exit CALL (e.g.
+                # ``raise SystemExit(main())``), not a function definition —
+                # collect every call target so the entrypoint check sees it.
+                entry_calls.extend(
+                    cls.dotted_name(getattr(call, "func", None)).rsplit(".", 1)[-1]
+                    for call in cls.walk(statement)
+                    if cls.kind(call) == "Call"
+                )
+                continue
+            if kind == "Expr" and cls.kind(getattr(statement, "value", None)) == "Call":
+                called = cls.dotted_name(
+                    getattr(getattr(statement, "value", None), "func", None)
+                )
+                entry_calls.append(called.rsplit(".", 1)[-1])
+                continue
+            # A non-dunder assignment, a type alias or any other statement is
+            # loose data: the module is a data module and stays fully graded.
+            return False
+        # An ``__main__`` guard must terminate through the package
+        # entrypoint (``...main()``); a pure re-export (operational
+        # r/e/x/h/d/s) carries no call at all and is functional too.
+        # Terminal wrappers (``SystemExit``/``sys.exit``/``builtins.exit``)
+        # only forward the entrypoint's return code, so the real terminator is
+        # the ``...main()`` call nested inside them.
+        entrypoint_calls = [
+            name for name in entry_calls if not name.lower().endswith("exit")
+        ]
+        return not entrypoint_calls or all(
+            name.endswith("main") for name in entrypoint_calls
+        )
 
     @classmethod
     def check_structure(
@@ -28,6 +84,8 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
     ) -> t.StrSequence:
         """Return structural and logical-size violations for one module."""
         if filepath.name in {"__init__.py", "__version__.py"}:
+            return ()
+        if cls._is_functional_module(tree):
             return ()
         messages: list[str] = []
         classes = cls.outer_classes(tree)
@@ -66,7 +124,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
                     f"{filepath}:{cls.line(node)} — top-level function is forbidden; "
                     "nest behavior in the module class"
                 )
-            if kind in {"Assign", "AnnAssign", "TypeAlias"} and not (
+            if kind in {"Assign", "AnnAssign"} and not (
                 cls._dunder_assignment(node)
                 or cls._canonical_facade_alias(
                     node,
@@ -79,9 +137,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
                     filepath.name == "api.py"
                     and cls.kind(node) == "AnnAssign"
                     and (
-                        cls.name_of(
-                            facade_value := getattr(node, "value", None)
-                        )
+                        cls.name_of(facade_value := getattr(node, "value", None))
                         == class_stem
                         or (
                             cls.kind(facade_value) == "Call"
@@ -104,10 +160,13 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             for node in cls.walk(tree)
             if cls.kind(node) in c.Infra.NAMESPACE_LOGICAL_STATEMENT_KINDS
         )
-        if logical > c.Infra.NAMESPACE_MAX_LOGICAL_LOC:
+        # Why (operator 2026-09-07, codegen.yaml loc_cap): the per-module
+        # ceiling is config-owned SSOT — the superseded hardcoded 200 constant
+        # is retired, so this rule and the loc-cap gate share one source.
+        cap = config.Infra.codegen.loc_cap.max_lines
+        if logical > cap:
             messages.append(
-                f"{filepath}:1 — {logical} logical statements exceed the "
-                f"{c.Infra.NAMESPACE_MAX_LOGICAL_LOC} limit"
+                f"{filepath}:1 — {logical} logical statements exceed the {cap} limit"
             )
         messages.extend(cls._facade_shape(tree, filepath))
         return cls.violations("NS-STRUCT", messages)
@@ -186,26 +245,36 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         ):
             return False
         alias, suffix = spec
+        canonical_alias = u.Infra.package_alias(package_name=package_name)
+        accepted_aliases = {alias, canonical_alias}
         classes = cls.outer_classes(tree)
-        if len(classes) != 1 or getattr(classes[0], "name", "") != (
-            class_name := f"{class_stem}{suffix}"
-        ):
+        # Secondary support classes at module level are allowed (see the loop
+        # in check_structure); only the facade class itself must exist with the
+        # canonical stem+suffix name.
+        facade_class_name = f"{class_stem}{suffix}"
+        facade_classes = [
+            node for node in classes if getattr(node, "name", "") == facade_class_name
+        ]
+        if not facade_classes:
             return False
+        facade = facade_classes[0]
         targets = getattr(node, "targets", ()) or (getattr(node, "target", None),)
         value = getattr(node, "value", None)
-        value_is_class = cls.kind(value) == "Name" and cls.name_of(value) == class_name
+        value_is_class = (
+            cls.kind(value) == "Name" and cls.name_of(value) == facade_class_name
+        )
         value_is_global_singleton = (
             cls.kind(value) == "Call"
             and cls.dotted_name(getattr(value, "func", None))
-            == f"{class_name}.fetch_global"
+            == f"{facade_class_name}.fetch_global"
         )
         if not (
             cls.kind(node) in {"Assign", "AnnAssign"}
             and len(targets) == 1
             and cls.kind(targets[0]) == "Name"
-            and cls.name_of(targets[0]) == alias
+            and cls.name_of(targets[0]) in accepted_aliases
             and (value_is_class or value_is_global_singleton)
-            and cls.line(node) > cls.line(classes[0])
+            and cls.line(node) > cls.line(facade)
         ):
             return False
         return all(

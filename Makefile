@@ -48,26 +48,21 @@ UV_LINK_MODE := copy
 # Operator decision 2026-09-10: unknown command-line inputs no longer fail the
 # run. The Makefile ignores them and prints a warning, so ordinary invocations
 # like `make test` or `make setup` always start with zero variables.
-PUBLIC_INPUTS := APPLY INDEX
+# WHAT is a declared public input whenever script dispatch is active: the
+# generated `_dispatch` reads it and every promoted script verb's own help
+# documents `make <verb> WHAT=<action>` (cosmos-3flk9).
+PUBLIC_INPUTS := INDEX
 COMMAND_LINE_INPUTS := $(foreach name,$(filter-out .%,$(.VARIABLES)),$(if $(filter command line override,$(origin $(name))),$(name)))
 UNKNOWN_INPUTS := $(filter-out $(PUBLIC_INPUTS),$(COMMAND_LINE_INPUTS))
 ifneq ($(strip $(UNKNOWN_INPUTS)),)
-$(warning Ignoring unsupported Make input(s): $(UNKNOWN_INPUTS); declared public inputs are APPLY and INDEX)
-endif
-APPLY ?= Y
-# filter-out keeps the guard true independent of argument order: a guard that
-# passed $(APPLY) as the filter *pattern* turned a valid APPLY=Y into the
-# pattern "Y Y" and returned two words, so the guard failed on every run.
-ifneq ($(filter-out Y Y,$(strip $(APPLY))),)
-$(error APPLY must be Y when enabled)
+$(warning Ignoring unsupported Make input(s): $(UNKNOWN_INPUTS); declared public inputs are $(PUBLIC_INPUTS))
 endif
 # INDEX refines receipt-attested publication: Y uploads to the package index,
-# N publishes GitHub assets only. APPLY gates remain for explicit opt-out
+# N publishes GitHub assets only.
 INDEX ?=
-ifneq ($(filter-out Y Y N,$(strip $(INDEX))),)
-$(error INDEX must be Y, N, or unset)
+ifneq ($(filter-out N,$(strip $(INDEX))),)
+$(error INDEX must be , N, or unset)
 endif
-APPLYING := $(if $(filter Y,$(APPLY)),Y)
 PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_PROCESS_TIMEOUT_SECONDS := 660
@@ -132,6 +127,7 @@ endif
 PUBLIC_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen conform initialize mod waza duplication
 BUILTIN_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen conform initialize mod waza duplication
 SCRIPT_VERBS :=
+
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
 CUSTOM_DECLARED_TARGETS :=
 ifneq ($(wildcard $(CUSTOM_MAKEFILE)),)
@@ -447,7 +443,7 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 printf '%s\n' "$$mise_storage_root/shims" >> "$$GITHUB_PATH"; \
 fi; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
-	mise_exec project "$$latest_mise" -C "$$project_root" exec -- env "SETUP_DIRENV=$$direnv_executable" "SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" "CI=$(CI)" "APPLY=$(APPLY)" $(SELF_MAKE) _setup_lifecycle
+	mise_exec project "$$latest_mise" -C "$$project_root" exec -- env "SETUP_DIRENV=$$direnv_executable" "SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" "CI=$(CI)" "=$()" $(SELF_MAKE) _setup_lifecycle
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
@@ -536,9 +532,24 @@ define RUN_PUBLIC
 	$(if $(filter post-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) post-$(1))
 endef
 
+
+# Without script dispatch, a WHAT-specific custom handler still routes before
+# the builtin; anything else falls through to the canonical builtin target.
+define _dispatch
+	@set -eu; \
+	what="$(WHAT)"; \
+	custom="_custom_$(1)_$$what"; \
+	if [ -n "$$what" ] && $(SELF_MAKE) -n "$$custom" >/dev/null 2>&1; then \
+		$(SELF_MAKE) "$$custom"; \
+	else \
+		$(SELF_MAKE) "_builtin-$(1)"; \
+	fi
+endef
+
+
 define _require_apply
-	@if [ "$(APPLY)" != "Y" ]; then \
-		printf 'ERROR: this action requires APPLY=Y\n' >&2; \
+	@if [ "$(APPLY)" = "N" ]; then \
+		printf 'ERROR: this action requires\n' >&2; \
 		exit 2; \
 	fi
 endef
@@ -553,9 +564,11 @@ define _run_for_all_projects
 endef
 
 .PHONY: $(PUBLIC_VERBS) $(addprefix _builtin-,$(PUBLIC_VERBS))
+.PHONY: _builtin_gen_check _builtin_gen_init _builtin_gen_all _builtin_gen_apply
 
 
 help:
+	$(call _require_apply)
 	$(call RUN_PUBLIC,help)
 
 deps: _builtin_require_environment
@@ -587,9 +600,11 @@ fix-enforcement: _builtin_require_environment
 	$(call RUN_PUBLIC,fix-enforcement)
 
 audit: _builtin_require_environment
+	$(call _require_apply)
 	$(call RUN_PUBLIC,audit)
 
 status: _builtin_require_environment
+	$(call _require_apply)
 	$(call RUN_PUBLIC,status)
 
 docs: _builtin_require_environment
@@ -717,7 +732,7 @@ _builtin-help:
 
 	@printf '  %-16s %s\n' 'duplication' 'Run the canonical jscpd duplicate-code gate.';
 
-	@printf '%s\n' 'Verbs apply by default; pass APPLY=N where the verb supports a check mode.';
+	@printf '%s\n' 'Verbs apply by default; pass =N where the verb supports a check mode.';
 
 # A project owns the sources declared by its manifest. The generated setup
 # reconciler validates every initialized checkout before mutation, initializes
@@ -740,8 +755,12 @@ _builtin-help:
 #       Nested gitlinks belong to their own setup.
 # Free: no
 # End SECTION: submodule setup
+# Why (flext-mphw1): runners expose umask 002 and `submodule update --init`
+# materializes tracked files as 0664; canonical Mise artifact gates demand
+# exact modes, so provisioning normalizes the umask before checkout.
 _builtin_setup_submodules:
 	@set -eu; \
+	umask 022; \
 	root="$(PROJECT_ROOT)"; \
 	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
 	profile="$(MAKE_PROFILE)"; \
@@ -894,7 +913,8 @@ _builtin_deps_upgrade: _builtin_require_environment
 	# Branch-tracked git dependencies are moving sources by declaration
 	# (workspace.yaml owns the branch): --refresh re-reads their metadata so a
 	# stale cached requires-dist can never block or skew the resolution
-	# (flext-62fbu). The cooldown, not the cache, governs version movement.
+	# (flext-62fbu). The refresh re-reads metadata so version movement is
+	# always resolved from live upstream state.
 	$(call _run_for_all_projects,--upgrade --refresh)
 	@set -eu; \
 	selected="$(strip $(SELECTED_PROJECTS))"; \
@@ -922,10 +942,10 @@ _builtin-self-test: _builtin_require_environment
 
 _builtin-self-check: _builtin_require_environment
 	@set -eu; \
-		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication"; \
+		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication,budget"; \
 		if [ "$(strip $(CI))" = "Y" ]; then \
-			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication"; \
-			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells codemod layout canonical-alias direnv duplication\n'; \
+			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication,budget"; \
+			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells codemod layout canonical-alias direnv duplication budget\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
 		printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
@@ -955,17 +975,17 @@ _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
 
 # `check` is read-only by contract: it never mutates the tree. Fixing is owned
-# by `make fix` and formatting by `make fmt`, both run BEFORE check. APPLY here
+# by `make fix` and formatting by `make fmt`, both run BEFORE check. the fixer here
 # made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
 # CI=Y keeps make.ci.check_gates, the strict complement of
 # make.ci.local_check_gates.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
-		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication"; \
+		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication,budget"; \
 		if [ "$(strip $(CI))" = "Y" ]; then \
-			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication"; \
-			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells codemod layout canonical-alias direnv duplication\n'; \
+			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication,budget"; \
+			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells codemod layout canonical-alias direnv duplication budget\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
 		printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
@@ -984,7 +1004,7 @@ _builtin_test_all: _builtin_require_environment
 		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
 # Ruff is the style/autofix rule (make.ruff in codegen.yaml). Every
-# invocation uses --preview. fmt APPLY also runs check --fix --unsafe-fixes
+# invocation uses --preview. fmt also runs check --fix --unsafe-fixes
 # --preview. Never weaken ruff to keep a file; change the code.
 _builtin_fmt_check: _builtin_require_environment
 	@$(UV_RUN) ruff format --preview --check $(RUFF_PATHS)
@@ -1031,7 +1051,7 @@ _builtin_status_diagnostics: _builtin_require_environment
 _builtin_docs_all:
 	@set -eu; \
 	for action in $(DOCS_ACTIONS); do \
-		case "$$action" in fix) mode=$(if $(filter Y,$(APPLY)),--apply,--check) ;; *) mode= ;; esac; \
+		case "$$action" in fix) mode=$(if $(filter ,$()),--apply,--check) ;; *) mode= ;; esac; \
 		$(PROJECT_FLEXT_INFRA) docs "$$action" --repository-root "$(PROJECT_ROOT)" --output-dir ".reports/docs" $$mode $(DOCS_PROJECT_ARGS); \
 	done
 
@@ -1140,3 +1160,5 @@ _builtin-waza:
 	@cd "$(PROJECT_ROOT)" && "$(SETUP_MISE)" exec -- waza check --no-update-check
 _builtin-duplication:
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates duplication --projects .
+
+

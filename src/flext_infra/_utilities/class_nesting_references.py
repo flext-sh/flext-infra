@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, override
 
 import libcst as cst
@@ -49,7 +50,7 @@ class FlextInfraUtilitiesClassNestingReferences:
             self.qualified.update(
                 (name, f"{owner}.{name}") for name, owner in definitions.items()
             )
-            self.local_expressions: dict[str, str] = {
+            self.local_expressions: MutableMapping[str, str] = {
                 name: f"{owner}.{name}" for name, owner in definitions.items()
             }
 

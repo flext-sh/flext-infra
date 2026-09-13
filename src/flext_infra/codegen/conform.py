@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 import re
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Annotated, override
@@ -29,7 +29,33 @@ from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.typings import t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
-from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles
+
+def resolve_gate_budgets(
+    configured_budgets: Mapping[str, m.Infra.ProjectGateBudgetSpec],
+) -> p.Result[Mapping[str, Mapping[str, int]]]:
+    """Project config budget rows; registry divergence fails loud.
+
+    The budget gate requires one row per registry gate; the config SSOT is
+    the single budget owner and a missing or unknown gate id is a declared
+    generation error, never a silent skip.
+    """
+    allowed_gates = c.Infra.ALLOWED_GATES
+    missing_budget_rows = sorted(allowed_gates - configured_budgets.keys())
+    unknown_budget_rows = sorted(configured_budgets.keys() - allowed_gates)
+    if missing_budget_rows or unknown_budget_rows:
+        return r[Mapping[str, Mapping[str, int]]].fail(
+            "budget configuration diverges from the gate registry: "
+            f"missing rows={missing_budget_rows}; "
+            f"unknown rows={unknown_budget_rows}"
+        )
+    return r[Mapping[str, Mapping[str, int]]].ok({
+        gate_id: {
+            "time-seconds": configured_budgets[gate_id].time_seconds,
+            "memory-mb": configured_budgets[gate_id].memory_mb,
+            "tokens": configured_budgets[gate_id].tokens,
+        }
+        for gate_id in sorted(configured_budgets)
+    })
 
 
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
@@ -54,7 +80,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     @staticmethod
     def _dependency_cooldown_policy(
         repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
-    ) -> tuple[tuple[str, ...], dict[str, str]]:
+    ) -> tuple[tuple[str, ...], MutableMapping[str, str]]:
         """Compose fleet defaults with the repository's narrower policy."""
         exclusions = dict.fromkeys(toolchain.dependency_cooldown_exclusions)
         overrides = dict(toolchain.dependency_cooldown_overrides)
@@ -65,6 +91,59 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             exclusions.pop(package, None)
             overrides[package] = cutoff
         return tuple(exclusions), overrides
+
+    @staticmethod
+    def _discover_script_verbs(
+        repository_root: Path,
+    ) -> tuple[m.Infra.MakeVerbSpec, ...]:
+        """Discover script verbs from scripts/<verb>/all.sh in the repository root.
+
+        The filesystem is the SSOT: a verb is emitted only when its all.sh
+        entrypoint exists. No manual list is required.
+        """
+        scripts_dir = repository_root / "scripts"
+        if not scripts_dir.is_dir():
+            return ()
+        discovered = [
+            m.Infra.MakeVerbSpec(
+                name=entry.name, description=f"Script command: {entry.name}"
+            )
+            for entry in sorted(scripts_dir.iterdir())
+            if entry.is_dir() and (entry / "all.sh").is_file()
+        ]
+        return tuple(discovered)
+
+    @staticmethod
+    def _merge_extra_verbs(
+        declared: tuple[m.Infra.MakeVerbSpec, ...],
+        discovered: tuple[m.Infra.MakeVerbSpec, ...],
+        canonical_names: frozenset[str],
+    ) -> tuple[m.Infra.MakeVerbSpec, ...]:
+        """Union declared and discovered script verbs deduplicated by name.
+
+        Why (cosmos-3flk9): object-level dedup never converges because declared
+        verbs carry their canonical config descriptions while discoveries carry
+        ``Script command: <name>``, so every verb entered ``extra_verbs`` twice
+        and the generated Makefile emitted colliding ``_builtin-<verb>``
+        recipes. The declared config verb is the writable authority and wins;
+        a discovery is dropped when it would shadow a canonical ``make.verbs``
+        builtin, whose native ``_builtin-<verb>`` implementation is the only
+        owner of that name in the generated Makefile.
+        """
+        merged: MutableMapping[str, m.Infra.MakeVerbSpec] = {}
+        for verb in discovered:
+            if verb.name in canonical_names:
+                continue
+            merged.setdefault(verb.name, verb)
+        for verb in declared:
+            if verb.name in canonical_names:
+                msg = (
+                    f"config extra_verbs declares canonical verb {verb.name!r}; "
+                    "extra verbs must never shadow canonical make.verbs builtins"
+                )
+                raise ValueError(msg)
+            merged[verb.name] = verb
+        return tuple(merged.values())
 
     @classmethod
     def _surface_contract(
@@ -283,15 +362,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenResult].fail(
                     "Makefile bootstrap cannot delete its dispatcher"
                 )
-            if (
-                before.value.content is not None
-                and before.value.content != file.desired_content
-            ):
-                backed = FlextInfraMiseArtifactsFiles.persist_apply_backup(
-                    before.value.path, before.value.content
-                )
-                if backed.failure:
-                    return r[m.Infra.CodegenResult].from_failure(backed)
             published = u.Cli.atomic_write_binary_file_guarded(
                 before.value, file.desired_content, permission_mode=file.desired_mode
             )
@@ -330,35 +400,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         Returns failure if any requirement is violated, or if the ``.gen`` file
         itself is absent or malformed.
         """
-        package_root = Path(__file__).resolve().parent.parent
-        # Installed (wheel) layout ships config inside the package; the source
-        # checkout keeps it at the repository root next to src/.
-        gen_path = (
-            package_root / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_GEN_FILENAME
-        )
-        if not gen_path.is_file():
-            gen_path = (
-                package_root.parent.parent
-                / c.Infra.CODEGEN_CONFIG_DIR
-                / c.Infra.CODEGEN_GEN_FILENAME
-            )
-        if not gen_path.is_file():
-            return r[bool].fail(
-                f"generation requirements contract is absent: {gen_path}; "
-                f"{c.Infra.CODEGEN_GEN_FILENAME} is the mandatory conformance gate"
-            )
-        loaded = u.Cli.config_load(gen_path, expand_env=False)
-        if loaded.failure:
-            return r[bool].fail(
-                f"failed to load generation requirements: {loaded.error or gen_path}"
-            )
-        try:
-            requirements = m.Infra.GenRequirementsSpec.model_validate(loaded.value.data)
-        except c.ValidationError as exc:
-            return r[bool].fail(
-                f"invalid .gen requirements contract at {gen_path}: {exc}",
-                exception=exc,
-            )
+        requirements_result = u.Infra.load_gen_requirements(Path(__file__))
+        if requirements_result.failure:
+            return r[bool].from_failure(requirements_result)
+        requirements = requirements_result.unwrap()
         bypass_policies = c.Infra.MANAGED_FILE_POLICIES_BYPASS
         forbidden_in_contract = frozenset(
             requirements.requirements.managed_file_policies.forbidden
@@ -588,7 +633,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenResult].from_failure(reality)
             if changed:
                 paths = ", ".join(str(file.path) for file in changed)
-                return r[m.Infra.CodegenResult].fail(f"codegen drift detected: {paths}")
+                report = u.Infra.codegen_file_drift_report(changed)
+                return r[m.Infra.CodegenResult].fail(
+                    f"codegen drift detected: {paths}\n{report}"
+                )
             lazy_analysis = FlextInfraCodegenLazyInit(
                 repository_root=request.root
             ).plan_files()
@@ -601,8 +649,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if lazy_changed:
                 paths = ", ".join(str(file.path) for file in lazy_changed)
+                report = u.Infra.codegen_file_drift_report(lazy_changed)
                 return r[m.Infra.CodegenResult].fail(
-                    f"lazy-init drift detected: {paths}"
+                    f"lazy-init drift detected: {paths}\n{report}"
                 )
             docs_generator = FlextInfraDocGenerator(
                 repository_root=request.root,
@@ -621,7 +670,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if docs_changed:
                 paths = ", ".join(str(file.path) for file in docs_changed)
-                return r[m.Infra.CodegenResult].fail(f"docs drift detected: {paths}")
+                report = u.Infra.codegen_file_drift_report(docs_changed)
+                return r[m.Infra.CodegenResult].fail(
+                    f"docs drift detected: {paths}\n{report}"
+                )
             return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
         session = transaction.begin_locked(scope_root, config_plans.value, plan.files)
         if session.failure:
@@ -748,6 +800,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             Path(c.Infra.BEADS_CONFIG_RELPATH).name,
             Path(c.Infra.BEADS_METADATA_RELPATH).name,
             c.Infra.BEADS_LOCAL_VERSION_FILENAME,
+            c.Infra.BEADS_LAST_TOUCHED_FILENAME,
         })
         route = root / c.Infra.BEADS_DIRNAME
         if route.is_symlink():
@@ -763,7 +816,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"composed project Beads route is not a directory: {route}"
             )
         unexpected = sorted(
-            entry.name for entry in route.iterdir() if entry.name not in allowed_entries
+            entry.name
+            for entry in route.iterdir()
+            if entry.name not in allowed_entries
+            and not FlextInfraCodegenConform._is_dry_run_config_backup(entry.name)
         )
         if unexpected:
             return r[bool].fail(
@@ -771,6 +827,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 + ", ".join(unexpected)
             )
         return r[bool].ok(True)
+
+    @staticmethod
+    def _is_dry_run_config_backup(name: str) -> bool:
+        """Return whether ``name`` is a dry-run ``config.yaml`` backup snapshot.
+
+        Why (cosmos-3flk9): the bd client rewrites ``last-touched`` on every
+        write, and a dry-run ``make gen`` leaves ``config.yaml.<ts>.bak``
+        snapshots behind — both are ephemeral tooling state, not unmerged
+        ledger state, so they must not fail the composed-project verify.
+        """
+        return name.startswith(
+            f"{Path(c.Infra.BEADS_CONFIG_RELPATH).name}."
+        ) and name.endswith(".bak")
 
     def _validate_managed_fixed_point(
         self,
@@ -1113,7 +1182,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         governed_by_path = {item.path: item for item in codegen.managed_files}
         completed: list[m.Infra.CodegenFilePlan] = []
         represented: set[Path] = set()
-        represented_indexes: dict[Path, int] = {}
+        represented_indexes: MutableMapping[Path, int] = {}
         for file in planned:
             relative = file.path.relative_to(root)
             governed = governed_by_path.get(relative)
@@ -1433,12 +1502,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             m.Infra.UvScopedDependencyExclusionSpec
         ],
     ) -> p.Result[str]:
-        """Conform one pyproject source under this repository's cooldown policy."""
-        cooldown_exclusions, cooldown_overrides = (
-            FlextInfraCodegenConform._dependency_cooldown_policy(
-                repository, codegen.toolchain
-            )
-        )
+        """Conform one pyproject source."""
         return u.Infra.pyproject_conform(
             source,
             providers=codegen.providers,
@@ -1449,9 +1513,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             uv_link_mode=FlextInfraCodegenConform._link_mode(
                 repository, codegen.toolchain
             ),
-            dependency_cooldown_exclusions=cooldown_exclusions,
-            dependency_cooldown_overrides=cooldown_overrides,
             uv_exclude_dependencies=uv_exclude_dependencies,
+            namespace_scan_dirs=(
+                workspace.project.namespace_scan_dirs
+                if workspace.project is not None
+                else None
+            ),
+            gate_budgets=dict(codegen.budget),
         )
 
     @staticmethod
@@ -1624,7 +1692,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if rendered.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(rendered)
-            rendered_content = self._compose_project_artifact(
+            rendered_content = self.compose_project_artifact(
                 root,
                 destination,
                 rendered.value,
@@ -1883,7 +1951,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if rendered.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(rendered)
             rendered_content = rendered.value
-            composed = self._compose_project_artifact(
+            composed = self.compose_project_artifact(
                 root,
                 entry.destination,
                 rendered_content,
@@ -1923,7 +1991,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
     @staticmethod
-    def _compose_project_artifact(
+    def compose_project_artifact(
         repository_root: Path,
         destination: str,
         rendered: str,
@@ -2257,9 +2325,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     ),
                     python_version=codegen.toolchain.python_version,
                     state_directory_name=codegen.toolchain.state_directory_name,
-                    dependency_cooldown_days=(
-                        codegen.toolchain.dependency_cooldown_days
-                    ),
                     github_actions=codegen.github_actions,
                     make=codegen.make,
                     workspace_repositories=workspace_repositories,
@@ -2305,7 +2370,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # policies from the repository; they are fleet policy owned by
             # config/infra.yaml, never scaffold-only project metadata.
             return r[p.Model].ok(
-                m.Infra.ReleasePolicyRenderSpec(
+                m.Infra.ReleasePolicySpec(
                     build_constraints=config.Infra.release.build_constraints
                 )
             )
@@ -2319,9 +2384,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             gitlinks = self._managed_gitlinks(workspace, codegen)
             if gitlinks.failure:
                 return r[p.Model].from_failure(gitlinks)
-            cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
-                repository, codegen.toolchain
-            )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     pytest=config.Infra.tooling.tools.pytest,
@@ -2344,11 +2406,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         repository, codegen.toolchain
                     ),
                     uv_version=codegen.toolchain.uv_version,
-                    uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
-                    dependency_cooldown_exclusions=cooldown_exclusions,
-                    dependency_cooldown_overrides=cooldown_overrides,
                     make=codegen.make,
-                    extra_verbs=repository.extra_verbs,
+                    extra_verbs=(
+                        FlextInfraCodegenConform._merge_extra_verbs(
+                            repository.extra_verbs,
+                            (
+                                ()
+                                if repository.script_dispatch is None
+                                else FlextInfraCodegenConform._discover_script_verbs(
+                                    repository_root
+                                )
+                            ),
+                            frozenset(verb.name for verb in codegen.make.verbs),
+                        )
+                    ),
                     script_dispatch=repository.script_dispatch,
                     workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
@@ -2369,7 +2440,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Make contract as Makefile; they do not require scaffold-only
             # project metadata.
             make_context = FlextInfraCodegenConform.make_render_context(
-                repository, target, workspace, codegen, tooling_runtime=tooling_runtime
+                repository,
+                target,
+                workspace,
+                codegen,
+                tooling_runtime=tooling_runtime,
+                repository_root=repository_root,
             )
             if make_context.failure:
                 return r[p.Model].from_failure(make_context)
@@ -2404,6 +2480,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         codegen: m.Infra.CodegenConfigSpec,
         *,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
+        repository_root: Path,
     ) -> p.Result[m.Infra.MakeRenderContext]:
         """Build the typed context consumed by the generated Makefile."""
         profile = target.make_profile
@@ -2419,6 +2496,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             FlextInfraCodegenConform._dependency_cooldown_policy(
                 repository, codegen.toolchain
             )
+        )
+        extra_verbs = FlextInfraCodegenConform._merge_extra_verbs(
+            repository.extra_verbs,
+            (
+                ()
+                if repository.script_dispatch is None
+                else FlextInfraCodegenConform._discover_script_verbs(repository_root)
+            ),
+            frozenset(verb.name for verb in codegen.make.verbs),
         )
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
@@ -2440,9 +2526,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 uv_link_mode=FlextInfraCodegenConform._link_mode(
                     repository, codegen.toolchain
                 ),
-                uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
-                dependency_cooldown_exclusions=cooldown_exclusions,
-                dependency_cooldown_overrides=cooldown_overrides,
                 # ProjectRenderContext replaces this with the composed map.
                 # Pass the neutral value explicitly so Pydantic never deep-copies
                 # the MappingProxyType model default while building the base.
@@ -2458,8 +2541,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 workspace_repositories=subprojects,
                 workspace_gitlinks=gitlinks.value,
-                extra_verbs=repository.extra_verbs,
+                extra_verbs=extra_verbs,
                 script_dispatch=repository.script_dispatch,
+                uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
+                dependency_cooldown_exclusions=cooldown_exclusions,
+                dependency_cooldown_overrides=cooldown_overrides,
             )
         )
 
@@ -2528,7 +2614,35 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
 
     @staticmethod
+    def resolve_gate_budgets(
+        configured_budgets: Mapping[str, m.Infra.ProjectGateBudgetSpec],
+    ) -> p.Result[Mapping[str, Mapping[str, int]]]:
+        """Project config budget rows; registry divergence fails loud.
+
+        The budget gate requires one row per registry gate; the config SSOT is
+        the single budget owner and a missing or unknown gate id is a declared
+        generation error, never a silent skip.
+        """
+        allowed_gates = c.Infra.ALLOWED_GATES
+        missing_budget_rows = sorted(allowed_gates - configured_budgets.keys())
+        unknown_budget_rows = sorted(configured_budgets.keys() - allowed_gates)
+        if missing_budget_rows or unknown_budget_rows:
+            return r[Mapping[str, Mapping[str, int]]].fail(
+                "budget configuration diverges from the gate registry: "
+                f"missing rows={missing_budget_rows}; "
+                f"unknown rows={unknown_budget_rows}"
+            )
+        return r[Mapping[str, Mapping[str, int]]].ok({
+            gate_id: {
+                "time-seconds": configured_budgets[gate_id].time_seconds,
+                "memory-mb": configured_budgets[gate_id].memory_mb,
+                "tokens": configured_budgets[gate_id].tokens,
+            }
+            for gate_id in sorted(configured_budgets)
+        })
+
     def _project_render_context(
+        self,
         repository: m.Infra.RepositoryRef,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
@@ -2627,7 +2741,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         profile = target.make_profile
         make_context = FlextInfraCodegenConform.make_render_context(
-            repository, target, workspace, codegen, tooling_runtime=tooling_runtime
+            repository,
+            target,
+            workspace,
+            codegen,
+            tooling_runtime=tooling_runtime,
+            repository_root=repository_root,
         )
         if make_context.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(make_context)
@@ -2680,6 +2799,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if version_result.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(version_result)
+        gate_budgets_result = FlextInfraCodegenConform.resolve_gate_budgets(
+            codegen.budget
+        )
+        if gate_budgets_result.failure:
+            return r[m.Infra.ProjectRenderContext].from_failure(gate_budgets_result)
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 **make_context.value.model_dump(
@@ -2719,6 +2843,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 const_name=project.constant_name,
                 package_name=project.package_name,
                 packaged_data_dirs=packaged_data_dirs,
+                namespace_scan_dirs=project.namespace_scan_dirs,
+                gate_budgets=gate_budgets_result.value,
                 class_stem=project.class_stem,
                 ns=project.namespace,
                 ns_attr=project.namespace_attribute,

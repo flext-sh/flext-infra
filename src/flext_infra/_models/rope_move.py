@@ -5,10 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from flext_core import m
-from flext_infra import t
+from flext_cli import m
 
-from .mixins import FlextInfraModelsMixins as mm
+from .. import t
+from . import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsRopeMove:

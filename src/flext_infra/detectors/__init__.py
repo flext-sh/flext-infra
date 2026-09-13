@@ -11,6 +11,9 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 if TYPE_CHECKING:
     from .class_placement_detector import FlextInfraClassPlacementDetector
     from .compatibility_alias_detector import FlextInfraCompatibilityAliasDetector
+    from .consumer_import_violations_detector import (
+        FlextInfraConsumerImportViolationsDetector,
+    )
     from .cyclic_import_detector import FlextInfraCyclicImportDetector
     from .deferred_self_reference_detector import (
         FlextInfraDeferredSelfReferenceDetector,
@@ -31,6 +34,7 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraClassPlacementDetector",
     "FlextInfraCompatibilityAliasDetector",
+    "FlextInfraConsumerImportViolationsDetector",
     "FlextInfraCyclicImportDetector",
     "FlextInfraDeferredSelfReferenceDetector",
     "FlextInfraFutureAnnotationsDetector",
@@ -53,6 +57,9 @@ _LAZY_IMPORTS = MappingProxyType(
         MappingProxyType({
             ".class_placement_detector": ("FlextInfraClassPlacementDetector",),
             ".compatibility_alias_detector": ("FlextInfraCompatibilityAliasDetector",),
+            ".consumer_import_violations_detector": (
+                "FlextInfraConsumerImportViolationsDetector",
+            ),
             ".cyclic_import_detector": ("FlextInfraCyclicImportDetector",),
             ".deferred_self_reference_detector": (
                 "FlextInfraDeferredSelfReferenceDetector",
