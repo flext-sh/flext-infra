@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import c, config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.codegen.layout import FlextInfraCodegenLayout
 from tests import t, u
+from tests.unit.workspace import WorktreeFixture
 from tests.unit.codegen.layout_fixture import (
     archive_root,
     build_loose_project,
@@ -66,6 +69,54 @@ def test_managed_gitignore_render_includes_layout_additions() -> None:
     tm.ok(rendered)
     tm.that(rendered.value, has="settings.json")
     tm.that(rendered.value, has=f"{archive_root()}/")
+
+
+@pytest.mark.slow
+def test_conform_materializes_layout_gitignore_additions(tmp_path: Path) -> None:
+    """``codegen conform`` renders the layout override additions into ``.gitignore``.
+
+    The planner used to render ``base/gitignore.j2`` from its own section list
+    without the layout override, so ``make gen`` never satisfied the layout gate
+    and a governed member ended up hand-editing the projection. One owner now
+    derives the sections for every renderer: after conform, the layout engine
+    finds no missing gitignore pattern for a project declared in the SSOT.
+    """
+    owner, override = next(
+        (name, item)
+        for name, item in sorted(config.Infra.codegen.layout.project_overrides.items())
+        if item.gitignore_additions
+    )
+    root = tmp_path / owner
+    WorktreeFixture.initialize_governed_project(
+        root,
+        owner,
+        workspace="fixture-workspace",
+        database="fixture-database",
+        issue_prefix="fixture-prefix",
+    )
+    u.Tests.commit_git_changes(root, "Declare project identity")
+    tm.ok(
+        FlextInfraCodegenConform.execute_request(
+            u.Tests.conform_request(
+                root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        )
+    )
+
+    entries = (root / c.Infra.GITIGNORE).read_text(encoding="utf-8").splitlines()
+    missing = tuple(
+        pattern
+        for pattern in override.gitignore_additions
+        if entries.count(pattern) != 1
+    )
+    tm.that(missing, eq=())
+    report = FlextInfraCodegenLayout(repository_root=root).check_project(root)
+    tm.that(
+        tuple(finding for finding in report.findings if finding.rule == "gitignore"),
+        eq=(),
+    )
 
 
 def test_layout_preserves_tracked_ignored_files_and_ignores_local_artifacts(

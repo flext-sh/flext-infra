@@ -1240,40 +1240,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         )
                     )
                     continue
-            if governed.policy == "merge" and relative.as_posix() == c.Infra.GITIGNORE:
-                # The canonical .gitignore body is rendered
-                # from the same base/gitignore.j2 + computed
-                # CodegenConfigSpec.gitignore_sections used by `codegen new` —
-                # ONE render mechanism derived from the artifact SSOT.
-                # Per-project exception fields land in their typed owner.
-                rendered_gitignore = FlextInfraCodegenConform._render_gitignore(
-                    codegen,
-                    profile=profile,
-                    project_name=root.name,
-                    workspace=workspace,
-                    project_dir=root,
-                )
-                if rendered_gitignore.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                        rendered_gitignore
-                    )
-                if rendered_gitignore.value != current:
-                    gitignore_plan = FlextInfraCodegenConform._file_plan(
-                        root,
-                        relative.as_posix(),
-                        rendered_gitignore.value,
-                        mode=governed.mode,
-                    )
-                    if gitignore_plan.failure:
-                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                            gitignore_plan
-                        )
-                    completed.append(
-                        gitignore_plan.value.model_copy(
-                            update={"owner": governed.owner, "policy": governed.policy}
-                        )
-                    )
-                    continue
             current_plan = FlextInfraCodegenConform._file_plan(
                 root, relative.as_posix(), current, mode=governed.mode
             )
@@ -1319,38 +1285,23 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
 
     @staticmethod
-    def _render_gitignore(
+    def _gitignore_sections(
         codegen: m.Infra.CodegenConfigSpec,
         *,
         profile: c.Infra.MakeProfile,
         project_name: str | None = None,
         workspace: m.Infra.WorkspaceSpec | None = None,
-        project_dir: Path | None = None,
-    ) -> p.Result[str]:
-        """Render the canonical ``.gitignore`` body via the single template.
+        project_patterns: t.StrSequence = (),
+    ) -> t.VariadicTuple[m.Infra.ScaffoldGitignoreSectionSpec]:
+        """Derive the ordered ``.gitignore`` sections for one project.
 
-        ``codegen new`` renders ``base/gitignore.j2`` with
-        the full project context; conform renders the same template with the
-        codegen config — both consume the same computed ``gitignore_sections``
-        projection, so the body is byte-identical.
+        Single owner of the section list: the profile-filtered SSOT sections,
+        the workspace-root subproject whitelist derived from the live topology,
+        the layout override additions and the repository-owned patterns. Every
+        renderer of ``base/gitignore.j2`` (conform planning, the layout engine,
+        ``codegen new``) consumes this projection, so the layout gate can never
+        demand a pattern that ``make gen`` does not materialize.
         """
-        entry = next(
-            (
-                item
-                for item in codegen.templates.entries
-                if item.destination == c.Infra.GITIGNORE
-            ),
-            None,
-        )
-        if entry is None:
-            return r[str].fail(
-                "gitignore template is missing from codegen configuration"
-            )
-        templates_root = (
-            FlextInfraCodegenConform._package_root()
-            / "templates"
-            / codegen.templates.root
-        ).resolve()
         sections = [
             section
             for section in codegen.gitignore_sections
@@ -1361,9 +1312,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # topology instead of a hardcoded name glob: declaring a subproject in
         # local .gitmodules is the single source that makes it trackable.
         # Nested paths need every ancestor unignored, otherwise git never
-        # descends far enough to reach the subproject itself.
+        # descends far enough to reach the subproject itself. Only the
+        # workspace root carries that policy; a subproject never does.
         member_patterns: list[str] = []
-        if workspace is not None:
+        if workspace is not None and profile is c.Infra.MakeProfile.WORKSPACE:
             for declared_repository in workspace.subprojects:
                 parts = declared_repository.path.as_posix().strip("/").split("/")
                 # Every ancestor is unignored so git can descend into the
@@ -1392,22 +1344,60 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         patterns=override.gitignore_additions,
                     )
                 )
-        if project_dir is not None:
+        if project_patterns:
             # The repository owns the ignore patterns the fleet scaffold cannot
             # know (local caches, generated runtime state); they are declared in
             # its own config/*.yaml and appended as one derived section.
+            sections.append(
+                m.Infra.ScaffoldGitignoreSectionSpec(
+                    name=c.Infra.GITIGNORE_PROJECT_SECTION_NAME,
+                    patterns=tuple(project_patterns),
+                )
+            )
+        return tuple(sections)
+
+    @staticmethod
+    def _render_gitignore(
+        codegen: m.Infra.CodegenConfigSpec,
+        *,
+        profile: c.Infra.MakeProfile,
+        project_name: str | None = None,
+        workspace: m.Infra.WorkspaceSpec | None = None,
+        project_dir: Path | None = None,
+    ) -> p.Result[str]:
+        """Render the canonical ``.gitignore`` body via the single template."""
+        entry = next(
+            (
+                item
+                for item in codegen.templates.entries
+                if item.destination == c.Infra.GITIGNORE
+            ),
+            None,
+        )
+        if entry is None:
+            return r[str].fail(
+                "gitignore template is missing from codegen configuration"
+            )
+        templates_root = (
+            FlextInfraCodegenConform._package_root()
+            / "templates"
+            / codegen.templates.root
+        ).resolve()
+        project_patterns: t.StrSequence = ()
+        if project_dir is not None:
             resolved = u.Infra.load_project_managed_artifacts(project_dir)
             if resolved.failure:
                 return r[str].from_failure(resolved)
             project_patterns = resolved.value.artifacts.Gitignore.patterns
-            if project_patterns:
-                sections.append(
-                    m.Infra.ScaffoldGitignoreSectionSpec(
-                        name=c.Infra.GITIGNORE_PROJECT_SECTION_NAME,
-                        patterns=project_patterns,
-                    )
-                )
-        context = m.Infra.GitignoreRenderSpec(gitignore_sections=tuple(sections))
+        context = m.Infra.GitignoreRenderSpec(
+            gitignore_sections=FlextInfraCodegenConform._gitignore_sections(
+                codegen,
+                profile=profile,
+                project_name=project_name,
+                workspace=workspace,
+                project_patterns=project_patterns,
+            )
+        )
         return u.Cli.template_render(templates_root / entry.source, context)
 
     @staticmethod
@@ -2202,23 +2192,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
         if destination == c.Infra.GITIGNORE:
-            profile = target.make_profile
-            sections = [
-                section
-                for section in codegen.gitignore_sections
-                if not section.profiles or profile in section.profiles
-            ]
-            if managed_artifacts is not None:
-                project_patterns = managed_artifacts.artifacts.Gitignore.patterns
-                if project_patterns:
-                    sections.append(
-                        m.Infra.ScaffoldGitignoreSectionSpec(
-                            name=c.Infra.GITIGNORE_PROJECT_SECTION_NAME,
-                            patterns=project_patterns,
-                        )
-                    )
+            project_patterns: t.StrSequence = (
+                managed_artifacts.artifacts.Gitignore.patterns
+                if managed_artifacts is not None
+                else ()
+            )
             return r[p.Model].ok(
-                m.Infra.GitignoreRenderSpec(gitignore_sections=tuple(sections))
+                m.Infra.GitignoreRenderSpec(
+                    gitignore_sections=self._gitignore_sections(
+                        codegen,
+                        profile=target.make_profile,
+                        project_name=repository_root.name,
+                        workspace=workspace,
+                        project_patterns=project_patterns,
+                    )
+                )
             )
         if destination == ".pre-commit-config.yaml":
             return r[p.Model].ok(
@@ -2777,15 +2765,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if profile is not c.Infra.MakeProfile.WORKSPACE
             else ()
         )
-        # Emit only the .gitignore sections that apply to this profile: a
-        # section with no declared profiles is universal; a workspace-only
-        # section (subproject-directory allowlist and submodule/Beads
-        # Beads coordination) never reaches a subproject or standalone .gitignore.
-        profile_gitignore_sections = [
-            section
-            for section in codegen.gitignore_sections
-            if not section.profiles or profile in section.profiles
-        ]
         catalog_artifacts = managed_artifacts
         if use_committed_artifacts:
             committed = u.Infra.load_committed_project_managed_artifacts(
@@ -2794,15 +2773,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if committed.failure:
                 return r[m.Infra.ProjectRenderContext].from_failure(committed)
             catalog_artifacts = committed.value
-        if catalog_artifacts is not None:
-            project_patterns = catalog_artifacts.artifacts.Gitignore.patterns
-            if project_patterns:
-                profile_gitignore_sections.append(
-                    m.Infra.ScaffoldGitignoreSectionSpec(
-                        name=c.Infra.GITIGNORE_PROJECT_SECTION_NAME,
-                        patterns=project_patterns,
-                    )
-                )
+        project_patterns: t.StrSequence = (
+            catalog_artifacts.artifacts.Gitignore.patterns
+            if catalog_artifacts is not None
+            else ()
+        )
         # The repository's own pyproject.toml is the version SSOT; the release
         # protocol is its only writer, so conform reads it and never syncs it.
         # A tree that has no pyproject yet is being created: it starts at the
@@ -2828,7 +2803,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 mise_bootstrap=FlextInfraCodegenConform._mise_bootstrap_environment(),
                 scaffold=codegen.scaffold,
-                gitignore_sections=tuple(profile_gitignore_sections),
+                gitignore_sections=self._gitignore_sections(
+                    codegen,
+                    profile=profile,
+                    project_name=repository_root.name,
+                    workspace=workspace,
+                    project_patterns=project_patterns,
+                ),
                 dependency_profile=dependency_profile,
                 tooling=config.Infra.tooling,
                 # Why: the fleet policy alone is not the effective Ruff contract.

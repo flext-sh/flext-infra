@@ -22,6 +22,18 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+# Why (flext-oftik class, flext-2j4lr): every case here drives real release
+# phases over a real Git repository, and one phase costs ~8-9 s today because
+# pydantic rebuilds every r[T] generic per call (profiled 73% of the phase).
+# The cost is the harness, not the assertions. The SSOT slow budget
+# (Infra.tooling.tools.pytest.slow-timeout-seconds) therefore owns the ceiling
+# for the whole module until that owner hotspot lands. Declared once here
+# rather than on the 15 affected cases: a per-case marker silently drifts as
+# cases are added, which is exactly how two of them started failing the
+# default wall under fleet load.
+pytestmark = pytest.mark.slow
+
+
 def _plan(workspace: Path) -> m.Infra.ReleasePlan:
     """Read the plan receipt the last ``plan`` phase wrote."""
     payload = workspace / ".reports" / "release" / c.Infra.RELEASE_PLAN_FILENAME
@@ -431,12 +443,7 @@ class TestsFlextInfraReleaseProtocol:
                 )
                 tm.that(recorded, has="--title chore(release): v0.1.0")
 
-        # Why (flext-oftik class, flext-2j4lr): two real release phases, each
-        # ~8-9 s today because pydantic rebuilds every r[T] generic per call
-        # (profiled 73% of the phase); the SSOT slow budget owns the ceiling
-        # until the owner hotspot lands. Not a slow test, a slow harness.
         @staticmethod
-        @pytest.mark.slow
         def test_rerun_continues_the_lane_without_a_second_commit(
             tmp_path: Path,
         ) -> None:
