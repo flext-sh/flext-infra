@@ -37,6 +37,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenConsolidator",
     "FlextInfraCodegenFixer",
     "FlextInfraCodegenGeneration",
+    "FlextInfraCodegenLayout",
     "FlextInfraCodegenLazyInit",
     "FlextInfraCodegenLazyInitGenerationMixin",
     "FlextInfraCodegenLazyInitPlanner",
