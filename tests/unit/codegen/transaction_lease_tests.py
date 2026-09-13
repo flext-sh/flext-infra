@@ -21,6 +21,17 @@ if TYPE_CHECKING:
     from multiprocessing.synchronize import Event
 
 
+def _ok_path(scope: Path) -> p.Result[Path]:
+    """Trivial identity operation typed concretely for ``run_locked``.
+
+    Why: passing the generic ``r[Path].ok`` classmethod directly loses its
+    ``Path`` specialization at the call site (a second, independent type
+    variable on ``ok`` itself), so a concretely annotated wrapper is the
+    typed fix rather than widening ``run_locked``'s signature.
+    """
+    return r[Path].ok(scope)
+
+
 class TestsTransactionLease:
     """Keep live journal recovery behind the shared physical scope lease."""
 
@@ -104,7 +115,7 @@ class TestsTransactionLease:
                     FlextInfraCodegenMiseArtifacts(repository_root=contender_root)
                 )
                 with pytest.raises(Timeout) as failure:
-                    contender.run_locked(prepare=True, operation=r[Path].ok)
+                    contender.run_locked(prepare=True, operation=_ok_path)
                 tm.that(failure.value.lock_file, eq=str(lock_path))
                 tm.that(journal_path.read_bytes(), eq=journal_before)
 
@@ -155,4 +166,4 @@ class TestsTransactionLease:
         ) as failure:
             transaction.run_locked(prepare=False, operation=fail)
         tm.that(failure.value is original, eq=True)
-        tm.ok(transaction.run_locked(prepare=False, operation=r[Path].ok))
+        tm.ok(transaction.run_locked(prepare=False, operation=_ok_path))

@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from .. import c, m, r, s, u
-from . import publish_file_plan
+from ._mise_artifacts_publication import publish_file_plan
 
 if TYPE_CHECKING:
     from .. import p, t

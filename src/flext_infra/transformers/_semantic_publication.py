@@ -37,13 +37,8 @@ def publish_semantic_file_plan(plan: m.Infra.SemanticFilePlan) -> p.Result[bool]
 
     # Publish through the guarded atomic primitives
     # The zero-residue law prohibits leaving backup copies beside managed destinations
-    try:
-        from flext_infra.codegen._mise_artifacts_files import (
-            FlextInfraMiseArtifactsFiles as files,
-        )
-    except ImportError:
-        # Fallback for non-codegen paths - use direct atomic publish
-        return _direct_publish(before, replacement)
+    from flext_infra.codegen import FlextInfraMiseArtifactsFiles as files
+
     return files.write_publication(
         m.Infra.CodegenStagedFile(
             phase="semantic",
@@ -52,45 +47,6 @@ def publish_semantic_file_plan(plan: m.Infra.SemanticFilePlan) -> p.Result[bool]
             replacement=replacement,
         )
     )
-
-
-def _direct_publish(
-    before: m.Cli.AtomicFileState, replacement: m.Cli.AtomicFileState
-) -> p.Result[bool]:
-    """Direct atomic publish without journal - used when codegen journal unavailable."""
-    published = u.Cli.atomic_publish_staged_binary_file_guarded(before, replacement)
-    if published.failure:
-        return r[bool].from_failure(published)
-    observed = published.value
-    observed_identity = (
-        observed.path,
-        observed.parent_device,
-        observed.parent_inode,
-        observed.content,
-        observed.mode,
-        observed.device,
-        observed.inode,
-        observed.link_count,
-        observed.file_attributes,
-        observed.reparse_tag,
-    )
-    replacement_identity = (
-        before.path,
-        before.parent_device,
-        before.parent_inode,
-        replacement.content,
-        replacement.mode,
-        replacement.device,
-        replacement.inode,
-        replacement.link_count,
-        replacement.file_attributes,
-        replacement.reparse_tag,
-    )
-    if observed_identity != replacement_identity:
-        return r[bool].fail(
-            f"published semantic file differs from staged identity: {before.path}"
-        )
-    return r[bool].ok(True)
 
 
 def publish_semantic_file_plans(

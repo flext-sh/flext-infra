@@ -35,12 +35,22 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
 
     @staticmethod
     def build_scopes(
-        repository_root: Path, projects: t.StrSequence | None, output_dir: Path | str
+        repository_root: Path,
+        projects: t.StrSequence | None,
+        output_dir: Path | str,
+        *,
+        include_root: bool = True,
     ) -> p.Result[t.SequenceOf[m.Infra.DocScope]]:
-        """Build DocScope objects for repository root and selected projects."""
+        """Build DocScope objects for repository root and selected projects.
+
+        ``include_root`` governs only whether the workspace root itself is
+        rendered as a docs OUTPUT scope; root guides/pyproject remain readable
+        SOURCES for member projects regardless (see ``docs_source_paths``,
+        which always discovers them from the physical repository root).
+        """
         try:
             scopes = FlextInfraUtilitiesDocsScopeBuildMixin._build_scopes_unchecked(
-                repository_root, projects, output_dir
+                repository_root, projects, output_dir, include_root=include_root
             )
         except c.EXC_OS_TYPE_VALUE as exc:
             return r[t.SequenceOf[m.Infra.DocScope]].fail_op("scope resolution", exc)
@@ -48,7 +58,11 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
 
     @staticmethod
     def _build_scopes_unchecked(
-        repository_root: Path, projects: t.StrSequence | None, output_dir: Path | str
+        repository_root: Path,
+        projects: t.StrSequence | None,
+        output_dir: Path | str,
+        *,
+        include_root: bool,
     ) -> t.SequenceOf[m.Infra.DocScope]:
         """Build docs scopes without exception wrapping."""
         resolved_root = repository_root.resolve()
@@ -64,19 +78,21 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
         has_child_projects = any(
             project.path.resolve() != resolved_root for project in discovered
         )
+        has_workspace_topology = (resolved_root / c.Infra.BEADS_OVERRIDE_RELPATH).is_file()
         if (
             (resolved_root / c.Infra.PYPROJECT_FILENAME).is_file()
             and not has_declared_members
             and not has_child_projects
+            and not has_workspace_topology
             and is_enabled
         ):
             return (
                 FlextInfraUtilitiesDocsScopeBuildMixin._governed_scope(
-                    resolved_root, output_dir
+                    resolved_root, output_dir, repository_root=resolved_root
                 ),
             )
         return FlextInfraUtilitiesDocsScopeBuildMixin._workspace_scopes(
-            resolved_root, projects, output_dir, discovered
+            resolved_root, projects, output_dir, discovered, include_root=include_root
         )
 
     @staticmethod
@@ -85,17 +101,29 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
         projects: t.StrSequence | None,
         output_dir: Path | str,
         discovered: t.SequenceOf[m.Infra.ProjectInfo],
+        *,
+        include_root: bool,
     ) -> t.SequenceOf[m.Infra.DocScope]:
-        """Build docs scopes for a repository root plus child projects."""
-        scopes: list[m.Infra.DocScope] = [
-            m.Infra.DocScope(
-                name=c.Infra.RK_ROOT,
-                path=repository_root,
-                report_dir=(repository_root / output_dir).resolve(),
-                project_class="root",
-                package_name="",
-            )
-        ]
+        """Build docs scopes for a repository root plus child projects.
+
+        The root scope is an OUTPUT participant only when ``include_root`` is
+        true; excluding it never affects source discovery (root guides,
+        pyproject, config) which is derived independently from the physical
+        repository root.
+        """
+        scopes: list[m.Infra.DocScope] = (
+            [
+                m.Infra.DocScope(
+                    name=c.Infra.RK_ROOT,
+                    path=repository_root,
+                    report_dir=(repository_root / output_dir).resolve(),
+                    project_class="root",
+                    package_name="",
+                )
+            ]
+            if include_root
+            else []
+        )
         selected_names = FlextInfraUtilitiesDocsScopeBuildMixin._selected_project_names(
             repository_root, projects
         )
@@ -108,7 +136,7 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
             return tuple(scopes)
         scopes.extend(
             FlextInfraUtilitiesDocsScopeBuildMixin._doc_scope(
-                project=project, output_dir=output_dir
+                project=project, output_dir=output_dir, repository_root=repository_root
             )
             for project in discovered
         )

@@ -716,6 +716,13 @@ class FlextInfraWorkspaceDetector(
         # phase and turned one member conform into thousands of Git processes.
         if not (resolved_root / c.Infra.GITMODULES).is_file():
             return r[tuple[Path, ...]].ok(())
+        # Why (flext-gajwa): a governed root owns its own repository. A tree
+        # that carries .beads/.gitmodules but no .git (a test sandbox, a
+        # scratch copy) is ungoverned; asking Git here would discover an
+        # ancestor checkout and validate *its* submodules against *this*
+        # .gitmodules (sandbox escape observed under flext/.flext-runtime).
+        if not (resolved_root / ".git").exists():
+            return r[tuple[Path, ...]].ok(())
         origin = cls._git_origin_url(resolved_root)
         if origin.failure or cls._declared_provider_for_url(origin.value) is None:
             return r[tuple[Path, ...]].ok(())

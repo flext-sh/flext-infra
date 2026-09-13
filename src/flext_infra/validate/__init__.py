@@ -14,10 +14,13 @@ if TYPE_CHECKING:
     from ._namespace_rules.contracts import FlextInfraNamespaceRulesContracts
     from ._namespace_rules.imports import FlextInfraNamespaceRulesImports
     from ._namespace_rules.structure import FlextInfraNamespaceRulesStructure
+    from ._pytest_diag_xml import FlextInfraPytestDiagXmlMixin
     from ._pytest_runner.base import FlextInfraPytestRunnerBase
     from ._pytest_runner.command import FlextInfraPytestRunnerCommand
     from ._pytest_runner.execution import FlextInfraPytestRunnerExecution
     from ._pytest_runner.reports import FlextInfraPytestRunnerReports
+    from ._rope_import_boundary import FlextInfraRopeImportBoundaryBase
+    from ._skill_rule_runner import FlextInfraSkillRuleRunnerMixin
     from .cprofile_report import FlextInfraCProfileReport
     from .fresh_import import FlextInfraValidateFreshImport
     from .gate_contract import FlextInfraGateContractValidator
@@ -60,13 +63,16 @@ __all__: tuple[str, ...] = (
     "FlextInfraNamespaceRulesStructure",
     "FlextInfraNamespaceValidator",
     "FlextInfraPytestDiagExtractor",
+    "FlextInfraPytestDiagXmlMixin",
     "FlextInfraPytestRunner",
     "FlextInfraPytestRunnerBase",
     "FlextInfraPytestRunnerCommand",
     "FlextInfraPytestRunnerExecution",
     "FlextInfraPytestRunnerReports",
+    "FlextInfraRopeImportBoundaryBase",
     "FlextInfraRuntimeCensusValidator",
     "FlextInfraSilentFailureValidator",
+    "FlextInfraSkillRuleRunnerMixin",
     "FlextInfraSkillValidator",
     "FlextInfraStubSupplyChain",
     "FlextInfraTestmonDbInspector",
@@ -90,11 +96,14 @@ _LAZY_IMPORTS = MappingProxyType(
             "._namespace_rules.contracts": ("FlextInfraNamespaceRulesContracts",),
             "._namespace_rules.imports": ("FlextInfraNamespaceRulesImports",),
             "._namespace_rules.structure": ("FlextInfraNamespaceRulesStructure",),
+            "._pytest_diag_xml": ("FlextInfraPytestDiagXmlMixin",),
             "._pytest_runner": ("_pytest_runner",),
             "._pytest_runner.base": ("FlextInfraPytestRunnerBase",),
             "._pytest_runner.command": ("FlextInfraPytestRunnerCommand",),
             "._pytest_runner.execution": ("FlextInfraPytestRunnerExecution",),
             "._pytest_runner.reports": ("FlextInfraPytestRunnerReports",),
+            "._rope_import_boundary": ("FlextInfraRopeImportBoundaryBase",),
+            "._skill_rule_runner": ("FlextInfraSkillRuleRunnerMixin",),
             ".cprofile_report": ("FlextInfraCProfileReport",),
             ".fresh_import": ("FlextInfraValidateFreshImport",),
             ".gate_contract": ("FlextInfraGateContractValidator",),

@@ -39,21 +39,30 @@ class TestExtendedRunnerExtras:
 
     """Declarative public-gate tests."""
 
-    def test_pyright_skips_when_project_has_no_python_files(
+    def test_pyright_rejects_project_without_python_targets(
         self, tmp_path: Path
     ) -> None:
         _, project_dir = u.Tests.create_checker_project(tmp_path)
 
         result = u.Tests.run_gate_check(FlextInfraPyrightGate, tmp_path, project_dir)
 
-        tm.that(result.result.passed, eq=True)
+        # A selected gate with no collected targets does not establish
+        # acceptance: exactly one error, no issues.
+        tm.that(result.result.passed, eq=False)
+        tm.that(len(result.result.errors), eq=1)
         tm.that(len(result.issues), eq=0)
 
     def test_pyright_parses_json_diagnostics(self, tmp_path: Path) -> None:
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         _ = (project_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
         runner = u.Tests.command_runner(
-            stdout='{"generalDiagnostics": [{"file": "a.py", "range": {"start": {"line": 0, "character": 0}}, "rule": "E001", "message": "Error", "severity": "error"}]}',
+            stdout=u.Tests.pyright_report_json({
+                "file": "a.py",
+                "range": {"start": {"line": 0, "character": 0}},
+                "rule": "E001",
+                "message": "Error",
+                "severity": "error",
+            }),
             returncode=1,
         )
 
@@ -72,7 +81,7 @@ class TestExtendedRunnerExtras:
         )
         _ = (project_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
         runner = u.Tests.SequenceRunner([
-            r.ok(u.Tests.create_command_output(stdout='{"generalDiagnostics": []}'))
+            r.ok(u.Tests.create_command_output(stdout=u.Tests.pyright_report_json()))
         ])
 
         result = u.Tests.run_gate_check(
@@ -200,12 +209,17 @@ class TestExtendedRunnerExtras:
         tm.that(result.raw_output.startswith("{"), eq=True)
         tm.that(result.raw_output, lacks="Working...")
 
-    def test_markdown_skips_without_markdown_files(self, tmp_path: Path) -> None:
+    def test_markdown_rejects_project_without_markdown_targets(
+        self, tmp_path: Path
+    ) -> None:
         _, project_dir = u.Tests.create_checker_project(tmp_path)
 
         result = u.Tests.run_gate_check(FlextInfraMarkdownGate, tmp_path, project_dir)
 
-        tm.that(result.result.passed, eq=True)
+        # A selected gate with no collected targets does not establish
+        # acceptance: exactly one error, no issues.
+        tm.that(result.result.passed, eq=False)
+        tm.that(len(result.result.errors), eq=1)
         tm.that(len(result.issues), eq=0)
 
     def test_markdown_parses_cli_errors(self, tmp_path: Path) -> None:

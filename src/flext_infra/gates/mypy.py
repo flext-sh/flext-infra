@@ -185,9 +185,18 @@ class FlextInfraMypyGate(FlextInfraGate):
                 ),
             )
         for raw_line in result.stdout.splitlines():
-            diagnostic = m.Infra.MypyDiagnostic.model_validate_json(
-                raw_line, strict=True
-            )
+            if not raw_line.strip():
+                continue
+            try:
+                diagnostic = m.Infra.MypyDiagnostic.model_validate_json(
+                    raw_line, strict=True
+                )
+            except c.ValidationError as exc:
+                return False, (
+                    self._malformed_report_issue(
+                        exc, tool=c.Infra.MYPY, file=str(project_dir)
+                    ),
+                )
             issues.append(
                 m.Infra.Issue(
                     file=diagnostic.file,

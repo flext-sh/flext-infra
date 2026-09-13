@@ -117,14 +117,15 @@ class FlextInfraConstantsSharedInfra:
     )
     INTERNAL_PREFIXES: Final[t.VariadicTuple[str]] = ("flext_", "flext-")
     METADATA_TOMLLIB_MODULES: Final[frozenset[str]] = frozenset({"tomllib"})
+    # Package-tree markers matched against "/<path relative to the scanned
+    # root>" (X-77): the directory name of the working copy (a lane may be
+    # named anything) never takes part in the match.
     METADATA_ALLOWLIST_PATH_MARKERS: Final[t.StrSequence] = (
-        "flext-core/src/flext_core/_utilities/project_metadata.py",
-        "flext-infra/src/flext_infra/iteration.py",
-        "flext-infra/src/flext_infra/__version__.py",
+        "/src/flext_core/_utilities/project_metadata.py",
+        "/src/flext_infra/iteration.py",
+        "/src/flext_infra/__version__.py",
     )
-    METADATA_TARGET_SCOPE_MARKERS: Final[t.StrSequence] = (
-        "flext-infra/src/flext_infra/",
-    )
+    METADATA_TARGET_SCOPE_MARKERS: Final[t.StrSequence] = ("/src/flext_infra/",)
 
     # --- Integration baseline discovery ---
     # Ordered preference used to derive one repository's integration baseline
@@ -229,13 +230,15 @@ class FlextInfraConstantsSharedInfra:
     DIR_TESTS: Final[str] = "tests"
     DIR_EXAMPLES: Final[str] = "examples"
     DIR_SCRIPTS: Final[str] = "scripts"
+    # Runtime-exempt surfaces, matched on path parts RELATIVE to the scanned
+    # repository root (X-75): an ancestor directory name never grants an
+    # exemption. Scope exclusions (state/cache dirs) belong to the source-scan
+    # ignore list, not here.
     TIER_WHITELIST_NON_RUNTIME_DIR_PARTS: Final[frozenset[str]] = frozenset({
         DIR_TESTS,
         DIR_EXAMPLES,
         DIR_SCRIPTS,
         "evaluate",
-        "flext-infra-worktrees",
-        ".flext-runtime",
     })
     TIER_WHITELIST_SETTINGS_MODULE_LIBRARIES: Final[frozenset[str]] = frozenset({
         "pydantic_settings"

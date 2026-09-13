@@ -75,13 +75,7 @@ class FlextInfraReleaseArtifactExecutionMixin(
         source_date_epoch: int,
         log_path: Path,
     ) -> p.Result[p.Cli.CommandOutput]:
-        """Validate the toolchain lock, execute uv, and persist its full log."""
-        constraints_result = u.Cli.files_read_text(build_constraints_path)
-        if constraints_result.failure:
-            return r[p.Cli.CommandOutput].from_failure(constraints_result)
-        validation_result = self._validate_build_constraints(constraints_result.value)
-        if validation_result.failure:
-            return r[p.Cli.CommandOutput].from_failure(validation_result)
+        """Execute uv and persist its full log."""
         build_result = u.Cli.run_raw(
             self._release_build_command(
                 stage_path, temporary_dist, build_constraints_path

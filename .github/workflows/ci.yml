@@ -99,7 +99,6 @@ jobs:
           git config --global url."https://x-access-token:${access_token}@github.com/".insteadOf "https://github.com/"
           rm -f "$key_path"
 
-
       # Why: GitHub runners expose umask 002, so git checkout materializes
       # group-writable modes (0664) for tracked files. Canonical Mise
       # artifacts demand exact modes (0o644) and the conform gate fails loud
@@ -271,7 +270,11 @@ jobs:
           rm -f "$key_path"
 
       - name: Boot
-        run: make setup
+        # Toolchain resolution needs the same authenticated API budget as ci.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MISE_GITHUB_TOKEN: ${{ github.token }}
+        run: CI=Y make setup
       - name: Release plan and guard
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}

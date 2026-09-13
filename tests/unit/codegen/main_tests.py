@@ -33,7 +33,9 @@ def _with_pep621_identity(repo: Path) -> Path:
     repository = u.Tests.repository_ref(repo.name)
     (repo / "pyproject.toml").write_text(
         f'[project]\nname = "{repository.distribution}"\nversion = "0.1.0"\n'
-        'requires-python = ">=3.13,<3.14"\n\n'
+        'requires-python = ">=3.13,<3.14"\n'
+        'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+        'dependencies = ["flext-core>=0.1.0"]\n\n'
         f'[project.urls]\nRepository = "{repository.url}"\n',
         encoding="utf-8",
     )
@@ -47,15 +49,25 @@ def _with_pep621_identity(repo: Path) -> Path:
 
 
 def _seed_public_conform_checkout(root: Path) -> None:
-    """Copy the real public package, config, and tracked Mise inputs into a repo."""
+    """Seed a minimal governed package tree plus the real config and Mise inputs.
+
+    The public CLI conform pipeline needs an importable ``src/flext_infra``
+    package (for namespace/ruff discovery) and the real ``config/`` +
+    tracked Mise seeds (``codegen conform`` validates the tracked,
+    checksum-verified launchers rather than minting them). It does not need
+    the full real package tree copied byte-for-byte: the minimal seed used by
+    ``tests/unit/codegen/test_codegen_conform.py::_seed_infra_package_tree``
+    already satisfies the same public conform contract at a fraction of the
+    scan cost, so this fixture reuses that pattern instead of copying
+    hundreds of real modules per test run.
+    """
     project_root = Path(__file__).resolve().parents[3]
-    tm.ok(
-        u.Cli.files_copy_directory(
-            project_root / "src" / "flext_infra",
-            root / "src" / "flext_infra",
-            dirs_exist_ok=True,
-        )
-    )
+    package_init = root / "src" / "flext_infra" / "__init__.py"
+    package_init.parent.mkdir(parents=True, exist_ok=True)
+    tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
+    tests_init = root / "tests" / "__init__.py"
+    tests_init.parent.mkdir(parents=True, exist_ok=True)
+    tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
     tm.ok(
         u.Cli.files_copy_directory(
             project_root / "config", root / "config", dirs_exist_ok=True
@@ -225,9 +237,13 @@ class TestMainEntryPoint:
         """Keep live bytes unchanged until the public transaction commits."""
         root = infra_git_repo
         _seed_public_conform_checkout(root)
+        distribution = u.Tests.repository_ref(config.Infra.name).distribution
         (root / "pyproject.toml").write_text(
-            '[project]\nname = "flext-infra"\nversion = "0.12.0.dev0"\n'
+            f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
+            f'description = "{distribution} governed fixture"\n'
             'requires-python = ">=3.13,<3.14"\n'
+            'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
+            'dependencies = ["flext-cli"]\n'
             "\n"
             "[tool.pytest.ini_options]\n"
             "addopts = [\n"
@@ -239,23 +255,18 @@ class TestMainEntryPoint:
             "]\n",
             encoding="utf-8",
         )
-
         pyproject = root / "pyproject.toml"
         before = pyproject.read_bytes()
         journal, transaction = _mise_transaction_state(root)
         command = _public_conform_command(root)
-        checked = u.Cli.run_raw(
-            [*command, "check"], cwd=root, env={"PYTHONPATH": str(root / "src")}
-        )
+        checked = u.Cli.run_raw([*command, "check"], cwd=root)
         tm.ok(checked)
         tm.that(checked.value.outcome.raw_return_code, eq=1)
         tm.that(pyproject.read_bytes(), eq=before)
         tm.that(journal.exists(), eq=False)
         tm.that(transaction.exists(), eq=False)
 
-        applied = u.Cli.run_raw(
-            [*command, "apply"], cwd=root, env={"PYTHONPATH": str(root / "src")}
-        )
+        applied = u.Cli.run_raw([*command, "apply"], cwd=root)
         tm.ok(applied)
         tm.that(
             u.Cli.process_succeeded(applied.value.outcome),
@@ -273,9 +284,7 @@ class TestMainEntryPoint:
         tm.that(transaction.exists(), eq=False)
 
         published = pyproject.read_bytes()
-        fixed_point = u.Cli.run_raw(
-            [*command, "apply"], cwd=root, env={"PYTHONPATH": str(root / "src")}
-        )
+        fixed_point = u.Cli.run_raw([*command, "apply"], cwd=root)
         tm.ok(fixed_point)
         tm.that(
             u.Cli.process_succeeded(fixed_point.value.outcome),
@@ -315,7 +324,7 @@ class TestMainEntryPoint:
         applied = u.Cli.run_raw(
             [*_public_conform_command(root), "apply"],
             cwd=root,
-            env={"MISE_GITHUB_CREDENTIAL_COMMAND": "", "PYTHONPATH": str(root / "src")},
+            env={"MISE_GITHUB_CREDENTIAL_COMMAND": ""},
         )
 
         tm.ok(applied)

@@ -49,29 +49,34 @@ class TestsCodegenSetupSubmodules:
     ) -> dict[str, str]:
         bin_dir = root / "fixture-bin"
         bin_dir.mkdir()
+        # The bootstrap re-enters Make under a sanitized environment (only the
+        # declared passthrough keys survive), so the shim carries its own
+        # paths instead of reading ambient variables.
+        submodule_guard = (
+            ""
+            if expected_submodule_file is None
+            else (
+                f'if [ ! -f "{expected_submodule_file}" ]; then\n'
+                '  printf "submodule missing before uv\\n" >&2\n'
+                "  exit 70\n"
+                "fi\n"
+            )
+        )
         (bin_dir / "uv").write_text(
             "#!/bin/sh\n"
             "set -eu\n"
-            'if [ -n "${EXPECTED_SUBMODULE_FILE:-}" ] && '
-            '[ ! -f "$EXPECTED_SUBMODULE_FILE" ]; then\n'
-            '  printf "submodule missing before uv\\n" >&2\n'
-            "  exit 70\n"
-            "fi\n"
-            'printf "%s\\n" "$*" >> "$UV_LOG"\n',
+            f"{submodule_guard}"
+            f'printf "%s\\n" "$*" >> "{root / "uv.log"}"\n',
             encoding="utf-8",
         )
         (bin_dir / "uv").chmod(0o755)
         test_u.Tests.write_mise_stub(root / "bin" / "mise")
-        environment = {
+        return {
             **os.environ,
             "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
             "UV": str(bin_dir / "uv"),
-            "UV_LOG": str(root / "uv.log"),
             "GIT_ALLOW_PROTOCOL": "file",
         }
-        if expected_submodule_file is not None:
-            environment["EXPECTED_SUBMODULE_FILE"] = str(expected_submodule_file)
-        return environment
 
     @classmethod
     def _add_submodule(
@@ -355,8 +360,13 @@ class TestsCodegenSetupSubmodules:
         result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
 
         tm.that(result.outcome.raw_return_code, eq=2)
+        # Root cause: the checkout's own lane branch name is explicitly not a
+        # safety boundary (submodule_setup_recipe.j2 header comment) — only
+        # exact gitlink containment is. The failure names the *declared*
+        # branch from .gitmodules ("declared-dev"), not whatever local lane
+        # the submodule happens to be checked out on ("feature/lane").
         tm.that(
-            result.stderr, has="branch feature/lane does not contain recorded gitlink"
+            result.stderr, has="branch declared-dev does not contain recorded gitlink"
         )
         tm.that(result.stderr, lacks="fetch origin")
         tm.that(self._git(checkout, "branch", "--show-current"), eq="feature/lane")

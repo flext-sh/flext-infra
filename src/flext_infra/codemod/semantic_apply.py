@@ -22,15 +22,14 @@ class FlextInfraCodemodSemanticApply:
         changed: set[Path] = set()
 
         # Phase 1: Future annotations
-        future_annotations = cls._phase_future_annotations(
-            root, preflight, working, changed
-        )
+        future_annotations = cls._phase_future_annotations(root, preflight, working)
+        cls._apply_plan(working, future_annotations, changed)
         cls._check_residue(root, working, "future-annotations", future_annotations)
 
         # Phase 2: Deferred model edits
         deferred = cls._deferred_model_edits(working)
         cls._apply_plan(working, deferred, changed)
-        cls._check_residue_deferred(root, working, deferred)
+        cls._check_residue_deferred(working, deferred)
 
         # Phase 3: Class nesting
         with infra.rope_workspace(root) as rope_workspace:
@@ -79,12 +78,9 @@ class FlextInfraCodemodSemanticApply:
 
     @staticmethod
     def _phase_future_annotations(
-        root: Path,
-        preflight: m.Infra.ModScanReport,
-        working: MutableMapping[Path, str],
-        changed: set[Path],
+        root: Path, preflight: m.Infra.ModScanReport, working: MutableMapping[Path, str]
     ) -> list[m.Infra.SemanticMigrationEdit]:
-        """Apply future annotations phase and return edits."""
+        """Plan the future-annotations phase; the pipeline applies the edits."""
         future_annotations: list[m.Infra.SemanticMigrationEdit] = []
         for file_path in sorted({
             (root / finding.file).resolve()
@@ -142,7 +138,6 @@ class FlextInfraCodemodSemanticApply:
     @classmethod
     def _check_residue_deferred(
         cls,
-        root: Path,
         working: MutableMapping[Path, str],
         edits: t.SequenceOf[m.Infra.SemanticMigrationEdit],
     ) -> None:

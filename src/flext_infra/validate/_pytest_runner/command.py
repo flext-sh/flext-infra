@@ -25,6 +25,9 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     def _plugin_policy_args() -> t.VariadicTuple[str]:
         """Apply the same configured plugin contract to collection and execution."""
         pytest = config.Infra.tooling.tools.pytest
+        # External-token gates (SSOT external-gate-markers) are deselected in
+        # both the selection pass and the suite so xdist workers collect the
+        # same set; direct invocation selects them outside this runner.
         return (
             "-p",
             pytest.enforcement_plugin,
@@ -32,6 +35,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             "no:metadata",
             "-o",
             f"{c.Infra.ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE}={pytest.asyncio_default_fixture_loop_scope}",
+            "-m",
+            pytest.external_gate_deselection,
         )
 
     def build_selection_command(
@@ -51,10 +56,18 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             str(self.target),
             "--testmon",
             "--testmon-nocollect",
-            *(("--testmon-noselect",) if complete else ()),
+            # Why: the external-gate deselection is a ``-m`` expression, and
+            # testmon deactivates its selection whenever ``-m`` is present;
+            # ``--testmon-forceselect`` is testmon's declared override for
+            # exactly that case (never combined with ``--testmon-noselect``).
+            *(("--testmon-noselect",) if complete else ("--testmon-forceselect",)),
             "--collect-only",
             "-q",
             *self._plugin_policy_args(),
+            "-o",
+            "addopts=--benchmark-disable --strict-markers --timeout=10",
+            "-o",
+            "filterwarnings=",
             "-p",
             "no:randomly",
             "-n",
@@ -86,7 +99,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             workers=workers,
             trailing=(
                 "--testmon",
-                *(("--testmon-noselect",) if selection else ()),
+                *(("--testmon-noselect",) if selection else ("--testmon-forceselect",)),
                 *_NO_COVERAGE,
             ),
         )

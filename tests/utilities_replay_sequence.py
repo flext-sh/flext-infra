@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import r
-from tests import c, m, p, t
+from tests import c, m, p, t, u
 from tests.utilities_replay import TestsFlextInfraUtilitiesReplayRunnerMixin
 
 
@@ -73,6 +73,31 @@ class TestsFlextInfraUtilitiesReplaySequenceMixin:
     ) -> TestsFlextInfraUtilitiesReplaySequenceMixin.SequenceRunner:
         """Build one in-order command-result replaying runner."""
         return TestsFlextInfraUtilitiesReplaySequenceMixin.SequenceRunner(list(results))
+
+    @staticmethod
+    def pyright_report_json(
+        *diagnostics: t.MappingKV[str, t.JsonValue], files_analyzed: int = 1
+    ) -> str:
+        """Render one complete native Pyright JSON report for the given diagnostics.
+
+        The summary counts are computed from the diagnostics so the report
+        always satisfies ``m.Infra.PyrightReport``'s reconciliation contract.
+        """
+        counts = {"error": 0, "warning": 0, "information": 0}
+        for diagnostic in diagnostics:
+            counts[str(diagnostic["severity"])] += 1
+        return u.Cli.json_dumps({
+            "version": "1.1.411",
+            "time": "1",
+            "generalDiagnostics": [dict(diagnostic) for diagnostic in diagnostics],
+            "summary": {
+                "filesAnalyzed": files_analyzed,
+                "errorCount": counts["error"],
+                "warningCount": counts["warning"],
+                "informationCount": counts["information"],
+                "timeInSec": 0.1,
+            },
+        }).unwrap()
 
     @staticmethod
     def create_command_output(
