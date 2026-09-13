@@ -4,7 +4,7 @@
 #
 #   model_config: ClassVar[p.ConfigDict] = m.ConfigDict(...)   # defect (import crash)
 #                       ->
-#   model_config: ClassVar[m.ConfigDict] = m.ConfigDict(...)   # canonical
+#   model_config: ClassVar[t.ConfigDict] = m.ConfigDict(...)   # canonical
 #
 # Idempotent: only `p.ConfigDict` matches; a canonical module yields zero
 # matches on re-scan. The value must construct through `m.ConfigDict(...)`, so

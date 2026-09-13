@@ -11,6 +11,7 @@ from flext_tests import tm
 from flext_infra import c, config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests.unit.workspace import WorktreeFixture
+from tests.unit.codegen._helpers import _conformed_root
 
 
 class TestsFlextInfraBudgetProjection:
