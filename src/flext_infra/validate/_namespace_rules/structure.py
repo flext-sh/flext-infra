@@ -30,6 +30,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         if cls.outer_classes(tree):
             return False
         entry_calls: list[str] = []
+        has_export_manifest = False
         for statement in statements:
             kind = cls.kind(statement)
             if kind in {"Import", "ImportFrom"}:
@@ -37,6 +38,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             if cls._module_docstring(statement):
                 continue
             if kind in {"Assign", "AnnAssign"} and cls._dunder_assignment(statement):
+                has_export_manifest = True
                 continue
             if kind == "Raise":
                 continue
@@ -65,12 +67,17 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         # Terminal wrappers (``SystemExit``/``sys.exit``/``builtins.exit``)
         # only forward the entrypoint's return code, so the real terminator is
         # the ``...main()`` call nested inside them.
+        # Functional shape needs POSITIVE evidence: an entrypoint call chain
+        # ending in ``...main()`` or an export manifest. A module that merely
+        # lacks disqualifying statements (imports only, no class, no
+        # ``__all__``) is incomplete data and stays fully graded — an empty
+        # ``entry_calls`` never proves an entrypoint (``all([])`` is True).
         entrypoint_calls = [
             name for name in entry_calls if not name.lower().endswith("exit")
         ]
-        return not entrypoint_calls or all(
-            name.endswith("main") for name in entrypoint_calls
-        )
+        if entrypoint_calls:
+            return all(name.endswith("main") for name in entrypoint_calls)
+        return has_export_manifest
 
     @classmethod
     def check_structure(

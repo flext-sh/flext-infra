@@ -53,7 +53,13 @@ class TestExtendedRunnerExtras:
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         _ = (project_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
         runner = u.Tests.command_runner(
-            stdout='{"generalDiagnostics": [{"file": "a.py", "range": {"start": {"line": 0, "character": 0}}, "rule": "E001", "message": "Error", "severity": "error"}]}',
+            stdout=u.Tests.pyright_report_json({
+                "file": "a.py",
+                "range": {"start": {"line": 0, "character": 0}},
+                "rule": "E001",
+                "message": "Error",
+                "severity": "error",
+            }),
             returncode=1,
         )
 
@@ -72,7 +78,7 @@ class TestExtendedRunnerExtras:
         )
         _ = (project_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
         runner = u.Tests.SequenceRunner([
-            r.ok(u.Tests.create_command_output(stdout='{"generalDiagnostics": []}'))
+            r.ok(u.Tests.create_command_output(stdout=u.Tests.pyright_report_json()))
         ])
 
         result = u.Tests.run_gate_check(

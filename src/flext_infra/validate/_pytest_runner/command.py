@@ -25,6 +25,9 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     def _plugin_policy_args() -> t.VariadicTuple[str]:
         """Apply the same configured plugin contract to collection and execution."""
         pytest = config.Infra.tooling.tools.pytest
+        # External-token gates (SSOT external-gate-markers) are deselected in
+        # both the selection pass and the suite so xdist workers collect the
+        # same set; direct invocation selects them outside this runner.
         return (
             "-p",
             pytest.enforcement_plugin,
@@ -32,6 +35,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             "no:metadata",
             "-o",
             f"{c.Infra.ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE}={pytest.asyncio_default_fixture_loop_scope}",
+            "-m",
+            pytest.external_gate_deselection,
         )
 
     def build_selection_command(

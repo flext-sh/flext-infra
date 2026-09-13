@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import MutableMapping
-from functools import cache
 from importlib import util as importlib_util
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
@@ -200,39 +199,29 @@ class FlextInfraUtilitiesDiscovery(
         )
 
     @staticmethod
-    def package_importable(package_name: str) -> bool:
-        """Return whether the active official environment resolves one package."""
-        # Standalone consumers inherit aliases
-        # from installed FLEXT artifacts; plain modules are never facade parents.
-        try:
-            spec = importlib_util.find_spec(package_name)
-        except ModuleNotFoundError:
-            # A missing parent package means the name cannot resolve here.
-            spec = None
-        return spec is not None and spec.submodule_search_locations is not None
+    def declared_package_dir(package_name: str) -> Path | None:
+        """Return the package directory the active environment declares for a name.
 
-    @classmethod
-    @cache
-    def installed_package_exports(cls, package_name: str) -> frozenset[str]:
-        """Return the explicit ABI published by one installed package root."""
+        One rule, no alternative source (R32): a name outside the repository
+        index is read from the environment the checkout declares (an editable
+        workspace member or the pinned distribution — `find_spec`, no import
+        executed). A name that resolves nowhere raises with the exact name;
+        a name that resolves to a plain module is the typed absence ``None``
+        ("not a package, so never a facade parent").
+        """
+        msg = (
+            f"lazy-init: declared package '{package_name}' resolves nowhere"
+            " in the active environment"
+        )
         try:
             spec = importlib_util.find_spec(package_name)
-        except ModuleNotFoundError:
-            # A submodule name imports its parent first: a missing parent
-            # package means the name cannot resolve in this environment.
-            return frozenset()
-        except c.EXC_OS_TYPE_VALUE:
-            return frozenset()
-        if spec is None or spec.submodule_search_locations is None or not spec.origin:
-            return frozenset()
-        init_path = Path(spec.origin)
-        if not init_path.is_file():
-            return frozenset()
-        try:
-            source = init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        except OSError:
-            return frozenset()
-        return frozenset(cls.public_export_names_source(source))
+        except ModuleNotFoundError as exc:
+            raise ValueError(msg) from exc
+        if spec is None:
+            raise ValueError(msg)
+        if not spec.submodule_search_locations:
+            return None
+        return Path(next(iter(spec.submodule_search_locations)))
 
     @classmethod
     def discover_python_dirs(

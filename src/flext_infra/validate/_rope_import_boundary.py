@@ -75,31 +75,52 @@ class FlextInfraRopeImportBoundaryBase(s[bool]):
     ) -> t.StrSequence:
         """Traverse the rope project and accumulate boundary violations."""
         violations: t.MutableSequenceOf[str] = []
+        root = repository_root.resolve()
         with u.Infra.open_project(repository_root) as project:
             for resource in u.Infra.python_resources(project):
                 file_path = u.Infra.resource_file_path(project, resource)
                 if (
                     file_path is None
                     or any(file_path.is_relative_to(member) for member in members)
-                    or not self._is_in_scope(file_path)
+                    or not self._is_in_scope(file_path, repository_root=root)
                 ):
                     continue
                 module_imports = u.Infra.get_module_imports(project, resource)
                 violations.extend(
-                    self._violations_for_module(file_path, module_imports)
+                    self._violations_for_module(
+                        file_path, module_imports, repository_root=root
+                    )
                 )
         return tuple(violations)
 
-    def _is_in_scope(self, _file_path: Path) -> bool:
+    @staticmethod
+    def _rooted_posix(file_path: Path, repository_root: Path) -> str:
+        """Return ``/<path relative to the scanned root>`` for marker matching.
+
+        Every scope and allowlist decision is taken on the path INSIDE the
+        scanned repository (X-75/X-77): the working copy's own directory name
+        and every ancestor above it never take part in the match.
+        """
+        return f"/{file_path.resolve().relative_to(repository_root).as_posix()}"
+
+    def _is_in_scope(self, _file_path: Path, *, repository_root: Path) -> bool:
         """Default: every traversed module is in scope. Override to narrow."""
+        _ = repository_root
         return True
 
-    def _is_allowlisted(self, _file_path: Path, _module_name: str) -> bool:
+    def _is_allowlisted(
+        self, _file_path: Path, _module_name: str, *, repository_root: Path
+    ) -> bool:
         """Per (file, module) allowlist check. Override to exempt canonical owners."""
+        _ = repository_root
         return False
 
     def _violations_for_module(
-        self, file_path: Path, module_imports: t.Infra.RopeModuleImports
+        self,
+        file_path: Path,
+        module_imports: t.Infra.RopeModuleImports,
+        *,
+        repository_root: Path,
     ) -> t.StrSequence:
         """Return banned-import violation strings for one module."""
         out: t.MutableSequenceOf[str] = []
@@ -108,13 +129,17 @@ class FlextInfraRopeImportBoundaryBase(s[bool]):
             if module_name is not None:
                 if self._top_module(
                     module_name
-                ) in self._BANNED and not self._is_allowlisted(file_path, module_name):
+                ) in self._BANNED and not self._is_allowlisted(
+                    file_path, module_name, repository_root=repository_root
+                ):
                     out.append(self._format_violation(file_path, module_name))
                 continue
             for imported, _alias in u.Infra.import_statement_names_and_aliases(stmt):
                 if self._top_module(
                     imported
-                ) in self._BANNED and not self._is_allowlisted(file_path, imported):
+                ) in self._BANNED and not self._is_allowlisted(
+                    file_path, imported, repository_root=repository_root
+                ):
                     out.append(self._format_violation(file_path, imported))
         return tuple(out)
 

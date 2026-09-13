@@ -267,14 +267,15 @@ class TestCodegenCiMatrix:
             workflow, has="fetch-depth: 0\n      # Cross-repo private git dependencies"
         )
         marker = (
-            'rm -f "$key_path"\n\n      # make setup is the only toolchain installer.'
+            'rm -f "$key_path"\n\n'
+            "      # Why: GitHub runners expose umask 002, so git checkout materializes"
         )
         tm.that(workflow, has=marker)
         tm.that(
             workflow,
             lacks=(
                 'rm -f "$key_path"\n\n\n'
-                "      # make setup is the only toolchain installer."
+                "      # Why: GitHub runners expose umask 002, so git checkout materializes"
             ),
         )
         root2 = self._render_project(tmp_path / "member-again")

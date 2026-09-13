@@ -201,12 +201,15 @@ class FlextInfraGate:
         started: float,
         ctx: m.Infra.GateContext | None = None,
         errors: t.StrSequence | None = None,
+        accept_reported_issues: bool = False,
     ) -> m.Infra.GateExecution:
         """Assemble a gate execution from parsed check output.
 
         Diagnostic presentation never overrides acceptance. ``errors``
         overrides the default issue-derived report
         lines (fix paths report applied changes there).
+        ``accept_reported_issues`` is the fix contract: reported issues are
+        the residue a fixer could not repair and do not decide acceptance.
         """
         _ = ctx
         return m.Infra.GateExecution(
@@ -214,9 +217,12 @@ class FlextInfraGate:
                 gate=self.gate_id,
                 project=project_dir.name,
                 passed=passed
-                and not any(
-                    issue.severity.lower() in {"error", "warning", "warn"}
-                    for issue in issues
+                and (
+                    accept_reported_issues
+                    or not any(
+                        issue.severity.lower() in {"error", "warning", "warn"}
+                        for issue in issues
+                    )
                 ),
                 errors=(
                     list(errors)
@@ -377,7 +383,18 @@ class FlextInfraGate:
             return self._skip_result(project_dir, started)
         cmd = self._build_fix_command(project_dir, ctx, targets)
         result = self._run(cmd, project_dir)
-        return self._parsed_gate_execution(project_dir, ctx, result, started)
+        # A fixer repairs what it can and succeeds on its own exit status;
+        # what remains is reported here and enforced by ``check``.
+        _, issues = self._parse_check_output(result, project_dir, ctx)
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=u.Cli.process_succeeded(result.outcome),
+            issues=issues,
+            raw_output=self._raw_output(result),
+            started=started,
+            ctx=ctx,
+            accept_reported_issues=True,
+        )
 
     def _check_only_fix_result(self, project_dir: Path) -> m.Infra.GateExecution:
         """Return a non-mutating fix preview for check-only gate contexts."""

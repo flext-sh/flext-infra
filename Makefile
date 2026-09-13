@@ -50,10 +50,11 @@ UV_LINK_MODE := copy
 # check recipe on every verb that declares one. An unknown command-line input
 # is now a hard error, never a warning-plus-mutation, so every declared public
 # input below MUST already be legitimate today or a live invocation breaks.
-# WHAT is a declared public input whenever script dispatch is active: the
-# generated `_dispatch` reads it and every promoted script verb's own help
-# documents `make <verb> WHAT=<action>` (cosmos-3flk9).
-PUBLIC_INPUTS := INDEX APPLY FAIL_FAST PR_TITLE ARGS GEN_INIT_ONLY UV PROJECT_INFRA_PYTHONPATH REPOSITORY_ROOT SETUP_BOOTSTRAP_ONLY CI
+# WHAT is the universal action selector (`make <verb> WHAT=<action>`): it
+# routes custom handlers and builtin selectors such as `gen WHAT=init` in every
+# project, and the generated `_dispatch` reads it where script dispatch is
+# active (cosmos-3flk9).
+PUBLIC_INPUTS := INDEX APPLY FAIL_FAST PR_TITLE ARGS GEN_INIT_ONLY UV PROJECT_INFRA_PYTHONPATH REPOSITORY_ROOT SETUP_BOOTSTRAP_ONLY WHAT CI
 COMMAND_LINE_INPUTS := $(foreach name,$(filter-out .%,$(.VARIABLES)),$(if $(filter command line override,$(origin $(name))),$(name)))
 UNKNOWN_INPUTS := $(filter-out $(PUBLIC_INPUTS),$(COMMAND_LINE_INPUTS))
 ifneq ($(strip $(UNKNOWN_INPUTS)),)
@@ -1058,7 +1059,7 @@ _builtin_clean_generated:
 
 
 	@set -eu; \
-	for target in "$(PROJECT_ROOT)/.test-runtime" "$(PROJECT_ROOT)/build" "$(PROJECT_ROOT)/dist" "$(PROJECT_ROOT)/htmlcov" "$(PROJECT_ROOT)/.reports"; do \
+	for target in "$(PROJECT_ROOT)/.flext-runtime" "$(PROJECT_ROOT)/build" "$(PROJECT_ROOT)/dist" "$(PROJECT_ROOT)/htmlcov" "$(PROJECT_ROOT)/.reports"; do \
 		if [ -e "$$target" ]; then find "$$target" -depth -delete; \
 		elif [ -L "$$target" ]; then find "$$target" -depth -delete; fi; \
 	done

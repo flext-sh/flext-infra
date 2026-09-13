@@ -273,6 +273,22 @@ class FlextInfraModelsDepsToolSettings(
                 description="Standard pytest addopts enforced by modernizer.",
             ),
         ]
+        external_gate_markers: Annotated[
+            t.StrTuple,
+            m.Field(
+                alias="external-gate-markers",
+                description=(
+                    "Markers of external-token gates deselected by offline"
+                    " verification and reported as NOT EXECUTED; each must be"
+                    " declared in standard-markers."
+                ),
+            ),
+        ]
+
+        @property
+        def external_gate_deselection(self) -> str:
+            """Return the pytest ``-m`` expression that skips external gates."""
+            return f"not ({' or '.join(self.external_gate_markers)})"
         process_timeout_seconds: Annotated[
             int,
             m.Field(
@@ -342,6 +358,20 @@ class FlextInfraModelsDepsToolSettings(
                 raise ValueError(msg)
             if "--verbose" not in self.progress_args:
                 msg = "pytest progress args must expose verbose item progress"
+                raise ValueError(msg)
+            declared_markers = {
+                marker.split(":", 1)[0].strip() for marker in self.standard_markers
+            }
+            undeclared = [
+                marker
+                for marker in self.external_gate_markers
+                if marker not in declared_markers
+            ]
+            if not self.external_gate_markers or undeclared:
+                msg = (
+                    "pytest external-gate-markers must be a non-empty subset of"
+                    f" standard-markers; undeclared: {undeclared}"
+                )
                 raise ValueError(msg)
             runner_owned_prefixes = (
                 "-k",

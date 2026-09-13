@@ -12,6 +12,9 @@ if TYPE_CHECKING:
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
     from .layout_fixture import archive_root, build_loose_project, layout_engine
+    from .lazy_init_alias_inheritance_tests import (
+        TestsFlextInfraLazyInitAliasInheritance,
+    )
     from .lazy_init_file_plan_tests import TestsFlextInfraCodegenLazyInitFilePlans
     from .lazy_init_generation_tests import TestsFlextInfraCodegenGeneration
     from .lazy_init_process_tests import TestsFlextInfraLazyInitProcessing
@@ -27,6 +30,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCodegenGeneration",
     "TestsFlextInfraCodegenLazyInitFilePlans",
     "TestsFlextInfraCodegenLazyInitService",
+    "TestsFlextInfraLazyInitAliasInheritance",
     "TestsFlextInfraLazyInitCleanup",
     "TestsFlextInfraLazyInitProcessing",
     "TestsFlextInfraLazyInitRuntime",
@@ -56,6 +60,9 @@ _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             ".layout_fixture": ("archive_root", "build_loose_project", "layout_engine"),
+            ".lazy_init_alias_inheritance_tests": (
+                "TestsFlextInfraLazyInitAliasInheritance",
+            ),
             ".lazy_init_file_plan_tests": ("TestsFlextInfraCodegenLazyInitFilePlans",),
             ".lazy_init_generation_tests": ("TestsFlextInfraCodegenGeneration",),
             ".lazy_init_process_tests": ("TestsFlextInfraLazyInitProcessing",),

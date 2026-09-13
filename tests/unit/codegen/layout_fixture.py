@@ -26,6 +26,9 @@ def build_loose_project(tmp_path: Path, name: str = "flext-demo") -> Path:
     (project / "output.log").write_text("log-line\n", encoding="utf-8")
     (project / "loose.txt").write_text("unknown\n", encoding="utf-8")
     u.Tests.declare_workspace_projects(tmp_path, (name,))
+    # A layout plan reads tracked state from the project's own repository;
+    # the fixture never borrows an enclosing checkout's index.
+    u.Tests.initialize_git_repo(project)
     return project
 
 

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra.promoted.base import (
     INCIDENT_MUTATION_REQUIRED_PARAMS,
-    MUTATION_REQUIRED_PARAMS,
+    PROMOTED_APPLY_VALUES,
     RegistryError,
 )
 
@@ -46,22 +46,52 @@ def validate_command_contract(command: p.Infra.Promoted.Command) -> None:
     """Validate static command header rules.
 
     Raises:
-        RegistryError: When a mutating command omits a required mutation
-            parameter, its ``APPLY`` choices exclude ``Y``, or an
+        RegistryError: When a declared ``APPLY`` parameter's choices are not a
+            subset of ``{"N"}`` (R28: ``APPLY=Y`` is unsupported), or an
             incident-domain mutation omits a required incident parameter.
 
     """
     param_by_name = {param.name: param for param in command.params}
-    if command.mutates:
-        ensure_required_params(command, param_by_name, MUTATION_REQUIRED_PARAMS)
-        apply_param = param_by_name.get("APPLY")
-        if apply_param and "Y" not in apply_param.choices:
-            msg = f"{command.path}: APPLY mutador deve declarar choices contendo Y"
-            raise RegistryError(msg)
+    apply_param = param_by_name.get("APPLY")
+    if apply_param is not None and not set(apply_param.choices) <= {"N"}:
+        msg = (
+            "[PROMOTED-APPLY] command declares unsupported APPLY choices "
+            f"{tuple(apply_param.choices)!r} — violator: {command.path} · "
+            "fix: declare APPLY choices as ('N',) or omit the APPLY "
+            "parameter (mutation is the default) · "
+            "ref: rules/workflow/canonical-commands"
+        )
+        raise RegistryError(msg)
     if command.domain == "incident" and command.mutates:
         ensure_required_params(
             command, param_by_name, INCIDENT_MUTATION_REQUIRED_PARAMS
         )
+
+
+def validate_apply_env(command: p.Infra.Promoted.Command) -> str:
+    """Validate the ambient ``APPLY`` value against the R28 contract.
+
+    Mutation is the default for every promoted command; ``APPLY=N`` selects
+    check/dry-run mode where the command mutates. Any other value — in
+    particular the legacy ``APPLY=Y`` — is a hard error.
+
+    Returns:
+        The stripped ``APPLY`` value: ``""`` to mutate, ``"N"`` for check mode.
+
+    Raises:
+        RegistryError: When ``APPLY`` carries any value other than ``""`` or
+            ``"N"``.
+
+    """
+    value = os.environ.get("APPLY", "").strip()
+    if value not in PROMOTED_APPLY_VALUES:
+        msg = (
+            f"[PROMOTED-APPLY] unsupported APPLY value {value!r} — violator: "
+            f"{command.path} · fix: omit APPLY (mutation is default) or pass "
+            "APPLY=N for check mode · ref: rules/workflow/canonical-commands"
+        )
+        raise RegistryError(msg)
+    return value
 
 
 def validate_all_choices(

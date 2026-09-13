@@ -80,6 +80,10 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         runtime_alias_names: list[str] = []
         if is_test_runtime_alias_surface:
             runtime_alias_names = list(c.Infra.TEST_RUNTIME_ALIAS_TARGETS)
+        # Why (flext-b3xmn): a parent's exported facade letters come ONLY from
+        # the statically indexed workspace source (_export_names_for_package);
+        # the prior ambient union of installed_package_exports made rendering
+        # diverge between a local editable venv and a pinned CI checkout.
         inherited_alias_names = tuple(
             name
             for package_name in inherited_packages
@@ -89,21 +93,6 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                 and name.islower()
                 and len(name) <= c.Infra.MAX_ALIAS_LENGTH
             )
-        )
-        inherited_alias_names = tuple(
-            dict.fromkeys((
-                *inherited_alias_names,
-                *(
-                    name
-                    for package_name in inherited_packages
-                    for name in u.Infra.installed_package_exports(package_name)
-                    if (
-                        name.isidentifier()
-                        and name.islower()
-                        and len(name) <= c.Infra.MAX_ALIAS_LENGTH
-                    )
-                ),
-            ))
         )
         declared_parent_alias_names = tuple(
             name

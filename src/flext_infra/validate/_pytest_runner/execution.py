@@ -118,9 +118,13 @@ class FlextInfraPytestRunnerExecution(
             diagnostics.skipped_count,
         ))
         final_exit = 1 if rejected else 0
+        external_gates = ",".join(
+            config.Infra.tooling.tools.pytest.external_gate_markers
+        )
         summary = (
             f"executed={accounting.executed_count}\n"
             f"deselected={accounting.deselected_count}\n"
+            f"not_executed_external_gates={external_gates}\n"
             f"cache_restored={cache_restored}\n"
             f"failed={diagnostics.failed_count}\nerrors={diagnostics.error_count}\n"
             f"warnings={diagnostics.warning_count}\nskipped={diagnostics.skipped_count}\n"

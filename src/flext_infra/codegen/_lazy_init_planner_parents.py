@@ -122,13 +122,6 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
                 continue
             if alias_name in self._export_names_for_package(package_name):
                 return f"{package_name}"
-        for package_name in candidate_packages:
-            if (
-                package_name
-                not in self.rope_workspace.workspace_index.package_dir_by_name
-                and alias_name in u.Infra.installed_package_exports(package_name)
-            ):
-                return f"{package_name}"
         return ""
 
     def _package_name_from_target(self, target: str) -> str:
@@ -140,17 +133,9 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
                 return package_name
         if not parts:
             return ""
-        sibling_project_root = self.rope_workspace.repository_root.parent / parts[
-            0
-        ].replace("_", "-")
-        sibling_package_root = sibling_project_root / c.Infra.DEFAULT_SRC_DIR / parts[0]
-        if (
-            sibling_project_root.joinpath(c.Infra.PYPROJECT_FILENAME).is_file()
-            and sibling_package_root.joinpath(c.Infra.INIT_PY).is_file()
-        ):
-            return parts[0]
-        # Why (flext-27a9e.1, multi-agent): project-scoped Rope indexes omit
-        # installed parents; u.Infra owns environment package discovery.
-        if u.Infra.package_importable(parts[0]):
+        # Why (flext-27a9e.1, flext-b3xmn, R32): project-scoped Rope indexes
+        # omit declared parents; u.Infra resolves the name in the declared
+        # environment — a name that resolves nowhere raises there.
+        if u.Infra.declared_package_dir(parts[0]) is not None:
             return parts[0]
         return ""

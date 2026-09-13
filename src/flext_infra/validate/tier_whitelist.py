@@ -26,6 +26,8 @@ from flext_infra import c
 from ._rope_import_boundary import FlextInfraRopeImportBoundaryBase
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from flext_infra import t
 
 
@@ -45,8 +47,10 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
     _VIOLATION_KIND: ClassVar[str] = "abstraction-boundary"
     _SCAN_KIND: ClassVar[str] = "tier-whitelist"
 
-<<<<<<< HEAD
-=======
+    @override
+    def _is_allowlisted(
+        self, _file_path: Path, _module_name: str, *, repository_root: Path
+    ) -> bool:
         """Return True iff ``file_path`` owns ``module_name`` per OWNERS SSOT.
 
         Ownership comes directly from ``c.ENFORCEMENT_LIBRARY_OWNERS``
@@ -61,9 +65,10 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
         ``flext_core._settings.base`` docstring, and that base name only
         lives in ``pydantic_settings``.
         """
+        rooted = self._rooted_posix(_file_path, repository_root)
         if any(
             part in c.Infra.TIER_WHITELIST_NON_RUNTIME_DIR_PARTS
-            for part in _file_path.parts
+            for part in rooted.split("/")[:-1]
         ):
             return True
         top = self._top_module(_module_name)
@@ -79,8 +84,8 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
         # name: a lane worktree named ``flext-infra-<lane>`` is still the
         # ``flext-infra`` source tree, so dirname matching would be blind to
         # every governed worktree.
-        package_root = f"/src/{owner.replace('-', '_')}/"
-        return package_root in _file_path.as_posix()
+        package_root = f"/{c.Infra.DEFAULT_SRC_DIR}/{owner.replace('-', '_')}/"
+        return package_root in rooted
 
     @override
     def _format_violation(self, file_path: Path, module_name: str) -> str:
