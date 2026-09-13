@@ -2575,10 +2575,26 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             name for item in pep621.dependencies if (name := u.Infra.dep_name(item))
         }
         profiles = codegen.scaffold.project.dependency_profiles
-        candidates = tuple(
-            item
-            for item in profiles
-            if item.project is None and item.upstream.replace("_", "-") in runtime_names
+        # The root of the dependency tree declares no upstream distribution:
+        # a distribution that IS a profile's upstream owns that profile.
+        own_profile = next(
+            (
+                item
+                for item in profiles
+                if item.project is None
+                and item.upstream.replace("_", "-") == repository.distribution
+            ),
+            None,
+        )
+        candidates = (
+            (own_profile,)
+            if own_profile is not None
+            else tuple(
+                item
+                for item in profiles
+                if item.project is None
+                and item.upstream.replace("_", "-") in runtime_names
+            )
         )
         # A profile whose upstream is itself a runtime dependency of another
         # candidate is implied by it; the declared upstream is the most
