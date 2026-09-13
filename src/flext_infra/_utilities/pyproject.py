@@ -164,7 +164,11 @@ class FlextInfraUtilitiesPyproject:
             return r[str].fail(
                 f"taplo format failed ({output.outcome.raw_return_code}): {detail}"
             )
-        return r[str].ok(output.stdout)
+        # Why: a managed text projection ends with exactly one newline (the
+        # same fixed-point contract every template projection carries); Taplo
+        # releases differ on the terminal newline, and the rendered bytes must
+        # not depend on which release the toolchain resolved.
+        return r[str].ok(output.stdout.rstrip("\n") + "\n")
 
     @staticmethod
     @cache
