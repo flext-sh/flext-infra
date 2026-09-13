@@ -78,7 +78,6 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         which is regenerated during conform, the snapshot is updated to the
         current state to maintain pipeline idempotence.
         """
-        config_model_path = Path("src/flext_infra/_models/config.py")
         for path, expected in snapshots.items():
             current = u.Cli.atomic_read_binary_file_state(path, required=False)
             if current.failure:
