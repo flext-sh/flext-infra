@@ -36,17 +36,17 @@ class TestsFlextInfraTransformersPydanticModernizer:
         tm.that(code, has="model_config = ConfigDict(str_strip_whitespace = True)")
         tm.that(code, lacks="class Config:")
 
-    def test_dict_to_model_dump(self) -> None:
-        source = "user = User().dict()\n"
+    def test_preserves_ambiguous_dict_method(self) -> None:
+        source = "payload = response.dict()\n"
         code = _transform(source)
-        tm.that(code, has="model_dump()")
-        tm.that(code, lacks=".dict()")
+        tm.that(code, has="response.dict()")
+        tm.that(code, lacks="model_dump()")
 
-    def test_json_to_model_dump_json(self) -> None:
-        source = "user = User().json()\n"
+    def test_preserves_ambiguous_json_method(self) -> None:
+        source = "payload = response.json()\n"
         code = _transform(source)
-        tm.that(code, has="model_dump_json()")
-        tm.that(code, lacks=".json()")
+        tm.that(code, has="response.json()")
+        tm.that(code, lacks="model_dump_json()")
 
     def test_parse_obj_to_model_validate(self) -> None:
         source = "user = User.parse_obj({})\n"
@@ -54,11 +54,11 @@ class TestsFlextInfraTransformersPydanticModernizer:
         tm.that(code, has="model_validate({})")
         tm.that(code, lacks="parse_obj")
 
-    def test_schema_to_model_json_schema(self) -> None:
-        source = "schema = User.schema()\n"
+    def test_preserves_ambiguous_schema_method(self) -> None:
+        source = "schema = document.schema()\n"
         code = _transform(source)
-        tm.that(code, has="model_json_schema()")
-        tm.that(code, lacks=".schema()")
+        tm.that(code, has="document.schema()")
+        tm.that(code, lacks="model_json_schema()")
 
     def test_validator_to_field_validator(self) -> None:
         source = (
