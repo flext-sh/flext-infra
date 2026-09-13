@@ -883,6 +883,6 @@ class TestsCodegenMakeEnvironment:
         tm.that(makefile, has="_builtin-fix-enforcement: $(if $(CHECK_ONLY),")
         tm.that(
             makefile,
-            has='--mode $(if $(CHECK_ONLY),check,apply)',
+            has="--mode $(if $(CHECK_ONLY),check,apply)",
         )
         tm.that(makefile, has="mode=$(if $(CHECK_ONLY),,--apply)")

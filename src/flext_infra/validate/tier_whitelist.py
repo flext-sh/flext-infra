@@ -20,6 +20,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shutil
+
+# ruff: file-ignore[suspicious-subprocess-import] - validated git path from shutil.which
 import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
@@ -64,13 +66,14 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
             return dirs
 
         try:
-            result = subprocess.run(
-                [git_path, "submodule", "foreach", "--quiet", "echo $name"],
+            result = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+                [git_path, "submodule", "foreach", "--quiet", "git", "config", "--get", "submodule.$name.path"],
                 capture_output=True,
                 text=True,
                 cwd=repository_root,
                 timeout=30,
                 check=False,
+                shell=False,
             )
             if result.returncode == 0:
                 names = [
@@ -88,14 +91,15 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
         return dirs
 
     @override
-    def _is_in_scope(self, file_path: Path) -> bool:
+    def _is_in_scope(self, _file_path: Path, *, repository_root: Path) -> bool:
         """Skip files inside git submodule directories.
 
         Submodule directories are independent projects with their own
         tier-whitelist runs; scanning them from the workspace level is
         redundant and produces cross-boundary false positives.
         """
-        repo = file_path
+        _ = repository_root
+        repo = _file_path
         while repo != repo.parent:
             if (repo / ".git").is_file():
                 return False

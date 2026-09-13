@@ -113,7 +113,7 @@ make test PROJECT=flext-demo MATCH=unit
         tm.that(ok, eq=[])
 
         bad = u.Infra.docs_command_contract_content_issues(
-            f"```bash\n{legacy}\n```\n",
+            "```bash\nmake test APPLY=Y\n```\n",
             relative_path="docs/guides/getting-started.md",
             effective_verbs=config.Infra.codegen.make.verbs,
         )

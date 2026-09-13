@@ -82,7 +82,6 @@ class FlextInfraCodemodSemanticApply:
         root: Path,
         preflight: m.Infra.ModScanReport,
         working: MutableMapping[Path, str],
-        changed: set[Path],
     ) -> list[m.Infra.SemanticMigrationEdit]:
         """Apply future annotations phase and return edits."""
         future_annotations: list[m.Infra.SemanticMigrationEdit] = []
@@ -142,7 +141,7 @@ class FlextInfraCodemodSemanticApply:
     @classmethod
     def _check_residue_deferred(
         cls,
-        root: Path,
+        _root: Path,
         working: MutableMapping[Path, str],
         edits: t.SequenceOf[m.Infra.SemanticMigrationEdit],
     ) -> None:

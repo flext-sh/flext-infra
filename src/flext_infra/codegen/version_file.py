@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, override
 from flext_core.__version__ import FlextVersion
 
 from .. import c, r, s, u
-from . import publish_file_plan
+from ._mise_artifacts_publication import publish_file_plan
 
 if TYPE_CHECKING:
     from .. import p

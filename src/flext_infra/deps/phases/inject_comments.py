@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra import c, config, t, u
+from flext_infra import c, config, m, t, u
 
 
 class FlextInfraInjectCommentsPhase:

@@ -91,7 +91,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 FlextInfraModGateEngine.scan(root, fix=True).unwrap()
             # Fix!=match validation: check that ast-grep apply actually changed what was expected
             after_apply = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-            cls._validate_fix_match(current, after_apply, after_semantic)
+            FlextInfraCodemodBatchApply._validate_fix_match(current, after_apply)
             current = after_apply
         cli.display_text(
             "mod: require canonical formatting and zero Ruff, Pyrefly, and LSP diagnostics"
@@ -103,7 +103,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
     @staticmethod
     def _validate_fix_match(
         before: m.Infra.ModScanReport,
-        after_semantic: m.Infra.ModScanReport,
         after_apply: m.Infra.ModScanReport,
     ) -> None:
         """Validate that applied fixes match expected changes (fix!=match)."""

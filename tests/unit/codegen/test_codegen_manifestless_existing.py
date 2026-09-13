@@ -84,14 +84,14 @@ class TestCodegenManifestlessExisting:
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
             tm.that(u.Infra.codegen_file_requires_effect(plans[required]), eq=True)
 
-        tm.ok(FlextInfraCodegenConform.execute_request(artifact_request))
+        tm.ok(FlextInfraCodegenConform.execute_request(request))
         tm.that((root / ".env.example").exists(), eq=False)
         for relative, content in preserved.items():
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
             tm.that((root / required).is_file(), eq=True)
         fixed_point = FlextInfraCodegenConform(repository_root=root).plan(
-            artifact_request.model_copy(
+            request.model_copy(
                 update={"mode": c.Infra.CodegenConformMode.CHECK}
             )
         )

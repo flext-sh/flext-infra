@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from .. import c, config, m, r, s, u
-from . import FlextInfraCodegenConform
+from .conform import FlextInfraCodegenConform
 
 if TYPE_CHECKING:
     from .. import p
