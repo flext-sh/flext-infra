@@ -371,9 +371,20 @@ class FlextInfraGate:
     def _check_remove_env_keys(
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
-        """Return inherited environment keys removed for this tool invocation."""
+        """Return inherited environment keys removed for this tool invocation.
+
+        The hermetic set is the floor for every gate, not an opt-in. Its owner
+        declared it and no consumer ever called it, so gate children inherited
+        the whole host environment: FORCE_COLOR reached pyright, node warned that
+        NO_COLOR was ignored, and ``_checker_stderr_issues`` classified that
+        warning as two ERRORs. The gate went red because of the operator's shell,
+        not the code under check.
+
+        A subclass needing more keys removed extends this floor through
+        ``super()``; replacing it reopens the leak for that tool alone.
+        """
         _ = project_dir, ctx
-        return ()
+        return u.Infra.make_hermetic_env_remove_keys()
 
     # ------------------------------------------------------------------
     # Template method: fix
