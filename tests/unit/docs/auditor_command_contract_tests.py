@@ -112,6 +112,9 @@ make test PROJECT=flext-demo MATCH=unit
         )
         tm.that(ok, eq=[])
 
+        legacy = "\n".join(
+            f"make {spec.name} APPLY=Y" for spec in config.Infra.codegen.make.verbs
+        )
         bad = u.Infra.docs_command_contract_content_issues(
             f"```bash\n{legacy}\n```\n",
             relative_path="docs/guides/getting-started.md",

@@ -273,9 +273,7 @@ class TestsCodegenMakeEnvironment:
         tm.that((project_root / ".venv").exists(), eq=False)
         process = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "setup"],
-                cwd=project_root,
-                env=active_env,
+                ["--no-print-directory", "setup"], cwd=project_root, env=active_env
             )
         )
         tm.that(
@@ -310,9 +308,7 @@ class TestsCodegenMakeEnvironment:
         ci_env = {**active_env, make.ci.variable: make.ci.value}
         locked = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "setup"],
-                cwd=project_root,
-                env=ci_env,
+                ["--no-print-directory", "setup"], cwd=project_root, env=ci_env
             )
         )
         tm.that(
@@ -335,9 +331,7 @@ class TestsCodegenMakeEnvironment:
         tm.ok(u.Cli.atomic_write_text_file(pyproject_path, u.Cli.toml_dumps(document)))
         stale = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "setup"],
-                cwd=project_root,
-                env=ci_env,
+                ["--no-print-directory", "setup"], cwd=project_root, env=ci_env
             )
         )
         tm.that(u.Cli.process_succeeded(stale.outcome), eq=False)
@@ -872,16 +866,14 @@ class TestsCodegenMakeEnvironment:
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
 
         check_capable = tuple(
-            verb.name
-            for verb in config.Infra.codegen.make.verbs
-            if verb.check_mode
+            verb.name for verb in config.Infra.codegen.make.verbs if verb.check_mode
         )
-        tm.that(check_capable, eq=("deps", "fmt", "fix", "fix-enforcement", "docs", "gen", "mod"))
+        tm.that(
+            check_capable,
+            eq=("deps", "fmt", "fix", "fix-enforcement", "docs", "gen", "mod"),
+        )
         for verb in ("deps", "fmt", "fix", "mod"):
             tm.that(makefile, has=f"_builtin-{verb}: $(if $(CHECK_ONLY),")
         tm.that(makefile, has="_builtin-fix-enforcement: $(if $(CHECK_ONLY),")
-        tm.that(
-            makefile,
-            has='--mode $(if $(CHECK_ONLY),check,apply)',
-        )
+        tm.that(makefile, has="--mode $(if $(CHECK_ONLY),check,apply)")
         tm.that(makefile, has="mode=$(if $(CHECK_ONLY),,--apply)")

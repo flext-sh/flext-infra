@@ -11,6 +11,7 @@ from typing import ClassVar
 
 from flext_cli import u
 
+from flext_infra import config
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -72,29 +73,46 @@ class FlextInfraUtilitiesProtectedEditLinting:
         return normalized_without_unused_imports.strip()
 
     @staticmethod
+    def snapshot_lint_gates() -> t.StrSequence:
+        """Return the lint gates a protected edit validates its snapshots with.
+
+        One owner: ``make.ci.check_gates`` (config) — the budgeted gate set
+        whose strict complement is the slow whole-program checkers owned by
+        ``make check CI=N``. A per-file snapshot validator never runs those.
+        """
+        lint_tool_gates = {
+            "lint" if tool == "ruff" else tool for tool, _ in c.Infra.LINT_TOOLS
+        }
+        return tuple(
+            gate
+            for gate in config.Infra.codegen.make.ci.check_gates
+            if gate in lint_tool_gates
+        )
+
+    @staticmethod
     def _selected_lint_tools(
         gates: t.StrSequence | None = None,
     ) -> t.StrSequencePairTuple:
-        """Return the selected lint tools."""
-        env_gates = (
-            u.Cli.process_env().get(c.Infra.ENV_VAR_LINT_SNAPSHOT_GATES, "").strip()
+        """Return the lint tools for the requested gates (SSOT gates when omitted)."""
+        requested = tuple(
+            gate.strip().lower() for gate in (gates or ()) if gate.strip()
         )
-        resolved_gates = gates or tuple(
-            gate.strip()
-            for gate in (
-                env_gates.split(",")
-                if env_gates
-                else c.Infra.SAFE_EXECUTION_DEFAULT_GATES.split(",")
-            )
-            if gate.strip()
+        gate_names = set(
+            requested or FlextInfraUtilitiesProtectedEditLinting.snapshot_lint_gates()
         )
-        gate_names = {gate.strip().lower() for gate in resolved_gates if gate.strip()}
-        selected = [
+        selected = tuple(
             (tool, tmpl)
             for tool, tmpl in c.Infra.LINT_TOOLS
             if gate_names.intersection({"lint" if tool == "ruff" else tool, tool})
-        ]
-        return tuple(selected) or c.Infra.LINT_TOOLS
+        )
+        if not selected:
+            msg = (
+                "lint snapshot gates select no lint tool: "
+                f"{sorted(gate_names)} (tools: "
+                f"{', '.join(tool for tool, _ in c.Infra.LINT_TOOLS)})"
+            )
+            raise ValueError(msg)
+        return selected
 
     @classmethod
     def selected_lint_tool_names(
@@ -250,7 +268,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
         if not selected_tools:
             return cls._lint_snapshot_from_results(())
 
-        timeout_budget = max(1, gate_timeout + 10)
+        # The pool waits for the slowest DECLARED gate deadline (mypy owns a
+        # resource-limited deadline of its own); a shorter pool budget cut the
+        # gate short and reported the cut as lint errors, reverting valid edits.
+        timeout_budget = (
+            max(cls._gate_deadline(tool, gate_timeout) for tool, _ in selected_tools)
+            + 10
+        )
         pool = concurrent.futures.ThreadPoolExecutor(
             max_workers=max(1, min(cls._SNAPSHOT_MAX_WORKERS, len(selected_tools)))
         )
@@ -287,6 +311,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
             pool.shutdown(wait=False, cancel_futures=True)
         return cls._lint_snapshot_from_results(tuple(results))
 
+    @staticmethod
+    def _gate_deadline(tool_name: str, gate_timeout: int) -> int:
+        """Return the one declared deadline for a lint gate subprocess."""
+        if tool_name == c.Infra.MYPY:
+            return FlextInfraUtilitiesResourceLimits.mypy_runner_timeout()
+        return gate_timeout
+
     @classmethod
     def _run_lint_gate(
         cls,
@@ -312,9 +343,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             cwd=command_cwd,
             env=command_env,
             remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
-            timeout=FlextInfraUtilitiesResourceLimits.mypy_runner_timeout()
-            if tool_name == c.Infra.MYPY
-            else gate_timeout,
+            timeout=cls._gate_deadline(tool_name, gate_timeout),
         )
         if run_result.failure:
             error = run_result.error or f"{tool_name} failed"

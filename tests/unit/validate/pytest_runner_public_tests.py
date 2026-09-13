@@ -122,7 +122,9 @@ class TestsFlextInfraPytestRunner:
             f"markers = [\n{marker_lines}]\n",
             encoding="utf-8",
         )
-        (cached_runner_project / cache.target_directory / "test_external.py").write_text(
+        (
+            cached_runner_project / cache.target_directory / "test_external.py"
+        ).write_text(
             "import os\n\nimport pytest\n\n\n"
             f"@pytest.mark.{markers[0]}\n"
             "def test_needs_external_environment() -> None:\n"

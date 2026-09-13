@@ -973,9 +973,7 @@ class FlextInfraUtilitiesPyprojectConform:
         # An absent live file takes the same canonicalization path as a present
         # one: the projection is the parse-merge-dump form, so first publication
         # and every later conform produce byte-identical output (fixed point).
-        live_payload = (
-            u.Cli.toml_mapping_from_text(live) if live is not None else {}
-        )
+        live_payload = u.Cli.toml_mapping_from_text(live) if live is not None else {}
         if rendered_payload is None:
             return r[str].fail("rendered pyproject is not valid TOML")
         if live_payload is None:
