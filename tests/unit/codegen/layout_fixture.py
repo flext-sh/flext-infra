@@ -15,8 +15,10 @@ def build_loose_project(tmp_path: Path, name: str = "flext-demo") -> Path:
     package_dir = project / "src" / name.replace("-", "_")
     package_dir.mkdir(parents=True)
     (package_dir / "__init__.py").write_text("", encoding="utf-8")
+    # The project's identity is its declared [project].name, so the fixture
+    # declares the name it was asked for — never a directory-derived guess.
     (project / "pyproject.toml").write_text(
-        "[project]\nname='flext-demo'\nversion='0.1.0'\n", encoding="utf-8"
+        f"[project]\nname='{name}'\nversion='0.1.0'\n", encoding="utf-8"
     )
     (project / "README.md").write_text("# demo\n", encoding="utf-8")
     guides = project / "guides"

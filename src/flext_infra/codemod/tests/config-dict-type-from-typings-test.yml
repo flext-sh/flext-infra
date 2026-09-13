@@ -7,7 +7,7 @@ valid:
   from flext_ldif import t
   from typing import ClassVar
   class A:
-      model_config: ClassVar[m.ConfigDict] = m.ConfigDict()
+      model_config: ClassVar[t.ConfigDict] = m.ConfigDict()
 # different member (SettingsConfigDict) out of scope
 - |
   from flext_ldif import t
