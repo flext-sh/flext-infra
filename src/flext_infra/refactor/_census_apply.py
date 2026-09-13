@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import operator
 from collections import defaultdict
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -71,7 +72,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         applied: set[str] = set()
         touched_paths: set[Path] = set()
         applied_actions: set[str] = set()
-        requested_fixes: dict[tuple[Path, str], set[str]] = defaultdict(set)
+        requested_fixes: MutableMapping[tuple[Path, str], set[str]] = defaultdict(set)
         for project in report.projects:
             for fix in project.fixes:
                 requested_fixes[Path(fix.source_file), fix.action].add(fix.object_name)

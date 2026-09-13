@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, override
 
 import libcst as cst
@@ -223,7 +224,7 @@ class FlextInfraUtilitiesPrivateImportCst:
             if not isinstance(updated_node.body, cst.IndentedBlock):
                 msg = "TYPE_CHECKING boundary must use an indented block"
                 raise TypeError(msg)
-            grouped: dict[str, list[str]] = {}
+            grouped: MutableMapping[str, list[str]] = {}
             for alias, package in sorted(self.public_imports.items()):
                 grouped.setdefault(package, []).append(alias)
             imports = tuple(

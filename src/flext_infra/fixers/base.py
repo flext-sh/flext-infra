@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -71,9 +72,11 @@ class FlextInfraFixerAdapter:
     @staticmethod
     def _group_by_target(
         violations: t.SequenceOf[t.Pair[m.EnforcementRuleSpec, p.AttributeProbe]],
-    ) -> dict[str, list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]]]:
+    ) -> MutableMapping[str, list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]]]:
         """Group violations by the fix target declared in their catalog action."""
-        grouped: dict[str, list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]]] = {}
+        grouped: MutableMapping[
+            str, list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]]
+        ] = {}
         for rule, probe in violations:
             fix_action = rule.fix_action
             if fix_action is None:

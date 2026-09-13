@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -40,7 +41,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
     def _selected_scope(
         repository_root: Path,
         name: str,
-        project_by_name: dict[str, m.Infra.ProjectInfo],
+        project_by_name: MutableMapping[str, m.Infra.ProjectInfo],
         output_dir: Path | str,
     ) -> m.Infra.DocScope | None:
         """Build one selected scope from discovery or a local path."""
@@ -56,9 +57,9 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
     @staticmethod
     def _project_by_name(
         discovered: t.SequenceOf[m.Infra.ProjectInfo],
-    ) -> dict[str, m.Infra.ProjectInfo]:
+    ) -> MutableMapping[str, m.Infra.ProjectInfo]:
         """Index discovered projects by canonical and directory names."""
-        project_by_name: dict[str, m.Infra.ProjectInfo] = {}
+        project_by_name: MutableMapping[str, m.Infra.ProjectInfo] = {}
         for project in discovered:
             project_by_name.setdefault(project.name, project)
             project_by_name.setdefault(project.path.name, project)

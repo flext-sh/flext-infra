@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, override
 
@@ -29,23 +30,25 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
         description="Validated lazy-init policy document"
     )
 
-    _module_exports_cache: dict[
+    _module_exports_cache: MutableMapping[
         tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap
     ] = u.PrivateAttr(default_factory=dict)
-    _package_exports_cache: dict[str, frozenset[str]] = u.PrivateAttr(
+    _package_exports_cache: MutableMapping[str, frozenset[str]] = u.PrivateAttr(
         default_factory=dict
     )
-    _source_exports_cache: dict[str, frozenset[str]] = u.PrivateAttr(
+    _source_exports_cache: MutableMapping[str, frozenset[str]] = u.PrivateAttr(
         default_factory=dict
     )
-    _source_plan_cache: dict[str, m.Infra.LazyInitPlan] = u.PrivateAttr(
+    _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan] = u.PrivateAttr(
         default_factory=dict
     )
     _source_exports_visiting: set[str] = u.PrivateAttr(default_factory=set)
-    _parent_package_cache: dict[str, t.StrSequence] = u.PrivateAttr(
+    _parent_package_cache: MutableMapping[str, t.StrSequence] = u.PrivateAttr(
         default_factory=dict
     )
-    _module_file_by_name: dict[str, Path] = u.PrivateAttr(default_factory=dict)
+    _module_file_by_name: MutableMapping[str, Path] = u.PrivateAttr(
+        default_factory=dict
+    )
     _version_module_name: str = u.PrivateAttr(
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py"
     )

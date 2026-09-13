@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableMapping
 from typing import ClassVar, NamedTuple
 
 from flext_infra import t
@@ -35,8 +36,8 @@ class FlextInfraUtilitiesSilentFailureAstBase(ast.NodeVisitor):
     def __init__(self, source: str, *, is_test_module: bool = False) -> None:
         self._lines = source.splitlines(keepends=True)
         self._findings: list[FlextInfraUtilitiesSilentFailureAstBase.Finding] = []
-        self._import_aliases: dict[str, str] = {}
-        self._parents: dict[ast.AST, ast.AST] = {}
+        self._import_aliases: MutableMapping[str, str] = {}
+        self._parents: MutableMapping[ast.AST, ast.AST] = {}
         self._is_test_module = is_test_module
 
     def analyze(self, tree: ast.Module) -> t.VariadicTuple[Finding]:

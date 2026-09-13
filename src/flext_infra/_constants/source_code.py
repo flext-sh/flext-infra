@@ -188,9 +188,9 @@ class FlextInfraConstantsSourceCode:
     DICT_STR_JSONVALUE_RE: Final[t.RegexPattern] = re.compile(
         r"\b(?:dict|Dict)\[str,\s*t\.JsonValue\]"
     )
-    "Regex: ``dict[str, t.JsonValue]`` / ``Dict[str, t.JsonValue]`` annotation."
+    "Regex: ``MutableMapping[str, t.JsonValue]`` / ``Dict[str, t.JsonValue]`` annotation."
     DICT_GENERIC_RE: Final[t.RegexPattern] = re.compile(r"\b(?:dict|Dict)\[")
-    "Regex: opening of any ``dict[...]`` / ``Dict[...]`` annotation."
+    "Regex: opening of any ``MutableMapping[...]`` / ``Dict[...]`` annotation."
     TOC_BLOCK_RE: Final[t.RegexPattern] = re.compile(
         r"<!-- TOC START -->.*?<!-- TOC END -->", re.DOTALL
     )

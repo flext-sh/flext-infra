@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
@@ -16,7 +17,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
         lazy_init: m.Infra.LazyInitConfig
-        _module_exports_cache: dict[
+        _module_exports_cache: MutableMapping[
             tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap
         ]
         _version_module_name: str

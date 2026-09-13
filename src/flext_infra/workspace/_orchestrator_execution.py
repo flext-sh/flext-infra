@@ -6,6 +6,7 @@ Executes per-project make calls, progress reporting, and error summarization.
 from __future__ import annotations
 
 import time
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -34,7 +35,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             for entry in path.split(c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR)
             if entry and entry not in blocked_path_entries
         )
-        env: dict[str, str] = {c.Infra.ORCHESTRATOR_ENV_NO_COLOR: "1"}
+        env: MutableMapping[str, str] = {c.Infra.ORCHESTRATOR_ENV_NO_COLOR: "1"}
         if path_entries:
             env[c.Infra.ORCHESTRATOR_ENV_PATH] = (
                 c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(path_entries)

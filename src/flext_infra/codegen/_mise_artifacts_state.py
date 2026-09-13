@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import stat
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -183,7 +184,7 @@ class FlextInfraMiseArtifactsState:
         if len(set(requested)) != len(requested):
             return result_type.fail(f"duplicate {phase} directory request")
         projects = tuple(sorted(layout.projects, key=cls._project_depth))
-        planned: dict[Path, m.Infra.CodegenJournalDirectory] = {}
+        planned: MutableMapping[Path, m.Infra.CodegenJournalDirectory] = {}
         for target in requested:
             path = target.expanduser().absolute()
             project = next(

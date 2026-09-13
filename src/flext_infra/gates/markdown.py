@@ -116,7 +116,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         reporting flags), so the fix surface carries only what it defines.
         """
         _ = ctx
-        return self._python_console_script_command(
+        args: t.SequenceOf[str] = [
             c.Infra.RUMDL,
             "fmt",
             "--no-cache",
@@ -124,8 +124,9 @@ class FlextInfraMarkdownGate(FlextInfraGate):
             "never",
             *self._resolve_config_args(project_dir),
             *self._resolve_exclude_args(project_dir),
-            *targets,
-        )
+            *list(targets),
+        ]
+        return self._python_console_script_command(*args)
 
     @override
     def _parse_check_output(

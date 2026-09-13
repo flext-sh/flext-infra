@@ -12,9 +12,6 @@
 
 Infra:
   codegen:
-    toolchain:
-      dependency_cooldown_overrides: {}
-
     checkout_submodules_overrides: {}
 
     # Per-distribution private submodule deploy-key contracts.

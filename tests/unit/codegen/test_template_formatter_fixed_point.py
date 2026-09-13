@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import config, m, u
+from flext_infra import m, u
 
 _TEMPLATES = (
     Path(__file__).resolve().parents[3]
@@ -16,8 +16,6 @@ _TEMPLATES = (
     / "project"
     / "base"
 )
-
-_COOLDOWN_DAYS = config.Infra.codegen.toolchain.dependency_cooldown_days
 
 
 class TestsTemplateFormatterFixedPoint:
@@ -61,10 +59,9 @@ class TestsTemplateFormatterFixedPoint:
                     dist="demo",
                     workspace_repositories=(),
                     has_devcontainer=False,
-                    # The cooldown is declared, not defaulted: `model_construct`
-                    # fills nothing, so the context reads the same SSOT the
-                    # renderer reads instead of freezing today's number.
-                    dependency_cooldown_days=_COOLDOWN_DAYS,
+                    # `model_construct` fills nothing beyond the declared
+                    # fields, so the context reads the same SSOT the renderer
+                    # reads instead of freezing today's values.
                 ),
             )
         )
@@ -72,10 +69,7 @@ class TestsTemplateFormatterFixedPoint:
             u.Cli.template_render(
                 _TEMPLATES / ".github/dependabot.yml.j2",
                 m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo",
-                    workspace_repositories=(),
-                    has_devcontainer=True,
-                    dependency_cooldown_days=_COOLDOWN_DAYS,
+                    dist="demo", workspace_repositories=(), has_devcontainer=True
                 ),
             )
         )

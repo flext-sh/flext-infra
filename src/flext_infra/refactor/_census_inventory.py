@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_infra import p, u
@@ -59,7 +60,7 @@ class FlextInfraRefactorCensusInventoryMixin:
                 f"{repository_root}: {projects_result.error}"
             )
             raise RuntimeError(msg)
-        inventory: dict[str, list[str]] = defaultdict(list)
+        inventory: MutableMapping[str, list[str]] = defaultdict(list)
         for project in projects_result.unwrap():
             pkg_name = project.name.replace("-", "_")
             try:

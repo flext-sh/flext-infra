@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, u
@@ -34,9 +35,9 @@ class FlextInfraRefactorCompatibilityAlias(FlextInfraRopeTransformer):
         updated = self._rewrite_compat_assignments(updated)
         return updated, list(self.changes)
 
-    def _collect_compat_assignments(self, source: str) -> dict[str, str]:
+    def _collect_compat_assignments(self, source: str) -> MutableMapping[str, str]:
         """Detect ``Alias = Target`` compatibility assignments."""
-        alias_map: dict[str, str] = {}
+        alias_map: MutableMapping[str, str] = {}
         for match in c.Infra.COMPAT_ALIAS_RE.finditer(source):
             alias_name, target_name = match.group(1), match.group(2)
             if alias_name in c.Infra.COMPAT_SKIP_NAMES or alias_name == target_name:
@@ -82,7 +83,7 @@ class FlextInfraRefactorCompatibilityAlias(FlextInfraRopeTransformer):
 
         protected_targets = frozenset(self._collect_compat_assignments(source).values())
         alias_renames = c.ENFORCEMENT_COMPATIBILITY_ALIAS_RENAMES
-        alias_map: dict[str, str] = {}
+        alias_map: MutableMapping[str, str] = {}
         existing_names = self._collect_existing_names(tree)
 
         for node in ast.walk(tree):

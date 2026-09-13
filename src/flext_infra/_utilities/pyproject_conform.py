@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_cli import r, u
@@ -121,11 +121,9 @@ class FlextInfraUtilitiesPyprojectConform:
         toolchain: p.Infra.ToolchainSpec,
         required_dev_dependencies: t.StrSequence,
         uv_link_mode: str | None = None,
-        uv_exclude_newer: str | None = None,
-        dependency_cooldown_exclusions: t.StrSequence | None = None,
-        dependency_cooldown_overrides: t.StrMapping | None = None,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
         namespace_scan_dirs: t.StrSequence | None = None,
+        gate_budgets: t.MappingKV[str, m.Infra.ProjectGateBudgetSpec] | None = None,
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and root workspace."""
         parsed = cls._parsed_pyproject(pyproject_content)
@@ -156,28 +154,15 @@ class FlextInfraUtilitiesPyprojectConform:
         namespace_scope = cls._sync_namespace_scope(source, namespace_scan_dirs)
         if namespace_scope.failure:
             return r[str].from_failure(namespace_scope)
+        budget_sync = cls._sync_budget_table(source, gate_budgets)
+        if budget_sync.failure:
+            return r[str].from_failure(budget_sync)
         sources_result = cls._sync_uv_sources(
             source,
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
             link_mode=uv_link_mode or toolchain.uv_link_mode,
-            exclude_newer=uv_exclude_newer or toolchain.uv_exclude_newer,
-            exclude_newer_packages=(
-                tuple(
-                    dict.fromkeys((
-                        *toolchain.dependency_cooldown_exclusions,
-                        *toolchain.additional_python_tool_distributions,
-                    ))
-                )
-                if dependency_cooldown_exclusions is None
-                else dependency_cooldown_exclusions
-            ),
-            exclude_newer_overrides=(
-                toolchain.dependency_cooldown_overrides
-                if dependency_cooldown_overrides is None
-                else dependency_cooldown_overrides
-            ),
             exclude_dependencies=uv_exclude_dependencies,
             uv_environments=toolchain.uv_environments,
             constraint_dependencies=toolchain.uv_constraint_dependencies,
@@ -599,6 +584,29 @@ class FlextInfraUtilitiesPyprojectConform:
         return r[bool].ok(True)
 
     @staticmethod
+    def _sync_budget_table(
+        document: t.Cli.TomlDocument,
+        gate_budgets: t.MappingKV[str, m.Infra.ProjectGateBudgetSpec] | None,
+    ) -> p.Result[bool]:
+        """Sync the managed ``[tool.flext.project.budget]`` table from the SSOT.
+
+        ``None`` leaves the section untouched: only codegen configs that
+        declare per-gate budgets project the managed table.
+        """
+        if gate_budgets is None:
+            return r[bool].ok(True)
+        budget_table = u.Cli.toml_ensure_path(
+            document, ("tool", "flext", "project", "budget")
+        )
+        for gate_id, row in sorted(gate_budgets.items()):
+            budget_table[gate_id] = {
+                "time-seconds": row.time_seconds,
+                "memory-mb": row.memory_mb,
+                "tokens": row.tokens,
+            }
+        return r[bool].ok(True)
+
+    @staticmethod
     def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:
         """Remove checkout-absolute type checker interpreter pins.
 
@@ -653,9 +661,6 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.MakeProfile,
         link_mode: str | None = None,
-        exclude_newer: str | None = None,
-        exclude_newer_packages: t.StrSequence | None = None,
-        exclude_newer_overrides: t.StrMapping | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] | None = None,
         uv_environments: t.StrSequence | None = None,
@@ -704,8 +709,12 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_remove_key_if_present(uv, "constraint-dependencies")
         if link_mode is not None:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
-        if exclude_newer is not None:
-            u.Cli.toml_sync_value(uv, "exclude-newer", exclude_newer)
+        # The supply-chain cooldown was exterminated fleet-wide (flext-fphyv):
+        # uv resolves every version published up to now. Removed declarations
+        # exterminate the keys everywhere so no orphan cap survives without an
+        # owner (flext-gzfd2 class).
+        u.Cli.toml_remove_key_if_present(uv, "exclude-newer")
+        u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
         # Environments come from the fleet toolchain SSOT: an empty declaration
         # removes the key so uv resolves every environment, and a declared
         # sequence skips the splits the fleet does not support (win32 resolves
@@ -719,19 +728,6 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_sync_value(uv, "environments", environments)
         elif uv_environments is not None:
             u.Cli.toml_remove_key_if_present(uv, "environments")
-        if exclude_newer_packages is not None or exclude_newer_overrides is not None:
-            exclude_newer_payload: t.JsonDict = dict.fromkeys(
-                sorted(exclude_newer_packages or ()), False
-            )
-            exclude_newer_payload.update(
-                sorted((exclude_newer_overrides or {}).items())
-            )
-            if exclude_newer_payload:
-                u.Cli.toml_sync_value(
-                    uv, "exclude-newer-package", exclude_newer_payload
-                )
-            else:
-                u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
         # Project is a flext-infra routing key only; uv scoped form is
         # {package={name, version?}, dependencies=[...]} (uv settings docs).
         # Emit on every owning pyproject so standalone CI clones resolve;
@@ -799,7 +795,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         workspace: p.Infra.WorkspaceSpec,
         providers: t.SequenceOf[m.Infra.ProviderSpec],
-    ) -> p.Result[dict[str, dict[str, t.JsonValue]]]:
+    ) -> p.Result[MutableMapping[str, MutableMapping[str, t.JsonValue]]]:
         """Resolve the workspace source overlay from typed metadata."""
         candidates = (workspace.repository, *workspace.subprojects)
         for distribution in dict.fromkeys(item.distribution for item in candidates):

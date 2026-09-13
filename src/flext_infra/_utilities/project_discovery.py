@@ -6,23 +6,40 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from functools import lru_cache
 from operator import attrgetter
 from pathlib import Path
 
-from flext_infra import config, m
-from flext_infra.constants import c
-from flext_infra.typings import t
+from flext_cli import u
 
-from ._project_discovery_candidates import (
-    FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
-)
-from .git import FlextInfraUtilitiesGit
+from .. import c, config, m, t
+from . import FlextInfraUtilitiesGit, FlextInfraUtilitiesProjectDiscoveryCandidatesMixin
 
 
 class FlextInfraUtilitiesProjectDiscovery(
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin
 ):
     """Static helpers for discovering governed project roots in a workspace."""
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def load_refactor_config(cls, repository_root: Path) -> m.Infra.RefactorConfigSpec:
+        """Load refactor configuration from workspace.yaml with defaults fallback."""
+        manifest_path = (
+            repository_root
+            / c.Infra.CODEGEN_CONFIG_DIR
+            / c.Infra.WORKSPACE_MANIFEST_FILENAME
+        )
+        if not manifest_path.is_file():
+            return m.Infra.RefactorConfigSpec()
+        loaded = u.Cli.config_load(manifest_path, expand_env=False)
+        if loaded.failure:
+            return m.Infra.RefactorConfigSpec()
+        try:
+            manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
+            return manifest.refactor or m.Infra.RefactorConfigSpec()
+        except c.ValidationError:
+            return m.Infra.RefactorConfigSpec()
 
     @classmethod
     def discover_project_roots(
@@ -97,7 +114,8 @@ class FlextInfraUtilitiesProjectDiscovery(
         ``conftest.py`` without opening hidden directories.
         """
         resolved_root = repository_root.resolve()
-        scan_dirs = m.Infra.RefactorConfig().project_scan_dirs
+        refactor_config = cls.load_refactor_config(resolved_root)
+        scan_dirs = refactor_config.project_scan_dirs
         targets = {
             target.relative_to(resolved_root).as_posix()
             for project in cls.governed_project_roots(resolved_root)
