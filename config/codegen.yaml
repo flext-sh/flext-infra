@@ -29,6 +29,7 @@ Infra:
       runtime-census: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
       namespace: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
       tier-whitelist: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      index-declarations: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
       smells: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
       codemod: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
       layout: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
