@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from git import GitCommandError
+from git import GitCommandError, Repo
 
 from flext_core import r
 from flext_infra.models import m
@@ -19,6 +19,19 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
     FlextInfraUtilitiesGitSemanticPublishMixin
 ):
     """Own semantic paths operations."""
+
+    @classmethod
+    def git_init(
+        cls, request: m.Infra.GitRepoRequest
+    ) -> p.Result[m.Infra.GitBoolReport]:
+        """Initialize a new Git repository at ``repo_root``."""
+        try:
+            Repo.init(request.repo_root)
+        except (OSError, ValueError) as exc:
+            return r[m.Infra.GitBoolReport].fail(
+                f"git init failed: {exc}", exception=exc
+            )
+        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
     def git_checkout_restore(

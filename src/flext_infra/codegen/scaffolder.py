@@ -103,6 +103,8 @@ class FlextInfraCodegenScaffolder(s[str]):
                     modules=c.Infra.SRC_MODULES,
                     test_prefix="",
                     base_module=c.Infra.PKG_CORE_UNDERSCORE,
+                    project_module=project_layout.package_name,
+                    test_module=False,
                     dry_run=dry_run,
                     files_created=[],
                     files_skipped=[],
@@ -119,6 +121,8 @@ class FlextInfraCodegenScaffolder(s[str]):
                     modules=c.Infra.TESTS_MODULES,
                     test_prefix="Tests",
                     base_module=c.Infra.PKG_TESTS_UNDERSCORE,
+                    project_module=project_layout.package_name,
+                    test_module=True,
                     dry_run=dry_run,
                     files_created=[],
                     files_skipped=[],
@@ -135,6 +139,8 @@ class FlextInfraCodegenScaffolder(s[str]):
                     modules=c.Infra.SRC_MODULES,
                     test_prefix="Examples",
                     base_module=project_layout.package_name,
+                    project_module=project_layout.package_name,
+                    test_module=False,
                     dry_run=dry_run,
                     files_created=[],
                     files_skipped=[],
@@ -151,6 +157,8 @@ class FlextInfraCodegenScaffolder(s[str]):
                     modules=c.Infra.SRC_MODULES,
                     test_prefix="Scripts",
                     base_module=project_layout.package_name,
+                    project_module=project_layout.package_name,
+                    test_module=False,
                     dry_run=dry_run,
                     files_created=[],
                     files_skipped=[],
@@ -177,12 +185,28 @@ class FlextInfraCodegenScaffolder(s[str]):
                 continue
             class_name = f"{request.test_prefix}{request.prefix}{suffix}"
             docstring = f"{doc_suffix} for {request.prefix.lower()}."
-            content = u.Infra.generate_module_skeleton(
-                class_name=class_name,
-                base_class=base_class,
-                base_module=request.base_module,
-                docstring=docstring,
-            )
+            if request.test_module:
+                alias = c.Infra.NAMESPACE_LAYER_BY_FILE[filename]
+                content = u.Infra.generate_test_module_skeleton(
+                    m.Infra.TestModuleSkeletonRenderContext(
+                        class_name=class_name,
+                        base_class=base_class,
+                        project_module=request.project_module,
+                        alias=alias,
+                        namespace=f"{request.test_prefix}{request.prefix}",
+                        project_namespace=request.prefix.removeprefix(
+                            c.Infra.PKG_PREFIX_UNDERSCORE.rstrip("_").capitalize()
+                        ),
+                        docstring=docstring,
+                    )
+                )
+            else:
+                content = u.Infra.generate_module_skeleton(
+                    class_name=class_name,
+                    base_class=base_class,
+                    base_module=request.base_module,
+                    docstring=docstring,
+                )
             if request.dry_run:
                 files_created.append(str(filepath))
                 continue

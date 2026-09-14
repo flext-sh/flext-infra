@@ -253,6 +253,19 @@ class FlextInfraUtilitiesCodegen(
         return content
 
     @staticmethod
+    def generate_test_module_skeleton(
+        context: m.Infra.TestModuleSkeletonRenderContext,
+    ) -> str:
+        """Render one canonical test facade skeleton."""
+        template_path = (
+            Path(__file__).resolve().parent.parent
+            / "templates"
+            / c.Infra.TEMPLATE_TEST_MODULE_SKELETON
+        )
+        rendered: p.Result[str] = u.Cli.template_render(template_path, context)
+        return rendered.unwrap()
+
+    @staticmethod
     def dir_has_py_files(pkg_dir: Path) -> bool:
         """Return whether a package directory contains canonical Python files."""
         if not pkg_dir.is_dir():

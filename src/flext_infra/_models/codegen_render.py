@@ -39,6 +39,29 @@ class FlextInfraModelsCodegenRender:
         base_module: t.NonEmptyStr = m.Field(description="Module owning base_class.")
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
 
+    class TestModuleSkeletonRenderContext(m.ContractModel):
+        """Validated context for one generated test facade skeleton."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True, str_strip_whitespace=False
+        )
+
+        class_name: t.NonEmptyStr = m.Field(description="Generated facade class name.")
+        base_class: t.NonEmptyStr = m.Field(
+            description="Shared flext-tests base class."
+        )
+        project_module: t.NonEmptyStr = m.Field(
+            description="Public project package owning the lowercase facade alias."
+        )
+        alias: t.NonEmptyStr = m.Field(description="Canonical c/t/p/m/u facade alias.")
+        namespace: t.NonEmptyStr = m.Field(
+            description="Nested test namespace composed by the facade."
+        )
+        project_namespace: t.NonEmptyStr = m.Field(
+            description="Production namespace composed by the test namespace."
+        )
+        docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
+
     # NOTE (multi-agent, flext-p4s3.2 / agent: uv_overlay_owner): the docs
     # renderer sends one immutable model directly to the flext-cli boundary.
     class MkdocsRenderContext(m.ContractModel):
