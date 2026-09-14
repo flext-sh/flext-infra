@@ -14,6 +14,7 @@ from flext_cli import u
 
 from .. import c, config, m, t
 from . import FlextInfraUtilitiesGit, FlextInfraUtilitiesProjectDiscoveryCandidatesMixin
+from .workspace_manifest import FlextInfraUtilitiesWorkspaceManifest
 
 
 class FlextInfraUtilitiesProjectDiscovery(
@@ -25,10 +26,8 @@ class FlextInfraUtilitiesProjectDiscovery(
     @lru_cache(maxsize=1)
     def load_refactor_config(cls, repository_root: Path) -> m.Infra.RefactorConfigSpec:
         """Load refactor configuration from workspace.yaml with defaults fallback."""
-        manifest_path = (
+        manifest_path = FlextInfraUtilitiesWorkspaceManifest.workspace_manifest_path(
             repository_root
-            / c.Infra.CODEGEN_CONFIG_DIR
-            / c.Infra.WORKSPACE_MANIFEST_FILENAME
         )
         if not manifest_path.is_file():
             return m.Infra.RefactorConfigSpec()
