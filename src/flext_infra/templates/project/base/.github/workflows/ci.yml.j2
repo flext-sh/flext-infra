@@ -120,6 +120,13 @@ jobs:
         run: {{ make.ci.variable }}={{ make.ci.local_value }} make {{ step.verb }}
 {%- endif %}
 {% endfor %}
+      # Mutating gates and tests must validate the committed candidate.
+      # Repairs left in the runner checkout require a new commit and CI run.
+      - name: Candidate cleanliness (blocking)
+        run: |
+          git status --short
+          test -z "$(git status --porcelain --untracked-files=all)"
+
       - name: Dump reports on failure
         if: {% raw %}${{ failure() }}{% endraw %}
         run: |
