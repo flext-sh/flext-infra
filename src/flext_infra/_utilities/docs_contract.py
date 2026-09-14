@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from html import unescape
 from typing import TYPE_CHECKING
 
-from defusedxml import ElementTree as DefusedET
 from markdown import Markdown
 from markdown.extensions.toc import slugify
 
@@ -19,7 +19,6 @@ from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
     from pathlib import Path
-    from xml.etree import ElementTree as ET
 
     from flext_infra.protocols import p
 
@@ -121,28 +120,24 @@ class FlextInfraUtilitiesDocsContract:
             "\n".join(lines[FlextInfraUtilitiesDocsContract._docs_body_start(lines) :])
         )
         items: t.MutableSequenceOf[str] = []
-        if renderer.toc:
-            tree = DefusedET.fromstring(renderer.toc)
-            FlextInfraUtilitiesDocsContract._docs_toc_items(tree, items, -1)
+        rendered = m.Infra.DocsRenderedToc.model_validate(
+            renderer, from_attributes=True
+        )
+        FlextInfraUtilitiesDocsContract._docs_toc_items(rendered.toc_tokens, items)
         if not items:
             items = ["- No sections found"]
         return f"{c.Infra.TOC_START}\n" + "\n".join(items) + f"\n{c.Infra.TOC_END}"
 
     @staticmethod
     def _docs_toc_items(
-        element: ET.Element, items: t.MutableSequenceOf[str], depth: int
+        tokens: t.SequenceOf[m.Infra.DocsTocToken], items: t.MutableSequenceOf[str]
     ) -> None:
         """Serialize the renderer's own TOC without reparsing heading Markdown."""
-        for child in element:
-            if child.tag == "a":
-                title = (
-                    "".join(child.itertext()).replace("[", r"\[").replace("]", r"\]")
-                )
-                items.append(f"{'  ' * depth}- [{title}]({child.attrib['href']})")
-            else:
-                FlextInfraUtilitiesDocsContract._docs_toc_items(
-                    child, items, depth + int(child.tag == "ul")
-                )
+        for token in tokens:
+            title = unescape(token.name).replace("[", r"\[").replace("]", r"\]")
+            indent = "  " if token.level == 3 else ""
+            items.append(f"{indent}- [{title}](#{token.id})")
+            FlextInfraUtilitiesDocsContract._docs_toc_items(token.children, items)
 
     @staticmethod
     def docs_workspace_contract(repository_root: Path) -> t.JsonMapping:

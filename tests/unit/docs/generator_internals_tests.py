@@ -84,6 +84,7 @@ def test_build_toc_uses_rendered_ids_and_plain_link_labels() -> None:
         "## [Architecture](decisions.md)\n\n"
         "## Architecture\n\n"
         "### Architecture\n"
+        "\n## Copyright &copy; {#copyright}\n"
     )
     toc = u.Infra.build_toc(content)
     rendered = Markdown(extensions=["attr_list", "toc"]).convert(content)
@@ -92,12 +93,14 @@ def test_build_toc_uses_rendered_ids_and_plain_link_labels() -> None:
         "architecture",
         "architecture_1",
         "architecture_2",
+        "copyright",
     ):
         tm.that(rendered, has=f'id="{anchor}"')
         tm.that(toc, has=f"](#{anchor})")
     tm.that(toc, has="[Vault pending](#incident-vault)")
     tm.that(toc, has="[Architecture](#architecture)")
     tm.that(toc, lacks="decisions.md")
+    tm.that(toc, has="[Copyright ©](#copyright)")
     updated, _ = u.Infra.update_toc(content)
     twice, changed = u.Infra.update_toc(updated)
     tm.that(twice, eq=updated)
