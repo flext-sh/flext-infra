@@ -76,6 +76,34 @@ def test_build_toc_skips_headings_inside_fenced_code() -> None:
     tm.that(toc, lacks="Tilde Sample")
 
 
+def test_build_toc_uses_rendered_ids_and_plain_link_labels() -> None:
+    """Explicit IDs, inline links and duplicates resolve to real rendered anchors."""
+    content = (
+        "# Main\n\n"
+        "## Vault pending {#incident-vault}\n\n"
+        "## [Architecture](decisions.md)\n\n"
+        "## Architecture\n\n"
+        "### Architecture\n"
+    )
+    toc = u.Infra.build_toc(content)
+    rendered = Markdown(extensions=["attr_list", "toc"]).convert(content)
+    for anchor in (
+        "incident-vault",
+        "architecture",
+        "architecture_1",
+        "architecture_2",
+    ):
+        tm.that(rendered, has=f'id="{anchor}"')
+        tm.that(toc, has=f"](#{anchor})")
+    tm.that(toc, has="[Vault pending](#incident-vault)")
+    tm.that(toc, has="[Architecture](#architecture)")
+    tm.that(toc, lacks="decisions.md")
+    updated, _ = u.Infra.update_toc(content)
+    twice, changed = u.Infra.update_toc(updated)
+    tm.that(twice, eq=updated)
+    tm.that(changed, eq=0)
+
+
 def test_update_toc_replaces_existing_block() -> None:
     updated, changed = u.Infra.update_toc(
         "# Main\n\n<!-- TOC START -->\n- stale\n<!-- TOC END -->\n\n## Section\n"
