@@ -41,11 +41,12 @@ make fix
 make fmt
 make check
 make test
+make gen
 ```
 
 The final generation pass proves the fixed point. Each verb executes its declared
-operation directly. No project, file, pattern, action, phase, fix, or changed-only
-selector may be attached to a standard verb.
+operation directly. No project, file, pattern, action, phase, fix, or changed-only selector may
+be attached to a standard verb.
 
 ## Test contract
 
