@@ -80,6 +80,18 @@ Infra:
           - .git
           - .github/hooks
           - .github/hooks/**
+          # Agent-hook projections are runtime state owned by ai-hub, never
+          # fleet source — they are untracked and outside the lint surface.
+          - ".agents/aihub-hooks"
+          - ".agents/aihub-hooks/**"
+          - ".claude/aihub-hooks"
+          - ".claude/aihub-hooks/**"
+          - ".codex/aihub-hooks"
+          - ".codex/aihub-hooks/**"
+          - ".cursor/aihub-hooks"
+          - ".cursor/aihub-hooks/**"
+          - ".gemini/aihub-hooks"
+          - ".gemini/aihub-hooks/**"
           - .mypy_cache
           - .pytest_cache
           - .ruff_cache
