@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, MutableMapping, Sequence
-from importlib.metadata import Distribution, distributions, packages_distributions
+from importlib.metadata import Distribution, distributions
 from importlib.util import find_spec
 from pathlib import Path
 
@@ -28,17 +28,14 @@ class FlextInfraUtilitiesCodemodRules:
             return r[m.Infra.CodemodRulePlan].from_failure(project)
         root_name, direct_runtime = project.value
         indexed = cls._distributions()
-        package_index = packages_distributions()
         runtime_closure = cls._runtime_closure(direct_runtime, indexed)
         universal = cls._providers(
             indexed,
-            package_index,
             scope=c.Infra.CODEMOD_SCOPE_UNIVERSAL,
             selected=frozenset(indexed).difference({root_name}),
         )
         runtime = cls._providers(
             indexed,
-            package_index,
             scope=c.Infra.CODEMOD_SCOPE_RUNTIME,
             selected=runtime_closure.difference({root_name}),
         )
@@ -156,16 +153,16 @@ class FlextInfraUtilitiesCodemodRules:
     def _providers(
         cls,
         indexed: t.MappingKV[str, Distribution],
-        package_index: Mapping[str, Sequence[str]],
         *,
         scope: str,
         selected: frozenset[str],
     ) -> MutableMapping[str, Path]:
         providers: MutableMapping[str, Path] = {}
         for name in sorted(selected):
-            if name not in indexed:
+            installed = indexed.get(name)
+            if installed is None:
                 continue
-            configs = cls._provider_configs(name, package_index)
+            configs = cls._provider_configs(installed)
             if configs.failure:
                 raise ValueError(configs.error or f"resolve codemod provider: {name}")
             if not configs.value:
@@ -204,38 +201,29 @@ class FlextInfraUtilitiesCodemodRules:
         return r[t.StrSequence].ok(ordered)
 
     @staticmethod
-    def _provider_configs(
-        distribution_name: str, package_index: Mapping[str, Sequence[str]]
-    ) -> p.Result[t.SequenceOf[Path]]:
-        configs: set[Path] = set()
-        for package_name, raw_distributions in package_index.items():
-            if distribution_name not in {
-                canonicalize_name(name) for name in raw_distributions
-            }:
-                continue
-            # Data and native distributions (ML runtimes, compiled wheels)
-            # expose directory names that are not importable modules; they
-            # cannot host codemod provider configs and are skipped, never
-            # treated as provider failures.
-            if not package_name or not all(
-                part.isidentifier()
-                for part in package_name.replace("/", ".").split(".")
-            ):
-                continue
-            spec = find_spec(package_name.replace("/", "."))
-            if spec is None:
-                continue
-            roots = tuple(Path(path) for path in spec.submodule_search_locations or ())
-            if not roots and spec.origin is not None:
-                roots = (Path(spec.origin).parent,)
-            configs.update(
-                root / c.Infra.CODEMOD_CONFIG_RELPATH
-                for root in roots
-                if (root / c.Infra.CODEMOD_CONFIG_RELPATH).is_file()
+    def _provider_configs(installed: Distribution) -> p.Result[t.SequenceOf[Path]]:
+        raw_name = installed.metadata.get("Name")
+        if not isinstance(raw_name, str) or not raw_name.strip():
+            return r[t.SequenceOf[Path]].fail(
+                "codemod provider distribution has no canonical name"
             )
+        package_name = canonicalize_name(raw_name).replace("-", "_")
+        if not package_name.isidentifier():
+            return r[t.SequenceOf[Path]].ok(())
+        spec = find_spec(package_name)
+        if spec is None:
+            return r[t.SequenceOf[Path]].ok(())
+        roots = tuple(Path(path) for path in spec.submodule_search_locations or ())
+        if not roots and spec.origin is not None:
+            roots = (Path(spec.origin).parent,)
+        configs = {
+            root / c.Infra.CODEMOD_CONFIG_RELPATH
+            for root in roots
+            if (root / c.Infra.CODEMOD_CONFIG_RELPATH).is_file()
+        }
         if len(configs) > 1:
             return r[t.SequenceOf[Path]].fail(
-                f"distribution exports multiple codemod configs: {distribution_name}"
+                f"distribution exports multiple codemod configs: {raw_name}"
             )
         return r[t.SequenceOf[Path]].ok(tuple(sorted(configs)))
 

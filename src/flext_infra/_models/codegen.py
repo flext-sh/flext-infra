@@ -923,6 +923,14 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             t.NonEmptyStr,
             m.Field(description="Explicit module owning every generated base class"),
         ]
+        project_module: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Public package owning the generated project facade"),
+        ]
+        test_module: Annotated[
+            bool,
+            m.Field(description="Whether this request renders canonical test facades"),
+        ]
         dry_run: Annotated[
             bool, m.Field(description="Whether to report creations without writing")
         ]

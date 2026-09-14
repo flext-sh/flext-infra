@@ -81,6 +81,18 @@ class TestScaffoldProjectCreatesTestsModules:
         tm.that(len(tests_created), eq=5)
         for mod in u.Tests.src_module_files():
             tm.that((tests_dir / mod).exists(), eq=True)
+        constants_source = (tests_dir / "constants.py").read_text(encoding="utf-8")
+        tm.that(constants_source, has="from flext_tests import FlextTestsConstants")
+        tm.that(constants_source, has="from test_project import c")
+        tm.that(
+            constants_source,
+            has="class TestsTestProjectConstants(FlextTestsConstants, c):",
+        )
+        tm.that(
+            constants_source,
+            has="class TestsTestProject(FlextTestsConstants.Tests, c.TestProject):",
+        )
+        tm.that(constants_source, has="c = TestsTestProjectConstants")
 
     def test_skips_tests_modules_when_no_tests_dir(self, tmp_path: Path) -> None:
         project = _create_test_project(tmp_path, with_all_modules=True)

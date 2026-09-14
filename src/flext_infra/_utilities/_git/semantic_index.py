@@ -204,9 +204,7 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
         )
 
     @classmethod
-    def git_index_gitlink_paths(
-        cls, repository_root: Path
-    ) -> p.Result[t.StrSequence]:
+    def git_index_gitlink_paths(cls, repository_root: Path) -> p.Result[t.StrSequence]:
         """Return every path the index records as a gitlink (mode ``160000``).
 
         Git records a directory that contains its own ``.git`` as a gitlink the

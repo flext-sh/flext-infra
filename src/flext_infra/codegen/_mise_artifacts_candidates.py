@@ -31,7 +31,9 @@ def publication_plan(
         ):
             replacement = files.read_state(stage / name, required=True)
             if replacement.failure or replacement.value.content is None:
-                return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(replacement)
+                return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(
+                    replacement
+                )
             if replacement.value.mode != mode:
                 return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
                     f"staged Mise artifact mode differs: {stage / name}"
