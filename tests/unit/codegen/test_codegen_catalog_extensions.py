@@ -101,8 +101,11 @@ class TestsCodegenCatalogExtensions:
         tm.that(mise_template, has='direnv = "{{ direnv_version }}"')
         tm.that(mise_template, lacks="credential_command")
         tm.that(mise_template, lacks="minimum_release_age")
-        tm.that("_builtin_gen_check:" in content, eq=True)
-        tm.that("_builtin_gen_apply:" in content, eq=True)
+        # S1 (operator law 2026-09-14): gen has one always-apply recipe; the
+        # CHECK_ONLY-selected check/apply pair no longer exists.
+        tm.that("_builtin_gen_check:" in content, eq=False)
+        tm.that("_builtin_gen_apply:" in content, eq=False)
+        tm.that("_builtin_gen_all:" in content, eq=True)
         bootstrap = template.with_name("tool_bootstrap_recipe.j2").read_text(
             encoding="utf-8"
         )

@@ -58,7 +58,6 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "CHANGED_ONLY",
             "CHECK_GATES",
             "CHECK_ONLY",
-            "FAIL_FAST",
             "FILE",
             "FILES",
             "FIX",

@@ -245,8 +245,9 @@ class FlextInfraUtilitiesDocsRender:
             "## Quality Gates",
             "",
             (
-                f"Canonical `make` verbs (`check`, `test`, `fmt`, `conform`, "
-                f"`docs`) execute their declared operations directly — see [`/flext/AGENTS.md`]({agents_link}) "
+                f"Canonical `make` verbs (`gen`, `check`, `test`, `fmt`, "
+                f"`docs`) execute their declared operations directly — see "
+                f"[`/flext/AGENTS.md`]({agents_link}) "
                 f"`Build & Test` and `Required Python quality gates`."
             ),
         ]

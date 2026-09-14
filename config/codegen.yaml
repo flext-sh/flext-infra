@@ -8,35 +8,6 @@ Infra:
     loc_cap:
       max_lines: 1000
 
-    # Per-gate execution budgets (flext-cpzjo.3): the budget gate requires one
-    # row per registry gate and the generator projects this table into every
-    # governed pyproject as the managed [tool.flext.project.budget] section.
-    # Rows must cover exactly c.Infra.ALLOWED_GATES: a missing or unknown gate
-    # id fails the generation loud (registry divergence is a hard error).
-    # Values are config-owned policy; tune per gate without touching code.
-    budget:
-      lint: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      format: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      pyrefly: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      mypy: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      pyright: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      silent-failure: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      deferred-self-reference: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      security: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      markdown: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      loc-cap: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      boundary: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      runtime-census: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      namespace: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      tier-whitelist: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      smells: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      codemod: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      layout: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      canonical-alias: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      direnv: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      duplication: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      budget: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-
     toolchain:
       # Single-source Python minor line. The environment resolves the newest
       # compatible 3.13 patch; no patch is pinned in generated repositories.
@@ -287,18 +258,6 @@ Infra:
         base_url: https://github.com/marlonsc
         branch: develop
     branch_policy:
-      technical_branch_patterns:
-        - __dolt_remote_info__
-        - dolt/*
-        - gh-readonly-queue/*
-      # FLEXT branch model: main is the produced release (tagged + published to
-      # PyPI) and 0.20.0-dev is the future line on hold. Both must carry the
-      # current development line, so both are gated. Parked releases (0.10.0-dev,
-      # 0.11.0-dev), snapshots and lane branches are inventoried but never gated.
-      governed_branch_patterns:
-        - main
-        - 0.12.0-dev
-        - 0.20.0-dev
       # Pushes to these branches trigger the generated CI workflow. The renderer
       # adds the repository's own integration branch to this list; it never
       # hardcodes a fleet branch name.
@@ -336,15 +295,20 @@ Infra:
 
     make:
       # Operator 2026-09-08: ruff is the formatting and autofix rule.
-      # Every ruff invocation uses --preview. make fmt also runs
-      # ruff check --fix --unsafe-fixes --preview. Never weaken ruff to
-      # keep a file; change the code. [tool.ruff] preview: true in
-      # tooling.yaml is the same policy projected into pyproject.
+      # Every ruff invocation uses --preview. Never weaken ruff to keep a
+      # file; change the code. [tool.ruff] preview: true in tooling.yaml is
+      # the same policy projected into pyproject.
+      # Operator 2026-09-14: fix and fmt APPLY and report leftover findings
+      # without failing the make run; leftovers keep failing `make check`.
+      # lint_fix is the lint gate's apply mode (make fix): ruff reports the
+      # leftovers the gate parses. lint_apply is make fmt's ruff check: it
+      # applies the same fixes and prints leftovers with a zero exit.
       ruff:
         format_check: [--preview, --check]
         format_apply: [--preview]
         lint_check: [--preview, --no-fix]
         lint_fix: [--preview, --fix, --unsafe-fixes]
+        lint_apply: [--preview, --fix, --unsafe-fixes, --exit-zero]
       # Why (mro-dipb): adaptive testmon GitHub Actions cache policy.
       # save_enabled stays false while storage-limit API returns HTTP 402 /
       # flext-infra sits near the default Actions cache ceiling (QUOTA_HOLD).
@@ -533,8 +497,6 @@ Infra:
           description: Publish only receipt-attested release artifacts.
         - name: gen
           description: Regenerate every managed projection atomically.
-        - name: conform
-          description: Prove generated projections are at their fixed point.
         - name: initialize
           description: Materialize the declared package initializer graph.
         - name: mod
@@ -1032,11 +994,10 @@ Infra:
           - tool.pydantic-mypy
           - tool.vulture
           # Written by the conform pipeline from the project SSOT
-          # (_sync_namespace_scope, _sync_budget_table), so a conflict inside
-          # them is the owner's own output and is recoverable. tool.flext.docs
-          # is deliberately absent: nothing writes it, it stays CUSTOM.
+          # (_sync_namespace_scope), so a conflict inside it is the owner's
+          # own output and is recoverable. tool.flext.docs is deliberately
+          # absent: nothing writes it, it stays CUSTOM.
           - tool.flext.namespace
-          - tool.flext.project.budget
         preserve_project_keys:
           - name
           - description

@@ -26,31 +26,20 @@ from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, u
 
-pytestmark = [pytest.mark.slow, pytest.mark.usefixtures("isolate_github_trigger_sha")]
+pytestmark = [pytest.mark.slow]
 
 
 def _conform_target(
     root: Path, repository: m.Infra.RepositoryRef, *, make_profile: c.Infra.MakeProfile
 ) -> m.Infra.RepositoryConformTarget:
-    """Build a typed rendering target from the same provider SSOT as production."""
-    provider = tm.ok(
-        u.Infra.repository_provider(repository, config.Infra.codegen.providers)
-    )
+    """Build a typed rendering target from the repository identity."""
     return m.Infra.RepositoryConformTarget(
         repository=repository,
         root=root,
         make_profile=make_profile,
         beads=u.Tests.beads_project(repository.name),
         canonical_project_name=repository.distribution,
-        baseline_branch=provider.branch,
-        baseline_reference=f"refs/remotes/origin/{provider.branch}",
         ci_enabled=True,
-        technical_branch_patterns=(
-            config.Infra.codegen.branch_policy.technical_branch_patterns
-        ),
-        governed_branch_patterns=(
-            config.Infra.codegen.branch_policy.governed_branch_patterns
-        ),
     )
 
 
@@ -302,249 +291,6 @@ class TestCodegenConform:
         tm.that(
             addopts,
             has=f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}",
-        )
-
-    @pytest.mark.slow
-    def test_branch_ancestry_accepts_active_merge_parent(self, tmp_path: Path) -> None:
-        root = u.Tests.git_repository(tmp_path)
-        baseline = u.Tests.git_capture(root, "rev-parse", "HEAD")
-        _ = u.Tests.git_run(
-            root, "update-ref", "refs/remotes/origin/0.12.0-dev", baseline
-        )
-        _ = u.Tests.git_run(
-            root, "remote", "set-url", "origin", str(tmp_path / "missing")
-        )
-        empty_tree = u.Tests.git_capture(root, "mktree")
-        divergent = u.Tests.git_capture(
-            root, "commit-tree", empty_tree, "-m", "Create divergent local line"
-        )
-        _ = u.Tests.git_run(root, "checkout", "-B", "0.12.0-dev", divergent)
-        divergent_check = tm.ok(
-            u.Cli.run_raw(
-                ["git", "merge-base", "--is-ancestor", baseline, divergent], cwd=root
-            )
-        )
-        tm.that(divergent_check.outcome.raw_return_code, eq=1)
-        service, request = _self_check_conform_service(root)
-
-        before_merge = tm.ok(service.plan(request)).branch_ancestry[0]
-        divergent_current = next(
-            reference
-            for reference in before_merge.references
-            if reference.reference == "refs/heads/0.12.0-dev"
-        )
-        tm.that(divergent_current.ancestor, eq=False)
-
-        merge_head = tm.ok(
-            u.Cli.capture(["git", "rev-parse", "--git-path", "MERGE_HEAD"], cwd=root)
-        )
-        (root / merge_head).write_text(f"{baseline}\n", encoding="utf-8")
-        during_merge = tm.ok(service.plan(request)).branch_ancestry[0]
-        merging_current = next(
-            reference
-            for reference in during_merge.references
-            if reference.reference == "refs/heads/0.12.0-dev"
-        )
-
-        tm.that(merging_current.ancestor, eq=True)
-
-    def test_branch_ancestry_anchors_baseline_to_triggering_commit(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """A concurrent publisher on the lane must not fail a linear commit.
-
-        flext-9ehwb (run 31218338222). ``refs/remotes/origin/<lane>`` is the
-        remote's LIVE tip: ``actions/checkout`` fetches at job start, so the tip
-        advances whenever another actor publishes while this run waits in the
-        queue. Gating against it asks whether the commit already absorbed work
-        published AFTER it was written -- false by construction for a perfectly
-        linear commit, which then fails with "does not descend from".
-
-        The baseline is therefore anchored to ``merge-base(live_tip,
-        GITHUB_SHA)``: the lane point the triggering commit actually knew.
-        Concurrent publishers move the tip; they never move that merge base.
-
-        The repository here reproduces the race exactly: HEAD is linear on top
-        of the lane, and the remote tip then advances by one unrelated commit.
-        """
-        root = u.Tests.git_repository(tmp_path)
-        lane_point = u.Tests.git_capture(root, "rev-parse", "HEAD")
-        _ = u.Tests.git_run(root, "checkout", "-B", "0.12.0-dev", lane_point)
-        # Our commit: written linearly on top of the lane as it existed.
-        (root / "ours.txt").write_text("ours\n", encoding="utf-8")
-        _ = u.Tests.git_run(root, "add", "ours.txt")
-        _ = u.Tests.git_run(root, "commit", "-m", "Our linear commit on the lane")
-        triggering_sha = u.Tests.git_capture(root, "rev-parse", "HEAD")
-        # A concurrent actor publishes to the same lane while our run queues,
-        # so the fetched remote tip moves past the point we branched from.
-        empty_tree = u.Tests.git_capture(root, "mktree")
-        concurrent_tip = u.Tests.git_capture(
-            root,
-            "commit-tree",
-            empty_tree,
-            "-p",
-            lane_point,
-            "-m",
-            "Concurrent publisher advances the lane",
-        )
-        _ = u.Tests.git_run(
-            root, "update-ref", "refs/remotes/origin/0.12.0-dev", concurrent_tip
-        )
-        _ = u.Tests.git_run(
-            root, "remote", "set-url", "origin", str(tmp_path / "missing")
-        )
-        # The live tip is genuinely NOT an ancestor of our commit: this is the
-        # exact state the old gate rejected.
-        live_tip_check = tm.ok(
-            u.Cli.run_raw(
-                ["git", "merge-base", "--is-ancestor", concurrent_tip, triggering_sha],
-                cwd=root,
-            )
-        )
-        tm.that(live_tip_check.outcome.raw_return_code, eq=1)
-
-        service, request = _self_check_conform_service(root)
-
-        monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_SHA, triggering_sha)
-        anchored = tm.ok(service.plan(request)).branch_ancestry[0]
-
-        current = next(
-            reference
-            for reference in anchored.references
-            if reference.reference == "refs/heads/0.12.0-dev"
-        )
-        tm.that(current.ancestor, eq=True)
-        tm.that(anchored.baseline_sha, eq=lane_point)
-
-    def test_branch_ancestry_skips_triggering_sha_in_submodule_context(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """GITHUB_SHA from the superproject must not break submodule ancestry.
-
-        In CI, GITHUB_SHA is the superproject's PR merge commit, which does
-            not exist inside a submodule's object database. ``git merge-base``
-            then fails with exit 128 ("Not a valid commit name"), breaking
-            ``gen check`` for every governed submodule (PR #187).
-
-        When triggering_sha does not resolve locally the gate must skip the
-        merge-base pin and fall back to the live baseline tip, the same
-            behavior a local (non-CI) checkout would use.
-        """
-        root = u.Tests.git_repository(tmp_path)
-        lane_point = u.Tests.git_capture(root, "rev-parse", "HEAD")
-        _ = u.Tests.git_run(root, "checkout", "-B", "0.12.0-dev", lane_point)
-        (root / "ours.txt").write_text("ours\n", encoding="utf-8")
-        _ = u.Tests.git_run(root, "add", "ours.txt")
-        _ = u.Tests.git_run(root, "commit", "-m", "Our commit on the lane")
-        # GITHUB_SHA is a SHA that does NOT exist in this repo (simulating a
-        # superproject merge commit visible only at the workspace root).
-        foreign_sha = "9" * 40
-        tm.that(
-            u.Cli.run_raw(
-                ["git", "cat-file", "-t", foreign_sha], cwd=root
-            ).value.outcome.raw_return_code,
-            eq=128,
-        )
-        monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_SHA, foreign_sha)
-        service, request = _self_check_conform_service(root)
-
-        anchored = tm.ok(service.plan(request)).branch_ancestry[0]
-        tm.that(anchored.baseline_sha, eq=lane_point)
-
-    def test_branch_ancestry_skips_bare_main_worktree_entry(
-        self, tmp_path: Path
-    ) -> None:
-        """A bare main worktree (Gas Town rig .repo.git) must not fail the plan.
-
-        `git worktree list --porcelain` lists the bare repository itself as a
-        worktree entry carrying only the `bare` attribute — no HEAD line. The
-        ancestry parser used to reject that block with "worktree has no HEAD";
-        it must skip it and keep planning.
-        """
-        bare = tmp_path / "repo.git"
-        tm.ok(u.Cli.run_checked(["git", "init", "-b", "dev", "--bare", str(bare)]))
-        tm.ok(
-            u.Cli.run_checked([
-                "git",
-                "-C",
-                str(bare),
-                "config",
-                "user.email",
-                "tests@flext.local",
-            ])
-        )
-        tm.ok(
-            u.Cli.run_checked([
-                "git",
-                "-C",
-                str(bare),
-                "config",
-                "user.name",
-                "Flext Tests",
-            ])
-        )
-        empty_tree = tm.ok(u.Cli.capture(["git", "-C", str(bare), "mktree"]))
-        seed = tm.ok(
-            u.Cli.capture([
-                "git",
-                "-C",
-                str(bare),
-                "commit-tree",
-                empty_tree,
-                "-m",
-                "seed",
-            ])
-        )
-        checkout = tmp_path / "checkout"
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "-C", str(bare), "worktree", "add", str(checkout), seed],
-                cwd=tmp_path,
-            )
-        )
-        tm.ok(
-            u.Cli.run_checked([
-                "git",
-                "-C",
-                str(checkout),
-                "update-ref",
-                "refs/remotes/origin/0.12.0-dev",
-                seed,
-            ])
-        )
-        repository = u.Tests.repository_ref("flext-infra").model_copy(
-            update={"path": Path()}
-        )
-        workspace = m.Infra.WorkspaceSpec(
-            name=repository.name,
-            beads=u.Tests.beads_project(repository.name),
-            repository=repository,
-            project=u.Tests.project_spec(repository.name),
-        )
-        (checkout / "pyproject.toml").write_text(
-            f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
-            encoding="utf-8",
-        )
-        package = checkout / "src" / repository.distribution.replace("-", "_")
-        package.mkdir(parents=True)
-        (package / "__init__.py").write_text("", encoding="utf-8")
-        request = u.Tests.conform_request(
-            checkout,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.CHECK,
-        )
-        service = FlextInfraCodegenConform(
-            repository_root=checkout, request=request, initial_workspace=workspace
-        )
-
-        plan = tm.ok(service.plan(request))
-
-        tm.that(
-            any(
-                entry.reference == "refs/remotes/origin/0.12.0-dev"
-                for entry in plan.branch_ancestry[0].references
-            ),
-            eq=True,
         )
 
     # This end-to-end scenario scaffolds a project and runs its console entry
@@ -1175,10 +921,7 @@ class TestCodegenConform:
         output = tm.ok(outcome)
         tm.that(output.stderr, eq="")
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
-        tm.that(
-            output.stdout,
-            has=["help", "setup", "check", "test", "fmt", "conform", "docs"],
-        )
+        tm.that(output.stdout, has=["help", "setup", "check", "test", "fmt", "docs"])
         tm.that(output.stdout, lacks="Custom hooks (custom.mk):")
         tm.that(output.stdout, lacks="WHAT")
 
@@ -1426,15 +1169,15 @@ class TestScriptDispatchMakefile:
         tm.that(" gen" in public_line, eq=True)
         tm.that(" codegen" in public_line, eq=False)
         tm.that("_DEFAULT_gen" in rendered, eq=False)
-        tm.that(
-            "_builtin-gen: $(if $(CHECK_ONLY),_builtin_gen_check,_builtin_gen_all)"
-            in rendered,
-            eq=True,
-        )
-        tm.that("_builtin-conform: _builtin_gen_check" in rendered, eq=True)
-        tm.that("_builtin_gen_check:" in rendered, eq=True)
+        # S1 (operator law 2026-09-14): gen dispatches unconditionally to
+        # _builtin_gen_all; there is no CHECK_ONLY selector, no separate
+        # check-mode recipe, and no `conform` verb left at all.
+        tm.that("_builtin-gen: _builtin_gen_all" in rendered, eq=True)
+        tm.that("_builtin-conform" in rendered, eq=False)
+        tm.that("_builtin_gen_check" in rendered, eq=False)
+        tm.that("_builtin_gen_apply" in rendered, eq=False)
         tm.that("_builtin_gen_init:" in rendered, eq=True)
-        tm.that("_builtin_gen_apply:" in rendered, eq=True)
+        tm.that("_builtin_gen_all:" in rendered, eq=True)
         tm.that("_builtin_codegen_check" in rendered, eq=False)
         tm.that("_builtin_codegen_apply" in rendered, eq=False)
         builtin_line = next(
@@ -1449,28 +1192,8 @@ class TestScriptDispatchMakefile:
             for line in rendered.splitlines()
             if line.startswith(".PHONY:") and "_builtin_" in line
         )
-        tm.that("_builtin_gen_check" in phony_line, eq=True)
-        tm.that("_builtin_gen_init" in phony_line, eq=True)
-        tm.that("_builtin_gen_apply" in phony_line, eq=True)
-        # Both handlers drive the conform engine (CLI namespace is unchanged).
-        gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
-        tm.that(gen_check_body.count("codegen conform"), eq=1)
-        tm.that("--mode check" in gen_check_body, eq=True)
-        tm.that(
-            gen_check_body,
-            has=["_builtin_require_environment", "$(PROJECT_FLEXT_INFRA)"],
-        )
-        tm.that(
-            gen_check_body,
-            lacks=["$(FLEXT_INFRA_BOOTSTRAP)", "codegen init", "deps modernize"],
-        )
-        tm.that(gen_check_body, lacks=["codegen init", "deps modernize"])
-        # One public conform invocation owns the complete generation transaction.
-        tm.that(
-            gen_check_body,
-            lacks=["codegen lazy-init", "docs generate", "_generated_docs"],
-        )
-        # The apply semantics live on _builtin_gen_all; _builtin_gen_apply aliases it.
+        tm.that(phony_line, eq=".PHONY: _builtin_gen_init _builtin_gen_all")
+        # The one handler drives the conform engine (CLI namespace is unchanged).
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
         tm.that(gen_all_body.count("codegen conform"), eq=1)
         tm.that("--mode apply" in gen_all_body, eq=True)
@@ -1491,8 +1214,6 @@ class TestScriptDispatchMakefile:
             lacks=["codegen lazy-init", "docs generate", "_generated_docs"],
         )
         tm.that("define _generated_docs" in rendered, eq=False)
-        gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
-        tm.that("_builtin_gen_all" in gen_apply_body, eq=True)
         gen_init_body = rendered.split("_builtin_gen_init:", 1)[1].split("\n\n", 1)[0]
         tm.that(gen_init_body.count("codegen init"), eq=2)
         tm.that(gen_init_body, lacks=["codegen conform", "REPOSITORY_ROOT", "bd"])

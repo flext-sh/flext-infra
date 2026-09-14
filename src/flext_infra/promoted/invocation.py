@@ -5,10 +5,7 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-from flext_infra.promoted.base import (
-    INCIDENT_MUTATION_REQUIRED_PARAMS,
-    RegistryError,
-)
+from flext_infra.promoted.base import INCIDENT_MUTATION_REQUIRED_PARAMS, RegistryError
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -16,20 +13,17 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-def validate_invocation(
-    command: p.Infra.Promoted.Command, *, require_required: bool = True
-) -> None:
+def validate_invocation(command: p.Infra.Promoted.Command) -> None:
     """Validate environment parameters before command execution.
 
     Raises:
-        RegistryError: When a required parameter has no value (with
-            ``require_required``) or a supplied value is not among the
-            parameter's declared choices.
+        RegistryError: When a required parameter has no value or a supplied
+            value is not among the parameter's declared choices.
 
     """
     for param in command.params:
         value = param_value(param, command)
-        if require_required and param.required and not value:
+        if param.required and not value:
             msg = (
                 f"{command.verb} WHAT={command.what}: parametro obrigatorio ausente: "
                 f"{param.name}; exemplo: {command.example}"
@@ -45,7 +39,8 @@ def validate_command_contract(command: p.Infra.Promoted.Command) -> None:
     """Validate static command header rules.
 
     Raises:
-        RegistryError: When an incident-domain mutation omits a required parameter.
+        RegistryError: When an incident-domain mutation omits a required
+            incident parameter.
 
     """
     param_by_name = {param.name: param for param in command.params}

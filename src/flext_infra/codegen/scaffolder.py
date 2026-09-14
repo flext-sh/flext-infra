@@ -193,7 +193,6 @@ class FlextInfraCodegenScaffolder(s[str]):
                 desired_content=content.encode(c.Cli.ENCODING_DEFAULT),
                 desired_mode=0o644,
                 owner="codegen",
-                policy="create-only",
             )
             if planned.failure:
                 message = f"writing scaffold {filepath}: {planned.error}"

@@ -126,7 +126,7 @@ class TestWorkspaceCheckCli:
 
         tm.that(exit_code, eq=0)
 
-    def test_run_cli_never_rewrites_source_because_check_is_read_only(
+    def test_run_cli_fix_contract_reports_findings_without_failing(
         self, tmp_path: Path
     ) -> None:
         workspace = self._create_workspace(tmp_path)
@@ -139,13 +139,46 @@ class TestWorkspaceCheckCli:
             str(workspace),
             "--gates",
             "lint",
-            "--fix",
+            "--apply",
+            "--report-findings",
             "--ruff-args",
             "--select F401",
             "--projects",
             "flext-core",
         ])
 
+        # Apply + report-findings is the `make fix` contract (operator
+        # 2026-09-14): it reports what still fails without failing the run;
+        # an unparsable module is never rewritten.
+        tm.that(exit_code, eq=0)
+        tm.that(
+            module_path.read_text(encoding="utf-8"),
+            eq='"""Fixture module."""\n\ndef broken(:\n',
+        )
+
+    def test_run_cli_check_contract_fails_on_remaining_findings(
+        self, tmp_path: Path
+    ) -> None:
+        """Apply alone (the `make check` contract) still fails on findings."""
+        workspace = self._create_workspace(tmp_path)
+        module_path = self._write_module(workspace, "flext-core", "def broken(:\n")
+
+        exit_code = main([
+            "check",
+            "run",
+            "--repository-root",
+            str(workspace),
+            "--gates",
+            "lint",
+            "--apply",
+            "--ruff-args",
+            "--select F401",
+            "--projects",
+            "flext-core",
+        ])
+
+        # No --report-findings: apply mode still fails while findings remain,
+        # and the unparsable module is never rewritten.
         tm.that(exit_code, eq=1)
         tm.that(
             module_path.read_text(encoding="utf-8"),
@@ -165,7 +198,7 @@ class TestWorkspaceCheckCli:
             str(workspace),
             "--gates",
             "lint",
-            "--fix",
+            "--apply",
             "--check-only",
             "--ruff-args",
             "--select F401",

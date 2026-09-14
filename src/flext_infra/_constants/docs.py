@@ -130,8 +130,8 @@ class FlextInfraConstantsDocs:
         re.IGNORECASE,
     )
     """Match selectors outside the canonical root Make grammar."""
-    DOCS_APPLY_RE: Final[t.RegexPattern] = re.compile(r"\bAPPLY=Y\b")
-    """Match the sole canonical mutation flag in documented commands."""
+    DOCS_APPLY_RE: Final[t.RegexPattern] = re.compile(r"\bAPPLY=")
+    """Match any APPLY input in documented commands; Make verbs have no mode."""
     DOCS_COMMAND_CONTRACT_DIRNAMES: Final[frozenset[str]] = frozenset({
         "guides",
         "standards",
