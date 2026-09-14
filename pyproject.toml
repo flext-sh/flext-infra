@@ -711,3 +711,8 @@ tokens = 1000000
 time-seconds = 600
 memory-mb = 2048
 tokens = 1000000
+
+[tool.flext.project.budget.index-declarations]
+time-seconds = 600
+memory-mb = 2048
+tokens = 1000000

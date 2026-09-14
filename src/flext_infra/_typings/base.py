@@ -57,6 +57,9 @@ class FlextInfraTypesBase:
     type JinjaTemplate = _JinjaTemplate
     "Jinja2 template object."
 
+    type ModelFieldSpec = m.FieldInfo
+    "Field metadata a model-field factory returns, from the m facade."
+
     type InfraValue = t.JsonValue
     "Canonical infrastructure payload contract from flext-cli JSON typing."
     type FacadeFamily = str

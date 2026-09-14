@@ -270,14 +270,23 @@ class FlextInfraMiseArtifactsVerification:
     def states_current(
         cls, states: tuple[m.Cli.AtomicFileState, ...]
     ) -> p.Result[bool]:
-        """Prove every file state still equals its authenticated snapshot.
+        """Prove every full file state still equals its authenticated snapshot.
 
-        Compares semantically relevant fields (content, mode) only. Metadata
-        fields (device, inode, link_count, parent_*) may vary during read-only
-        operations due to filesystem access patterns and are not semantically
-        significant for source-code stability. Content is normalized to handle
-        whitespace/line-ending differences. Drift is logged but does not block
-        the pipeline, as the planner operates on the current state.
+        This barrier is what makes the transaction atomic: it proves nothing
+        moved between planning and publication. It compares the FULL state --
+        content, mode and physical identity -- because a snapshot whose inode or
+        device changed underneath the transaction is exactly the race the
+        barrier exists to catch.
+
+        It must never be softened to make a run pass. It briefly was: content
+        was compared whitespace-normalised, mode drift was downgraded to a
+        warning "logged but does not block the pipeline", and a literal
+        `_models/config.py` was skipped as "expected to drift". That file
+        carries no generation marker -- it is authored source and is not
+        expected to drift at all; the drift being masked was the truncation
+        churn of that same afternoon. A verifier that cannot fail is not a
+        verifier, and a hardcoded path exemption in a fleet-wide generator hides
+        the next real corruption just as effectively as it hid that one.
         """
         for expected in states:
             observed = files.read_state(
