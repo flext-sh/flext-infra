@@ -25,18 +25,21 @@ from flext_infra import c
 from tests import u as test_u
 
 
-def _repository_root() -> Path:
-    """Return the repository root that owns the imported package."""
-    return Path(flext_infra.__file__).resolve().parents[2]
-
-
-def _is_allowed_by_policy(relative_path: str) -> bool:
-    """Return whether git would track *relative_path* under the SSOT policy."""
-    rendered = "\n".join(test_u.Tests.ignore_patterns_for(_repository_root())) + "\n"
-    return test_u.Tests.is_tracked_under(rendered, relative_path)
-
-
 class TestsFlextInfraLockfileIsTrackedAtTheResolutionRoot:
+    def _repository_root(self) -> Path:
+        """Return the repository root that owns the imported package."""
+        return Path(flext_infra.__file__).resolve().parents[2]
+
+    def _is_allowed_by_policy(self, relative_path: str) -> bool:
+        """Return whether git would track *relative_path* under the SSOT policy."""
+        rendered = (
+            "\n".join(test_u.Tests.ignore_patterns_for(self._repository_root())) + "\n"
+        )
+        return test_u.Tests.is_tracked_under(rendered, relative_path)
+
     def test_lockfile_is_committable_under_the_ignore_policy(self) -> None:
         """The ignore policy never blocks the uv lockfile."""
-        tm.that(_is_allowed_by_policy(c.Infra.UV_LOCK_FILENAME), eq=True)
+        tm.that(self._is_allowed_by_policy(c.Infra.UV_LOCK_FILENAME), eq=True)
+
+
+__all__: list[str] = ["TestsFlextInfraLockfileIsTrackedAtTheResolutionRoot"]

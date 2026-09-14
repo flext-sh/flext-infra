@@ -106,3 +106,6 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
 
         tm.that(set(policies), eq={member.value for member in c.Infra.MakeProfile})
         tm.that(policies[profile] is policies[profile.value], eq=True)
+
+
+__all__: list[str] = ["TestsFlextInfraCustomHandlerPolicyIsProfileAware"]

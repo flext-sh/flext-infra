@@ -162,4 +162,4 @@ class TestsFlextInfraRefactorCensusPreview:
         tm.that(module_path.read_text(encoding="utf-8"), eq=original_source)
 
 
-__all__: tuple[str, ...] = ()
+__all__: list[str] = ["TestsFlextInfraRefactorCensusPreview"]

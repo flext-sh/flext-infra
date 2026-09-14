@@ -7,7 +7,7 @@ from flext_tests import tm
 from tests import c, u
 
 
-class TestsMakeHermeticEnvRemoveKeys:
+class TestsFlextInfraMakeHermeticEnvRemoveKeys:
     """The removal set is derived from every declared Make variable owner."""
 
     def test_covers_orchestrator_apply_standalone_pytest_and_color_keys(self) -> None:
@@ -24,3 +24,6 @@ class TestsMakeHermeticEnvRemoveKeys:
         keys = u.Infra.make_hermetic_env_remove_keys()
         tm.that(len(keys), eq=len(set(keys)))
         tm.that(keys, eq=u.Infra.make_hermetic_env_remove_keys())
+
+
+__all__: list[str] = ["TestsFlextInfraMakeHermeticEnvRemoveKeys"]

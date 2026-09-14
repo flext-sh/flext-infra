@@ -23,17 +23,14 @@ from tests import m, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
 
+class TestsFlextInfraTierWhitelist:
+    """Abstraction-boundary rule and summary content for tier-whitelist validation."""
 
-@pytest.fixture
-def v() -> FlextInfraValidateTierWhitelist:
-    """Shared validator instance."""
-    return FlextInfraValidateTierWhitelist()
-
-
-class TestTierWhitelistAbstractionBoundary:
-    """Abstraction-boundary rule: no bare pydantic/structlog/... outside flext-core."""
+    @pytest.fixture
+    def v(self) -> FlextInfraValidateTierWhitelist:
+        """Shared validator instance."""
+        return FlextInfraValidateTierWhitelist()
 
     def test_empty_workspace_passes(
         self, tmp_path: Path, v: FlextInfraValidateTierWhitelist
@@ -93,10 +90,6 @@ class TestTierWhitelistAbstractionBoundary:
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
 
-
-class TestTierWhitelistSummary:
-    """Summary content."""
-
     def test_failing_summary_reports_count(
         self, tmp_path: Path, v: FlextInfraValidateTierWhitelist
     ) -> None:
@@ -114,4 +107,4 @@ class TestTierWhitelistSummary:
         tm.that(report.summary, has="boundary")
 
 
-__all__: t.StrSequence = []
+__all__: list[str] = ["TestsFlextInfraTierWhitelist"]

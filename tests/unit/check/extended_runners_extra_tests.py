@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from tests import m, p
 
 
-class TestExtendedRunnerExtras:
+class TestsFlextInfraExtendedRunnerExtras:
     @staticmethod
     def gate_check_with_issue(
         gate_class: type[FlextInfraGate],
@@ -66,7 +66,7 @@ class TestExtendedRunnerExtras:
             returncode=1,
         )
 
-        _ = TestExtendedRunnerExtras.gate_check_with_issue(
+        _ = TestsFlextInfraExtendedRunnerExtras.gate_check_with_issue(
             FlextInfraPyrightGate, tmp_path, project_dir, runner=runner
         )
 
@@ -130,7 +130,7 @@ class TestExtendedRunnerExtras:
             returncode=1,
         )
 
-        _ = TestExtendedRunnerExtras.gate_check_with_issue(
+        _ = TestsFlextInfraExtendedRunnerExtras.gate_check_with_issue(
             FlextInfraBanditGate, tmp_path, project_dir, runner=runner
         )
 
@@ -167,7 +167,7 @@ class TestExtendedRunnerExtras:
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         runner = u.Tests.command_runner(stdout="", returncode=0)
 
-        result = TestExtendedRunnerExtras.gate_check_with_issue(
+        result = TestsFlextInfraExtendedRunnerExtras.gate_check_with_issue(
             FlextInfraBanditGate, tmp_path, project_dir, runner=runner
         )
         tm.that(result.issues[0].code, eq="PARSE_ERROR")
@@ -177,7 +177,7 @@ class TestExtendedRunnerExtras:
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         runner = u.Tests.command_runner(stdout="invalid json", returncode=1)
 
-        result = TestExtendedRunnerExtras.gate_check_with_issue(
+        result = TestsFlextInfraExtendedRunnerExtras.gate_check_with_issue(
             FlextInfraBanditGate, tmp_path, project_dir, runner=runner
         )
         tm.that(result.issues[0].code, eq="PARSE_ERROR")
@@ -186,7 +186,7 @@ class TestExtendedRunnerExtras:
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         runner = u.Tests.command_runner(stderr="Failed to spawn: bandit", returncode=1)
 
-        result = TestExtendedRunnerExtras.gate_check_with_issue(
+        result = TestsFlextInfraExtendedRunnerExtras.gate_check_with_issue(
             FlextInfraBanditGate, tmp_path, project_dir, runner=runner
         )
         tm.that(result.issues[0].code, eq="TOOL_ERROR")
@@ -231,7 +231,7 @@ class TestExtendedRunnerExtras:
             stdout="README.md:1:1: [MD001] Heading level", returncode=1
         )
 
-        _ = TestExtendedRunnerExtras.gate_check_with_issue(
+        _ = TestsFlextInfraExtendedRunnerExtras.gate_check_with_issue(
             FlextInfraMarkdownGate, tmp_path, project_dir, runner=runner
         )
 
@@ -244,8 +244,11 @@ class TestExtendedRunnerExtras:
             stderr="execution error: missing rumdl", returncode=1
         )
 
-        result = TestExtendedRunnerExtras.gate_check_with_issue(
+        result = TestsFlextInfraExtendedRunnerExtras.gate_check_with_issue(
             FlextInfraMarkdownGate, tmp_path, project_dir, runner=runner
         )
         tm.that(result.issues[0].code, eq="TOOL_ERROR")
         tm.that(result.issues[0].message, contains="missing rumdl")
+
+
+__all__: list[str] = ["TestsFlextInfraExtendedRunnerExtras"]

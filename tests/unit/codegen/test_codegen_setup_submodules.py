@@ -19,7 +19,35 @@ from tests import u as test_u
 pytestmark = pytest.mark.slow
 
 
-class TestsCodegenSetupSubmodules:
+class TestsFlextInfraCodegenSetupSubmodules:
+    @pytest.fixture(scope="module")
+    def generated_project_template(
+        self, tmp_path_factory: pytest.TempPathFactory
+    ) -> Path:
+        root = tmp_path_factory.mktemp("setup-submodules") / "project"
+        # Mirror the production `codegen new` spec assembly (its single delegate is
+        # the conform pipeline below) so the template is the full managed render.
+        repository = test_u.Tests.repository_ref(
+            "flext-demo", role=c.Infra.MakeProfile.STANDALONE
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            name=repository.name,
+            beads=test_u.Tests.beads_project(repository.name),
+            repository=repository,
+            project=test_u.Tests.project_spec(repository.name),
+        )
+        tm.ok(
+            FlextInfraCodegenConform.execute_request(
+                test_u.Tests.conform_request(
+                    root,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                ),
+                initial_workspace=workspace,
+            )
+        )
+        return root
+
     @staticmethod
     def _git(root: Path, *arguments: str) -> str:
         return tm.ok(u.Cli.capture(["git", *arguments], cwd=root)).strip()
@@ -490,31 +518,4 @@ class TestsCodegenSetupSubmodules:
         tm.that(self._git(checkout, "branch", "--show-current"), eq="declared-dev")
 
 
-@pytest.fixture(scope="module")
-def generated_project_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    root = tmp_path_factory.mktemp("setup-submodules") / "project"
-    # Mirror the production `codegen new` spec assembly (its single delegate is
-    # the conform pipeline below) so the template is the full managed render.
-    repository = test_u.Tests.repository_ref(
-        "flext-demo", role=c.Infra.MakeProfile.STANDALONE
-    )
-    workspace = m.Infra.WorkspaceSpec(
-        name=repository.name,
-        beads=test_u.Tests.beads_project(repository.name),
-        repository=repository,
-        project=test_u.Tests.project_spec(repository.name),
-    )
-    tm.ok(
-        FlextInfraCodegenConform.execute_request(
-            test_u.Tests.conform_request(
-                root,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.APPLY,
-            ),
-            initial_workspace=workspace,
-        )
-    )
-    return root
-
-
-__all__: tuple[str, ...] = ()
+__all__: list[str] = ["TestsFlextInfraCodegenSetupSubmodules"]

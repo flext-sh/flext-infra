@@ -35,131 +35,134 @@ _TEMPLATE = (
 )
 
 
-def _template_text() -> str:
-    """Return the generated-Makefile template source."""
-    return _TEMPLATE.read_text(encoding="utf-8")
+class TestsFlextInfraGenRespectsInvocationScope:
+    """`gen` recipes write to exactly one root per invocation."""
 
+    def _template_text(self) -> str:
+        """Return the generated-Makefile template source."""
+        return _TEMPLATE.read_text(encoding="utf-8")
 
-def _recipe_bodies() -> dict[str, list[str]]:
-    """Return each ``_builtin_*`` target mapped to its recipe lines."""
-    bodies: dict[str, list[str]] = {}
-    current: str | None = None
-    for line in _template_text().splitlines():
-        target = re.match(r"^(_builtin_[a-z_]+):", line)
-        if target:
-            current = target.group(1)
-            bodies[current] = []
-            continue
-        if current is None:
-            continue
-        if line.startswith("\t"):
-            bodies[current].append(line.strip())
-            continue
-        current = None
-    return bodies
+    def _recipe_bodies(self) -> dict[str, list[str]]:
+        """Return each ``_builtin_*`` target mapped to its recipe lines."""
+        bodies: dict[str, list[str]] = {}
+        current: str | None = None
+        for line in self._template_text().splitlines():
+            target = re.match(r"^(_builtin_[a-z_]+):", line)
+            if target:
+                current = target.group(1)
+                bodies[current] = []
+                continue
+            if current is None:
+                continue
+            if line.startswith("\t"):
+                bodies[current].append(line.strip())
+                continue
+            current = None
+        return bodies
 
+    def _mixed_scope_recipes(self) -> dict[str, list[str]]:
+        """Return recipes whose commands disagree about which root they write to."""
+        mixed: dict[str, list[str]] = {}
+        for target, lines in self._recipe_bodies().items():
+            writes = [
+                line
+                for line in lines
+                if "$(PROJECT_ROOT)" in line or "$(REPOSITORY_ROOT)" in line
+            ]
+            if not writes:
+                continue
+            uses_project = any("$(PROJECT_ROOT)" in line for line in writes)
+            uses_workspace = any("$(REPOSITORY_ROOT)" in line for line in writes)
+            if uses_project and uses_workspace:
+                mixed[target] = writes
+        return mixed
 
-def _mixed_scope_recipes() -> dict[str, list[str]]:
-    """Return recipes whose commands disagree about which root they write to."""
-    mixed: dict[str, list[str]] = {}
-    for target, lines in _recipe_bodies().items():
-        writes = [
-            line
-            for line in lines
-            if "$(PROJECT_ROOT)" in line or "$(REPOSITORY_ROOT)" in line
-        ]
-        if not writes:
-            continue
-        uses_project = any("$(PROJECT_ROOT)" in line for line in writes)
-        uses_workspace = any("$(REPOSITORY_ROOT)" in line for line in writes)
-        if uses_project and uses_workspace:
-            mixed[target] = writes
-    return mixed
+    def test_no_recipe_mixes_project_and_repository_roots(self) -> None:
+        """One recipe never writes to two different roots.
 
+        A command that escalates to ``REPOSITORY_ROOT`` beside one scoped to
+        ``PROJECT_ROOT`` mutates siblings the caller never asked for.
+        """
+        mixed = self._mixed_scope_recipes()
 
-def test_no_recipe_mixes_project_and_repository_roots() -> None:
-    """One recipe never writes to two different roots.
-
-    A command that escalates to ``REPOSITORY_ROOT`` beside one scoped to
-    ``PROJECT_ROOT`` mutates siblings the caller never asked for.
-    """
-    mixed = _mixed_scope_recipes()
-
-    assert not mixed, (
-        f"recipes mix invocation scopes and escalate beyond the caller: {mixed}"
-    )
-
-
-def test_recipe_bodies_are_actually_parsed() -> None:
-    """Guard the parser so the invariant above cannot pass vacuously."""
-    bodies = _recipe_bodies()
-
-    assert any(
-        "$(PROJECT_ROOT)" in line for lines in bodies.values() for line in lines
-    ), f"no PROJECT_ROOT command found in {_TEMPLATE}; parser is broken"
-
-
-def test_gen_has_one_codegen_owner() -> None:
-    """The gen recipe delegates each mode once to the conform owner.
-
-    Apply verifies its own fixed point inside the conform transaction, so a
-    second external check invocation would duplicate ownership.
-    """
-    text = _template_text()
-    assert "CODEGEN_PROJECT_ARGS" not in text
-
-    bodies = _recipe_bodies()
-    expected_modes = {"_builtin_gen_check": ("check",), "_builtin_gen_all": ("apply",)}
-    for target, modes in expected_modes.items():
-        conform_lines = [line for line in bodies[target] if "codegen conform" in line]
-        assert len(conform_lines) == len(modes)
-        assert all(
-            f"--mode {mode}" in line
-            for line, mode in zip(conform_lines, modes, strict=True)
+        assert not mixed, (
+            f"recipes mix invocation scopes and escalate beyond the caller: {mixed}"
         )
-        assert all('--root "$(PROJECT_ROOT)"' in line for line in conform_lines)
-        assert all('--scope "$(CODEGEN_SCOPE)"' in line for line in conform_lines)
-        assert all("deps modernize" not in line for line in bodies[target])
-        assert all("deps extra-paths" not in line for line in bodies[target])
+
+    def test_recipe_bodies_are_actually_parsed(self) -> None:
+        """Guard the parser so the invariant above cannot pass vacuously."""
+        bodies = self._recipe_bodies()
+
+        assert any(
+            "$(PROJECT_ROOT)" in line for lines in bodies.values() for line in lines
+        ), f"no PROJECT_ROOT command found in {_TEMPLATE}; parser is broken"
+
+    def test_gen_has_one_codegen_owner(self) -> None:
+        """The gen recipe delegates each mode once to the conform owner.
+
+        Apply verifies its own fixed point inside the conform transaction, so a
+        second external check invocation would duplicate ownership.
+        """
+        text = self._template_text()
+        assert "CODEGEN_PROJECT_ARGS" not in text
+
+        bodies = self._recipe_bodies()
+        expected_modes = {
+            "_builtin_gen_check": ("check",),
+            "_builtin_gen_all": ("apply",),
+        }
+        for target, modes in expected_modes.items():
+            conform_lines = [
+                line for line in bodies[target] if "codegen conform" in line
+            ]
+            assert len(conform_lines) == len(modes)
+            assert all(
+                f"--mode {mode}" in line
+                for line, mode in zip(conform_lines, modes, strict=True)
+            )
+            assert all('--root "$(PROJECT_ROOT)"' in line for line in conform_lines)
+            assert all('--scope "$(CODEGEN_SCOPE)"' in line for line in conform_lines)
+            assert all("deps modernize" not in line for line in bodies[target])
+            assert all("deps extra-paths" not in line for line in bodies[target])
+
+    def test_gen_init_is_a_direct_hermetic_owner_route(self) -> None:
+        """The `initialize` verb never enters conform, hooks, or topology.
+
+        Root cause (R28/bff9326a3): the `gen WHAT=init` indirection was retired.
+        `initialize` is now its own declared public verb, dispatched straight to
+        `_builtin_gen_init` without `_builtin_require_environment`, and it derives
+        `GEN_INIT_ONLY` from `MAKECMDGOALS` so the repository-root probe stays
+        hermetic (`REPOSITORY_ROOT := $(MAKEFILE_ROOT)`, no git shell-out).
+        """
+        text = self._template_text()
+        init_lines = self._recipe_bodies()["_builtin_gen_init"]
+        init_commands = [line for line in init_lines if "codegen init" in line]
+
+        assert len(init_commands) == 2
+        assert all(
+            '--repository-root "$(PROJECT_ROOT)"' in line for line in init_commands
+        )
+        assert all("codegen conform" not in line for line in init_lines)
+        assert '{% if verb.name not in ("help", "initialize") %}' in text
+        assert "_builtin-initialize: _builtin_gen_init" in text
+        assert "ifneq ($(filter initialize,$(MAKECMDGOALS)),)" in text
+        assert "GEN_INIT_ONLY := Y" in text
+        assert "REPOSITORY_ROOT := $(MAKEFILE_ROOT)" in text
+        assert "INIT_FLEXT_INFRA" not in text
+
+    def test_project_selector_resolves_members_from_repository_root(self) -> None:
+        """Workspace members are projected as declared gitlinks, not a WORKSPACE var.
+
+        Root cause: the `override WORKSPACE := .../$(PROJECT)` selector was
+        retired in favor of `WORKSPACE_SUBPROJECTS`/`MANAGED_GITLINKS`, which the
+        template renders from config (`workspace_subprojects`), never re-derived
+        from a shell probe at `REPOSITORY_ROOT` or `PROJECT_ROOT`.
+        """
+        text = self._template_text()
+        assert "override WORKSPACE := $(REPOSITORY_ROOT)/$(PROJECT)" not in text
+        assert "override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)" not in text
+        assert "WORKSPACE_SUBPROJECTS :=" in text
+        assert "MANAGED_GITLINKS :=" in text
 
 
-def test_gen_init_is_a_direct_hermetic_owner_route() -> None:
-    """The `initialize` verb never enters conform, hooks, or topology.
-
-    Root cause (R28/bff9326a3): the `gen WHAT=init` indirection was retired.
-    `initialize` is now its own declared public verb, dispatched straight to
-    `_builtin_gen_init` without `_builtin_require_environment`, and it derives
-    `GEN_INIT_ONLY` from `MAKECMDGOALS` so the repository-root probe stays
-    hermetic (`REPOSITORY_ROOT := $(MAKEFILE_ROOT)`, no git shell-out).
-    """
-    text = _template_text()
-    init_lines = _recipe_bodies()["_builtin_gen_init"]
-    init_commands = [line for line in init_lines if "codegen init" in line]
-
-    assert len(init_commands) == 2
-    assert all('--repository-root "$(PROJECT_ROOT)"' in line for line in init_commands)
-    assert all("codegen conform" not in line for line in init_lines)
-    assert '{% if verb.name not in ("help", "initialize") %}' in text
-    assert "_builtin-initialize: _builtin_gen_init" in text
-    assert "ifneq ($(filter initialize,$(MAKECMDGOALS)),)" in text
-    assert "GEN_INIT_ONLY := Y" in text
-    assert "REPOSITORY_ROOT := $(MAKEFILE_ROOT)" in text
-    assert "INIT_FLEXT_INFRA" not in text
-
-
-def test_project_selector_resolves_members_from_repository_root() -> None:
-    """Workspace members are projected as declared gitlinks, not a WORKSPACE var.
-
-    Root cause: the `override WORKSPACE := .../$(PROJECT)` selector was
-    retired in favor of `WORKSPACE_SUBPROJECTS`/`MANAGED_GITLINKS`, which the
-    template renders from config (`workspace_subprojects`), never re-derived
-    from a shell probe at `REPOSITORY_ROOT` or `PROJECT_ROOT`.
-    """
-    text = _template_text()
-    assert "override WORKSPACE := $(REPOSITORY_ROOT)/$(PROJECT)" not in text
-    assert "override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)" not in text
-    assert "WORKSPACE_SUBPROJECTS :=" in text
-    assert "MANAGED_GITLINKS :=" in text
-
-
-__all__: tuple[str, ...] = ()
+__all__: list[str] = ["TestsFlextInfraGenRespectsInvocationScope"]

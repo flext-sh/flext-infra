@@ -13,7 +13,7 @@ _RECIPE = (
 )
 
 
-class TestsSubmoduleRecipeShell:
+class TestsFlextInfraSubmoduleRecipeShell:
     """A Make recipe is one shell command joined by backslash continuations.
 
     A comment line inside the recipe that does not itself end with a
@@ -49,4 +49,4 @@ class TestsSubmoduleRecipeShell:
         tm.that(offenders, eq=[])
 
 
-__all__: tuple[str, ...] = ()
+__all__: list[str] = ["TestsFlextInfraSubmoduleRecipeShell"]

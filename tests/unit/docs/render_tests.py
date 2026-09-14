@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestsDocsRenderExcludeDocs:
+class TestsFlextInfraDocsRender:
     """nav404 regression: exclude_docs must keep nested section READMEs (flext-3o9s).
 
     MkDocs evaluates ``exclude_docs`` as gitignore-style patterns
@@ -73,3 +73,6 @@ class TestsDocsRenderExcludeDocs:
                 "        - api-reference/generated/**\n"
             ),
         )
+
+
+__all__: list[str] = ["TestsFlextInfraDocsRender"]

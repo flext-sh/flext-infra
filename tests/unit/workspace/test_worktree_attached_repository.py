@@ -11,7 +11,7 @@ from tests import u
 from tests.unit.workspace import WorktreeFixture
 
 
-class TestsAttachedRepositoryWorktree(WorktreeFixture):
+class TestsFlextInfraAttachedRepositoryWorktree(WorktreeFixture):
     """Exercise Git's primary registry for an attached repository."""
 
     def test_attached_submodule_uses_one_primary_local_container(

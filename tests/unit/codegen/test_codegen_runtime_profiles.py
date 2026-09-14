@@ -14,7 +14,7 @@ from tests import u
 from tests.unit.workspace import WorktreeFixture
 
 
-class TestCodegenRuntimeProfiles:
+class TestsFlextInfraCodegenRuntimeProfiles:
     @pytest.mark.parametrize(
         "upstream",
         tuple(
@@ -181,3 +181,6 @@ class TestCodegenRuntimeProfiles:
             u.Infra.overlay_preserved(rendered, live),
             has="validate runtime dependencies",
         )
+
+
+__all__: list[str] = ["TestsFlextInfraCodegenRuntimeProfiles"]

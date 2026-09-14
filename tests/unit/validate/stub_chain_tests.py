@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from tests import t
 
 
-class TestStubChain:
+class TestsFlextInfraStubChain:
     """Declarative public-contract tests for stub-chain validation."""
 
     @staticmethod
@@ -176,4 +176,4 @@ class TestStubChain:
         tm.that(result.value, eq=True)
 
 
-__all__: t.StrSequence = []
+__all__: list[str] = ["TestsFlextInfraStubChain"]

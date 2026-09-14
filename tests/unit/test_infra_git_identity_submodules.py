@@ -15,7 +15,7 @@ from flext_infra import c, m, u
 from tests import u as test_u
 
 
-class TestInfraGitIdentitySubmodules:
+class TestsFlextInfraGitIdentitySubmodules:
     """Report a superproject from the index, never from ``status --porcelain``.
 
     Gitlink modes (``160000``) appear only in the index listing. ``git status
@@ -239,3 +239,6 @@ class TestInfraGitIdentitySubmodules:
         )
         tm.that(identity.repo_root, eq=root.resolve())
         tm.that(identity.requested_path, eq=(nested / "module.py").resolve())
+
+
+__all__: list[str] = ["TestsFlextInfraGitIdentitySubmodules"]

@@ -15,7 +15,7 @@ from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspace
 from tests import u as test_u
 
 
-class TestsTransactionDirectoryJournal:
+class TestsFlextInfraTransactionDirectoryJournal:
     """Exercise creation and cleanup against real physical filesystem state."""
 
     _TRANSACTION_ID = "a" * 32
@@ -175,7 +175,7 @@ class TestsTransactionDirectoryJournal:
         planned = FlextInfraMiseWorkspacePlanner(owner).layout_from_selectors(
             root.resolve(),
             (".",),
-            transaction_id=TestsTransactionDirectoryJournal._TRANSACTION_ID,
+            transaction_id=TestsFlextInfraTransactionDirectoryJournal._TRANSACTION_ID,
         )
         return tm.ok(planned)
 
@@ -187,7 +187,7 @@ class TestsTransactionDirectoryJournal:
         physical = layout.scope_root.lstat()
         return m.Infra.CodegenTransactionJournal(
             version=8,
-            transaction_id=TestsTransactionDirectoryJournal._TRANSACTION_ID,
+            transaction_id=TestsFlextInfraTransactionDirectoryJournal._TRANSACTION_ID,
             scope_device=physical.st_dev,
             scope_inode=physical.st_ino,
             state="prepared",
@@ -382,4 +382,4 @@ class TestsTransactionDirectoryJournal:
         tm.that(marker.read_bytes(), eq=b"preserve")
 
 
-__all__: tuple[str, ...] = ()
+__all__: list[str] = ["TestsFlextInfraTransactionDirectoryJournal"]

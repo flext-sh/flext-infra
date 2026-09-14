@@ -50,9 +50,79 @@ if TYPE_CHECKING:
     )
     from .fixtures_git import real_git_repo
     from .runner_service import RealSubprocessRunner
+    from .test_cli_repository_root_contract import (
+        TestsFlextInfraCliRepositoryRootContract,
+    )
+    from .test_cprofile_entry import TestsFlextInfraCprofileEntry
+    from .test_custom_handler_policy_is_profile_aware import (
+        TestsFlextInfraCustomHandlerPolicyIsProfileAware,
+    )
+    from .test_custom_make_surface_is_derived import (
+        TestsFlextInfraCustomMakeSurfaceIsDerived,
+    )
+    from .test_custom_surface_never_shadows_public_verbs import (
+        TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs,
+    )
+    from .test_flext_service_base_alias import TestsFlextInfraServiceBaseAlias
+    from .test_git_fixture_isolation import TestsFlextInfraGitFixtureIsolation
+    from .test_gitignore_is_generated_from_ssot import (
+        TestsFlextInfraGitignoreIsGeneratedFromSsot,
+    )
+    from .test_infra_git_identity_submodules import TestsFlextInfraGitIdentitySubmodules
+    from .test_infra_maintenance_cli import TestsFlextInfraInfraMaintenanceCli
+    from .test_infra_maintenance_init import TestsFlextInfraInfraMaintenanceInit
+    from .test_infra_maintenance_main import TestsFlextInfraInfraMaintenanceMain
+    from .test_infra_maintenance_python_version import (
+        TestsFlextInfraInfraMaintenancePythonVersion,
+    )
+    from .test_infra_public_api import TestsFlextInfraPublicApi
+    from .test_infra_refactor_rope_migrations import (
+        TestsFlextInfraInfraRefactorRopeMigrations,
+    )
+    from .test_infra_rope_service import TestsFlextInfraInfraRopeService
+    from .test_infra_version_core import TestsFlextInfraInfraVersionCore
+    from .test_infra_version_extra import TestsFlextInfraInfraVersionExtra
+    from .test_lockfile_is_tracked_at_the_resolution_root import (
+        TestsFlextInfraLockfileIsTrackedAtTheResolutionRoot,
+    )
+    from .test_make_parse_is_side_effect_free import (
+        TestsFlextInfraMakeParseIsSideEffectFree,
+    )
+    from .test_pyproject_conform_preserves_lint_scope import (
+        TestsFlextInfraPyprojectConformPreservesLintScope,
+    )
+    from .test_pyproject_conform_topology_sources import (
+        TestsFlextInfraPyprojectConformTopologySources,
+    )
+    from .test_version_diag import TestsFlextInfraVersionDiag
+    from .test_version_diag2 import TestsFlextInfraVersionDiagExtra
     from .workspace_factory import TestsFlextInfraWorkspaceFactory
 __all__: tuple[str, ...] = (
     "RealSubprocessRunner",
+    "TestsFlextInfraCliRepositoryRootContract",
+    "TestsFlextInfraCprofileEntry",
+    "TestsFlextInfraCustomHandlerPolicyIsProfileAware",
+    "TestsFlextInfraCustomMakeSurfaceIsDerived",
+    "TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs",
+    "TestsFlextInfraGitFixtureIsolation",
+    "TestsFlextInfraGitIdentitySubmodules",
+    "TestsFlextInfraGitignoreIsGeneratedFromSsot",
+    "TestsFlextInfraInfraMaintenanceCli",
+    "TestsFlextInfraInfraMaintenanceInit",
+    "TestsFlextInfraInfraMaintenanceMain",
+    "TestsFlextInfraInfraMaintenancePythonVersion",
+    "TestsFlextInfraInfraRefactorRopeMigrations",
+    "TestsFlextInfraInfraRopeService",
+    "TestsFlextInfraInfraVersionCore",
+    "TestsFlextInfraInfraVersionExtra",
+    "TestsFlextInfraLockfileIsTrackedAtTheResolutionRoot",
+    "TestsFlextInfraMakeParseIsSideEffectFree",
+    "TestsFlextInfraPublicApi",
+    "TestsFlextInfraPyprojectConformPreservesLintScope",
+    "TestsFlextInfraPyprojectConformTopologySources",
+    "TestsFlextInfraServiceBaseAlias",
+    "TestsFlextInfraVersionDiag",
+    "TestsFlextInfraVersionDiagExtra",
     "TestsFlextInfraWorkspaceFactory",
     "_utilities",
     "c",
@@ -143,6 +213,54 @@ _LAZY_IMPORTS = MappingProxyType(
             ".refactor": ("refactor",),
             ".release": ("release",),
             ".runner_service": ("RealSubprocessRunner",),
+            ".test_cli_repository_root_contract": (
+                "TestsFlextInfraCliRepositoryRootContract",
+            ),
+            ".test_cprofile_entry": ("TestsFlextInfraCprofileEntry",),
+            ".test_custom_handler_policy_is_profile_aware": (
+                "TestsFlextInfraCustomHandlerPolicyIsProfileAware",
+            ),
+            ".test_custom_make_surface_is_derived": (
+                "TestsFlextInfraCustomMakeSurfaceIsDerived",
+            ),
+            ".test_custom_surface_never_shadows_public_verbs": (
+                "TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs",
+            ),
+            ".test_flext_service_base_alias": ("TestsFlextInfraServiceBaseAlias",),
+            ".test_git_fixture_isolation": ("TestsFlextInfraGitFixtureIsolation",),
+            ".test_gitignore_is_generated_from_ssot": (
+                "TestsFlextInfraGitignoreIsGeneratedFromSsot",
+            ),
+            ".test_infra_git_identity_submodules": (
+                "TestsFlextInfraGitIdentitySubmodules",
+            ),
+            ".test_infra_maintenance_cli": ("TestsFlextInfraInfraMaintenanceCli",),
+            ".test_infra_maintenance_init": ("TestsFlextInfraInfraMaintenanceInit",),
+            ".test_infra_maintenance_main": ("TestsFlextInfraInfraMaintenanceMain",),
+            ".test_infra_maintenance_python_version": (
+                "TestsFlextInfraInfraMaintenancePythonVersion",
+            ),
+            ".test_infra_public_api": ("TestsFlextInfraPublicApi",),
+            ".test_infra_refactor_rope_migrations": (
+                "TestsFlextInfraInfraRefactorRopeMigrations",
+            ),
+            ".test_infra_rope_service": ("TestsFlextInfraInfraRopeService",),
+            ".test_infra_version_core": ("TestsFlextInfraInfraVersionCore",),
+            ".test_infra_version_extra": ("TestsFlextInfraInfraVersionExtra",),
+            ".test_lockfile_is_tracked_at_the_resolution_root": (
+                "TestsFlextInfraLockfileIsTrackedAtTheResolutionRoot",
+            ),
+            ".test_make_parse_is_side_effect_free": (
+                "TestsFlextInfraMakeParseIsSideEffectFree",
+            ),
+            ".test_pyproject_conform_preserves_lint_scope": (
+                "TestsFlextInfraPyprojectConformPreservesLintScope",
+            ),
+            ".test_pyproject_conform_topology_sources": (
+                "TestsFlextInfraPyprojectConformTopologySources",
+            ),
+            ".test_version_diag": ("TestsFlextInfraVersionDiag",),
+            ".test_version_diag2": ("TestsFlextInfraVersionDiagExtra",),
             ".transformers": ("transformers",),
             ".validate": ("validate",),
             ".workspace": ("workspace",),

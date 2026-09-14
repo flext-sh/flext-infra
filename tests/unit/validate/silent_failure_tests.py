@@ -18,42 +18,43 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def _create_silent_failure_project(
-    tmp_path: Path, *, name: str = "flext-infra"
-) -> Path:
-    project: Path = u.Tests.create_codegen_project(
-        tmp_path=tmp_path,
-        name=name,
-        pkg_name=name.replace("-", "_"),
-        files={
-            "utilities.py": (
-                "from __future__ import annotations\n\n"
-                "from collections.abc import Mapping, Sequence\n\n"
-                "from flext_core import r\n\n"
-                "def run_guard(validation_result: p.Result[bool]) -> p.Result[bool]:\n"
-                "    if validation_result.failure:\n"
-                "        return False\n"
-                "    return r[bool].ok(True)\n\n"
-                "def run_except() -> p.Result[bool]:\n"
-                "    try:\n"
-                "        raise ValueError('boom')\n"
-                "    except ValueError as exc:\n"
-                "        return None\n\n"
-                "def run_unwrap(validation_result: p.Result[bool]) -> bool:\n"
-                "    return validation_result.unwrap_or(False)\n"
-            )
-        },
-    )
-    (project / "pyproject.toml").write_text(
-        (f"[project]\nname='{name}'\ndependencies=['flext-core>=0.1.0']\n"),
-        encoding="utf-8",
-    )
-    return project
+class TestsFlextInfraSilentFailure:
+    """Silent-failure detector and validator suite."""
 
+    def _create_silent_failure_project(
+        self, tmp_path: Path, *, name: str = "flext-infra"
+    ) -> Path:
+        project: Path = u.Tests.create_codegen_project(
+            tmp_path=tmp_path,
+            name=name,
+            pkg_name=name.replace("-", "_"),
+            files={
+                "utilities.py": (
+                    "from __future__ import annotations\n\n"
+                    "from collections.abc import Mapping, Sequence\n\n"
+                    "from flext_core import r\n\n"
+                    "def run_guard(validation_result: p.Result[bool]) -> p.Result[bool]:\n"
+                    "    if validation_result.failure:\n"
+                    "        return False\n"
+                    "    return r[bool].ok(True)\n\n"
+                    "def run_except() -> p.Result[bool]:\n"
+                    "    try:\n"
+                    "        raise ValueError('boom')\n"
+                    "    except ValueError as exc:\n"
+                    "        return None\n\n"
+                    "def run_unwrap(validation_result: p.Result[bool]) -> bool:\n"
+                    "    return validation_result.unwrap_or(False)\n"
+                )
+            },
+        )
+        (project / "pyproject.toml").write_text(
+            (f"[project]\nname='{name}'\ndependencies=['flext-core>=0.1.0']\n"),
+            encoding="utf-8",
+        )
+        return project
 
-class TestSilentFailureDetector:
     def test_detect_file_reports_guard_except_and_unwrap(self, tmp_path: Path) -> None:
-        project = _create_silent_failure_project(tmp_path)
+        project = self._create_silent_failure_project(tmp_path)
         file_path = project / "src" / "flext_infra" / "utilities.py"
         rope_project = u.Infra.init_rope_project(project)
         try:
@@ -167,7 +168,7 @@ class TestSilentFailureDetector:
     def test_fix_silent_failure_sentinels_rewrites_deterministic_cases(
         self, tmp_path: Path
     ) -> None:
-        project = _create_silent_failure_project(tmp_path)
+        project = self._create_silent_failure_project(tmp_path)
         file_path = project / "src" / "flext_infra" / "utilities.py"
         rope_project = u.Infra.init_rope_project(project)
         try:
@@ -187,10 +188,8 @@ class TestSilentFailureDetector:
         tm.that(updated, has="return r[bool].fail(str(exc), exception=exc)")
         tm.that(updated, has="return validation_result.unwrap_or(False)")
 
-
-class TestSilentFailureValidator:
     def test_execute_reports_detected_issues(self, tmp_path: Path) -> None:
-        project = _create_silent_failure_project(tmp_path)
+        project = self._create_silent_failure_project(tmp_path)
         result = FlextInfraSilentFailureValidator(
             repository_root=project, project_filter="flext-infra"
         ).execute()
@@ -201,7 +200,7 @@ class TestSilentFailureValidator:
         tm.that(error, has="silent-failure-except")
 
     def test_execute_json_output_format_emits_full_report(self, tmp_path: Path) -> None:
-        project = _create_silent_failure_project(tmp_path)
+        project = self._create_silent_failure_project(tmp_path)
         result = FlextInfraSilentFailureValidator(
             repository_root=project, project_filter="flext-infra", output_format="json"
         ).execute()
@@ -243,7 +242,7 @@ class TestSilentFailureValidator:
     def test_validate_cli_route_returns_non_zero_for_violations(
         self, tmp_path: Path
     ) -> None:
-        project = _create_silent_failure_project(tmp_path)
+        project = self._create_silent_failure_project(tmp_path)
         exit_code = infra_main([
             "validate",
             "silent-failure",
@@ -259,4 +258,4 @@ class TestSilentFailureValidator:
         tm.that(infra_main(["validate", "silent-failure", "--help"]), eq=0)
 
 
-__all__: t.StrSequence = []
+__all__: list[str] = ["TestsFlextInfraSilentFailure"]

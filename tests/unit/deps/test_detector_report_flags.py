@@ -65,3 +65,6 @@ class TestsFlextInfraDepsDetectorReportFlags:
             )
         )
         tm.that(u.Cli.process_succeeded(outcome.outcome), eq=True, msg=outcome.stderr)
+
+
+__all__: list[str] = ["TestsFlextInfraDepsDetectorReportFlags"]

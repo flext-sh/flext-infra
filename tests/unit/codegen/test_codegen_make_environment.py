@@ -17,7 +17,7 @@ from tests.unit.workspace import WorktreeFixture
 pytestmark = pytest.mark.slow
 
 
-class TestsCodegenMakeEnvironment:
+class TestsFlextInfraCodegenMakeEnvironment:
     """Prove generated operations ignore the caller shell environment."""
 
     @staticmethod
@@ -909,3 +909,6 @@ class TestsCodegenMakeEnvironment:
             has="_builtin-gen: $(if $(CHECK_ONLY),_builtin_gen_check,_builtin_gen_all)",
         )
         tm.that(makefile, has="mode=$(if $(CHECK_ONLY),,--apply)")
+
+
+__all__: list[str] = ["TestsFlextInfraCodegenMakeEnvironment"]

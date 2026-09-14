@@ -10,23 +10,23 @@ from flext_tests import tm
 from flext_infra import m
 from tests import u
 
-_RENDERED = '[tools]\npython = "3.13"\n'
 
-
-def _project(root: Path, tools_yaml: str) -> Path:
-    root.mkdir(parents=True)
-    (root / "config").mkdir()
-    (root / "config" / "managed-artifacts.yaml").write_text(
-        tools_yaml, encoding="utf-8"
-    )
-    return root
-
-
-class TestsProjectMiseTools:
+class TestsFlextInfraProjectMiseTools:
     """A project declares its own tools without touching the fleet catalog."""
 
+    _RENDERED = '[tools]\npython = "3.13"\n'
+
+    @staticmethod
+    def _project(root: Path, tools_yaml: str) -> Path:
+        root.mkdir(parents=True)
+        (root / "config").mkdir()
+        (root / "config" / "managed-artifacts.yaml").write_text(
+            tools_yaml, encoding="utf-8"
+        )
+        return root
+
     def test_declared_tool_reaches_generated_mise_toml(self, tmp_path: Path) -> None:
-        root = _project(
+        root = self._project(
             tmp_path / "project",
             "ManagedArtifacts:\n"
             "  Mise:\n"
@@ -35,7 +35,7 @@ class TestsProjectMiseTools:
             '        version: "1.2.3"\n',
         )
 
-        composed = u.Infra.compose_mise_toml(root, _RENDERED)
+        composed = u.Infra.compose_mise_toml(root, self._RENDERED)
 
         tools = u.Tests.toml_table_at(tm.ok(composed), "tools")
         assert tools["github:example/tool"] == "1.2.3"
@@ -44,7 +44,7 @@ class TestsProjectMiseTools:
     def test_version_string_shorthand_is_not_a_declaration(
         self, tmp_path: Path
     ) -> None:
-        root = _project(
+        root = self._project(
             tmp_path / "project",
             "ManagedArtifacts:\n"
             "  Mise:\n"
@@ -54,3 +54,6 @@ class TestsProjectMiseTools:
 
         with pytest.raises(m.ValidationError):
             u.Infra.load_project_managed_artifacts(root)
+
+
+__all__: list[str] = ["TestsFlextInfraProjectMiseTools"]

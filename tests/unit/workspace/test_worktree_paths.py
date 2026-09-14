@@ -11,7 +11,7 @@ from tests import u
 from tests.unit.workspace import WorktreeFixture
 
 
-class TestsWorktreePaths(WorktreeFixture):
+class TestsFlextInfraWorktreePaths(WorktreeFixture):
     """Group cohesive worktree behavior."""
 
     def test_list_reports_the_primary_worktree(self, tmp_path: Path) -> None:

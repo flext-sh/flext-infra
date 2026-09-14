@@ -94,4 +94,4 @@ class TestsFlextInfraCyclicImportDetector:
         tm.that(cycles, eq=[])
 
 
-__all__: t.StrSequence = []
+__all__: t.StrSequence = ["TestsFlextInfraCyclicImportDetector"]

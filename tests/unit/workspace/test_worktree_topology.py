@@ -11,7 +11,7 @@ from tests import u
 from tests.unit.workspace import WorktreeFixture
 
 
-class TestsWorktreeTopology(WorktreeFixture):
+class TestsFlextInfraWorktreeTopology(WorktreeFixture):
     """Group cohesive worktree behavior."""
 
     def test_update_merges_the_requested_base_with_an_explicit_merge_commit(

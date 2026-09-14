@@ -111,12 +111,17 @@ class WorktreeFixture:
         tm.ok(u.Cli.run_checked([c.Infra.GIT, "commit", "-m", message], cwd=repository))
 
     @staticmethod
-    def conformed_root(tmp_path: Path) -> Path:
-        """Materialize one governed project and conform it to a fixed point."""
-        root = tmp_path / "repo"
+    def conformed_root(tmp_path: Path, distribution: str = "fixture-project") -> Path:
+        """Materialize one governed project and conform it to a fixed point.
+
+        ``distribution`` names both the directory and the project, which is the
+        only thing consumers vary. Spelling that sequence out at a call site is
+        a second implementation of this one, and the duplication gate says so.
+        """
+        root = tmp_path / distribution
         WorktreeFixture.initialize_governed_project(
             root,
-            "fixture-project",
+            distribution,
             workspace="fixture-workspace",
             database="fixture-database",
             issue_prefix="fixture-prefix",

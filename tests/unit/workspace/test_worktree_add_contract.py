@@ -11,7 +11,7 @@ from tests import u
 from tests.unit.workspace import WorktreeFixture
 
 
-class TestsWorktreeAddContract(WorktreeFixture):
+class TestsFlextInfraWorktreeAddContract(WorktreeFixture):
     """Group cohesive worktree behavior."""
 
     def test_invalid_lane_metadata_fails_precisely_and_rolls_back(

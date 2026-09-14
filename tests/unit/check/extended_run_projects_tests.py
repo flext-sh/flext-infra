@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestRunProjectsPublicBehavior:
+class TestsFlextInfraRunProjects:
     """Verify project execution through the public checker methods."""
 
     @staticmethod
@@ -189,3 +189,6 @@ class TestRunProjectsPublicBehavior:
 
         tm.ok(result)
         tm.that(len(result.value), eq=1)
+
+
+__all__: list[str] = ["TestsFlextInfraRunProjects"]

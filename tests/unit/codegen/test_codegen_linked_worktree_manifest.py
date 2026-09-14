@@ -17,7 +17,7 @@ from tests.unit.workspace import WorktreeFixture
 # Conform materializes a full managed tree; the real Git scenarios therefore use
 # the config-owned slow budget instead of weakening the global timeout.
 @pytest.mark.slow
-class TestCodegenLinkedWorktreeTopology:
+class TestsFlextInfraCodegenLinkedWorktreeManifest:
     """Keep topology inputs and writes owned by the repository being conformed."""
 
     def test_linked_lane_reads_its_local_beads_identity_and_only_writes_lane(
@@ -233,3 +233,6 @@ class TestCodegenLinkedWorktreeTopology:
 
         tm.fail(result, has="escapes workspace root")
         tm.that(WorktreeFixture.repository_snapshot(outside), eq=outside_snapshot)
+
+
+__all__: list[str] = ["TestsFlextInfraCodegenLinkedWorktreeManifest"]

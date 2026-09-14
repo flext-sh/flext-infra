@@ -13,41 +13,39 @@ from tests import u as test_u
 _PROVIDER_SPEC = config.Infra.codegen.providers[0]
 
 
-def _repository(
-    distribution: str, *, role: c.Infra.MakeProfile, path: str
-) -> m.Infra.RepositoryRef:
-    provider = config.Infra.codegen.providers[0]
-    return m.Infra.RepositoryRef(
-        name=distribution,
-        distribution=distribution,
-        url=f"{provider.base_url}/{distribution}.git",
-        path=Path(path),
-        role=role,
-        provider=provider.name,
-        kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
-        codegen=c.Infra.CodegenKind.CONFORM,
-        package=role is not c.Infra.MakeProfile.WORKSPACE,
-        editable=role is not c.Infra.MakeProfile.WORKSPACE,
-        read_only=False,
-    )
-
-
-def _workspace() -> m.Infra.WorkspaceSpec:
-    return m.Infra.WorkspaceSpec(
-        name="workspace",
-        beads=test_u.Tests.beads_project("workspace"),
-        repository=_repository(
-            "workspace", role=c.Infra.MakeProfile.WORKSPACE, path="."
-        ),
-        subprojects=(
-            _repository(
-                "flext-core", role=c.Infra.MakeProfile.STANDALONE, path="flext-core"
-            ),
-        ),
-    )
-
-
 class TestsFlextInfraCodegenPyprojectConform:
+    def _repository(
+        self, distribution: str, *, role: c.Infra.MakeProfile, path: str
+    ) -> m.Infra.RepositoryRef:
+        provider = config.Infra.codegen.providers[0]
+        return m.Infra.RepositoryRef(
+            name=distribution,
+            distribution=distribution,
+            url=f"{provider.base_url}/{distribution}.git",
+            path=Path(path),
+            role=role,
+            provider=provider.name,
+            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=role is not c.Infra.MakeProfile.WORKSPACE,
+            editable=role is not c.Infra.MakeProfile.WORKSPACE,
+            read_only=False,
+        )
+
+    def _workspace(self) -> m.Infra.WorkspaceSpec:
+        return m.Infra.WorkspaceSpec(
+            name="workspace",
+            beads=test_u.Tests.beads_project("workspace"),
+            repository=self._repository(
+                "workspace", role=c.Infra.MakeProfile.WORKSPACE, path="."
+            ),
+            subprojects=(
+                self._repository(
+                    "flext-core", role=c.Infra.MakeProfile.STANDALONE, path="flext-core"
+                ),
+            ),
+        )
+
     @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
     def test_global_constraints_apply_without_direct_runtime_requirements(
         self, profile: c.Infra.MakeProfile
@@ -60,7 +58,7 @@ class TestsFlextInfraCodegenPyprojectConform:
             u.Infra.pyproject_conform(
                 content,
                 providers=config.Infra.codegen.providers,
-                workspace=_workspace(),
+                workspace=self._workspace(),
                 workspace_mode=profile,
                 toolchain=config.Infra.codegen.toolchain,
                 required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
@@ -78,7 +76,7 @@ class TestsFlextInfraCodegenPyprojectConform:
             u.Infra.pyproject_conform(
                 first,
                 providers=config.Infra.codegen.providers,
-                workspace=_workspace(),
+                workspace=self._workspace(),
                 workspace_mode=profile,
                 toolchain=config.Infra.codegen.toolchain,
                 required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
@@ -156,7 +154,7 @@ class TestsFlextInfraCodegenPyprojectConform:
             u.Infra.pyproject_conform(
                 overlaid,
                 providers=config.Infra.codegen.providers,
-                workspace=_workspace(),
+                workspace=self._workspace(),
                 workspace_mode=c.Infra.MakeProfile.WORKSPACE,
                 toolchain=config.Infra.codegen.toolchain,
                 required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
@@ -178,7 +176,7 @@ class TestsFlextInfraCodegenPyprojectConform:
         )
 
     def test_repository_root_uses_workspace_provenance(self) -> None:
-        workspace = _workspace()
+        workspace = self._workspace()
         result = u.Infra.pyproject_dependencies_conform(
             """[project]
 name = "workspace"
@@ -205,7 +203,7 @@ workspace = true
         )
 
     def test_standalone_uses_catalog_git_provenance(self) -> None:
-        workspace = _workspace()
+        workspace = self._workspace()
         member = workspace.subprojects[0]
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
@@ -220,7 +218,7 @@ workspace = true
         )
 
     def test_dependency_conformance_removes_only_legacy_uv_constraint(self) -> None:
-        workspace = _workspace()
+        workspace = self._workspace()
         source = """[project]
 name = "external-consumer"
 dependencies = ["requests>=2"]
@@ -254,7 +252,7 @@ constraint-dependencies = ["uv>=0", "requests<3"]
         )
 
     def test_dependency_conformance_deletes_empty_uv_constraint_key(self) -> None:
-        workspace = _workspace()
+        workspace = self._workspace()
         source = """[project]
 name = "external-consumer"
 dependencies = ["requests>=2"]
@@ -277,7 +275,7 @@ constraint-dependencies = ["uv>=0"]
         tm.that("constraint-dependencies" not in uv_config, eq=True)
 
     def test_standalone_rejects_non_https_catalog_provenance(self) -> None:
-        workspace = _workspace()
+        workspace = self._workspace()
         member = workspace.subprojects[0].model_copy(
             update={"url": "git@github.com:flext-sh/flext-core.git"}
         )
@@ -291,7 +289,7 @@ constraint-dependencies = ["uv>=0"]
         tm.that(result.failure, eq=True)
 
     def test_workspace_rejects_conflicting_direct_source(self) -> None:
-        workspace = _workspace()
+        workspace = self._workspace()
         member = workspace.subprojects[0]
         result = u.Infra.pyproject_dependencies_conform(
             (
@@ -309,7 +307,7 @@ constraint-dependencies = ["uv>=0"]
         tm.fail(result, has="workspace dependency declares a conflicting direct source")
 
     def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
-        workspace = _workspace()
+        workspace = self._workspace()
         toolchain = config.Infra.codegen.toolchain.model_copy(
             update={"uv_link_mode": "copy"}
         )
@@ -391,7 +389,7 @@ python-interpreter-path = "../.venv/bin/python"
 
     def test_conformance_never_writes_the_project_version(self) -> None:
         """The release protocol is the only version writer; conform reads only."""
-        workspace = _workspace().model_copy(
+        workspace = self._workspace().model_copy(
             update={"project": test_u.Tests.project_spec("external-consumer")}
         )
         conformed = tm.ok(
@@ -409,7 +407,7 @@ python-interpreter-path = "../.venv/bin/python"
 
     def test_ssot_required_dev_floor_replaces_stale_same_name_pin(self) -> None:
         """Toolchain required_dev floors win over older same-package member pins."""
-        workspace = _workspace()
+        workspace = self._workspace()
         toolchain = config.Infra.codegen.toolchain
         source = """[project]
 name = "external-consumer"
@@ -435,7 +433,7 @@ dev = ["rumdl>=0.2.46", "custom-tool>=1"]
 
     def test_exclude_dependencies_emit_for_standalone_without_project_key(self) -> None:
         """Standalone member CI needs scoped excludes without the routing key."""
-        workspace = _workspace()
+        workspace = self._workspace()
         exclusion = m.Infra.UvScopedDependencyExclusionSpec(
             project="flext-infra",
             package=m.Infra.UvPackageSelectorSpec(name="flext-tests"),
@@ -522,7 +520,7 @@ skips = ["B101"]
             u.Infra.pyproject_conform(
                 first,
                 providers=config.Infra.codegen.providers,
-                workspace=_workspace(),
+                workspace=self._workspace(),
                 workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
                 required_dev_dependencies=("rumdl>=0.2.45",),
@@ -575,3 +573,6 @@ skips = ["B101"]
         tm.that(ruff["line-length"], eq=rendered_ruff["line-length"])
         live_bandit = u.Cli.toml_mapping_child(live_tool, "bandit")
         tm.that(bandit["skips"], eq=(live_bandit or {}).get("skips"))
+
+
+__all__: list[str] = ["TestsFlextInfraCodegenPyprojectConform"]

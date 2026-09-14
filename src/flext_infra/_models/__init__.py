@@ -27,12 +27,7 @@ if TYPE_CHECKING:
     from .deps_toml import FlextInfraModelsDepsToml
     from .deps_tool_config import FlextInfraModelsDepsToolSettings
     from .deps_tool_config_linters import FlextInfraModelsDepsToolConfigLinters
-    from .deps_tool_config_project import (
-        FlextInfraModelsDepsToolConfigProject,
-        FlextInfraModelsDepsToolConfigProjectArtifacts,
-        FlextInfraModelsDepsToolConfigProjectMise,
-        FlextInfraModelsDepsToolConfigProjectRuff,
-    )
+    from .deps_tool_config_project import FlextInfraModelsDepsToolConfigProject
     from .deps_tool_config_type_checkers import (
         FlextInfraModelsDepsToolConfigTypeCheckers,
     )
@@ -74,9 +69,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsDepsToml",
     "FlextInfraModelsDepsToolConfigLinters",
     "FlextInfraModelsDepsToolConfigProject",
-    "FlextInfraModelsDepsToolConfigProjectArtifacts",
-    "FlextInfraModelsDepsToolConfigProjectMise",
-    "FlextInfraModelsDepsToolConfigProjectRuff",
     "FlextInfraModelsDepsToolConfigTypeCheckers",
     "FlextInfraModelsDepsToolSettings",
     "FlextInfraModelsDocs",
@@ -131,12 +123,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".deps_toml": ("FlextInfraModelsDepsToml",),
             ".deps_tool_config": ("FlextInfraModelsDepsToolSettings",),
             ".deps_tool_config_linters": ("FlextInfraModelsDepsToolConfigLinters",),
-            ".deps_tool_config_project": (
-                "FlextInfraModelsDepsToolConfigProject",
-                "FlextInfraModelsDepsToolConfigProjectArtifacts",
-                "FlextInfraModelsDepsToolConfigProjectMise",
-                "FlextInfraModelsDepsToolConfigProjectRuff",
-            ),
+            ".deps_tool_config_project": ("FlextInfraModelsDepsToolConfigProject",),
             ".deps_tool_config_type_checkers": (
                 "FlextInfraModelsDepsToolConfigTypeCheckers",
             ),

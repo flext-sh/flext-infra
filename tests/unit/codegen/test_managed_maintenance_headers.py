@@ -100,3 +100,6 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         ).read_text(encoding="utf-8")
         tm.that(template, has="make.ruff.format_apply")
         tm.that(template, has="make.ruff.lint_fix")
+
+
+__all__: list[str] = ["TestsFlextInfraManagedMaintenanceHeaders"]
