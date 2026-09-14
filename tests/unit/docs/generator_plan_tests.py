@@ -148,20 +148,20 @@ def test_plan_files_returns_exact_read_only_docs_plans(tmp_path: Path) -> None:
     tm.that((workspace / ".reports").exists(), eq=False)
 
 
-def test_generate_rejects_direct_apply_without_effects(tmp_path: Path) -> None:
-    """Keep generated publication behind the single conform transaction."""
+def test_generate_publishes_and_reaches_an_unchanged_second_run(tmp_path: Path) -> None:
+    """The public fixed-effect command writes and converges without a mode flag."""
     workspace = u.Tests.create_docs_workspace(tmp_path)
-    readme = workspace / "README.md"
-    before = readme.read_bytes()
-
-    result = FlextInfraDocGenerator().generate(
-        m.Infra.DocsGenerateRequest(repository_root=workspace, apply=True)
-    )
-
-    tm.fail(result)
-    tm.that(result.error or "", has="owned by codegen conform")
-    tm.that(readme.read_bytes(), eq=before)
-    tm.that((workspace / ".reports").exists(), eq=False)
+    generator = FlextInfraDocGenerator(repository_root=workspace)
+    plans = u.Tests.plan_docs_bundle(generator)
+    changed = next(plan for plan in plans if plan.desired_content is not None and u.Infra.codegen_file_requires_effect(plan))
+    request = m.Infra.DocsGenerateRequest(repository_root=workspace)
+    first = generator.generate(request)
+    tm.ok(first)
+    tm.that(any(report.generated for report in first.value), eq=True)
+    tm.that(changed.path.read_bytes(), eq=changed.desired_content)
+    second = generator.generate(request)
+    tm.ok(second)
+    tm.that(all(report.changed_files == 0 and report.passed for report in second.value), eq=True)
 
 
 def test_stale_generated_markdown_becomes_delete_plan(tmp_path: Path) -> None:

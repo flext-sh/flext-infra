@@ -559,21 +559,24 @@ class FlextInfraMiseArtifactsJournal:
 
     @classmethod
     def _journal_source(
-        cls, phase: str, source: m.Cli.AtomicFileState
+        cls, phase: str, source: m.Cli.AtomicFileState,
+        previous: m.Infra.CodegenJournalSource | None = None,
     ) -> p.Result[m.Infra.CodegenJournalSource]:
+        absent_parent = None
         if source.parent_device is None or source.parent_inode is None:
-            return r[m.Infra.CodegenJournalSource].fail(
-                f"generation source parent identity is incomplete: {source.path}"
-            )
-        if (
-            source.content is None
-            or source.mode is None
-            or source.device is None
-            or source.inode is None
-            or source.link_count != 1
+            if previous is not None:
+                absent_parent = previous.absent_parent
+            else:
+                witness = u.Cli.atomic_plan_directory_chain(source.path.parent)
+                if witness.failure:
+                    return r[m.Infra.CodegenJournalSource].from_failure(witness)
+                absent_parent = witness.value
+        if source.content is not None and (
+            source.mode is None or source.device is None
+            or source.inode is None or source.link_count != 1
         ):
             return r[m.Infra.CodegenJournalSource].fail(
-                f"generation source is absent or incomplete: {source.path}"
+                f"generation source identity is incomplete: {source.path}"
             )
         return r[m.Infra.CodegenJournalSource].ok(
             m.Infra.CodegenJournalSource(
@@ -581,13 +584,14 @@ class FlextInfraMiseArtifactsJournal:
                 path=source.path,
                 parent_device=source.parent_device,
                 parent_inode=source.parent_inode,
-                sha256=files.digest(source.content),
+                sha256=files.digest(source.content) if source.content is not None else None,
                 mode=source.mode,
                 device=source.device,
                 inode=source.inode,
                 link_count=source.link_count,
                 file_attributes=source.file_attributes,
                 reparse_tag=source.reparse_tag,
+                absent_parent=absent_parent,
             )
         )
 
@@ -601,11 +605,11 @@ class FlextInfraMiseArtifactsJournal:
         by_key = {(source.phase, source.path): source for source in existing}
         order = [(source.phase, source.path) for source in existing]
         for phase, source in sources:
-            encoded = cls._journal_source(phase, source)
+            key = (phase, source.path)
+            previous = by_key.get(key)
+            encoded = cls._journal_source(phase, source, previous)
             if encoded.failure:
                 return result_type.from_failure(encoded)
-            key = (encoded.value.phase, encoded.value.path)
-            previous = by_key.get(key)
             if previous is not None and previous != encoded.value:
                 return result_type.fail(
                     f"generation source changed between phases: {encoded.value.path}"

@@ -309,7 +309,8 @@ class FlextInfraMiseArtifactsVerification:
 
     @classmethod
     def states_current(
-        cls, states: tuple[m.Cli.AtomicFileState, ...]
+        cls, states: tuple[m.Cli.AtomicFileState, ...],
+        *, journal: m.Infra.CodegenTransactionJournal | None = None,
     ) -> p.Result[bool]:
         """Prove every full file state still equals its authenticated snapshot.
 
@@ -330,6 +331,11 @@ class FlextInfraMiseArtifactsVerification:
         the next real corruption just as effectively as it hid that one.
         """
         for expected in states:
+            if expected.parent_device is None and journal is not None:
+                rebound = cls._bind_source_parent(expected, journal)
+                if rebound.failure:
+                    return r[bool].from_failure(rebound)
+                expected = rebound.value
             observed = files.read_state(
                 expected.path, required=expected.content is not None
             )
@@ -340,6 +346,42 @@ class FlextInfraMiseArtifactsVerification:
                     f"generation authenticated state changed: {expected.path}"
                 )
         return r[bool].ok(True)
+
+    @classmethod
+    def _bind_source_parent(
+        cls, expected: m.Cli.AtomicFileState,
+        journal: m.Infra.CodegenTransactionJournal,
+    ) -> p.Result[m.Cli.AtomicFileState]:
+        """Recognize only parent identities created under the durable absence witness."""
+        result = r[m.Cli.AtomicFileState]
+        source = next((item for item in journal.sources if item.path == expected.path), None)
+        if source is None or source.absent_parent is None or expected.content is not None:
+            return result.fail(f"generation source has no absence witness: {expected.path}")
+        witness = source.absent_parent
+        current = u.Cli.atomic_plan_directory_chain(witness.target)
+        if current.failure:
+            return result.from_failure(current)
+        if current.value == witness:
+            return result.ok(expected)
+        created = {
+            item.created.path: item.created
+            for item in journal.directories
+            if item.created is not None and item.disposition == "generated"
+        }
+        ancestry = list(witness.anchor_ancestry)
+        for path in witness.directories:
+            identity = created.get(path)
+            if identity is None or identity.device is None or identity.inode is None:
+                return result.fail(f"generation source parent was not created by this journal: {path}")
+            if (identity.parent_device, identity.parent_inode) != ancestry[-1]:
+                return result.fail(f"generation source parent ancestry differs from its journal: {path}")
+            ancestry.append((identity.device, identity.inode))
+        observed = current.value
+        if observed.directories or observed.anchor_ancestry != tuple(ancestry):
+            return result.fail(f"generation source parent identity changed: {expected.path}")
+        return result.ok(expected.model_copy(update={
+            "parent_device": ancestry[-1][0], "parent_inode": ancestry[-1][1],
+        }))
 
     @classmethod
     def phase_analysis_live(

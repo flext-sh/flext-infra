@@ -34,7 +34,7 @@ def test_validate_workspace_fails_before_generated_files_exist(tmp_path: Path) -
 
     result = FlextInfraDocValidator().validate_workspace(
         m.Infra.DocsGenerateRequest(
-            repository_root=workspace, projects=["flext-a"], apply=False
+            repository_root=workspace, projects=["flext-a"]
         )
     )
 
@@ -42,7 +42,7 @@ def test_validate_workspace_fails_before_generated_files_exist(tmp_path: Path) -
     tm.that(any(report.result == "FAIL" for report in result.value), eq=True)
 
 
-def test_validate_workspace_passes_after_generate_apply(tmp_path: Path) -> None:
+def test_validate_workspace_passes_after_generation(tmp_path: Path) -> None:
     """Validation passes once the generated bundle is published."""
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 
@@ -54,7 +54,7 @@ def test_validate_workspace_passes_after_generate_apply(tmp_path: Path) -> None:
     tm.ok(generated)
     result = FlextInfraDocValidator().validate_workspace(
         m.Infra.DocsGenerateRequest(
-            repository_root=workspace, projects=["flext-a"], apply=True
+            repository_root=workspace, projects=["flext-a"]
         )
     )
 
@@ -62,8 +62,8 @@ def test_validate_workspace_passes_after_generate_apply(tmp_path: Path) -> None:
     tm.that(all(report.result == "OK" for report in result.value), eq=True)
 
 
-def test_validate_workspace_apply_writes_project_todo(tmp_path: Path) -> None:
-    """Applied validation writes the project TODO ledger."""
+def test_validate_workspace_does_not_write_project_todo(tmp_path: Path) -> None:
+    """Read-only validation does not publish a project TODO ledger."""
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 
     prepared = FlextInfraDocGenerator(
@@ -73,9 +73,9 @@ def test_validate_workspace_apply_writes_project_todo(tmp_path: Path) -> None:
     tm.ok(u.Tests.materialize_docs_bundle(prepared.value))
     result = FlextInfraDocValidator().validate_workspace(
         m.Infra.DocsGenerateRequest(
-            repository_root=workspace, projects=["flext-a"], apply=True
+            repository_root=workspace, projects=["flext-a"]
         )
     )
 
     tm.ok(result)
-    tm.that((workspace / "flext-a/TODOS.md").exists(), eq=True)
+    tm.that((workspace / "flext-a/TODOS.md").exists(), eq=False)

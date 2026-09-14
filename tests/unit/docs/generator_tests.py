@@ -25,7 +25,7 @@ def test_generate_returns_reports_for_root_and_selected_project(tmp_path: Path) 
     _ = u.Tests.plan_docs_bundle(generator)
     result = generator.generate(
         m.Infra.DocsGenerateRequest(
-            repository_root=workspace, projects=["flext-a"], apply=False
+            repository_root=workspace, projects=["flext-a"]
         )
     )
 
@@ -67,7 +67,7 @@ def test_workspace_package_api_and_member_docs_share_one_transaction(
         source.parent.mkdir(parents=True, exist_ok=True)
         source.write_text('"""Public fixture module."""\n', encoding="utf-8")
     request = m.Infra.DocsGenerateRequest(
-        repository_root=workspace, projects=selected_projects, apply=False
+        repository_root=workspace, projects=selected_projects
     )
     generator = FlextInfraDocGenerator(
         repository_root=workspace, selected_projects=selected_projects
@@ -136,7 +136,7 @@ def test_root_generated_catalog_survives_project_pass_and_required_indexes_valid
     """Preserve root output while leaving optional curated indexes unowned."""
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
     request = m.Infra.DocsGenerateRequest(
-        repository_root=workspace, projects=["flext-a"], apply=False
+        repository_root=workspace, projects=["flext-a"]
     )
     generator = FlextInfraDocGenerator(
         repository_root=workspace, selected_projects=["flext-a"]
@@ -194,7 +194,7 @@ def test_governed_api_survives_generation_and_curated_paths_are_unowned(
     curated = workspace / "docs/README.md"
     curated_content = curated.read_bytes()
     request = m.Infra.DocsGenerateRequest(
-        repository_root=workspace, projects=["flext-infra-fixture"], apply=False
+        repository_root=workspace, projects=["flext-infra-fixture"]
     )
     generator = FlextInfraDocGenerator(
         repository_root=workspace, selected_projects=["flext-infra-fixture"]

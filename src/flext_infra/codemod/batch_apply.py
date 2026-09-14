@@ -9,6 +9,7 @@ from flext_cli import cli
 
 from .. import FlextInfraServiceBase, m, p, r, t, u
 from . import FlextInfraCodemodSemanticApply, FlextInfraModGateEngine
+from .batch_replacements import FlextInfraModReplacements
 
 
 class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
@@ -99,6 +100,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
                 transaction_paths = FlextInfraCodemodSemanticApply.plan_transaction_paths(root, current)
                 continue
+            owned = FlextInfraModReplacements.require_authored(current)
+            if owned.failure:
+                return r[t.Cli.ResultValue].from_failure(owned)
             FlextInfraCodemodSemanticApply.apply(root, current)
             # Fix!=match validation: verify semantic phase actually reduced findings
             after_semantic = FlextInfraModGateEngine.scan(root, fix=False).unwrap()

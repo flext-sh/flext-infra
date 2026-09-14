@@ -402,7 +402,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             return self
 
     class CodegenJournalSource(m.ArbitraryTypesModel):
-        """One immutable full source identity guarded by a generation journal."""
+        """One immutable source identity, including authenticated absence."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
@@ -411,33 +411,37 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         ]
         path: Annotated[Path, m.Field(description="Absolute authenticated source path")]
         parent_device: Annotated[
-            int, m.Field(ge=0, strict=True, description="Source parent device")
+            int | None, m.Field(ge=0, strict=True, description="Source parent device")
         ]
         parent_inode: Annotated[
-            int, m.Field(gt=0, strict=True, description="Source parent inode")
+            int | None, m.Field(gt=0, strict=True, description="Source parent inode")
         ]
         sha256: Annotated[
-            str,
+            str | None,
             m.Field(
                 pattern=r"^[0-9a-f]{64}$",
                 description="Exact source-byte SHA-256 identity",
             ),
         ]
         mode: Annotated[
-            int,
+            int | None,
             m.Field(
                 ge=0, le=0o7777, strict=True, description="Exact source permission bits"
             ),
         ]
         device: Annotated[
-            int, m.Field(ge=0, strict=True, description="Source device identity")
+            int | None, m.Field(ge=0, strict=True, description="Source device identity")
         ]
         inode: Annotated[
-            int, m.Field(gt=0, strict=True, description="Source inode identity")
+            int | None, m.Field(gt=0, strict=True, description="Source inode identity")
         ]
         link_count: Annotated[
-            Literal[1], m.Field(description="Unique physical source link count")
+            Literal[1] | None, m.Field(description="Unique physical source link count")
         ]
+        absent_parent: Annotated[
+            m.Cli.AtomicDirectoryChainPlan | None,
+            m.Field(description="Physical ancestor witness when the source parent is absent"),
+        ] = None
         file_attributes: Annotated[
             int | None, m.Field(ge=0, strict=True, description="Host file attributes")
         ] = None
@@ -457,6 +461,28 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         @u.model_validator(mode="after")
         def _validate_source_physical_state(self) -> Self:
             """Reject a persisted source identity that represents a reparse point."""
+            physical = (self.sha256, self.mode, self.device, self.inode, self.link_count)
+            populated = tuple(value is not None for value in physical)
+            if any(populated) != all(populated):
+                msg = "generation source physical identity is incomplete"
+                raise ValueError(msg)
+            parent = (self.parent_device, self.parent_inode)
+            if (parent[0] is None) != (parent[1] is None):
+                msg = "generation source parent identity is incomplete"
+                raise ValueError(msg)
+            if self.parent_device is None:
+                if any(populated) or self.absent_parent is None:
+                    msg = "absent source parent requires an authenticated ancestor witness"
+                    raise ValueError(msg)
+                if self.absent_parent.target != self.path.parent or not self.absent_parent.directories:
+                    msg = "source absence witness does not describe its missing parent"
+                    raise ValueError(msg)
+            elif self.absent_parent is not None:
+                msg = "existing source parent cannot carry an absence witness"
+                raise ValueError(msg)
+            if not any(populated) and (self.file_attributes is not None or self.reparse_tag is not None):
+                msg = "absent generation source cannot carry host metadata"
+                raise ValueError(msg)
             marker = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
             if self.reparse_tag not in {None, 0} or (
                 self.file_attributes is not None and bool(self.file_attributes & marker)

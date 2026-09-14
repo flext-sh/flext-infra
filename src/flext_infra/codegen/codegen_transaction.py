@@ -469,7 +469,9 @@ class FlextInfraCodegenTransaction:
                 self._recover_failure(layout, sources.error or "invalid phase sources")
             )
         source_states = tuple(source for _phase, source in sources.value)
-        source_barrier = verify.states_current(self._unique_states(source_states))
+        source_barrier = verify.states_current(
+            self._unique_states(source_states), journal=session.journal
+        )
         if source_barrier.failure:
             return result_type.from_failure(
                 self._recover_failure(
@@ -558,7 +560,9 @@ class FlextInfraCodegenTransaction:
                     layout, persisted.error or f"cannot persist {phase} journal phase"
                 )
             )
-        source_barrier = verify.states_current(self._unique_states(source_states))
+        source_barrier = verify.states_current(
+            self._unique_states(source_states), journal=manifested.value
+        )
         destination_barrier = verify.states_current(
             tuple(item.before for item in staged.value)
         )
