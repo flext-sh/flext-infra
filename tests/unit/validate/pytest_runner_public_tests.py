@@ -101,6 +101,39 @@ class TestsFlextInfraPytestRunner:
         )
 
     @pytest.mark.slow
+    def test_failed_cases_do_not_stop_remaining_cases(
+        self, cached_runner_project: Path
+    ) -> None:
+        """Retain all failures and later outcomes in one persistent-cache run."""
+        cache = config.Infra.codegen.make.testmon_cache
+        (cached_runner_project / cache.target_directory / "test_failures.py").write_text(
+            "def test_first_failure() -> None:\n"
+            "    assert False, 'first failure evidence'\n\n"
+            "def test_second_failure() -> None:\n"
+            "    assert False, 'second failure evidence'\n",
+            encoding="utf-8",
+        )
+
+        exit_code = tm.ok(self._runner_for(cached_runner_project).execute())
+
+        tm.that(exit_code, ne=0)
+        reports_root = cached_runner_project / cache.reports_directory
+        report_path, = reports_root.glob("*/junit.xml")
+        report = tm.ok(u.Cli.files_read_text(report_path))
+        tm.that(
+            report,
+            has=[
+                'tests="3"',
+                'failures="2"',
+                'errors="0"',
+                'skipped="0"',
+                'name="test_runtime"',
+                "first failure evidence",
+                "second failure evidence",
+            ],
+        )
+
+    @pytest.mark.slow
     def test_external_gate_markers_are_not_executed_offline(
         self, cached_runner_project: Path
     ) -> None:
