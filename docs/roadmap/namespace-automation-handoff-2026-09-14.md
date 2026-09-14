@@ -289,6 +289,14 @@ Esses arquivos e `.reports/tests/<execução>/suite-outcome.json` são evidênci
 locais; não são conteúdo publicado no Git. O PR e este handoff preservam os
 resultados relevantes, sem publicar transcrições privadas.
 
+Na conferência final, uma alteração compartilhada de `pyproject.toml` retirou
+a tabela vazia `tool.uv.workspace`; também foram observados ajustes nos testes
+de raiz Make e nos nomes dos campos de configuração Ruff. O estado foi
+preservado como WIP. A origem dessa diferença da projeção não foi estabelecida,
+e o `make status` anterior não a certifica. Antes de executar novamente a
+automação, verificar a correspondência entre perfil standalone, conformador,
+projeção uv e runtime efetivo, regenerando pelo responsável quando necessário.
+
 ## 7. Beads relacionados e uso correto
 
 Os registros abaixo foram consultados ao vivo com `bd show`, usando `direnv`

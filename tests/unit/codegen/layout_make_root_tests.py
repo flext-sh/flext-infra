@@ -23,7 +23,9 @@ _GIT = shutil.which("git") or "git"
 def _git_root(*args: str) -> str:
     """Resolve a git root marker for the repository under test."""
     result = u.Cli.run_raw([_GIT, "-C", str(_REPO_ROOT), "rev-parse", *args])
-    return result.value.stdout.strip() if result.success else ""
+    output = tm.ok(result)
+    tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+    return output.stdout.strip()
 
 
 def _make_database_repository_root(*extra_args: str, env: t.MappingKV[str, str]) -> str:
@@ -41,9 +43,7 @@ def test_make_repository_root_ignores_foreign_env_leak(tmp_path: Path) -> None:
     """A poisoned environment REPOSITORY_ROOT never wins over the checkout."""
     env = dict(os.environ, REPOSITORY_ROOT=str(tmp_path / "foreign-checkout"))
     resolved = _make_database_repository_root(env=env)
-    expected = _git_root("--show-superproject-working-tree") or _git_root(
-        "--show-toplevel"
-    )
+    expected = _git_root("--show-toplevel")
     tm.that(resolved, eq=expected)
 
 
