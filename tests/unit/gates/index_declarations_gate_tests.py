@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
-from git import Repo
 
+from flext_infra import u
 from flext_infra.gates.index_declarations import FlextInfraIndexDeclarationsGate
 from tests import m
 
@@ -35,28 +35,40 @@ def gate_result(tmp_path: Path) -> Callable[..., m.Infra.GateResult]:
     def run(
         *, orphan_gitlink: bool = False, declare_gitlink: bool = False
     ) -> m.Infra.GateResult:
-        repo = Repo.init(tmp_path)
+        u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=tmp_path))
         (tmp_path / ".gitignore").write_text("ignored/\n", encoding="utf-8")
         (tmp_path / "kept.txt").write_text("kept\n", encoding="utf-8")
-        repo.index.add([".gitignore", "kept.txt"])
+        u.Infra.git_add_paths(
+            m.Infra.GitPathsRequest(
+                repo_root=tmp_path, paths=[".gitignore", "kept.txt"]
+            )
+        )
         if orphan_gitlink:
             nested = tmp_path / "nested"
             nested.mkdir()
-            inner = Repo.init(nested)
+            u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=nested))
             (nested / "file.txt").write_text("inner\n", encoding="utf-8")
-            inner.index.add(["file.txt"])
-            inner.index.commit("inner")
+            u.Infra.git_add_paths(
+                m.Infra.GitPathsRequest(repo_root=nested, paths=["file.txt"])
+            )
+            u.Infra.git_commit(
+                m.Infra.GitCommitRequest(repo_root=nested, message="inner")
+            )
             # Staging a directory that carries its own .git records a gitlink,
             # with no .gitmodules section and no warning.
-            repo.git.add("nested")
+            u.Infra.git_add_paths(
+                m.Infra.GitPathsRequest(repo_root=tmp_path, paths=["nested"])
+            )
             if declare_gitlink:
                 (tmp_path / ".gitmodules").write_text(
                     '[submodule "nested"]\n\tpath = nested\n'
                     "\turl = https://example.invalid/nested.git\n",
                     encoding="utf-8",
                 )
-                repo.index.add([".gitmodules"])
-        repo.index.commit("seed")
+                u.Infra.git_add_paths(
+                    m.Infra.GitPathsRequest(repo_root=tmp_path, paths=[".gitmodules"])
+                )
+        u.Infra.git_commit(m.Infra.GitCommitRequest(repo_root=tmp_path, message="seed"))
         context = m.Infra.GateContext(
             repository_root=tmp_path, reports_dir=tmp_path / ".reports"
         )
@@ -93,3 +105,6 @@ class TestIndexDeclarationsGate:
         result = gate_result(orphan_gitlink=True, declare_gitlink=True)
         tm.that(result.passed, eq=True)
         tm.that(len(result.errors), eq=0)
+
+
+__all__: list[str] = ["TestIndexDeclarationsGate"]

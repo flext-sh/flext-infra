@@ -10,33 +10,13 @@ from flext_cli import m, u
 from flext_infra import t
 
 from ._defaults import immutable_empty_mapping
-
-
-def tool_version_field(description: str) -> object:
-    """Shared ``Annotated[t.NonEmptyStr, ...]`` metadata for one tool version.
-
-    Every native-toolchain version field in ``ToolchainSpec`` and its
-    ``ProjectRenderContext`` render mirror previously repeated an identical
-    ``m.Field(description=...)`` shape, differing only in the description
-    text -- a structural clone SonarCloud's duplication detector flags as one
-    family regardless of the literal string. One owned factory collapses
-    every call site to this single declaration (SSOT, DRY).
-    """
-    return m.Field(description=description)
-
-
-class _ConfigContract(m.ContractModel):
-    """Private declarative base for schema-loaded codegen records."""
-
-    model_config = m.ConfigDict(
-        strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
-    )
+from .mise_toolchain_base import FlextInfraModelsMiseToolchainBase
 
 
 class FlextInfraModelsMiseToolchain:
     """Mise toolchain and beads configuration models."""
 
-    class MiseToolSpec(_ConfigContract):
+    class MiseToolSpec(FlextInfraModelsMiseToolchainBase):
         """One mise backend declared in ``codegen.yaml``, projected to ``.mise.toml``.
 
         Override the YAML fields. Never edit ``.mise.toml``. Never pin a SHA.
@@ -114,7 +94,7 @@ class FlextInfraModelsMiseToolchain:
                 raise ValueError(msg)
             return self
 
-    class ToolchainSpec(_ConfigContract):
+    class ToolchainSpec(FlextInfraModelsMiseToolchainBase):
         """Language-runtime and native-tool versions shared by generated projects.
 
         Language runtimes and native tools are declared as moving ``latest``
@@ -193,16 +173,16 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = ()
         kubectl_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact kubectl version, e.g. '1.32.0'")
+            t.NonEmptyStr, m.Field(description="Exact kubectl version, e.g. '1.32.0'")
         ]
         helm_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Helm version, e.g. '3.19.4'")
+            t.NonEmptyStr, m.Field(description="Exact Helm version, e.g. '3.19.4'")
         ]
         kind_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact kind version, e.g. '0.31.0'")
+            t.NonEmptyStr, m.Field(description="Exact kind version, e.g. '0.31.0'")
         ]
         direnv_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible direnv major.minor line")
+            t.NonEmptyStr, m.Field(description="Compatible direnv major.minor line")
         ]
         environment_path_prepends: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
@@ -217,7 +197,7 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = ()
         uv_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible uv major.minor line")
+            t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
         ]
         mise_lockfile: Annotated[
             bool,
@@ -250,10 +230,10 @@ class FlextInfraModelsMiseToolchain:
         ]
         qlty_version: Annotated[
             t.NonEmptyStr,
-            tool_version_field("Moving qlty release selector, e.g. 'latest'"),
+            m.Field(description="Moving qlty release selector, e.g. 'latest'"),
         ]
         node_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible Node.js major.minor line")
+            t.NonEmptyStr, m.Field(description="Compatible Node.js major.minor line")
         ]
         jscpd_selector: Annotated[
             t.NonEmptyStr,
@@ -266,7 +246,7 @@ class FlextInfraModelsMiseToolchain:
         ]
         jscpd_version: Annotated[
             t.NonEmptyStr,
-            tool_version_field("Moving jscpd release selector, e.g. 'latest'"),
+            m.Field(description="Moving jscpd release selector, e.g. 'latest'"),
         ]
         waza_selector: Annotated[
             t.NonEmptyStr,
@@ -279,16 +259,16 @@ class FlextInfraModelsMiseToolchain:
         ]
         waza_version: Annotated[
             t.NonEmptyStr,
-            tool_version_field("Moving Waza release selector, e.g. 'latest'"),
+            m.Field(description="Moving Waza release selector, e.g. 'latest'"),
         ]
         taplo_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Taplo formatter version")
+            t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
         ]
         ast_grep_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact ast-grep analyzer version")
+            t.NonEmptyStr, m.Field(description="Exact ast-grep analyzer version")
         ]
         gitleaks_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Gitleaks scanner version")
+            t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
         ]
         scc_selector: Annotated[
             t.NonEmptyStr,
@@ -300,15 +280,17 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         scc_version: Annotated[
-            t.NonEmptyStr, tool_version_field("scc release selector (latest)")
+            t.NonEmptyStr, m.Field(description="scc release selector (latest)")
         ]
         kubeconform_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible kubeconform minor line")
+            t.NonEmptyStr, m.Field(description="Compatible kubeconform minor line")
         ]
         go_version: Annotated[
             t.NonEmptyStr,
-            tool_version_field(
-                "Go runtime selector; mise resolves the go backend through it"
+            m.Field(
+                description=(
+                    "Go runtime selector; mise resolves the go backend through it"
+                )
             ),
         ]
         beads: Annotated[
@@ -410,7 +392,7 @@ class FlextInfraModelsMiseToolchain:
                 raise ValueError(msg)
             return self
 
-    class BeadsEndpointSpec(_ConfigContract):
+    class BeadsEndpointSpec(FlextInfraModelsMiseToolchainBase):
         """Static network endpoint projected into Beads configuration."""
 
         host: Annotated[t.NonEmptyStr, m.Field(description="Beads server host")]
@@ -485,7 +467,7 @@ class FlextInfraModelsMiseToolchain:
                 raise ValueError(msg)
             return self
 
-    class MiseBootstrapEnvironmentSpec(_ConfigContract):
+    class MiseBootstrapEnvironmentSpec(FlextInfraModelsMiseToolchainBase):
         """Validated environment contract rendered into generated Mise setup."""
 
         storage_root_variable: Annotated[
@@ -551,4 +533,4 @@ class FlextInfraModelsMiseToolchain:
             return self
 
 
-__all__: list[str] = ["FlextInfraModelsMiseToolchain", "tool_version_field"]
+__all__: list[str] = ["FlextInfraModelsMiseToolchain"]

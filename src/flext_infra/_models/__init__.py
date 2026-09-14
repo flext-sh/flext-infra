@@ -23,12 +23,15 @@ if TYPE_CHECKING:
     from .deps_toml import FlextInfraModelsDepsToml
     from .deps_tool_config import FlextInfraModelsDepsToolSettings
     from .deps_tool_config_linters import FlextInfraModelsDepsToolConfigLinters
-    from .deps_tool_config_project import (
-        FlextInfraModelsDepsToolConfigProject,
+    from .deps_tool_config_project import FlextInfraModelsDepsToolConfigProject
+    from .deps_tool_config_project_artifacts import (
         FlextInfraModelsDepsToolConfigProjectArtifacts,
-        FlextInfraModelsDepsToolConfigProjectMise,
-        FlextInfraModelsDepsToolConfigProjectRuff,
     )
+    from .deps_tool_config_project_gitignore import (
+        FlextInfraModelsDepsToolConfigProjectGitignore,
+    )
+    from .deps_tool_config_project_mise import FlextInfraModelsDepsToolConfigProjectMise
+    from .deps_tool_config_project_ruff import FlextInfraModelsDepsToolConfigProjectRuff
     from .deps_tool_config_type_checkers import (
         FlextInfraModelsDepsToolConfigTypeCheckers,
     )
@@ -39,7 +42,8 @@ if TYPE_CHECKING:
     from .gates import FlextInfraModelsGates
     from .git import FlextInfraModelsGit
     from .layout import FlextInfraModelsLayout
-    from .mise_toolchain import FlextInfraModelsMiseToolchain, tool_version_field
+    from .mise_toolchain import FlextInfraModelsMiseToolchain
+    from .mise_toolchain_base import FlextInfraModelsMiseToolchainBase
     from .mixins import FlextInfraModelsMixins
     from .promoted import FlextInfraModelsPromoted
     from .refactor import FlextInfraModelsRefactor
@@ -71,6 +75,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsDepsToolConfigLinters",
     "FlextInfraModelsDepsToolConfigProject",
     "FlextInfraModelsDepsToolConfigProjectArtifacts",
+    "FlextInfraModelsDepsToolConfigProjectGitignore",
     "FlextInfraModelsDepsToolConfigProjectMise",
     "FlextInfraModelsDepsToolConfigProjectRuff",
     "FlextInfraModelsDepsToolConfigTypeCheckers",
@@ -84,6 +89,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsGitIdentity",
     "FlextInfraModelsLayout",
     "FlextInfraModelsMiseToolchain",
+    "FlextInfraModelsMiseToolchainBase",
     "FlextInfraModelsMixins",
     "FlextInfraModelsNamespaceEnforcer",
     "FlextInfraModelsPromoted",
@@ -103,7 +109,6 @@ __all__: tuple[str, ...] = (
     "ImmutableEmptyMapping",
     "_git",
     "immutable_empty_mapping",
-    "tool_version_field",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -123,10 +128,17 @@ _LAZY_IMPORTS = MappingProxyType(
             ".deps_toml": ("FlextInfraModelsDepsToml",),
             ".deps_tool_config": ("FlextInfraModelsDepsToolSettings",),
             ".deps_tool_config_linters": ("FlextInfraModelsDepsToolConfigLinters",),
-            ".deps_tool_config_project": (
-                "FlextInfraModelsDepsToolConfigProject",
+            ".deps_tool_config_project": ("FlextInfraModelsDepsToolConfigProject",),
+            ".deps_tool_config_project_artifacts": (
                 "FlextInfraModelsDepsToolConfigProjectArtifacts",
+            ),
+            ".deps_tool_config_project_gitignore": (
+                "FlextInfraModelsDepsToolConfigProjectGitignore",
+            ),
+            ".deps_tool_config_project_mise": (
                 "FlextInfraModelsDepsToolConfigProjectMise",
+            ),
+            ".deps_tool_config_project_ruff": (
                 "FlextInfraModelsDepsToolConfigProjectRuff",
             ),
             ".deps_tool_config_type_checkers": (
@@ -139,7 +151,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates": ("FlextInfraModelsGates",),
             ".git": ("FlextInfraModelsGit",),
             ".layout": ("FlextInfraModelsLayout",),
-            ".mise_toolchain": ("FlextInfraModelsMiseToolchain", "tool_version_field"),
+            ".mise_toolchain": ("FlextInfraModelsMiseToolchain",),
+            ".mise_toolchain_base": ("FlextInfraModelsMiseToolchainBase",),
             ".mixins": ("FlextInfraModelsMixins",),
             ".promoted": ("FlextInfraModelsPromoted",),
             ".refactor": ("FlextInfraModelsRefactor",),
