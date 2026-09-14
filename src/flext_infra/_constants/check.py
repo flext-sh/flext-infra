@@ -84,6 +84,10 @@ class FlextInfraConstantsCheck:
         ),
         "duplication": ("jscpd", "https://github.com/kucherenko/jscpd"),
         "budget": ("Flext Execution Budget Gate", "internal://flext-infra/budget"),
+        "index-declarations": (
+            "Flext Index Declarations Gate",
+            "internal://flext-infra/index-declarations",
+        ),
     })
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."

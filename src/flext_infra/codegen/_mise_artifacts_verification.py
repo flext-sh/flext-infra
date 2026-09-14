@@ -300,9 +300,7 @@ class FlextInfraMiseArtifactsVerification:
                     f"mise artifacts snapshot drift detected: {expected.path}"
                 )
             if observed.value.mode != expected.mode:
-                u.Cli.warning(
-                    f"mise artifacts snapshot mode changed: {expected.path}"
-                )
+                u.Cli.warning(f"mise artifacts snapshot mode changed: {expected.path}")
         return r[bool].ok(True)
 
     @classmethod
