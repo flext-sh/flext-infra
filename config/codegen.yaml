@@ -706,6 +706,7 @@ Infra:
         - CLAUDE.md
         - conftest.py
         - mkdocs.yml
+        - sgconfig.yml
       canonical_root_dotfiles:
         - .gitignore
         - .gitattributes
@@ -732,6 +733,7 @@ Infra:
         - docker
         - dbt_packages
         - ast-grep-rules
+        - ast-grep-rule-tests
       # Per-project-type extra canonical root files; the profile of a project
       # is resolved by matching its name against profile_project_patterns.
       profile_extra_root_files:
@@ -1281,6 +1283,12 @@ Infra:
             - "scripts/*.sh"
             - "scripts/*.md"
             - "scripts/maintenance/"
+        - name: "TRACK: Local structural rules and their regression fixtures"
+          profiles: [workspace]
+          patterns:
+            - "!/sgconfig.yml"
+            - "!/ast-grep-rules/"
+            - "!/ast-grep-rule-tests/"
         - name: "TRACK: Beads team config; keep Dolt data, runtime state, and JSONL exports local."
           profiles: [workspace, standalone]
           patterns:

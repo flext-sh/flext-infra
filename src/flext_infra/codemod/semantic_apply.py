@@ -24,12 +24,15 @@ class FlextInfraCodemodSemanticApply:
         # Phase 1: Future annotations
         future_annotations = cls._phase_future_annotations(root, preflight, working)
         cls._apply_plan(working, future_annotations, changed)
-        cls._check_residue(root, working, "future-annotations", future_annotations)
+        cls._check_residue(
+            "future-annotations",
+            cls._phase_future_annotations(root, preflight, working),
+        )
 
         # Phase 2: Deferred model edits
         deferred = cls._deferred_model_edits(working)
         cls._apply_plan(working, deferred, changed)
-        cls._check_residue_deferred(working, deferred)
+        cls._check_residue("deferred-models", cls._deferred_model_edits(working))
 
         # Phase 3: Class nesting
         with infra.rope_workspace(root) as rope_workspace:
@@ -37,7 +40,13 @@ class FlextInfraCodemodSemanticApply:
                 rope_workspace=rope_workspace, sources=working
             )
         cls._apply_plan(working, nesting, changed)
-        cls._check_residue(root, working, "class-nesting", nesting)
+        with infra.rope_workspace(root) as rope_workspace:
+            cls._check_residue(
+                "class-nesting",
+                u.Infra.plan_class_nesting_cutover(
+                    rope_workspace=rope_workspace, sources=working
+                ),
+            )
 
         # Phase 4: Compatibility aliases
         alias_findings = tuple(
@@ -50,7 +59,12 @@ class FlextInfraCodemodSemanticApply:
             root=root, sources=working, findings=alias_findings
         )
         cls._apply_plan(working, aliases, changed)
-        cls._check_residue(root, working, "compat-alias", aliases)
+        cls._check_residue(
+            "compat-alias",
+            u.Infra.plan_api_alias_cutover(
+                root=root, sources=working, findings=alias_findings
+            ),
+        )
 
         # Phase 5: Private imports
         private_findings = tuple(
@@ -62,7 +76,12 @@ class FlextInfraCodemodSemanticApply:
             root=root, sources=working, findings=private_findings
         )
         cls._apply_plan(working, private_imports, changed)
-        cls._check_residue(root, working, "private-import", private_imports)
+        cls._check_residue(
+            "private-import",
+            u.Infra.plan_private_import_cutover(
+                root=root, sources=working, findings=private_findings
+            ),
+        )
 
         cli.display_text(
             "mod: semantic cutover "
@@ -71,10 +90,13 @@ class FlextInfraCodemodSemanticApply:
             f"alias_files={len(aliases)} "
             f"private_import_files={len(private_imports)}"
         )
+        cls._verify_fixed_point(root, working, preflight)
         cls._publish(root, original, working, changed)
 
         # Final fixed-point verification for all phases
-        cls._verify_fixed_point(root, working)
+        cls._verify_fixed_point(
+            root, dict(cls._source_inventory(root, preflight)), preflight
+        )
 
     @staticmethod
     def _phase_future_annotations(
@@ -113,80 +135,52 @@ class FlextInfraCodemodSemanticApply:
                 )
         return future_annotations
 
-    @classmethod
+    @staticmethod
     def _check_residue(
-        cls,
-        root: Path,
-        working: MutableMapping[Path, str],
-        phase: str,
-        edits: t.SequenceOf[m.Infra.SemanticMigrationEdit],
+        phase: str, edits: t.SequenceOf[m.Infra.SemanticMigrationEdit]
     ) -> None:
-        """Verify no residue remains after a semantic phase."""
-        if not edits:
-            return
-        with infra.rope_workspace(root) as rope_workspace:
-            residue = u.Infra.plan_class_nesting_cutover(
-                rope_workspace=rope_workspace, sources=working
-            )
-            if residue:
-                files = ", ".join(edit.file_path.as_posix() for edit in residue)
-                msg = (
-                    f"{phase} phase left structural residue after application: {files}"
-                )
-                raise RuntimeError(msg)
-
-    @classmethod
-    def _check_residue_deferred(
-        cls,
-        working: MutableMapping[Path, str],
-        edits: t.SequenceOf[m.Infra.SemanticMigrationEdit],
-    ) -> None:
-        """Verify no residue remains after deferred model edits."""
-        if not edits:
-            return
-        # For deferred models, verify the self-references are normalized
-        model_directories = c.Infra.FLEXT_MODELS_DIRECTORIES
-        for edit in edits:
-            path = edit.file_path
-            if path in working:
-                source = working[path]
-                if (
-                    path.name not in c.Infra.FLEXT_MODELS_FILE_NAMES
-                    and not model_directories.intersection(path.parts)
-                ):
-                    continue
-                # Check for remaining unnormalized references
-                if "Self" in source or "typing.Self" in source:
-                    msg = (
-                        f"deferred-models phase left unnormalized references in {path}"
-                    )
-                    raise RuntimeError(msg)
+        """Reject edits replanned by the completed phase's own transformer."""
+        if edits:
+            files = ", ".join(edit.file_path.as_posix() for edit in edits)
+            msg = f"{phase} phase left residue after application: {files}"
+            raise RuntimeError(msg)
 
     @classmethod
     def _verify_fixed_point(
-        cls, root: Path, working: MutableMapping[Path, str]
+        cls,
+        root: Path,
+        working: MutableMapping[Path, str],
+        preflight: m.Infra.ModScanReport,
     ) -> None:
-        """Verify all phases reached fixed point after publishing."""
+        """Replan every phase against the proposed or reread published sources."""
+        cls._check_residue(
+            "future-annotations",
+            cls._phase_future_annotations(root, preflight, working),
+        )
+        cls._check_residue("deferred-models", cls._deferred_model_edits(working))
         with infra.rope_workspace(root) as rope_workspace:
             nesting_residue = u.Infra.plan_class_nesting_cutover(
                 rope_workspace=rope_workspace, sources=working
             )
-        if nesting_residue:
-            files = ", ".join(edit.file_path.as_posix() for edit in nesting_residue)
-            msg = f"class-nesting fixed point retained structural edits: {files}"
-            raise RuntimeError(msg)
-
-        # Verify future annotations fixed point
-        future_residue = [
-            path
-            for path, source in working.items()
-            if not source.startswith("from __future__ import annotations")
-            and "annotations" not in source
-            and path.suffix == ".py"
-        ]
-        if future_residue:
-            # Only check files that were modified
-            pass  # The mod circuit will catch this on next scan
+        cls._check_residue("class-nesting", nesting_residue)
+        cls._check_residue(
+            "compat-alias",
+            u.Infra.plan_api_alias_cutover(
+                root=root, sources=working, findings=preflight.entries
+            ),
+        )
+        cls._check_residue(
+            "private-import",
+            u.Infra.plan_private_import_cutover(
+                root=root,
+                sources=working,
+                findings=tuple(
+                    finding
+                    for finding in preflight.entries
+                    if finding.rule_id == "ban-private-import"
+                ),
+            ),
+        )
 
     @staticmethod
     def _source_inventory(
