@@ -229,7 +229,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             root_names if root_names is not None else frozenset({root_name})
         )
         lines: t.MutableSequenceOf[str] = ["if TYPE_CHECKING:"]
-        flext_types_emitted = bool(
+        flext_types_emitted = (
             include_flext_types
             and not FlextInfraCodegenGenerationTypeCheckingMixin._has_flext_types(
                 collapsed

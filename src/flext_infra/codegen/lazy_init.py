@@ -246,7 +246,14 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         """
         scoped_modules: defaultdict[t.StrPair, set[str]] = defaultdict(set)
         selected_package_dirs = frozenset(path.resolve() for path in package_dirs)
-        for entry in rope.workspace_index.modules_by_path.values():
+        entries = rope.workspace_index.modules_by_path.values()
+        progress_interval = max(1, len(entries) // 20)
+        for index, entry in enumerate(entries, start=1):
+            if index == 1 or index == len(entries) or index % progress_interval == 0:
+                u.Cli.info(
+                    f"lazy-init: duplicate scan {index}/{len(entries)} — "
+                    f"{entry.file_path}"
+                )
             if (
                 entry.package_dir.resolve() not in selected_package_dirs
                 or entry.is_package_init

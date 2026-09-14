@@ -1,4 +1,4 @@
-"""Promoted-command framework: help and dry-run rendering for the promoted dispatcher."""
+"""Promoted-command framework: help rendering for the promoted dispatcher."""
 
 from __future__ import annotations
 
@@ -49,6 +49,7 @@ def render_global_help(registry: Registry) -> str:
             "make help WHAT=<verbo>/<acao> ou make <verbo> WHAT=<acao> "
             "OPTIONS=Y mostra uma acao."
         ),
+        "Mutating commands execute their declared operation directly.",
         (
             "Novos comandos vivem em scripts/<verbo>/<WHAT>.sh|py com header "
             "cosmos-command."
