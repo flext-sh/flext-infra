@@ -80,8 +80,7 @@ class TestTierWhitelistGateReporting:
         # the summary "N violation(s)", so the gate emitted a single error that
         # named no file at all.
         result = gate_result(
-            ("from pydantic import BaseModel\n", "a.py"),
-            ("import structlog\n", "b.py"),
+            ("from pydantic import BaseModel\n", "a.py"), ("import structlog\n", "b.py")
         )
         tm.that(len(result.errors), eq=2)
         tm.that(" | ".join(result.errors), lacks="violation(s)")

@@ -5,8 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import u as cli_u
-from flext_cli import u
+from flext_cli import u, u as cli_u
 
 from flext_core import r
 from flext_infra.constants import c
@@ -173,10 +172,10 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                     if getattr(expected, field) != getattr(observed, field)
                 )
                 # Compare semantically relevant fields only (content, mode)
-                expected_content = getattr(expected, 'content', None)
-                observed_content = getattr(observed, 'content', None)
-                expected_mode = getattr(expected, 'mode', None)
-                observed_mode = getattr(observed, 'mode', None)
+                expected_content = getattr(expected, "content", None)
+                observed_content = getattr(observed, "content", None)
+                expected_mode = getattr(expected, "mode", None)
+                observed_mode = getattr(observed, "mode", None)
                 content_drift = False
                 if expected_content is not None and observed_content is not None:
                     expected_norm = expected_content.rstrip(b"\r\n") + b"\n"
@@ -196,13 +195,13 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                     differing = tuple(
                         field
                         for field in model_fields
-                        if field not in ('content', 'mode') and
-                           getattr(expected, field) != getattr(observed, field)
+                        if field not in {"content", "mode"}
+                        and getattr(expected, field) != getattr(observed, field)
                     )
                     if differing:
                         return r[bool].fail(
                             f"docs source metadata changed during planning: {expected.path}; "
-                            f"differing={dict(zip(differing, [(field, getattr(expected, field), getattr(observed, field)) for field in differing]))}"
+                            f"differing={dict(zip(differing, [(field, getattr(expected, field), getattr(observed, field)) for field in differing], strict=False))}"
                         )
         return r[bool].ok(True)
 

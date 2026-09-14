@@ -10,7 +10,11 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from . import _git
-    from ._defaults import ImmutableEmptyMapping, immutable_empty_mapping
+    from ._defaults import (
+        ImmutableEmptyMapping,
+        immutable_empty_mapping,
+        tool_version_field,
+    )
     from ._git.identity import FlextInfraModelsGitIdentity
     from .base import FlextInfraModelsBase
     from .census import FlextInfraModelsCensus
@@ -39,7 +43,7 @@ if TYPE_CHECKING:
     from .gates import FlextInfraModelsGates
     from .git import FlextInfraModelsGit
     from .layout import FlextInfraModelsLayout
-    from .mise_toolchain import FlextInfraModelsMiseToolchain, tool_version_field
+    from .mise_toolchain import FlextInfraModelsMiseToolchain
     from .mixins import FlextInfraModelsMixins
     from .promoted import FlextInfraModelsPromoted
     from .refactor import FlextInfraModelsRefactor
@@ -109,7 +113,11 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
-            "._defaults": ("ImmutableEmptyMapping", "immutable_empty_mapping"),
+            "._defaults": (
+                "ImmutableEmptyMapping",
+                "immutable_empty_mapping",
+                "tool_version_field",
+            ),
             "._git": ("_git",),
             "._git.identity": ("FlextInfraModelsGitIdentity",),
             ".base": ("FlextInfraModelsBase",),
@@ -139,7 +147,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates": ("FlextInfraModelsGates",),
             ".git": ("FlextInfraModelsGit",),
             ".layout": ("FlextInfraModelsLayout",),
-            ".mise_toolchain": ("FlextInfraModelsMiseToolchain", "tool_version_field"),
+            ".mise_toolchain": ("FlextInfraModelsMiseToolchain",),
             ".mixins": ("FlextInfraModelsMixins",),
             ".promoted": ("FlextInfraModelsPromoted",),
             ".refactor": ("FlextInfraModelsRefactor",),
