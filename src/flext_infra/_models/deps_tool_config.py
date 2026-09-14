@@ -132,9 +132,10 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         max_failures: Annotated[
-            Literal[1],
+            Literal[0],
             m.Field(
-                alias="max-failures", description="Fail-fast pytest failure ceiling."
+                alias="max-failures",
+                description="Run every selected test while preserving failure status.",
             ),
         ]
         enforcement_plugin: Annotated[
