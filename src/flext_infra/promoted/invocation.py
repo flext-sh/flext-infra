@@ -38,10 +38,8 @@ def validate_invocation(command: p.Infra.Promoted.Command) -> None:
 def validate_command_contract(command: p.Infra.Promoted.Command) -> None:
     """Validate static command header rules.
 
-    Raises:
-        RegistryError: When an incident-domain mutation omits a required
-            incident parameter.
-
+    RegistryError is raised indirectly by `ensure_required_params` when an
+    incident-domain mutation omits a required incident parameter.
     """
     param_by_name = {param.name: param for param in command.params}
     if command.domain == "incident" and command.mutates:
