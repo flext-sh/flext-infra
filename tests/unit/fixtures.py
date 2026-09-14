@@ -112,6 +112,7 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
         )
     )
     setup = tm.ok(u.Tests.run_isolated_make(["setup", ""], cwd=root))
+    u.Tests.record_dependency_command_output(setup)
     tm.that(u.Cli.process_succeeded(setup.outcome), eq=True, msg=setup.stderr)
     tm.that((root / c.Infra.VENV_BIN_REL / c.Infra.DEPTRY).is_file(), eq=True)
     (root / "limits.toml").write_text(
