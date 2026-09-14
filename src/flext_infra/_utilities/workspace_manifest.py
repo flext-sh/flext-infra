@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
+from .. import c
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -118,9 +118,15 @@ def test_workspace_package_api_and_member_docs_share_one_transaction(
     tm.that(all(report.changed_files == 0 for report in fixed_point.value), eq=True)
 
     bundle = u.Tests.prepare_docs_bundle(generator)
-    (package / "__init__.py").write_text(
-        '"""Root source changed after rendering."""\n', encoding="utf-8"
+    # Mutate a source the bundle itself declares, rather than a fixed path.
+    # Which sources a bundle watches depends on the selection, so naming one
+    # by hand asserted drift detection through a file that some selections
+    # legitimately never read.
+    watched = next(
+        state.path for state in bundle.source_states if workspace in state.path.parents
     )
+    watched.write_text('"""Source changed after rendering."""\n', encoding="utf-8")
+
     tm.fail(generator.plan_files(bundle))
 
 
