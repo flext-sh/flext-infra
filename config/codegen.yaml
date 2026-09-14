@@ -29,7 +29,6 @@ Infra:
       runtime-census: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
       namespace: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
       tier-whitelist: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      index-declarations: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
       smells: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
       codemod: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
       layout: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
@@ -46,8 +45,8 @@ Infra:
       #   python_required_version -> >=3.13,<3.14
       # Every fleet binary is selected as latest at setup time; mise resolves
       # each moving selector to the newest published release. Dependency
-      # floors remain in pyproject and uv.lock alone owns their resolved
-      # Python distributions.
+      # floors live in pyproject and nowhere else: the fleet resolves them
+      # fresh on every setup and commits no lock (operator 2026-09-14).
       python_version: "3.13"
       state_directory_name: .flext-runtime
       scratch_namespace: scratch
@@ -755,7 +754,6 @@ Infra:
         - CLAUDE.md
         - conftest.py
         - mkdocs.yml
-        - uv.lock
       canonical_root_dotfiles:
         - .gitignore
         - .gitattributes
@@ -1357,11 +1355,19 @@ Infra:
           profiles: [workspace]
           patterns:
             - "!pyproject.toml"
-            - "!uv.lock"
             - "!.taplo.toml"
             - "!pyrefly.toml"
             - "!poetry.lock"
             - "!ruff-shared.toml"
+        # Lockfiles pin resolved versions against a fleet that declares itself
+        # unlocked: setup converges on the newest published release, so a
+        # committed uv.lock only records a snapshot that goes stale and then
+        # makes `uv sync` unsatisfiable. Every profile ignores it; dependency
+        # floors live in pyproject (operator 2026-09-14).
+        - name: "uv lockfile is never tracked"
+          patterns:
+            - "uv.lock"
+            - "**/uv.lock"
         - name: "mise toolchain pinning"
           profiles: [workspace]
           patterns:
