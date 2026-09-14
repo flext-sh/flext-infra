@@ -24,7 +24,8 @@ from . import (
     FlextInfraModelsLayout,
     immutable_empty_mapping,
 )
-from .mise_toolchain import FlextInfraModelsMiseToolchain, tool_version_field
+from ._defaults import tool_version_field
+from .mise_toolchain import FlextInfraModelsMiseToolchain
 
 
 class FlextInfraConfigModels:
