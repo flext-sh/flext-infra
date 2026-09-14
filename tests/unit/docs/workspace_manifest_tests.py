@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import c, u
@@ -73,6 +74,30 @@ class TestsFlextInfraWorkspaceManifest:
         )
 
         tm.that(u.Infra.is_fleet_umbrella(tmp_path), eq=False)
+
+    def test_invalid_manifest_cannot_erase_participant_exclusions(
+        self, tmp_path: Path
+    ) -> None:
+        """An invalid declared scope fails before discovery can widen it."""
+        self._config_dir(tmp_path)
+        u.Infra.workspace_manifest_path(tmp_path).write_text(
+            "{}\n", encoding=c.Cli.ENCODING_DEFAULT
+        )
+
+        with pytest.raises(c.ValidationError):
+            u.Infra.manifest_nonparticipant_paths(tmp_path)
+
+    def test_invalid_manifest_cannot_supply_default_refactor_settings(
+        self, tmp_path: Path
+    ) -> None:
+        """A present invalid manifest is never treated as undeclared settings."""
+        self._config_dir(tmp_path)
+        u.Infra.workspace_manifest_path(tmp_path).write_text(
+            "{}\n", encoding=c.Cli.ENCODING_DEFAULT
+        )
+
+        with pytest.raises(c.ValidationError):
+            u.Infra.load_refactor_config(tmp_path)
 
 
 __all__: list[str] = ["TestsFlextInfraWorkspaceManifest"]
