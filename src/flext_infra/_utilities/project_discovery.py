@@ -9,11 +9,13 @@ from __future__ import annotations
 from functools import lru_cache
 from operator import attrgetter
 from pathlib import Path
+from typing import override
 
 from flext_cli import u
 
 from .. import c, config, m, t
 from . import FlextInfraUtilitiesGit, FlextInfraUtilitiesProjectDiscoveryCandidatesMixin
+from .workspace_manifest import FlextInfraUtilitiesWorkspaceManifest
 
 
 class FlextInfraUtilitiesProjectDiscovery(
@@ -25,10 +27,8 @@ class FlextInfraUtilitiesProjectDiscovery(
     @lru_cache(maxsize=1)
     def load_refactor_config(cls, repository_root: Path) -> m.Infra.RefactorConfigSpec:
         """Load refactor configuration from workspace.yaml with defaults fallback."""
-        manifest_path = (
+        manifest_path = FlextInfraUtilitiesWorkspaceManifest.workspace_manifest_path(
             repository_root
-            / c.Infra.CODEGEN_CONFIG_DIR
-            / c.Infra.WORKSPACE_MANIFEST_FILENAME
         )
         if not manifest_path.is_file():
             return m.Infra.RefactorConfigSpec()
@@ -67,10 +67,8 @@ class FlextInfraUtilitiesProjectDiscovery(
         this only narrows discovery, and the manifest's authoritative validation
         belongs to its own owner, which fails loud.
         """
-        manifest_path = (
+        manifest_path = FlextInfraUtilitiesWorkspaceManifest.workspace_manifest_path(
             repository_root
-            / c.Infra.CODEGEN_CONFIG_DIR
-            / c.Infra.WORKSPACE_MANIFEST_FILENAME
         )
         if not manifest_path.is_file():
             return frozenset()
@@ -110,6 +108,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
 
     @classmethod
+    @override
     def discover_project_candidates(
         cls, repository_root: Path, *, scan_dirs: frozenset[str] | None = None
     ) -> t.SequenceOf[Path]:

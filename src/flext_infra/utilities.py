@@ -76,6 +76,7 @@ from ._utilities.silent_failure_ast import FlextInfraUtilitiesSilentFailureAst
 from ._utilities.transformer_header import FlextInfraUtilitiesTransformerHeader
 from ._utilities.versioning import FlextInfraUtilitiesVersioning
 from ._utilities.workspace_fingerprint import FlextInfraUtilitiesWorkspaceFingerprint
+from ._utilities.workspace_manifest import FlextInfraUtilitiesWorkspaceManifest
 from ._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
 from ._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
 
@@ -131,6 +132,7 @@ class FlextInfraUtilities(cli_u):
         FlextInfraUtilitiesDocsRender,
         FlextInfraUtilitiesDocsScope,
         FlextInfraUtilitiesDocsValidate,
+        FlextInfraUtilitiesWorkspaceManifest,
         FlextInfraUtilitiesDependencies,
         FlextInfraUtilitiesDeferredSelfReference,
         FlextInfraUtilitiesGit,

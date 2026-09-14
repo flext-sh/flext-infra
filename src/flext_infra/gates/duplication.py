@@ -206,11 +206,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
 
     def _declared_duplication_trees(self) -> p.Result[t.StrSequence]:
         """Read ``repository.duplication_trees`` from the governed manifest."""
-        manifest_path = (
-            self._repository_root
-            / c.CONFIG_DIR_NAME
-            / c.Infra.WORKSPACE_MANIFEST_FILENAME
-        )
+        manifest_path = u.Infra.workspace_manifest_path(self._repository_root)
         if not manifest_path.is_file():
             return r[t.StrSequence].ok(())
         loaded = u.Cli.config_load(manifest_path, expand_env=False)
