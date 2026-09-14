@@ -1485,6 +1485,11 @@ Infra:
       # carry it. *.bak are safety-cycle backup residue (cleaned by design;
       # ignore guards against interrupted runs). *aihub-prior* are ai-hub
       # sync prior-state backups that must never land in git.
+        # Prior-generation AI Hub artifacts are runtime residue in every
+        # profile; same provenance as the pattern above.
+        - name: "Banned residue (never source, any profile)"
+          patterns:
+            - "*aihub-prior*"
         - name: "RESIDUE: never track backups or repo-local policy copies"
           profiles: [workspace, standalone]
           patterns:
@@ -1628,6 +1633,12 @@ Infra:
         - name: "Backup files inside allowed directories"
           patterns:
             - "**/*.bak"
+        # A safety cycle that backs a file up more than once appends its own
+        # suffix (`x.bak.1`, `x.bak.20260824`), which `**/*.bak` does not match.
+        # Adopted from the lane PRs that had added it to the generated
+        # .gitignore of sixteen repositories; the pattern belongs here, where
+        # every repository inherits it.
+            - "**/*.bak.*"
             - "**/*.bkp"
             - "**/*.bkp?"
             - "**/*.backup"
