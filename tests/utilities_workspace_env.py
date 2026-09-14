@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import tempfile
 from pathlib import Path
 
 from flext_tests import tm
@@ -44,14 +45,14 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
         from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
         mode = tm.ok(FlextInfraWorkspaceDetector().detect(root))
-        by_mode: dict[c.Infra.MakeProfile, c.Infra.MakeProfile] = {
+        by_mode: t.MutableMappingKV[c.Infra.MakeProfile, c.Infra.MakeProfile] = {
             c.Infra.MakeProfile.WORKSPACE: c.Infra.MakeProfile.WORKSPACE,
             c.Infra.MakeProfile.STANDALONE: c.Infra.MakeProfile.STANDALONE,
         }
         return by_mode[mode]
 
     @staticmethod
-    def ignore_patterns_for(root: Path) -> tuple[str, ...]:
+    def ignore_patterns_for(root: Path) -> t.VariadicTuple[str]:
         """Return the ignore patterns that apply to *root*'s declared profile.
 
         Returns:
@@ -59,7 +60,7 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
 
         """
         profile = TestsFlextInfraUtilitiesWorkspaceEnvMixin.repository_profile(root)
-        gitignore_sections: tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...] = (
+        gitignore_sections: t.VariadicTuple[m.Infra.ScaffoldGitignoreSectionSpec] = (
             config.Infra.codegen.gitignore_sections
         )
         return tuple(
@@ -81,8 +82,6 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
             ``True`` when git would track the path.
 
         """
-        import tempfile
-
         with tempfile.TemporaryDirectory() as raw_root:
             probe_root = Path(raw_root)
             tm.ok(u.Cli.run_checked(["git", "init", "-q", str(probe_root)]))

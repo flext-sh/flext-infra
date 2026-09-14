@@ -7,14 +7,15 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import c, config, u
+from tests import t
 
 
 class TestsFlextInfraManagedMaintenanceHeaders:
     """Validate machine-readable maintenance metadata at canonical owners."""
 
     @staticmethod
-    def _fields(text: str) -> dict[str, str]:
-        fields: dict[str, str] = {}
+    def _fields(text: str) -> t.MutableMappingKV[str, str]:
+        fields: t.MutableMappingKV[str, str] = {}
         for line in text.splitlines():
             marker = line.lstrip("# ")
             if not marker.startswith("@flext-") or ":" not in marker:

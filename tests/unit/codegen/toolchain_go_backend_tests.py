@@ -5,6 +5,7 @@ from __future__ import annotations
 from flext_tests import tm
 
 from flext_infra import config
+from tests import t
 
 
 class TestsToolchainGoBackend:
@@ -17,4 +18,4 @@ class TestsToolchainGoBackend:
         tm.that(toolchain.go_version, eq="latest")
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

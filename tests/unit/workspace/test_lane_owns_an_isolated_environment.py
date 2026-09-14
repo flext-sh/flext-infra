@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService, c, config
-from tests import u
+from tests import t, u
 from tests.unit.workspace import WorktreeFixture
 
 _VENV_NAME = config.Infra.tooling.tools.pyright.path_rules.venv_name
@@ -155,4 +155,4 @@ def test_add_only_creates_git_lane_without_setup(tmp_path: Path) -> None:
     assert not (lane / "setup-runs.log").exists()
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

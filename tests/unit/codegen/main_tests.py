@@ -81,7 +81,7 @@ def _seed_public_conform_checkout(root: Path) -> None:
     )
 
 
-def _mise_transaction_state(root: Path) -> tuple[Path, Path]:
+def _mise_transaction_state(root: Path) -> t.Pair[Path, Path]:
     """Return the public workspace journal and root-project staging paths."""
     toolchain = config.Infra.codegen.toolchain
     state_root = (

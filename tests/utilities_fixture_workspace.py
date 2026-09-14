@@ -42,7 +42,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         return project_dir
 
     @staticmethod
-    def demo_project(root: Path, *, name: str = "demo-project") -> tuple[Path, Path]:
+    def demo_project(root: Path, *, name: str = "demo-project") -> t.Pair[Path, Path]:
         """Create one minimal buildable project; return its root and package dir."""
         project = root / name
         package_dir = project / "src" / name.replace("-", "_")
@@ -76,7 +76,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         package_name: str = "sample_pkg",
         pyproject: str = "[project]\nname='sample'\n",
         declare: bool = True,
-    ) -> tuple[Path, Path, Path]:
+    ) -> t.Triple[Path, Path, Path]:
         """Materialize the workspace tree the namespace enforcer scans.
 
         Returns ``(workspace, project, package)``. ``declare`` writes the
@@ -104,7 +104,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         inherited_facets: t.StrSequence = (),
         root_modules: t.StrSequence = (),
         root_packages: t.StrSequence = (),
-        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...] = (),
+        extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec] = (),
         gascity_enabled: bool | None = None,
     ) -> Path:
         """Write the declared ``config/workspace.yaml`` of one standalone repository.
@@ -288,7 +288,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
     @staticmethod
     def create_checker_project(
         tmp_path: Path, *, project_name: str = "p1", with_src: bool = False
-    ) -> tuple[FlextInfraWorkspaceChecker, Path]:
+    ) -> t.Pair[FlextInfraWorkspaceChecker, Path]:
         """Provide the typed test helper `create_checker_project`."""
         checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
         project_dir = TestsFlextInfraUtilitiesWorkspaceFixtureMixin.mk_project(

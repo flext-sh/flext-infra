@@ -9,9 +9,10 @@ from flext_tests import tm
 
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from tests import t
 
 
-def _project(root: Path, documents: dict[str, str]) -> Path:
+def _project(root: Path, documents: t.MappingKV[str, str]) -> Path:
     root.mkdir(parents=True)
     (root / "config").mkdir()
     for name, body in documents.items():

@@ -97,7 +97,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
             )
 
             def collect(
-                statements: list[ast.stmt],
+                statements: t.SequenceOf[ast.stmt],
                 package: str,
                 module: str,
                 lazy_exports: t.StrSequence,
@@ -161,7 +161,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
         qualified: str,
         bindings: t.MappingKV[str, set[str]],
         exports: t.MappingKV[str, set[str]],
-    ) -> tuple[str, str] | None:
+    ) -> t.Pair[str, str] | None:
         """Resolve re-export chains by identity, preferring an explicit root ABI."""
 
         def identities(name: str, visiting: frozenset[str]) -> set[str]:
@@ -289,7 +289,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
         package: str,
         qualified: str,
         bindings: t.MappingKV[str, set[str]],
-        class_bases: t.MappingKV[str, tuple[str, ...]],
+        class_bases: t.MappingKV[str, t.VariadicTuple[str]],
     ) -> str | None:
         """Resolve one private class to exactly one inherited facade path."""
         references: set[str] = set()
@@ -361,7 +361,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
 
     @staticmethod
     def facade_alias_binding(
-        *, owners: t.SequenceOf[tuple[ast.Module, str, str, str]], alias: str | None
+        *, owners: t.SequenceOf[t.Quad[ast.Module, str, str, str]], alias: str | None
     ) -> str | None:
         """Return the alias when the owning package publishes it as a facade.
 

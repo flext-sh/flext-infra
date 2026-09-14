@@ -7,6 +7,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import c, m, u
+from tests import t
 
 _SOURCE = (
     "from typing import ClassVar, TYPE_CHECKING\n"
@@ -53,7 +54,7 @@ class TestsFlextInfraRopeStructure:
         )
 
     @staticmethod
-    def _by_line() -> dict[int, m.Infra.LogicalStatement]:
+    def _by_line() -> t.MutableMappingKV[int, m.Infra.LogicalStatement]:
         return {s.line: s for s in u.Infra.logical_statements(_SOURCE)}
 
     def test_reports_real_statement_lines_not_target_module_lines(self) -> None:

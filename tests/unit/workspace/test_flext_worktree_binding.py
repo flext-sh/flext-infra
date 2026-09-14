@@ -18,7 +18,7 @@ from flext_tests import tm
 
 from flext_core import p as core_p
 from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
-from tests import u
+from tests import t, u
 from tests.unit.workspace import WorktreeFixture
 
 
@@ -85,7 +85,7 @@ class TestsFlextWorktreeBinding:
         """Only declared flext deps present in the worktree are rebound."""
         consumer = _consumer(tmp_path)
 
-        planned: core_p.Result[tuple[str, ...]] = (
+        planned: core_p.Result[t.VariadicTuple[str]] = (
             FlextInfraFlextBindingService.plan_targets(
                 consumer_root=consumer, flext_root=_flext_workspace(tmp_path)
             )
@@ -128,4 +128,4 @@ class TestsFlextWorktreeBinding:
         tm.that(tm.ok(planned), eq=())
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

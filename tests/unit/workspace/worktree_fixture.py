@@ -200,11 +200,11 @@ class WorktreeFixture:
         workspace: str,
         database: str,
         issue_prefix: str,
-        custom_issue_types: tuple[str, ...] = (),
+        custom_issue_types: t.VariadicTuple[str] = (),
     ) -> Path:
         """Write one repository-local Beads identity input."""
         path = root / "config" / "beads.yaml"
-        payload: dict[str, t.JsonValue] = {
+        payload: t.MutableMappingKV[str, t.JsonValue] = {
             "version": 1,
             "workspace": workspace,
             "database": database,
@@ -271,7 +271,7 @@ class WorktreeFixture:
         workspace: str,
         database: str,
         issue_prefix: str,
-        custom_issue_types: tuple[str, ...] = (),
+        custom_issue_types: t.VariadicTuple[str] = (),
         beads_owner: bool = True,
     ) -> Path:
         """Create one self-identifying governed project with a real Git origin.
@@ -315,7 +315,7 @@ class WorktreeFixture:
         return pyproject
 
     @classmethod
-    def write_gitmodules(cls, root: Path, projects: tuple[str, ...]) -> Path:
+    def write_gitmodules(cls, root: Path, projects: t.VariadicTuple[str]) -> Path:
         """Declare governed subprojects from the configured provider contract."""
         provider = u.Tests.provider()
         path = root / c.Infra.GITMODULES
@@ -334,7 +334,9 @@ class WorktreeFixture:
         return path
 
     @staticmethod
-    def repository_snapshot(root: Path) -> tuple[tuple[tuple[str, bytes], ...], str]:
+    def repository_snapshot(
+        root: Path,
+    ) -> t.Pair[t.VariadicTuple[t.Pair[str, bytes]], str]:
         """Capture all repository bytes and porcelain status.
 
         Git metadata is excluded; every runtime-state owner lives outside the
@@ -358,4 +360,4 @@ class WorktreeFixture:
         return tree, status
 
 
-__all__: tuple[str, ...] = ("WorktreeFixture",)
+__all__: t.VariadicTuple[str] = ("WorktreeFixture",)

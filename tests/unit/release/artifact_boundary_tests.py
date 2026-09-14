@@ -8,7 +8,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests import u
+from tests import t, u
 
 
 def _write_directory(archive: tarfile.TarFile, name: str) -> None:
@@ -138,4 +138,4 @@ class TestsFlextInfraReleaseArchiveBoundary:
             tm.that(stage_path.exists(), eq=False)
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

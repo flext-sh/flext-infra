@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService, c
-from tests import u
+from tests import t, u
 
 
 def test_worktree_add_does_not_run_setup(tmp_path: Path) -> None:
@@ -38,4 +38,4 @@ def test_worktree_add_does_not_run_setup(tmp_path: Path) -> None:
     tm.that((lane / marker).exists(), eq=False)
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

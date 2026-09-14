@@ -9,7 +9,7 @@ from flext_tests import tm
 
 from flext_infra import main as infra_main
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, u
+from tests import c, t, u
 from tests.unit.workspace import WorktreeFixture
 
 
@@ -44,7 +44,7 @@ def _write_workspace(repository_root: Path) -> None:
     WorktreeFixture.write_gitmodules(repository_root, ("demo-a",))
 
 
-def workspace_main(argv: list[str] | None = None) -> int:
+def workspace_main(argv: t.SequenceOf[str] | None = None) -> int:
     args = ["workspace"]
     if argv is not None:
         args.extend(argv)

@@ -8,6 +8,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import c, u
+from tests import t
 
 
 class TestsMiseRuntimeStorage:
@@ -52,4 +53,4 @@ class TestsMiseRuntimeStorage:
         tm.that(candidate.exists(), eq=False)
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

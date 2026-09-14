@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def _declared_roots() -> tuple[t.NonEmptyStr, t.NonEmptyStr]:
+def _declared_roots() -> t.Pair[t.NonEmptyStr, t.NonEmptyStr]:
     """Derive arbitrary valid roots from the typed project fixture owner."""
     package_name = u.Tests.project_spec(config.Infra.name).package_name
     return f"{package_name}_entry", f"{package_name}_client"
@@ -22,7 +22,7 @@ def _declared_roots() -> tuple[t.NonEmptyStr, t.NonEmptyStr]:
 
 def _prepare_project(
     root: Path, *, materialize_module: bool, materialize_package: bool
-) -> tuple[t.NonEmptyStr, t.NonEmptyStr]:
+) -> t.Pair[t.NonEmptyStr, t.NonEmptyStr]:
     """Materialize one provider-governed project through shared typed fixtures."""
     _ = u.Tests.standalone_workspace(root, config.Infra.name)
     root_module, root_package = _declared_roots()

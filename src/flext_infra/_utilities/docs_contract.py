@@ -130,14 +130,18 @@ class FlextInfraUtilitiesDocsContract:
 
     @staticmethod
     def _docs_toc_items(
-        tokens: t.SequenceOf[m.Infra.DocsTocToken], items: t.MutableSequenceOf[str]
+        tokens: t.SequenceOf[m.Infra.DocsTocToken],
+        items: t.MutableSequenceOf[str],
+        depth: int = 0,
     ) -> None:
         """Serialize the renderer's own TOC without reparsing heading Markdown."""
         for token in tokens:
             title = unescape(token.name).replace("[", r"\[").replace("]", r"\]")
-            indent = "  " if token.level == 3 else ""
+            indent = "  " * depth
             items.append(f"{indent}- [{title}](#{token.id})")
-            FlextInfraUtilitiesDocsContract._docs_toc_items(token.children, items)
+            FlextInfraUtilitiesDocsContract._docs_toc_items(
+                token.children, items, depth + 1
+            )
 
     @staticmethod
     def docs_workspace_contract(repository_root: Path) -> t.JsonMapping:

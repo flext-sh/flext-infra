@@ -10,7 +10,7 @@ from flext_tests import tm
 
 from flext_infra import c, config, m, u
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
-from tests import u as test_u
+from tests import t, u as test_u
 
 
 class TestsCodegenMiseArtifacts:
@@ -231,4 +231,4 @@ class TestsCodegenMiseArtifacts:
         tm.that(field.exclude, eq=True)
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

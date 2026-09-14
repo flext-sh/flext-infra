@@ -26,7 +26,7 @@ def _beads_fixture_root(tmp_path: Path, directory: str) -> Path:
     )
 
 
-def _beads_fixture_payload() -> dict[str, t.JsonValue]:
+def _beads_fixture_payload() -> t.MutableMappingKV[str, t.JsonValue]:
     """Return the canonical Beads identity payload a fixture checkout declares."""
     return {
         "version": 1,
@@ -58,7 +58,7 @@ class TestsRepositoryLocalTopology:
         """Preserve typed local policy after reconciling it with observed Git."""
         root = _self_named_governed_root(tmp_path, "manifest-policy")
         observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        manifest: dict[str, t.JsonValue] = {
+        manifest: t.MutableMappingKV[str, t.JsonValue] = {
             "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
             "name": observed.name,
             "repository": {
@@ -105,14 +105,14 @@ class TestsRepositoryLocalTopology:
     def test_selected_workspace_manifest_validates_the_complete_document(
         self,
         tmp_path: Path,
-        overrides: dict[str, t.JsonValue],
+        overrides: t.MappingKV[str, t.JsonValue],
         missing_field: str | None,
         expected_error: str,
     ) -> None:
         """Reject incompatible or partial manifest envelopes before policy use."""
         root = _self_named_governed_root(tmp_path, expected_error)
         observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        payload: dict[str, t.JsonValue] = {
+        payload: t.MutableMappingKV[str, t.JsonValue] = {
             "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
             "name": f"fixture-{expected_error}",
             "repository": observed.repository.model_dump(mode="json"),

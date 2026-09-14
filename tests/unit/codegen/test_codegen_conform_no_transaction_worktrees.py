@@ -9,13 +9,13 @@ from flext_tests import tm
 
 from flext_infra import c
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import u
+from tests import t, u
 from tests.unit.workspace import WorktreeFixture
 
 _TRANSACTION_MARKER = "-transaction-"
 
 
-def _transaction_worktree_siblings(root: Path) -> tuple[str, ...]:
+def _transaction_worktree_siblings(root: Path) -> t.VariadicTuple[str]:
     """Name sibling directories that look like detached transaction worktrees."""
     return tuple(
         entry.name
@@ -24,7 +24,7 @@ def _transaction_worktree_siblings(root: Path) -> tuple[str, ...]:
     )
 
 
-def _seed_committed_drift(tmp_path: Path) -> tuple[Path, Path]:
+def _seed_committed_drift(tmp_path: Path) -> t.Pair[Path, Path]:
     """Materialize the managed tree, then commit one drifted managed Makefile.
 
     Returns the conformed repository root and the drifted file: the shared

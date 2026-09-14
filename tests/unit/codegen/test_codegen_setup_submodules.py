@@ -11,7 +11,7 @@ from flext_tests import tm
 
 from flext_infra import c, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import u as test_u
+from tests import t, u as test_u
 
 # Why (suite budget): every scenario provisions a real scaffolded project
 # template plus live git submodule topologies; the per-case wall only holds
@@ -46,7 +46,7 @@ class TestsCodegenSetupSubmodules:
     @staticmethod
     def _fake_uv(
         root: Path, expected_submodule_file: Path | None = None
-    ) -> dict[str, str]:
+    ) -> t.MutableMappingKV[str, str]:
         bin_dir = root / "fixture-bin"
         bin_dir.mkdir()
         # The bootstrap re-enters Make under a sanitized environment (only the
@@ -122,7 +122,7 @@ class TestsCodegenSetupSubmodules:
         *,
         superproject_branch: str,
         member_branch: str,
-    ) -> tuple[Path, dict[str, str]]:
+    ) -> t.Pair[Path, t.MutableMappingKV[str, str]]:
         """Provision a project whose member sits on the requested branch."""
         source = tmp_path / "source"
         cls._commit_repository(source, "declared-dev", "source")
@@ -517,4 +517,4 @@ def generated_project_template(tmp_path_factory: pytest.TempPathFactory) -> Path
     return root
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

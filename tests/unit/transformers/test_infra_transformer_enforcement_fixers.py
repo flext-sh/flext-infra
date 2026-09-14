@@ -35,9 +35,9 @@ def _transform(
     | FlextInfraRefactorOpenEncoding
     | FlextInfraRefactorPatternTransformer
     | FlextInfraRefactorTypingUnifier,
-) -> tuple[str, Sequence[str]]:
+) -> t.Pair[str, Sequence[str]]:
     """Apply a stateless transformer to source text."""
-    result: tuple[str, Sequence[str]] = transformer.apply_to_source(source)
+    result: t.Pair[str, Sequence[str]] = transformer.apply_to_source(source)
     return result
 
 

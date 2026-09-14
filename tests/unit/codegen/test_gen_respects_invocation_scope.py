@@ -24,6 +24,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from tests import t
+
 _TEMPLATE = (
     Path(__file__).resolve().parents[3]
     / "src"
@@ -164,4 +166,4 @@ def test_project_selector_resolves_members_from_repository_root() -> None:
     assert "MANAGED_GITLINKS :=" in text
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

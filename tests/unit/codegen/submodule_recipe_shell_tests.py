@@ -7,6 +7,8 @@ import re
 
 from flext_tests import tm
 
+from tests import t
+
 _RECIPE = (
     pathlib.Path(__file__).resolve().parents[3]
     / "src/flext_infra/templates/project/base/submodule_setup_recipe.j2"
@@ -49,4 +51,4 @@ class TestsSubmoduleRecipeShell:
         tm.that(offenders, eq=[])
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

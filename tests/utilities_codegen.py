@@ -69,7 +69,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         *,
         project_name: str = "flext-test-project",
         package_name: str = "flext_test_project",
-    ) -> tuple[Path, Path]:
+    ) -> t.Pair[Path, Path]:
         """Provide the typed test helper `create_lazy_init_workspace`."""
         repository_root = tmp_path / project_name
         package_root = repository_root / c.Infra.DEFAULT_SRC_DIR / package_name
@@ -166,7 +166,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
 
     @staticmethod
     def materialize_codegen_plans(
-        planned: p.Result[tuple[m.Infra.CodegenFilePlan, ...]],
+        planned: p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]],
     ) -> p.Result[bool]:
         """Publish immutable codegen plans only inside test workspaces."""
         if planned.failure:
@@ -202,7 +202,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
     @staticmethod
     def lazy_init_scenario(
         tmp_path: Path,
-    ) -> tuple[Path, Path, FlextInfraCodegenLazyInit]:
+    ) -> t.Triple[Path, Path, FlextInfraCodegenLazyInit]:
         """Create the workspace, write its namespace module, build the service."""
         repository_root, package_root = (
             TestsFlextInfraUtilitiesCodegenMixin.create_lazy_init_workspace(tmp_path)
@@ -217,7 +217,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         return package_root, init_path, service
 
     @staticmethod
-    def extract_lazy_init_exports(source: str) -> tuple[bool, t.StrSequence]:
+    def extract_lazy_init_exports(source: str) -> t.Pair[bool, t.StrSequence]:
         """Read the published lazy export contract from generated source."""
         assignments = dict(u.Infra.get_module_level_assignments(source))
         all_value = assignments.get(c.Infra.DUNDER_ALL)

@@ -17,13 +17,13 @@ class FlextInfraModelsCodemod:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
-        rule_dirs: tuple[Path, ...] = m.Field(
+        rule_dirs: t.VariadicTuple[Path] = m.Field(
             description="Validated rule directories declared by the ast-grep owner"
         )
-        util_dirs: tuple[Path, ...] = m.Field(
+        util_dirs: t.VariadicTuple[Path] = m.Field(
             description="Validated utility directories declared by the ast-grep owner"
         )
-        test_dirs: tuple[Path, ...] = m.Field(
+        test_dirs: t.VariadicTuple[Path] = m.Field(
             description="Validated fixture directories declared by the ast-grep owner"
         )
 

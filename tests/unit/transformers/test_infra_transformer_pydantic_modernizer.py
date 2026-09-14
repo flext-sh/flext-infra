@@ -13,11 +13,13 @@ from flext_infra.transformers.pydantic_modernizer import (
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from tests import t
+
 
 def _transform(source: str) -> str:
     """Apply the Pydantic modernizer to source text."""
     transformer = FlextInfraRefactorPydanticModernizer()
-    result: tuple[str, Sequence[str]] = transformer.apply_to_source(source)
+    result: t.Pair[str, Sequence[str]] = transformer.apply_to_source(source)
     return result[0]
 
 

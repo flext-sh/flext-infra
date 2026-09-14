@@ -8,6 +8,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import c, m, main as infra_main, u
+from tests import t
 
 
 class TestsFlextInfraModCliRoute:
@@ -220,7 +221,7 @@ class TestsFlextInfraModCliRoute:
         self, mod_workspace: Path
     ) -> None:
         """Execute each elected provider config and retain its exact rule owner."""
-        expected_rule_files: dict[str, str] = {}
+        expected_rule_files: t.MutableMappingKV[str, str] = {}
         source_lines: list[str] = []
         for package, rule_id, severity in (
             ("first_provider", "first-provider-finding", "warning"),

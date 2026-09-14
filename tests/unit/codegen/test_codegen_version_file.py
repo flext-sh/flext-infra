@@ -34,7 +34,7 @@ version = "{project_version}"
 """
 
 
-def _create_workspace(tmp_path: Path, project_name: str) -> tuple[Path, Path, Path]:
+def _create_workspace(tmp_path: Path, project_name: str) -> t.Triple[Path, Path, Path]:
     """Create minimal workspace/project/package structure."""
     ws = tmp_path / "workspace"
     ws.mkdir()

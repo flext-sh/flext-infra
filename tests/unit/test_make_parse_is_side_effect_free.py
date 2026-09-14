@@ -24,6 +24,7 @@ from flext_tests import tm
 
 import flext_infra
 from flext_infra import c
+from tests import t
 
 # ``$(shell ...)`` call marker. Assignment identity uses c.Infra.MAKE_ASSIGNMENT_RE;
 # immediacy is ``:=`` / ``::=`` (name token ends with ``:`` before ``=``).
@@ -41,7 +42,7 @@ def _repository_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def _make_surfaces() -> tuple[Path, ...]:
+def _make_surfaces() -> t.VariadicTuple[Path]:
     """Return every Make surface plus the templates that generate them."""
     root = _repository_root()
     names = (c.Infra.MAKEFILE_FILENAME, c.Infra.CUSTOM_MAKE_FILENAME)
@@ -65,7 +66,7 @@ def _is_immediate_shell_assignment(line: str) -> bool:
     )
 
 
-def _interpreter_at_parse_time(surface: Path) -> tuple[str, ...]:
+def _interpreter_at_parse_time(surface: Path) -> t.VariadicTuple[str]:
     """Return immediate assignments that spawn an interpreter while parsing."""
     return tuple(
         f"{surface.name}:{number}: {line.strip()}"
@@ -76,7 +77,7 @@ def _interpreter_at_parse_time(surface: Path) -> tuple[str, ...]:
     )
 
 
-def _silencing_lines(surface: Path) -> tuple[str, ...]:
+def _silencing_lines(surface: Path) -> t.VariadicTuple[str]:
     """Return recipe lines that discard a command's exit status."""
     return tuple(
         f"{surface.name}:{number}: {line.strip()}"
@@ -94,7 +95,7 @@ class TestsFlextInfraMakeParseIsSideEffectFree:
         ids=["no-interpreter-at-parse-time", "no-silenced-recipe-failure"],
     )
     def test_make_surfaces_preserve_execution_boundaries(
-        self, scan: Callable[[Path], tuple[str, ...]]
+        self, scan: Callable[[Path], t.VariadicTuple[str]]
     ) -> None:
         """Parsing starts no interpreter and recipes never swallow failures."""
         offenders = {

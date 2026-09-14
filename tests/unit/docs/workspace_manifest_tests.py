@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import c, u
@@ -24,6 +25,16 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraWorkspaceManifest:
     """Classification of a checkout as a fleet umbrella."""
+
+    def test_invalid_manifest_cannot_expand_discovery(self, tmp_path: Path) -> None:
+        """Invalid declarations fail before exclusions or refactor policy are used."""
+        manifest = u.Infra.workspace_manifest_path(tmp_path)
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text("version: invalid\n", encoding="utf-8")
+        with pytest.raises(c.ValidationError):
+            u.Infra.manifest_nonparticipant_paths(tmp_path)
+        with pytest.raises(c.ValidationError):
+            u.Infra.load_refactor_config(tmp_path)
 
     @staticmethod
     def _config_dir(root: Path) -> Path:

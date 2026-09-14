@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from tests import m
+from tests import m, t
 
 
-def _sample_issues() -> tuple[m.Infra.Issue, m.Infra.Issue, m.Infra.Issue]:
+def _sample_issues() -> t.Triple[m.Infra.Issue, m.Infra.Issue, m.Infra.Issue]:
     """Build three distinct sample gate issues for summary assertions."""
     issue1 = m.Infra.Issue(
         file="a.py", line=1, column=1, code="E1", message="m1", severity="error"

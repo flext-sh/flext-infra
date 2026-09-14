@@ -21,6 +21,8 @@ from flext_infra.detectors.deferred_self_reference_detector import (
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tests import t
+
 _DEFERRED = "DEFERRED_SELF_REFERENCE"
 _RECURSIVE = "RECURSIVE_MODEL"
 
@@ -29,7 +31,7 @@ class TestsFlextInfraDeferredSelfReferenceDetector:
     """Behavior contract for deferred-self-reference detection."""
 
     @staticmethod
-    def _codes(tmp_path: Path, source: str) -> tuple[str, ...]:
+    def _codes(tmp_path: Path, source: str) -> t.VariadicTuple[str]:
         project = tmp_path / "demo-project"
         package_dir = project / "src" / "demo_project"
         package_dir.mkdir(parents=True)

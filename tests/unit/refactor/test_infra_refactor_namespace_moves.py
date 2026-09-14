@@ -11,13 +11,15 @@ from tests import m, u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tests import t
+
 
 def _write_file(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
 
 
-def _build_project(tmp_path: Path) -> tuple[Path, Path]:
+def _build_project(tmp_path: Path) -> t.Pair[Path, Path]:
     project_root = tmp_path / "flext-demo"
     package_root = project_root / "src" / "demo_pkg"
     _write_file(

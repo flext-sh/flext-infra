@@ -21,6 +21,8 @@ if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
 
+    from tests import t
+
 
 # Why (flext-oftik class, flext-2j4lr): 15 of this module's 21 cases drive real
 # release phases over a real Git repository, and one phase costs ~8-9 s today
@@ -110,7 +112,7 @@ def _planned_release(workspace: Path) -> m.Infra.ReleasePlan:
 
 
 @contextmanager
-def _lane_with_shim(tmp_path: Path) -> Generator[tuple[Path, Path]]:
+def _lane_with_shim(tmp_path: Path) -> Generator[t.Pair[Path, Path]]:
     """Yield the release-lane fixture with the recording ``gh`` shim on PATH.
 
     Why: PATH is restored by the public ``env_vars_context`` facade rather than

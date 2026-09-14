@@ -13,6 +13,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import config, u
+from tests import t
 
 
 def _workspace(root: Path) -> Path:
@@ -113,4 +114,4 @@ class TestsMiseDistributionPolicy:
         tm.ok(result)
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

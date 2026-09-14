@@ -11,7 +11,7 @@ from flext_tests import tm
 
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import u as test_u
+from tests import t, u as test_u
 from tests.unit.workspace import WorktreeFixture
 
 pytestmark = pytest.mark.slow
@@ -27,9 +27,9 @@ class TestsCodegenMakeEnvironment:
         *,
         local_infra: bool = False,
         bootstrap: bool = False,
-        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...] = (),
+        extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec] = (),
         script_dispatch: m.Infra.ScriptDispatchSpec | None = None,
-    ) -> tuple[Path, Path]:
+    ) -> t.Pair[Path, Path]:
         role = c.Infra.MakeProfile(profile.value)
         repository = test_u.Tests.repository_ref(
             "fixture-project", role=role

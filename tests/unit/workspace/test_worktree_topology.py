@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService, c, m
-from tests import u
+from tests import t, u
 from tests.unit.workspace import WorktreeFixture
 
 
@@ -95,4 +95,4 @@ class TestsWorktreeTopology(WorktreeFixture):
         )
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

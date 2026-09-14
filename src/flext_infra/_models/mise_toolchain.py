@@ -115,7 +115,7 @@ class FlextInfraModelsMiseToolchain:
         # operator-owned forks resolved as latest, so the default frees every
         # selector family and the vocabulary stays declared on this owner.
         suspended_mise_selector_patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(

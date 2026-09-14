@@ -8,7 +8,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService, c, m, p, u
-from tests import u as test_u
+from tests import t, u as test_u
 
 
 def _repository(tmp_path: Path) -> Path:
@@ -115,4 +115,4 @@ def test_same_child_branch_cannot_be_reused_under_another_epic(tmp_path: Path) -
     tm.fail(result, has="already registered")
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

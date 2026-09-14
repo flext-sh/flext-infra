@@ -113,7 +113,7 @@ class FlextInfraUtilitiesClassNestingCst(FlextInfraUtilitiesClassNestingReferenc
     @staticmethod
     def _split_docstring(
         body: t.SequenceOf[cst.BaseStatement],
-    ) -> tuple[tuple[cst.BaseStatement, ...], tuple[cst.BaseStatement, ...]]:
+    ) -> t.Pair[t.VariadicTuple[cst.BaseStatement], t.VariadicTuple[cst.BaseStatement]]:
         """Split one class body into its leading docstring and the remainder."""
         if not body:
             return ((), ())

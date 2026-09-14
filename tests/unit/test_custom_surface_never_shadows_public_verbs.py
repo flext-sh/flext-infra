@@ -22,6 +22,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import c, config
+from tests import t
 
 _TARGET_LINE = re.compile(r"^(?P<names>[a-z][a-z0-9 _-]*):(?!=)")
 
@@ -31,7 +32,7 @@ def _repository_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def _custom_surfaces() -> tuple[Path, ...]:
+def _custom_surfaces() -> t.VariadicTuple[Path]:
     """Return every custom Make surface present in the workspace."""
     root = _repository_root()
     name = c.Infra.CUSTOM_MAKE_FILENAME
@@ -42,7 +43,7 @@ def _custom_surfaces() -> tuple[Path, ...]:
     )
 
 
-def _shadowed_verbs(surface: Path) -> tuple[str, ...]:
+def _shadowed_verbs(surface: Path) -> t.VariadicTuple[str]:
     """Return public verbs this custom surface declares as targets."""
     public = frozenset(verb.name for verb in config.Infra.codegen.make.verbs)
     found: list[str] = []

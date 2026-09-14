@@ -48,6 +48,42 @@ def _workspace() -> m.Infra.WorkspaceSpec:
 
 
 class TestsFlextInfraCodegenPyprojectConform:
+    def test_standalone_lock_does_not_discover_parent_workspace(
+        self, tmp_path: Path
+    ) -> None:
+        """Resolve the generated child with uv while its parent is unresolvable."""
+        parent = tmp_path / "parent"
+        root = parent / "member"
+        root.mkdir(parents=True)
+        (parent / "pyproject.toml").write_text(
+            '[project]\nname = "parent"\nversion = "1.0"\n'
+            'dependencies = ["unresolvable-parent-only-package"]\n'
+            '[tool.uv.workspace]\nmembers = ["member"]\n',
+            encoding="utf-8",
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            name="member",
+            beads=test_u.Tests.beads_project("member"),
+            repository=_repository(
+                "member", role=c.Infra.MakeProfile.STANDALONE, path="."
+            ),
+        )
+        rendered = tm.ok(
+            u.Infra.pyproject_conform(
+                '[project]\nname = "member"\nversion = "1.0"\n'
+                'requires-python = ">=3.13"\ndependencies = []\n',
+                providers=config.Infra.codegen.providers,
+                workspace=workspace,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
+                toolchain=config.Infra.codegen.toolchain,
+                required_dev_dependencies=(),
+            )
+        )
+        (root / "pyproject.toml").write_text(rendered, encoding="utf-8")
+        tm.ok(u.Cli.run_checked(["uv", "lock", "--offline"], cwd=root))
+        tm.that((root / "uv.lock").is_file(), eq=True)
+        tm.that((parent / "uv.lock").exists(), eq=False)
+
     @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
     def test_global_constraints_apply_without_direct_runtime_requirements(
         self, profile: c.Infra.MakeProfile

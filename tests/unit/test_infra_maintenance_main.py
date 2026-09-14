@@ -21,8 +21,10 @@ from tests import u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tests import t
 
-def _maintenance_main(argv: list[str] | None = None) -> int:
+
+def _maintenance_main(argv: t.SequenceOf[str] | None = None) -> int:
     args = ["maintenance"]
     if argv is not None:
         args.extend(argv)

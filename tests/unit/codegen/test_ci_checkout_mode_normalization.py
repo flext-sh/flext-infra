@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from flext_tests import tm
 
+from tests import t
+
 from .test_ci_integration_branch_triggers import TestsCiIntegrationBranchTriggers
 
 
@@ -20,4 +22,4 @@ class TestsCiCheckoutModeNormalization:
             tm.that(normalize_at < rendered.index(gate), eq=True)
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

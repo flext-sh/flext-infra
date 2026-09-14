@@ -36,7 +36,6 @@ _DEACTIVATED_TARGETS = ("typing_dict_import", "typing_dict_attr")
 # and the real annotations that are the only legitimate rewrite targets.
 _CORRUPTION_PROBE_SOURCE = '''"""Rewrite ``Dict[K, V]`` to ``t.MappingKV[K, V]``."""
 
-from __future__ import annotations
 
 import typing
 from typing import Dict

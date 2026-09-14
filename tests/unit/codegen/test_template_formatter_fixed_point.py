@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from tests import t
+
 from ... import m, tm, u
 
 _TEMPLATES = (
@@ -76,4 +78,4 @@ class TestsTemplateFormatterFixedPoint:
             tm.that(rendered, has="package-ecosystem: pip")
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

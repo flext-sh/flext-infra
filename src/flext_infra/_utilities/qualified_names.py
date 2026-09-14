@@ -43,7 +43,7 @@ class FlextInfraUtilitiesQualifiedNames:
 
         def __init__(self, source: str) -> None:
             self.lines = source.splitlines()
-            self.names: dict[tuple[int, int], frozenset[str]] = {}
+            self.names: t.MutableMappingKV[t.Pair[int, int], frozenset[str]] = {}
 
         def _collect(self, node: cst.BaseExpression) -> None:
             if not isinstance(node, (cst.Name, cst.Attribute)):

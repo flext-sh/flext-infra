@@ -62,9 +62,7 @@ def gate_result(tmp_path: Path) -> Callable[..., m.Infra.GateResult]:
             tm.ok(
                 u.Infra.git_update_index_gitlink(
                     m.Infra.GitUpdateIndexGitlinkRequest(
-                        repo_root=tmp_path,
-                        oid=inner_commit.oid,
-                        relative_path="nested",
+                        repo_root=tmp_path, oid=inner_commit.oid, relative_path="nested"
                     )
                 )
             )

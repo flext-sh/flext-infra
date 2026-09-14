@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
 from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
@@ -130,10 +129,10 @@ class TestsFlextInfraUtilitiesGatesMixin:
 
     @staticmethod
     def make_project(
-        name: str = "p", gates: MutableMapping[str, m.Infra.GateExecution] | None = None
+        name: str = "p", gates: t.MappingKV[str, m.Infra.GateExecution] | None = None
     ) -> m.Infra.ProjectResult:
         """Create a typed project-result fixture."""
-        resolved_gates: MutableMapping[str, m.Infra.GateExecution] = (
+        resolved_gates: t.MappingKV[str, m.Infra.GateExecution] = (
             gates
             if gates is not None
             else {"lint": TestsFlextInfraUtilitiesGatesMixin.create_gate_execution()}

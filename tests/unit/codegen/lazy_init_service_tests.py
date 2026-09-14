@@ -11,7 +11,7 @@ from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from tests import c, u
 
 if TYPE_CHECKING:
-    from tests import p
+    from tests import p, t
 
 
 # NOTE (multi-agent, flext-wkii.17.15): prove scoped writes and read-only drift publicly.
@@ -26,7 +26,7 @@ class TestsFlextInfraCodegenLazyInitService:
         check_only: bool = True,
         apply_changes: bool = False,
         dry_run: bool = False,
-    ) -> tuple[FlextInfraCodegenLazyInit, p.Result[bool], Path, bytes]:
+    ) -> t.Quad[FlextInfraCodegenLazyInit, p.Result[bool], Path, bytes]:
         """Run one lazy-init pass without writing and return its observable drift."""
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py", class_name="FlextTestsModels", alias="m"

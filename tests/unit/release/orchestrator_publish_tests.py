@@ -14,10 +14,10 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from tests import TestsFlextInfraUtilities as u, c, m
+from tests import TestsFlextInfraUtilities as u, c, m, t
 
 
-def _built_workspace(tmp_path: Path) -> tuple[Path, m.Infra.BuildReport]:
+def _built_workspace(tmp_path: Path) -> t.Pair[Path, m.Infra.BuildReport]:
     """Build one member and return the workspace with its verified receipt."""
     project_name = "flext-a"
     workspace = u.Tests.create_release_workspace(

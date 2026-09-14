@@ -125,7 +125,7 @@ class TestImportCyclesPerProjectScope:
 
     @staticmethod
     def _seed_project(
-        workspace: Path, name: str, files: dict[str, str], *, pkg: str = "tests"
+        workspace: Path, name: str, files: t.MappingKV[str, str], *, pkg: str = "tests"
     ) -> Path:
         project = workspace / name
         pkg_dir = project / "src" / pkg

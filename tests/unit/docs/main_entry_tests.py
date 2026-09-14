@@ -13,6 +13,8 @@ from tests import u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tests import t
+
 
 class TestsDocsCli:
     """Verify docs commands through their public CLI entry points."""
@@ -40,7 +42,7 @@ class TestsDocsCli:
             ["docs", "validate", "--help"],
         ],
     )
-    def test_help_routes(self, argv: list[str]) -> None:
+    def test_help_routes(self, argv: t.SequenceOf[str]) -> None:
         """Expose help successfully for every public docs route."""
         tm.that(infra_main(argv), eq=0)
 

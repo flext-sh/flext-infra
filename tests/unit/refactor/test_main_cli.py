@@ -280,7 +280,7 @@ class TestsFlextInfraRefactorMainCli:
     @staticmethod
     def _build_module_workspace(
         tmp_path: Path, module_source: str
-    ) -> tuple[Path, Path]:
+    ) -> t.Pair[Path, Path]:
         """Build a lazy-init demo package holding one authored ``models.py``."""
         workspace, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
@@ -297,7 +297,7 @@ class TestsFlextInfraRefactorMainCli:
         service_source: str,
         test_source: str | None = None,
         init_source: str = _FUTURE_INIT,
-    ) -> tuple[Path, Path]:
+    ) -> t.Pair[Path, Path]:
         """Build the ``sample_pkg`` workspace around one service module."""
         workspace = tmp_path / "workspace"
         cls._write_workspace_pyproject(workspace)
@@ -309,7 +309,7 @@ class TestsFlextInfraRefactorMainCli:
         return workspace, service_file
 
     @classmethod
-    def _build_basic_workspace(cls, tmp_path: Path) -> tuple[Path, Path]:
+    def _build_basic_workspace(cls, tmp_path: Path) -> t.Pair[Path, Path]:
         return cls._build_service_workspace(
             tmp_path, service_source=_BASIC_SERVICE, init_source=_BASIC_INIT
         )
@@ -317,15 +317,15 @@ class TestsFlextInfraRefactorMainCli:
     @classmethod
     def _build_runtime_alias_duplicate_workspace(
         cls, tmp_path: Path
-    ) -> tuple[Path, Path]:
+    ) -> t.Pair[Path, Path]:
         return cls._build_module_workspace(tmp_path, _DUPLICATE_RUNTIME_ALIAS_MODULE)
 
     @classmethod
-    def _build_facade_member_workspace(cls, tmp_path: Path) -> tuple[Path, Path]:
+    def _build_facade_member_workspace(cls, tmp_path: Path) -> t.Pair[Path, Path]:
         return cls._build_module_workspace(tmp_path, _FACADE_MEMBER_MODULE)
 
     @classmethod
-    def _build_compatibility_alias_workspace(cls, tmp_path: Path) -> tuple[Path, Path]:
+    def _build_compatibility_alias_workspace(cls, tmp_path: Path) -> t.Pair[Path, Path]:
         return cls._build_module_workspace(tmp_path, _COMPATIBILITY_ALIAS_MODULE)
 
     @classmethod
@@ -339,7 +339,7 @@ class TestsFlextInfraRefactorMainCli:
     @classmethod
     def _build_test_only_workspace_with_source_import(
         cls, tmp_path: Path
-    ) -> tuple[Path, Path]:
+    ) -> t.Pair[Path, Path]:
         return cls._build_service_workspace(
             tmp_path,
             service_source=_SEQUENCE_TEST_ONLY_SERVICE,
@@ -365,7 +365,7 @@ class TestsFlextInfraRefactorMainCli:
     @classmethod
     def _build_unused_top_level_workspace_with_source_import(
         cls, tmp_path: Path
-    ) -> tuple[Path, Path]:
+    ) -> t.Pair[Path, Path]:
         return cls._build_service_workspace(
             tmp_path, service_source=_UNUSED_TOP_LEVEL_SERVICE
         )
@@ -381,7 +381,7 @@ class TestsFlextInfraRefactorMainCli:
     @classmethod
     def _build_lazy_init_cascade_workspace(
         cls, tmp_path: Path
-    ) -> tuple[Path, Path, Path]:
+    ) -> t.Triple[Path, Path, Path]:
         workspace = tmp_path / "workspace"
         cls._write_workspace_pyproject(workspace)
         init_path = workspace / "src" / "sample_pkg" / "__init__.py"

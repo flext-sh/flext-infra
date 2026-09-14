@@ -49,7 +49,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
         cli.display_text("mod: preflight complete AST inventory")
         current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-        seen: dict[t.VariadicTuple[t.Quad[str, str, str, str | None]], int] = {}
+        seen: t.MutableMappingKV[
+            t.VariadicTuple[t.Quad[str, str, str, str | None]], int
+        ] = {}
         iteration = 0
         while current.findings:
             iteration += 1

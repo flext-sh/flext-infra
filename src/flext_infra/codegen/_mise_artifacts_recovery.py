@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
-from flext_infra import m
+from flext_infra import c, m
 
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 from ._mise_artifacts_journal import FlextInfraMiseArtifactsJournal as journal_io
@@ -184,7 +184,7 @@ class FlextInfraMiseRecovery:
                 backup.error or f"generation recovery backup is absent: {entry.path}"
             )
         if (
-            backup.value.mode != files.JOURNAL_MODE
+            backup.value.mode != c.Infra.JOURNAL_MODE
             or files.digest(backup.value.content) != entry.original_sha256
         ):
             return r[m.Infra.CodegenStagedFile].fail(

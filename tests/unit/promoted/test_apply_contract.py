@@ -24,13 +24,14 @@ from flext_infra.promoted.registry import Registry
 
 if TYPE_CHECKING:
     from flext_infra import p
+    from tests import t
 
 
 def _command(
     *,
     path: Path,
     mutates: bool = True,
-    params: tuple[p.Infra.Promoted.Param, ...] = (),
+    params: t.VariadicTuple[m.Infra.Promoted.Param] = (),
     verb: str = "probe",
     what: str = "all",
 ) -> p.Infra.Promoted.Command:
@@ -79,7 +80,7 @@ class TestsFlextInfraPromotedDispatchAlwaysExecutes:
     """Exercise dispatch()'s unconditional execution through a real command."""
 
     @staticmethod
-    def _write_registry(tmp_path: Path) -> tuple[Registry, Path]:
+    def _write_registry(tmp_path: Path) -> t.Pair[Registry, Path]:
         (tmp_path / "pyproject.toml").write_text(
             "[project]\nname = 'probe'\n", encoding="utf-8"
         )

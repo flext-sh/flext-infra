@@ -42,7 +42,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         rule: m.EnforcementRuleSpec,
         file_name: str,
         source_text: str,
-    ) -> tuple[Path, t.SequenceOf[p.AttributeProbe]]:
+    ) -> t.Pair[Path, t.SequenceOf[p.AttributeProbe]]:
         """Write one fixture module and detect ``rule`` violations inside it."""
         source = tmp_path / file_name
         source.write_text(source_text, encoding="utf-8")

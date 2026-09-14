@@ -5,6 +5,7 @@ from __future__ import annotations
 from flext_tests import tm
 
 from flext_infra import config
+from tests import t
 
 
 class TestsToolchainRequirement:
@@ -26,4 +27,4 @@ class TestsToolchainRequirement:
         tm.that(toolchain.python_required_version, has=f",<{major}.{int(minor) + 1}")
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

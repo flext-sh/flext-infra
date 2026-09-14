@@ -13,7 +13,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests import u
+from tests import t, u
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _MAKE = shutil.which("make") or "make"
@@ -26,7 +26,7 @@ def _git_root(*args: str) -> str:
     return result.value.stdout.strip() if result.success else ""
 
 
-def _make_database_repository_root(*extra_args: str, env: dict[str, str]) -> str:
+def _make_database_repository_root(*extra_args: str, env: t.MappingKV[str, str]) -> str:
     """Read REPOSITORY_ROOT from the flext-infra make database."""
     result = u.Cli.run_raw([_MAKE, "-C", str(_REPO_ROOT), "-pn", *extra_args], env=env)
     tm.ok(result)

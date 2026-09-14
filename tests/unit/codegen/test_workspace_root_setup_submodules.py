@@ -12,7 +12,7 @@ from flext_tests import tm
 
 from flext_infra import c, m, p, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import u as test_u
+from tests import t, u as test_u
 
 pytestmark = pytest.mark.slow
 
@@ -23,7 +23,7 @@ def _git_stdout(repository: Path, *args: str) -> str:
     return process.stdout.strip()
 
 
-def _git_state(repository: Path) -> tuple[str, str]:
+def _git_state(repository: Path) -> t.Pair[str, str]:
     return (
         _git_stdout(repository, "branch", "--show-current"),
         _git_stdout(repository, "rev-parse", "HEAD"),

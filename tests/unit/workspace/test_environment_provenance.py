@@ -14,6 +14,8 @@ from tests.unit.workspace import WorktreeFixture
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tests import t
+
 
 def _workspace(root: Path, distribution: str = "sample-member") -> Path:
     WorktreeFixture.initialize_governed_project(
@@ -70,7 +72,7 @@ def _installed_editable(
     )
 
 
-def _stale_checkout(tmp_path: Path) -> tuple[Path, Path, Path]:
+def _stale_checkout(tmp_path: Path) -> t.Triple[Path, Path, Path]:
     """Create the governed workspace, its member, and one stale checkout tree."""
     workspace = _workspace(tmp_path / "workspace")
     member = workspace / "sample-member"

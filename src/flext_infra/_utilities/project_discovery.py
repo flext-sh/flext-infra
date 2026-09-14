@@ -26,20 +26,15 @@ class FlextInfraUtilitiesProjectDiscovery(
     @classmethod
     @lru_cache(maxsize=1)
     def load_refactor_config(cls, repository_root: Path) -> m.Infra.RefactorConfigSpec:
-        """Load refactor configuration from workspace.yaml with defaults fallback."""
+        """Load declared refactor configuration, propagating invalid manifests."""
         manifest_path = FlextInfraUtilitiesWorkspaceManifest.workspace_manifest_path(
             repository_root
         )
         if not manifest_path.is_file():
             return m.Infra.RefactorConfigSpec()
-        loaded = u.Cli.config_load(manifest_path, expand_env=False)
-        if loaded.failure:
-            return m.Infra.RefactorConfigSpec()
-        try:
-            manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
-            return manifest.refactor or m.Infra.RefactorConfigSpec()
-        except c.ValidationError:
-            return m.Infra.RefactorConfigSpec()
+        loaded = u.Cli.config_load(manifest_path, expand_env=False).unwrap()
+        manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.data)
+        return manifest.refactor or m.Infra.RefactorConfigSpec()
 
     @classmethod
     @lru_cache(maxsize=1)
@@ -62,23 +57,16 @@ class FlextInfraUtilitiesProjectDiscovery(
         directories may share a leaf, and excluding by name would silently
         exclude the wrong tree.
 
-        Loaded exactly like ``load_refactor_config`` above, and degraded to "no
-        exclusions" on an absent or unparseable manifest for the same reason:
-        this only narrows discovery, and the manifest's authoritative validation
-        belongs to its own owner, which fails loud.
+        An absent manifest declares no exclusions. An unreadable or invalid
+        manifest fails before discovery can expand the declared scope.
         """
         manifest_path = FlextInfraUtilitiesWorkspaceManifest.workspace_manifest_path(
             repository_root
         )
         if not manifest_path.is_file():
             return frozenset()
-        loaded = u.Cli.config_load(manifest_path, expand_env=False)
-        if loaded.failure:
-            return frozenset()
-        try:
-            manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
-        except c.ValidationError:
-            return frozenset()
+        loaded = u.Cli.config_load(manifest_path, expand_env=False).unwrap()
+        manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.data)
         declared = (
             *(exclusion.path for exclusion in manifest.exclusions),
             *manifest.content_only,
@@ -95,10 +83,11 @@ class FlextInfraUtilitiesProjectDiscovery(
         cls, candidate: Path, repository_root: Path, nonparticipants: frozenset[str]
     ) -> bool:
         """Return whether one candidate lies at or under a declared non-participant."""
-        try:
-            relative = candidate.resolve().relative_to(repository_root.resolve())
-        except ValueError:
+        resolved = candidate.resolve()
+        root = repository_root.resolve()
+        if not resolved.is_relative_to(root):
             return False
+        relative = resolved.relative_to(root)
         posix = relative.as_posix()
         if posix in {".", ""}:
             return False

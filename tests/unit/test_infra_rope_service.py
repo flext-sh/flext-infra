@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def _demo_module(tmp_path: Path, module_name: str, source: str) -> tuple[Path, Path]:
+def _demo_module(tmp_path: Path, module_name: str, source: str) -> t.Pair[Path, Path]:
     """Create one flext-demo workspace and write ``source`` into its module."""
     repository_root, package_root = u.Tests.create_lazy_init_workspace(
         tmp_path, project_name="flext-demo", package_name="flext_demo"
@@ -49,7 +49,7 @@ def _paired_namespace_projects(root: Path) -> tuple[Path, Path, Path, Path, Path
 
 def _module_exports(
     repository_root: Path, module_path: Path, options: t.JsonMapping
-) -> tuple[str, ...]:
+) -> t.VariadicTuple[str]:
     """Read one module's public export contract through the Rope workspace."""
     with flext_infra.infra.rope_workspace(repository_root) as rope:
         return tuple(
@@ -62,7 +62,7 @@ def _module_exports(
 
 def _module_objects_by_name(
     repository_root: Path, module_path: Path
-) -> dict[str, m.Infra.Census.Object]:
+) -> t.MutableMappingKV[str, m.Infra.Census.Object]:
     """Index one module's non-local objects by their declared name."""
     with flext_infra.infra.rope_workspace(repository_root) as rope:
         return {

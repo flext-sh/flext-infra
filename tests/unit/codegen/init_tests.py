@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -14,9 +15,10 @@ from flext_tests import tm
 
 import flext_infra.codegen as codegen_module
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from tests import t
 
 
-def _baseline_leaf_modules() -> tuple[str, ...]:
+def _baseline_leaf_modules() -> t.VariadicTuple[str]:
     """Leaf modules imported by the package in a clean interpreter.
 
     Why (review #355): the test module imports ``lazy_init`` (the generator)
@@ -24,8 +26,6 @@ def _baseline_leaf_modules() -> tuple[str, ...]:
     package-surface contract must be measured in a subprocess that imports
     ONLY the package, so the probe reports what the surface itself loads.
     """
-    import os
-
     # The probe runs in a separate interpreter that carries only the standard
     # library, so it reports one module name per line instead of serializing.
     # Line-oriented output needs no encoder on either side.

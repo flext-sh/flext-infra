@@ -258,5 +258,4 @@ class FlextInfraCodegenPipelineStagesMixin:
         return self._run_stage(c.Infra.PipelineStage.CENSUS_AFTER, _action, _emit)
 
 
-
 __all__: list[str] = ["FlextInfraCodegenPipelineStagesMixin"]

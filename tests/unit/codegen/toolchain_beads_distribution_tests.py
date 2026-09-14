@@ -8,6 +8,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import c, config, m
+from tests import t
 
 _CANONICAL_SELECTOR = "github:marlon-costa-dc/beads"
 _CANONICAL_VERSION_SELECTOR = "latest"
@@ -58,4 +59,4 @@ class TestsToolchainBeadsDistribution:
             )
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

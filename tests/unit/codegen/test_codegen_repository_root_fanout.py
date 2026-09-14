@@ -14,7 +14,7 @@ from flext_tests import tm
 
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import u, u as test_u
+from tests import t, u, u as test_u
 
 
 class TestsCodegenRepositoryRootFanout:
@@ -122,4 +122,4 @@ def _render_root_makefile(tmp_path: Path) -> Path:
     return repository_root
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

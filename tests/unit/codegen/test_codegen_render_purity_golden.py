@@ -117,4 +117,4 @@ class TestsCodegenRenderPurityGolden:
         tm.that(spec.year, eq=year)
 
 
-__all__: tuple[str, ...] = ("TestsCodegenRenderPurityGolden",)
+__all__: t.VariadicTuple[str] = ("TestsCodegenRenderPurityGolden",)

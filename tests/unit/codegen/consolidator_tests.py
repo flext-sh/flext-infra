@@ -42,7 +42,7 @@ def _consolidator_payload(value: str) -> _ConsolidatorJsonPayload:
     return payload
 
 
-def _consolidator_layout(tmp_path: Path) -> tuple[Path, Path, Path]:
+def _consolidator_layout(tmp_path: Path) -> t.Triple[Path, Path, Path]:
     """Create the consolidator workspace, project root, and package directory."""
     repository_root = tmp_path / "workspace"
     repository_root.mkdir(parents=True)

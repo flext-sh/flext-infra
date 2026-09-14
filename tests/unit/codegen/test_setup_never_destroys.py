@@ -15,6 +15,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from tests import t
+
 _TEMPLATES = Path(__file__).resolve().parents[3] / "src" / "flext_infra" / "templates"
 _MAKEFILE = _TEMPLATES / "project" / "base" / "Makefile.j2"
 _SUBMODULES = _TEMPLATES / "project" / "base" / "submodule_setup_recipe.j2"
@@ -74,4 +76,4 @@ def test_submodule_setup_initializes_absent_and_verifies_present() -> None:
     assert 'merge-base --is-ancestor "$$gitlink" HEAD' in content
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

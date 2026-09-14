@@ -7,6 +7,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService, c
+from tests import t
 from tests.unit.workspace import WorktreeFixture
 
 
@@ -87,4 +88,4 @@ class TestsWorktreeRemoval(WorktreeFixture):
         tm.that(not missing.exists(), where=bool)
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

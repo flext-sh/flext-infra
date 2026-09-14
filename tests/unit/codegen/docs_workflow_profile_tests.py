@@ -5,6 +5,7 @@ from __future__ import annotations
 from flext_tests import tm
 
 from flext_infra import config, m
+from tests import t
 
 _DOCS_DESTINATION = ".github/workflows/docs.yml"
 _CI_DESTINATION = ".github/workflows/ci.yml"
@@ -42,4 +43,4 @@ class TestsDocsWorkflowProfile:
         tm.that("standalone" in docs.profiles, eq=True)
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

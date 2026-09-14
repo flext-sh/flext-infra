@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService, c, config
-from tests import u
+from tests import t, u
 
 _VENV_NAME = config.Infra.tooling.tools.pyright.path_rules.venv_name
 
@@ -24,7 +24,7 @@ def _source(tmp_path: Path, name: str) -> Path:
     return source
 
 
-def _lane(tmp_path: Path, *, managed: bool = True) -> tuple[Path, Path, str]:
+def _lane(tmp_path: Path, *, managed: bool = True) -> t.Triple[Path, Path, str]:
     lane = tmp_path / "lane"
     lane.mkdir()
     (lane / "pyproject.toml").write_text(
@@ -134,4 +134,4 @@ def test_symlinked_git_marker_is_rejected(tmp_path: Path) -> None:
     tm.fail(FlextInfraWorktreeService.setup_lane(lane), has=["member", ".git"])
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

@@ -14,6 +14,8 @@ import pytest
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from tests import t
+
 
 _ROOT: Final = Path(__file__).resolve().parents[2]
 # The one workspace interpreter is the interpreter running this suite.
@@ -54,7 +56,7 @@ raise SystemExit(
 """
 
 
-def _probe_env() -> dict[str, str]:
+def _probe_env() -> t.MutableMappingKV[str, str]:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(_ROOT / "src")
     return env
@@ -75,7 +77,7 @@ def _write_command(tmp_path: Path, source: str) -> Path:
 
 def _read_ready(
     streams: Mapping[int, str], timeout: float = _BARRIER_TIMEOUT
-) -> tuple[str, str]:
+) -> t.Pair[str, str]:
     stdout = ""
     stderr = ""
     pending = dict(streams)

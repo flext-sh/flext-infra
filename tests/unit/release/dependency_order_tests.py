@@ -17,8 +17,10 @@ from flext_infra import u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tests import t
 
-def _write_project(root: Path, name: str, dependencies: tuple[str, ...]) -> None:
+
+def _write_project(root: Path, name: str, dependencies: t.VariadicTuple[str]) -> None:
     """Materialize one project whose pyproject declares the given dependencies."""
     project = root / name
     project.mkdir(parents=True, exist_ok=True)
@@ -137,4 +139,4 @@ class TestsFlextInfraReleaseDependencyOrder:
             tm.that(waves[0], eq=("flext-web",))
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

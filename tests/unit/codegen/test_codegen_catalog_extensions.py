@@ -9,7 +9,7 @@ from flext_tests import tm
 
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import u
+from tests import t, u
 from tests.unit.workspace import WorktreeFixture
 
 pytestmark = pytest.mark.slow
@@ -296,4 +296,4 @@ class TestsCodegenCatalogExtensions:
         tm.that(gitmodules.read_bytes(), eq=declared_gitmodules)
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

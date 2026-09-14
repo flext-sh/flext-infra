@@ -219,7 +219,7 @@ class TestsFlextInfraPrivateImportCutover:
         package_import: bool = False,
         root_export: bool = False,
         renamed: bool = False,
-    ) -> tuple[Path, str, dict[Path, str]]:
+    ) -> t.Triple[Path, str, t.MutableMappingKV[Path, str]]:
         package = root / "sample/src/sample"
         public_name = "PublicClient" if renamed else "Client"
         sources = {
@@ -387,7 +387,7 @@ class TestsFlextInfraPrivateImportCutover:
         *,
         import_alias: str = "",
         root_bases: str = "",
-    ) -> tuple[Path, str, dict[Path, str]]:
+    ) -> t.Triple[Path, str, t.MutableMappingKV[Path, str]]:
         """Derive the consumer path, private import, and facade source of one family.
 
         Every name follows the FLEXT naming contract, so the case is declared
@@ -418,7 +418,7 @@ class TestsFlextInfraPrivateImportCutover:
         sources: t.MappingKV[Path, str],
         consumer_path: Path,
         *private_imports: str,
-    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Plan the cutover for every private import reported in the consumer."""
         return u.Infra.plan_private_import_cutover(
             root=tmp_path,
@@ -564,7 +564,7 @@ class TestsFlextInfraPrivateImportCutover:
             ("protocols", "p", "FlextSampleProtocolsBase", "Protocol"),
             ("typings", "t", "FlextSampleTypesBase", "Type"),
         )
-        sources: dict[Path, str] = {}
+        sources: t.MutableMappingKV[Path, str] = {}
         private_imports: list[str] = []
         annotations: list[str] = []
         for layer, alias, private_class, nested_class in layers:
