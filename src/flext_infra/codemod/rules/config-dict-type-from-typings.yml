@@ -1,20 +1,20 @@
-# FLEXT codemod: the model_config annotation must name the same facade the
-# construction value already uses. `m` is the single owner of ConfigDict.
+# FLEXT codemod: a model_config annotation must name the single owner of
+# ConfigDict, which is `m`. Both other spellings crash at import, because
+# neither FlextProtocols nor FlextTypes carries the member:
 #
-#   model_config: ClassVar[p.ConfigDict] = m.ConfigDict(...)   # crashes at import
-#   model_config: ClassVar[t.ConfigDict] = m.ConfigDict(...)   # t no longer exports it
+#   model_config: ClassVar[p.ConfigDict] = m.ConfigDict(...)   # defect
+#   model_config: ClassVar[t.ConfigDict] = m.ConfigDict(...)   # defect
 #                       ->
 #   model_config: ClassVar[m.ConfigDict] = m.ConfigDict(...)   # canonical
 #
-# `p.ConfigDict` never existed (FlextProtocols carries no ConfigDict), so it
-# crashes on import. `t.ConfigDict` resolved only by accident: two facets of the
-# same `t` diamond declared it, and `FlextTypesPydantic` shadowed the dead
-# `dict[str, JsonValue]` alias of `FlextTypingConfig`. flext-core removes both,
-# leaving `m.ConfigDict` as the one owner for annotation and value alike.
+# `t` carried ConfigDict until flext-core consolidated ownership onto `m`; the
+# annotation is the same facade the construction value already uses, so the
+# rewrite never introduces an unbound name.
 #
-# Idempotent: a canonical module yields zero matches on re-scan. The value must
-# construct through `m.ConfigDict(...)`, so the rewritten annotation never
-# introduces an unbound name. SettingsConfigDict is out of scope.
+# Idempotent: only the two broken spellings match; a canonical module yields
+# zero matches on re-scan. The value must construct through `m.ConfigDict(...)`, so
+# the rewritten annotation never introduces an unbound name. SettingsConfigDict
+# is out of scope.
 id: config-dict-type-from-typings
 language: python
 severity: error
@@ -30,4 +30,4 @@ constraints:
     regex: "^m\\.ConfigDict\\("
 fix: "model_config: ClassVar[m.ConfigDict] = $VAL"
 message: >-
-  model_config annotation must be m.ConfigDict (p.ConfigDict does not exist: FlextProtocols has no ConfigDict, so the module crashes at import). The construction value m.ConfigDict(...) is kept.
+  model_config annotation must be m.ConfigDict, the single owner of the member. Neither p.ConfigDict nor t.ConfigDict exists, so the module crashes at import. The construction value m.ConfigDict(...) is kept.

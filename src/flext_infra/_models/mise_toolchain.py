@@ -9,6 +9,21 @@ from flext_cli import m, u
 
 from flext_infra import t
 
+from ._defaults import immutable_empty_mapping
+
+
+def tool_version_field(description: str) -> object:
+    """Shared ``Annotated[t.NonEmptyStr, ...]`` metadata for one tool version.
+
+    Every native-toolchain version field in ``ToolchainSpec`` and its
+    ``ProjectRenderContext`` render mirror previously repeated an identical
+    ``m.Field(description=...)`` shape, differing only in the description
+    text -- a structural clone SonarCloud's duplication detector flags as one
+    family regardless of the literal string. One owned factory collapses
+    every call site to this single declaration (SSOT, DRY).
+    """
+    return m.Field(description=description)
+
 
 class _ConfigContract(m.ContractModel):
     """Private declarative base for schema-loaded codegen records."""
@@ -130,7 +145,8 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         state_directory_name: Annotated[
-            t.NonEmptyStr, m.Field(description="Runtime state directory beside the checkout"),
+            t.NonEmptyStr,
+            m.Field(description="Runtime state directory beside the checkout"),
         ]
         scratch_namespace: Annotated[
             t.NonEmptyStr, m.Field(description="Scratch directory namespace")
@@ -177,16 +193,16 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = ()
         kubectl_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact kubectl version, e.g. '1.32.0'")
+            t.NonEmptyStr, tool_version_field("Exact kubectl version, e.g. '1.32.0'")
         ]
         helm_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact Helm version, e.g. '3.19.4'")
+            t.NonEmptyStr, tool_version_field("Exact Helm version, e.g. '3.19.4'")
         ]
         kind_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact kind version, e.g. '0.31.0'")
+            t.NonEmptyStr, tool_version_field("Exact kind version, e.g. '0.31.0'")
         ]
         direnv_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Compatible direnv major.minor line")
+            t.NonEmptyStr, tool_version_field("Compatible direnv major.minor line")
         ]
         environment_path_prepends: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
@@ -201,7 +217,7 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = ()
         uv_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Compatible uv major.minor line")
+            t.NonEmptyStr, tool_version_field("Compatible uv major.minor line")
         ]
         mise_lockfile: Annotated[
             bool,
@@ -234,10 +250,10 @@ class FlextInfraModelsMiseToolchain:
         ]
         qlty_version: Annotated[
             t.NonEmptyStr,
-            _tool_version_field("Moving qlty release selector, e.g. 'latest'"),
+            tool_version_field("Moving qlty release selector, e.g. 'latest'"),
         ]
         node_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Compatible Node.js major.minor line")
+            t.NonEmptyStr, tool_version_field("Compatible Node.js major.minor line")
         ]
         jscpd_selector: Annotated[
             t.NonEmptyStr,
@@ -249,7 +265,8 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         jscpd_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Moving jscpd release selector, e.g. 'latest'"),
+            t.NonEmptyStr,
+            tool_version_field("Moving jscpd release selector, e.g. 'latest'"),
         ]
         waza_selector: Annotated[
             t.NonEmptyStr,
@@ -261,16 +278,17 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         waza_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Moving Waza release selector, e.g. 'latest'"),
+            t.NonEmptyStr,
+            tool_version_field("Moving Waza release selector, e.g. 'latest'"),
         ]
         taplo_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
+            t.NonEmptyStr, tool_version_field("Exact Taplo formatter version")
         ]
         ast_grep_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact ast-grep analyzer version")
+            t.NonEmptyStr, tool_version_field("Exact ast-grep analyzer version")
         ]
         gitleaks_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact Gitleaks scanner version")
+            t.NonEmptyStr, tool_version_field("Exact Gitleaks scanner version")
         ]
         scc_selector: Annotated[
             t.NonEmptyStr,
@@ -282,23 +300,23 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         scc_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("scc release selector (latest)")
+            t.NonEmptyStr, tool_version_field("scc release selector (latest)")
         ]
         kubeconform_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Compatible kubeconform minor line")
+            t.NonEmptyStr, tool_version_field("Compatible kubeconform minor line")
         ]
         go_version: Annotated[
             t.NonEmptyStr,
-            _tool_version_field(
+            tool_version_field(
                 "Go runtime selector; mise resolves the go backend through it"
             ),
         ]
         beads: Annotated[
-            FlextInfraConfigModels.BeadsToolSpec,
+            FlextInfraModelsMiseToolchain.BeadsToolSpec,
             m.Field(description="Official Beads CLI installed through mise"),
         ]
         gascity: Annotated[
-            FlextInfraConfigModels.ProtectedMiseToolSpec,
+            FlextInfraModelsMiseToolchain.ProtectedMiseToolSpec,
             m.Field(description="Gas City CLI (gc) installed through mise"),
         ]
         protected_mise_tools: Annotated[
@@ -344,7 +362,7 @@ class FlextInfraModelsMiseToolchain:
             for owner in self.protected_mise_tools:
                 if not isinstance(
                     getattr(self, owner, None),
-                    FlextInfraConfigModels.ProtectedMiseToolSpec,
+                    FlextInfraModelsMiseToolchain.ProtectedMiseToolSpec,
                 ):
                     msg = f"protected_mise_tools references invalid owner: {owner}"
                     raise TypeError(msg)
@@ -533,4 +551,4 @@ class FlextInfraModelsMiseToolchain:
             return self
 
 
-__all__: list[str] = ["FlextInfraModelsMiseToolchain"]
+__all__: list[str] = ["FlextInfraModelsMiseToolchain", "tool_version_field"]

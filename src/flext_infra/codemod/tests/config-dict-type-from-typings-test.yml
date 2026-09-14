@@ -2,7 +2,7 @@ id: config-dict-type-from-typings
 # `valid` MUST NOT match: canonical annotation, out-of-scope member, or a
 # value that does not construct through m.ConfigDict(...).
 valid:
-# canonical
+# canonical: the annotation names the single owner
 - |
   from flext_ldif import m
   from typing import ClassVar
@@ -32,6 +32,7 @@ invalid:
   from typing import ClassVar
   class E:
       model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+# the retired owner is caught as well: t stopped exposing ConfigDict
 - |
   from flext_cli import m, t
   from typing import ClassVar

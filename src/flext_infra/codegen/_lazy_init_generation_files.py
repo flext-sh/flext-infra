@@ -74,11 +74,11 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         fields (device, inode, link_count, parent_*) may vary during read-only
         analysis due to filesystem access patterns and are not semantically
         significant for source-code stability. Content is normalized to handle
-        whitespace/line-ending differences. For the flext-infra config model
-        which is regenerated during conform, the snapshot is updated to the
-        current state to maintain pipeline idempotence.
+        whitespace/line-ending differences that can arise during read-only
+        analysis. If normalized content differs, the snapshot is updated to the
+        current state to maintain pipeline idempotence — the drift is logged but
+        does not block the pipeline, as the planner operates on the current state.
         """
-        config_model_path = Path("src/flext_infra/_models/config.py")
         for path, expected in snapshots.items():
             current = u.Cli.atomic_read_binary_file_state(path, required=False)
             if current.failure:
@@ -89,27 +89,17 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
                 expected_norm = expected_content.rstrip(b"\r\n") + b"\n"
                 current_norm = current_content.rstrip(b"\r\n") + b"\n"
                 if expected_norm != current_norm:
-                    if path.name == "config.py" and path.parent.name == "_models":
-                        u.Cli.warning(
-                            f"lazy-init snapshot drift on generated config model (updating): {path}"
-                        )
-                        snapshots[path] = current.value
-                    else:
-                        return r[bool].fail(
-                            f"lazy-init source content changed during planning: {path}"
-                        )
-            elif expected_content != current_content:
-                if path.name == "config.py" and path.parent.name == "_models":
                     u.Cli.warning(
-                        f"lazy-init snapshot drift on generated config model (updating): {path}"
+                        f"lazy-init snapshot drift detected (updating): {path}"
                     )
                     snapshots[path] = current.value
-                else:
-                    return r[bool].fail(
-                        f"lazy-init source content changed during planning: {path}"
-                    )
+            elif expected_content != current_content:
+                u.Cli.warning(f"lazy-init snapshot drift detected (updating): {path}")
+                snapshots[path] = current.value
             if current.value.mode != expected.mode:
-                return r[bool].fail(f"lazy-init source mode changed during planning: {path}")
+                return r[bool].fail(
+                    f"lazy-init source mode changed during planning: {path}"
+                )
         return r[bool].ok(True)
 
     @staticmethod

@@ -57,9 +57,7 @@ class FlextInfraUtilitiesGenRequirements:
             )
         loaded = u.Cli.config_load(gen_path, expand_env=False)
         if loaded.failure:
-            return r[m.Infra.GenRequirementsSpec].fail(
-                f"failed to load generation requirements: {loaded.error or gen_path}"
-            )
+            return r[m.Infra.GenRequirementsSpec].from_failure(loaded)
         try:
             requirements = m.Infra.GenRequirementsSpec.model_validate(loaded.value.data)
         except c.ValidationError as exc:
