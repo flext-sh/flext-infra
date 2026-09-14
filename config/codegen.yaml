@@ -37,7 +37,6 @@ Infra:
       direnv: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
       duplication: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
       budget: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
-      index-declarations: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
 
     toolchain:
       # Single-source Python minor line. The environment resolves the newest
