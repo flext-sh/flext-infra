@@ -80,21 +80,18 @@ class FlextInfraCodegenGenerationPathsMixin:
     @staticmethod
     def _compact_lazy_module_path(current_pkg: str, mod: str) -> str:
         """Compact a lazy module path relative to ``current_pkg`` when valid."""
-        if not current_pkg:
+        if not current_pkg or mod.startswith("."):
             return mod
+        if mod.split(".", maxsplit=1)[0] == current_pkg.split(".", maxsplit=1)[0]:
+            return FlextInfraCodegenGenerationPathsMixin._relative_owned_module_path(
+                current_pkg, mod
+            )
         if mod.startswith("_"):
             return f".{mod}"
-        if mod == current_pkg:
-            return "."
-        if mod.startswith(f"{current_pkg}."):
-            return f".{mod.removeprefix(f'{current_pkg}.')}"
         root_pkg = current_pkg.split(".", maxsplit=1)[0]
         first_segment = mod.split(".", maxsplit=1)[0]
         internal_segments = frozenset(current_pkg.split(".")[1:])
-        if (
-            first_segment == root_pkg
-            or internal_segments & c.Infra.LOCAL_INFERRED_SEGMENTS
-        ):
+        if internal_segments & c.Infra.LOCAL_INFERRED_SEGMENTS:
             return mod
         if first_segment in internal_segments or (
             current_pkg == root_pkg
@@ -105,6 +102,20 @@ class FlextInfraCodegenGenerationPathsMixin:
         return mod
 
     @staticmethod
+    def _relative_owned_module_path(current_pkg: str, mod: str) -> str:
+        """Preserve a same-root owner through its common package ancestor."""
+        package_parts = current_pkg.split(".")
+        module_parts = mod.split(".")
+        common = 0
+        for package_part, module_part in zip(package_parts, module_parts, strict=False):
+            if package_part != module_part:
+                break
+            common += 1
+        return "." * (len(package_parts) - common + 1) + ".".join(
+            module_parts[common:]
+        )
+
+    @staticmethod
     def _normalize_type_checking_module_path(
         mod: str, local_package_root: str | None
     ) -> str:
@@ -113,12 +124,12 @@ class FlextInfraCodegenGenerationPathsMixin:
             return mod
         if mod.startswith("."):
             return mod
-        if mod == local_package_root:
-            return "."
-        if mod.startswith(f"{local_package_root}."):
-            return f".{mod.removeprefix(f'{local_package_root}.')}"
         root_pkg = local_package_root.split(".", maxsplit=1)[0]
         first_segment = mod.split(".", maxsplit=1)[0]
+        if first_segment == root_pkg:
+            return FlextInfraCodegenGenerationPathsMixin._relative_owned_module_path(
+                local_package_root, mod
+            )
         internal_segments = frozenset(local_package_root.split(".")[1:])
         if (
             mod.startswith("_")
@@ -138,16 +149,10 @@ class FlextInfraCodegenGenerationPathsMixin:
     ) -> None:
         """Reject a relative TYPE_CHECKING import with no local package context.
 
-        flext-udpm5: an absolute import that shares the current package's own
-        project root but is not one of its descendants (an ancestor, sibling,
-        or cousin package, e.g. flext-ldif's ``servers._oid`` importing
-        ``servers.rfc``) is intentionally left absolute by
-        ``_normalize_type_checking_module_path`` and accepted here rather
-        than rejected: converting it to a relative import would require more
-        than one leading dot, which the member project's own Ruff
-        configuration (``ban-relative-imports = "parents"``) forbids. Only a
-        descendant import lacking any local package context at all -- which
-        cannot be resolved to any owner -- is rejected.
+        Same-project sibling, ancestor, and cousin owners use the same relative
+        path in static declarations and the runtime lazy map. Cross-project
+        owners remain absolute. Relative imports require a package context so
+        Python can resolve their declared owner.
         """
         if mod.startswith(".") and not local_package_root:
             exports = ", ".join(name for name, _ in items)
