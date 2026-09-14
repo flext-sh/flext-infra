@@ -721,6 +721,8 @@ Infra:
           diffEditor.ignoreTrimWhitespace: true
           editor.defaultFormatter: charliermarsh.ruff
           editor.formatOnSave: true
+          editor.codeActionsOnSave:
+            source.organizeImports: explicit
         python.analysis.diagnosticSeverityOverrides:
           reportUntypedBaseClass: none
         terminal.integrated.env.linux:
