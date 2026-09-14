@@ -147,6 +147,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             f"--timeout={pytest.case_timeout_seconds}",
             f"--maxfail={pytest.max_failures}",
             f"--junitxml={report_dir / 'junit.xml'}",
+            f"--report-log={report_dir / 'events.jsonl'}",
             *trailing,
             "-n",
             workers,

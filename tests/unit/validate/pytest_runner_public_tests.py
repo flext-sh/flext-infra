@@ -141,6 +141,8 @@ class TestsFlextInfraPytestRunner:
         tm.that(outcome.timed_out, eq=False)
         tm.that(outcome.forwarded_signal, none=True)
         tm.that(self._summary(reports_root), has=["failed=2", "exit=1"])
+        events = tm.ok(u.Cli.files_read_text(report_path.parent / "events.jsonl"))
+        tm.that(events, has=["first failure evidence", "second failure evidence"])
 
     @pytest.mark.slow
     def test_external_gate_markers_are_not_executed_offline(
