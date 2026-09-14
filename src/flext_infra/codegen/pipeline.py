@@ -57,6 +57,7 @@ class FlextInfraCodegenPipeline(
         """Build DAG stage specs with linear dependency chain."""
         handlers: t.MappingKV[str, p.Cli.PipelineStage] = {
             c.Infra.PipelineStage.DISCOVER: self._stage_discover,
+            c.Infra.PipelineStage.TOOLCHAIN: self._stage_toolchain,
             c.Infra.PipelineStage.PARSE_SSOT: self._stage_parse_ssot,
             c.Infra.PipelineStage.RENDER_TEMPLATES: self._stage_render_templates,
             c.Infra.PipelineStage.OVERLAY_PRESERVATION: self._stage_overlay_preservation,

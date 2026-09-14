@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
 
 import pytest
@@ -10,6 +9,7 @@ from flext_tests import tm
 
 from flext_infra import c, config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from tests import u
 from tests.unit.workspace import WorktreeFixture
 
 
@@ -27,15 +27,15 @@ class TestsFlextInfraBudgetProjection:
         """Every ALLOWED_GATES id renders a complete positive-int budget row."""
         root = WorktreeFixture.conformed_root(tmp_path)
         rendered = (root / c.Infra.PYPROJECT_FILENAME).read_text(encoding="utf-8")
-        parsed = tomllib.loads(rendered)
-        table = parsed["tool"]["flext"]["project"]["budget"]
+        table = u.Tests.toml_table_at(rendered, "tool", "flext", "project", "budget")
 
         tm.that(set(table), eq=set(c.Infra.ALLOWED_GATES))
-        for row in table.values():
+        for raw_row in table.values():
+            row = u.Tests.toml_mapping(raw_row)
             for field in c.Infra.BUDGET_REQUIRED_FIELDS:
                 value = row[field]
                 tm.that(isinstance(value, int) and not isinstance(value, bool), eq=True)
-                tm.that(value >= 1, eq=True)
+                tm.that(u.Tests.number(value) >= 1, eq=True)
 
     @pytest.mark.slow
     def test_budget_table_renders_identically_across_projects(

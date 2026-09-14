@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     )
     from .utilities_gates import TestsFlextInfraUtilitiesGatesMixin
     from .utilities_git import TestsFlextInfraUtilitiesGitMixin
+    from .utilities_promoted import TestsFlextInfraUtilitiesPromotedMixin
     from .utilities_release import TestsFlextInfraUtilitiesReleaseMixin
     from .utilities_replay import TestsFlextInfraUtilitiesReplayRunnerMixin
     from .utilities_replay_sequence import TestsFlextInfraUtilitiesReplaySequenceMixin
@@ -49,6 +50,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraUtilitiesGatesMixin",
     "TestsFlextInfraUtilitiesGitMixin",
     "TestsFlextInfraUtilitiesProjectFixtureMixin",
+    "TestsFlextInfraUtilitiesPromotedMixin",
     "TestsFlextInfraUtilitiesReleaseMixin",
     "TestsFlextInfraUtilitiesReplayRunnerMixin",
     "TestsFlextInfraUtilitiesReplaySequenceMixin",
@@ -104,6 +106,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".utilities_gates": ("TestsFlextInfraUtilitiesGatesMixin",),
             ".utilities_git": ("TestsFlextInfraUtilitiesGitMixin",),
+            ".utilities_promoted": ("TestsFlextInfraUtilitiesPromotedMixin",),
             ".utilities_release": ("TestsFlextInfraUtilitiesReleaseMixin",),
             ".utilities_replay": ("TestsFlextInfraUtilitiesReplayRunnerMixin",),
             ".utilities_replay_sequence": (

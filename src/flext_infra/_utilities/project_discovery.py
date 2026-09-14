@@ -95,11 +95,15 @@ class FlextInfraUtilitiesProjectDiscovery(
         cls, candidate: Path, repository_root: Path, nonparticipants: frozenset[str]
     ) -> bool:
         """Return whether one candidate lies at or under a declared non-participant."""
-        try:
-            relative = candidate.resolve().relative_to(repository_root.resolve())
-        except ValueError:
+        # "Is this candidate inside the root?" is a question, not a failure, so
+        # it is asked instead of caught. relative_to raised ValueError for the
+        # ordinary outside-the-root case, which made an except branch produce a
+        # value and hid any real path error behind the same sentinel.
+        resolved = candidate.resolve()
+        root = repository_root.resolve()
+        if not resolved.is_relative_to(root):
             return False
-        posix = relative.as_posix()
+        posix = resolved.relative_to(root).as_posix()
         if posix in {".", ""}:
             return False
         return any(

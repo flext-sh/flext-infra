@@ -157,7 +157,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             )
             if error_lines:
                 stderr = "\n".join(error_lines)
-        return r[m.Cli.CommandOutput].ok(
+        return r[p.Cli.CommandOutput].ok(
             m.Cli.CommandOutput(
                 stdout=str(log_path),
                 stderr=stderr,

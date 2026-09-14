@@ -11,7 +11,6 @@ and a real child process for the dispatch-level cases.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
@@ -23,32 +22,7 @@ from flext_infra.promoted.invocation import (
     validate_command_contract,
 )
 from flext_infra.promoted.registry import Registry
-
-if TYPE_CHECKING:
-    from flext_infra import p
-
-
-def _command(
-    *,
-    path: Path,
-    mutates: bool = True,
-    params: tuple[p.Infra.Promoted.Param, ...] = (),
-    verb: str = "probe",
-    what: str = "all",
-) -> p.Infra.Promoted.Command:
-    return m.Infra.Promoted.Command(
-        verb=verb,
-        what=what,
-        domain="probe",
-        summary="probe",
-        description="probe",
-        example=f"make {verb} WHAT={what}",
-        path=path,
-        mutates=mutates,
-        aliases=(),
-        params=params,
-        rules=(),
-    )
+from tests import u
 
 
 class TestsFlextInfraPromotedApplyEnvValidation:
@@ -59,7 +33,7 @@ class TestsFlextInfraPromotedApplyEnvValidation:
     ) -> None:
         """An unset APPLY resolves to "" — mutation is the default."""
         monkeypatch.delenv("APPLY", raising=False)
-        command = _command(path=tmp_path / "scripts" / "probe" / "all.py")
+        command = u.Tests.promoted_command(path=tmp_path / "scripts" / "probe" / "all.py")
         assert validate_apply_env(command) == ""
 
     def test_apply_n_selects_check_mode(
@@ -67,7 +41,7 @@ class TestsFlextInfraPromotedApplyEnvValidation:
     ) -> None:
         """APPLY=N is the only accepted opt-in to check/dry-run mode."""
         monkeypatch.setenv("APPLY", "N")
-        command = _command(path=tmp_path / "scripts" / "probe" / "all.py")
+        command = u.Tests.promoted_command(path=tmp_path / "scripts" / "probe" / "all.py")
         assert validate_apply_env(command) == "N"
 
     def test_apply_y_is_a_named_hard_error(
@@ -76,7 +50,7 @@ class TestsFlextInfraPromotedApplyEnvValidation:
         """The legacy APPLY=Y raises, naming the violator and the fix."""
         monkeypatch.setenv("APPLY", "Y")
         command_path = tmp_path / "scripts" / "probe" / "all.py"
-        command = _command(path=command_path)
+        command = u.Tests.promoted_command(path=command_path)
         with pytest.raises(RegistryError) as excinfo:
             validate_apply_env(command)
         message = str(excinfo.value)
@@ -89,7 +63,7 @@ class TestsFlextInfraPromotedApplyEnvValidation:
     ) -> None:
         """Any value outside {"", "N"} is rejected, not only "Y"."""
         monkeypatch.setenv("APPLY", "maybe")
-        command = _command(path=tmp_path / "scripts" / "probe" / "all.py")
+        command = u.Tests.promoted_command(path=tmp_path / "scripts" / "probe" / "all.py")
         with pytest.raises(RegistryError, match=r"unsupported APPLY value 'maybe'"):
             validate_apply_env(command)
 
@@ -99,13 +73,13 @@ class TestsFlextInfraPromotedApplyCommandContract:
 
     def test_command_may_omit_apply_entirely(self, tmp_path: Path) -> None:
         """A mutating command need not declare APPLY (mutation is default)."""
-        command = _command(path=tmp_path / "scripts" / "probe" / "all.py")
+        command = u.Tests.promoted_command(path=tmp_path / "scripts" / "probe" / "all.py")
         validate_command_contract(command)
 
     def test_declared_apply_choices_n_only_is_valid(self, tmp_path: Path) -> None:
         """APPLY choices restricted to ("N",) is the only valid declaration."""
         param = m.Infra.Promoted.Param(name="APPLY", help="check mode", choices=("N",))
-        command = _command(
+        command = u.Tests.promoted_command(
             path=tmp_path / "scripts" / "probe" / "all.py", params=(param,)
         )
         validate_command_contract(command)
@@ -116,7 +90,7 @@ class TestsFlextInfraPromotedApplyCommandContract:
         """A header declaring APPLY choices with "Y" fails discovery-time validation."""
         param = m.Infra.Promoted.Param(name="APPLY", help="apply", choices=("N", "Y"))
         command_path = tmp_path / "scripts" / "probe" / "all.py"
-        command = _command(path=command_path, params=(param,))
+        command = u.Tests.promoted_command(path=command_path, params=(param,))
         with pytest.raises(RegistryError) as excinfo:
             validate_command_contract(command)
         message = str(excinfo.value)
@@ -140,7 +114,7 @@ class TestsFlextInfraPromotedDispatchApplyBehavior:
             encoding="utf-8",
         )
         registry = Registry()
-        registry.add(_command(path=command_path))
+        registry.add(u.Tests.promoted_command(path=command_path))
         return registry, marker
 
     def test_dispatch_mutates_by_default(
