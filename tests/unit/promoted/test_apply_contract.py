@@ -51,7 +51,6 @@ class TestsFlextInfraPromotedApplyContract:
             )
             validate_command_contract(command)
 
-
     class TestsFlextInfraPromotedDispatchAlwaysExecutes:
         """Exercise dispatch()'s unconditional execution through a real command."""
 
