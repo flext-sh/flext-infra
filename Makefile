@@ -561,7 +561,11 @@ SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(st
 # `make setup` always provisions the current package tips. Deleting uv.lock is
 # never needed: setup reconciles the stale-git-ref case itself (operator
 # request 2026-09-10).
-UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups $(if $(CI),--locked ,--refresh)
+# No lock is committed, so there is nothing for `--locked` to honour: the fleet
+# resolves dependency floors from pyproject on every setup, in CI exactly as
+# locally. `--refresh` re-reads branch-tracked git metadata so a cached
+# requires-dist can never skew the resolution (operator 2026-09-14).
+UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups --refresh
 
 ifeq ($(GEN_INIT_ONLY),)
 -include custom.mk
@@ -600,6 +604,7 @@ endef
 
 .PHONY: $(PUBLIC_VERBS) $(addprefix _builtin-,$(PUBLIC_VERBS))
 .PHONY: _builtin_gen_check _builtin_gen_init _builtin_gen_all _builtin_gen_apply
+
 
 
 help:
@@ -659,7 +664,7 @@ gen: _builtin_require_environment
 conform: _builtin_require_environment
 	$(call RUN_PUBLIC,conform)
 
-initialize:
+initialize: _builtin_require_environment
 	$(call RUN_PUBLIC,initialize)
 
 mod: _builtin_require_environment
@@ -952,10 +957,10 @@ _builtin-self-test: _builtin_require_environment
 
 _builtin-self-check: _builtin_require_environment
 	@set -eu; \
-		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication,budget,index-declarations"; \
+		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication,budget"; \
 		if [ "$(strip $(CI))" = "Y" ]; then \
-			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication,budget,index-declarations"; \
-			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells codemod layout canonical-alias direnv duplication budget index-declarations\n'; \
+			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication,budget"; \
+			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist index-declarations smells codemod layout canonical-alias direnv duplication budget\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
 		printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
@@ -990,10 +995,10 @@ _builtin_build_artifacts:
 # make.ci.local_check_gates.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
-		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication,budget,index-declarations"; \
+		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication,budget"; \
 		if [ "$(strip $(CI))" = "Y" ]; then \
-			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication,budget,index-declarations"; \
-			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells codemod layout canonical-alias direnv duplication budget index-declarations\n'; \
+			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication,budget"; \
+			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist index-declarations smells codemod layout canonical-alias direnv duplication budget\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
 		printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
