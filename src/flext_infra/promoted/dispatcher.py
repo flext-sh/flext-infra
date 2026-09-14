@@ -79,10 +79,8 @@ def run_dispatch(
 def dispatch(registry: Registry, requested_verb: str) -> int:
     """Dispatch one requested verb to its selected promoted command.
 
-    Every promoted command executes; there is no dry-run selector.
-
     Returns:
-        The executed command's exit code; ``0`` for rendered help.
+        The executed command's exit code, or zero for rendered help.
 
     """
     alias_target = registry.alias_target(requested_verb)
