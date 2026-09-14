@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from tests import t
 
 
-class TestWorkspaceCheckCli:
+class TestsFlextInfraWorkspaceCheckCli:
     """Exercise the public check CLI without patching internal services."""
 
     @staticmethod
@@ -215,3 +215,6 @@ class TestWorkspaceCheckCli:
         exit_code = main(["check", "--dry-run", "run", "--projects", "flext-core"])
 
         tm.that(exit_code, eq=0)
+
+
+__all__: t.StrSequence = ["TestsFlextInfraWorkspaceCheckCli"]

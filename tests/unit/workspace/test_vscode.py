@@ -11,15 +11,15 @@ from flext_infra.services.codegen import FlextInfraCodegen
 from tests import u
 
 
-def _write_settings(project_root: Path, content: str) -> Path:
-    settings_path = project_root / ".vscode" / "settings.json"
-    settings_path.parent.mkdir(parents=True, exist_ok=True)
-    _ = settings_path.write_text(content, encoding="utf-8")
-    return settings_path
-
-
 class TestsFlextInfraCodegenVscode:
     """Behavior contract for the config-driven VS Code settings codegen owner."""
+
+    @staticmethod
+    def _write_settings(project_root: Path, content: str) -> Path:
+        settings_path = project_root / ".vscode" / "settings.json"
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        _ = settings_path.write_text(content, encoding="utf-8")
+        return settings_path
 
     def test_applies_canonical_settings_and_removes_retired_artifacts(
         self, tmp_path: Path
@@ -27,7 +27,7 @@ class TestsFlextInfraCodegenVscode:
         """Enforce canonical keys while deleting stale generated map entries."""
         project_root = tmp_path / "project"
         project_root.mkdir()
-        _write_settings(
+        self._write_settings(
             project_root,
             tm.ok(
                 u.Cli.json_dumps({
@@ -74,7 +74,7 @@ class TestsFlextInfraCodegenVscode:
 
         first = FlextInfraCodegen.render_vscode_settings(project_root)
         tm.ok(first)
-        _write_settings(project_root, first.value)
+        self._write_settings(project_root, first.value)
         second = FlextInfraCodegen.render_vscode_settings(project_root)
         tm.ok(second)
         tm.that(second.value, eq=first.value)
@@ -120,9 +120,12 @@ class TestsFlextInfraCodegenVscode:
         """Return a typed failure when the existing settings are unparseable."""
         project_root = tmp_path / "project"
         project_root.mkdir()
-        _write_settings(project_root, "{ invalid json")
+        self._write_settings(project_root, "{ invalid json")
 
         result = FlextInfraCodegen.render_vscode_settings(project_root)
 
         tm.fail(result)
         tm.that(result.error, none=False)
+
+
+__all__: list[str] = ["TestsFlextInfraCodegenVscode"]

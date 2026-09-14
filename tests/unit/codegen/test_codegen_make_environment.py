@@ -12,12 +12,11 @@ from flext_tests import tm
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import t, u as test_u
-from tests.unit.workspace import WorktreeFixture
 
 pytestmark = pytest.mark.slow
 
 
-class TestsCodegenMakeEnvironment:
+class TestsFlextInfraCodegenMakeEnvironment:
     """Prove generated operations ignore the caller shell environment."""
 
     @staticmethod
@@ -41,7 +40,9 @@ class TestsCodegenMakeEnvironment:
             }
         )
         project_root = tmp_path / profile.value / "fixture-project"
-        WorktreeFixture.write_python_project(project_root, repository.distribution)
+        test_u.Tests.WorktreeFixture.write_python_project(
+            project_root, repository.distribution
+        )
         if bootstrap:
             test_u.Tests.copy_tracked_mise_seeds(project_root)
             tm.ok(
@@ -326,7 +327,9 @@ class TestsCodegenMakeEnvironment:
         lock_path = project_root / "uv.lock"
         lock_before = lock_path.read_bytes()
         dependency_root = tmp_path / "external-runtime"
-        WorktreeFixture.write_python_project(dependency_root, "external-runtime")
+        test_u.Tests.WorktreeFixture.write_python_project(
+            dependency_root, "external-runtime"
+        )
         pyproject_path = project_root / c.Infra.PYPROJECT_FILENAME
         document = test_u.Tests.toml_doc(pyproject_path.read_text(encoding="utf-8"))
         project = tm.not_none(u.Cli.toml_table_child(document, "project"))
@@ -908,3 +911,6 @@ class TestsCodegenMakeEnvironment:
             "_builtin-conform",
         ):
             tm.that(makefile, lacks=forbidden)
+
+
+__all__: list[str] = ["TestsFlextInfraCodegenMakeEnvironment"]

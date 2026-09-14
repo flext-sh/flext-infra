@@ -24,38 +24,36 @@ from flext_infra import c
 from tests import t
 
 
-def _engine_modules() -> t.VariadicTuple[Path]:
-    """Return every shipped engine module, excluding the template tree."""
-    root = Path(flext_infra.__file__).resolve().parent
-    templates = root / "templates"
-    return tuple(
-        sorted(path for path in root.rglob("*.py") if templates not in path.parents)
-    )
-
-
-def _string_literals(module: Path, *, containing: str) -> t.VariadicTuple[str]:
-    """Return every string literal in *module*, excluding docstrings."""
-    source = module.read_text(encoding="utf-8")
-    if containing not in source:
-        return ()
-    tree = ast.parse(source)
-    docstrings = {
-        ast.get_docstring(node, clean=False)
-        for node in ast.walk(tree)
-        if isinstance(
-            node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
-        )
-    }
-    return tuple(
-        node.value
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Constant)
-        and isinstance(node.value, str)
-        and node.value not in docstrings
-    )
-
-
 class TestsFlextInfraCustomMakeSurfaceIsDerived:
+    def _engine_modules(self) -> t.VariadicTuple[Path]:
+        """Return every shipped engine module, excluding the template tree."""
+        root = Path(flext_infra.__file__).resolve().parent
+        templates = root / "templates"
+        return tuple(
+            sorted(path for path in root.rglob("*.py") if templates not in path.parents)
+        )
+
+    def _string_literals(self, module: Path, *, containing: str) -> t.VariadicTuple[str]:
+        """Return every string literal in *module*, excluding docstrings."""
+        source = module.read_text(encoding="utf-8")
+        if containing not in source:
+            return ()
+        tree = ast.parse(source)
+        docstrings = {
+            ast.get_docstring(node, clean=False)
+            for node in ast.walk(tree)
+            if isinstance(
+                node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
+            )
+        }
+        return tuple(
+            node.value
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and node.value not in docstrings
+        )
+
     def test_include_directive_is_derived_from_the_filename_ssot(self) -> None:
         """The include directive embeds the SSOT filename, not a copy of it."""
         tm.that(
@@ -69,14 +67,17 @@ class TestsFlextInfraCustomMakeSurfaceIsDerived:
         ssot = package_root / "_constants"
         offenders = sorted(
             str(module.relative_to(package_root))
-            for module in _engine_modules()
+            for module in self._engine_modules()
             if ssot not in module.parents
             and any(
                 c.Infra.CUSTOM_MAKE_FILENAME in literal
-                for literal in _string_literals(
+                for literal in self._string_literals(
                     module, containing=c.Infra.CUSTOM_MAKE_FILENAME
                 )
             )
         )
 
         tm.that(offenders, eq=[])
+
+
+__all__: list[str] = ["TestsFlextInfraCustomMakeSurfaceIsDerived"]

@@ -2,20 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import pytest
 from flext_tests import tm
 
 from tests import c, u
-
-_FULL_OPTIONAL_DEPS: dict[str, list[str]] = {
-    "dev": ["pytest"],
-    "docs": ["sphinx"],
-    "security": ["bandit"],
-    "test": ["coverage"],
-    "typings": ["mypy"],
-}
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,28 +15,35 @@ if TYPE_CHECKING:
     from tests import t
 
 
-@pytest.fixture
-def doc() -> t.Cli.TomlDocument:
-    """Provide a mutable TOML document fixture."""
-    return u.Cli.toml_document()
-
-
-def _toml_table_item() -> t.Cli.TomlItem:
-    tbl = u.Cli.toml_table()
-    tbl["key"] = "value"
-    return tbl
-
-
-def _doc_with_optional_deps(
-    optional_deps: t.MappingKV[str, t.StrSequence],
-) -> t.Cli.TomlDocument:
-    doc = u.Cli.toml_document()
-    doc["project"] = {"optional-dependencies": optional_deps}
-    return doc
-
-
 class TestsFlextInfraDepsModernizerHelpers:
     """Behavior contract for test_modernizer_helpers."""
+
+    _FULL_OPTIONAL_DEPS: ClassVar[t.MappingKV[str, t.StrSequence]] = {
+        "dev": ["pytest"],
+        "docs": ["sphinx"],
+        "security": ["bandit"],
+        "test": ["coverage"],
+        "typings": ["mypy"],
+    }
+
+    @pytest.fixture
+    def doc(self) -> t.Cli.TomlDocument:
+        """Provide a mutable TOML document fixture."""
+        return u.Cli.toml_document()
+
+    @staticmethod
+    def _toml_table_item() -> t.Cli.TomlItem:
+        tbl = u.Cli.toml_table()
+        tbl["key"] = "value"
+        return tbl
+
+    @staticmethod
+    def _doc_with_optional_deps(
+        optional_deps: t.MappingKV[str, t.StrSequence],
+    ) -> t.Cli.TomlDocument:
+        doc = u.Cli.toml_document()
+        doc["project"] = {"optional-dependencies": optional_deps}
+        return doc
 
     @pytest.mark.parametrize(
         ("raw", "expected"),
@@ -180,7 +179,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         expected_docs: t.StrSequence,
     ) -> None:
         """Verify project dev groups."""
-        groups = u.Infra.project_dev_groups(_doc_with_optional_deps(optional_deps))
+        groups = u.Infra.project_dev_groups(self._doc_with_optional_deps(optional_deps))
         tm.that(list(groups.get("dev", [])), eq=list(expected_dev))
         tm.that(list(groups.get("docs", [])), eq=list(expected_docs))
 
@@ -207,7 +206,7 @@ class TestsFlextInfraDepsModernizerHelpers:
     ) -> None:
         """Verify canonical dev dependencies."""
         result = u.Infra.canonical_dev_dependencies(
-            _doc_with_optional_deps(optional_deps)
+            self._doc_with_optional_deps(optional_deps)
         )
         tm.that(result, length=expected_length)
         if expect_pytest:
@@ -274,3 +273,6 @@ class TestsFlextInfraDepsModernizerHelpers:
             ),
             eq=f"httpx[socks]>={locked_version}; python_version < '3.14'",
         )
+
+
+__all__: list[str] = ["TestsFlextInfraDepsModernizerHelpers"]

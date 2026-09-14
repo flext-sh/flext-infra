@@ -7,7 +7,8 @@ That misrouting collapsed each project's docs scope onto an identical root scope
 and silently dropped its README and project docs.
 
 These cases pin the signal itself, independently of the docs generator, so the
-classification cannot drift again.
+classification cannot drift again. Both artifacts are written through the shared
+fixture owners, so a test never encodes a second spelling of either file.
 """
 
 from __future__ import annotations
@@ -17,10 +18,13 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, u
+from flext_infra import c
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+_PROBE = "flext-probe"
 
 
 class TestsFlextInfraWorkspaceManifest:
@@ -62,12 +66,10 @@ class TestsFlextInfraWorkspaceManifest:
     def test_the_manifest_alone_makes_a_checkout_an_umbrella(
         self, tmp_path: Path
     ) -> None:
-        """The handwritten manifest is the signal."""
-        manifest = TestsFlextInfraWorkspaceManifest._config_dir(tmp_path)
-        (manifest / c.Infra.WORKSPACE_MANIFEST_FILENAME).write_text(
-            "name: probe\n", encoding="utf-8"
-        )
+        """The declared manifest is the signal."""
+        written = u.Tests.write_standalone_workspace_manifest(tmp_path, _PROBE)
 
+        tm.that(written, eq=u.Infra.workspace_manifest_path(tmp_path))
         tm.that(u.Infra.is_fleet_umbrella(tmp_path), eq=True)
 
     def test_a_beads_override_never_makes_a_checkout_an_umbrella(
@@ -78,12 +80,34 @@ class TestsFlextInfraWorkspaceManifest:
         Reading it here classified every standalone project as a fleet
         umbrella, which is what silently dropped their README and project docs.
         """
-        config = TestsFlextInfraWorkspaceManifest._config_dir(tmp_path)
-        (config / c.Infra.BEADS_CONFIG_FILENAME).write_text(
-            "project: probe\n", encoding="utf-8"
+        written = u.Tests.write_project_beads_config(tmp_path, _PROBE)
+
+        tm.that(written.is_file(), eq=True)
+        tm.that(u.Infra.is_fleet_umbrella(tmp_path), eq=False)
+
+    def test_invalid_manifest_cannot_erase_participant_exclusions(
+        self, tmp_path: Path
+    ) -> None:
+        """An invalid declared scope fails before discovery can widen it."""
+        self._config_dir(tmp_path)
+        u.Infra.workspace_manifest_path(tmp_path).write_text(
+            "{}\n", encoding=c.Cli.ENCODING_DEFAULT
         )
 
-        tm.that(u.Infra.is_fleet_umbrella(tmp_path), eq=False)
+        with pytest.raises(c.ValidationError):
+            u.Infra.manifest_nonparticipant_paths(tmp_path)
+
+    def test_invalid_manifest_cannot_supply_default_refactor_settings(
+        self, tmp_path: Path
+    ) -> None:
+        """A present invalid manifest is never treated as undeclared settings."""
+        self._config_dir(tmp_path)
+        u.Infra.workspace_manifest_path(tmp_path).write_text(
+            "{}\n", encoding=c.Cli.ENCODING_DEFAULT
+        )
+
+        with pytest.raises(c.ValidationError):
+            u.Infra.load_refactor_config(tmp_path)
 
 
 __all__: list[str] = ["TestsFlextInfraWorkspaceManifest"]

@@ -11,7 +11,7 @@ from flext_tests import tm
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
 
-class TestWorkspaceCheckerResolveGates:
+class TestsFlextInfraWorkspaceCheckerResolveGates:
     """Test FlextInfraWorkspaceChecker.resolve_gates."""
 
     def test_resolve_gates_type_is_rejected(self) -> None:
@@ -54,3 +54,6 @@ class TestWorkspaceCheckerResolveGates:
         result = FlextInfraWorkspaceChecker.resolve_gates(["silent-failure"])
         tm.ok(result)
         tm.that(result.value, eq=["silent-failure"])
+
+
+__all__: list[str] = ["TestsFlextInfraWorkspaceCheckerResolveGates"]

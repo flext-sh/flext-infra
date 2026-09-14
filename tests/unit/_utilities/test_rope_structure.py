@@ -9,26 +9,26 @@ from flext_tests import tm
 from flext_infra import c, m, u
 from tests import t
 
-_SOURCE = (
-    "from typing import ClassVar, TYPE_CHECKING\n"
-    "import importlib\n"
-    "if TYPE_CHECKING:\n"
-    "    from foo import Bar\n"
-    "type MyAlias = int\n"
-    "class Widget:\n"
-    "    CONST: ClassVar[int] = 1\n"
-    "    plain = 2\n"
-    "    def method(self):\n"
-    "        import os\n"
-    "        return os\n"
-)
-_MULTILINE_IMPORT = (
-    "from package.private import (  # inline explanation\n    ExportedName,\n)\n"
-)
-
 
 class TestsFlextInfraRopeStructure:
     """Behavior contract for the LogicalLineFinder-backed structure boundary."""
+
+    _SOURCE = (
+        "from typing import ClassVar, TYPE_CHECKING\n"
+        "import importlib\n"
+        "if TYPE_CHECKING:\n"
+        "    from foo import Bar\n"
+        "type MyAlias = int\n"
+        "class Widget:\n"
+        "    CONST: ClassVar[int] = 1\n"
+        "    plain = 2\n"
+        "    def method(self):\n"
+        "        import os\n"
+        "        return os\n"
+    )
+    _MULTILINE_IMPORT = (
+        "from package.private import (  # inline explanation\n    ExportedName,\n)\n"
+    )
 
     def test_first_party_namespaces_require_live_python_sources(
         self, tmp_path: Path
@@ -53,9 +53,8 @@ class TestsFlextInfraRopeStructure:
             eq=["namespace", "regular", "stubs"],
         )
 
-    @staticmethod
-    def _by_line() -> t.MutableMappingKV[int, m.Infra.LogicalStatement]:
-        return {s.line: s for s in u.Infra.logical_statements(_SOURCE)}
+    def _by_line(self) -> t.MutableMappingKV[int, m.Infra.LogicalStatement]:
+        return {s.line: s for s in u.Infra.logical_statements(self._SOURCE)}
 
     def test_reports_real_statement_lines_not_target_module_lines(self) -> None:
         by_line = self._by_line()
@@ -101,7 +100,10 @@ class TestsFlextInfraRopeStructure:
         tm.that(u.Infra.logical_statements(""), eq=())
 
     def test_preserves_newlines_in_multiline_statement(self) -> None:
-        statements = u.Infra.logical_statements(_MULTILINE_IMPORT)
+        statements = u.Infra.logical_statements(self._MULTILINE_IMPORT)
 
-        tm.that(statements[0].text, eq=_MULTILINE_IMPORT.rstrip("\n"))
+        tm.that(statements[0].text, eq=self._MULTILINE_IMPORT.rstrip("\n"))
         tm.that(statements[0].category, eq=c.Infra.StatementCategory.FROM_IMPORT)
+
+
+__all__: list[str] = ["TestsFlextInfraRopeStructure"]

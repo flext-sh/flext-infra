@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestsExtendedProjectRunners:
+class TestsFlextInfraExtendedProjectRunners:
     """Exercise runner behavior through the public checker API only."""
 
     # Why (suite budget): full-suite xdist can stall durable atomic report writes
@@ -53,3 +53,6 @@ class TestsExtendedProjectRunners:
 
         tm.ok(result)
         tm.that(result.value.gate, eq=gate_method)
+
+
+__all__: list[str] = ["TestsFlextInfraExtendedProjectRunners"]

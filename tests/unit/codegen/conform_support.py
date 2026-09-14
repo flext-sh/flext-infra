@@ -26,14 +26,25 @@ class TestsFlextInfraConformSupport:
         *,
         make_profile: c.Infra.MakeProfile,
     ) -> m.Infra.RepositoryConformTarget:
-        """Build a typed rendering target from the repository identity."""
+        """Build a typed rendering target from the same provider SSOT as production."""
+        provider = tm.ok(
+            u.Infra.repository_provider(repository, config.Infra.codegen.providers)
+        )
         return m.Infra.RepositoryConformTarget(
             repository=repository,
             root=root,
             make_profile=make_profile,
             beads=u.Tests.beads_project(repository.name),
             canonical_project_name=repository.distribution,
+            baseline_branch=provider.branch,
+            baseline_reference=f"refs/remotes/origin/{provider.branch}",
             ci_enabled=True,
+            technical_branch_patterns=(
+                config.Infra.codegen.branch_policy.technical_branch_patterns
+            ),
+            governed_branch_patterns=(
+                config.Infra.codegen.branch_policy.governed_branch_patterns
+            ),
         )
 
     @staticmethod

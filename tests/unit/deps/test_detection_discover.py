@@ -24,7 +24,7 @@ class TestsFlextInfraDepsDetectionDiscover:
         proj.path.mkdir()
         (proj.path / "pyproject.toml").write_text("")
         service.selector = u.Tests.DeptrySelector(
-            r[t.SequenceOf[m.Infra.ProjectInfo]].ok([proj])
+            r[t.SequenceOf[m.Infra.ProjectInfo]].ok((proj,))
         )
         result = service.discover_project_paths(tmp_path)
         tm.that(result.success, eq=True)
@@ -47,7 +47,7 @@ class TestsFlextInfraDepsDetectionDiscover:
         )
         proj.path.mkdir()
         service.selector = u.Tests.DeptrySelector(
-            r[t.SequenceOf[m.Infra.ProjectInfo]].ok([proj])
+            r[t.SequenceOf[m.Infra.ProjectInfo]].ok((proj,))
         )
         result = service.discover_project_paths(tmp_path)
         tm.that(result.success, eq=True)

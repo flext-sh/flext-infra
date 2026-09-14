@@ -12,7 +12,6 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
 from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
@@ -158,16 +157,12 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                 f"added={[path.as_posix() for path in added]}, "
                 f"removed={[path.as_posix() for path in removed]}"
             )
-        current = FlextInfraUtilitiesCodegenFilePlan.required_file_states(
-            discovered.value
-        )
-        if current.failure:
-            return r[bool].from_failure(current)
-        for expected, observed in zip(source_states, current.value, strict=True):
-            if observed != expected:
-                return r[bool].fail(
-                    f"docs source changed during planning: {expected.path}"
-                )
+        verified = cli_u.Cli.atomic_verify_binary_file_states(source_states)
+        if verified.failure:
+            return r[bool].fail(
+                f"docs source changed during planning: {verified.error}",
+                exception=verified.exception,
+            )
         return r[bool].ok(True)
 
 

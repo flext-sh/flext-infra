@@ -22,47 +22,48 @@ if TYPE_CHECKING:
 
     from tests import t
 
-# Fixtures are derived from the current cap so a future owner change cannot
-# silently invert these assertions.
-_OVER_CAP_LOC = config.Infra.codegen.loc_cap.max_lines + 50
-_UNDER_CAP_LOC = 1
-_OVER_CAP = (
-    "from __future__ import annotations\n\n"
-    + "\n".join(f"x{i} = {i}" for i in range(_OVER_CAP_LOC))
-    + "\n"
-)
-_UNDER_CAP = "from __future__ import annotations\n\nx = 1\n"
-_SCC_OVER_CAP = (
-    '[{"Name":"Python","Files":[{"Location":"src/sample.py","Code":'
-    f"{_OVER_CAP_LOC}"
-    "}]}]"
-)
-_SCC_UNDER_CAP = (
-    '[{"Name":"Python","Files":[{"Location":"src/sample.py","Code":'
-    f"{_UNDER_CAP_LOC}"
-    "}]}]"
-)
 
-
-def _gate_project(tmp_path: Path, *, name: str, module_src: str) -> Path:
-    project_path: Path = u.Tests.create_codegen_project(
-        tmp_path=tmp_path,
-        name=name,
-        pkg_name=name.replace("-", "_"),
-        files={"sample.py": module_src},
+class TestsFlextInfraLocCapGate:
+    # Fixtures are derived from the current cap so a future owner change
+    # cannot silently invert these assertions.
+    _OVER_CAP_LOC = config.Infra.codegen.loc_cap.max_lines + 50
+    _UNDER_CAP_LOC = 1
+    _OVER_CAP = (
+        "from __future__ import annotations\n\n"
+        + "\n".join(f"x{i} = {i}" for i in range(_OVER_CAP_LOC))
+        + "\n"
     )
-    return project_path
+    _UNDER_CAP = "from __future__ import annotations\n\nx = 1\n"
+    _SCC_OVER_CAP = (
+        '[{"Name":"Python","Files":[{"Location":"src/sample.py","Code":'
+        f"{_OVER_CAP_LOC}"
+        "}]}]"
+    )
+    _SCC_UNDER_CAP = (
+        '[{"Name":"Python","Files":[{"Location":"src/sample.py","Code":'
+        f"{_UNDER_CAP_LOC}"
+        "}]}]"
+    )
 
+    def _gate_project(self, tmp_path: Path, *, name: str, module_src: str) -> Path:
+        project_path: Path = u.Tests.create_codegen_project(
+            tmp_path=tmp_path,
+            name=name,
+            pkg_name=name.replace("-", "_"),
+            files={"sample.py": module_src},
+        )
+        return project_path
 
-class TestLocCapGate:
     def test_gate_identity(self) -> None:
         tm.that(FlextInfraLocCapGate.gate_id, eq="loc-cap")
         tm.that(FlextInfraLocCapGate.can_fix, eq=False)
 
     def test_over_cap_module_is_flagged(self, tmp_path: Path) -> None:
-        project = _gate_project(tmp_path, name="demo-project", module_src=_OVER_CAP)
+        project = self._gate_project(
+            tmp_path, name="demo-project", module_src=self._OVER_CAP
+        )
         runner = u.Tests.SequenceRunner([
-            r.ok(u.Tests.create_command_output(stdout=_SCC_OVER_CAP))
+            r.ok(u.Tests.create_command_output(stdout=self._SCC_OVER_CAP))
         ])
 
         result = u.Tests.run_gate_check(
@@ -73,9 +74,11 @@ class TestLocCapGate:
         tm.that(any(issue.code == "LOC_CAP" for issue in result.issues), eq=True)
 
     def test_under_cap_module_passes(self, tmp_path: Path) -> None:
-        project = _gate_project(tmp_path, name="demo-project", module_src=_UNDER_CAP)
+        project = self._gate_project(
+            tmp_path, name="demo-project", module_src=self._UNDER_CAP
+        )
         runner = u.Tests.SequenceRunner([
-            r.ok(u.Tests.create_command_output(stdout=_SCC_UNDER_CAP))
+            r.ok(u.Tests.create_command_output(stdout=self._SCC_UNDER_CAP))
         ])
 
         result = u.Tests.run_gate_check(
@@ -85,7 +88,9 @@ class TestLocCapGate:
         tm.that(result.result.passed, eq=True)
 
     def test_tool_execution_failure_is_not_silenced(self, tmp_path: Path) -> None:
-        project = _gate_project(tmp_path, name="demo-project", module_src=_UNDER_CAP)
+        project = self._gate_project(
+            tmp_path, name="demo-project", module_src=self._UNDER_CAP
+        )
         runner = u.Tests.SequenceRunner([r.fail("scc is unavailable")])
 
         with pytest.raises(RuntimeError, match="scc is unavailable"):
@@ -94,4 +99,4 @@ class TestLocCapGate:
             )
 
 
-__all__: t.StrSequence = []
+__all__: t.StrSequence = ["TestsFlextInfraLocCapGate"]

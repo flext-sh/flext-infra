@@ -43,3 +43,6 @@ class TestsFlextInfraDepsDetectorReport:
         )
         tm.that(u.Cli.process_succeeded(outcome.outcome), eq=False)
         tm.that(outcome.stdout + outcome.stderr, has="json_write failed")
+
+
+__all__: list[str] = ["TestsFlextInfraDepsDetectorReport"]

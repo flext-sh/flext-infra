@@ -7,15 +7,13 @@ import re
 
 from flext_tests import tm
 
-from tests import t
-
 _RECIPE = (
     pathlib.Path(__file__).resolve().parents[3]
     / "src/flext_infra/templates/project/base/submodule_setup_recipe.j2"
 )
 
 
-class TestsSubmoduleRecipeShell:
+class TestsFlextInfraSubmoduleRecipeShell:
     """A Make recipe is one shell command joined by backslash continuations.
 
     A comment line inside the recipe that does not itself end with a
@@ -51,4 +49,4 @@ class TestsSubmoduleRecipeShell:
         tm.that(offenders, eq=[])
 
 
-__all__: t.VariadicTuple[str] = ()
+__all__: list[str] = ["TestsFlextInfraSubmoduleRecipeShell"]

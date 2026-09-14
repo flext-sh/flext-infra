@@ -10,15 +10,14 @@ from flext_tests import tm
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import u
-from tests.unit.workspace import WorktreeFixture
 
 
-class TestsCodegenBeadsProjection:
+class TestsFlextInfraCodegenBeadsProjection:
     """Keep codegen on its declarative projection boundary."""
 
     @staticmethod
     def _project(root: Path, *, database: str, issue_prefix: str) -> Path:
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             root,
             "fixture-project",
             workspace="fixture-workspace",
@@ -189,3 +188,6 @@ class TestsCodegenBeadsProjection:
         tm.that("endpoint" in tool_fields, eq=False)
         tm.that("endpoint_origin" in tool_fields, eq=True)
         tm.that("endpoint_status" in tool_fields, eq=True)
+
+
+__all__: list[str] = ["TestsFlextInfraCodegenBeadsProjection"]

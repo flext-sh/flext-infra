@@ -7,11 +7,10 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService, c, m
-from tests import t, u
-from tests.unit.workspace import WorktreeFixture
+from tests import u
 
 
-class TestsWorktreeTopology(WorktreeFixture):
+class TestsFlextInfraWorktreeTopology(u.Tests.WorktreeFixture):
     """Group cohesive worktree behavior."""
 
     def test_update_merges_the_requested_base_with_an_explicit_merge_commit(

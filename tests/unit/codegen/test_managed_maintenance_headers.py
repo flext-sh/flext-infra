@@ -103,3 +103,6 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         tm.that(template, has="make.ruff.lint_apply")
         tm.that(template, has="make.ruff.format_check")
         tm.that(template, has="make.ruff.lint_check")
+
+
+__all__: list[str] = ["TestsFlextInfraManagedMaintenanceHeaders"]

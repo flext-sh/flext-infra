@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestConfigFixerPublicBehavior:
+class TestsFlextInfraExtendedConfigFixerErrors:
     """Exercise ``FlextInfraConfigFixer`` only through its public surface."""
 
     @pytest.mark.parametrize(
@@ -72,3 +72,6 @@ class TestConfigFixerPublicBehavior:
         tm.ok(result)
         tm.that(result.value, empty=False)
         tm.that(pyproject.read_text(encoding="utf-8"), eq=original)
+
+
+__all__: list[str] = ["TestsFlextInfraExtendedConfigFixerErrors"]

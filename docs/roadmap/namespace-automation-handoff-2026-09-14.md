@@ -23,6 +23,26 @@
 - [9. Limite de encerramento deste handoff](#9-limite-de-encerramento-deste-handoff)
 <!-- TOC END -->
 
+**Atualização da retomada:** o operador passou a exigir estabilização e PRs
+integrados, mantendo este handoff disponível durante o trabalho. O encerramento
+somente como WIP descrito no registro original foi superado. Em `check`, o aceite
+exigido pelo operador é Ruff, Mypy, Pyright e Pyrefly sem erros; os gates
+customizados podem permanecer vermelhos, com evidência explícita. Testes, build
+e o runtime trabalhado continuam obrigatórios. Essa exceção não declara os
+defeitos customizados resolvidos nem autoriza desativar seus detectores.
+
+| Contexto para retomada imediata | Estado observado |
+| --- | --- |
+| Branch e PR de entrega | `fix/docs-renderer-contract`, [PR #732](https://github.com/flext-sh/flext-infra/pull/732), ainda Draft/WIP para `0.12.0-dev` |
+| Último checkpoint antes do merge | `a895de0c9`, preserva a projeção standalone após setup |
+| Base consultada | `origin/0.12.0-dev` em `a254c1f3f`; fetch exit 0; merge no-ff da base respondeu `Already up to date`, exit 0 |
+| Composição em andamento | Merge no-ff de `origin/bugfix/stabilize-0.12.0` em `8b03723cb`, que reúne os PRs #723, #724 e #730; houve 80 arquivos conflitantes |
+| Reconciliação | Fontes Python de `src`/`tests` parsearam; nenhum nome de teste dos dois lados conflitantes foi perdido; métodos da fixture antiga existem no novo responsável. Isso não substitui execução dos testes. |
+| Runtime medido antes do merge | `make status`: exit 0, perfil standalone no checkout; `make setup`: exit 0, 160 pacotes resolvidos, instalação local de `flext-infra==0.12.0`; recibo efetivo `uv 0.12.10` |
+| Outra contribuição a avaliar | [PR #733](https://github.com/flext-sh/flext-infra/pull/733), `flext-ro6mj.1`, inclui coletor, transação e alterações sobre os mesmos responsáveis de codemod/docs; ainda não incorporada neste merge |
+| Aceite ainda não obtido | Nenhuma rodada completa válida de Ruff/Mypy/Pyright/Pyrefly, testes, build e runtime após esta composição; nenhum merge deste PR na integração |
+| Próxima ação concreta | Concluir e gravar a reconciliação, publicar checkpoint, avaliar a contribuição restante, regenerar e executar os gates nativos; corrigir suas causas antes da promoção |
+
 Registro crítico da execução de 14/09/2026, preparado por solicitação do
 operador. O destinatário é quem retomará a correção. Este documento preserva
 evidências e a sequência de retomada; o estado de execução continua no Beads.
@@ -49,11 +69,14 @@ As chamadas do operador estabeleceram esta sequência:
 4. Investigar o plano que o agente vinha executando, confrontá-lo com as
    chamadas, criticar os desvios e preparar um handoff com documentos e Beads.
 5. Gravar e publicar o estado atual como WIP, preservando o trabalho existente.
+6. Estabilizar as contribuições de desenvolvimento com merges no-ff, concluir o
+   trabalho operacional, integrar os PRs e testar a revisão integrada.
+7. Entregar imediatamente o handoff atualizado e melhorar a recuperação de
+   contexto em orientações, skills, planos, docs e ADRs nos seus responsáveis.
 
-A quinta chamada define o encerramento deste checkpoint documental. Ela não
-autoriza declarar cumprido o objetivo original nem converter o WIP em uma
-entrega aprovada. A integração futura continua exigindo os gates, revisão e
-prova após merge. `main` não faz parte do destino solicitado.
+As chamadas seis e sete superam o encerramento somente documental da quinta.
+A publicação WIP preserva o trabalho intermediário; o resultado solicitado
+continua sendo a integração validada. `main` não faz parte do destino solicitado.
 
 Não havia um plano de execução persistido pelo agente neste checkout. A seção
 seguinte reconstrói a sequência efetivamente adotada a partir da conversa,
@@ -78,7 +101,7 @@ O código e os comandos de `flext-infra` continuam pertencendo a este
 repositório. A consulta aos documentos e ao tracker de `flext` foi autorizada
 explicitamente pelo operador durante a preparação deste handoff.
 
-- [AGENTS.md local](https://github.com/flext-sh/flext-infra/blob/05f04dd28d5ae724bae6a69e63864c6ecce0889d/AGENTS.md) e a skill local
+- [AGENTS.md local](https://github.com/flext-sh/flext-infra/blob/0.12.0-dev/AGENTS.md) e a skill local
   `flext-law` em `.agents/skills/flext-law/SKILL.md`: responsáveis canônicos,
   preservação de alterações, fluxo estrutural por `make mod` e prova real.
 - [ADR-005: SSOT e direção das facades](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/005-config-settings-constants-templates-schemas-ssot.md):
@@ -92,7 +115,9 @@ explicitamente pelo operador durante a preparação deste handoff.
   gates de namespace e codemod.
 - [Plano de reconciliação e contratos Make](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/plans/2026-09-14-plan-reconciliation.md):
   contexto correlato de `flext-ro6mj.1`, não o plano original desta sessão.
-  Sua implementação do coletor não integra o escopo desta retomada.
+  O PR #733 deve ser reconciliado pelo efeito sobre os mesmos responsáveis de
+  codemod/docs e pelo pedido posterior de concluir WIP; sua presença não prova
+  que a coleta de todos os provedores esteja implementada ou validada.
 - [Guia de desenvolvimento](../guides/development.md) e
   [padrão de automação](../guides/skill-automation-pattern.md): sequência nativa
   e responsabilidade de reproduzir mudanças nos consumidores.
@@ -392,10 +417,13 @@ primeira falha/custo real; contagens parciais não certificam a suíte.
 
 ### 8.4 Critérios de aceite antes da integração
 
-- `make mod` termina com exit 0, zero findings de todas as classes, zero
-  diagnósticos finais e reaplicação sem mudanças.
-- `make check` termina com exit 0, incluindo namespace, censo de runtime,
-  tipos, LOC e segurança, sem suprimir ou reduzir o escopo.
+- O runtime da automação trabalhada é exercitado pela interface nativa e sua
+  reaplicação é verificada. Falhas restantes são ligadas ao seu Bead e não
+  convertidas em prova de sucesso.
+- Ruff, Mypy, Pyright e Pyrefly terminam sem erros. Pelo esclarecimento mais
+  recente do operador, findings dos gates customizados podem permanecer;
+  registrar o resultado agregado de `make check` e os resultados individuais,
+  sem chamar o comando inteiro de verde se seu exit code continuar não zero.
 - `make test`, build e documentação terminam com exit 0 no runtime declarado;
   a evidência identifica revisão, ambiente, seleção e resultado completo.
 - Geração consecutiva atinge ponto fixo; não há responsáveis antigos,
@@ -408,8 +436,15 @@ primeira falha/custo real; contagens parciais não certificam a suíte.
 
 ## 9. Limite de encerramento deste handoff
 
-Preservar e publicar o estado atual foi solicitado explicitamente. Por isso,
-um checkpoint WIP com gates vermelhos é o resultado correto desta chamada.
-Ele não satisfaz os critérios de conclusão funcional acima. A próxima execução
-deve começar pela automação e pela falha causal conhecida, sem recomeçar a
-varredura manual nem reutilizar verde de revisões anteriores.
+Este handoff deve permanecer disponível enquanto a estabilização prossegue.
+A crítica da retomada é objetiva: o agente voltou a concentrar tempo no merge
+antes de atualizar a entrega documental pedida, deixando o operador sem uma
+visão imediata do estado. A correção é manter neste início o objetivo vigente,
+SHA/PR, primeira falha, última evidência válida e próxima ação; detalhamento
+histórico fica nas seções seguintes e execução permanece no Beads.
+
+O checkpoint WIP não satisfaz os critérios de conclusão funcional. O handoff
+final solicitado somente poderá informar PRs integrados quando houver URLs,
+SHAs de merge, gates aplicáveis e runtime medido na integração. Até isso ocorrer,
+este documento é um handoff utilizável de trabalho em andamento, sem declaração
+de encerramento funcional.

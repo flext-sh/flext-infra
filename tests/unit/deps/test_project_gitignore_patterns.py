@@ -12,21 +12,21 @@ from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import t
 
 
-def _project(root: Path, documents: t.MappingKV[str, str]) -> Path:
-    root.mkdir(parents=True)
-    (root / "config").mkdir()
-    for name, body in documents.items():
-        (root / "config" / name).write_text(body, encoding="utf-8")
-    return root
-
-
-class TestsProjectGitignorePatterns:
+class TestsFlextInfraProjectGitignorePatterns:
     """A project declares the ignores the fleet scaffold cannot know."""
+
+    @staticmethod
+    def _project(root: Path, documents: t.MappingKV[str, str]) -> Path:
+        root.mkdir(parents=True)
+        (root / "config").mkdir()
+        for name, body in documents.items():
+            (root / "config" / name).write_text(body, encoding="utf-8")
+        return root
 
     def test_declared_patterns_render_as_one_project_section(
         self, tmp_path: Path
     ) -> None:
-        root = _project(
+        root = self._project(
             tmp_path / "project",
             {
                 "tooling.yaml": (
@@ -52,7 +52,7 @@ class TestsProjectGitignorePatterns:
     def test_patterns_compose_across_documents_without_duplicates(
         self, tmp_path: Path
     ) -> None:
-        root = _project(
+        root = self._project(
             tmp_path / "project",
             {
                 "one.yaml": "ManagedArtifacts:\n  Gitignore:\n    patterns: [.dmypy/, logs/]\n",
@@ -67,7 +67,7 @@ class TestsProjectGitignorePatterns:
         assert len(patterns) == 3
 
     def test_absent_declaration_adds_no_section(self, tmp_path: Path) -> None:
-        root = _project(
+        root = self._project(
             tmp_path / "project", {"tooling.yaml": "ManagedArtifacts: {}\n"}
         )
 
@@ -81,10 +81,13 @@ class TestsProjectGitignorePatterns:
         assert c.Infra.GITIGNORE_PROJECT_SECTION_NAME not in tm.ok(rendered)
 
     def test_empty_pattern_is_rejected(self, tmp_path: Path) -> None:
-        root = _project(
+        root = self._project(
             tmp_path / "project",
             {"tooling.yaml": "ManagedArtifacts:\n  Gitignore:\n    patterns: ['']\n"},
         )
 
         with pytest.raises(m.ValidationError):
             u.Infra.load_project_managed_artifacts(root)
+
+
+__all__: list[str] = ["TestsFlextInfraProjectGitignorePatterns"]

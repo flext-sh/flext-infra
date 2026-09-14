@@ -15,25 +15,24 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-@pytest.fixture
-def command_contract_scope(infra_test_workspace: Path) -> m.Infra.DocScope:
-    """Declare the same repository identity in Git and the typed topology."""
-    name = "infra-pkg"
-    u.Tests.write_project_beads_config(infra_test_workspace, name)
-    u.Tests.write_standalone_workspace_manifest(infra_test_workspace, name)
-    u.Tests.initialize_git_repo(
-        infra_test_workspace, origin_url=u.Tests.repository_ref(name).url
-    )
-    return m.Infra.DocScope(
-        name=name,
-        path=infra_test_workspace,
-        report_dir=infra_test_workspace / ".reports" / "docs",
-        package_name="infra_pkg",
-    )
-
-
-class TestsDocsCommandContract:
+class TestsFlextInfraAuditorCommandContract:
     """Prove canonical Make, Testmon, and public-test documentation policy."""
+
+    @pytest.fixture
+    def command_contract_scope(self, infra_test_workspace: Path) -> m.Infra.DocScope:
+        """Declare the same repository identity in Git and the typed topology."""
+        name = "infra-pkg"
+        u.Tests.write_project_beads_config(infra_test_workspace, name)
+        u.Tests.write_standalone_workspace_manifest(infra_test_workspace, name)
+        u.Tests.initialize_git_repo(
+            infra_test_workspace, origin_url=u.Tests.repository_ref(name).url
+        )
+        return m.Infra.DocScope(
+            name=name,
+            path=infra_test_workspace,
+            report_dir=infra_test_workspace / ".reports" / "docs",
+            package_name="infra_pkg",
+        )
 
     @staticmethod
     @pytest.mark.parametrize("tool", ["uv", "mkdocs", "ruff", "pyright", "pre-commit"])
@@ -370,3 +369,6 @@ result = patch("package.owner")
 
         tm.that(len(issues), eq=2)
         tm.that(issues[0].message, has="test-double code")
+
+
+__all__: list[str] = ["TestsFlextInfraAuditorCommandContract"]

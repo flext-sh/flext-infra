@@ -13,7 +13,7 @@ from tests import t
 from ._support import CodegenTestSupport
 
 
-class TestsCiSystemPackages:
+class TestsFlextInfraCiSystemPackages:
     """A declared engine is installed on the runner; nothing is skipped."""
 
     ci_template = (
@@ -51,4 +51,4 @@ class TestsCiSystemPackages:
         tm.that(rendered, lacks=self.step_name)
 
 
-__all__: t.VariadicTuple[str] = ()
+__all__: list[str] = ["TestsFlextInfraCiSystemPackages"]

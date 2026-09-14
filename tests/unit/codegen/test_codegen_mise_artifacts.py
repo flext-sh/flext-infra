@@ -10,10 +10,10 @@ from flext_tests import tm
 
 from flext_infra import c, config, m, u
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
-from tests import t, u as test_u
+from tests import u as test_u
 
 
-class TestsCodegenMiseArtifacts:
+class TestsFlextInfraCodegenMiseArtifacts:
     """Keep ordinary generation checks independent from remote resolution."""
 
     @pytest.mark.parametrize("invalid", ["missing", "empty", "nonexecutable"])
@@ -231,4 +231,4 @@ class TestsCodegenMiseArtifacts:
         tm.that(field.exclude, eq=True)
 
 
-__all__: t.VariadicTuple[str] = ()
+__all__: list[str] = ["TestsFlextInfraCodegenMiseArtifacts"]

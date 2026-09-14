@@ -8,19 +8,18 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import c, config, m
-from tests import t
-
-_CANONICAL_SELECTOR = "github:marlon-costa-dc/beads"
-_CANONICAL_VERSION_SELECTOR = "latest"
 
 
-class TestsToolchainBeadsDistribution:
+class TestsFlextInfraToolchainBeadsDistribution:
     """Beads installs from the fleet's declared GitHub distribution.
 
     The fleet pins the operator's fork because it carries 4c1c40337
     ``fix(list): stop bd list from looping forever on hierarchy cycles``,
     absent from upstream v1.2.2.
     """
+
+    _CANONICAL_SELECTOR = "github:marlon-costa-dc/beads"
+    _CANONICAL_VERSION_SELECTOR = "latest"
 
     def test_beads_selector_is_protected_by_declared_patterns(self) -> None:
         """Resolve protected owners from data and cover their canonical selector."""
@@ -43,8 +42,8 @@ class TestsToolchainBeadsDistribution:
         toolchain = config.Infra.codegen.toolchain
         version = toolchain.beads.version
 
-        tm.that(toolchain.beads.selector, eq=_CANONICAL_SELECTOR)
-        tm.that(version, eq=_CANONICAL_VERSION_SELECTOR)
+        tm.that(toolchain.beads.selector, eq=self._CANONICAL_SELECTOR)
+        tm.that(version, eq=self._CANONICAL_VERSION_SELECTOR)
         tm.that(toolchain.beads.prerelease, eq=True)
 
     def test_protected_selector_rejects_uncovered_pattern_set(self) -> None:
@@ -59,4 +58,4 @@ class TestsToolchainBeadsDistribution:
             )
 
 
-__all__: t.VariadicTuple[str] = ()
+__all__: list[str] = ["TestsFlextInfraToolchainBeadsDistribution"]

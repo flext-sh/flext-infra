@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from tests import t
 
 
-class TestsDocsCli:
+class TestsFlextInfraDocsMainEntry:
     """Verify docs commands through their public CLI entry points."""
 
     @staticmethod
@@ -128,3 +128,6 @@ class TestsDocsCli:
             eq=0,
         )
         tm.that((build_workspace / ".reports/docs/build-report.md").exists(), eq=True)
+
+
+__all__: list[str] = ["TestsFlextInfraDocsMainEntry"]

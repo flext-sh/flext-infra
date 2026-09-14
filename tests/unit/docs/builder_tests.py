@@ -20,14 +20,13 @@ if TYPE_CHECKING:
     from tests import t
 
 
-@pytest.fixture
-def builder() -> FlextInfraDocBuilder:
-    """Provide the public documentation builder service."""
-    return FlextInfraDocBuilder()
-
-
-class TestBuilderCore:
+class TestsFlextInfraBuilder:
     """Core build invocation tests."""
+
+    @pytest.fixture
+    def builder(self) -> FlextInfraDocBuilder:
+        """Provide the public documentation builder service."""
+        return FlextInfraDocBuilder()
 
     def test_build_with_valid_scope_returns_success(
         self, builder: FlextInfraDocBuilder, tmp_path: Path
@@ -102,3 +101,6 @@ class TestBuilderCore:
         result = builder.build(tmp_path, projects=["proj1", "proj2"])
         if result.success:
             tm.that(len(result.value), gte=0)
+
+
+__all__: list[str] = ["TestsFlextInfraBuilder"]

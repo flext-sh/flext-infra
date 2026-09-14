@@ -12,34 +12,32 @@ from flext_infra.services.codegen import FlextInfraCodegen
 from tests import c, u
 
 
-def _project(root: Path) -> Path:
-    """Materialize one governed fixture repository."""
-    project = u.Tests.mk_project(
-        root,
-        "render-purity",
-        pyproject='[project]\nname = "render-purity"\nversion = "0.1.0"\n',
-        with_src=True,
-    )
-    u.Tests.write_project_beads_config(project, "render-purity")
-    u.Tests.initialize_git_repo(
-        project, origin_url=u.Tests.repository_ref("render-purity").url
-    )
-    return project
-
-
-def _committed_overlay(project: Path, body: str) -> None:
-    """Commit one project-owned ManagedArtifacts catalog."""
-    config_dir = project / c.CONFIG_DIR_NAME
-    config_dir.mkdir(exist_ok=True)
-    (config_dir / "tooling.yaml").write_text(body, encoding="utf-8")
-    u.Tests.git_bootstrap(project, ("add", "config/tooling.yaml"))
-    u.Tests.git_bootstrap(
-        project, ("commit", "--no-verify", "-m", "commit managed artifacts")
-    )
-
-
-class TestsCodegenRenderPurityGolden:
+class TestsFlextInfraCodegenRenderPurityGolden:
     """Render remains f(SSOT, templates, PINS) across three host shapes."""
+
+    def _project(self, root: Path) -> Path:
+        """Materialize one governed fixture repository."""
+        project = u.Tests.mk_project(
+            root,
+            "render-purity",
+            pyproject='[project]\nname = "render-purity"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
+        u.Tests.write_project_beads_config(project, "render-purity")
+        u.Tests.initialize_git_repo(
+            project, origin_url=u.Tests.repository_ref("render-purity").url
+        )
+        return project
+
+    def _committed_overlay(self, project: Path, body: str) -> None:
+        """Commit one project-owned ManagedArtifacts catalog."""
+        config_dir = project / c.CONFIG_DIR_NAME
+        config_dir.mkdir(exist_ok=True)
+        (config_dir / "tooling.yaml").write_text(body, encoding="utf-8")
+        u.Tests.git_bootstrap(project, ("add", "config/tooling.yaml"))
+        u.Tests.git_bootstrap(
+            project, ("commit", "--no-verify", "-m", "commit managed artifacts")
+        )
 
     @pytest.mark.parametrize(
         "environment", ["runner-clean", "host-runtime", "host-concurrent-wip"]
@@ -48,7 +46,7 @@ class TestsCodegenRenderPurityGolden:
         self, tmp_path: Path, environment: str
     ) -> None:
         """Runtime state and worktree WIP never change VS Code projections."""
-        project = _project(tmp_path / environment)
+        project = self._project(tmp_path / environment)
         codegen = config.Infra.codegen
         expected = {
             "files.exclude": dict(codegen.vscode_files_exclude_map),
@@ -82,8 +80,8 @@ class TestsCodegenRenderPurityGolden:
         self, tmp_path: Path
     ) -> None:
         """The committed catalog is the sole project Ruff render authority."""
-        project = _project(tmp_path / "catalog")
-        _committed_overlay(
+        project = self._project(tmp_path / "catalog")
+        self._committed_overlay(
             project,
             "ManagedArtifacts:\n"
             "  Ruff:\n"
@@ -117,4 +115,4 @@ class TestsCodegenRenderPurityGolden:
         tm.that(spec.year, eq=year)
 
 
-__all__: t.VariadicTuple[str] = ("TestsCodegenRenderPurityGolden",)
+__all__: list[str] = ["TestsFlextInfraCodegenRenderPurityGolden"]

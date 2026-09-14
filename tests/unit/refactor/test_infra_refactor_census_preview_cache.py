@@ -14,8 +14,6 @@ from tests import u as test_u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
-
 
 class TestsFlextInfraRefactorCensusPreview:
     """Validate removal planning only through public FLEXT facades."""
@@ -164,4 +162,4 @@ class TestsFlextInfraRefactorCensusPreview:
         tm.that(module_path.read_text(encoding="utf-8"), eq=original_source)
 
 
-__all__: t.VariadicTuple[str] = ()
+__all__: list[str] = ["TestsFlextInfraRefactorCensusPreview"]

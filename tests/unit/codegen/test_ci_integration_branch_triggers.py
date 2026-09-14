@@ -8,12 +8,11 @@ from flext_cli import u
 from flext_tests import tm
 
 from flext_infra import c, config
-from tests import t
 
 from ._support import CodegenTestSupport
 
 
-class TestsCiIntegrationBranchTriggers:
+class TestsFlextInfraCiIntegrationBranchTriggers:
     """Keep integration triggers on one typed owner."""
 
     ci_template = (
@@ -63,4 +62,4 @@ class TestsCiIntegrationBranchTriggers:
             tm.that(self._branch_count(triggers, branch), eq=2)
 
 
-__all__: t.VariadicTuple[str] = ()
+__all__: list[str] = ["TestsFlextInfraCiIntegrationBranchTriggers"]
