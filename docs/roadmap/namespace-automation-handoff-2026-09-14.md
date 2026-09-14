@@ -36,12 +36,21 @@ defeitos customizados resolvidos nem autoriza desativar seus detectores.
 | Branch e PR de entrega | `fix/docs-renderer-contract`, [PR #732](https://github.com/flext-sh/flext-infra/pull/732), ainda Draft/WIP para `0.12.0-dev` |
 | Último checkpoint antes do merge | `a895de0c9`, preserva a projeção standalone após setup |
 | Base consultada | `origin/0.12.0-dev` em `a254c1f3f`; fetch exit 0; merge no-ff da base respondeu `Already up to date`, exit 0 |
-| Composição em andamento | Merge no-ff de `origin/bugfix/stabilize-0.12.0` em `8b03723cb`, que reúne os PRs #723, #724 e #730; houve 80 arquivos conflitantes |
+| Composição preservada | Merge no-ff `d0b32d7d6`, publicado com push exit 0, absorve `origin/bugfix/stabilize-0.12.0` em `8b03723cb`, que reúne os PRs #723, #724 e #730; os 80 arquivos conflitantes foram reconciliados |
 | Reconciliação | Fontes Python de `src`/`tests` parsearam; nenhum nome de teste dos dois lados conflitantes foi perdido; métodos da fixture antiga existem no novo responsável. Isso não substitui execução dos testes. |
 | Runtime medido antes do merge | `make status`: exit 0, perfil standalone no checkout; `make setup`: exit 0, 160 pacotes resolvidos, instalação local de `flext-infra==0.12.0`; recibo efetivo `uv 0.12.10` |
 | Outra contribuição a avaliar | [PR #733](https://github.com/flext-sh/flext-infra/pull/733), `flext-ro6mj.1`, inclui coletor, transação e alterações sobre os mesmos responsáveis de codemod/docs; ainda não incorporada neste merge |
 | Aceite ainda não obtido | Nenhuma rodada completa válida de Ruff/Mypy/Pyright/Pyrefly, testes, build e runtime após esta composição; nenhum merge deste PR na integração |
-| Próxima ação concreta | Concluir e gravar a reconciliação, publicar checkpoint, avaliar a contribuição restante, regenerar e executar os gates nativos; corrigir suas causas antes da promoção |
+| Nova rodada de check | `stabilize-merged-check.log`, exit 2, 608,43 s: Ruff/lint 0, Mypy 0, Pyright 0, Pyrefly 3; total 569, incluindo namespace 382, codemod 180, LOC 3 e censo 1. Os três erros Pyrefly foram corrigidos depois da medição, ainda sem novo aceite. |
+| Automação realmente exercitada | `stabilize-mod-local.log`, exit 2 às 23:30:07Z: publicou o aninhamento de `_models/mise_toolchain.py`; a segunda passagem teve zero alterações semânticas. Terminou por ausência de progresso com 16 findings de detecção (14 ambiente, 2 ancestry), sem falso verde. |
+| Causa de escopo e custo | Rope promovia a chamada do membro para o superprojeto: 632 diretórios/4.737 módulos, 115,81 s. Após retirar a promoção no responsável de descoberta, a nova execução abriu o próprio infra: 54 diretórios/921 módulos, 1,35 s. A publicação semântica concluiu; o comando permaneceu vermelho pelos findings de detecção. |
+| Próxima ação concreta | Renovar as quatro análises, testes, build e runtime sobre a transformação publicada; tratar os 16 findings no seu responsável, avaliar o WIP correlato e a geração antes da promoção |
+
+Para recuperar contexto sem repetir a investigação: consulte o
+[guia de execução](../guides/execution-context.md), o
+[mapa dos ADRs](../architecture/adr/README.md) e a seção de retomada da skill
+canônica `flext-law`. O Bead `flext-5fxu6.4` recebeu o checkpoint e o novo
+critério de aceite; continua `in_progress`.
 
 Registro crítico da execução de 14/09/2026, preparado por solicitação do
 operador. O destinatário é quem retomará a correção. Este documento preserva
@@ -92,8 +101,8 @@ sido aprovado antes da implementação.
 | Aplicar `make fix-enforcement` | Corrigir ocorrências pelo mecanismo do projeto | A execução registrou 156 correções, 9.931 skips e 81 falhas. Também produziu tipos somente de leitura em contratos mutáveis e uma movimentação de constantes que quebrou o carregamento da CLI. |
 | Corrigir o estrago e reduzir limites de arquivo | Recuperar funcionamento e gates | Parte da reparação usou edições manuais repetitivas e extrações de classes/testes fora de `make mod`. A causa do transformador foi corrigida apenas parcialmente. |
 | Isolar o runtime standalone e regenerar | Garantir que as verificações exercessem o projeto correto | O Make e o conformador de pyproject foram corrigidos nos responsáveis. `make status` agora confirma o checkout local. Os testes anteriores no runtime do pai não são prova da instalação standalone. |
-| Retomar `make mod` após a correção do operador | Comprovar correção automática reproduzível | A tentativa parou em `validate_rule_fixtures` por filesystem somente de leitura no cache. Não chegou à aplicação semântica nem ao ponto fixo. |
-| Rodar os gates e integrar | Zero erro, runtime comprovado e PR aprovado | O último check completo desta execução permaneceu vermelho. Não houve rodada completa verde sobre o checkpoint final. O pedido posterior passou a ser preservar WIP e transmitir a retomada. |
+| Retomar `make mod` após a correção do operador | Comprovar correção automática reproduzível | A primeira tentativa parou por permissão no cache. Na retomada autorizada, fixtures passaram e 16 correções AST foram aplicadas, mas a fase semântica revelou ampliação indevida de escopo e ordem incorreta entre aninhamento e referências. Ainda não há ponto fixo comprovado. |
+| Rodar os gates e integrar | Zero erro, runtime comprovado e PR aprovado | O último check completo permaneceu vermelho; Ruff, Mypy e Pyright passaram, Pyrefly teve três erros corrigidos posteriormente. A preservação WIP foi publicada, mas o pedido vigente continua sendo integração com prova do runtime. |
 
 ## 3. Documentos e decisões aplicáveis
 
@@ -275,7 +284,11 @@ da máquina.
 | --- | --- | --- |
 | `make check`, log inicial fornecido pelo operador | Make terminou com erro 2; namespace 1.145; censo 298 | Ponto de partida, não revisão final |
 | `make fix-enforcement` | Exit 2; 156 fixed, 0 previewed, 9.931 skipped, 81 failed | Aplicação parcial com falhas; contagens recuperadas da sessão, sem log bruto completo retido |
-| `make check`, `check-repair-unrestricted.log` | Exit 2; 1.119 erros agregados: pyrefly 9, mypy 6, LOC 4, censo 1, namespace 1.099; 481,45 s | Última rodada completa diretamente observada nesta execução; terminou em 2026-09-14T21:39:53Z |
+| `make check`, `check-repair-unrestricted.log` | Exit 2; 1.119 erros agregados: pyrefly 9, mypy 6, LOC 4, censo 1, namespace 1.099; 481,45 s | Rodada anterior ao merge; terminou em 2026-09-14T21:39:53Z |
+| `make check`, `stabilize-merged-check.log` | Exit 2; 569 erros; Ruff/lint 0, Mypy 0, Pyright 0, Pyrefly 3; namespace 382, codemod 180, LOC 3, censo 1; 608,43 s | Terminou em 2026-09-14T23:12:38Z; alterações posteriores e concorrentes impedem certificar o checkpoint final com esta medição |
+| `make mod`, `stabilize-mod.log` | Exit 2; fixtures exit 0; 16 correções AST aplicadas; erro `deferred-models phase left residue after application` | A automação avançou, mas a transação semântica não foi publicada; o problema de permissão inicial deixou de ser a primeira falha |
+| `make mod`, `stabilize-mod-local.log` | Exit 2 às 2026-09-14T23:30:07Z; publicação semântica de um arquivo; reaplicação sem alterações; 16 findings de detecção | Escopo e ordem corrigidos no caminho real; o comando acusa ausência de progresso e mantém a dívida visível |
+| `make fmt`, `stabilize-runtime-fmt.log` | Exit 0 | Formatação após os reparos de escopo e ordem; não comprova o runtime semântico |
 | `make mod`, `namespace-mod.log` | Exit 2; `OSError: [Errno 30] Read-only file system` em `mod-rule-fixtures-*` | A execução não passou do preflight de fixtures |
 | `make gen` e `make setup`, rodadas anteriores | Exit 0 | Gerador/setup exercitados antes do checkpoint; não certificam o conjunto final |
 | Recibos de suíte `20260914T210624.850231Z-2834013` e `20260914T212545.368582Z-3122161` | `raw_return_code=-15`, `timed_out=true`, `forwarded_signal=null` | Execuções interrompidas por timeout; nenhum aceite da suíte completa |
@@ -359,12 +372,25 @@ runtime por `make status` e identificar a versão efetiva das ferramentas.
 Não criar uma instalação paralela nem reutilizar resultados de outro runtime.
 Preservar novos logs com nomes próprios e identidade da revisão observada.
 
-O próximo comando funcional é **`make mod`**, no checkout de `flext-infra`.
-O erro conhecido é de permissão do sandbox sobre `settings.work_dir`; usar a
-autorização de execução apropriada para esse cache, sem hardcode, bypass ou
-troca de diretório de trabalho para contornar a falha. Se a raiz resolvida
-violar a configuração, corrigir a resolução no responsável antes de prosseguir.
-Nesta entrega de handoff, não foi iniciada outra rodada mutante de `make mod`.
+O último **`make mod`**, no checkout de `flext-infra`, terminou com exit 2;
+consulte `stabilize-mod-local.log`. A permissão do cache foi resolvida pela
+execução autorizada. A falha seguinte era resíduo de deferred-models depois do
+aninhamento de `_models/mise_toolchain.py`. O responsável
+`codemod/semantic_apply.py` agora aninha antes de normalizar referências,
+mantendo as verificações de resíduo e a publicação transacional. Essa execução
+publicou a transformação e comprovou zero alterações semânticas na passagem
+seguinte. A primeira pendência do comando passou a ser os 16 findings de detecção
+(14 de ambiente e 2 de caminhada de ancestrais), relatados causalmente como
+ausência de progresso. Não retirar essa verificação para obter exit 0.
+
+Na mesma execução, `_utilities/discovery.py` promovia o membro para o workspace
+ancestral. Essa promoção foi removida; o teste público
+`test_open_workspace_keeps_the_requested_repository_boundary` agora distingue
+chamada explícita ao workspace de chamada ao membro/pacote. A nova execução
+confirmou Rope na raiz de infra, com 921 módulos em 1,35 s, em vez dos 4.737
+módulos em 115,81 s. Ainda é necessário executar o teste público, importar os
+modelos gerados no runtime e renovar o aceite dos quatro analisadores, testes
+e build. Uma melhora de tempo e escopo não substitui o aceite funcional.
 
 ### 8.2 Corrigir a automação na ordem das dependências
 

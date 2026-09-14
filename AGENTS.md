@@ -42,6 +42,16 @@ src/flext_infra/
 - Config/settings canonical pattern: ADR-005 §§1–2 and `_settings.py`/`_config.py` docstrings (flext-z0zkq; fleet follow-up flext-la3z5).
 - Codemod governance (ast-grep + make mod): ADR-014.
 
+## Recovering this work
+
+For the namespace/runtime stabilization, start with
+`docs/roadmap/namespace-automation-handoff-2026-09-14.md`. Its opening table
+records the latest operator scope, branch/PR, measured runtime, first failed
+gate and next action; its body links the execution plan, ADRs and canonical
+Beads. Read that context before restarting discovery. Historical receipts do
+not validate a changed revision. `docs/guides/execution-context.md` defines
+how to keep this context useful without creating another tracker.
+
 ## Commands
 
 ```bash

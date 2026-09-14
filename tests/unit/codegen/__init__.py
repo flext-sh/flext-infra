@@ -53,7 +53,6 @@ if TYPE_CHECKING:
     from .test_codegen_beads_projection import TestsFlextInfraCodegenBeadsProjection
     from .test_codegen_catalog_extensions import TestsFlextInfraCodegenCatalogExtensions
     from .test_codegen_ci_matrix import TestsFlextInfraCodegenCiMatrix
-    from .test_codegen_conform import TestsFlextInfraCodegenConform
     from .test_codegen_conform_no_transaction_worktrees import (
         TestsFlextInfraCodegenConformNoTransactionWorktrees,
     )
@@ -121,7 +120,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCodegenCensusModels",
     "TestsFlextInfraCodegenCiCustomSteps",
     "TestsFlextInfraCodegenCiMatrix",
-    "TestsFlextInfraCodegenConform",
     "TestsFlextInfraCodegenConformNoTransactionWorktrees",
     "TestsFlextInfraCodegenConsolidator",
     "TestsFlextInfraCodegenConstantsQualityGate",
@@ -247,7 +245,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraCodegenCatalogExtensions",
             ),
             ".test_codegen_ci_matrix": ("TestsFlextInfraCodegenCiMatrix",),
-            ".test_codegen_conform": ("TestsFlextInfraCodegenConform",),
             ".test_codegen_conform_no_transaction_worktrees": (
                 "TestsFlextInfraCodegenConformNoTransactionWorktrees",
             ),

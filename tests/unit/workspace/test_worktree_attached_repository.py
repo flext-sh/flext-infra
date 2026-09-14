@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService, c, m
-from tests import u
+from tests import t, u
 
 
 class TestsFlextInfraAttachedRepositoryWorktree(u.Tests.WorktreeFixture):

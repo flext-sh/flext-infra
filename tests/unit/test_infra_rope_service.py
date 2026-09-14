@@ -298,10 +298,10 @@ class TestsFlextInfraInfraRopeService:
         tm.that(result.failure, eq=True)
         tm.that(result.error or "", has="requires exactly one declared module owner")
 
-    def test_open_workspace_indexes_every_project_from_any_internal_call(
+    def test_open_workspace_keeps_the_requested_repository_boundary(
         self, tmp_path: Path
     ) -> None:
-        """A workspace-context Rope call indexes declared and undeclared projects."""
+        """Only an explicit workspace call includes sibling repositories."""
         monorepo_root = tmp_path / "repo"
         monorepo_root.mkdir()
         u.Tests.declare_workspace_projects(monorepo_root, ("flext-infra",))
@@ -314,14 +314,19 @@ class TestsFlextInfraInfraRopeService:
         ) = self._paired_namespace_projects(monorepo_root)
 
         for call_root in (monorepo_root, repository_root, package_root):
+            workspace_scope = call_root == monorepo_root
+            expected_root = monorepo_root if workspace_scope else repository_root
+            expected_projects = {repository_root.resolve()}
+            if workspace_scope:
+                expected_projects.add(sibling_root.resolve())
             with flext_infra.infra.rope_workspace(call_root) as rope:
-                tm.that(rope.rope_repository_root, eq=monorepo_root.resolve())
+                tm.that(rope.rope_repository_root, eq=expected_root.resolve())
                 tm.that(
                     {entry.project_root for entry in rope.modules()},
-                    eq={repository_root.resolve(), sibling_root.resolve()},
+                    eq=expected_projects,
                 )
                 tm.that(rope.module(module_path), none=False)
-                tm.that(rope.module(sibling_module_path), none=False)
+                tm.that(rope.module(sibling_module_path), none=not workspace_scope)
 
     def test_open_standalone_keeps_local_project_scope(self, tmp_path: Path) -> None:
         """Without a workspace context, sibling projects remain outside Rope."""

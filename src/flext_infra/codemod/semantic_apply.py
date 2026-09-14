@@ -29,12 +29,7 @@ class FlextInfraCodemodSemanticApply:
             cls._phase_future_annotations(root, preflight, working),
         )
 
-        # Phase 2: Deferred model edits
-        deferred = cls._deferred_model_edits(working)
-        cls._apply_plan(working, deferred, changed)
-        cls._check_residue("deferred-models", cls._deferred_model_edits(working))
-
-        # Phase 3: Class nesting
+        # Phase 2: Class nesting establishes the final declaration scopes.
         with infra.rope_workspace(root) as rope_workspace:
             nesting = u.Infra.plan_class_nesting_cutover(
                 rope_workspace=rope_workspace, sources=working
@@ -47,6 +42,13 @@ class FlextInfraCodemodSemanticApply:
                     rope_workspace=rope_workspace, sources=working
                 ),
             )
+
+        # Phase 3: Normalize references after nesting has rewritten their owners.
+        # Normalizing first leaves definition-time references introduced by the
+        # structural phase and rejects an otherwise convergent transaction.
+        deferred = cls._deferred_model_edits(working)
+        cls._apply_plan(working, deferred, changed)
+        cls._check_residue("deferred-models", cls._deferred_model_edits(working))
 
         # Phase 4: Compatibility aliases
         alias_findings = tuple(

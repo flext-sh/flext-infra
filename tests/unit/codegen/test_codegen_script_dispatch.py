@@ -6,8 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import os
-import sys
 from pathlib import Path
 
 import pytest
@@ -239,10 +237,10 @@ class TestsFlextInfraScriptDispatchMakefile:
             tm.that("|gen|" in policy.target_pattern, eq=True)
             tm.that("|codegen|" in policy.target_pattern, eq=False)
 
-    def test_make_initialize_bypasses_runtime_and_topology_discovery(
+    def test_make_initialize_requires_its_provisioned_interpreter(
         self, tmp_path: Path
     ) -> None:
-        """Execute the public selector with process sentinels around its owner."""
+        """The public initializer fails before effects when its runtime is absent."""
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
         )
@@ -251,71 +249,14 @@ class TestsFlextInfraScriptDispatchMakefile:
         package.mkdir(parents=True)
         makefile = root / c.Infra.MAKEFILE_FILENAME
         makefile.write_text(rendered, encoding="utf-8")
-        (root / "custom.mk").write_text(
-            "$(error init selector evaluated custom.mk)\n", encoding="utf-8"
-        )
-
-        calls = root / "init.calls"
-        forbidden = root / "forbidden.calls"
-        sentinel_bin = root / "sentinel-bin"
-        for command in ("git", "bd", "mise", "uv", "sed", "sort", "tr"):
-            u.Tests.write_executable(
-                sentinel_bin / command,
-                f"#!/bin/sh\nprintf '%s\\n' '{command}' >> '{forbidden}'\nexit 97\n",
-            )
-        # The interpreter the generated Makefile derives for the infra owner,
-        # and the owner package reached through the declared public input.
-        venv_bin = root / ".venv" / "bin"
-        venv_bin.mkdir(parents=True)
-        (venv_bin / "python").symlink_to(sys.executable)
-        owner_root = root / "init-owner"
-        owner_package = owner_root / "flext_infra"
-        owner_package.mkdir(parents=True)
-        (owner_package / "__init__.py").write_text("", encoding="utf-8")
-        (owner_package / "__main__.py").write_text(
-            "import sys\n"
-            "from pathlib import Path\n"
-            f"calls = Path({str(calls)!r})\n"
-            f"marker = Path({str(package / '__init__.py')!r})\n"
-            "argv = sys.argv[1:]\n"
-            "with calls.open('a', encoding='utf-8') as handle:\n"
-            "    handle.write(' '.join(argv) + '\\n')\n"
-            "if argv[:2] != ['codegen', 'init']:\n"
-            "    sys.exit(98)\n"
-            "if '--apply' in argv:\n"
-            "    marker.write_text('# generated\\n', encoding='utf-8')\n"
-            "elif '--check' in argv:\n"
-            "    sys.exit(0 if marker.is_file() else 1)\n"
-            "else:\n"
-            "    sys.exit(98)\n",
-            encoding="utf-8",
-        )
-        environment = dict(os.environ)
-        environment["PATH"] = f"{sentinel_bin}:{environment['PATH']}"
-
-        invoked = u.Cli.run_raw(
-            [
-                "make",
-                "--no-print-directory",
-                "-f",
-                str(makefile),
-                "initialize",
-                f"PROJECT_INFRA_PYTHONPATH={owner_root}",
-            ],
-            cwd=root,
-            env=environment,
+        invoked = u.Tests.run_isolated_make(
+            ["--no-print-directory", "-f", str(makefile), "initialize"], cwd=root
         )
 
         tm.ok(invoked)
-        tm.that(u.Cli.process_succeeded(invoked.value.outcome), eq=True)
-        tm.that(forbidden.exists(), eq=False)
-        tm.that(
-            calls.read_text(encoding="utf-8").splitlines(),
-            eq=[
-                f"codegen init --repository-root {root} --apply",
-                f"codegen init --repository-root {root} --check",
-            ],
-        )
+        tm.that(u.Cli.process_succeeded(invoked.value.outcome), eq=False)
+        tm.that(invoked.value.stderr, has="missing environment interpreter")
+        tm.that((package / c.Infra.INIT_PY).exists(), eq=False)
 
     def test_work_lifecycle_is_not_projected(self, tmp_path: Path) -> None:
         """Gas City owns lanes; generated repositories expose no second lifecycle."""

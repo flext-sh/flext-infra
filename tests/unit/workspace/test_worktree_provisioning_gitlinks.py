@@ -27,7 +27,9 @@ class TestsFlextInfraWorktreeProvisioningGitlinks:
         u.Tests.initialize_git_repo(source)
         return source
 
-    def _lane(self, tmp_path: Path, *, managed: bool = True) -> t.Triple[Path, Path, str]:
+    def _lane(
+        self, tmp_path: Path, *, managed: bool = True
+    ) -> t.Triple[Path, Path, str]:
         lane = tmp_path / "lane"
         lane.mkdir()
         (lane / "pyproject.toml").write_text(

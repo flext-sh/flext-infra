@@ -17,6 +17,7 @@ from flext_infra import m, u
 from flext_infra.detectors.deferred_self_reference_detector import (
     FlextInfraDeferredSelfReferenceDetector,
 )
+from tests import t
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Self
 
-from flext_infra import c, m, u
+from flext_infra import c, config, m, u
 from flext_infra.base import s
 
 type PytestPolicy = m.Infra.PytestConfig
@@ -22,6 +22,10 @@ class FlextInfraPytestRunnerBase(s[int]):
     target: Annotated[Path, m.Field(description="Repository-relative test root.")]
     reports: Annotated[Path, m.Field(description="Repository-relative report root.")]
     testmon_db: Annotated[Path, m.Field(description="External persistent testmon DB.")]
+    ci_context: Annotated[
+        bool,
+        m.Field(description="CI/pre-commit selection captured at the Make boundary."),
+    ] = False
 
     @staticmethod
     def _environment_value(name: str) -> str:
@@ -31,9 +35,11 @@ class FlextInfraPytestRunnerBase(s[int]):
     @classmethod
     def from_environment(cls, *, started_at_monotonic: float) -> Self:
         """Create the runner exclusively from generated Make inputs."""
+        ci = config.Infra.codegen.make.ci
         return cls(
             repository_root=Path.cwd(),
             started_at_monotonic=started_at_monotonic,
+            ci_context=os.environ.get(ci.variable, "").strip() == ci.value,
             target=Path(cls._environment_value(c.Infra.PYTEST_ENV_TARGET)),
             reports=Path(cls._environment_value(c.Infra.PYTEST_ENV_REPORTS)),
             testmon_db=Path(

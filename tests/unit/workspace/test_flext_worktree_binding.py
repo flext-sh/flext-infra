@@ -18,7 +18,7 @@ from flext_tests import tm
 
 from flext_core import p as core_p
 from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
-from tests import u
+from tests import t, u
 
 
 class TestsFlextInfraWorktreeBinding:
@@ -80,7 +80,9 @@ class TestsFlextInfraWorktreeBinding:
                 database="flext",
                 issue_prefix="flext",
             )
-        u.Tests.WorktreeFixture.write_gitmodules(flext_root, ("flext-core", "flext-cli"))
+        u.Tests.WorktreeFixture.write_gitmodules(
+            flext_root, ("flext-core", "flext-cli")
+        )
         return flext_root
 
     def test_binding_targets_only_the_flext_packages_the_consumer_declares(

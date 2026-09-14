@@ -33,7 +33,9 @@ class TestsFlextInfraCustomMakeSurfaceIsDerived:
             sorted(path for path in root.rglob("*.py") if templates not in path.parents)
         )
 
-    def _string_literals(self, module: Path, *, containing: str) -> t.VariadicTuple[str]:
+    def _string_literals(
+        self, module: Path, *, containing: str
+    ) -> t.VariadicTuple[str]:
         """Return every string literal in *module*, excluding docstrings."""
         source = module.read_text(encoding="utf-8")
         if containing not in source:

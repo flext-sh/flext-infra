@@ -14,8 +14,35 @@ from flext_infra import FlextInfraPytestRunner, c, config, m, u
 class TestsFlextInfraPytestRunner:
     """Exercise the real pytest, testmon, coverage, and report lifecycle."""
 
+    @pytest.mark.parametrize("ci_context", [True, False])
+    def test_marker_selection_is_shared_by_collection_execution_and_coverage(
+        self, cached_runner_project: Path, *, ci_context: bool
+    ) -> None:
+        """CI/pre-commit omit slow cases; local/pre-push keep them selectable."""
+        runner = self._runner_for(cached_runner_project, ci_context=ci_context)
+        report = (
+            cached_runner_project
+            / config.Infra.codegen.make.testmon_cache.reports_directory
+        )
+        expressions = []
+        for command in (
+            runner.build_selection_command(),
+            runner.build_selection_command(complete=True),
+            runner.build_command(report),
+            runner.build_coverage_command(report),
+        ):
+            marker_index = command.index("-m", 3)
+            expressions.append(command[marker_index + 1])
+        assert len(set(expressions)) == 1
+        for marker in config.Infra.tooling.tools.pytest.ci_excluded_markers:
+            assert (marker in expressions[0]) == ci_context
+        for marker in config.Infra.tooling.tools.pytest.external_gate_markers:
+            assert marker in expressions[0]
+
     @staticmethod
-    def _runner_for(cached_runner_project: Path) -> FlextInfraPytestRunner:
+    def _runner_for(
+        cached_runner_project: Path, *, ci_context: bool = False
+    ) -> FlextInfraPytestRunner:
         """Bind one runner to the fixture project's canonical cache paths."""
         codegen = config.Infra.codegen
         cache = codegen.make.testmon_cache
@@ -28,6 +55,7 @@ class TestsFlextInfraPytestRunner:
         )
         return FlextInfraPytestRunner(
             repository_root=cached_runner_project,
+            ci_context=ci_context,
             started_at_monotonic=time.monotonic(),
             target=cache.target_directory,
             reports=cache.reports_directory,

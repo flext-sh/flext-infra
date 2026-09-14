@@ -157,6 +157,7 @@ class FlextInfraPytestRunnerExecution(
             f"executed={accounting.executed_count}\n"
             f"deselected={accounting.deselected_count}\n"
             f"not_executed_external_gates={external_gates}\n"
+            f"not_executed_ci_markers={','.join(self.ci_excluded_markers())}\n"
             f"cache_restored={cache_restored}\n"
             f"failed={diagnostics.failed_count}\nerrors={diagnostics.error_count}\n"
             f"warnings={diagnostics.warning_count}\nskipped={diagnostics.skipped_count}\n"

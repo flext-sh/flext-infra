@@ -238,7 +238,7 @@ class FlextInfraCodegenVscodeMixin:
         changed = False
         for key, canonical_map in map_union_settings.items():
             current = settings.get(key)
-            existing = (
+            existing: t.MutableJsonMapping = (
                 {
                     name: u.normalize_to_json_value(value)
                     for name, value in current.items()
@@ -246,9 +246,12 @@ class FlextInfraCodegenVscodeMixin:
                 if isinstance(current, Mapping)
                 else {}
             )
-            merged = existing | {
-                name: u.normalize_to_json_value(value)
-                for name, value in canonical_map.items()
+            merged = {
+                **dict(existing),
+                **{
+                    name: u.normalize_to_json_value(value)
+                    for name, value in canonical_map.items()
+                },
             }
             if settings.get(key) == merged:
                 continue

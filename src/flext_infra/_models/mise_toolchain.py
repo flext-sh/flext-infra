@@ -12,16 +12,15 @@ from flext_infra import t
 from ._defaults import immutable_empty_mapping, tool_version_field
 
 
-class _ConfigContract(m.ContractModel):
-    """Private declarative base for schema-loaded codegen records."""
-
-    model_config = m.ConfigDict(
-        strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
-    )
-
-
 class FlextInfraModelsMiseToolchain:
     """Mise toolchain and beads configuration models."""
+
+    class _ConfigContract(m.ContractModel):
+        """Private declarative base for schema-loaded codegen records."""
+
+        model_config = m.ConfigDict(
+            strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
+        )
 
     class MiseToolSpec(_ConfigContract):
         """One mise backend declared in ``codegen.yaml``, projected to ``.mise.toml``.
