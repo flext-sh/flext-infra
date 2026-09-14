@@ -31,7 +31,9 @@ class FlextInfraMiseArtifactsVerification:
         registered: list[m.Infra.CodegenJournalDirectory] = []
         for directory in journal.directories:
             project = next(
-                item for item in layout.projects if item.selector == directory.project
+                item
+                for item in files.transaction_participants(layout)
+                if item.selector == directory.project
             )
             target = files.resolve_relative(
                 layout.scope_root, directory.path, purpose="temporary tree manifest"
@@ -142,7 +144,12 @@ class FlextInfraMiseArtifactsVerification:
             return r[bool].fail(
                 "generation journal project topology differs from layout"
             )
-        by_selector = {project.selector: project for project in layout.projects}
+        if journal.file_participants != layout.file_participants:
+            return r[bool].fail("generation file capabilities differ from the journal")
+        by_selector = {
+            project.selector: project
+            for project in files.transaction_participants(layout)
+        }
         directory_targets: MutableMapping[Path, m.Infra.CodegenJournalDirectory] = {}
         for directory in journal.directories:
             target = files.resolve_relative(
@@ -153,7 +160,7 @@ class FlextInfraMiseArtifactsVerification:
             if target.failure:
                 return r[bool].from_failure(target)
             directory_targets[target.value] = directory
-        for recorded in journal.projects:
+        for recorded in (*journal.projects, *journal.file_participants):
             project = by_selector[recorded.selector]
             identity = files.physical_directory_identity(project.root)
             if identity.failure:
@@ -267,6 +274,40 @@ class FlextInfraMiseArtifactsVerification:
         return r[bool].ok(True)
 
     @classmethod
+    def journal_destinations_live(
+        cls,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+    ) -> p.Result[bool]:
+        """Require every exact desired identity before irrevocable commit."""
+        topology = cls.journal_topology(layout, journal)
+        if topology.failure:
+            return topology
+        for entry in journal.entries:
+            path = files.resolve_transaction(layout, entry.path, purpose="published destination")
+            if path.failure:
+                return r[bool].from_failure(path)
+            observed = files.read_state(path.value, required=entry.desired_exists)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            current = observed.value
+            identity = (
+                current.parent_device, current.parent_inode,
+                None if current.content is None else files.digest(current.content),
+                current.mode, current.device, current.inode, current.link_count,
+                current.file_attributes, current.reparse_tag,
+            )
+            expected = (
+                entry.desired_parent_device, entry.desired_parent_inode,
+                entry.desired_sha256, entry.desired_mode, entry.desired_device,
+                entry.desired_inode, entry.desired_link_count,
+                entry.desired_file_attributes, entry.desired_reparse_tag,
+            )
+            if identity != expected:
+                return r[bool].fail(f"published generation identity changed: {entry.path}")
+        return r[bool].ok(True)
+
+    @classmethod
     def states_current(
         cls, states: tuple[m.Cli.AtomicFileState, ...]
     ) -> p.Result[bool]:
@@ -294,22 +335,10 @@ class FlextInfraMiseArtifactsVerification:
             )
             if observed.failure:
                 return r[bool].from_failure(observed)
-            # Compare semantically relevant fields only
-            expected_content = expected.content
-            observed_content = observed.value.content
-            if expected_content is not None and observed_content is not None:
-                expected_norm = expected_content.rstrip(b"\r\n") + b"\n"
-                observed_norm = observed_content.rstrip(b"\r\n") + b"\n"
-                if expected_norm != observed_norm:
-                    u.Cli.warning(
-                        f"mise artifacts snapshot drift detected: {expected.path}"
-                    )
-            elif expected_content != observed_content:
-                u.Cli.warning(
-                    f"mise artifacts snapshot drift detected: {expected.path}"
+            if observed.value != expected:
+                return r[bool].fail(
+                    f"generation authenticated state changed: {expected.path}"
                 )
-            if observed.value.mode != expected.mode:
-                u.Cli.warning(f"mise artifacts snapshot mode changed: {expected.path}")
         return r[bool].ok(True)
 
     @classmethod

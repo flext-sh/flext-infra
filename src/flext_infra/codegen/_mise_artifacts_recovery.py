@@ -116,12 +116,10 @@ class FlextInfraMiseRecovery:
             ):
                 operation = "noop"
             elif identity == desired:
-                operation = "noop" if entry.original_exists else "delete"
-            elif entry.original_exists:
-                operation = "restore"
+                operation = "restore" if entry.original_exists else "delete"
             else:
                 return result_type.fail(
-                    f"new generated file changed before recovery: {entry.path}"
+                    f"generated file has an unowned state before recovery: {entry.path}"
                 )
             actions.append(
                 m.Infra.CodegenRecoveryAction(
@@ -211,7 +209,9 @@ class FlextInfraMiseRecovery:
                 f"generation restore candidate differs: {entry.path}"
             )
         project = next(
-            item.root for item in layout.projects if item.selector == entry.project
+            item.root
+            for item in files.transaction_participants(layout)
+            if item.selector == entry.project
         )
         return r[m.Infra.CodegenStagedFile].ok(
             m.Infra.CodegenStagedFile(
@@ -258,7 +258,9 @@ class FlextInfraMiseRecovery:
                     f"generation rollback candidate changed: {entry.path}"
                 )
             project = next(
-                item.root for item in layout.projects if item.selector == entry.project
+                item.root
+                for item in files.transaction_participants(layout)
+                if item.selector == entry.project
             )
             candidates.append(
                 m.Infra.CodegenStagedFile(

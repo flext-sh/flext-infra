@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable, Container as _Container, MutableMapping
+from datetime import date, datetime
 from pathlib import Path as _Path
 from typing import Annotated, Literal
 
@@ -47,6 +48,9 @@ def _reject_blanket_mask(rule: str) -> str:
 
 class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
+
+    type PlanSourceTimestamp = str | date | datetime | None
+    "Native YAML timestamp ingress; dates retain their original precision."
 
     type RegexPattern = t.RegexPattern
     "Compiled regex pattern for string matching."

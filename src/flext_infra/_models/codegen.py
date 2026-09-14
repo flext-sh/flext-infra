@@ -54,6 +54,39 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             m.Field(description="Canonical artifact destinations"),
         ]
 
+    class CodegenFileParticipant(m.ArbitraryTypesModel):
+        """Explicit physical publication capability without Git or Mise ownership."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+
+        selector: Annotated[
+            str,
+            m.Field(pattern=r"^@[a-z][a-z0-9-]*$", description="File capability identity"),
+        ]
+        root: Annotated[Path, m.Field(description="Exact authorized destination root")]
+        device: Annotated[
+            int, m.Field(ge=0, strict=True, description="Authenticated root device")
+        ]
+        inode: Annotated[
+            int, m.Field(gt=0, strict=True, description="Authenticated root inode")
+        ]
+        transaction_root: Annotated[
+            Path, m.Field(description="Destination-local staging for this transaction")
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_capability(self) -> Self:
+            if (
+                not self.root.is_absolute()
+                or ".." in self.root.parts
+                or self.root == Path(self.root.anchor)
+                or not self.transaction_root.is_relative_to(self.root)
+                or self.transaction_root == self.root
+            ):
+                msg = "file publication capability is not bound to its physical root"
+                raise ValueError(msg)
+            return self
+
     class MiseToolchainWorkspaceLayout(m.ArbitraryTypesModel):
         """Stable recovery topology independent of mutable source contents."""
 
@@ -78,8 +111,25 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         ] = None
         projects: Annotated[
             t.VariadicTuple[FlextInfraModelsCodegen.MiseToolchainProjectLayout],
-            m.Field(min_length=1, description="Ordered complete workspace topology"),
+            m.Field(description="Ordered Mise workspace participants"),
         ]
+        file_participants: Annotated[
+            t.VariadicTuple[FlextInfraModelsCodegen.CodegenFileParticipant],
+            m.Field(description="Explicit non-Mise publication capabilities"),
+        ] = ()
+
+        @u.model_validator(mode="after")
+        def _validate_participants(self) -> Self:
+            participants = (*self.projects, *self.file_participants)
+            if not participants:
+                msg = "generation layout requires an explicit participant"
+                raise ValueError(msg)
+            selectors = tuple(item.selector for item in participants)
+            roots = tuple(item.root for item in participants)
+            if len(set(selectors)) != len(selectors) or len(set(roots)) != len(roots):
+                msg = "generation participants must have unique selectors and roots"
+                raise ValueError(msg)
+            return self
 
     class MiseToolchainConfigState(m.ArbitraryTypesModel):
         """Current destination plus the exact planned Mise configuration."""
@@ -727,10 +777,13 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         projects: Annotated[
             t.VariadicTuple[FlextInfraModelsCodegen.CodegenJournalProject],
             m.Field(
-                min_length=1,
                 description="Ordered project selectors owned by this transaction",
             ),
         ]
+        file_participants: Annotated[
+            t.VariadicTuple[FlextInfraModelsCodegen.CodegenFileParticipant],
+            m.Field(description="Exact physical file publication capabilities"),
+        ] = ()
         sources: Annotated[
             t.VariadicTuple[FlextInfraModelsCodegen.CodegenJournalSource],
             m.Field(description="Source identities used by staging"),
@@ -747,7 +800,12 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         @u.model_validator(mode="after")
         def _validate_lifecycle(self) -> Self:
             """Bind staging and publication payloads to one safe project set."""
-            selectors = tuple(project.selector for project in self.projects)
+            selectors = tuple(
+                project.selector for project in (*self.projects, *self.file_participants)
+            )
+            if not selectors:
+                msg = "generation journal requires an explicit participant"
+                raise ValueError(msg)
             if selectors[0] != "." and "." in selectors:
                 msg = "Mise root selector must be first when present"
                 raise ValueError(msg)
@@ -799,14 +857,32 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 raise ValueError(msg)
             return self
 
+    class CodegenFileSessionPlan(m.ArbitraryTypesModel):
+        """File-only transaction topology; contains no Mise artifact snapshot."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+
+        layout: Annotated[
+            FlextInfraModelsCodegen.MiseToolchainWorkspaceLayout,
+            m.Field(description="Locked explicit file participant topology"),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_file_only(self) -> Self:
+            if self.layout.projects or not self.layout.file_participants:
+                msg = "file-only session must contain only file capabilities"
+                raise ValueError(msg)
+            return self
+
     class CodegenTransactionSession(m.ArbitraryTypesModel):
         """Immutable cursor for one live prepared generation transaction."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         plan: Annotated[
-            FlextInfraModelsCodegen.MiseToolchainWorkspacePlan,
-            m.Field(description="Locked Mise adapter plan and physical layout"),
+            FlextInfraModelsCodegen.MiseToolchainWorkspacePlan
+            | FlextInfraModelsCodegen.CodegenFileSessionPlan,
+            m.Field(description="Locked generation plan and physical layout"),
         ]
         journal: Annotated[
             FlextInfraModelsCodegen.CodegenTransactionJournal,

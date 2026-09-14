@@ -227,6 +227,21 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         changes: list[p.AttributeProbe]
 
     @runtime_checkable
+    class RopeChangeContents(Protocol):
+        """A planned Rope content replacement with no applied effect."""
+
+        resource: FlextInfraProtocolsRopeRuntime.RopeResource
+        new_contents: str
+
+    @runtime_checkable
+    class RopeRestructure(Protocol):
+        """Public semantic restructuring planner at the Rope runtime boundary."""
+
+        def get_changes(
+            self, *, resources: list[FlextInfraProtocolsRopeRuntime.RopeResource]
+        ) -> FlextInfraProtocolsRopeRuntime.RopeChangeSet: ...
+
+    @runtime_checkable
     class RopeModuleImports(Protocol):
         """Rope mutable module-import collection shape."""
 

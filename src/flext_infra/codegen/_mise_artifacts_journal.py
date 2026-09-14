@@ -22,7 +22,7 @@ class FlextInfraMiseArtifactsJournal:
     @classmethod
     def begin(
         cls,
-        plan: m.Infra.MiseToolchainWorkspacePlan,
+        plan: m.Infra.MiseToolchainWorkspacePlan | m.Infra.CodegenFileSessionPlan,
         *,
         transaction_id: str,
         sources: tuple[tuple[str, m.Cli.AtomicFileState], ...] = (),
@@ -33,15 +33,15 @@ class FlextInfraMiseArtifactsJournal:
         if physical_scope.failure:
             return r[m.Infra.CodegenTransactionJournal].from_failure(physical_scope)
         projects: list[m.Infra.CodegenJournalProject] = []
-        for project in plan.projects:
-            physical_project = files.physical_directory_identity(project.layout.root)
+        for project in plan.layout.projects:
+            physical_project = files.physical_directory_identity(project.root)
             if physical_project.failure:
                 return r[m.Infra.CodegenTransactionJournal].from_failure(
                     physical_project
                 )
             projects.append(
                 m.Infra.CodegenJournalProject(
-                    selector=project.layout.selector,
+                    selector=project.selector,
                     device=physical_project.value[0],
                     inode=physical_project.value[1],
                 )
@@ -58,6 +58,7 @@ class FlextInfraMiseArtifactsJournal:
                     scope_inode=physical_scope.value[1],
                     state="staging",
                     projects=tuple(projects),
+                    file_participants=plan.layout.file_participants,
                     sources=encoded_sources.value,
                     directories=directories,
                     entries=(),
@@ -71,7 +72,7 @@ class FlextInfraMiseArtifactsJournal:
     @classmethod
     def append_prepared(
         cls,
-        plan: m.Infra.MiseToolchainWorkspacePlan,
+        plan: m.Infra.MiseToolchainWorkspacePlan | m.Infra.CodegenFileSessionPlan,
         journal: m.Infra.CodegenTransactionJournal,
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
         *,
@@ -117,6 +118,7 @@ class FlextInfraMiseArtifactsJournal:
                     scope_inode=journal.scope_inode,
                     state="prepared",
                     projects=journal.projects,
+                    file_participants=journal.file_participants,
                     sources=encoded_sources.value,
                     directories=journal.directories,
                     entries=tuple(entries),
@@ -156,6 +158,7 @@ class FlextInfraMiseArtifactsJournal:
                     scope_inode=journal.scope_inode,
                     state=journal.state,
                     projects=journal.projects,
+                    file_participants=journal.file_participants,
                     sources=journal.sources,
                     directories=(*journal.directories, *directories),
                     entries=journal.entries,
@@ -214,6 +217,7 @@ class FlextInfraMiseArtifactsJournal:
                     scope_inode=journal.scope_inode,
                     state=journal.state,
                     projects=journal.projects,
+                    file_participants=journal.file_participants,
                     sources=journal.sources,
                     directories=directories,
                     entries=journal.entries,
@@ -240,6 +244,7 @@ class FlextInfraMiseArtifactsJournal:
                     scope_inode=journal.scope_inode,
                     state="committed",
                     projects=journal.projects,
+                    file_participants=journal.file_participants,
                     sources=journal.sources,
                     directories=journal.directories,
                     entries=journal.entries,
@@ -317,6 +322,7 @@ class FlextInfraMiseArtifactsJournal:
                     scope_inode=journal.scope_inode,
                     state="recovering",
                     projects=journal.projects,
+                    file_participants=journal.file_participants,
                     sources=journal.sources,
                     directories=journal.directories,
                     entries=tuple(entries),
@@ -612,7 +618,7 @@ class FlextInfraMiseArtifactsJournal:
     @classmethod
     def _journal_entry(
         cls,
-        plan: m.Infra.MiseToolchainWorkspacePlan,
+        plan: m.Infra.MiseToolchainWorkspacePlan | m.Infra.CodegenFileSessionPlan,
         publication: m.Infra.CodegenStagedFile,
         *,
         index: int,
@@ -624,10 +630,14 @@ class FlextInfraMiseArtifactsJournal:
                 f"generation destination parent identity is incomplete: {before.path}"
             )
         project = next(
-            (item for item in plan.projects if item.layout.root == publication.project),
+            (
+                item
+                for item in files.transaction_participants(plan.layout)
+                if item.root == publication.project
+            ),
             None,
         )
-        if project is None or project.layout.transaction_root is None:
+        if project is None or project.transaction_root is None:
             return r[m.Infra.CodegenJournalEntry].fail(
                 f"generation publication has no transaction participant: {before.path}"
             )
@@ -646,7 +656,7 @@ class FlextInfraMiseArtifactsJournal:
                 return r[m.Infra.CodegenJournalEntry].fail(
                     f"generation original identity is incomplete: {before.path}"
                 )
-            recovery_root = project.layout.transaction_root / "recovery"
+            recovery_root = project.transaction_root / "recovery"
             if recovery_root not in recovery_roots:
                 if recovery_root.exists() or recovery_root.is_symlink():
                     inventory = u.Cli.atomic_inventory_physical_tree(recovery_root)
@@ -699,7 +709,7 @@ class FlextInfraMiseArtifactsJournal:
         return r[m.Infra.CodegenJournalEntry].ok(
             m.Infra.CodegenJournalEntry(
                 phase=publication.phase,
-                project=project.layout.selector,
+                project=project.selector,
                 path=selector.value,
                 desired_staging=desired_staging,
                 original_exists=before.content is not None,
@@ -741,29 +751,13 @@ class FlextInfraMiseArtifactsJournal:
     @classmethod
     def _validate_physical_topology(
         cls,
-        plan: m.Infra.MiseToolchainWorkspacePlan,
+        plan: m.Infra.MiseToolchainWorkspacePlan | m.Infra.CodegenFileSessionPlan,
         journal: m.Infra.CodegenTransactionJournal,
     ) -> p.Result[bool]:
-        scope = files.physical_directory_identity(plan.layout.scope_root)
-        if scope.failure:
-            return r[bool].from_failure(scope)
-        if scope.value != (journal.scope_device, journal.scope_inode):
-            return r[bool].fail("generation scope changed during transaction")
-        expected = tuple(project.layout.selector for project in plan.projects)
-        observed = tuple(project.selector for project in journal.projects)
-        if observed != expected:
-            return r[bool].fail(
-                "generation project topology changed during transaction"
-            )
-        for planned, recorded in zip(plan.projects, journal.projects, strict=True):
-            identity = files.physical_directory_identity(planned.layout.root)
-            if identity.failure:
-                return r[bool].from_failure(identity)
-            if identity.value != (recorded.device, recorded.inode):
-                return r[bool].fail(
-                    f"generation project changed during transaction: {recorded.selector}"
-                )
-        return r[bool].ok(True)
+        """Use the same capability and physical topology proof as recovery."""
+        from ._mise_artifacts_verification import FlextInfraMiseArtifactsVerification
+
+        return FlextInfraMiseArtifactsVerification.journal_topology(plan.layout, journal)
 
 
 __all__: list[str] = ["FlextInfraMiseArtifactsJournal"]
