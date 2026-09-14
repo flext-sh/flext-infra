@@ -85,31 +85,37 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             f"scope={c.Infra.RK_WORKSPACE} verb={verb} "
             f"projects={','.join(projects)}" + "\n"
         )
+        # Why (operator 2026-09-14): one failing project never hides the rest of
+        # the fleet; every project runs, the summary names every failure, and the
+        # run still exits non-zero when any project failed.
+        failures: list[str] = []
+        first_failure_code = 0
         for idx, project in enumerate(projects, start=1):
             u.Cli.emit_raw(f"[{idx}/{total}] START {project} {verb}\n")
             cmd_output = self._run_project(project, verb, idx).unwrap()
             results.append(cmd_output)
+            code = cmd_output.outcome.raw_return_code
             succeeded = u.Cli.process_succeeded(cmd_output.outcome)
             state = "PASS" if succeeded else "FAIL"
             u.Cli.emit_raw(
                 f"[{idx}/{total}] {state} {project} {verb} "
-                f"exit={cmd_output.outcome.raw_return_code} duration={cmd_output.duration:.2f}s\n"
+                f"exit={code} duration={cmd_output.duration:.2f}s\n"
             )
             if not succeeded:
-                u.Cli.emit_raw(
-                    f"summary scope={c.Infra.RK_WORKSPACE} verb={verb} "
-                    f"total={total} completed={idx} passed={idx - 1} failed=1 "
-                    f"exit={cmd_output.outcome.raw_return_code}\n"
-                )
-                return r[t.SequenceOf[p.Cli.CommandOutput]].fail(
-                    f"orchestration stopped at first failure: {project} "
-                    f"exit={cmd_output.outcome.raw_return_code}"
-                    f"{self._exit_classification(cmd_output.outcome.raw_return_code)}"
+                if not failures:
+                    first_failure_code = code
+                failures.append(
+                    f"{project} exit={code}{self._exit_classification(code)}"
                 )
         u.Cli.emit_raw(
             f"summary scope={c.Infra.RK_WORKSPACE} verb={verb} total={total} "
-            f"completed={total} passed={total} failed=0 exit=0\n"
+            f"completed={total} passed={total - len(failures)} "
+            f"failed={len(failures)} exit={first_failure_code}\n"
         )
+        if failures:
+            return r[t.SequenceOf[p.Cli.CommandOutput]].fail(
+                f"workspace {verb} failed for: {', '.join(failures)}"
+            )
         return r[t.SequenceOf[p.Cli.CommandOutput]].ok(results)
 
     def _run_project(

@@ -63,7 +63,7 @@ UV_LINK_MODE := {{ uv_link_mode }}
 # routes custom handlers in every project, and the generated `_dispatch` reads
 # it where script dispatch is active (cosmos-3flk9). `initialize` is the
 # hermetic bootstrap verb and derives GEN_INIT_ONLY above.
-PUBLIC_INPUTS := INDEX APPLY FAIL_FAST PR_TITLE ARGS GEN_INIT_ONLY UV PROJECT_INFRA_PYTHONPATH REPOSITORY_ROOT SETUP_BOOTSTRAP_ONLY WHAT {{ make.ci.variable }}
+PUBLIC_INPUTS := INDEX APPLY PR_TITLE ARGS GEN_INIT_ONLY UV PROJECT_INFRA_PYTHONPATH REPOSITORY_ROOT SETUP_BOOTSTRAP_ONLY WHAT {{ make.ci.variable }}
 COMMAND_LINE_INPUTS := $(foreach name,$(filter-out .%,$(.VARIABLES)),$(if $(filter command line override,$(origin $(name))),$(name)))
 UNKNOWN_INPUTS := $(filter-out $(PUBLIC_INPUTS),$(COMMAND_LINE_INPUTS))
 ifneq ($(strip $(UNKNOWN_INPUTS)),)
@@ -269,7 +269,7 @@ endif
 # Workspace-root gate verbs fan out across declared members through the generic
 # `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
 # from the constants SSOT, never hardcoded here). Members and standalone projects
-# run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
+# run the gate locally. Every member runs; the summary names every failure.
 # Provisioning is declared once and shared by every profile. Creating a missing
 # venv is provisioning; clearing a present one is destruction, so it never happens.
 # A symlinked RUNTIME_VENV is a BORROWED environment: a linked worktree (a
@@ -551,20 +551,20 @@ _builtin-self-docs: _builtin_docs_all
 
 {% if make_profile == "workspace" %}
 _builtin_build_artifacts:
-	@$(WORKSPACE_ORCHESTRATE) --verb build $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+	@$(WORKSPACE_ORCHESTRATE) --verb build $(WORKSPACE_PROJECT_ARGS)
 
 # Read-only by contract in every profile: mutation belongs to `make fix`
 # and `make fmt`, which run BEFORE check. CI={{ make.ci.value }}
 # keeps make.ci.check_gates before orchestrating members (same contract as
 # standalone/member Makefiles and flext_infra check run).
 _builtin_check_all: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+	@$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS)
 
 _builtin_test_all: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb test $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+	@$(WORKSPACE_ORCHESTRATE) --verb test $(WORKSPACE_PROJECT_ARGS)
 
 _builtin_fmt_all: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS)
 
 _builtin_fmt_apply: _builtin_fmt_all
 
@@ -575,7 +575,7 @@ _builtin_fmt_check:
 	$(error fmt has no check mode across workspace orchestration; run make -C <project> fmt APPLY=N per member)
 
 _builtin_fix_all: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS)
 
 _builtin_fix_apply: _builtin_fix_all
 
@@ -583,7 +583,7 @@ _builtin_fix_check:
 	$(error fix has no check mode across workspace orchestration; run make -C <project> fix APPLY=N per member)
 
 _builtin_fix_enforcement: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb fix-enforcement $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+	@$(WORKSPACE_ORCHESTRATE) --verb fix-enforcement $(WORKSPACE_PROJECT_ARGS)
 
 _builtin_fix_enforcement_check:
 	$(error fix-enforcement has no check mode across workspace orchestration; run make -C <project> fix-enforcement APPLY=N per member)
