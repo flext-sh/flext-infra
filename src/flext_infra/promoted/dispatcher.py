@@ -14,11 +14,10 @@ from flext_infra.promoted.base import (
 )
 from flext_infra.promoted.discovery import discover
 from flext_infra.promoted.executor import ensure_local_python, run
-from flext_infra.promoted.invocation import validate_apply_env, validate_invocation
+from flext_infra.promoted.invocation import validate_invocation
 from flext_infra.promoted.registry import Registry
 from flext_infra.promoted.rendering import (
     render_command_help,
-    render_dry_run,
     render_requested_help,
     render_verb_help,
 )
@@ -80,13 +79,8 @@ def run_dispatch(
 def dispatch(registry: Registry, requested_verb: str) -> int:
     """Dispatch one requested verb to its selected promoted command.
 
-    R28 (operator decision A, 2026-09-12): mutation is the default. An
-    absent ``APPLY`` executes a mutating command; ``APPLY=N`` selects
-    check/dry-run mode; any other ``APPLY`` value is a hard error.
-
     Returns:
-        The executed command's exit code; ``0`` for rendered help and for a
-        mutating command's check-mode (``APPLY=N``) dry run.
+        The executed command's exit code, or zero for rendered help.
 
     """
     alias_target = registry.alias_target(requested_verb)
@@ -107,12 +101,7 @@ def dispatch(registry: Registry, requested_verb: str) -> int:
     if env_enabled("HELP") or env_enabled("OPTIONS"):
         sys.stdout.write(render_command_help(registry, requested_verb, what) + "\n")
         return 0
-    apply_value = validate_apply_env(command)
-    is_dry_run = command.mutates and apply_value == "N"
-    validate_invocation(command, require_required=not is_dry_run)
-    if is_dry_run:
-        sys.stdout.write(render_dry_run(command, requested_verb, what) + "\n")
-        return 0
+    validate_invocation(command)
     return run(command)
 
 

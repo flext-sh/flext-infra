@@ -508,17 +508,6 @@ class FlextInfraConfigModels:
         description: Annotated[
             t.NonEmptyStr, m.Field(description="Operator-facing help text")
         ]
-        # Verbs that have a read-only check variant (e.g. ruff --check alongside
-        # ruff --fix) declare check_mode=True so the generated Makefile emits a
-        # dedicated check target. There is no dry-run flag — the verb always
-        # mutates; the check target is a separate read-only operation.
-        check_mode: Annotated[
-            bool,
-            m.Field(
-                default=False,
-                description="Verbs with a read-only check target emit a _check sibling",
-            ),
-        ] = False
 
     class MakeWorkflowStepSpec(_ConfigContract):
         """One canonical workflow step."""
