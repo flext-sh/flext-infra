@@ -50,9 +50,11 @@ if TYPE_CHECKING:
     )
     from .fixtures_git import real_git_repo
     from .runner_service import RealSubprocessRunner
+    from .test_lockfile_policy_projection import TestsFlextInfraLockfilePolicyProjection
     from .workspace_factory import TestsFlextInfraWorkspaceFactory
 __all__: tuple[str, ...] = (
     "RealSubprocessRunner",
+    "TestsFlextInfraLockfilePolicyProjection",
     "TestsFlextInfraWorkspaceFactory",
     "_utilities",
     "c",
@@ -143,6 +145,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".refactor": ("refactor",),
             ".release": ("release",),
             ".runner_service": ("RealSubprocessRunner",),
+            ".test_lockfile_policy_projection": (
+                "TestsFlextInfraLockfilePolicyProjection",
+            ),
             ".transformers": ("transformers",),
             ".validate": ("validate",),
             ".workspace": ("workspace",),
