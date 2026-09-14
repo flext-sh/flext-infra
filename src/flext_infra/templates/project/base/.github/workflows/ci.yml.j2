@@ -100,7 +100,7 @@ jobs:
       # sync`); the fleet runs unlocked, so the deps audit proves the resolved
       # graph instead of preserving a frozen snapshot.
       - name: deps check (blocking)
-        run: {{ make.ci.variable }}={{ make.ci.value }} make audit 
+        run: {{ make.ci.variable }}={{ make.ci.value }} make audit
 {%- endif %}
 {%- if step.verb == "check" %}
 

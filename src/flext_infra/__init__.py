@@ -144,7 +144,6 @@ if TYPE_CHECKING:
     from .gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
     from .gates.bandit import FlextInfraBanditGate
     from .gates.base_gate import FlextInfraGate, FlextInfraScannerGateMixin
-    from .gates.budget import FlextInfraBudgetGate
     from .gates.canonical_alias import FlextInfraCanonicalAliasGate
     from .gates.deferred_self_reference import FlextInfraDeferredSelfReferenceGate
     from .gates.direnv import FlextInfraDirenvGate
@@ -278,7 +277,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraAccessorMigrationOrchestrator",
     "FlextInfraBanditGate",
     "FlextInfraBooleanLogicFixer",
-    "FlextInfraBudgetGate",
     "FlextInfraCProfileReport",
     "FlextInfraCanonicalAliasGate",
     "FlextInfraCensusImportDiscoveryVisitor",
@@ -628,7 +626,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates.abstraction_boundary": ("FlextInfraAbstractionBoundaryGate",),
             ".gates.bandit": ("FlextInfraBanditGate",),
             ".gates.base_gate": ("FlextInfraGate", "FlextInfraScannerGateMixin"),
-            ".gates.budget": ("FlextInfraBudgetGate",),
             ".gates.canonical_alias": ("FlextInfraCanonicalAliasGate",),
             ".gates.deferred_self_reference": ("FlextInfraDeferredSelfReferenceGate",),
             ".gates.direnv": ("FlextInfraDirenvGate",),

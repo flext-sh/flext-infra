@@ -18,17 +18,18 @@
 - Keywords: `automation`, `codegen`, `flext`, `infrastructure`, `tooling`
 - Main facades: `FlextInfra`, `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
-  `FlextInfraBooleanLogicFixer`, `FlextInfraBudgetGate`,
-  `FlextInfraCProfileReport`, `FlextInfraCanonicalAliasGate` (+174 more)
+  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport`,
+  `FlextInfraCanonicalAliasGate`, `FlextInfraCensusImportDiscoveryVisitor` (+173
+  more)
 - Alias exports: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
 - Public symbol exports: `CliDispatchService`, `CliRouteBase`,
   `CliRouteService`, `CodegenRoutes`, `FlextInfra`,
   `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
-  `FlextInfraBooleanLogicFixer`, `FlextInfraBudgetGate` (+187 more)
+  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+186 more)
 - Exported module shortcuts: `check`, `codegen`, `codemod`, `deps`, `detectors`,
   `docs`, `fixers`, `gates` (+8 more)
-- Generated module pages: `202`
+- Generated module pages: `201`
 
 ## Next Pages
 

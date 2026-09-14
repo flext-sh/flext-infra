@@ -415,7 +415,7 @@ endef
    property: `_builtin-initialize` -> `_builtin_gen_init` runs
    `$(PROJECT_FLEXT_INFRA) codegen init`, which cannot run before the
    environment exists, and the omission made the generated Makefile contradict
-   the contract its own consumers assert. #}
+   the contract its own consumers assert. -#}
 {% for verb in make.verbs if verb.name != "setup" %}
 {{ verb.name }}:{% if verb.name != "help" %} _builtin_require_environment{% endif %}
 	$(call RUN_PUBLIC,{{ verb.name }})

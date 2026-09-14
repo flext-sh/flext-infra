@@ -133,14 +133,6 @@ class FlextInfraConstantsCodegenProject:
     ``u.Cli.toml_dot_path``; it is never written a second time.
     """
 
-    CONFORM_BUDGET_TABLE: Final[tuple[str, ...]] = (
-        "tool",
-        "flext",
-        "project",
-        "budget",
-    )
-    """Table the conform pipeline writes from the per-gate budget SSOT."""
-
     WORKSPACE_MANIFEST_FILENAME: Final[str] = "workspace.yaml"
     WORKSPACE_MANIFEST_VERSION: Final[int] = 3
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
