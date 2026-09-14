@@ -255,6 +255,7 @@ da máquina.
 | `make gen` e `make setup`, rodadas anteriores | Exit 0 | Gerador/setup exercitados antes do checkpoint; não certificam o conjunto final |
 | Recibos de suíte `20260914T210624.850231Z-2834013` e `20260914T212545.368582Z-3122161` | `raw_return_code=-15`, `timed_out=true`, `forwarded_signal=null` | Execuções interrompidas por timeout; nenhum aceite da suíte completa |
 | `make status`, durante o handoff | Exit 0; profile standalone; project e runtime locais; 160 pacotes compatíveis | Preflight local, sem comprovação de todas as funções |
+| `make docs`, durante a publicação do handoff | Última execução exit 2 em 2026-09-14T22:18:10Z: `atomic source changed` em `tests/unit/release/protocol_tests.py` | Alteração compartilhada durante a geração invalidou a fotografia de fontes; não há aceite final de docs |
 | `git diff --cached --check`, antes do checkpoint | Exit 0 | Integridade textual, não teste funcional |
 | Fetch e comparação de referências | Exit 0; HEAD e branch remota iguais a `3bd09bddc`; base `a254c1f3f3e3491a5eea34c6a088c7285e454ca6` | Implementação preservada remotamente; a base é ancestral do checkpoint |
 
@@ -263,6 +264,14 @@ No check completo, as quatro falhas de LOC apontavam `_models/config.py`,
 testes de conformance. A extração posterior invalida essa última medição para
 o checkpoint. O agregado `runtime-census=1` representa **298 violações**, não
 uma única correção pendente.
+
+Na validação documental, quatro caminhos de máquina foram substituídos por
+referências portáveis, e as referências fora do site foram corrigidas. A
+auditoria seguinte reportou zero problemas; o build ainda identificou os links
+externos ao conjunto MkDocs, corrigidos antes da última tentativa. Essa última
+tentativa parou na mudança concorrente de fonte descrita acima. O log
+`handoff-docs-publish.log` preserva a falha causal. Não repetir uma execução
+sem renovar a identidade das fontes e adotar as mudanças observadas.
 
 Os logs locais estão no scratch externo de `flext-infra`, resolvido pelo
 responsável de armazenamento em `config/codegen.yaml`; o comentário de
@@ -302,9 +311,10 @@ diferença de contexto, não prova de indisponibilidade do servidor do operador.
 | `flext-z0zkq` | Evidência histórica da referência ADR-012; fechado para seu escopo original, sem autorização para fechar a frota |
 
 Não foi criado um novo épico nem alterada a hierarquia para representar este
-handoff. Comentários de evidência nos responsáveis existentes devem apontar
-para este documento, o checkpoint e o PR; nenhum item deve ser fechado com base
-no WIP. As referências Cosmos já existentes no PR pertencem às contribuições
+handoff. Comentários de evidência foram gravados e relidos em `flext-5fxu6.4`,
+`flext-pwmej`, `flext-6x6jr` e `flext-la3z5`, apontando para este documento,
+o checkpoint e o PR. Nenhum item foi fechado. As referências Cosmos já
+existentes no PR pertencem às contribuições
 correlatas e não substituem o tracker FLEXT desta execução.
 
 ## 8. Sequência concreta de retomada

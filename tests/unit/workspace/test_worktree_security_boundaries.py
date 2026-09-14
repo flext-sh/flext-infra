@@ -60,7 +60,7 @@ def test_unresolved_base_fails_before_lane_mutation(tmp_path: Path) -> None:
 
     result = _add(repository, "feature/missing-base", "missing/base")
 
-    tm.fail(result, has="cannot resolve worktree base")
+    tm.fail(result, has="Ref 'missing/base' did not resolve to an object")
     assert (
         "feature/missing-base"
         not in tm.ok(
