@@ -118,13 +118,20 @@ class TestsFlextInfraPytestRunner:
 
         tm.that(exit_code, ne=0)
         reports_root = cached_runner_project / cache.reports_directory
+        report_path, = reports_root.glob("*/junit.xml")
+        report = tm.ok(u.Cli.files_read_text(report_path))
         tm.that(
-            self._summary(reports_root),
-            has=["executed=3", "failed=2", "errors=0", "skipped=0"],
+            report,
+            has=[
+                'tests="3"',
+                'failures="2"',
+                'errors="0"',
+                'skipped="0"',
+                'name="test_runtime"',
+                "first failure evidence",
+                "second failure evidence",
+            ],
         )
-        latest_name = tm.ok(u.Cli.files_read_text(reports_root / "latest.txt")).strip()
-        report = tm.ok(u.Cli.files_read_text(reports_root / latest_name / "junit.xml"))
-        tm.that(report, has=["first failure evidence", "second failure evidence"])
 
     @pytest.mark.slow
     def test_external_gate_markers_are_not_executed_offline(
