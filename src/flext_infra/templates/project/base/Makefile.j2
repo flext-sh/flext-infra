@@ -402,8 +402,18 @@ endef
 .PHONY: $(PUBLIC_VERBS) $(addprefix _builtin-,$(PUBLIC_VERBS))
 .PHONY: _builtin_gen_check _builtin_gen_init _builtin_gen_all _builtin_gen_apply
 
+{# The exclusion is a statement about ENVIRONMENT DEPENDENCY, never about a
+   name. `setup` is filtered above because it builds the environment it would
+   otherwise require, and `help` prints the verb table without touching it.
+   Every other public verb dispatches through `RUN_PUBLIC` into a recipe that
+   invokes `$(PROJECT_FLEXT_INFRA)` -- the managed interpreter -- so it must
+   require the environment. `initialize` was excluded here without that
+   property: `_builtin-initialize` -> `_builtin_gen_init` runs
+   `$(PROJECT_FLEXT_INFRA) codegen init`, which cannot run before the
+   environment exists, and the omission made the generated Makefile contradict
+   the contract its own consumers assert. #}
 {% for verb in make.verbs if verb.name != "setup" %}
-{{ verb.name }}:{% if verb.name not in ("help", "initialize") %} _builtin_require_environment{% endif %}
+{{ verb.name }}:{% if verb.name != "help" %} _builtin_require_environment{% endif %}
 	$(call RUN_PUBLIC,{{ verb.name }})
 {% endfor %}
 

@@ -71,6 +71,10 @@ class FlextInfraConstantsCheck:
             "Flext Tier Whitelist Gate",
             "internal://flext-infra/tier-whitelist",
         ),
+        "index-declarations": (
+            "Flext Index Declarations Gate",
+            "internal://flext-infra/index-declarations",
+        ),
         "smells": ("Flext Code Smell Detector", "internal://flext-infra/smells"),
         "codemod": ("ast-grep", AST_GREP_DOCS_URL),
         "layout": ("Flext Project Layout Gate", "internal://flext-infra/layout"),
@@ -85,7 +89,7 @@ class FlextInfraConstantsCheck:
         "duplication": ("jscpd", "https://github.com/kucherenko/jscpd"),
         "budget": ("Flext Execution Budget Gate", "internal://flext-infra/budget"),
         "index-declarations": (
-            "Flext Index Declaration Gate",
+            "Flext Index Declarations Gate",
             "internal://flext-infra/index-declarations",
         ),
     })

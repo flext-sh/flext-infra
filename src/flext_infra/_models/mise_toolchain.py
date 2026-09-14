@@ -9,20 +9,7 @@ from flext_cli import m, u
 
 from flext_infra import t
 
-from ._defaults import immutable_empty_mapping
-
-
-def tool_version_field(description: str) -> object:
-    """Shared ``Annotated[t.NonEmptyStr, ...]`` metadata for one tool version.
-
-    Every native-toolchain version field in ``ToolchainSpec`` and its
-    ``ProjectRenderContext`` render mirror previously repeated an identical
-    ``m.Field(description=...)`` shape, differing only in the description
-    text -- a structural clone SonarCloud's duplication detector flags as one
-    family regardless of the literal string. One owned factory collapses
-    every call site to this single declaration (SSOT, DRY).
-    """
-    return m.Field(description=description)
+from ._defaults import immutable_empty_mapping, tool_version_field
 
 
 class _ConfigContract(m.ContractModel):
@@ -551,4 +538,4 @@ class FlextInfraModelsMiseToolchain:
             return self
 
 
-__all__: list[str] = ["FlextInfraModelsMiseToolchain", "tool_version_field"]
+__all__: list[str] = ["FlextInfraModelsMiseToolchain"]
