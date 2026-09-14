@@ -44,21 +44,21 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
         from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
         mode = tm.ok(FlextInfraWorkspaceDetector().detect(root))
-        by_mode: dict[c.Infra.MakeProfile, c.Infra.MakeProfile] = {
+        by_mode: t.MutableMappingKV[c.Infra.MakeProfile, c.Infra.MakeProfile] = {
             c.Infra.MakeProfile.WORKSPACE: c.Infra.MakeProfile.WORKSPACE,
             c.Infra.MakeProfile.STANDALONE: c.Infra.MakeProfile.STANDALONE,
         }
         return by_mode[mode]
 
     @staticmethod
-    def ignore_patterns_for(root: Path) -> tuple[str, ...]:
-        """Return the ignore patterns that apply to *root*'s declared profile.
+    def ignore_patterns_for_profile(profile: c.Infra.MakeProfile) -> t.StrTuple:
+        """Return every SSOT ignore pattern whose section targets *profile*.
 
-        Returns:
-            Every SSOT pattern whose section targets that profile.
-
+        Taking the profile rather than a root lets a test state both sides of a
+        profile-split rule from the SSOT alone. Deriving it from a path makes
+        the same assertion depend on where the checkout happens to sit, which
+        differs between the workspace and a standalone CI clone.
         """
-        profile = TestsFlextInfraUtilitiesWorkspaceEnvMixin.repository_profile(root)
         gitignore_sections: tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...] = (
             config.Infra.codegen.gitignore_sections
         )
@@ -67,6 +67,18 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
             for section in gitignore_sections
             if not section.profiles or profile in section.profiles
             for pattern in section.patterns
+        )
+
+    @staticmethod
+    def ignore_patterns_for(root: Path) -> t.StrTuple:
+        """Return the ignore patterns that apply to *root*'s declared profile.
+
+        Returns:
+            Every SSOT pattern whose section targets that profile.
+
+        """
+        return TestsFlextInfraUtilitiesWorkspaceEnvMixin.ignore_patterns_for_profile(
+            TestsFlextInfraUtilitiesWorkspaceEnvMixin.repository_profile(root)
         )
 
     @staticmethod

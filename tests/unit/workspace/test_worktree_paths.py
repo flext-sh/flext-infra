@@ -8,10 +8,9 @@ from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService, c, m
 from tests import u
-from tests.unit.workspace import WorktreeFixture
 
 
-class TestsWorktreePaths(WorktreeFixture):
+class TestsWorktreePaths(u.Tests.WorktreeFixture):
     """Group cohesive worktree behavior."""
 
     def test_list_reports_the_primary_worktree(self, tmp_path: Path) -> None:

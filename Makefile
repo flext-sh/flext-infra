@@ -555,6 +555,11 @@ define _dispatch
 endef
 
 
+# Every profile resolves its own lock here. The cutover stops a member from
+# COMMITTING one; it does not stop uv from writing the local file it syncs
+# from, which is a regenerable artifact like `.venv`. Guarding this verb by
+# profile would also contradict the deps contract (operator law 2026-09-12,
+# option A'): unset APPLY upgrades and locks, APPLY=N checks, per project.
 define _run_for_all_projects
 	@set -eu; \
 	for project in $(SELECTED_PROJECTS); do \
@@ -566,6 +571,7 @@ endef
 
 .PHONY: $(PUBLIC_VERBS) $(addprefix _builtin-,$(PUBLIC_VERBS))
 .PHONY: _builtin_gen_init _builtin_gen_all
+
 
 
 help:
@@ -990,7 +996,12 @@ _builtin_status_diagnostics: _builtin_require_environment
 	@printf 'profile=%s\nproject=%s\nruntime=%s\n' \
 		'$(MAKE_PROFILE)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
 	@$(UV) --version
-	@$(UV) lock --project "$(PROJECT_ROOT)" --check
+	# Only the fleet root owns a lock to verify (design B, flext-62fbu); the
+	# same guard `audit` already applies. Asking a member to check a lock it
+	# does not commit would report a defect that cannot exist there.
+	@if [ "$(MAKE_PROFILE)" = "workspace" ]; then \
+		$(UV) lock --project "$(PROJECT_ROOT)" --check; \
+	fi
 	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
 		$(UV) pip check --python "$(RUNTIME_VENV)"; \
 	fi

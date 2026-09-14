@@ -19,7 +19,6 @@ from flext_tests import tm
 from flext_core import p as core_p
 from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
 from tests import u
-from tests.unit.workspace import WorktreeFixture
 
 
 def _consumer(tmp_path: Path) -> Path:
@@ -53,11 +52,11 @@ def _flext_workspace(tmp_path: Path) -> Path:
     prove the intersection rather than inherit it from one machine's disk.
     """
     flext_root = tmp_path / "flext"
-    WorktreeFixture.initialize_governed_project(
+    u.Tests.WorktreeFixture.initialize_governed_project(
         flext_root, "flext", workspace="flext", database="flext", issue_prefix="flext"
     )
     for name in ("flext-core", "flext-cli"):
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             flext_root / name,
             name,
             workspace=name,
@@ -65,14 +64,14 @@ def _flext_workspace(tmp_path: Path) -> Path:
             issue_prefix=name,
             beads_owner=False,
         )
-        WorktreeFixture.link_member_beads(
+        u.Tests.WorktreeFixture.link_member_beads(
             flext_root / name,
             flext_root,
             workspace_name="flext",
             database="flext",
             issue_prefix="flext",
         )
-    WorktreeFixture.write_gitmodules(flext_root, ("flext-core", "flext-cli"))
+    u.Tests.WorktreeFixture.write_gitmodules(flext_root, ("flext-core", "flext-cli"))
     return flext_root
 
 

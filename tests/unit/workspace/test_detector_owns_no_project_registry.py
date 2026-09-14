@@ -9,12 +9,11 @@ from flext_tests import tm
 from flext_infra import config
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from tests import u
-from tests.unit.workspace import WorktreeFixture
 
 
 def _standalone(root: Path, *, name: str) -> Path:
     """Create a real Git repository that flext-infra has never heard of."""
-    WorktreeFixture.initialize_governed_project(
+    u.Tests.WorktreeFixture.initialize_governed_project(
         root,
         name,
         workspace=f"{name}-workspace",

@@ -10,7 +10,6 @@ from flext_tests import tm
 from flext_infra import c
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import u
-from tests.unit.workspace import WorktreeFixture
 
 _TRANSACTION_MARKER = "-transaction-"
 
@@ -30,7 +29,7 @@ def _seed_committed_drift(tmp_path: Path) -> tuple[Path, Path]:
     Returns the conformed repository root and the drifted file: the shared
     builder owns where the repository lives below ``tmp_path``.
     """
-    root = WorktreeFixture.conformed_root(tmp_path)
+    root = u.Tests.WorktreeFixture.conformed_root(tmp_path)
     drifted = root / c.Infra.MAKEFILE_FILENAME
     drifted.write_text(
         f"{drifted.read_text(encoding='utf-8')}# managed drift\n", encoding="utf-8"

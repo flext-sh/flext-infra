@@ -10,7 +10,6 @@ from flext_tests import tm
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import u
-from tests.unit.workspace import WorktreeFixture
 
 
 class TestsCodegenBeadsProjection:
@@ -18,7 +17,7 @@ class TestsCodegenBeadsProjection:
 
     @staticmethod
     def _project(root: Path, *, database: str, issue_prefix: str) -> Path:
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             root,
             "fixture-project",
             workspace="fixture-workspace",

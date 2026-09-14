@@ -10,7 +10,6 @@ from flext_tests import tm
 from flext_infra import main as infra_main
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, u
-from tests.unit.workspace import WorktreeFixture
 
 
 def _write_project(project_root: Path, name: str) -> None:
@@ -41,7 +40,7 @@ def _write_workspace(repository_root: Path) -> None:
         repository_root, origin_url=u.Tests.repository_ref("workspace").url
     )
     _write_project(repository_root / "demo-a", "demo-a")
-    WorktreeFixture.write_gitmodules(repository_root, ("demo-a",))
+    u.Tests.WorktreeFixture.write_gitmodules(repository_root, ("demo-a",))
 
 
 def workspace_main(argv: list[str] | None = None) -> int:

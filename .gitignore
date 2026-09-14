@@ -19,6 +19,9 @@ uv.lock
 .claude/worktrees/
 .claude/settings.local.json.bak
 
+# BLOCK: member dependency lock (the fleet root owns it)
+uv.lock
+
 # WHITELIST: Governed agent projections (every repository role)
 !.agents/
 !.agents/**

@@ -7,11 +7,11 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import m, u
+from flext_infra import m
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
-from tests import TestsFlextInfraUtilities as test_u
+from tests import TestsFlextInfraUtilities as test_u, u
 
 if TYPE_CHECKING:
     from pathlib import Path

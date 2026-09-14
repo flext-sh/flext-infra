@@ -9,14 +9,14 @@ from flext_tests import tm
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
-from tests.unit.workspace import WorktreeFixture
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
 def _workspace(root: Path, distribution: str = "sample-member") -> Path:
-    WorktreeFixture.initialize_governed_project(
+    u.Tests.WorktreeFixture.initialize_governed_project(
         root,
         "sample",
         workspace="sample-workspace",
@@ -24,7 +24,7 @@ def _workspace(root: Path, distribution: str = "sample-member") -> Path:
         issue_prefix="sample-prefix",
     )
     member = root / distribution
-    WorktreeFixture.initialize_governed_project(
+    u.Tests.WorktreeFixture.initialize_governed_project(
         member,
         distribution,
         workspace=f"{distribution}-workspace",
@@ -32,14 +32,14 @@ def _workspace(root: Path, distribution: str = "sample-member") -> Path:
         issue_prefix=f"{distribution}-prefix",
         beads_owner=False,
     )
-    WorktreeFixture.link_member_beads(
+    u.Tests.WorktreeFixture.link_member_beads(
         member,
         root,
         workspace_name="sample-workspace",
         database="sample-database",
         issue_prefix="sample-prefix",
     )
-    WorktreeFixture.write_gitmodules(root, (distribution,))
+    u.Tests.WorktreeFixture.write_gitmodules(root, (distribution,))
     return root
 
 

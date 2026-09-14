@@ -19,11 +19,11 @@ if TYPE_CHECKING:
 import pytest
 from flext_tests import tm
 
-from flext_infra import m, r, u
+from flext_infra import m, r
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-from tests import TestsFlextInfraUtilities as tu
+from tests import TestsFlextInfraUtilities as tu, u
 
 
 def _flat_map_double(x: int) -> p.Result[int]:

@@ -165,7 +165,7 @@ class TestsFlextInfraUtilitiesDepsMixin:
             self, limits_path: Path | None = None
         ) -> t.StrMapping:
             del limits_path
-            limits: dict[str, str] = {}
+            limits: t.MutableStrMapping = {}
             return limits
 
     @staticmethod

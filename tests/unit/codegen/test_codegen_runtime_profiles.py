@@ -11,7 +11,6 @@ from flext_infra import c, config, m
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from tests import u
-from tests.unit.workspace import WorktreeFixture
 
 
 class TestCodegenRuntimeProfiles:
@@ -31,14 +30,14 @@ class TestCodegenRuntimeProfiles:
         root = tmp_path / "workspace"
         member = root / "sample-member" if composed else tmp_path / "sample-member"
         if composed:
-            WorktreeFixture.initialize_governed_project(
+            u.Tests.WorktreeFixture.initialize_governed_project(
                 root,
                 "sample-workspace",
                 workspace="sample-workspace",
                 database="sample_workspace",
                 issue_prefix="sample",
             )
-        pyproject = WorktreeFixture.initialize_governed_project(
+        pyproject = u.Tests.WorktreeFixture.initialize_governed_project(
             member,
             "sample-member",
             workspace="sample-workspace",
@@ -97,7 +96,7 @@ class TestCodegenRuntimeProfiles:
             encoding="utf-8",
         )
         if composed:
-            WorktreeFixture.attach_submodule(
+            u.Tests.WorktreeFixture.attach_submodule(
                 root,
                 member,
                 distribution="sample-member",

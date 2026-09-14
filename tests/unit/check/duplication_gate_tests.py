@@ -10,7 +10,6 @@ from flext_infra import c
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.gates.duplication import FlextInfraDuplicationGate
 from tests import m, u
-from tests.unit.workspace import WorktreeFixture
 
 _DUPLICATED_MODULE = """\
 def normalize_records(records: list[str]) -> tuple[str, ...]:
@@ -52,7 +51,7 @@ class TestDuplicationGate:
     def _governed_with_declared_trees(tmp_path: Path, *, declare_trees: bool) -> Path:
         """One governed checkout whose clones live only inside charts/."""
         root = tmp_path / "governed-duplication"
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             root,
             "fixture-duplication",
             workspace="duplication-workspace",
@@ -86,7 +85,7 @@ class TestDuplicationGate:
                 "  name: fixture-duplication\n"
                 "  distribution: fixture-duplication\n"
                 f"  provider: {provider.name}\n"
-                f"  url: {WorktreeFixture.governed_repository_url('fixture-duplication')}\n"
+                f"  url: {u.Tests.WorktreeFixture.governed_repository_url('fixture-duplication')}\n"
                 "  path: .\n"
                 "  role: standalone\n"
                 "  state: active\n"

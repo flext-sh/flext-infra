@@ -15,12 +15,11 @@ from flext_tests import tm
 from flext_infra import c
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from tests import u
-from tests.unit.workspace import WorktreeFixture
 
 
 def _governed_project(root: Path, name: str) -> Path:
     """Create one governed repository owned by the configured provider."""
-    WorktreeFixture.initialize_governed_project(
+    u.Tests.WorktreeFixture.initialize_governed_project(
         root,
         name,
         workspace=f"{name}-workspace",

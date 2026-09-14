@@ -13,7 +13,6 @@ and a real child process for the dispatch-level cases.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
@@ -21,32 +20,7 @@ from flext_infra import m
 from flext_infra.promoted.dispatcher import dispatch
 from flext_infra.promoted.invocation import validate_command_contract
 from flext_infra.promoted.registry import Registry
-
-if TYPE_CHECKING:
-    from flext_infra import p
-
-
-def _command(
-    *,
-    path: Path,
-    mutates: bool = True,
-    params: tuple[p.Infra.Promoted.Param, ...] = (),
-    verb: str = "probe",
-    what: str = "all",
-) -> p.Infra.Promoted.Command:
-    return m.Infra.Promoted.Command(
-        verb=verb,
-        what=what,
-        domain="probe",
-        summary="probe",
-        description="probe",
-        example=f"make {verb} WHAT={what}",
-        path=path,
-        mutates=mutates,
-        aliases=(),
-        params=params,
-        rules=(),
-    )
+from tests import u
 
 
 class TestsFlextInfraPromotedAlwaysExecutes:
@@ -56,7 +30,7 @@ class TestsFlextInfraPromotedAlwaysExecutes:
         self, tmp_path: Path
     ) -> None:
         """A mutating command declaring no APPLY parameter is a valid contract."""
-        command = _command(path=tmp_path / "scripts" / "probe" / "all.py")
+        command = u.Tests.promoted_command(path=tmp_path / "scripts" / "probe" / "all.py")
         validate_command_contract(command)
 
     def test_command_contract_accepts_mutating_command_with_apply(
@@ -69,7 +43,7 @@ class TestsFlextInfraPromotedAlwaysExecutes:
         check-mode selector.
         """
         param = m.Infra.Promoted.Param(name="APPLY", help="ignored", choices=("N", "Y"))
-        command = _command(
+        command = u.Tests.promoted_command(
             path=tmp_path / "scripts" / "probe" / "all.py", params=(param,)
         )
         validate_command_contract(command)
@@ -91,7 +65,7 @@ class TestsFlextInfraPromotedDispatchAlwaysExecutes:
             encoding="utf-8",
         )
         registry = Registry()
-        registry.add(_command(path=command_path))
+        registry.add(u.Tests.promoted_command(path=command_path))
         return registry, marker
 
     def test_dispatch_executes_with_no_ambient_apply(
