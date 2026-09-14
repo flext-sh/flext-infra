@@ -28,7 +28,9 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
         if stripped.startswith("$ "):
             return (stripped[2:],)
         return tuple(
-            match.group(0)[1:-1] for match in c.Infra.INLINE_CODE_RE.finditer(line)
+            match.group(0)[1:-1]
+            for match in c.Infra.INLINE_CODE_RE.finditer(line)
+            if len(match.group(0)[1:-1].split()) > 1
         )
 
     @staticmethod
@@ -81,7 +83,7 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
                     if legacy_apply:
                         issue = (
                             "legacy `APPLY` flag is exterminated: verbs mutate "
-                            "by default with zero variables"
+                            "by default; only APPLY=N opts out of mutation"
                         )
                     elif verb_spec is None:
                         issue = f"Make verb `{verb}` is not declared by the config SSOT"

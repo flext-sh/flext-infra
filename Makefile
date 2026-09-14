@@ -995,10 +995,13 @@ _builtin_status_diagnostics: _builtin_require_environment
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
-_builtin_docs_all:
+_builtin_docs_all: _builtin_gen_all
 	@set -eu; \
 	for action in $(DOCS_ACTIONS); do \
-		case "$$action" in fix) mode=--apply ;; *) mode= ;; esac; \
+		mode=; \
+		if [ "$(APPLY)" != "N" ]; then \
+			case "$$action" in fix) mode=--apply ;; esac; \
+		fi; \
 		$(PROJECT_FLEXT_INFRA) docs "$$action" --repository-root "$(PROJECT_ROOT)" --output-dir ".reports/docs" $$mode $(DOCS_PROJECT_ARGS); \
 	done
 
@@ -1064,7 +1067,7 @@ _builtin_gen_init:
 	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --check
 
 _builtin_gen_all:
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode $(if $(filter N,$(APPLY)),check,apply)
 
 # Structural rewrites have one selector-free public Make surface. The current
 # directory defines scope; callers never address ast-grep, Rope, or LSP directly.
