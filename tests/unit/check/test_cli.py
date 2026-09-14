@@ -139,14 +139,16 @@ class TestWorkspaceCheckCli:
             str(workspace),
             "--gates",
             "lint",
-            "--fix",
+            "--apply",
             "--ruff-args",
             "--select F401",
             "--projects",
             "flext-core",
         ])
 
-        tm.that(exit_code, eq=1)
+        # Apply mode reports what still fails without failing the run
+        # (operator 2026-09-14); an unparsable module is never rewritten.
+        tm.that(exit_code, eq=0)
         tm.that(
             module_path.read_text(encoding="utf-8"),
             eq='"""Fixture module."""\n\ndef broken(:\n',
@@ -165,7 +167,7 @@ class TestWorkspaceCheckCli:
             str(workspace),
             "--gates",
             "lint",
-            "--fix",
+            "--apply",
             "--check-only",
             "--ruff-args",
             "--select F401",

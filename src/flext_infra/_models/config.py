@@ -913,8 +913,18 @@ class FlextInfraConfigModels:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
-                    "Flags for ruff check --fix including unsafe-fixes; used by "
-                    "make fmt and make fix"
+                    "Flags for ruff check --fix including unsafe-fixes; the lint "
+                    "gate's apply mode (make fix), which reports leftovers"
+                )
+            ),
+        ]
+        lint_apply: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Flags for make fmt's ruff check: apply the same fixes and "
+                    "print leftover findings with a zero exit (operator "
+                    "2026-09-14); leftovers still fail make check"
                 )
             ),
         ]

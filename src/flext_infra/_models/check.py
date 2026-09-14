@@ -31,9 +31,6 @@ class FlextInfraModelsCheck:
                 alias="reports-dir", description="Directory used to write check reports"
             ),
         ] = f"{c.Infra.REPORTS_DIR_NAME}/check"
-        fix: Annotated[
-            bool, m.Field(False, description="Apply supported gate fixes before run")
-        ] = False
         check_only: Annotated[
             bool,
             m.Field(
