@@ -78,7 +78,7 @@ O código e os comandos de `flext-infra` continuam pertencendo a este
 repositório. A consulta aos documentos e ao tracker de `flext` foi autorizada
 explicitamente pelo operador durante a preparação deste handoff.
 
-- [AGENTS.md local](../../AGENTS.md) e a skill local
+- [AGENTS.md local](https://github.com/flext-sh/flext-infra/blob/05f04dd28d5ae724bae6a69e63864c6ecce0889d/AGENTS.md) e a skill local
   `flext-law` em `.agents/skills/flext-law/SKILL.md`: responsáveis canônicos,
   preservação de alterações, fluxo estrutural por `make mod` e prova real.
 - [ADR-005: SSOT e direção das facades](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/005-config-settings-constants-templates-schemas-ssot.md):
