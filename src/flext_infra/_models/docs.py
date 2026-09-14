@@ -28,7 +28,8 @@ class _FlextInfraDocsContracts:
             str, m.Field(alias="data-toc-label", description="Explicit TOC label")
         ]
         children: Annotated[
-            t.SequenceOf[DocsTocToken], m.Field(description="Nested heading tokens")
+            t.SequenceOf[_FlextInfraDocsContracts.DocsTocToken],
+            m.Field(description="Nested heading tokens"),
         ]
 
     class DocsRenderedToc(m.ContractModel):

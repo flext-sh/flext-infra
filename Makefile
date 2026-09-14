@@ -114,7 +114,7 @@ export TESTMON_DATAFILE
 # run inside MAKEFILE_ROOT: run from a foreign CWD they would report THAT
 # checkout's topology and redirect the verb to the wrong tree.
 ifeq ($(filter command line override,$(origin REPOSITORY_ROOT)),)
-ifneq ($(GEN_INIT_ONLY),)
+ifneq ($(filter standalone,$(MAKE_PROFILE))$(GEN_INIT_ONLY),)
 REPOSITORY_ROOT := $(MAKEFILE_ROOT)
 else
 REPOSITORY_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$(MAKEFILE_ROOT)"; fi)
@@ -922,7 +922,7 @@ _builtin-self-check: _builtin_require_environment
 
 _builtin-self-fmt: _builtin_require_environment
 	@$(UV_RUN) ruff format --preview $(RUFF_PATHS)
-	@$(UV_RUN) ruff check --preview --fix --unsafe-fixes --exit-zero $(RUFF_PATHS)
+	@$(UV_RUN) ruff check --preview --fix --unsafe-fixes $(RUFF_PATHS)
 
 _builtin-self-fix: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,canonical-alias,smells" --projects . --apply --report-findings
@@ -967,12 +967,11 @@ _builtin_test_all: _builtin_require_environment
 
 # Ruff is the style/autofix rule (make.ruff in codegen.yaml). Every
 # invocation uses --preview. Never weaken ruff to keep a file; change the code.
-# fmt and fix apply and report leftovers without failing the run (operator
-# 2026-09-14): fmt prints them through make.ruff.lint_apply; fix applies ruff
-# once through the lint gate, whose leftovers the check summary reports.
+# fmt and fix apply corrections and fail while diagnostics remain.
+# Their reports preserve the same verdict as the underlying quality gates.
 _builtin_fmt_all: _builtin_require_environment
 	@$(UV_RUN) ruff format --preview $(RUFF_PATHS)
-	@$(UV_RUN) ruff check --preview --fix --unsafe-fixes --exit-zero $(RUFF_PATHS)
+	@$(UV_RUN) ruff check --preview --fix --unsafe-fixes $(RUFF_PATHS)
 
 _builtin_fix_all: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,canonical-alias,smells" --projects . --apply --report-findings
