@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Annotated
 
 from flext_cli import m
+
 from flext_infra import t
 
 from .deps_tool_config_project_gitignore import (
