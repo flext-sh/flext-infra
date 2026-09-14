@@ -298,17 +298,15 @@ Infra:
       # Every ruff invocation uses --preview. Never weaken ruff to keep a
       # file; change the code. [tool.ruff] preview: true in tooling.yaml is
       # the same policy projected into pyproject.
-      # Operator 2026-09-14: fix and fmt APPLY and report leftover findings
-      # without failing the make run; leftovers keep failing `make check`.
-      # lint_fix is the lint gate's apply mode (make fix): ruff reports the
-      # leftovers the gate parses. lint_apply is make fmt's ruff check: it
-      # applies the same fixes and prints leftovers with a zero exit.
+      # Repair and formatting apply fixes and retain a failing exit status
+      # for remaining findings. Reporting never normalizes a red gate.
+      # lint_fix is the lint gate's apply mode; lint_apply is make fmt's check.
       ruff:
         format_check: [--preview, --check]
         format_apply: [--preview]
         lint_check: [--preview, --no-fix]
         lint_fix: [--preview, --fix, --unsafe-fixes]
-        lint_apply: [--preview, --fix, --unsafe-fixes, --exit-zero]
+        lint_apply: [--preview, --fix, --unsafe-fixes]
       # Why (mro-dipb): adaptive testmon GitHub Actions cache policy.
       # save_enabled stays false while storage-limit API returns HTTP 402 /
       # flext-infra sits near the default Actions cache ceiling (QUOTA_HOLD).
