@@ -12,7 +12,7 @@ from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import u
 
 
-class TestsWorkspaceMemberLedgerIdentity:
+class TestsFlextInfraWorkspaceMemberLedgerIdentity:
     """Prove parent and member identities remain in their own coordinates."""
 
     @staticmethod

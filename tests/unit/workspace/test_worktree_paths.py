@@ -10,7 +10,7 @@ from flext_infra import FlextInfraWorktreeService, c, m
 from tests import u
 
 
-class TestsWorktreePaths(u.Tests.WorktreeFixture):
+class TestsFlextInfraWorktreePaths(u.Tests.WorktreeFixture):
     """Group cohesive worktree behavior."""
 
     def test_list_reports_the_primary_worktree(self, tmp_path: Path) -> None:

@@ -22,33 +22,33 @@ if TYPE_CHECKING:
     from tests import m
 
 
-def _project_with_local_ruff_policy(tmp_path: Path, name: str) -> Path:
-    """Create one project whose local config extends Ruff per-file ignores."""
-    project_dir = tmp_path / name
-    config_dir = project_dir / "config"
-    config_dir.mkdir(parents=True)
-    (config_dir / "cli.yaml").write_text(
-        "ManagedArtifacts:\n"
-        "  Ruff:\n"
-        "    per_file_ignores:\n"
-        "      src/flext_cli/_config.py: [N802]\n",
-        encoding="utf-8",
-    )
-    return project_dir
-
-
-def _apply_ruff_phase_twice(
-    phase: FlextInfraEnsureRuffConfigPhase, project_dir: Path
-) -> t.StrSequence:
-    """Apply one Ruff phase twice to a fresh document and return the second changes."""
-    doc = u.Cli.toml_document()
-    path = project_dir / "pyproject.toml"
-    _ = phase.apply(doc, path=path)
-    return phase.apply(doc, path=path)
-
-
 class TestsFlextInfraDepsModernizerTooling:
     """Declarative tests for formatting, namespace, and Ruff phases."""
+
+    @staticmethod
+    def _project_with_local_ruff_policy(tmp_path: Path, name: str) -> Path:
+        """Create one project whose local config extends Ruff per-file ignores."""
+        project_dir = tmp_path / name
+        config_dir = project_dir / "config"
+        config_dir.mkdir(parents=True)
+        (config_dir / "cli.yaml").write_text(
+            "ManagedArtifacts:\n"
+            "  Ruff:\n"
+            "    per_file_ignores:\n"
+            "      src/flext_cli/_config.py: [N802]\n",
+            encoding="utf-8",
+        )
+        return project_dir
+
+    @staticmethod
+    def _apply_ruff_phase_twice(
+        phase: FlextInfraEnsureRuffConfigPhase, project_dir: Path
+    ) -> t.StrSequence:
+        """Apply one Ruff phase twice to a fresh document and return the second changes."""
+        doc = u.Cli.toml_document()
+        path = project_dir / "pyproject.toml"
+        _ = phase.apply(doc, path=path)
+        return phase.apply(doc, path=path)
 
     @staticmethod
     def _deptry_mapping(doc: t.Cli.TomlDocument) -> t.JsonMapping:
@@ -311,7 +311,7 @@ select = ["E501"]
         package_dir.mkdir(parents=True, exist_ok=True)
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
 
-        second_changes = _apply_ruff_phase_twice(
+        second_changes = self._apply_ruff_phase_twice(
             FlextInfraEnsureRuffConfigPhase(tool_config_document), project_dir
         )
 
@@ -321,7 +321,7 @@ select = ["E501"]
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Project config extends Ruff policy only for its managed artifact."""
-        project_dir = _project_with_local_ruff_policy(tmp_path, "flext-cli")
+        project_dir = self._project_with_local_ruff_policy(tmp_path, "flext-cli")
         doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsureRuffConfigPhase(tool_config_document).apply(
@@ -352,9 +352,9 @@ select = ["E501"]
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Repeated project-local policy application reaches one fixed point."""
-        project_dir = _project_with_local_ruff_policy(tmp_path, "flext-cli")
+        project_dir = self._project_with_local_ruff_policy(tmp_path, "flext-cli")
 
-        second_changes = _apply_ruff_phase_twice(
+        second_changes = self._apply_ruff_phase_twice(
             FlextInfraEnsureRuffConfigPhase(tool_config_document), project_dir
         )
 
@@ -406,3 +406,6 @@ select = ["E501"]
         known_first_party = list(u.Tests.toml_strings(isort["known-first-party"]))
         tm.that(known_first_party, has="flext_core")
         tm.that("demo_migration_tool" in known_first_party, eq=False)
+
+
+__all__: list[str] = ["TestsFlextInfraDepsModernizerTooling"]

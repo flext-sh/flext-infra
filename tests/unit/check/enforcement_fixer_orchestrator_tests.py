@@ -16,7 +16,7 @@ from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrat
 from tests import c, u
 
 
-class TestsEnforcementFixerOrchestrator:
+class TestsFlextInfraEnforcementFixerOrchestrator:
     """Root-cause guardrails for fixer collection and routing."""
 
     @staticmethod
@@ -312,3 +312,6 @@ class TestsEnforcementFixerOrchestrator:
         # The read-only guarantee is the worktree itself: a dry run forces
         # check_after=False, so no gate can rewrite a file behind the preview.
         tm.that(pre_status, eq=post_status)
+
+
+__all__: list[str] = ["TestsFlextInfraEnforcementFixerOrchestrator"]

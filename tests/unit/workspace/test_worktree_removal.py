@@ -10,7 +10,7 @@ from flext_infra import FlextInfraWorktreeService, c
 from tests import u
 
 
-class TestsWorktreeRemoval(u.Tests.WorktreeFixture):
+class TestsFlextInfraWorktreeRemoval(u.Tests.WorktreeFixture):
     """Group cohesive worktree behavior."""
 
     def test_remove_refuses_an_epic_lane_with_registered_children(

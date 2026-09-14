@@ -22,17 +22,14 @@ from tests import m, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
 
-
-@pytest.fixture
-def v() -> FlextInfraValidateLazyMapFreshness:
-    """Shared validator instance."""
-    return FlextInfraValidateLazyMapFreshness()
-
-
-class TestLazyMapFreshnessValidatorCore:
+class TestsFlextInfraLazyMapFreshness:
     """Wrapper semantics: runs the check-only generator and formats the report."""
+
+    @pytest.fixture
+    def v(self) -> FlextInfraValidateLazyMapFreshness:
+        """Shared validator instance."""
+        return FlextInfraValidateLazyMapFreshness()
 
     def test_empty_workspace_yields_passing_report(
         self, tmp_path: Path, v: FlextInfraValidateLazyMapFreshness
@@ -79,4 +76,4 @@ class TestLazyMapFreshnessValidatorCore:
         tm.that(len(tuple(report.violations)), gte=1)
 
 
-__all__: t.StrSequence = []
+__all__: list[str] = ["TestsFlextInfraLazyMapFreshness"]

@@ -15,64 +15,70 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def _demo_module(tmp_path: Path, module_name: str, source: str) -> tuple[Path, Path]:
-    """Create one flext-demo workspace and write ``source`` into its module."""
-    repository_root, package_root = u.Tests.create_lazy_init_workspace(
-        tmp_path, project_name="flext-demo", package_name="flext_demo"
-    )
-    module_path = package_root / module_name
-    module_path.write_text(source, encoding="utf-8")
-    return repository_root, module_path
-
-
-def _paired_namespace_projects(root: Path) -> tuple[Path, Path, Path, Path, Path]:
-    """Declare two sibling namespace projects and return their roots and modules."""
-    project_root, package_root = u.Tests.create_lazy_init_workspace(
-        root, project_name="flext-infra", package_name="flext_infra"
-    )
-    sibling_root, sibling_package_root = u.Tests.create_lazy_init_workspace(
-        root, project_name="flext-demo", package_name="flext_demo"
-    )
-    module_path = package_root / "models.py"
-    u.Tests.write_lazy_init_namespace_module(
-        module_path, class_name="FlextInfraModels", alias="m", docstring="Models."
-    )
-    sibling_module_path = sibling_package_root / "models.py"
-    u.Tests.write_lazy_init_namespace_module(
-        sibling_module_path,
-        class_name="FlextDemoModels",
-        alias="m",
-        docstring="Models.",
-    )
-    return project_root, package_root, module_path, sibling_root, sibling_module_path
-
-
-def _module_exports(
-    repository_root: Path, module_path: Path, options: t.JsonMapping
-) -> tuple[str, ...]:
-    """Read one module's public export contract through the Rope workspace."""
-    with flext_infra.infra.rope_workspace(repository_root) as rope:
-        return tuple(
-            rope.exports(
-                module_path,
-                export_options=m.Infra.ExportOptions.model_validate(options),
-            )
-        )
-
-
-def _module_objects_by_name(
-    repository_root: Path, module_path: Path
-) -> dict[str, m.Infra.Census.Object]:
-    """Index one module's non-local objects by their declared name."""
-    with flext_infra.infra.rope_workspace(repository_root) as rope:
-        return {
-            item.name: item
-            for item in rope.objects(module_path, include_local_scopes=False)
-        }
-
-
 class TestsFlextInfraInfraRopeService:
     """Validate the public Rope workspace DSL through public methods only."""
+
+    def _demo_module(
+        self, tmp_path: Path, module_name: str, source: str
+    ) -> tuple[Path, Path]:
+        """Create one flext-demo workspace and write ``source`` into its module."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
+        )
+        module_path = package_root / module_name
+        module_path.write_text(source, encoding="utf-8")
+        return repository_root, module_path
+
+    def _paired_namespace_projects(
+        self, root: Path
+    ) -> tuple[Path, Path, Path, Path, Path]:
+        """Declare two sibling namespace projects and return their roots and modules."""
+        project_root, package_root = u.Tests.create_lazy_init_workspace(
+            root, project_name="flext-infra", package_name="flext_infra"
+        )
+        sibling_root, sibling_package_root = u.Tests.create_lazy_init_workspace(
+            root, project_name="flext-demo", package_name="flext_demo"
+        )
+        module_path = package_root / "models.py"
+        u.Tests.write_lazy_init_namespace_module(
+            module_path, class_name="FlextInfraModels", alias="m", docstring="Models."
+        )
+        sibling_module_path = sibling_package_root / "models.py"
+        u.Tests.write_lazy_init_namespace_module(
+            sibling_module_path,
+            class_name="FlextDemoModels",
+            alias="m",
+            docstring="Models.",
+        )
+        return (
+            project_root,
+            package_root,
+            module_path,
+            sibling_root,
+            sibling_module_path,
+        )
+
+    def _module_exports(
+        self, repository_root: Path, module_path: Path, options: t.JsonMapping
+    ) -> tuple[str, ...]:
+        """Read one module's public export contract through the Rope workspace."""
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
+            return tuple(
+                rope.exports(
+                    module_path,
+                    export_options=m.Infra.ExportOptions.model_validate(options),
+                )
+            )
+
+    def _module_objects_by_name(
+        self, repository_root: Path, module_path: Path
+    ) -> dict[str, m.Infra.Census.Object]:
+        """Index one module's non-local objects by their declared name."""
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
+            return {
+                item.name: item
+                for item in rope.objects(module_path, include_local_scopes=False)
+            }
 
     @pytest.mark.parametrize(
         ("source", "symbol", "documented"),
@@ -168,7 +174,7 @@ class TestsFlextInfraInfraRopeService:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        exports = _module_exports(
+        exports = self._module_exports(
             repository_root,
             module_path,
             {"allow_assignments": True, "allow_functions": True},
@@ -191,7 +197,7 @@ class TestsFlextInfraInfraRopeService:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        exports = _module_exports(
+        exports = self._module_exports(
             repository_root, module_path, {"allow_assignments": True}
         )
 
@@ -305,7 +311,7 @@ class TestsFlextInfraInfraRopeService:
             module_path,
             sibling_root,
             sibling_module_path,
-        ) = _paired_namespace_projects(monorepo_root)
+        ) = self._paired_namespace_projects(monorepo_root)
 
         for call_root in (monorepo_root, repository_root, package_root):
             with flext_infra.infra.rope_workspace(call_root) as rope:
@@ -322,7 +328,7 @@ class TestsFlextInfraInfraRopeService:
         projects_root = tmp_path / "projects"
         projects_root.mkdir()
         project_root, package_root, module_path, sibling_root, sibling_module_path = (
-            _paired_namespace_projects(projects_root)
+            self._paired_namespace_projects(projects_root)
         )
 
         with flext_infra.infra.rope_workspace(package_root) as rope:
@@ -703,7 +709,7 @@ class TestsFlextInfraInfraRopeService:
         self, tmp_path: Path
     ) -> None:
         """Legacy root facade declarations are ordinary objects."""
-        repository_root, module_path = _demo_module(
+        repository_root, module_path = self._demo_module(
             tmp_path,
             "models.py",
             "from __future__ import annotations\n\n"
@@ -712,7 +718,7 @@ class TestsFlextInfraInfraRopeService:
             "m = FlextDemoModels\n",
         )
 
-        objects = _module_objects_by_name(repository_root, module_path)
+        objects = self._module_objects_by_name(repository_root, module_path)
 
         tm.that(objects["FlextDemoModels"].is_facade_member, eq=False)
         tm.that(objects["m"].is_facade_member, eq=False)
@@ -721,7 +727,7 @@ class TestsFlextInfraInfraRopeService:
         self, tmp_path: Path
     ) -> None:
         """Private and dunder names expose zero production references."""
-        repository_root, module_path = _demo_module(
+        repository_root, module_path = self._demo_module(
             tmp_path,
             "service.py",
             "from __future__ import annotations\n\n"
@@ -730,7 +736,7 @@ class TestsFlextInfraInfraRopeService:
             "    return 1\n",
         )
 
-        objects = _module_objects_by_name(repository_root, module_path)
+        objects = self._module_objects_by_name(repository_root, module_path)
 
         tm.that(objects, has="__all__")
         tm.that(objects["__all__"].references_count, eq=0)
@@ -853,3 +859,6 @@ class TestsFlextInfraInfraRopeService:
             eq={str(module_path)},
         )
         tm.that([site.line for site in candidate.runtime_reference_sites], eq=[6])
+
+
+__all__: list[str] = ["TestsFlextInfraInfraRopeService"]

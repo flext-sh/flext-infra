@@ -18,7 +18,7 @@ from tests import c, u
 # (Infra.tooling.tools.pytest.slow-timeout-seconds) instead of a hardcoded
 # ceiling, so a real hang still aborts at the declared wall.
 @pytest.mark.slow
-class TestCodegenManifestlessExisting:
+class TestsFlextInfraCodegenManifestlessExisting:
     def test_existing_root_uses_pep621_metadata_for_managed_artifacts(
         self, infra_git_repo: Path
     ) -> None:
@@ -172,4 +172,4 @@ class TestCodegenManifestlessExisting:
         tm.that(owned_runtime[0] in rendered, eq=True)
 
 
-__all__: list[str] = []
+__all__: list[str] = ["TestsFlextInfraCodegenManifestlessExisting"]

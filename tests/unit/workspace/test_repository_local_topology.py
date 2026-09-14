@@ -13,49 +13,49 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from tests import u
 
 
-def _beads_fixture_root(tmp_path: Path, directory: str) -> Path:
-    """Initialize one governed checkout carrying the canonical Beads identity."""
-    return u.Tests.WorktreeFixture.governed_workspace(
-        tmp_path,
-        directory,
-        distribution=f"fixture-{directory}",
-        workspace="fixture-workspace",
-        database="fixture-database",
-        issue_prefix="fixture-prefix",
-    )
-
-
-def _beads_fixture_payload() -> dict[str, t.JsonValue]:
-    """Return the canonical Beads identity payload a fixture checkout declares."""
-    return {
-        "version": 1,
-        "workspace": "fixture-workspace",
-        "database": "fixture-database",
-        "issue_prefix": "fixture-prefix",
-    }
-
-
-def _self_named_governed_root(tmp_path: Path, directory: str) -> Path:
-    """Initialize one governed checkout whose identity derives from its directory."""
-    name = f"fixture-{directory}"
-    return u.Tests.WorktreeFixture.governed_workspace(
-        tmp_path,
-        directory,
-        distribution=name,
-        workspace=name,
-        database=name.replace("-", "_"),
-        issue_prefix=name,
-    )
-
-
-class TestsRepositoryLocalTopology:
+class TestsFlextInfraRepositoryLocalTopology:
     """Prove each repository owns its topology and typed Beads identity."""
+
+    @staticmethod
+    def _beads_fixture_root(tmp_path: Path, directory: str) -> Path:
+        """Initialize one governed checkout carrying the canonical Beads identity."""
+        return u.Tests.WorktreeFixture.governed_workspace(
+            tmp_path,
+            directory,
+            distribution=f"fixture-{directory}",
+            workspace="fixture-workspace",
+            database="fixture-database",
+            issue_prefix="fixture-prefix",
+        )
+
+    @staticmethod
+    def _beads_fixture_payload() -> dict[str, t.JsonValue]:
+        """Return the canonical Beads identity payload a fixture checkout declares."""
+        return {
+            "version": 1,
+            "workspace": "fixture-workspace",
+            "database": "fixture-database",
+            "issue_prefix": "fixture-prefix",
+        }
+
+    @staticmethod
+    def _self_named_governed_root(tmp_path: Path, directory: str) -> Path:
+        """Initialize one governed checkout whose identity derives from its directory."""
+        name = f"fixture-{directory}"
+        return u.Tests.WorktreeFixture.governed_workspace(
+            tmp_path,
+            directory,
+            distribution=name,
+            workspace=name,
+            database=name.replace("-", "_"),
+            issue_prefix=name,
+        )
 
     def test_selected_workspace_manifest_owns_repository_policy(
         self, tmp_path: Path
     ) -> None:
         """Preserve typed local policy after reconciling it with observed Git."""
-        root = _self_named_governed_root(tmp_path, "manifest-policy")
+        root = self._self_named_governed_root(tmp_path, "manifest-policy")
         observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         manifest: dict[str, t.JsonValue] = {
             "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
@@ -81,7 +81,7 @@ class TestsRepositoryLocalTopology:
         self, tmp_path: Path
     ) -> None:
         """Fail closed when selected declarative identity disagrees with Git."""
-        root = _self_named_governed_root(tmp_path, "manifest-contradiction")
+        root = self._self_named_governed_root(tmp_path, "manifest-contradiction")
         _ = u.Tests.WorktreeFixture.override_repository_manifest(
             root, {"distribution": "different-distribution"}
         )
@@ -109,7 +109,7 @@ class TestsRepositoryLocalTopology:
         expected_error: str,
     ) -> None:
         """Reject incompatible or partial manifest envelopes before policy use."""
-        root = _self_named_governed_root(tmp_path, expected_error)
+        root = self._self_named_governed_root(tmp_path, expected_error)
         observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         payload: dict[str, t.JsonValue] = {
             "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
@@ -167,8 +167,8 @@ class TestsRepositoryLocalTopology:
         self, tmp_path: Path, missing_field: str
     ) -> None:
         """Reject partial identity instead of inferring a value elsewhere."""
-        root = _beads_fixture_root(tmp_path, missing_field)
-        payload = _beads_fixture_payload()
+        root = self._beads_fixture_root(tmp_path, missing_field)
+        payload = self._beads_fixture_payload()
         del payload[missing_field]
         tm.ok(u.Cli.yaml_dump(root / "config" / "beads.yaml", payload))
 
@@ -194,8 +194,8 @@ class TestsRepositoryLocalTopology:
         self, tmp_path: Path, field: str, invalid_value: t.JsonValue
     ) -> None:
         """Fail closed on values outside the typed local contract."""
-        root = _beads_fixture_root(tmp_path, field)
-        payload = _beads_fixture_payload()
+        root = self._beads_fixture_root(tmp_path, field)
+        payload = self._beads_fixture_payload()
         payload["custom_issue_types"] = list[t.JsonValue]()
         payload[field] = invalid_value
         tm.ok(u.Cli.yaml_dump(root / "config" / "beads.yaml", payload))
@@ -323,7 +323,7 @@ class TestsRepositoryLocalTopology:
         self, tmp_path: Path
     ) -> None:
         """A checkout without .gitmodules cannot declare the workspace role."""
-        root = _self_named_governed_root(tmp_path, "manifest-role-claim")
+        root = self._self_named_governed_root(tmp_path, "manifest-role-claim")
         _ = u.Tests.WorktreeFixture.override_repository_manifest(
             root, {"role": c.Infra.MakeProfile.WORKSPACE}
         )
@@ -714,3 +714,6 @@ class TestsRepositoryLocalTopology:
             FlextInfraWorkspaceDetector.repository_is_governed(repository, provider),
             eq=True,
         )
+
+
+__all__: list[str] = ["TestsFlextInfraRepositoryLocalTopology"]

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestsTestImportDag:
+class TestsFlextInfraImportDag:
     """Verify allowed and forbidden package-test import edges."""
 
     @staticmethod
@@ -76,4 +76,4 @@ class TestsTestImportDag:
         tm.that(report.passed, eq=True)
 
 
-__all__: list[str] = []
+__all__: list[str] = ["TestsFlextInfraImportDag"]

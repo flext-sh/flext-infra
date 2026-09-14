@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestFlextInfraConfigFixer:
+class TestsFlextInfraConfigFixer:
     """Test suite for FlextInfraConfigFixer."""
 
     def test_init_creates_instance(self) -> None:
@@ -99,3 +99,6 @@ class TestFlextInfraConfigFixer:
         result = fixer.process_file(pyproject, dry_run=True)
         tm.ok(result)
         tm.that(pyproject.read_text(), eq=original_content)
+
+
+__all__: list[str] = ["TestsFlextInfraConfigFixer"]

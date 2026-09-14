@@ -311,9 +311,7 @@ class TestsFlextInfraRefactorMainCli:
     @classmethod
     def _build_basic_workspace(cls, tmp_path: Path) -> tuple[Path, Path]:
         return cls._build_service_workspace(
-            tmp_path,
-            service_source=TestsFlextInfraRefactorMainCli._BASIC_SERVICE,
-            init_source=TestsFlextInfraRefactorMainCli._BASIC_INIT,
+            tmp_path, service_source=cls._BASIC_SERVICE, init_source=cls._BASIC_INIT
         )
 
     @classmethod
@@ -321,27 +319,23 @@ class TestsFlextInfraRefactorMainCli:
         cls, tmp_path: Path
     ) -> tuple[Path, Path]:
         return cls._build_module_workspace(
-            tmp_path, TestsFlextInfraRefactorMainCli._DUPLICATE_RUNTIME_ALIAS_MODULE
+            tmp_path, cls._DUPLICATE_RUNTIME_ALIAS_MODULE
         )
 
     @classmethod
     def _build_facade_member_workspace(cls, tmp_path: Path) -> tuple[Path, Path]:
-        return cls._build_module_workspace(
-            tmp_path, TestsFlextInfraRefactorMainCli._FACADE_MEMBER_MODULE
-        )
+        return cls._build_module_workspace(tmp_path, cls._FACADE_MEMBER_MODULE)
 
     @classmethod
     def _build_compatibility_alias_workspace(cls, tmp_path: Path) -> tuple[Path, Path]:
-        return cls._build_module_workspace(
-            tmp_path, TestsFlextInfraRefactorMainCli._COMPATIBILITY_ALIAS_MODULE
-        )
+        return cls._build_module_workspace(tmp_path, cls._COMPATIBILITY_ALIAS_MODULE)
 
     @classmethod
     def _build_test_only_workspace(cls, tmp_path: Path) -> Path:
         return cls._build_service_workspace(
             tmp_path,
-            service_source=TestsFlextInfraRefactorMainCli._TEST_ONLY_FUNCTION_SERVICE,
-            test_source=TestsFlextInfraRefactorMainCli._TEST_ONLY_FUNCTION_TEST,
+            service_source=cls._TEST_ONLY_FUNCTION_SERVICE,
+            test_source=cls._TEST_ONLY_FUNCTION_TEST,
         )[0]
 
     @classmethod
@@ -350,24 +344,24 @@ class TestsFlextInfraRefactorMainCli:
     ) -> tuple[Path, Path]:
         return cls._build_service_workspace(
             tmp_path,
-            service_source=TestsFlextInfraRefactorMainCli._SEQUENCE_TEST_ONLY_SERVICE,
-            test_source=TestsFlextInfraRefactorMainCli._SEQUENCE_TEST_ONLY_TEST,
+            service_source=cls._SEQUENCE_TEST_ONLY_SERVICE,
+            test_source=cls._SEQUENCE_TEST_ONLY_TEST,
         )
 
     @classmethod
     def _build_test_only_method_workspace(cls, tmp_path: Path) -> Path:
         return cls._build_service_workspace(
             tmp_path,
-            service_source=TestsFlextInfraRefactorMainCli._TEST_ONLY_METHOD_SERVICE,
-            test_source=TestsFlextInfraRefactorMainCli._TEST_ONLY_METHOD_TEST,
+            service_source=cls._TEST_ONLY_METHOD_SERVICE,
+            test_source=cls._TEST_ONLY_METHOD_TEST,
         )[0]
 
     @classmethod
     def _build_unused_nested_function_workspace(cls, tmp_path: Path) -> Path:
         return cls._build_service_workspace(
             tmp_path,
-            service_source=TestsFlextInfraRefactorMainCli._UNUSED_NESTED_FUNCTION_SERVICE,
-            test_source=TestsFlextInfraRefactorMainCli._UNUSED_NESTED_FUNCTION_TEST,
+            service_source=cls._UNUSED_NESTED_FUNCTION_SERVICE,
+            test_source=cls._UNUSED_NESTED_FUNCTION_TEST,
         )[0]
 
     @classmethod
@@ -375,16 +369,15 @@ class TestsFlextInfraRefactorMainCli:
         cls, tmp_path: Path
     ) -> tuple[Path, Path]:
         return cls._build_service_workspace(
-            tmp_path,
-            service_source=TestsFlextInfraRefactorMainCli._UNUSED_TOP_LEVEL_SERVICE,
+            tmp_path, service_source=cls._UNUSED_TOP_LEVEL_SERVICE
         )
 
     @classmethod
     def _build_unused_local_workspace(cls, tmp_path: Path) -> Path:
         return cls._build_service_workspace(
             tmp_path,
-            service_source=TestsFlextInfraRefactorMainCli._UNUSED_LOCAL_SERVICE,
-            test_source=TestsFlextInfraRefactorMainCli._UNUSED_LOCAL_TEST,
+            service_source=cls._UNUSED_LOCAL_SERVICE,
+            test_source=cls._UNUSED_LOCAL_TEST,
         )[0]
 
     @classmethod
@@ -394,15 +387,10 @@ class TestsFlextInfraRefactorMainCli:
         workspace = tmp_path / "workspace"
         cls._write_workspace_pyproject(workspace)
         init_path = workspace / "src" / "sample_pkg" / "__init__.py"
-        cls._write(init_path, TestsFlextInfraRefactorMainCli._LAZY_CASCADE_INIT)
+        cls._write(init_path, cls._LAZY_CASCADE_INIT)
         service_file = workspace / "src" / "sample_pkg" / "operations.py"
-        cls._write(
-            service_file, TestsFlextInfraRefactorMainCli._LAZY_CASCADE_OPERATIONS
-        )
-        cls._write(
-            workspace / "tests" / "test_operations.py",
-            TestsFlextInfraRefactorMainCli._LAZY_CASCADE_TEST,
-        )
+        cls._write(service_file, cls._LAZY_CASCADE_OPERATIONS)
+        cls._write(workspace / "tests" / "test_operations.py", cls._LAZY_CASCADE_TEST)
         return workspace, service_file, init_path
 
     def test_refactor_census_accepts_the_repository_root_option(
@@ -418,7 +406,7 @@ class TestsFlextInfraRefactorMainCli:
         self, tmp_path: Path
     ) -> None:
         workspace, module_path = self._build_module_workspace(
-            tmp_path, TestsFlextInfraRefactorMainCli._MISSING_RUNTIME_ALIAS_MODULE
+            tmp_path, self._MISSING_RUNTIME_ALIAS_MODULE
         )
 
         self._apply_census(workspace, rules="runtime_alias")
@@ -598,10 +586,8 @@ class TestsFlextInfraRefactorMainCli:
         test_source = test_file.read_text(encoding="utf-8")
         tm.that(service_source, lacks="only_for_tests")
         tm.that(test_source, has="only_for_tests")
-        tm.that(
-            TestsFlextInfraRefactorMainCli._parse_source_ast(service_source), ok=True
-        )
-        tm.that(TestsFlextInfraRefactorMainCli._parse_source_ast(test_source), ok=True)
+        tm.that(self._parse_source_ast(service_source), ok=True)
+        tm.that(self._parse_source_ast(test_source), ok=True)
 
         self._assert_no_unused_functions(workspace)
 
@@ -630,11 +616,9 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(init_source, has="build_lazy_import_map(")
         tm.that(init_source, has="helper_used")
         tm.that(helpers_source, has="helper_used")
-        tm.that(TestsFlextInfraRefactorMainCli._parse_source_ast(init_source), ok=True)
-        tm.that(
-            TestsFlextInfraRefactorMainCli._parse_source_ast(helpers_source), ok=True
-        )
-        tm.that(TestsFlextInfraRefactorMainCli._parse_source_ast(test_source), ok=True)
+        tm.that(self._parse_source_ast(init_source), ok=True)
+        tm.that(self._parse_source_ast(helpers_source), ok=True)
+        tm.that(self._parse_source_ast(test_source), ok=True)
 
         self._assert_no_unused_functions(workspace)
 
@@ -659,8 +643,8 @@ class TestsFlextInfraRefactorMainCli:
     ) -> None:
         workspace, service_file = self._build_service_workspace(
             tmp_path,
-            service_source=TestsFlextInfraRefactorMainCli._DECORATED_UNUSED_SERVICE,
-            test_source=TestsFlextInfraRefactorMainCli._DECORATED_UNUSED_TEST,
+            service_source=self._DECORATED_UNUSED_SERVICE,
+            test_source=self._DECORATED_UNUSED_TEST,
         )
 
         self._apply_census(workspace, rules="unused", kinds="function")
@@ -669,9 +653,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(service_source, lacks="only_for_tests")
         tm.that(service_source, lacks="@log_entry")
         tm.that(service_source, has="def log_entry")
-        tm.that(
-            TestsFlextInfraRefactorMainCli._parse_source_ast(service_source), ok=True
-        )
+        tm.that(self._parse_source_ast(service_source), ok=True)
 
     def test_refactor_census_strip_module_all_entry_multi_line(self) -> None:
         source = (
@@ -730,9 +712,7 @@ class TestsFlextInfraRefactorMainCli:
         service_source = service_file.read_text(encoding="utf-8")
         tm.that(service_source, lacks="def only_for_cleanup")
         tm.that(service_source, lacks="from collections.abc import Sequence")
-        tm.that(
-            TestsFlextInfraRefactorMainCli._parse_source_ast(service_source), ok=True
-        )
+        tm.that(self._parse_source_ast(service_source), ok=True)
 
         self._assert_no_unused_functions(workspace)
 
@@ -862,7 +842,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(service_entry["modified"], eq=True)
         tm.that(service_entry["success"], eq=True)
         tm.that(
-            list(TestsFlextInfraRefactorMainCli._strings(service_entry["changes"])),
+            list(self._strings(service_entry["changes"])),
             eq=["delete_object_definition: only_for_cleanup (unused)"],
         )
 
@@ -899,7 +879,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(service_entry["modified"], eq=True)
         tm.that(service_entry["success"], eq=True)
         tm.that(
-            list(TestsFlextInfraRefactorMainCli._strings(service_entry["changes"])),
+            list(self._strings(service_entry["changes"])),
             eq=["delete_object_definition: only_for_tests (unused)"],
         )
 
@@ -942,3 +922,6 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(report.removal_candidate_count, eq=0)
 
         tm.that(len(self._impact_map_entries(impact_map_path)), eq=1)
+
+
+__all__: list[str] = ["TestsFlextInfraRefactorMainCli"]

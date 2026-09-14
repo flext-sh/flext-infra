@@ -13,7 +13,7 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from tests import u
 
 
-class TestCodegenRuntimeProfiles:
+class TestsFlextInfraCodegenRuntimeProfiles:
     @pytest.mark.parametrize(
         "upstream",
         tuple(
@@ -180,3 +180,6 @@ class TestCodegenRuntimeProfiles:
             u.Infra.overlay_preserved(rendered, live),
             has="validate runtime dependencies",
         )
+
+
+__all__: list[str] = ["TestsFlextInfraCodegenRuntimeProfiles"]

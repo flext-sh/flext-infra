@@ -16,7 +16,7 @@ from tests import u as test_u
 pytestmark = pytest.mark.slow
 
 
-class TestsCodegenMakeEnvironment:
+class TestsFlextInfraCodegenMakeEnvironment:
     """Prove generated operations ignore the caller shell environment."""
 
     @staticmethod
@@ -911,3 +911,6 @@ class TestsCodegenMakeEnvironment:
             "_builtin-conform",
         ):
             tm.that(makefile, lacks=forbidden)
+
+
+__all__: list[str] = ["TestsFlextInfraCodegenMakeEnvironment"]

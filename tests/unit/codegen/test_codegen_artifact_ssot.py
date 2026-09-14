@@ -15,14 +15,13 @@ from tests import u
 CodegenSpec = type(config.Infra.codegen)
 
 
-@pytest.fixture(scope="module")
-def codegen() -> CodegenSpec:
-    """Return the production configuration consumed by every projection."""
-    return config.Infra.codegen
-
-
-class TestsCodegenArtifactSsot:
+class TestsFlextInfraCodegenArtifactSsot:
     """Property contracts that remain valid for arbitrary configured artifacts."""
+
+    @pytest.fixture(scope="module")
+    def codegen(self) -> CodegenSpec:
+        """Return the production configuration consumed by every projection."""
+        return config.Infra.codegen
 
     def test_artifact_names_are_unique(self, codegen: CodegenSpec) -> None:
         """Reject ambiguous projection keys at the typed owner."""
@@ -202,3 +201,6 @@ class TestsCodegenArtifactSsot:
             settings["files.watcherExclude"],
             eq=dict(codegen.vscode_watcher_exclude_map),
         )
+
+
+__all__: list[str] = ["TestsFlextInfraCodegenArtifactSsot"]

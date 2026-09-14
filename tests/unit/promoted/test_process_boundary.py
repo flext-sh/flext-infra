@@ -259,3 +259,6 @@ raise SystemExit(
                 "command must run on the workspace interpreter without an owner "
                 f"venv, got {exit_code}"
             )
+
+
+__all__: list[str] = ["TestsFlextInfraPromotedProcessBoundary"]

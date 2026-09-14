@@ -10,7 +10,7 @@ from flext_infra import FlextInfraWorktreeService, c, m
 from tests import u
 
 
-class TestsAttachedRepositoryWorktree(u.Tests.WorktreeFixture):
+class TestsFlextInfraAttachedRepositoryWorktree(u.Tests.WorktreeFixture):
     """Exercise Git's primary registry for an attached repository."""
 
     def test_attached_submodule_uses_one_primary_local_container(

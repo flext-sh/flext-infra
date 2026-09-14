@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestValidateCli:
+class TestsFlextInfraValidateCli:
     """Exercise the public validate CLI entrypoints."""
 
     def test_stub_validate_accepts_all_flag(self, tmp_path: Path) -> None:
@@ -32,3 +32,6 @@ class TestValidateCli:
 
     def test_stub_validate_help_returns_zero(self) -> None:
         tm.that(infra_main(["validate", "stub-validate", "--help"]), eq=0)
+
+
+__all__: list[str] = ["TestsFlextInfraValidateCli"]

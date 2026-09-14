@@ -12,7 +12,7 @@ from flext_tests import tm
 from flext_infra import config, u
 
 
-class TestsCProfileEntry:
+class TestsFlextInfraCprofileEntry:
     # Why (suite budget): spawns a fresh interpreter to render the report;
     # cold interpreter start under xdist contention exceeds the case wall.
     @pytest.mark.slow
@@ -35,4 +35,4 @@ class TestsCProfileEntry:
         tm.that(len(report.splitlines()) <= policy.profile_limit + 10, eq=True)
 
 
-__all__: list[str] = []
+__all__: list[str] = ["TestsFlextInfraCprofileEntry"]

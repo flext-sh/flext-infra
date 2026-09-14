@@ -11,7 +11,11 @@ from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.gates.duplication import FlextInfraDuplicationGate
 from tests import m, u
 
-_DUPLICATED_MODULE = """\
+
+class TestsFlextInfraDuplicationGate:
+    """Exercise observable gate behavior with the real setup-provisioned tool."""
+
+    _DUPLICATED_MODULE = """\
 def normalize_records(records: list[str]) -> tuple[str, ...]:
     normalized: list[str] = []
     seen: set[str] = set()
@@ -24,13 +28,8 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
     return tuple(sorted(normalized))
 """
 
-
-def _ctx(root: Path) -> m.Infra.GateContext:
-    return m.Infra.GateContext(repository_root=root, reports_dir=root / "reports")
-
-
-class TestDuplicationGate:
-    """Exercise observable gate behavior with the real setup-provisioned tool."""
+    def _ctx(self, root: Path) -> m.Infra.GateContext:
+        return m.Infra.GateContext(repository_root=root, reports_dir=root / "reports")
 
     def test_registry_exposes_the_canonical_gate(self) -> None:
         gate = FlextInfraGateRegistry.default().create("duplication", Path.cwd())
@@ -40,7 +39,9 @@ class TestDuplicationGate:
         project = tmp_path / "missing-project"
         project.mkdir()
 
-        execution = FlextInfraDuplicationGate(tmp_path).check(project, _ctx(tmp_path))
+        execution = FlextInfraDuplicationGate(tmp_path).check(
+            project, self._ctx(tmp_path)
+        )
 
         tm.that(execution.result.passed, eq=False)
         tm.that(len(execution.issues), eq=1)
@@ -106,7 +107,7 @@ class TestDuplicationGate:
         """A declared project tree joins the scan and its clones are findings."""
         root = self._governed_with_declared_trees(tmp_path, declare_trees=True)
 
-        execution = FlextInfraDuplicationGate(root).check(root, _ctx(root))
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
 
         tm.that(execution.result.passed, eq=False)
         tm.that(
@@ -117,7 +118,10 @@ class TestDuplicationGate:
         """Without a declaration the canonical Python discovery owns the scope."""
         root = self._governed_with_declared_trees(tmp_path, declare_trees=False)
 
-        execution = FlextInfraDuplicationGate(root).check(root, _ctx(root))
+        execution = FlextInfraDuplicationGate(root).check(root, self._ctx(root))
 
         tm.that(execution.result.passed, eq=True)
         tm.that(execution.issues, eq=())
+
+
+__all__ = ["TestsFlextInfraDuplicationGate"]

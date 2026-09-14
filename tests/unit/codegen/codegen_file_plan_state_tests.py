@@ -15,28 +15,27 @@ from flext_cli import m, u
 from flext_infra import c
 from flext_infra.utilities import FlextInfraUtilitiesCodegenFilePlan
 
-_GATES: Mapping[str, Mapping[str, int]] = {"lint": {"time-seconds": 30}}
 
-
-def _observed_state(root: Path, *, content: bytes) -> m.Cli.AtomicFileState:
-    """Read one real file through the canonical binary state owner."""
-    target = root / "member" / c.Infra.PYPROJECT_FILENAME
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_bytes(content)
-    state = u.Cli.atomic_read_binary_file_state(target, required=True)
-    if state.failure:
-        raise AssertionError(state.error)
-    return state.value
-
-
-class TestsCodegenFilePlanStateDiffers:
+class TestsFlextInfraCodegenFilePlanState:
     """Equal binary states converge; content, presence, and mode deltas do not."""
+
+    _GATES: Mapping[str, Mapping[str, int]] = {"lint": {"time-seconds": 30}}
+
+    def _observed_state(self, root: Path, *, content: bytes) -> m.Cli.AtomicFileState:
+        """Read one real file through the canonical binary state owner."""
+        target = root / "member" / c.Infra.PYPROJECT_FILENAME
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+        state = u.Cli.atomic_read_binary_file_state(target, required=True)
+        if state.failure:
+            raise AssertionError(state.error)
+        return state.value
 
     @pytest.mark.parametrize("content", [b"", b'name = "demo"\n', b"\xff\n"])
     def test_equal_binary_content_is_not_drift(
         self, tmp_path: Path, content: bytes
     ) -> None:
-        before = _observed_state(tmp_path, content=content)
+        before = self._observed_state(tmp_path, content=content)
 
         differs = FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(
             before, desired_content=content, desired_mode=before.mode
@@ -57,7 +56,7 @@ class TestsCodegenFilePlanStateDiffers:
     def test_real_content_delta_still_differs(
         self, tmp_path: Path, content: bytes, desired_content: bytes
     ) -> None:
-        before = _observed_state(tmp_path, content=content)
+        before = self._observed_state(tmp_path, content=content)
 
         differs = FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(
             before, desired_content=desired_content, desired_mode=before.mode
@@ -66,7 +65,7 @@ class TestsCodegenFilePlanStateDiffers:
         assert differs is True
 
     def test_mode_delta_differs_even_with_equal_content(self, tmp_path: Path) -> None:
-        before = _observed_state(tmp_path, content=b'name = "demo"\n')
+        before = self._observed_state(tmp_path, content=b'name = "demo"\n')
 
         drifted = FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(
             before, desired_content=before.content, desired_mode=0o755
@@ -89,7 +88,7 @@ class TestsCodegenFilePlanStateDiffers:
         )
 
     def test_empty_file_requires_deletion(self, tmp_path: Path) -> None:
-        before = _observed_state(tmp_path, content=b"")
+        before = self._observed_state(tmp_path, content=b"")
 
         assert FlextInfraUtilitiesCodegenFilePlan.atomic_file_state_differs(
             before, desired_content=None, desired_mode=None
@@ -106,7 +105,7 @@ class TestsCodegenFilePlanStateDiffers:
     def test_drift_report_exposes_exact_byte_delta(
         self, tmp_path: Path, content: bytes, desired_content: bytes
     ) -> None:
-        before = _observed_state(tmp_path, content=content)
+        before = self._observed_state(tmp_path, content=content)
         planned = FlextInfraUtilitiesCodegenFilePlan.planned_file(
             tmp_path,
             before.path,
@@ -126,7 +125,7 @@ class TestsCodegenFilePlanStateDiffers:
         assert "mode-only drift" not in report
 
     def test_drift_report_names_mode_only_delta(self, tmp_path: Path) -> None:
-        before = _observed_state(tmp_path, content=b'name = "demo"\n')
+        before = self._observed_state(tmp_path, content=b'name = "demo"\n')
         planned = FlextInfraUtilitiesCodegenFilePlan.planned_file(
             tmp_path,
             before.path,
@@ -150,3 +149,6 @@ class TestsCodegenFilePlanStateDiffers:
             FlextInfraUtilitiesCodegenFilePlan.codegen_file_drift_report(
                 (), limit=limit
             )
+
+
+__all__: list[str] = ["TestsFlextInfraCodegenFilePlanState"]

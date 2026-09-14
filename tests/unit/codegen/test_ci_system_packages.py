@@ -12,7 +12,7 @@ from flext_infra import c
 from ._support import CodegenTestSupport
 
 
-class TestsCiSystemPackages:
+class TestsFlextInfraCiSystemPackages:
     """A declared engine is installed on the runner; nothing is skipped."""
 
     ci_template = (
@@ -50,4 +50,4 @@ class TestsCiSystemPackages:
         tm.that(rendered, lacks=self.step_name)
 
 
-__all__: tuple[str, ...] = ()
+__all__: list[str] = ["TestsFlextInfraCiSystemPackages"]
