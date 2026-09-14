@@ -23,8 +23,7 @@ COMMAND_SUFFIXES = frozenset({".sh", ".py"})
 # structure inside a verb directory, never a public command.
 PACKAGE_MARKERS = frozenset({"__init__.py"})
 IGNORED_DIRS = frozenset({"__pycache__", "hooks", "legado", "lib"})
-# Promoted commands always execute; only the incident domain requires its own
-# explicit safety parameters.
+# Incident mutations retain their domain-specific safety parameters.
 INCIDENT_MUTATION_REQUIRED_PARAMS = frozenset({"EMERGENCY", "BREAKING_GLASS_BEAD"})
 
 

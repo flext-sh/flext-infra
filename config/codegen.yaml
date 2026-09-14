@@ -329,6 +329,7 @@ Infra:
         block_threshold_percent: 80
         allowed_save_refs: [refs/heads/0.12.0-dev]
         key_prefix: testmon-v1
+      # Public verbs execute their declared operation without mode selectors.
       ci:
         variable: CI
         value: Y

@@ -246,7 +246,7 @@ class FlextInfraUtilitiesDocsRender:
             "",
             (
                 f"Canonical `make` verbs (`gen`, `check`, `test`, `fmt`, "
-                f"`docs`) always apply; none has a check or dry-run mode — see "
+                f"`docs`) execute their declared operations directly — see "
                 f"[`/flext/AGENTS.md`]({agents_link}) "
                 f"`Build & Test` and `Required Python quality gates`."
             ),
