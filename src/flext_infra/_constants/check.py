@@ -71,6 +71,10 @@ class FlextInfraConstantsCheck:
             "Flext Tier Whitelist Gate",
             "internal://flext-infra/tier-whitelist",
         ),
+        "index-declarations": (
+            "Flext Index Declarations Gate",
+            "internal://flext-infra/index-declarations",
+        ),
         "smells": ("Flext Code Smell Detector", "internal://flext-infra/smells"),
         "codemod": ("ast-grep", AST_GREP_DOCS_URL),
         "layout": ("Flext Project Layout Gate", "internal://flext-infra/layout"),
