@@ -10,7 +10,6 @@ from flext_tests import tm
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import u
-from tests.unit.workspace import WorktreeFixture
 
 pytestmark = pytest.mark.slow
 
@@ -158,7 +157,7 @@ class TestsCodegenCatalogExtensions:
         )
         provider = u.Tests.provider()
         member_source = tmp_path / "member-source"
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             member_source,
             member.distribution,
             workspace=member.name,
@@ -190,7 +189,7 @@ class TestsCodegenCatalogExtensions:
         )
 
         repository_root = tmp_path / "workspace"
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             repository_root,
             root.distribution,
             workspace=root.name,
@@ -237,7 +236,9 @@ class TestsCodegenCatalogExtensions:
                 cwd=member_checkout,
             )
         )
-        gitmodules = WorktreeFixture.write_gitmodules(repository_root, (member.name,))
+        gitmodules = u.Tests.WorktreeFixture.write_gitmodules(
+            repository_root, (member.name,)
+        )
         tm.ok(
             u.Cli.run_checked(
                 [c.Infra.GIT, "add", c.Infra.GITMODULES, member.name],

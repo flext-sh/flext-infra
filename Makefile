@@ -593,17 +593,13 @@ define _dispatch
 endef
 
 
-# The fleet workspace lock is the only lock (design B, flext-62fbu), so only
-# the workspace root resolves one. Running this in a member used to write a
-# member lock -- the second, unowned copy of dependency truth that this
-# cutover removes -- so a member now names the owner instead of producing
-# residue that is ignored the moment it is written.
+# Every profile resolves its own lock here. The cutover stops a member from
+# COMMITTING one; it does not stop uv from writing the local file it syncs
+# from, which is a regenerable artifact like `.venv`. Guarding this verb by
+# profile would also contradict the deps contract (operator law 2026-09-12,
+# option A'): unset APPLY upgrades and locks, APPLY=N checks, per project.
 define _run_for_all_projects
 	@set -eu; \
-	if [ "$(MAKE_PROFILE)" != "workspace" ]; then \
-		printf '%s\n' "deps: dependency truth is owned by the fleet workspace lock (design B, flext-62fbu); run deps at the fleet root."; \
-		exit 0; \
-	fi; \
 	for project in $(SELECTED_PROJECTS); do \
 		if [ "$$project" = "." ]; then project_root="$(PROJECT_ROOT)"; \
 		else project_root="$(PROJECT_ROOT)/$$project"; fi; \

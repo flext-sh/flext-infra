@@ -10,7 +10,6 @@ from flext_tests import tm
 from flext_infra import c, config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import u
-from tests.unit.workspace import WorktreeFixture
 
 
 class TestsFlextInfraBudgetProjection:
@@ -25,7 +24,7 @@ class TestsFlextInfraBudgetProjection:
         self, tmp_path: Path
     ) -> None:
         """Every ALLOWED_GATES id renders a complete positive-int budget row."""
-        root = WorktreeFixture.conformed_root(tmp_path)
+        root = u.Tests.WorktreeFixture.conformed_root(tmp_path)
         rendered = (root / c.Infra.PYPROJECT_FILENAME).read_text(encoding="utf-8")
         table = u.Tests.toml_table_at(rendered, "tool", "flext", "project", "budget")
 
@@ -42,8 +41,8 @@ class TestsFlextInfraBudgetProjection:
         self, tmp_path: Path
     ) -> None:
         """Two governed projects render the byte-identical budget table."""
-        root_a = WorktreeFixture.conformed_root(tmp_path / "a" / "repo")
-        root_b = WorktreeFixture.conformed_root(tmp_path / "b" / "repo")
+        root_a = u.Tests.WorktreeFixture.conformed_root(tmp_path / "a" / "repo")
+        root_b = u.Tests.WorktreeFixture.conformed_root(tmp_path / "b" / "repo")
 
         def budget_table(path: Path) -> bytes:
             rendered = path.read_bytes()

@@ -8,10 +8,9 @@ from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService, c, m
 from tests import u
-from tests.unit.workspace import WorktreeFixture
 
 
-class TestsWorktreeAddContract(WorktreeFixture):
+class TestsWorktreeAddContract(u.Tests.WorktreeFixture):
     """Group cohesive worktree behavior."""
 
     def test_invalid_lane_metadata_fails_precisely_and_rolls_back(

@@ -16,7 +16,6 @@ from tests.unit.codegen.layout_fixture import (
     build_loose_project,
     layout_engine,
 )
-from tests.unit.workspace import WorktreeFixture
 
 
 def test_apply_adds_gitignore_entries_exactly_once(tmp_path: Path) -> None:
@@ -87,7 +86,7 @@ def test_conform_materializes_layout_gitignore_additions(tmp_path: Path) -> None
         if item.gitignore_additions
     )
     root = tmp_path / owner
-    WorktreeFixture.initialize_governed_project(
+    u.Tests.WorktreeFixture.initialize_governed_project(
         root,
         owner,
         workspace="fixture-workspace",

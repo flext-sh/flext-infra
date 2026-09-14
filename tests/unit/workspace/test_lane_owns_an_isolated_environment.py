@@ -8,7 +8,6 @@ from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService, c, config
 from tests import u
-from tests.unit.workspace import WorktreeFixture
 
 _VENV_NAME = config.Infra.tooling.tools.pyright.path_rules.venv_name
 
@@ -70,7 +69,7 @@ def _declare_child(tmp_path: Path, repository: Path) -> None:
 
 
 def _lane(repository: Path, branch: str) -> Path:
-    return Path(WorktreeFixture.add_worktree(repository, branch))
+    return Path(u.Tests.WorktreeFixture.add_worktree(repository, branch))
 
 
 def test_setup_runs_in_lane_and_creates_real_local_environment(tmp_path: Path) -> None:
