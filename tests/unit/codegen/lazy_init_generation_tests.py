@@ -77,6 +77,21 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
 
+    def test_sibling_private_exports_use_relative_owners(self) -> None:
+        """Static and lazy imports resolve the same private sibling module."""
+        plan = self._plan(
+            "demo_pkg.servers._rfc",
+            ("BaseConstants",),
+            {"BaseConstants": ("demo_pkg.servers._base.constants", "BaseConstants")},
+        )
+
+        content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(content, "__init__.py", "exec")
+        tm.that(content, has="from .._base.constants import BaseConstants")
+        tm.that(content, has='".._base.constants": ("BaseConstants",)')
+        tm.that(content, lacks="from demo_pkg.servers._base.constants import")
+
     def test_generated_runtime_surfaces_import_without_bootstrap_cycles(self) -> None:
         lazy_parts = import_module("flext_core._lazy_parts")
         typings = import_module("flext_core._typings")
