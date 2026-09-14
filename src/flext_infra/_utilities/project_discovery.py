@@ -41,6 +41,63 @@ class FlextInfraUtilitiesProjectDiscovery(
             return m.Infra.RefactorConfigSpec()
 
     @classmethod
+    @lru_cache(maxsize=1)
+    def manifest_excluded_names(cls, repository_root: Path) -> frozenset[str]:
+        """Return directory names the workspace manifest excludes from discovery.
+
+        Loaded exactly like ``load_refactor_config`` above, from the same
+        handwritten topology SSOT, and degraded to "no exclusions" on an absent
+        or unparseable manifest for the same reason: this only narrows
+        discovery, and the manifest's authoritative validation belongs to its
+        own owner, which fails loud.
+        """
+        manifest_path = (
+            repository_root
+            / c.Infra.CODEGEN_CONFIG_DIR
+            / c.Infra.WORKSPACE_MANIFEST_FILENAME
+        )
+        if not manifest_path.is_file():
+            return frozenset()
+        loaded = u.Cli.config_load(manifest_path, expand_env=False)
+        if loaded.failure:
+            return frozenset()
+        try:
+            manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
+        except c.ValidationError:
+            return frozenset()
+        # Candidates are compared by directory name, so a nested declaration
+        # such as "vendor/upstream" contributes the leaf it can match.
+        return frozenset(
+            name
+            for exclusion in manifest.exclusions
+            if (name := Path(exclusion.path).name)
+        )
+
+    @classmethod
+    def discover_project_candidates(
+        cls, repository_root: Path, *, scan_dirs: frozenset[str] | None = None
+    ) -> t.SequenceOf[Path]:
+        """Enumerate candidates, dropping every manifest-excluded directory.
+
+        The exclusion is applied at this single shared enumerator rather than in
+        each caller. Every discovery consumer -- docs scope, lazy-init
+        generation, refactor scans -- goes through here, and filtering per
+        caller is what let a declared exclusion be honoured by one stage and
+        ignored by the next: discovery skipped an excluded submodule while
+        lazy-init still planned files inside it and failed with "lazy-init file
+        has no transaction participant".
+        """
+        candidates = super().discover_project_candidates(
+            repository_root, scan_dirs=scan_dirs
+        )
+        excluded = cls.manifest_excluded_names(repository_root)
+        if not excluded:
+            return candidates
+        return tuple(
+            candidate for candidate in candidates if candidate.name not in excluded
+        )
+
+    @classmethod
     def discover_project_roots(
         cls, repository_root: Path, *, scan_dirs: frozenset[str] | None = None
     ) -> t.SequenceOf[Path]:

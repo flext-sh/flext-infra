@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     from .gates import FlextInfraModelsGates
     from .git import FlextInfraModelsGit
     from .layout import FlextInfraModelsLayout
-    from .mise_toolchain import FlextInfraModelsMiseToolchain
+    from .mise_toolchain import FlextInfraModelsMiseToolchain, tool_version_field
     from .mixins import FlextInfraModelsMixins
     from .promoted import FlextInfraModelsPromoted
     from .refactor import FlextInfraModelsRefactor
@@ -103,6 +103,7 @@ __all__: tuple[str, ...] = (
     "ImmutableEmptyMapping",
     "_git",
     "immutable_empty_mapping",
+    "tool_version_field",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -138,7 +139,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates": ("FlextInfraModelsGates",),
             ".git": ("FlextInfraModelsGit",),
             ".layout": ("FlextInfraModelsLayout",),
-            ".mise_toolchain": ("FlextInfraModelsMiseToolchain",),
+            ".mise_toolchain": ("FlextInfraModelsMiseToolchain", "tool_version_field"),
             ".mixins": ("FlextInfraModelsMixins",),
             ".promoted": ("FlextInfraModelsPromoted",),
             ".refactor": ("FlextInfraModelsRefactor",),
