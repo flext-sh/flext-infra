@@ -511,10 +511,9 @@ _builtin-self-docs: _builtin_docs_all
 _builtin_build_artifacts:
 	@$(WORKSPACE_ORCHESTRATE) --verb build $(WORKSPACE_PROJECT_ARGS)
 
-# Read-only by contract in every profile: mutation belongs to `make fix`
-# and `make fmt`, which run BEFORE check. CI={{ make.ci.value }}
-# keeps make.ci.check_gates before orchestrating members (same contract as
-# standalone/member Makefiles and flext_infra check run).
+# Check applies supported fixes and fails while findings remain. The workspace
+# delegates the same operation to each member; CI={{ make.ci.value }} keeps
+# make.ci.check_gates in each generated member handler.
 _builtin_check_all: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS)
 
