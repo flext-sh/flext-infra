@@ -33,7 +33,9 @@ class TestsFlextInfraPromotedApplyEnvValidation:
     ) -> None:
         """An unset APPLY resolves to "" — mutation is the default."""
         monkeypatch.delenv("APPLY", raising=False)
-        command = u.Tests.promoted_command(path=tmp_path / "scripts" / "probe" / "all.py")
+        command = u.Tests.promoted_command(
+            path=tmp_path / "scripts" / "probe" / "all.py"
+        )
         assert validate_apply_env(command) == ""
 
     def test_apply_n_selects_check_mode(
@@ -41,7 +43,9 @@ class TestsFlextInfraPromotedApplyEnvValidation:
     ) -> None:
         """APPLY=N is the only accepted opt-in to check/dry-run mode."""
         monkeypatch.setenv("APPLY", "N")
-        command = u.Tests.promoted_command(path=tmp_path / "scripts" / "probe" / "all.py")
+        command = u.Tests.promoted_command(
+            path=tmp_path / "scripts" / "probe" / "all.py"
+        )
         assert validate_apply_env(command) == "N"
 
     def test_apply_y_is_a_named_hard_error(
@@ -63,7 +67,9 @@ class TestsFlextInfraPromotedApplyEnvValidation:
     ) -> None:
         """Any value outside {"", "N"} is rejected, not only "Y"."""
         monkeypatch.setenv("APPLY", "maybe")
-        command = u.Tests.promoted_command(path=tmp_path / "scripts" / "probe" / "all.py")
+        command = u.Tests.promoted_command(
+            path=tmp_path / "scripts" / "probe" / "all.py"
+        )
         with pytest.raises(RegistryError, match=r"unsupported APPLY value 'maybe'"):
             validate_apply_env(command)
 
@@ -73,7 +79,9 @@ class TestsFlextInfraPromotedApplyCommandContract:
 
     def test_command_may_omit_apply_entirely(self, tmp_path: Path) -> None:
         """A mutating command need not declare APPLY (mutation is default)."""
-        command = u.Tests.promoted_command(path=tmp_path / "scripts" / "probe" / "all.py")
+        command = u.Tests.promoted_command(
+            path=tmp_path / "scripts" / "probe" / "all.py"
+        )
         validate_command_contract(command)
 
     def test_declared_apply_choices_n_only_is_valid(self, tmp_path: Path) -> None:

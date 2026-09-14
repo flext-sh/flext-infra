@@ -1,14 +1,17 @@
-"""Tests that the uv lockfile is committable wherever it is the resolution SSOT.
+"""Tests that only the fleet workspace root commits the uv lockfile.
 
-``uv.lock`` pins the exact resolved dependency graph. A UV workspace project
-does not own one -- resolution happens once at the repository root -- but the
-root itself, and any standalone distribution, must commit theirs or every
-checkout re-resolves and the build stops being reproducible.
+``uv.lock`` pins the exact resolved dependency graph, and design B
+(flext-62fbu) gives that truth to one owner: the fleet workspace root. A
+member repository does not own a lock -- resolution happens once at the root,
+and inside the workspace uv resolves the root's file no matter which member
+directory the command runs from.
 
-The workspace ``.gitignore`` blocks everything with ``/*`` and re-allows paths
-explicitly, and it never re-allowed ``uv.lock``. The lockfile was therefore
-unversionable at the exact place where it is authoritative: regenerating it
-after a dependency change produced a file git refused to see.
+A member that committed one anyway carried a second, unowned copy that could
+not be refreshed in place. uv keeps the revision a lock pins when it
+re-resolves, so a member lock written before flext-core capped structlog kept
+pinning 0.12.0rc0; CI then resolved ``structlog>=26.1.0`` against a project
+declaring ``<26`` and setup failed as unsatisfiable. The ignore policy now
+blocks the file for a member and keeps allowing it at the root.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -16,27 +19,27 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from flext_tests import tm
 
-import flext_infra
 from flext_infra import c
 from tests import u as test_u
 
 
-def _repository_root() -> Path:
-    """Return the repository root that owns the imported package."""
-    return Path(flext_infra.__file__).resolve().parents[2]
-
-
-def _is_allowed_by_policy(relative_path: str) -> bool:
-    """Return whether git would track *relative_path* under the SSOT policy."""
-    rendered = "\n".join(test_u.Tests.ignore_patterns_for(_repository_root())) + "\n"
-    return test_u.Tests.is_tracked_under(rendered, relative_path)
-
-
 class TestsFlextInfraLockfileIsTrackedAtTheResolutionRoot:
-    def test_lockfile_is_committable_under_the_ignore_policy(self) -> None:
-        """The ignore policy never blocks the uv lockfile."""
-        tm.that(_is_allowed_by_policy(c.Infra.UV_LOCK_FILENAME), eq=True)
+    """The ignore policy splits the lockfile by profile, and only by profile."""
+
+    @staticmethod
+    def _is_tracked_for(profile: c.Infra.MakeProfile) -> bool:
+        """Return whether git would track the lockfile under *profile*."""
+        patterns = test_u.Tests.ignore_patterns_for_profile(profile)
+        return test_u.Tests.is_tracked_under(
+            "\n".join(patterns) + "\n", c.Infra.UV_LOCK_FILENAME
+        )
+
+    def test_workspace_root_still_commits_the_lockfile(self) -> None:
+        """The one owner of dependency truth keeps its lockfile versionable."""
+        tm.that(self._is_tracked_for(c.Infra.MakeProfile.WORKSPACE), eq=True)
+
+    def test_member_repository_never_commits_a_lockfile(self) -> None:
+        """A member resolves from declared metadata; a lock there is a second owner."""
+        tm.that(self._is_tracked_for(c.Infra.MakeProfile.STANDALONE), eq=False)
