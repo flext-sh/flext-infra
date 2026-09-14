@@ -112,8 +112,13 @@ class FlextInfraMiseWorkspacePlanner:
 
     @staticmethod
     def journal_path(identity: m.Infra.GitIdentityReport) -> Path:
-        """Return the shared journal anchor without materializing layout state."""
-        return identity.git_dir / files.JOURNAL_NAME
+        """Return the shared journal anchor without materializing layout state.
+
+        Uses the Git common directory (shared across all linked worktrees)
+        instead of the per-worktree .git directory to ensure the journal
+        persists across worktree lifecycle and is always accessible.
+        """
+        return identity.common_dir / files.JOURNAL_NAME
 
     def _layout_from_identity(
         self,
