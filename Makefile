@@ -440,7 +440,7 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 printf '%s\n' "$$mise_storage_root/shims" >> "$$GITHUB_PATH"; \
 fi; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
-	mise_exec project "$$latest_mise" -C "$$project_root" exec -- env "SETUP_DIRENV=$$direnv_executable" "SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" "CI=$(CI)" "=$()" $(SELF_MAKE) _setup_lifecycle
+	mise_exec project "$$latest_mise" -C "$$project_root" exec -- env "SETUP_DIRENV=$$direnv_executable" "SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" "CI=$(CI)" $(SELF_MAKE) _setup_lifecycle
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
@@ -516,13 +516,6 @@ PROJECT_FLEXT_INFRA := if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: 
 # `uv sync --check` permanently divergent. A standalone project owns its venv
 # alone and has no workspace packages to include.
 SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(WORKSPACE_SUBPROJECTS)),1,))
-# CI must verify the committed lock against declared metadata before syncing;
-# --frozen bypasses that check and can omit newly declared runtime dependencies.
-# Locally, --refresh re-resolves branch-tracked git dependencies (flext-* pinned
-# to the integration branch are moving sources by declaration, flext-62fbu), so
-# `make setup` always provisions the current package tips. Deleting uv.lock is
-# never needed: setup reconciles the stale-git-ref case itself (operator
-# request 2026-09-10).
 # No lock is committed, so there is nothing for `--locked` to honour: the fleet
 # resolves dependency floors from pyproject on every setup, in CI exactly as
 # locally. `--refresh` re-reads branch-tracked git metadata so a cached
@@ -555,11 +548,6 @@ define _dispatch
 endef
 
 
-# Every profile resolves its own lock here. The cutover stops a member from
-# COMMITTING one; it does not stop uv from writing the local file it syncs
-# from, which is a regenerable artifact like `.venv`. Guarding this verb by
-# profile would also contradict the deps contract (operator law 2026-09-12,
-# option A'): unset APPLY upgrades and locks, APPLY=N checks, per project.
 define _run_for_all_projects
 	@set -eu; \
 	for project in $(SELECTED_PROJECTS); do \
@@ -571,8 +559,6 @@ endef
 
 .PHONY: $(PUBLIC_VERBS) $(addprefix _builtin-,$(PUBLIC_VERBS))
 .PHONY: _builtin_gen_init _builtin_gen_all
-
-
 
 
 help:
@@ -997,12 +983,7 @@ _builtin_status_diagnostics: _builtin_require_environment
 	@printf 'profile=%s\nproject=%s\nruntime=%s\n' \
 		'$(MAKE_PROFILE)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
 	@$(UV) --version
-	# Only the fleet root owns a lock to verify (design B, flext-62fbu); the
-	# same guard `audit` already applies. Asking a member to check a lock it
-	# does not commit would report a defect that cannot exist there.
-	@if [ "$(MAKE_PROFILE)" = "workspace" ]; then \
-		$(UV) lock --project "$(PROJECT_ROOT)" --check; \
-	fi
+	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
 		$(UV) pip check --python "$(RUNTIME_VENV)"; \
 	fi

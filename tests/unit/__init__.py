@@ -82,9 +82,7 @@ if TYPE_CHECKING:
     from .test_infra_rope_service import TestsFlextInfraInfraRopeService
     from .test_infra_version_core import TestsFlextInfraInfraVersionCore
     from .test_infra_version_extra import TestsFlextInfraInfraVersionExtra
-    from .test_lockfile_policy_projection import (
-        TestsFlextInfraLockfilePolicyProjection,
-    )
+    from .test_lockfile_policy_projection import TestsFlextInfraLockfilePolicyProjection
     from .test_make_parse_is_side_effect_free import (
         TestsFlextInfraMakeParseIsSideEffectFree,
     )
