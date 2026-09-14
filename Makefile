@@ -554,14 +554,18 @@ PROJECT_FLEXT_INFRA := if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: 
 # `uv sync --check` permanently divergent. A standalone project owns its venv
 # alone and has no workspace packages to include.
 SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(WORKSPACE_SUBPROJECTS)),1,))
-# CI must verify the committed lock against declared metadata before syncing;
-# --frozen bypasses that check and can omit newly declared runtime dependencies.
-# Locally, --refresh re-resolves branch-tracked git dependencies (flext-* pinned
-# to the integration branch are moving sources by declaration, flext-62fbu), so
-# `make setup` always provisions the current package tips. Deleting uv.lock is
-# never needed: setup reconciles the stale-git-ref case itself (operator
-# request 2026-09-10).
-UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups $(if $(CI),--locked ,--refresh)
+# --refresh re-resolves branch-tracked dependencies (flext-* pinned to the
+# integration branch are moving sources by declaration, flext-62fbu), so setup
+# always provisions the current package tips. It is unconditional because a
+# member commits no lock: design B gives dependency truth to the fleet
+# workspace lock alone, and `--locked` demands a committed lock that the member
+# no longer has. It also demanded one that could never be right -- uv keeps the
+# revision a lock pins when it re-resolves, so a member lock written before
+# flext-core capped structlog pinned 0.12.0rc0 forever and CI resolved
+# structlog>=26.1.0 against a project declaring <26. That is unsatisfiable, and
+# it took setup down in every repository carrying a stale lock. This supersedes
+# the 2026-09-10 contract that kept member locks committed.
+UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups --refresh
 
 ifeq ($(GEN_INIT_ONLY),)
 -include custom.mk
@@ -589,8 +593,17 @@ define _dispatch
 endef
 
 
+# The fleet workspace lock is the only lock (design B, flext-62fbu), so only
+# the workspace root resolves one. Running this in a member used to write a
+# member lock -- the second, unowned copy of dependency truth that this
+# cutover removes -- so a member now names the owner instead of producing
+# residue that is ignored the moment it is written.
 define _run_for_all_projects
 	@set -eu; \
+	if [ "$(MAKE_PROFILE)" != "workspace" ]; then \
+		printf '%s\n' "deps: dependency truth is owned by the fleet workspace lock (design B, flext-62fbu); run deps at the fleet root."; \
+		exit 0; \
+	fi; \
 	for project in $(SELECTED_PROJECTS); do \
 		if [ "$$project" = "." ]; then project_root="$(PROJECT_ROOT)"; \
 		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
@@ -1051,7 +1064,12 @@ _builtin_status_diagnostics: _builtin_require_environment
 	@printf 'profile=%s\nproject=%s\nruntime=%s\n' \
 		'$(MAKE_PROFILE)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
 	@$(UV) --version
-	@$(UV) lock --project "$(PROJECT_ROOT)" --check
+	# Only the fleet root owns a lock to verify (design B, flext-62fbu); the
+	# same guard `audit` already applies. Asking a member to check a lock it
+	# does not commit would report a defect that cannot exist there.
+	@if [ "$(MAKE_PROFILE)" = "workspace" ]; then \
+		$(UV) lock --project "$(PROJECT_ROOT)" --check; \
+	fi
 	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
 		$(UV) pip check --python "$(RUNTIME_VENV)"; \
 	fi

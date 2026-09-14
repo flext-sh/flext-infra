@@ -1447,6 +1447,21 @@ Infra:
             - ".claude/shell-snapshots/"
             - ".claude/worktrees/"
             - ".claude/settings.local.json.bak"
+      # Design B (flext-62fbu) already declares that dependency truth is owned
+      # by the fleet workspace lock -- `make audit` says exactly that in every
+      # member. A member that also commits its own uv.lock therefore carries a
+      # second, unowned copy of that authority, and the copy drifts: uv keeps
+      # the revision pinned in the lock when it re-resolves, so a member lock
+      # written before flext-core capped structlog pins 0.12.0rc0 forever. CI
+      # syncs with --locked, that pinned rc0 demands structlog>=26.1.0, the
+      # project declares <26, and setup dies as unsatisfiable in every
+      # repository holding a stale lock. Ignoring it here is the SSOT fix: a
+      # member resolves from declared metadata, the fleet root keeps the one
+      # lock that owns dependency truth.
+        - name: "BLOCK: member dependency lock (the fleet root owns it)"
+          profiles: [standalone]
+          patterns:
+            - "uv.lock"
       # Provider surfaces are REAL files, so the ArgoCD symlink hazard that
       # once justified blocking `.agents/` in non-root checkouts no longer
       # applies: ai-hub materializes them via generate-workspace-config and
