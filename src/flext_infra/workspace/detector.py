@@ -29,11 +29,6 @@ class FlextInfraWorkspaceDetector(
         """Return the mandatory repository-local Beads identity path."""
         return repository_root / c.CONFIG_DIR_NAME / c.Infra.BEADS_CONFIG_FILENAME
 
-    @staticmethod
-    def _workspace_manifest_path(repository_root: Path) -> Path:
-        """Return the optional, explicitly selected workspace manifest path."""
-        return repository_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME
-
     @classmethod
     def _composed_beads_identity_error(
         cls, subproject_root: Path, workspace_beads: m.Infra.BeadsProjectSpec
@@ -219,7 +214,7 @@ class FlextInfraWorkspaceDetector(
         matched repository policy overlay's Gas City participation rides along:
         ``True`` when the manifest is absent or declares no overlay.
         """
-        manifest_path = cls._workspace_manifest_path(repository_root)
+        manifest_path = u.Infra.workspace_manifest_path(repository_root)
         if not manifest_path.is_file():
             return r[tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]].ok((
                 observed,
@@ -485,7 +480,7 @@ class FlextInfraWorkspaceDetector(
         )
         if repository.failure:
             return result_type.from_failure(repository)
-        if not cls._workspace_manifest_path(subproject_root).is_file():
+        if not u.Infra.is_fleet_umbrella(subproject_root):
             return result_type.ok(repository.value)
         member_beads = cls.load_beads_spec(subproject_root)
         if member_beads.failure:

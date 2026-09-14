@@ -152,6 +152,7 @@ if TYPE_CHECKING:
     from .transformer_header_parser import FlextInfraUtilitiesTransformerHeaderParser
     from .versioning import FlextInfraUtilitiesVersioning
     from .workspace_fingerprint import FlextInfraUtilitiesWorkspaceFingerprint
+    from .workspace_manifest import FlextInfraUtilitiesWorkspaceManifest
     from .worktree_lifecycle import FlextInfraWorktreeLifecycle
     from .worktree_provisioning import FlextInfraWorktreeProvisioning
 __all__: tuple[str, ...] = (
@@ -285,6 +286,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesTransformerHeaderParser",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraUtilitiesWorkspaceFingerprint",
+    "FlextInfraUtilitiesWorkspaceManifest",
     "FlextInfraWorktreeLifecycle",
     "FlextInfraWorktreeProvisioning",
     "MypyDarwinSupervisor",
@@ -456,6 +458,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".versioning": ("FlextInfraUtilitiesVersioning",),
             ".workspace_fingerprint": ("FlextInfraUtilitiesWorkspaceFingerprint",),
+            ".workspace_manifest": ("FlextInfraUtilitiesWorkspaceManifest",),
             ".worktree_lifecycle": ("FlextInfraWorktreeLifecycle",),
             ".worktree_provisioning": ("FlextInfraWorktreeProvisioning",),
         }),

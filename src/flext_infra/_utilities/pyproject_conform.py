@@ -579,7 +579,7 @@ class FlextInfraUtilitiesPyprojectConform:
         """
         if namespace_scan_dirs is None:
             return r[bool].ok(True)
-        namespace = u.Cli.toml_ensure_path(document, ("tool", "flext", "namespace"))
+        namespace = u.Cli.toml_ensure_path(document, c.Infra.CONFORM_NAMESPACE_TABLE)
         u.Cli.toml_sync_string_list(namespace, "scan_dirs", list(namespace_scan_dirs))
         return r[bool].ok(True)
 
@@ -595,9 +595,7 @@ class FlextInfraUtilitiesPyprojectConform:
         """
         if gate_budgets is None:
             return r[bool].ok(True)
-        budget_table = u.Cli.toml_ensure_path(
-            document, ("tool", "flext", "project", "budget")
-        )
+        budget_table = u.Cli.toml_ensure_path(document, c.Infra.CONFORM_BUDGET_TABLE)
         for gate_id, row in sorted(gate_budgets.items()):
             budget_table[gate_id] = {
                 "time-seconds": row.time_seconds,

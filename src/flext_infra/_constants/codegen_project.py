@@ -123,6 +123,24 @@ class FlextInfraConstantsCodegenProject:
     BEADS_LOCAL_VERSION_FILENAME: Final[str] = ".local_version"
     BEADS_LAST_TOUCHED_FILENAME: Final[str] = "last-touched"
     BEADS_CONFIG_VERSION: Final = 1
+    CONFORM_NAMESPACE_TABLE: Final[tuple[str, ...]] = ("tool", "flext", "namespace")
+    """Table the conform pipeline writes from the project SSOT.
+
+    One owner for the path, consumed by the writer and by the managed-file
+    declaration that must be able to recover it from a merge conflict. They
+    drifted apart once, and the superproject merge then dead-ended on the
+    owner's own output. The dotted spelling is derived through
+    ``u.Cli.toml_dot_path``; it is never written a second time.
+    """
+
+    CONFORM_BUDGET_TABLE: Final[tuple[str, ...]] = (
+        "tool",
+        "flext",
+        "project",
+        "budget",
+    )
+    """Table the conform pipeline writes from the per-gate budget SSOT."""
+
     WORKSPACE_MANIFEST_FILENAME: Final[str] = "workspace.yaml"
     WORKSPACE_MANIFEST_VERSION: Final[int] = 3
     UV_LOCK_FILENAME: Final[str] = "uv.lock"

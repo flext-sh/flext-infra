@@ -10,6 +10,7 @@ from flext_cli import u
 from flext_infra import c, t
 
 from ._docs_scope_state import FlextInfraUtilitiesDocsScopeStateMixin
+from .workspace_manifest import FlextInfraUtilitiesWorkspaceManifest
 
 
 class FlextInfraUtilitiesDocsScopePolicyMixin(FlextInfraUtilitiesDocsScopeStateMixin):
@@ -65,8 +66,8 @@ class FlextInfraUtilitiesDocsScopePolicyMixin(FlextInfraUtilitiesDocsScopeStateM
         manifest's authoritative validation stays in its owner, which fails
         loud.
         """
-        manifest_path = (
-            repository_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME
+        manifest_path = FlextInfraUtilitiesWorkspaceManifest.workspace_manifest_path(
+            repository_root
         )
         if not manifest_path.is_file():
             return set()

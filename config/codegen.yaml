@@ -29,6 +29,7 @@ Infra:
       runtime-census: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
       namespace: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
       tier-whitelist: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
+      index-declarations: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
       smells: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
       codemod: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
       layout: {time-seconds: 600, memory-mb: 2048, tokens: 1000000}
@@ -1042,6 +1043,12 @@ Infra:
           - tool.hatch
           - tool.pydantic-mypy
           - tool.vulture
+          # Written by the conform pipeline from the project SSOT
+          # (_sync_namespace_scope, _sync_budget_table), so a conflict inside
+          # them is the owner's own output and is recoverable. tool.flext.docs
+          # is deliberately absent: nothing writes it, it stays CUSTOM.
+          - tool.flext.namespace
+          - tool.flext.project.budget
         preserve_project_keys:
           - name
           - description
