@@ -84,32 +84,8 @@ class FlextInfraConfigModels:
             return f"{namespace}-"
 
     class BranchPolicySpec(_ConfigContract):
-        """Global ancestry policy shared by every governed provider."""
+        """Global branch policy shared by every provider."""
 
-        REQUIRED_TECHNICAL_PATTERNS: ClassVar[t.VariadicTuple[str]] = (
-            "__dolt_remote_info__",
-            "dolt/*",
-            "gh-readonly-queue/*",
-        )
-        technical_branch_patterns: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "GitHub/Dolt technical branches excluded from ancestry validation"
-                )
-            ),
-        ]
-        governed_branch_patterns: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                min_length=1,
-                description=(
-                    "Development lines whose descent from the baseline is enforced. "
-                    "Refs outside this allowlist are inventoried but never gated: "
-                    "parked releases, snapshots and lane branches must not block."
-                ),
-            ),
-        ]
         ci_trigger_branches: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
@@ -136,17 +112,6 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = FlextInfraConstantsSharedInfra.INTEGRATION_BRANCH_PREFERENCE
-
-        @u.model_validator(mode="after")
-        def _validate_technical_patterns(self) -> Self:
-            """Keep the global exclusion set exact and non-extensible."""
-            if self.technical_branch_patterns != self.REQUIRED_TECHNICAL_PATTERNS:
-                msg = (
-                    "technical branch patterns must equal the canonical GitHub/Dolt "
-                    f"set: {', '.join(self.REQUIRED_TECHNICAL_PATTERNS)}"
-                )
-                raise ValueError(msg)
-            return self
 
     class GithubActionPinSpec(_ConfigContract):
         """One GitHub Action reference from the codegen catalog."""
@@ -508,17 +473,6 @@ class FlextInfraConfigModels:
         description: Annotated[
             t.NonEmptyStr, m.Field(description="Operator-facing help text")
         ]
-        # Verbs that have a read-only check variant (e.g. ruff --check alongside
-        # ruff --fix) declare check_mode=True so the generated Makefile emits a
-        # dedicated check target. There is no dry-run flag — the verb always
-        # mutates; the check target is a separate read-only operation.
-        check_mode: Annotated[
-            bool,
-            m.Field(
-                default=False,
-                description="Verbs with a read-only check target emit a _check sibling",
-            ),
-        ] = False
 
     class MakeWorkflowStepSpec(_ConfigContract):
         """One canonical workflow step."""
@@ -902,7 +856,7 @@ class FlextInfraConfigModels:
         ]
         format_apply: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
-            m.Field(description="Flags for ruff format (always applies formatting)"),
+            m.Field(description="Flags for ruff format APPLY"),
         ]
         lint_check: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
@@ -912,8 +866,18 @@ class FlextInfraConfigModels:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 description=(
-                    "Flags for ruff check --fix including unsafe-fixes; used by "
-                    "make fmt and make fix"
+                    "Flags for ruff check --fix including unsafe-fixes; the lint "
+                    "gate's apply mode (make fix), which reports leftovers"
+                )
+            ),
+        ]
+        lint_apply: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                description=(
+                    "Flags for make fmt's ruff check: apply the same fixes and "
+                    "print leftover findings with a zero exit (operator "
+                    "2026-09-14); leftovers still fail make check"
                 )
             ),
         ]
@@ -929,11 +893,6 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.MakeWorkInProgressSpec,
             m.Field(description="WIP branch and draft PR gate predicate"),
         ]
-        # Why (operator law 2026-09-12): the MAKEFLAGS/APPLY write-enable flag
-        # is exterminated from the public Makefile surface; verbs mutate by
-        # default and read-only check mode is owned exclusively by dedicated
-        # check targets. An unknown Make input is a hard error, never a
-        # warning-plus-mutation.
         # Why (operator law 2026-08-24): git-hook stages are OFF by default and
         # re-enabled case by case via these config gates. The workflow keeps
         # owning WHICH steps belong to each stage; the booleans only govern
@@ -1152,12 +1111,11 @@ class FlextInfraConfigModels:
         path: Annotated[Path, m.Field(description="Repository-relative file path")]
         owner: Annotated[t.NonEmptyStr, m.Field(description="Canonical owner")]
         policy: Annotated[
-            Literal["full", "merge", "create-only", "delegated", "manual"],
+            Literal["full", "merge"],
             m.Field(
                 description=(
-                    "Conform ownership and mutation policy; create-only files are "
-                    "emitted during creation, preserved when present, and never "
-                    "backfilled into existing trees"
+                    "Conform mutation policy: full renders the whole file; merge "
+                    "dispatches to the owner merge that keeps CUSTOM content"
                 )
             ),
         ]
@@ -1213,31 +1171,6 @@ class FlextInfraConfigModels:
                     if section.startswith("tool.") and "." in section
                 )
             )
-
-    class ExternallyManagedSpec(_ConfigContract):
-        """One externally-managed file declared by a .gen contract.
-
-        Replaces the old bypass policies (manual/delegated/create-only) with
-        an explicit, auditable ownership declaration. The file is not generated
-        from a .j2 template but is still subject to .gen compliance validation.
-        """
-
-        owner: Annotated[t.NonEmptyStr, m.Field(description="Canonical external owner")]
-        validation: Annotated[
-            Literal["exists_and_validated", "conforms_to_layout", "exists_or_absent"],
-            m.Field(
-                description=(
-                    "Validation contract: exists_and_validated = file must exist "
-                    "and pass schema/layout checks; conforms_to_layout = file must "
-                    "pass the layout engine; exists_or_absent = file may exist "
-                    "(create-only semantics) but must not be regenerated"
-                )
-            ),
-        ]
-        description: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Human-readable purpose of this external file"),
-        ]
 
     class TemplateEntrySpec(_ConfigContract):
         """One scaffold-only template mapping consumed by ``codegen new``."""
@@ -1593,16 +1526,6 @@ class FlextInfraConfigModels:
         canonical_project_name: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical PEP 621 project name")
         ]
-        baseline_branch: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Provider-owned integration ancestry baseline"),
-        ]
-        baseline_reference: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description="Exact local or remote Git ref used as ancestry baseline"
-            ),
-        ]
         ci_enabled: Annotated[
             bool, m.Field(description="Whether conform owns the CI projection")
         ]
@@ -1620,21 +1543,6 @@ class FlextInfraConfigModels:
             t.VariadicTuple[Path],
             m.Field(description="Observed external or fork Git submodule paths"),
         ] = ()
-        technical_branch_patterns: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(description="Technical branches excluded from ancestry policy"),
-        ] = ()
-        governed_branch_patterns: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                min_length=1,
-                description=(
-                    "Development lines gated by ancestry policy; required because "
-                    "an empty tuple would match no ref and silently disable the "
-                    "gate instead of failing closed"
-                ),
-            ),
-        ]
 
     class ManagedGitlinkSpec(_ConfigContract):
         """One governed submodule with its provider-owned baseline branch."""
@@ -2205,16 +2113,6 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ()
-        gate_budgets: Annotated[
-            Mapping[str, Mapping[str, int]],
-            m.Field(
-                description=(
-                    "Per-gate budget rows rendered as the managed "
-                    "[tool.flext.project.budget] table; keys cover exactly "
-                    "the gate registry"
-                )
-            ),
-        ] = {}
 
         @m.computed_field
         @property
@@ -2726,32 +2624,6 @@ class FlextInfraConfigModels:
             ),
         ] = 1000
 
-    class ProjectGateBudgetSpec(_ConfigContract):
-        """Resource ceiling for one registered gate's execution.
-
-        Keys accept both spellings because the config SSOT and the emitted
-        TOML table share the gate vocabulary (``time-seconds``), while the
-        typed fields stay pythonic.
-        """
-
-        model_config = m.ConfigDict(populate_by_name=True)
-
-        time_seconds: Annotated[
-            int,
-            m.Field(
-                ge=1, alias="time-seconds", description="Wall-clock ceiling in seconds"
-            ),
-        ]
-        memory_mb: Annotated[
-            int,
-            m.Field(
-                ge=1, alias="memory-mb", description="Resident memory ceiling in MiB"
-            ),
-        ]
-        tokens: Annotated[
-            int, m.Field(ge=1, description="LLM token ceiling for the gate run")
-        ]
-
     class CodegenConfigSpec(_ConfigContract):
         """Fully modeled content of ``config/codegen.yaml``."""
 
@@ -2759,16 +2631,6 @@ class FlextInfraConfigModels:
         loc_cap: Annotated[
             FlextInfraConfigModels.CodegenLocCapSpec,
             m.Field(description="Per-module code-LOC ceiling policy"),
-        ]
-        budget: Annotated[
-            Mapping[str, FlextInfraConfigModels.ProjectGateBudgetSpec],
-            m.Field(
-                description=(
-                    "Per-gate execution budgets projected as the managed "
-                    "[tool.flext.project.budget] table; rows must cover "
-                    "exactly the gate registry"
-                )
-            ),
         ]
         toolchain: Annotated[
             FlextInfraConfigModels.ToolchainSpec,
@@ -2846,7 +2708,7 @@ class FlextInfraConfigModels:
         ]
         branch_policy: Annotated[
             FlextInfraConfigModels.BranchPolicySpec,
-            m.Field(description="Global governed branch ancestry policy"),
+            m.Field(description="Global branch policy (CI triggers, integration line)"),
         ]
         profiles: Annotated[
             t.VariadicTuple[FlextInfraConfigModels.ProfileSpec],
@@ -2951,11 +2813,6 @@ class FlextInfraConfigModels:
                 pattern for section in scaffold_sections for pattern in section.patterns
             }
             for managed in self.managed_files:
-                if (
-                    managed.policy
-                    == FlextInfraConstantsSharedInfra.MANAGED_FILE_POLICY_DELEGATED
-                ):
-                    continue
                 parts = managed.path.parts
                 candidates = [
                     *(f"!{'/'.join(parts[:depth])}/" for depth in range(1, len(parts))),
@@ -3283,175 +3140,6 @@ class FlextInfraConfigModels:
             m.Field(description="Validated flext-infra namespace"),
         ]
 
-    class ConfigLayerSpec(_ConfigContract):
-        """One layer of the hierarchical config architecture."""
-
-        path: Annotated[
-            Path,
-            m.Field(description="Config file path relative to flext-infra config root"),
-        ]
-        mutable: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Whether this layer accepts project-specific overrides; "
-                    "true for overrides, false for immutable business rules"
-                )
-            ),
-        ]
-        description: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Human-readable purpose of this config layer"),
-        ]
-
-    class ConfigLayersSpec(_ConfigContract):
-        """Hierarchical config architecture: immutable config + project overrides."""
-
-        primary: Annotated[
-            FlextInfraConfigModels.ConfigLayerSpec,
-            m.Field(description="Layer 1: immutable fleet-wide business rules"),
-        ]
-        overrides: Annotated[
-            FlextInfraConfigModels.ConfigLayerSpec,
-            m.Field(description="Layer 2: project-specific parameter overrides"),
-        ]
-
-    class ManagedFilePoliciesSpec(_ConfigContract):
-        """Mandatory generation requirement: allowed/forbidden managed-file policies."""
-
-        allowed: Annotated[
-            t.VariadicTuple[str],
-            m.Field(
-                min_length=1,
-                description=(
-                    "Managed-file policies that permit generation; "
-                    "create-only/delegated/manual are bypass policies"
-                ),
-            ),
-        ]
-        forbidden: Annotated[
-            t.VariadicTuple[str],
-            m.Field(
-                min_length=1,
-                description="Policies that bypass generation — always rejected by .gen enforcement",
-            ),
-        ]
-        enforcement: Annotated[
-            Literal["strict", "advisory"],
-            m.Field(
-                default="strict",
-                description="strict rejects any forbidden policy; advisory reports without failing",
-            ),
-        ] = "strict"
-
-        @u.model_validator(mode="after")
-        def _validate_no_policy_overlap(self) -> Self:
-            """Allowed and forbidden policies must not intersect."""
-            allowed_set = set(self.allowed)
-            forbidden_set = set(self.forbidden)
-            overlap = allowed_set & forbidden_set
-            if overlap:
-                msg = f".gen policies overlap: {overlap}"
-                raise ValueError(msg)
-            return self
-
-    class GenerationStepsSpec(_ConfigContract):
-        """Mandatory generation requirement: all steps must run."""
-
-        mandatory: Annotated[
-            bool, m.Field(description="Whether every generation step must execute")
-        ]
-        skip_on_no_change: Annotated[
-            bool,
-            m.Field(description="Whether steps with no change are eligible to skip"),
-        ]
-        fail_on_drift: Annotated[
-            bool, m.Field(description="Whether detected drift causes failure")
-        ]
-
-    class ConfigAuthoritySpec(_ConfigContract):
-        """Mandatory generation requirement: config-driven authority."""
-
-        requires_config: Annotated[
-            bool,
-            m.Field(description="Whether generation requires authoritative config"),
-        ]
-        requires_overrides: Annotated[
-            bool, m.Field(description="Whether the overrides layer must be present")
-        ]
-        reject_manual_edits: Annotated[
-            bool,
-            m.Field(description="Whether manual edits to managed files are rejected"),
-        ]
-
-    class FixedPointSpec(_ConfigContract):
-        """Mandatory generation requirement: post-generation fixed-point validation."""
-
-        required: Annotated[
-            bool,
-            m.Field(
-                description="Whether fixed-point re-conform validation is required"
-            ),
-        ]
-        max_replans: Annotated[
-            int,
-            m.Field(ge=1, le=10, description="Maximum re-plan attempts before failure"),
-        ]
-
-    class GenRequirementsSpec(_ConfigContract):
-        """Typed content of a ``.gen`` requirements contract file (codegen.gen.yaml).
-
-        Declares mandatory generation requirements that the conform system must
-        satisfy. The ``.j2`` templates remain the content generators; this file
-        is the compliance contract that governs their execution.
-        """
-
-        version: Annotated[
-            int, m.Field(ge=1, description="Generation requirements contract version")
-        ]
-        config_layers: Annotated[
-            FlextInfraConfigModels.ConfigLayersSpec,
-            m.Field(
-                description="Hierarchical config architecture (immutable + overrides)"
-            ),
-        ]
-        requirements: Annotated[
-            FlextInfraConfigModels.GenRequirementEntries,
-            m.Field(description="Mandatory generation requirements"),
-        ]
-
-    class GenRequirementEntries(_ConfigContract):
-        """The mandatory requirement groups enforced by a .gen contract."""
-
-        managed_file_policies: Annotated[
-            FlextInfraConfigModels.ManagedFilePoliciesSpec,
-            m.Field(description="Bypass policy enforcement for managed files"),
-        ]
-        generation_steps: Annotated[
-            FlextInfraConfigModels.GenerationStepsSpec,
-            m.Field(description="Step-level generation requirements"),
-        ]
-        config_authority: Annotated[
-            FlextInfraConfigModels.ConfigAuthoritySpec,
-            m.Field(description="Config-driven authority enforcement"),
-        ]
-        fixed_point: Annotated[
-            FlextInfraConfigModels.FixedPointSpec,
-            m.Field(description="Post-generation fixed-point validation"),
-        ]
-        externally_managed: Annotated[
-            Mapping[str, FlextInfraConfigModels.ExternallyManagedSpec],
-            m.Field(
-                default_factory=immutable_empty_mapping,
-                description=(
-                    "Files owned by external systems (operator, workspace, make) "
-                    "that are validated through .gen compliance but not generated "
-                    "from .j2 templates. Replaces bypass policies with auditable "
-                    "ownership declarations."
-                ),
-            ),
-        ]
-
     class CodegenOverridesRoot(_ConfigContract):
         """Override root mirroring the Infra.codegen structure with override-only fields.
 
@@ -3546,40 +3234,6 @@ class FlextInfraConfigModels:
             t.VariadicTuple[FlextInfraConfigModels.RepositoryRef],
             m.Field(description="Local repositories overlaid after locked sync"),
         ] = ()
-
-    class BranchAncestryRef(_ConfigContract):
-        """One exact branch or registered worktree ancestry observation."""
-
-        reference: Annotated[
-            t.NonEmptyStr, m.Field(description="Git ref or worktree identity")
-        ]
-        sha: Annotated[
-            t.NonEmptyStr, m.Field(description="Observed commit object identifier")
-        ]
-        excluded: Annotated[
-            bool, m.Field(description="Whether typed technical policy excludes the ref")
-        ]
-        ancestor: Annotated[
-            bool | None,
-            m.Field(description="Baseline ancestry verdict; None when excluded"),
-        ]
-
-    class BranchAncestryPlan(_ConfigContract):
-        """Bounded ancestry inventory for one governed repository."""
-
-        repository_root: Annotated[
-            Path, m.Field(description="Governed repository root")
-        ]
-        baseline_reference: Annotated[
-            t.NonEmptyStr, m.Field(description="Provider-owned remote baseline ref")
-        ]
-        baseline_sha: Annotated[
-            t.NonEmptyStr, m.Field(description="Resolved baseline commit")
-        ]
-        references: Annotated[
-            t.VariadicTuple[FlextInfraConfigModels.BranchAncestryRef],
-            m.Field(description="Local, remote, and worktree ancestry inventory"),
-        ]
 
     class WorkspaceEnvironmentCliRequest(_ConfigContract):
         """CLI-safe request for one Python workspace environment sync."""
@@ -3778,7 +3432,7 @@ class FlextInfraConfigModels:
             m.Field(description="Canonical artifact owner, empty for scaffold files"),
         ] = ""
         policy: Annotated[
-            Literal["full", "merge", "create-only", "delegated", "manual"] | None,
+            Literal["full", "merge"] | None,
             m.Field(description="Governed root artifact policy"),
         ] = None
 
@@ -3836,10 +3490,6 @@ class FlextInfraConfigModels:
         uv_environments: Annotated[
             t.VariadicTuple[FlextInfraConfigModels.UvEnvironmentPlan],
             m.Field(description="uv plans paired with selected repositories"),
-        ]
-        branch_ancestry: Annotated[
-            t.VariadicTuple[FlextInfraConfigModels.BranchAncestryPlan],
-            m.Field(description="Governed branch ancestry observations"),
         ]
         files: Annotated[
             t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan],

@@ -6,11 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import os
 import re
 import time
 from collections.abc import Mapping, MutableMapping
-from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Annotated, override
 
@@ -162,14 +160,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             description="Validated scaffold specification included in the atomic plan",
         ),
     ] = None
-    scaffolded_repository: Annotated[
-        bool,
-        m.Field(
-            default=False,
-            exclude=True,
-            description="Whether this invocation initialized an unpublished Git root",
-        ),
-    ] = False
 
     @classmethod
     def execute_request(
@@ -230,18 +220,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenResult].from_failure(committed)
             initialized_git = True
         service = cls(
-            repository_root=root,
-            request=request,
-            initial_workspace=initial_workspace,
-            # A repository this invocation just created has no remote-tracking
-            # ref yet: `git init --initial-branch` makes `refs/heads/<branch>`
-            # and nothing has been pushed. The ancestry preflight therefore
-            # resolves its baseline to the local branch instead of
-            # `refs/remotes/origin/<branch>` -- which the field already
-            # expresses, and which nothing was setting, so every freshly
-            # scaffolded project failed its own preflight with "provider
-            # baseline ref is missing".
-            scaffolded_repository=initialized_git,
+            repository_root=root, request=request, initial_workspace=initial_workspace
         )
         result = service.execute()
         if result.success:
@@ -300,9 +279,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].from_failure(planned)
         plan = planned.value
         mode = c.Infra.CodegenConformMode(request.mode)
-        ancestry = self._validate_ancestry(plan)
-        if ancestry.failure:
-            return r[m.Infra.CodegenResult].from_failure(ancestry)
         changed = tuple(
             file for file in plan.files if u.Infra.codegen_file_requires_effect(file)
         )
@@ -356,99 +332,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             m.Infra.CodegenResult(plan=verified.value, written_files=written)
         )
 
-    @staticmethod
-    def _enforce_gen_requirements() -> p.Result[bool]:
-        """Load and validate the ``.gen`` requirements contract before generation.
-
-        The ``.gen`` file is the compliance contract that declares mandatory
-        generation requirements. It sits on top of the ``.j2`` template surface
-        and guarantees that:
-
-        - All managed files use only allowed policies (no bypass via manual,
-          delegated, or create-only).
-        - Generation steps are mandatory and cannot be skipped.
-        - All generation is driven exclusively by authoritative config layers.
-
-        Returns failure if any requirement is violated, or if the ``.gen`` file
-        itself is absent or malformed.
-        """
-        requirements_result = u.Infra.load_gen_requirements(Path(__file__))
-        if requirements_result.failure:
-            return r[bool].from_failure(requirements_result)
-        requirements = requirements_result.unwrap()
-        bypass_policies = c.Infra.MANAGED_FILE_POLICIES_BYPASS
-        forbidden_in_contract = frozenset(
-            requirements.requirements.managed_file_policies.forbidden
-        )
-        if bypass_policies != forbidden_in_contract:
-            return r[bool].fail(
-                f".gen requirements declares forbidden policies {sorted(forbidden_in_contract)} "
-                f"that do not match the canonical bypass set {sorted(bypass_policies)}"
-            )
-        config_spec = config.Infra.codegen
-        for managed in config_spec.managed_files:
-            if managed.policy in bypass_policies:
-                return r[bool].fail(
-                    f"managed file uses bypass policy '{managed.policy}': {managed.path}; "
-                    f"all managed files must use an allowed policy: "
-                    f"{sorted(requirements.requirements.managed_file_policies.allowed)}"
-                )
-        steps = requirements.requirements.generation_steps
-        if steps.mandatory is not True:
-            return r[bool].fail(
-                ".gen requirements must declare generation_steps.mandatory: true"
-            )
-        if steps.fail_on_drift is not True:
-            return r[bool].fail(
-                ".gen requirements must declare generation_steps.fail_on_drift: true"
-            )
-        authority = requirements.requirements.config_authority
-        if authority.requires_config is not True:
-            return r[bool].fail(
-                ".gen requirements must declare config_authority.requires_config: true"
-            )
-        if authority.reject_manual_edits is not True:
-            return r[bool].fail(
-                ".gen requirements must declare config_authority.reject_manual_edits: true"
-            )
-        if requirements.requirements.fixed_point.required is not True:
-            return r[bool].fail(
-                ".gen requirements must declare fixed_point.required: true"
-            )
-        externally_managed = requirements.requirements.externally_managed
-        managed_by_path = {item.path: item for item in config_spec.managed_files}
-        for relative_path in externally_managed:
-            managed_entry = managed_by_path.get(Path(relative_path))
-            if managed_entry is None:
-                continue
-            if managed_entry.policy not in bypass_policies:
-                return r[bool].fail(
-                    f"externally-managed file {relative_path} is declared in "
-                    f"codegen.yaml with policy '{managed_entry.policy}' but .gen "
-                    f"lists it as externally managed; externally managed files "
-                    f"must use bypass policies or be removed from managed_files"
-                )
-        bypass_in_managed = tuple(
-            managed.path
-            for managed in config_spec.managed_files
-            if managed.policy in bypass_policies
-            and managed.path.as_posix() not in externally_managed
-        )
-        if bypass_in_managed:
-            paths = ", ".join(str(p) for p in bypass_in_managed)
-            return r[bool].fail(
-                f"managed files use bypass policies without .gen externally_managed "
-                f"declaration: {paths}"
-            )
-        return r[bool].ok(True)
-
     def _execute_managed(
         self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenResult]:
         """Run complete conformance inside the sole generation lock."""
-        gen_violation = self._enforce_gen_requirements()
-        if gen_violation.failure:
-            return r[m.Infra.CodegenResult].from_failure(gen_violation)
         mode = c.Infra.CodegenConformMode(request.mode)
         mise_owner = FlextInfraCodegenMiseArtifacts(
             repository_root=request.root,
@@ -595,9 +482,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             repository.name == plan.workspace.repository.name
             for repository in plan.repositories
         )
-        ancestry = self._validate_ancestry(plan)
-        if ancestry.failure:
-            return r[m.Infra.CodegenResult].from_failure(ancestry)
         config_plans = self._mise_config_plans(plan)
         if config_plans.failure:
             return r[m.Infra.CodegenResult].from_failure(config_plans)
@@ -839,9 +723,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         verified = self.plan(request)
         if verified.failure:
             return r[bool].from_failure(verified)
-        ancestry = self._validate_ancestry(verified.value)
-        if ancestry.failure:
-            return r[bool].from_failure(ancestry)
         residual = tuple(
             file
             for file in verified.value.files
@@ -892,33 +773,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             tuple(by_path[path] for path in expected)
         )
 
-    @staticmethod
-    def _validate_ancestry(plan: m.Infra.CodegenPlan) -> p.Result[bool]:
-        """Reject every governed ref outside its repository integration line."""
-        violations = tuple(
-            (ancestry, reference)
-            for ancestry in plan.branch_ancestry
-            for reference in ancestry.references
-            if reference.ancestor is False
-        )
-        if not violations:
-            return r[bool].ok(True)
-        details = "; ".join(
-            (
-                f"{reference.reference}@{reference.sha} does not descend from "
-                f"{ancestry.baseline_reference}@{ancestry.baseline_sha}"
-            )
-            for ancestry, reference in violations
-        )
-        return r[bool].fail(f"governed branch ancestry violations: {details}")
-
     def plan(
         self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenPlan]:
         """Build and validate the complete selection without writing."""
-        gen_violation = self._enforce_gen_requirements()
-        if gen_violation.failure:
-            return r[m.Infra.CodegenPlan].from_failure(gen_violation)
         config_spec = config.Infra.codegen
         root = request.root.expanduser().resolve()
         repository_root = root
@@ -940,26 +798,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             current_target = current_target_result.value
             current_repository = current_target.repository
         else:
-            providers = tuple(
-                item
-                for item in config_spec.providers
-                if item.name == current_repository.provider
-            )
-            if len(providers) != 1:
-                return r[m.Infra.CodegenPlan].fail(
-                    "repository provider must resolve exactly once: "
-                    f"{current_repository.provider}"
-                )
-            (provider,) = providers
-            # The provider default is the fallback, never the answer: this
-            # repository's own published integration branch decides.
-            baseline_result = u.Infra.repository_baseline_branch(
-                root,
-                fallback=provider.branch,
-                preference=config_spec.branch_policy.integration_branch_preference,
-            )
-            if baseline_result.failure:
-                return r[m.Infra.CodegenPlan].from_failure(baseline_result)
             current_target = m.Infra.RepositoryConformTarget(
                 repository=current_repository,
                 root=root,
@@ -967,21 +805,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 beads=workspace.beads,
                 project=workspace.project,
                 canonical_project_name=current_repository.distribution,
-                baseline_branch=baseline_result.value,
-                baseline_reference=(
-                    f"refs/heads/{baseline_result.value}"
-                    if self.scaffolded_repository
-                    else f"refs/remotes/origin/{baseline_result.value}"
-                ),
                 ci_enabled=True,
                 gascity_enabled=workspace.gascity_enabled,
                 external_dependency_paths=workspace.external_dependency_paths,
-                technical_branch_patterns=(
-                    config_spec.branch_policy.technical_branch_patterns
-                ),
-                governed_branch_patterns=(
-                    config_spec.branch_policy.governed_branch_patterns
-                ),
             )
         selected_result = self._select_repositories(
             request, workspace, current_repository
@@ -992,7 +818,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         contract = self._surface_contract(c.Infra.CodegenConformSurface(request.what))
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
-        ancestry_plans: list[m.Infra.BranchAncestryPlan] = []
         total_repositories = len(selected)
         u.Cli.info(f"stage=plan repositories={total_repositories}")
         for repository_index, repository in enumerate(selected, start=1):
@@ -1125,11 +950,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     config=config_spec,
                 )
             )
-            if self.initial_workspace is None or (repository_root / ".git").exists():
-                ancestry_result = self._branch_ancestry_plan(target)
-                if ancestry_result.failure:
-                    return r[m.Infra.CodegenPlan].from_failure(ancestry_result)
-                ancestry_plans.append(ancestry_result.value)
             u.Cli.status(
                 "conform",
                 repository.name,
@@ -1143,7 +963,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 workspace=workspace,
                 make_spec=config_spec.make,
                 uv_environments=tuple(environments),
-                branch_ancestry=tuple(ancestry_plans),
                 files=tuple(files),
             )
         )
@@ -1493,7 +1312,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if workspace.project is not None
                 else None
             ),
-            gate_budgets=dict(codegen.budget),
         )
 
     @staticmethod
@@ -1822,11 +1640,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     and profile is c.Infra.MakeProfile.WORKSPACE
                 )
             )
-            if (
-                managed.policy in {"delegated", "manual"}
-                or managed.path == Path(c.Infra.CUSTOM_MAKE_FILENAME)
-                or pyproject_skipped
-            ):
+            if managed.path == Path(c.Infra.CUSTOM_MAKE_FILENAME) or pyproject_skipped:
                 continue
             entries = tuple(
                 entry
@@ -1886,27 +1700,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                             update={"owner": managed.owner, "policy": managed.policy}
                         )
                     )
-                continue
-            if managed.policy == "create-only" and path.is_file():
-                current = u.Cli.files_read_text(path)
-                if current.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                        current
-                    )
-                file_plan = self._file_plan(
-                    root, entry.destination, current.value, mode=managed.mode
-                )
-                if file_plan.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                        file_plan
-                    )
-                planned.append(file_plan.value)
-                continue
-            if managed.policy == "create-only" and path.exists():
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    f"create-only destination is not a regular file: {path}"
-                )
-            if managed.policy == "create-only":
                 continue
             rendered = self._rendered_artifact_source(
                 templates_root=templates_root,
@@ -2631,34 +2424,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         )
 
-    @staticmethod
-    def resolve_gate_budgets(
-        configured_budgets: Mapping[str, m.Infra.ProjectGateBudgetSpec],
-    ) -> p.Result[Mapping[str, Mapping[str, int]]]:
-        """Project config budget rows; registry divergence fails loud.
-
-        The budget gate requires one row per registry gate; the config SSOT is
-        the single budget owner and a missing or unknown gate id is a declared
-        generation error, never a silent skip.
-        """
-        allowed_gates = c.Infra.ALLOWED_GATES
-        missing_budget_rows = sorted(allowed_gates - configured_budgets.keys())
-        unknown_budget_rows = sorted(configured_budgets.keys() - allowed_gates)
-        if missing_budget_rows or unknown_budget_rows:
-            return r[Mapping[str, Mapping[str, int]]].fail(
-                "budget configuration diverges from the gate registry: "
-                f"missing rows={missing_budget_rows}; "
-                f"unknown rows={unknown_budget_rows}"
-            )
-        return r[Mapping[str, Mapping[str, int]]].ok({
-            gate_id: {
-                "time-seconds": configured_budgets[gate_id].time_seconds,
-                "memory-mb": configured_budgets[gate_id].memory_mb,
-                "tokens": configured_budgets[gate_id].tokens,
-            }
-            for gate_id in sorted(configured_budgets)
-        })
-
     def _project_render_context(
         self,
         repository: m.Infra.RepositoryRef,
@@ -2787,11 +2552,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if version_result.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(version_result)
-        gate_budgets_result = FlextInfraCodegenConform.resolve_gate_budgets(
-            codegen.budget
-        )
-        if gate_budgets_result.failure:
-            return r[m.Infra.ProjectRenderContext].from_failure(gate_budgets_result)
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 **make_context.value.model_dump(
@@ -2840,7 +2600,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 package_name=project.package_name,
                 packaged_data_dirs=packaged_data_dirs,
                 namespace_scan_dirs=project.namespace_scan_dirs,
-                gate_budgets=gate_budgets_result.value,
                 class_stem=project.class_stem,
                 ns=project.namespace,
                 ns_attr=project.namespace_attribute,
@@ -3049,272 +2808,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 desired_content=rendered.encode(c.Cli.ENCODING_DEFAULT),
                 desired_mode=mode,
                 source_states=source_states,
-            )
-        )
-
-    @staticmethod
-    def _technical_branch(reference: str, patterns: t.StrSequence) -> bool:
-        """Match one Git ref against the typed technical-branch policy."""
-        short = reference
-        for prefix in ("refs/heads/", "refs/remotes/origin/"):
-            if short.startswith(prefix):
-                short = short.removeprefix(prefix)
-                break
-        return any(
-            fnmatchcase(short, pattern) or fnmatchcase(reference, pattern)
-            for pattern in patterns
-        )
-
-    @classmethod
-    def _branch_ancestry_plan(
-        cls, target: m.Infra.RepositoryConformTarget
-    ) -> p.Result[m.Infra.BranchAncestryPlan]:
-        """Inventory local governed refs and prove descent from the baseline."""
-        root = target.root
-        baseline_reference = target.baseline_reference
-        baseline_command = (c.Infra.GIT, "rev-parse", "--verify", baseline_reference)
-        baseline_result = u.Cli.run_raw(baseline_command, cwd=root)
-        if baseline_result.failure:
-            return r[m.Infra.BranchAncestryPlan].fail(
-                "provider baseline command failed: "
-                f"command={' '.join(baseline_command)}; error={baseline_result.error}"
-            )
-        if baseline_result.value.outcome.raw_return_code != 0:
-            return r[m.Infra.BranchAncestryPlan].fail(
-                "provider baseline ref is missing: "
-                f"{baseline_reference}; command={' '.join(baseline_command)}; "
-                f"exit={baseline_result.value.outcome.raw_return_code}; "
-                f"stderr={baseline_result.value.stderr.strip() or '<empty>'}"
-            )
-        baseline_sha = baseline_result.value.stdout.strip()
-        # flext-9ehwb: `refs/remotes/origin/<lane>` is the remote's LIVE tip.
-        # `actions/checkout` fetches at job start, so that tip advances whenever
-        # another actor publishes to the same lane while this run waits in the
-        # queue. Gating against it asks "has this commit already absorbed work
-        # published after it was written?" -- unanswerable by construction, and
-        # a perfectly linear commit fails with "does not descend from"
-        # (run 31218338222). The question the gate actually owns is "was this
-        # commit written on top of the lane?", so the baseline is pinned to the
-        # merge base between the live tip and the commit that triggered the run.
-        # That point is immutable for a given commit: concurrent publishers move
-        # the tip, never the merge base. Outside CI GITHUB_SHA is unset and the
-        # live tip remains the baseline, which is correct for a local checkout.
-        triggering_sha = os.environ.get(c.Infra.ENV_VAR_GITHUB_SHA, "").strip()
-        if triggering_sha:
-            # GITHUB_SHA is the superproject's triggering commit (the PR
-            # merge commit actions/checkout synthesizes). Inside a submodule
-            # repo that SHA does not exist, so `git merge-base` fails with
-            # exit 128 ("Not a valid commit name") and breaks `gen check` in
-            # CI. Verify membership before anchoring the baseline through it:
-            # only pin to the merge base when triggering_sha actually resolves
-            # in the current repository (the workspace root). In a submodule
-            # context the gitlink position is the immutable reference and the
-            # live baseline tip remains the correct anchor.
-            verify_command = (c.Infra.GIT, "cat-file", "-t", triggering_sha)
-            verify_result = u.Cli.run_raw(verify_command, cwd=root)
-            if verify_result.success and u.Cli.process_succeeded(
-                verify_result.value.outcome
-            ):
-                merge_base_command = (
-                    c.Infra.GIT,
-                    "merge-base",
-                    baseline_sha,
-                    triggering_sha,
-                )
-                merge_base_result = u.Cli.run_raw(merge_base_command, cwd=root)
-                if merge_base_result.failure:
-                    return r[m.Infra.BranchAncestryPlan].fail(
-                        "cannot anchor ancestry baseline to the triggering commit: "
-                        f"command={' '.join(merge_base_command)}; "
-                        f"error={merge_base_result.error}"
-                    )
-                if merge_base_result.value.outcome.raw_return_code != 0:
-                    return r[m.Infra.BranchAncestryPlan].fail(
-                        "triggering commit shares no history with the baseline: "
-                        f"{c.Infra.ENV_VAR_GITHUB_SHA}={triggering_sha}; "
-                        f"command={' '.join(merge_base_command)}; "
-                        f"exit={merge_base_result.value.outcome.raw_return_code}; "
-                        f"stderr={merge_base_result.value.stderr.strip() or '<empty>'}"
-                    )
-                baseline_sha = merge_base_result.value.stdout.strip()
-        pending_merge_result = u.Cli.run_raw(
-            (
-                c.Infra.GIT,
-                "merge-base",
-                "--is-ancestor",
-                baseline_sha,
-                c.Infra.GIT_MERGE_HEAD,
-            ),
-            cwd=root,
-        )
-        pending_merge_includes_baseline = (
-            pending_merge_result.success
-            and u.Cli.process_succeeded(pending_merge_result.value.outcome)
-        )
-        current_branch_result = u.Cli.run_raw(
-            (c.Infra.GIT, "rev-parse", "--abbrev-ref", "HEAD"), cwd=root
-        )
-        current_branch_ref = ""
-        if current_branch_result.success and u.Cli.process_succeeded(
-            current_branch_result.value.outcome
-        ):
-            current_branch = current_branch_result.value.stdout.strip()
-            if current_branch != "HEAD":
-                current_branch_ref = f"refs/heads/{current_branch}"
-        refs_command = (
-            c.Infra.GIT,
-            "for-each-ref",
-            "--format=%(refname)%09%(objectname)",
-            "refs/heads",
-            "refs/remotes/origin",
-        )
-        refs_result = u.Cli.run_raw(refs_command, cwd=root)
-        if refs_result.failure:
-            return r[m.Infra.BranchAncestryPlan].fail(
-                "cannot enumerate governed refs: "
-                f"command={' '.join(refs_command)}; error={refs_result.error}"
-            )
-        if refs_result.value.outcome.raw_return_code != 0:
-            return r[m.Infra.BranchAncestryPlan].fail(
-                "cannot enumerate governed refs: "
-                f"command={' '.join(refs_command)}; "
-                f"exit={refs_result.value.outcome.raw_return_code}; "
-                f"stderr={refs_result.value.stderr.strip() or '<empty>'}"
-            )
-        observations: list[tuple[str, str]] = []
-        for line in refs_result.value.stdout.splitlines():
-            reference, separator, sha = line.partition("\t")
-            if not separator or not reference or not sha:
-                return r[m.Infra.BranchAncestryPlan].fail(
-                    f"malformed Git ref inventory entry: {line}"
-                )
-            if reference == "refs/remotes/origin/HEAD":
-                continue
-            observations.append((reference, sha))
-        worktrees_command = (c.Infra.GIT, "worktree", "list", "--porcelain")
-        worktrees_result = u.Cli.run_raw(worktrees_command, cwd=root)
-        if worktrees_result.failure:
-            return r[m.Infra.BranchAncestryPlan].fail(
-                "cannot enumerate registered worktrees: "
-                f"command={' '.join(worktrees_command)}; "
-                f"error={worktrees_result.error}"
-            )
-        if worktrees_result.value.outcome.raw_return_code != 0:
-            return r[m.Infra.BranchAncestryPlan].fail(
-                "cannot enumerate registered worktrees: "
-                f"command={' '.join(worktrees_command)}; "
-                f"exit={worktrees_result.value.outcome.raw_return_code}; "
-                f"stderr={worktrees_result.value.stderr.strip() or '<empty>'}"
-            )
-        worktree_path = ""
-        worktree_sha = ""
-        worktree_branch = "detached"
-        worktree_bare = False
-        for line in (*worktrees_result.value.stdout.splitlines(), ""):
-            if line.startswith("worktree "):
-                worktree_path = line.removeprefix("worktree ")
-                worktree_bare = False
-            elif line == "bare":
-                # The main worktree of a bare repository (e.g. a Gas Town rig
-                # .repo.git) lists itself with a `bare` attribute and no HEAD;
-                # it owns refs but is never a governed branch checkout.
-                worktree_bare = True
-            elif line.startswith("HEAD "):
-                worktree_sha = line.removeprefix("HEAD ")
-            elif line.startswith("branch "):
-                worktree_branch = line.removeprefix("branch ")
-            elif not line and worktree_path:
-                if worktree_bare:
-                    worktree_path = ""
-                    worktree_sha = ""
-                    worktree_branch = "detached"
-                    continue
-                if not worktree_sha:
-                    return r[m.Infra.BranchAncestryPlan].fail(
-                        f"worktree has no HEAD: {worktree_path}"
-                    )
-                if Path(worktree_path).resolve() != root.resolve():
-                    worktree_path = ""
-                    worktree_sha = ""
-                    worktree_branch = "detached"
-                    continue
-                if worktree_branch == "detached":
-                    # Detached checkouts (e.g., temporary CI/worktree transactions)
-                    # are not governed branch refs; skip them.
-                    worktree_path = ""
-                    worktree_sha = ""
-                    worktree_branch = "detached"
-                    continue
-                observations.append((
-                    f"worktree:{worktree_path}:{worktree_branch}",
-                    worktree_sha,
-                ))
-                worktree_path = ""
-                worktree_sha = ""
-                worktree_branch = "detached"
-        references: list[m.Infra.BranchAncestryRef] = []
-        for reference, sha in sorted(observations):
-            policy_reference = (
-                reference.rpartition(":")[2]
-                if reference.startswith("worktree:")
-                else reference
-            )
-            # Ancestry is a development-line rule. Only refs on the
-            # governed allowlist are gated; parked releases (0.10/0.11), snapshots
-            # and lane branches are inventoried but must never block conform.
-            excluded = cls._technical_branch(
-                policy_reference, target.technical_branch_patterns
-            ) or not cls._technical_branch(
-                policy_reference, target.governed_branch_patterns
-            )
-            # Only enforce ancestry on active checkouts: the current branch and
-            # registered worktrees. Shared local/remote branches that are not
-            # currently checked out are excluded from this repository-local gate.
-            if not excluded and not reference.startswith("worktree:"):
-                is_remote = reference.startswith("refs/remotes/")
-                is_other_local = (
-                    reference.startswith("refs/heads/")
-                    and reference != current_branch_ref
-                )
-                if is_remote or is_other_local:
-                    excluded = True
-            ancestor: bool | None = None
-            if not excluded:
-                ancestry_command = (
-                    c.Infra.GIT,
-                    "merge-base",
-                    "--is-ancestor",
-                    baseline_sha,
-                    sha,
-                )
-                ancestry_result = u.Cli.run_raw(ancestry_command, cwd=root)
-                if ancestry_result.failure:
-                    return r[m.Infra.BranchAncestryPlan].fail(
-                        "cannot validate branch ancestry: "
-                        f"{reference}; command={' '.join(ancestry_command)}; "
-                        f"error={ancestry_result.error}"
-                    )
-                if ancestry_result.value.outcome.raw_return_code not in {0, 1}:
-                    return r[m.Infra.BranchAncestryPlan].fail(
-                        "Git ancestry validation failed: "
-                        f"{reference}; command={' '.join(ancestry_command)}; "
-                        f"exit={ancestry_result.value.outcome.raw_return_code}; "
-                        f"stderr={ancestry_result.value.stderr.strip() or '<empty>'}"
-                    )
-                ancestor = u.Cli.process_succeeded(ancestry_result.value.outcome)
-                if not ancestor and policy_reference == current_branch_ref:
-                    ancestor = pending_merge_includes_baseline
-            references.append(
-                m.Infra.BranchAncestryRef(
-                    reference=reference, sha=sha, excluded=excluded, ancestor=ancestor
-                )
-            )
-        return r[m.Infra.BranchAncestryPlan].ok(
-            m.Infra.BranchAncestryPlan(
-                repository_root=root,
-                baseline_reference=baseline_reference,
-                baseline_sha=baseline_sha,
-                references=tuple(references),
             )
         )
 

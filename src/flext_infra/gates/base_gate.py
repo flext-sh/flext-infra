@@ -371,9 +371,14 @@ class FlextInfraGate:
     def _check_remove_env_keys(
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
-        """Return inherited environment keys removed for this tool invocation."""
+        """Return inherited environment keys removed for this tool invocation.
+
+        Every gate parses its tool's output, so the host color-forcing signal is
+        never inherited: with the orchestrator's NO_COLOR it made Node-based
+        tools print a warning on stderr that the gate then counted as a finding.
+        """
         _ = project_dir, ctx
-        return ()
+        return (c.Infra.ENV_VAR_FORCE_COLOR,)
 
     # ------------------------------------------------------------------
     # Template method: fix

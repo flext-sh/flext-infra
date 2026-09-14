@@ -89,7 +89,7 @@ class FlextInfraWorkspaceChecker(
         gate_ctx = m.Infra.GateContext(
             repository_root=params.repository_root,
             reports_dir=params.reports_dir_path,
-            apply_fixes=params.fix,
+            apply_fixes=params.apply,
             check_only=params.check_only,
             ruff_args=tuple(cls.parse_tool_args(params.ruff_args)),
             pyright_args=tuple(cls.parse_tool_args(params.pyright_args)),
@@ -108,6 +108,16 @@ class FlextInfraWorkspaceChecker(
         ]
         if failed_projects:
             failed_names = ", ".join(project.project for project in failed_projects)
+            if params.report_findings:
+                # Why (operator 2026-09-14): `make fix` applies and reports what
+                # still fails without failing the make run; `make check` applies
+                # too and fails on leftovers. An execution failure above still
+                # fails either verb.
+                u.Cli.warning(
+                    f"fix applied; quality gates still report findings for: "
+                    f"{failed_names} (see the check summary; `make check` fails on them)"
+                )
+                return r[bool].ok(True)
             return r[bool].fail(f"quality gates failed for: {failed_names}")
         return r[bool].ok(True)
 

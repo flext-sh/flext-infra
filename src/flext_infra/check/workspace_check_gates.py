@@ -13,7 +13,6 @@ from flext_infra import c, m, p, r, t, u
 from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.base_gate import FlextInfraGate
-from flext_infra.gates.budget import FlextInfraBudgetGate
 from flext_infra.gates.canonical_alias import FlextInfraCanonicalAliasGate
 from flext_infra.gates.codemod import FlextInfraCodemodGate
 from flext_infra.gates.deferred_self_reference import (
@@ -94,7 +93,6 @@ class FlextInfraGateRegistry:
             FlextInfraCodemodGate,
             FlextInfraDirenvGate,
             FlextInfraDuplicationGate,
-            FlextInfraBudgetGate,
         )
 
     def get(self, gate_id: str) -> type[FlextInfraGate] | None:

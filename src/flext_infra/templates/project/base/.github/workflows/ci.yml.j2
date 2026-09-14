@@ -93,14 +93,17 @@ jobs:
         # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
         run: {{ make.ci.variable }}={{ make.ci.value }} make {{ step.verb }}
 {%- if step.verb == "setup" %}
-      - name: gen check (blocking)
-        run: {{ make.ci.variable }}={{ make.ci.value }} make conform 
+      - name: gen fixed point (blocking)
+        run: |
+          {{ make.ci.variable }}={{ make.ci.value }} make gen
+          git status --short
+          test -z "$(git status --porcelain --untracked-files=all)"
 
       # Setup syncs against the committed lock and refreshes it in place (`uv
       # sync`); the fleet runs unlocked, so the deps audit proves the resolved
       # graph instead of preserving a frozen snapshot.
       - name: deps check (blocking)
-        run: {{ make.ci.variable }}={{ make.ci.value }} make audit 
+        run: {{ make.ci.variable }}={{ make.ci.value }} make audit
 {%- endif %}
 {%- if step.verb == "check" %}
 
