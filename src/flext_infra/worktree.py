@@ -196,7 +196,12 @@ class FlextInfraWorktreeService(s[str]):
             m.Infra.GitCommitishRequest(repo_root=primary_root, commitish=base)
         )
         if resolved.failure:
-            return r[str].from_failure(resolved)
+            # Name the operation that failed. The bare ref-resolution error
+            # says only that a ref is missing, which reads as a tooling
+            # problem rather than as the reason this lane was not created.
+            return r[str].fail(
+                f"cannot resolve worktree base: {base}; {resolved.error}"
+            )
         base_oid = resolved.value.oid
         if self.epic_lane is not None:
             if self.epic_lane.is_symlink():
