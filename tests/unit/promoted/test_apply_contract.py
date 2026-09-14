@@ -1,8 +1,10 @@
-"""R28 (operator decision A, 2026-09-12) promoted-command APPLY contract tests.
+"""Promoted-command always-executes contract tests.
 
-Mutation is the default for every promoted command; ``APPLY=N`` selects
-check/dry-run mode where the command mutates; any other ``APPLY`` value — in
-particular the legacy ``APPLY=Y`` — is a hard, named error. These tests
+S1 (2026-09-14): mutation is unconditional for every promoted command; there
+is no ``APPLY``/check/dry-run selector anywhere in the promoted framework.
+``dispatch()`` always runs the selected command, and an ambient ``APPLY``
+value of any kind — including the legacy ``APPLY=N`` — is inert: it is never
+read by the promoted framework and never changes execution. These tests
 exercise the public ``flext_infra.promoted`` surface directly, with no mocks
 or patched internals: real ``Command``/``Param`` models, a real ``Registry``,
 and a real child process for the dispatch-level cases.
@@ -16,12 +18,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import m
-from flext_infra.promoted.base import RegistryError
 from flext_infra.promoted.dispatcher import dispatch
-from flext_infra.promoted.invocation import (
-    validate_apply_env,
-    validate_command_contract,
-)
+from flext_infra.promoted.invocation import validate_command_contract
 from flext_infra.promoted.registry import Registry
 
 if TYPE_CHECKING:
@@ -51,81 +49,34 @@ def _command(
     )
 
 
-class TestsFlextInfraPromotedApplyEnvValidation:
-    """Validate the ambient ``APPLY`` value against the R28 contract."""
+class TestsFlextInfraPromotedAlwaysExecutes:
+    """Validate the static header contract carries no APPLY special-casing."""
 
-    def test_absent_apply_selects_mutation(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    def test_command_contract_accepts_mutating_command_without_apply(
+        self, tmp_path: Path
     ) -> None:
-        """An unset APPLY resolves to "" — mutation is the default."""
-        monkeypatch.delenv("APPLY", raising=False)
-        command = _command(path=tmp_path / "scripts" / "probe" / "all.py")
-        assert validate_apply_env(command) == ""
-
-    def test_apply_n_selects_check_mode(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """APPLY=N is the only accepted opt-in to check/dry-run mode."""
-        monkeypatch.setenv("APPLY", "N")
-        command = _command(path=tmp_path / "scripts" / "probe" / "all.py")
-        assert validate_apply_env(command) == "N"
-
-    def test_apply_y_is_a_named_hard_error(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """The legacy APPLY=Y raises, naming the violator and the fix."""
-        monkeypatch.setenv("APPLY", "Y")
-        command_path = tmp_path / "scripts" / "probe" / "all.py"
-        command = _command(path=command_path)
-        with pytest.raises(RegistryError) as excinfo:
-            validate_apply_env(command)
-        message = str(excinfo.value)
-        assert "[PROMOTED-APPLY] unsupported APPLY value 'Y'" in message
-        assert str(command_path) in message
-        assert "APPLY=N" in message
-
-    def test_arbitrary_apply_value_is_rejected(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Any value outside {"", "N"} is rejected, not only "Y"."""
-        monkeypatch.setenv("APPLY", "maybe")
-        command = _command(path=tmp_path / "scripts" / "probe" / "all.py")
-        with pytest.raises(RegistryError, match=r"unsupported APPLY value 'maybe'"):
-            validate_apply_env(command)
-
-
-class TestsFlextInfraPromotedApplyCommandContract:
-    """Validate the static header contract for a declared APPLY parameter."""
-
-    def test_command_may_omit_apply_entirely(self, tmp_path: Path) -> None:
-        """A mutating command need not declare APPLY (mutation is default)."""
+        """A mutating command declaring no APPLY parameter is a valid contract."""
         command = _command(path=tmp_path / "scripts" / "probe" / "all.py")
         validate_command_contract(command)
 
-    def test_declared_apply_choices_n_only_is_valid(self, tmp_path: Path) -> None:
-        """APPLY choices restricted to ("N",) is the only valid declaration."""
-        param = m.Infra.Promoted.Param(name="APPLY", help="check mode", choices=("N",))
+    def test_command_contract_accepts_mutating_command_with_apply(
+        self, tmp_path: Path
+    ) -> None:
+        """A mutating command that still declares an APPLY parameter is equally valid.
+
+        The promoted framework no longer special-cases the name ``APPLY``: a
+        declared parameter by that name is an ordinary parameter, not a
+        check-mode selector.
+        """
+        param = m.Infra.Promoted.Param(name="APPLY", help="ignored", choices=("N", "Y"))
         command = _command(
             path=tmp_path / "scripts" / "probe" / "all.py", params=(param,)
         )
         validate_command_contract(command)
 
-    def test_declared_apply_choices_containing_y_is_rejected(
-        self, tmp_path: Path
-    ) -> None:
-        """A header declaring APPLY choices with "Y" fails discovery-time validation."""
-        param = m.Infra.Promoted.Param(name="APPLY", help="apply", choices=("N", "Y"))
-        command_path = tmp_path / "scripts" / "probe" / "all.py"
-        command = _command(path=command_path, params=(param,))
-        with pytest.raises(RegistryError) as excinfo:
-            validate_command_contract(command)
-        message = str(excinfo.value)
-        assert "[PROMOTED-APPLY]" in message
-        assert str(command_path) in message
 
-
-class TestsFlextInfraPromotedDispatchApplyBehavior:
-    """Exercise dispatch()'s mutate/check/error branches through a real command."""
+class TestsFlextInfraPromotedDispatchAlwaysExecutes:
+    """Exercise dispatch()'s unconditional execution through a real command."""
 
     @staticmethod
     def _write_registry(tmp_path: Path) -> tuple[Registry, Path]:
@@ -143,10 +94,10 @@ class TestsFlextInfraPromotedDispatchApplyBehavior:
         registry.add(_command(path=command_path))
         return registry, marker
 
-    def test_dispatch_mutates_by_default(
+    def test_dispatch_executes_with_no_ambient_apply(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """No ambient APPLY: the mutating command actually executes."""
+        """No ambient APPLY: the mutating command executes."""
         registry, marker = self._write_registry(tmp_path)
         monkeypatch.setenv("WHAT", "all")
         monkeypatch.delenv("APPLY", raising=False)
@@ -156,13 +107,14 @@ class TestsFlextInfraPromotedDispatchApplyBehavior:
         assert exit_code == 0
         assert marker.exists()
 
-    def test_dispatch_check_mode_does_not_execute(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str],
+    def test_dispatch_executes_even_with_apply_n_set(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """APPLY=N renders the dry-run report and never runs the command."""
+        """APPLY=N in the environment is ignored: the command still executes.
+
+        There is no check/dry-run mode left in the promoted framework, so a
+        caller-set APPLY value never suppresses mutation.
+        """
         registry, marker = self._write_registry(tmp_path)
         monkeypatch.setenv("WHAT", "all")
         monkeypatch.setenv("APPLY", "N")
@@ -170,18 +122,4 @@ class TestsFlextInfraPromotedDispatchApplyBehavior:
         monkeypatch.delenv("OPTIONS", raising=False)
         exit_code = dispatch(registry, "probe")
         assert exit_code == 0
-        assert not marker.exists()
-        assert "DRY-RUN" in capsys.readouterr().out
-
-    def test_dispatch_rejects_legacy_apply_y_before_executing(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """APPLY=Y raises the R28 error and never reaches execution."""
-        registry, marker = self._write_registry(tmp_path)
-        monkeypatch.setenv("WHAT", "all")
-        monkeypatch.setenv("APPLY", "Y")
-        monkeypatch.delenv("HELP", raising=False)
-        monkeypatch.delenv("OPTIONS", raising=False)
-        with pytest.raises(RegistryError, match=r"\[PROMOTED-APPLY\]"):
-            dispatch(registry, "probe")
-        assert not marker.exists()
+        assert marker.exists()

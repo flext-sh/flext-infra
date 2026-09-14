@@ -99,6 +99,26 @@ make test PROJECT=flext-demo MATCH=unit
         tm.that(issues[0].message, has="legacy `APPLY` flag is exterminated")
 
     @staticmethod
+    def test_rejects_apply_n_on_a_declared_verb() -> None:
+        """`APPLY=N` is rejected too: no APPLY value is a valid Make input.
+
+        S1 (operator law 2026-09-14) removed every APPLY selector from the
+        generated Makefile, so `APPLY=N` is exactly as invented as the legacy
+        `APPLY=Y`, not merely a stale check-mode token.
+        """
+        verb = next(spec.name for spec in config.Infra.codegen.make.verbs)
+        content = f"```bash\nmake {verb} APPLY=N\n```\n"
+
+        issues = u.Infra.docs_command_contract_content_issues(
+            content,
+            relative_path="docs/guides/getting-started.md",
+            effective_verbs=config.Infra.codegen.make.verbs,
+        )
+
+        tm.that(len(issues), eq=1)
+        tm.that(issues[0].message, has="legacy `APPLY` flag is exterminated")
+
+    @staticmethod
     def test_accepts_plain_declared_verbs() -> None:
         """Every declared verb documented without variables passes."""
         plain = "\n".join(

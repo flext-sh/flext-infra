@@ -19,30 +19,17 @@ class FlextInfraReleaseArtifactArchiveMixin:
     """Validate release archive boundaries before artifact persistence."""
 
     @staticmethod
-    def _gen_exists_or_absent(name: str) -> bool:
-        """Return whether ``name`` is a .gen externally-managed exists_or_absent file.
-
-        Why: such files are template projections whose existence the .gen
-        contract validates without owning content; their names can match
-        sensitive-path patterns (``.env.example``) while never carrying
-        secrets, so the release archive exempts them.
-        """
-        requirements = u.Infra.load_gen_requirements(Path(__file__)).unwrap()
-        entry = requirements.requirements.externally_managed.get(name)
-        return entry is not None and entry.validation == "exists_or_absent"
-
-    @staticmethod
     def _staged_member_path_error(name: str) -> str:
         """Return a staged-source sensitivity error, or an empty string."""
         path = PurePosixPath(name)
         if not name or "\\" in name or path.is_absolute() or ".." in path.parts:
             return f"unsafe staged source path: {name}"
-        if FlextInfraReleaseArtifactArchiveMixin._gen_exists_or_absent(name):
-            return ""
-        # Why: a file codegen owns (`.env.example`) is a projection of the
-        # fleet template, never a secret; only its name matches the pattern.
-        if any(
-            name == item.path.as_posix() for item in config.Infra.codegen.managed_files
+        # Why: a file codegen renders from the fleet templates or owns as a
+        # managed file (`.env.example`) is a projection, never a secret; only
+        # its name matches the sensitive-path pattern.
+        codegen = config.Infra.codegen
+        if name in {entry.destination for entry in codegen.templates.entries} or any(
+            name == item.path.as_posix() for item in codegen.managed_files
         ):
             return ""
         blocked_suffixes = (".jks", ".key", ".keystore", ".p12", ".pem", ".pfx")

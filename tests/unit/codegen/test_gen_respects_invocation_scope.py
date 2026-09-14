@@ -100,16 +100,18 @@ def test_recipe_bodies_are_actually_parsed() -> None:
 
 
 def test_gen_has_one_codegen_owner() -> None:
-    """The gen recipe delegates each mode once to the conform owner.
+    """The gen recipe delegates once, unconditionally, to the conform owner.
 
-    Apply verifies its own fixed point inside the conform transaction, so a
-    second external check invocation would duplicate ownership.
+    S1 (operator law 2026-09-14) removed the CHECK_ONLY selector: there is no
+    separate `_builtin_gen_check` recipe any more, only the one always-apply
+    `_builtin_gen_all` target, which verifies its own fixed point inside the
+    conform transaction.
     """
     text = _template_text()
     assert "CODEGEN_PROJECT_ARGS" not in text
 
     bodies = _recipe_bodies()
-    expected_modes = {"_builtin_gen_check": ("check",), "_builtin_gen_all": ("apply",)}
+    expected_modes = {"_builtin_gen_all": ("apply",)}
     for target, modes in expected_modes.items():
         conform_lines = [line for line in bodies[target] if "codegen conform" in line]
         assert len(conform_lines) == len(modes)
