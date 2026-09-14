@@ -94,12 +94,18 @@ class FlextInfraUtilitiesProjectDiscovery(
     def _is_nonparticipant(
         cls, candidate: Path, repository_root: Path, nonparticipants: frozenset[str]
     ) -> bool:
-        """Return whether one candidate lies at or under a declared non-participant."""
-        try:
-            relative = candidate.resolve().relative_to(repository_root.resolve())
-        except ValueError:
+        """Return whether one candidate lies at or under a declared non-participant.
+
+        A candidate outside the repository declares nothing, so it is asked
+        directly rather than through a caught ``ValueError``: containment is a
+        question the path answers, and catching the exception made a normal
+        answer indistinguishable from a swallowed failure.
+        """
+        resolved_root = repository_root.resolve()
+        resolved_candidate = candidate.resolve()
+        if not resolved_candidate.is_relative_to(resolved_root):
             return False
-        posix = relative.as_posix()
+        posix = resolved_candidate.relative_to(resolved_root).as_posix()
         if posix in {".", ""}:
             return False
         return any(
