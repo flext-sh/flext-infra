@@ -151,11 +151,6 @@ class FlextInfraConstantsCodegenProject:
     "Scaffold module-skeleton template (replaces the legacy f-string)."
     CODEGEN_CONFIG_FILENAME: Final[str] = "codegen.yaml"
     CODEGEN_OVERRIDES_FILENAME: Final[str] = "codegen-overrides.yaml"
-    CODEGEN_GEN_FILENAME: Final[str] = "codegen.gen.yaml"
-    CODEGEN_GEN_SUFFIX: Final[str] = ".gen.yaml"
-    "File suffix for generation requirements contract files managed by conform."
-    CODEGEN_CONFIG_DIR: Final[str] = "config"
-    "Directory name for flext-infra config files relative to package root."
 
     # One base catalog serves both profiles;
     # workspace topology is read only from each repository's own .gitmodules.

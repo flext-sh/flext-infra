@@ -38,6 +38,16 @@ class FlextInfraModelsCheck:
                 description="Enable check-only mode for supported tools",
             ),
         ] = False
+        report_findings: Annotated[
+            bool,
+            m.Field(
+                alias="report-findings",
+                description=(
+                    "Warn about findings left after applying instead of failing "
+                    "(the fix verb); check fails on them"
+                ),
+            ),
+        ] = False
         ruff_args: Annotated[
             str | None,
             m.Field(alias="ruff-args", description="Extra arguments forwarded to Ruff"),

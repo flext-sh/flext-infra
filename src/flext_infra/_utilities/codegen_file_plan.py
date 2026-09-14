@@ -51,8 +51,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
         desired_mode: int | None,
         source_states: t.SequenceOf[cli_m.Cli.AtomicFileState] = (),
         owner: str = "",
-        policy: Literal["full", "merge", "create-only", "delegated", "manual"]
-        | None = None,
+        policy: Literal["full", "merge"] | None = None,
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Capture one destination's before state and bind it to its desired state.
 

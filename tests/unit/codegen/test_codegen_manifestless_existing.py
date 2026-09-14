@@ -80,16 +80,12 @@ class TestCodegenManifestlessExisting:
         )
         tm.that(u.Infra.codegen_file_requires_effect(plans["pyproject.toml"]), eq=False)
 
-        # Why: create-only is a forbidden managed-file policy under the
-        # current .gen contract (config/codegen.gen.yaml); .env.example
-        # carries no managed_files entry and is never planned for an
-        # existing (manifestless) checkout.
+        # Why: .env.example carries no managed_files entry, so it is never
+        # planned for an existing (manifestless) checkout.
         tm.that(".env.example" in plans, eq=False)
         tm.that((root / ".env.example").exists(), eq=False)
-        # Why: LICENSE and README.md are `externally_managed` /
-        # `exists_or_absent` under the current .gen contract, not
-        # `managed_files` entries — conform never plans them at all, so the
-        # preserved bytes are proven by direct read, not a plan lookup.
+        # Why: LICENSE and README.md are not managed_files entries — conform
+        # never plans them, so the preserved bytes are proven by direct read.
         for relative, content in preserved.items():
             tm.that(relative in plans, eq=False)
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
@@ -119,12 +115,6 @@ class TestCodegenManifestlessExisting:
             ),
             eq=(),
         )
-
-    # Why: `create-only` is a forbidden managed-file policy under the
-    # current .gen contract (config/codegen.gen.yaml `managed_file_policies.
-    # forbidden`); no config entry selects it anymore, so the create-only
-    # non-regular-file rejection this test exercised is unreachable through
-    # the public conform surface. Removed as retired-contract coverage.
 
     def test_root_distribution_owns_its_dependency_profile(
         self, tmp_path: Path

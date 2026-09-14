@@ -150,7 +150,15 @@ class TestCodegenCiMatrix:
         for run_line in ci_step_runs:
             tm.that(workflow, has=run_line)
         tm.that(ci_step_runs, has="run: CI=Y make setup")
-        tm.that(workflow, has="run: CI=Y make conform")
+        # `conform` no longer exists as a Make verb (S1, operator law
+        # 2026-09-14); the blocking generation gate is the "gen fixed point"
+        # step, which runs `make gen` and proves the tree is unchanged.
+        tm.that(workflow, has="- name: gen fixed point (blocking)")
+        tm.that(workflow, has="CI=Y make gen")
+        tm.that(
+            workflow, has='test -z "$(git status --porcelain --untracked-files=all)"'
+        )
+        tm.that(workflow, lacks="run: CI=Y make conform")
         tm.that(workflow, has="run: CI=Y make audit")
         tm.that(workflow, lacks="attest/gates/v1")
         tm.that(workflow, lacks="github verify-gates")
@@ -158,12 +166,16 @@ class TestCodegenCiMatrix:
         step_indices = tuple(workflow.index(run_line) for run_line in ci_step_runs)
         tm.that(step_indices, eq=tuple(sorted(step_indices)))
         setup_index = workflow.index("run: CI=Y make setup")
-        conform_index = workflow.index("run: CI=Y make conform")
+        gen_fixed_point_index = workflow.index("- name: gen fixed point (blocking)")
         audit_index = workflow.index("run: CI=Y make audit")
         check_index = workflow.index("run: CI=Y make check")
         test_index = workflow.index("run: CI=Y make test")
         tm.that(
-            setup_index < conform_index < audit_index < check_index < test_index,
+            setup_index
+            < gen_fixed_point_index
+            < audit_index
+            < check_index
+            < test_index,
             eq=True,
         )
         header, jobs = workflow.split("\njobs:\n", maxsplit=1)
@@ -397,21 +409,6 @@ class TestCodegenCiMatrix:
     def test_dockerfiles_render_byte_idempotently(self, tmp_path: Path) -> None:
         """Repeated project generation preserves the generated Dockerfiles."""
         root = self._render_project(tmp_path / "external")
-        # The re-render is an existing-tree conform whose ancestry preflight
-        # resolves the provider baseline; a project the generator just created
-        # is still unpublished, so the fixture mirrors the post-push ref state
-        # the same way every governed fixture does.
-        provider = config.Infra.codegen.providers[0]
-        tm.ok(
-            u.Cli.run_checked([
-                "git",
-                "-C",
-                str(root),
-                "update-ref",
-                f"refs/remotes/{c.Infra.GIT_ORIGIN}/{provider.branch}",
-                c.Infra.GIT_HEAD,
-            ])
-        )
         before = {
             distro: (
                 root / "tests" / "fixtures" / "ci" / "docker" / f"{distro}.Dockerfile"

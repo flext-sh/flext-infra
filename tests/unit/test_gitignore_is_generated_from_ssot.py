@@ -39,16 +39,8 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         verifies the tree through git. A whitelist that blocks one of those
         paths makes the artifact untrackable, so conform re-reports it as a new
         file on every run and the whole transaction never converges.
-
-        ``delegated`` entries are the deliberate exception: they are generated
-        into each checkout rather than committed, so being ignored is correct.
-        The distinction is read from the managed-file policy, never hardcoded.
         """
-        committed = tuple(
-            item
-            for item in config.Infra.codegen.managed_files
-            if item.policy != c.Infra.MANAGED_FILE_POLICY_DELEGATED
-        )
+        committed = config.Infra.codegen.managed_files
         rendered = (
             "\n".join(test_u.Tests.ignore_patterns_for(_repository_root())) + "\n"
         )

@@ -108,11 +108,11 @@ class FlextInfraWorkspaceChecker(
         ]
         if failed_projects:
             failed_names = ", ".join(project.project for project in failed_projects)
-            if params.apply and not params.check_only:
-                # Why (operator 2026-09-14): apply mode is `make fix`; it applies
-                # and reports what still fails without failing the make run.
-                # Leftovers remain a failure of `make check`; an execution
-                # failure above still fails this verb.
+            if params.report_findings:
+                # Why (operator 2026-09-14): `make fix` applies and reports what
+                # still fails without failing the make run; `make check` applies
+                # too and fails on leftovers. An execution failure above still
+                # fails either verb.
                 u.Cli.warning(
                     f"fix applied; quality gates still report findings for: "
                     f"{failed_names} (see the check summary; `make check` fails on them)"
