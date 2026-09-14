@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraPytestRunner, c, config, u
+from flext_infra import FlextInfraPytestRunner, c, config, m, u
 
 
 class TestsFlextInfraPytestRunner:
@@ -106,7 +106,9 @@ class TestsFlextInfraPytestRunner:
     ) -> None:
         """Retain all failures and later outcomes in one persistent-cache run."""
         cache = config.Infra.codegen.make.testmon_cache
-        (cached_runner_project / cache.target_directory / "test_failures.py").write_text(
+        (
+            cached_runner_project / cache.target_directory / "test_failures.py"
+        ).write_text(
             "def test_first_failure() -> None:\n"
             "    assert False, 'first failure evidence'\n\n"
             "def test_second_failure() -> None:\n"
@@ -118,7 +120,7 @@ class TestsFlextInfraPytestRunner:
 
         tm.that(exit_code, ne=0)
         reports_root = cached_runner_project / cache.reports_directory
-        report_path, = reports_root.glob("*/junit.xml")
+        (report_path,) = reports_root.glob("*/junit.xml")
         report = tm.ok(u.Cli.files_read_text(report_path))
         tm.that(
             report,
@@ -132,6 +134,13 @@ class TestsFlextInfraPytestRunner:
                 "second failure evidence",
             ],
         )
+        outcome = m.Cli.ProcessOutcome.model_validate_json(
+            tm.ok(u.Cli.files_read_text(report_path.parent / "suite-outcome.json"))
+        )
+        tm.that(outcome.raw_return_code, eq=exit_code)
+        tm.that(outcome.timed_out, eq=False)
+        tm.that(outcome.forwarded_signal, none=True)
+        tm.that(self._summary(reports_root), has=["failed=2", "exit=1"])
 
     @pytest.mark.slow
     def test_external_gate_markers_are_not_executed_offline(
