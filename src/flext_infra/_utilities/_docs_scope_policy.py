@@ -47,16 +47,72 @@ class FlextInfraUtilitiesDocsScopePolicyMixin(FlextInfraUtilitiesDocsScopeStateM
         return dict(validated)
 
     @staticmethod
+    def manifest_excluded_roots(repository_root: Path) -> t.Infra.StrSet:
+        """Return directory names excluded by the workspace topology manifest.
+
+        ``config/workspace.yaml`` is the handwritten topology SSOT and its own
+        header instructs the operator to "declare members/exclusions here", but
+        discovery used to consult only the docs-scope config, so a declared
+        exclusion did nothing and a non-PEP621 subtree (a vendored directory, a
+        Poetry-native submodule) made ``make gen`` fail with "missing [project]
+        table" and offered no working escape hatch.
+
+        The manifest is read with the same primitive its own owner uses
+        (``workspace/detector.py``) and is treated as optional and advisory
+        here: this helper only narrows discovery, so a repository with no
+        manifest, or one whose manifest is being edited, must degrade to "no
+        extra exclusions" rather than break every docs and deps phase. The
+        manifest's authoritative validation stays in its owner, which fails
+        loud.
+        """
+        manifest_path = (
+            repository_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME
+        )
+        if not manifest_path.is_file():
+            return set()
+        loaded = u.Cli.config_load(manifest_path, expand_env=False)
+        if loaded.failure:
+            return set()
+        data = loaded.value.data
+        if not isinstance(data, dict):
+            return set()
+        declared = data.get("exclusions")
+        if not isinstance(declared, list):
+            return set()
+        names: set[str] = set()
+        for item in declared:
+            if not isinstance(item, dict):
+                continue
+            raw = item.get("path")
+            if raw is None:
+                continue
+            # Discovery filters on the directory name, so a nested declaration
+            # such as "vendor/upstream" contributes the leaf it can match.
+            name = Path(str(raw).strip()).name
+            if name:
+                names.add(name)
+        return names
+
+    @staticmethod
     def excluded_roots(repository_root: Path) -> t.Infra.StrSet:
-        """Return explicitly excluded root directories from docs scope."""
-        payload = FlextInfraUtilitiesDocsScopePolicyMixin.load_config(repository_root)
+        """Return every explicitly excluded root directory.
+
+        Union of the docs-scope config and the workspace topology manifest, so
+        one declaration works wherever an operator makes it. Two independent
+        exclusion owners is what let a declared exclusion be silently ignored.
+        """
+        owner = FlextInfraUtilitiesDocsScopePolicyMixin
+        excluded_names = owner.manifest_excluded_roots(repository_root)
+        payload = owner.load_config(repository_root)
         scope = payload.get("scope")
         if not isinstance(scope, dict):
-            return set()
+            return excluded_names
         excluded = scope.get("exclude_roots")
         if not isinstance(excluded, list):
-            return set()
-        return {str(item).strip() for item in excluded if str(item).strip()}
+            return excluded_names
+        return excluded_names | {
+            str(item).strip() for item in excluded if str(item).strip()
+        }
 
     @staticmethod
     def project_docs_meta(project_root: Path) -> t.JsonMapping:

@@ -21,6 +21,7 @@ from flext_infra.gates.deferred_self_reference import (
 )
 from flext_infra.gates.direnv import FlextInfraDirenvGate
 from flext_infra.gates.duplication import FlextInfraDuplicationGate
+from flext_infra.gates.index_declarations import FlextInfraIndexDeclarationsGate
 from flext_infra.gates.layout import FlextInfraLayoutGate
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
@@ -88,6 +89,7 @@ class FlextInfraGateRegistry:
             FlextInfraNamespaceGate,
             FlextInfraLayoutGate,
             FlextInfraTierWhitelistGate,
+            FlextInfraIndexDeclarationsGate,
             FlextInfraSmellsGate,
             FlextInfraCodemodGate,
             FlextInfraDirenvGate,

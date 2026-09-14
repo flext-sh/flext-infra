@@ -32,6 +32,7 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
 
     _GITLINK_MODE: ClassVar[str] = "160000"
     _STAGED_GITLINK_FIELDS: ClassVar[int] = 2
+    _STAGE_ENTRY_FIELDS: ClassVar[int] = 4
 
     @classmethod
     def git_committed_directory_blobs(
@@ -201,6 +202,37 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
         return r[m.Infra.GitOidReport].fail(
             f"governed gitlink is absent from the index: {request.reference}"
         )
+
+    @classmethod
+    def git_index_gitlink_paths(
+        cls, repository_root: Path
+    ) -> p.Result[t.StrSequence]:
+        """Return every path the index records as a gitlink (mode ``160000``).
+
+        Git records a directory that contains its own ``.git`` as a gitlink the
+        moment it is staged, with no warning and no ``.gitmodules`` entry. The
+        index is therefore the only place that knows the complete set; reading
+        it is how a caller compares what is recorded against what the
+        repository declares.
+        """
+        try:
+            repo = cls._repo(repository_root)
+            staged = repo.git.ls_files("--stage")
+        except (GitCommandError, InvalidGitRepositoryError, NoSuchPathError) as exc:
+            return r[t.StrSequence].fail(
+                f"failed to read the Git index: {exc}", exception=exc
+            )
+        except (OSError, ValueError) as exc:
+            return r[t.StrSequence].fail(
+                f"failed to read the Git index: {exc}", exception=exc
+            )
+        paths = tuple(
+            line.split(maxsplit=3)[3]
+            for line in staged.splitlines()
+            if line.startswith(cls._GITLINK_MODE)
+            and len(line.split(maxsplit=3)) == cls._STAGE_ENTRY_FIELDS
+        )
+        return r[t.StrSequence].ok(paths)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitSemanticIndexMixin"]
