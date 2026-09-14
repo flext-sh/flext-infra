@@ -1315,22 +1315,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             t.SequenceOf[FlextInfraModelsCodegen.AutoFixResult],
             m.Field(description="Auto-fix stage results"),
         ] = ()
-        conform_plan: Annotated[
-            FlextInfraConfigModels.CodegenPlan | None,
-            m.Field(description="Validated conform plan from ParseSSOTStage"),
-        ] = None
-        rendered_artifacts: Annotated[
-            t.SequenceOf[FlextInfraConfigModels.CodegenFilePlan],
-            m.Field(description="Rendered artifacts before overlay preservation"),
-        ] = ()
-        composed_artifacts: Annotated[
-            t.SequenceOf[FlextInfraConfigModels.CodegenFilePlan],
-            m.Field(description="Artifacts after overlay preservation"),
-        ] = ()
-        publication_staged: Annotated[
-            t.SequenceOf[FlextInfraModelsCodegen.CodegenStagedFile],
-            m.Field(description="Files staged for atomic publication"),
-        ] = ()
 
 
 __all__: list[str] = ["FlextInfraModelsCodegen"]
