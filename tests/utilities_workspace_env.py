@@ -97,7 +97,9 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
                     ["git", "check-ignore", "-q", relative_path], cwd=probe_root
                 )
             )
-        return probe.outcome.raw_return_code != int(c.Infra.ScriptExitCode.PASS)
+        code = probe.outcome.raw_return_code
+        tm.that(code in {0, 1}, eq=True)
+        return code == 1
 
 
 __all__: list[str] = ["TestsFlextInfraUtilitiesWorkspaceEnvMixin"]
