@@ -319,6 +319,20 @@ class FlextInfraCodegenTransaction:
             )
         staged = stage_file_plans(layout, phase, changed)
         if staged.failure:
+            # Why: staging creates each phase root on disk lazily, as soon as it
+            # reaches the first plan with content, so a failure part-way through
+            # leaves a root that the persisted journal never registered. The
+            # append_prepared branch below already discards exactly that; this
+            # path did not, and the difference is not cosmetic: recovery's
+            # untracked-residue guard then rejects the tree, and because
+            # _reconcile only sweeps residue when no journal exists, the run
+            # wedges permanently with rm as the operator's sole exit. The roots
+            # are derived from the layout because `staged` carries no value here.
+            discarded = state.cleanup_orphan_paths(
+                self._candidate_phase_roots(layout, phase)
+            )
+            if discarded.failure:
+                return result_type.from_failure(discarded)
             return result_type.from_failure(
                 self._recover_failure(
                     layout, staged.error or f"cannot stage {phase} phase"
@@ -646,6 +660,25 @@ class FlextInfraCodegenTransaction:
             if item.replacement is not None:
                 roots.setdefault(item.replacement.path.parent, None)
         return tuple(roots)
+
+    @staticmethod
+    def _candidate_phase_roots(
+        layout: m.Infra.MiseToolchainWorkspaceLayout, phase: str
+    ) -> t.VariadicTuple[Path]:
+        """Name every staging root this phase could have created, without a value.
+
+        ``_staged_phase_roots`` derives roots from the staged files, so it is
+        unusable when staging itself failed -- there is no value on a failed
+        Result. Staging builds each root as
+        ``project.transaction_root / f"phase-{phase}"``
+        (``_codegen_staging``), so the same set is derivable from the layout
+        alone. That is what makes the failure path compensable.
+        """
+        return tuple(
+            project.transaction_root / f"phase-{phase}"
+            for project in layout.projects
+            if project.transaction_root is not None
+        )
 
     @staticmethod
     def _prepublication_barriers(
