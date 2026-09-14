@@ -78,8 +78,8 @@ O código e os comandos de `flext-infra` continuam pertencendo a este
 repositório. A consulta aos documentos e ao tracker de `flext` foi autorizada
 explicitamente pelo operador durante a preparação deste handoff.
 
-- [AGENTS.md local](../../AGENTS.md) e
-  [flext-law](../../.agents/skills/flext-law/SKILL.md): responsáveis canônicos,
+- [AGENTS.md local](../../AGENTS.md) e a skill local
+  `flext-law` em `.agents/skills/flext-law/SKILL.md`: responsáveis canônicos,
   preservação de alterações, fluxo estrutural por `make mod` e prova real.
 - [ADR-005: SSOT e direção das facades](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/005-config-settings-constants-templates-schemas-ssot.md):
   configuração tipada, `c -> t -> p -> m -> u`, publicação transacional e
@@ -162,6 +162,9 @@ feitas fora do fluxo canônico. Os helpers extraídos conservaram nomes privados
 usados entre módulos; o PR registra 22 diagnósticos de acesso privado em uma
 verificação posterior. A contagem de nomes de testes preservados é útil para
 inventário, mas não prova collection, fixtures ou execução equivalentes.
+Durante a publicação deste handoff, uma alteração compartilhada tornou esses
+helpers públicos e atualizou seus consumidores nos três módulos. Essa correção
+também foi adotada para o WIP; a prova funcional completa continua pendente.
 
 Essas alterações devem ser preservadas e corrigidas para frente. O próximo
 agente precisa implementar a transformação reutilizável que reproduz a forma
@@ -227,7 +230,7 @@ ser feita com a conversa e o histórico. Este documento corrige esse enquadramen
 | `transformers/typing_unifier.py` e consumidores | Guard de mutabilidade e reparação das anotações alargadas indevidamente | Não prova convergência de todos os contratos |
 | `_constants/codegen.py` e `codegen/_mise_artifacts_*` | Constantes inseridas na classe responsável e acessos corrigidos | A movimentação automática geral continua incompleta |
 | `_models/codegen_toolchain.py` e `_models/codegen.py` | Separação dos modelos de toolchain, mantendo composição por herança | Extração manual; revalidar exports, importação e LOC |
-| `tests/unit/codegen/conform_support.py`, `test_codegen_make_contracts.py`, `test_codegen_script_dispatch.py` | Preservação dos testes extraídos do módulo de conformance | Resolver acesso privado e comprovar collection e execução |
+| `tests/unit/codegen/conform_support.py`, `test_codegen_make_contracts.py`, `test_codegen_script_dispatch.py` | Preservação dos testes extraídos; correção posterior dos acessos aos helpers públicos | Comprovar collection, execução e ausência dos diagnósticos anteriores |
 | `codemod/batch_apply.py`, `semantic_apply.py` e utilitários semânticos | Aplicação de rewrites acionáveis antes da fase semântica; verificação das fontes propostas | Contribuições compartilhadas; `make mod` completo ainda não foi comprovado |
 | Gates de censo/tier, geração e runner de pytest | Evidência causal e preservação do status de falha | Não presumir aprovação a partir da existência da implementação |
 

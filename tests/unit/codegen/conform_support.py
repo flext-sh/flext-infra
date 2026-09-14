@@ -20,7 +20,7 @@ class TestsFlextInfraConformSupport:
     """Shared project fixtures for conformance and Make runtime contracts."""
 
     @staticmethod
-    def _conform_target(
+    def conform_target(
         root: Path,
         repository: m.Infra.RepositoryRef,
         *,
@@ -37,12 +37,12 @@ class TestsFlextInfraConformSupport:
         )
 
     @staticmethod
-    def _standalone_workspace(root: Path) -> m.Infra.WorkspaceSpec:
+    def standalone_workspace(root: Path) -> m.Infra.WorkspaceSpec:
         """Load the smallest repository-local topology for conform tests."""
         return u.Tests.standalone_workspace(root)
 
     @staticmethod
-    def _apply_conform_surface(
+    def apply_conform_surface(
         root: Path,
         workspace: m.Infra.WorkspaceSpec,
         surface: c.Infra.CodegenConformSurface,
@@ -61,7 +61,7 @@ class TestsFlextInfraConformSupport:
         )
 
     @staticmethod
-    def _project_tree(root: Path) -> t.VariadicTuple[t.Pair[str, bytes]]:
+    def project_tree(root: Path) -> t.VariadicTuple[t.Pair[str, bytes]]:
         """Return the versionable project tree independently of Git test fixtures."""
         return tuple(
             sorted(
@@ -74,7 +74,7 @@ class TestsFlextInfraConformSupport:
         )
 
     @staticmethod
-    def _project_tree_diff(
+    def project_tree_diff(
         expected: t.VariadicTuple[t.Pair[str, bytes]],
         actual: t.VariadicTuple[t.Pair[str, bytes]],
     ) -> str:
@@ -95,7 +95,7 @@ class TestsFlextInfraConformSupport:
         )
 
     @staticmethod
-    def _seed_infra_package_tree(root: Path) -> None:
+    def seed_infra_package_tree(root: Path) -> None:
         """Seed the minimal flext-infra tree (pyproject, src package, tests package).
 
         The conform templates materialize tests/fixtures/ci/docker/*, and the
@@ -122,7 +122,7 @@ class TestsFlextInfraConformSupport:
         tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
 
     @staticmethod
-    def _self_check_conform_service(
+    def self_check_conform_service(
         root: Path,
     ) -> t.Pair[FlextInfraCodegenConform, m.Infra.CodegenConformRequest]:
         """Materialize the standalone root fixture and its CHECK-mode conform service."""

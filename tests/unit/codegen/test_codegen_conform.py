@@ -37,7 +37,7 @@ class TestsFlextInfraCodegenConform:
         self, tmp_path: Path
     ) -> None:
         """Render package requirements, canonicalize internal refs, then replan."""
-        service, request = TestsFlextInfraConformSupport._self_check_conform_service(
+        service, request = TestsFlextInfraConformSupport.self_check_conform_service(
             tmp_path
         )
         request = request.model_copy(
@@ -259,8 +259,8 @@ class TestsFlextInfraCodegenConform:
     ) -> None:
         """Generated Make delegates uv selection to the caller environment."""
         root = infra_git_repo
-        workspace = TestsFlextInfraConformSupport._standalone_workspace(root)
-        TestsFlextInfraConformSupport._apply_conform_surface(
+        workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
+        TestsFlextInfraConformSupport.apply_conform_surface(
             root, workspace, c.Infra.CodegenConformSurface.MAKEFILE
         )
         selected = u.Cli.run_raw(
@@ -298,7 +298,7 @@ class TestsFlextInfraCodegenConform:
             apply_changes=True,
         ).execute()
         tm.ok(created)
-        expected_tree = TestsFlextInfraConformSupport._project_tree(existing_root)
+        expected_tree = TestsFlextInfraConformSupport.project_tree(existing_root)
         tm.ok(
             u.Cli.atomic_write_text_file(
                 existing_root / ".gitignore", "# committed managed drift\n"
@@ -318,9 +318,9 @@ class TestsFlextInfraCodegenConform:
             )
         )
         tm.ok(migrated)
-        actual_tree = TestsFlextInfraConformSupport._project_tree(existing_root)
+        actual_tree = TestsFlextInfraConformSupport.project_tree(existing_root)
         assert actual_tree == expected_tree, (
-            TestsFlextInfraConformSupport._project_tree_diff(expected_tree, actual_tree)
+            TestsFlextInfraConformSupport.project_tree_diff(expected_tree, actual_tree)
         )
 
     @pytest.mark.slow
@@ -337,7 +337,7 @@ class TestsFlextInfraCodegenConform:
         root by itself and immediately reach a fixed point.
         """
         root = infra_git_repo
-        TestsFlextInfraConformSupport._seed_infra_package_tree(root)
+        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
         # The defect needs a Python root the declarative env_dirs never lists.
         extra_root = "tools"
         module = root / extra_root / "maintenance.py"
@@ -380,7 +380,7 @@ class TestsFlextInfraCodegenConform:
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        TestsFlextInfraConformSupport._seed_infra_package_tree(root)
+        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
         (root / "scripts").mkdir()
 
         result = FlextInfraCodegenConform.execute_request(
@@ -420,7 +420,7 @@ class TestsFlextInfraCodegenConform:
             "LICENSE": "existing license\n",
             "custom.mk": "_custom-status-diagnostics:\n\t@true\n",
         }
-        TestsFlextInfraConformSupport._seed_infra_package_tree(root)
+        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
         for relative, content in create_only.items():
             tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
         u.Tests.commit_git_changes(root, "Seed manifest-less tree")
@@ -600,7 +600,7 @@ class TestsFlextInfraCodegenConform:
             beads=u.Tests.beads_project("consumer"),
             repository=repository,
         )
-        target = TestsFlextInfraConformSupport._conform_target(
+        target = TestsFlextInfraConformSupport.conform_target(
             tmp_path, repository, make_profile=c.Infra.MakeProfile.STANDALONE
         )
         tooling_runtime = tm.ok(
@@ -635,8 +635,8 @@ class TestsFlextInfraCodegenConform:
     ) -> None:
         """Execute one public mode without changing an already conform tree."""
         root = infra_git_repo
-        workspace = TestsFlextInfraConformSupport._standalone_workspace(root)
-        TestsFlextInfraConformSupport._apply_conform_surface(
+        workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
+        TestsFlextInfraConformSupport.apply_conform_surface(
             root, workspace, c.Infra.CodegenConformSurface.MAKEFILE
         )
         u.Tests.commit_git_changes(root, "Seed generated project")
@@ -663,8 +663,8 @@ class TestsFlextInfraCodegenConform:
     ) -> None:
         """Plan only dependency metadata when another managed surface is invalid."""
         root = infra_git_repo
-        workspace = TestsFlextInfraConformSupport._standalone_workspace(root)
-        TestsFlextInfraConformSupport._apply_conform_surface(
+        workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
+        TestsFlextInfraConformSupport.apply_conform_surface(
             root, workspace, c.Infra.CodegenConformSurface.ALL
         )
         tm.ok(
