@@ -93,20 +93,22 @@ if [[ -v {{ gascity.identity_var }} ]] && [[ -n "${{ gascity.identity_var }}" ]]
   watch_file "${PROJECT_ROOT}/{{ gascity.beads_metadata_relpath }}"
   watch_file "$gas_city_root/{{ gascity.city_state_relpath }}"
   export BEADS_DOLT_SERVER_HOST=127.0.0.1
-  export BEADS_DOLT_SERVER_PORT="$(
+  BEADS_DOLT_SERVER_PORT="$(
     jq -r 'if .running == true and (.port | type == "number") and .port > 0 then
       .port
     else
       error("Gas City managed Dolt state is not healthy")
     end' "$gas_city_root/{{ gascity.city_state_relpath }}"
   )"
-  export BEADS_DOLT_SERVER_DATABASE="$(
+  export BEADS_DOLT_SERVER_PORT
+  BEADS_DOLT_SERVER_DATABASE="$(
     jq -r 'if .dolt_database != null and .dolt_database != "" then
       .dolt_database
     else
       error("this repository has no Beads dolt_database identity")
     end' "${PROJECT_ROOT}/{{ gascity.beads_metadata_relpath }}"
   )"
+  export BEADS_DOLT_SERVER_DATABASE
 fi
 # End SECTION: beads dolt server
 {% endif %}
