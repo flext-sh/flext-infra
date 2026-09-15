@@ -7,6 +7,7 @@ after every generated write so a regression can never land silently.
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import Final
@@ -47,7 +48,14 @@ class FlextInfraWorkspaceEnvironmentContracts:
         if home_match is not None:
             if not resolve_home:
                 return None
-            return Path.home() / candidate.lstrip("/")
+            # A $HOME target describes machine state, so it probes the real
+            # account home (pwd), never the ambient HOME: check pipelines run
+            # under redirected homes where the referenced files legitimately
+            # live only in the real account.
+            import pwd
+
+            real_home = pwd.getpwuid(os.getuid()).pw_dir
+            return Path(real_home) / candidate.lstrip("/")
         resolved = Path(candidate)
         if not resolved.is_absolute():
             resolved = root / resolved
