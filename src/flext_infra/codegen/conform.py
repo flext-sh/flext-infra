@@ -612,9 +612,51 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         verified = self.plan(request)
         if verified.failure:
             return r[m.Infra.CodegenResult].from_failure(verified)
+        allowed = self._allow_direnv_after_apply(request, published.value)
+        if allowed.failure:
+            return r[m.Infra.CodegenResult].from_failure(allowed)
         return r[m.Infra.CodegenResult].ok(
             m.Infra.CodegenResult(plan=verified.value, written_files=published.value)
         )
+
+    def _allow_direnv_after_apply(
+        self,
+        request: m.Infra.CodegenConformRequest,
+        written_files: t.VariadicTuple[Path],
+    ) -> p.Result[bool]:
+        """Heal the direnv allow for every ``.envrc`` this apply published.
+
+        ``make setup`` authorizes the rendered ``.envrc`` once; a later conform
+        apply legitimately rewrites it (content-hash changes) and every
+        subsequent command blocks on direnv's stale-allow warning. The
+        generator owns the file it renders, so apply heals the allow itself
+        instead of leaving every environment stale until the operator re-runs
+        setup.
+        """
+        if (
+            c.Infra.CodegenConformMode(request.mode)
+            is not c.Infra.CodegenConformMode.APPLY
+        ):
+            return r[bool].ok(False)
+        roots = {
+            path.expanduser().resolve().parent
+            for path in written_files
+            if path.name == c.Infra.ENVRC_FILENAME
+        }
+        if not roots:
+            return r[bool].ok(False)
+        for root in sorted(roots):
+            result = u.Cli.run_raw(
+                (c.Infra.CLI_DIRENV, "allow", str(root)), cwd=root, timeout=60
+            )
+            if result.failure:
+                return r[bool].from_failure(result)
+            if not u.Cli.process_succeeded(result.value.outcome):
+                return r[bool].fail(
+                    f"direnv allow failed for {root}: "
+                    f"{result.value.stderr.strip() or result.value.stdout.strip()}"
+                )
+        return r[bool].ok(True)
 
     def _conform_workspace_beads_routes(
         self, request: m.Infra.CodegenConformRequest
@@ -2836,7 +2878,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return m.Infra.UvEnvironmentPlan(
             project_root=root,
             environment_root=environment_root,
-            lock_path=environment_root / c.Infra.UV_LOCK_FILENAME,
             python_version=config.toolchain.python_version,
             groups=groups,
             editable_repositories=editable_repositories,

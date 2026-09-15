@@ -53,7 +53,6 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         """Repository-local variables Git exports to hooks and aliases."""
 
         MAKE_ISOLATION_ENV_KEYS: Final[t.StrSequence] = (
-            "APPLY",
             "BASH_ENV",
             "CHANGED_ONLY",
             "CHECK_GATES",
