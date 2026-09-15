@@ -9,7 +9,14 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import _git
+    from . import _codegen, _git
+    from ._codegen.base import (
+        FlextInfraModelsCodegenCensus,
+        FlextInfraModelsCodegenJournal,
+        FlextInfraModelsCodegenPolicy,
+        FlextInfraModelsCodegenResults,
+        FlextInfraModelsCodegenSession,
+    )
     from ._defaults import (
         ImmutableEmptyMapping,
         immutable_empty_mapping,
@@ -64,7 +71,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsCensus",
     "FlextInfraModelsCheck",
     "FlextInfraModelsCodegen",
+    "FlextInfraModelsCodegenCensus",
+    "FlextInfraModelsCodegenJournal",
+    "FlextInfraModelsCodegenPolicy",
     "FlextInfraModelsCodegenRender",
+    "FlextInfraModelsCodegenResults",
+    "FlextInfraModelsCodegenSession",
     "FlextInfraModelsCodegenToolchain",
     "FlextInfraModelsCodemod",
     "FlextInfraModelsCore",
@@ -101,6 +113,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsWorktree",
     "FlextInfraSettingsModels",
     "ImmutableEmptyMapping",
+    "_codegen",
     "_git",
     "immutable_empty_mapping",
     "tool_version_field",
@@ -109,6 +122,14 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
+            "._codegen": ("_codegen",),
+            "._codegen.base": (
+                "FlextInfraModelsCodegenCensus",
+                "FlextInfraModelsCodegenJournal",
+                "FlextInfraModelsCodegenPolicy",
+                "FlextInfraModelsCodegenResults",
+                "FlextInfraModelsCodegenSession",
+            ),
             "._defaults": (
                 "ImmutableEmptyMapping",
                 "immutable_empty_mapping",
