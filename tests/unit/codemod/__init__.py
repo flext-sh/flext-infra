@@ -13,12 +13,14 @@ if TYPE_CHECKING:
 
     from .test_api_alias_cutover import TestsFlextInfraApiAliasCutover
     from .test_mod_circuit import TestsFlextInfraModCliRoute
+    from .test_mod_text_circuit import TestsFlextInfraModTextGateEngine
     from .test_private_import_cutover import TestsFlextInfraPrivateImportCutover
     from .test_rule_fixture_staging import TestsFlextInfraModRuleFixtureStaging
 __all__: tuple[str, ...] = (
     "TestsFlextInfraApiAliasCutover",
     "TestsFlextInfraModCliRoute",
     "TestsFlextInfraModRuleFixtureStaging",
+    "TestsFlextInfraModTextGateEngine",
     "TestsFlextInfraPrivateImportCutover",
     "c",
     "d",
@@ -43,6 +45,7 @@ _LAZY_IMPORTS = MappingProxyType(
         MappingProxyType({
             ".test_api_alias_cutover": ("TestsFlextInfraApiAliasCutover",),
             ".test_mod_circuit": ("TestsFlextInfraModCliRoute",),
+            ".test_mod_text_circuit": ("TestsFlextInfraModTextGateEngine",),
             ".test_private_import_cutover": ("TestsFlextInfraPrivateImportCutover",),
             ".test_rule_fixture_staging": ("TestsFlextInfraModRuleFixtureStaging",),
             "flext_tests": (

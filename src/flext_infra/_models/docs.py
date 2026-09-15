@@ -9,6 +9,7 @@ from flext_core import m
 from flext_infra import c, t
 
 from .config import FlextInfraConfigModels
+from .docs_collection import FlextInfraModelsDocsCollection
 from .docs_generation import FlextInfraModelsDocsGeneration
 
 
@@ -70,8 +71,16 @@ class _FlextInfraDocsContracts:
         count: Annotated[t.NonNegativeInt, m.Field(description="Project count")]
 
 
-class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContracts):
+class FlextInfraModelsDocs(
+    FlextInfraModelsDocsGeneration, FlextInfraModelsDocsCollection, _FlextInfraDocsContracts
+):
     """Models for documentation services."""
+
+    class DocsCollectRequest(m.ContractModel):
+        """Fixed-effect collection command with repository-owned configuration."""
+
+        repository_root: Annotated[Path, m.Field(description="Repository owning the plans")]
+        configuration: Annotated[Path, m.Field(description="Versioned collection source associations")]
 
     class DocsGenerateRequest(m.ContractModel):
         """Canonical docs generation request payload.
@@ -90,7 +99,6 @@ class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContra
             Path | str | None,
             m.Field(description="Optional docs output directory override"),
         ] = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
-        apply: Annotated[bool, m.Field(description="Apply writes to disk")] = False
         # Why (X-47): conform's DECLARED scope excludes the workspace root
         # repository, so the docs generator must not render root as an output
         # scope either; standalone docs commands keep including it.
