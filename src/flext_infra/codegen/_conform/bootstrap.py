@@ -1,39 +1,28 @@
-"""Bootstrap environment and toolchain policy projections"""
+"""Bootstrap environment and toolchain policy projections."""
 
 from __future__ import annotations
 
-import re
-import time
-from collections.abc import Mapping, MutableMapping
+from collections.abc import MutableMapping
 from pathlib import Path
-from typing import Annotated, Literal, override
 
-from ... import c, config, m, p, r, s, t, u
-from ...deps import FlextInfraEnsureRuffConfigPhase, FlextInfraPyprojectModernizer
-from ...docs import FlextInfraDocGenerator
-from ...services.codegen import FlextInfraCodegen
-from ...workspace import FlextInfraWorkspaceDetector
-from .. import (
-    FlextInfraCodegenLazyInit,
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-)
-from .._conform_gitignore import FlextInfraCodegenConformGitignoreMixin
-
+from ... import c, m, t, u
 
 
 class FlextInfraCodegenConformBootstrap:
     """Bootstrap environment and toolchain policy projections."""
+
     @staticmethod
     def _mise_bootstrap_environment() -> m.Infra.MiseBootstrapEnvironmentSpec:
         """Project the single generated Mise isolation contract into templates."""
         return u.Infra.mise_bootstrap_environment()
+
     @staticmethod
     def _link_mode(
         repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
     ) -> str:
         """Resolve the repository override through one codegen authority."""
         return repository.uv_link_mode or toolchain.uv_link_mode
+
     @staticmethod
     def _dependency_cooldown_policy(
         repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
@@ -48,6 +37,7 @@ class FlextInfraCodegenConformBootstrap:
             exclusions.pop(package, None)
             overrides[package] = cutoff
         return tuple(exclusions), overrides
+
     @staticmethod
     def _discover_script_verbs(
         repository_root: Path,
@@ -68,6 +58,7 @@ class FlextInfraCodegenConformBootstrap:
             if entry.is_dir() and (entry / "all.sh").is_file()
         ]
         return tuple(discovered)
+
     @staticmethod
     def _merge_extra_verbs(
         declared: t.VariadicTuple[m.Infra.MakeVerbSpec],
@@ -99,6 +90,7 @@ class FlextInfraCodegenConformBootstrap:
                 raise ValueError(msg)
             merged[verb.name] = verb
         return tuple(merged.values())
+
     @classmethod
     def _surface_contract(
         cls, surface: c.Infra.CodegenConformSurface

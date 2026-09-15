@@ -23,6 +23,7 @@ class FlextInfraConfigModelsProvider:
         ]
         base_url: Annotated[t.NonEmptyStr, m.Field(description="GitHub HTTPS base URL")]
         branch: Annotated[t.NonEmptyStr, m.Field(description="Provider branch")]
+
     class RepositorySourceSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Portable repository identity derived through one declared provider."""
 
@@ -39,6 +40,7 @@ class FlextInfraConfigModelsProvider:
             """Derive the internal distribution namespace from the owner name."""
             namespace, _, _ = self.distribution.partition("-")
             return f"{namespace}-"
+
     class BranchPolicySpec(FlextInfraConfigModelsContract._ConfigContract):
         """Global branch policy shared by every provider."""
 
@@ -68,6 +70,7 @@ class FlextInfraConfigModelsProvider:
                 ),
             ),
         ] = FlextInfraConstantsSharedInfra.INTEGRATION_BRANCH_PREFERENCE
+
     class GithubActionPinSpec(FlextInfraConfigModelsContract._ConfigContract):
         """One GitHub Action reference from the codegen catalog."""
 
@@ -78,7 +81,10 @@ class FlextInfraConfigModelsProvider:
             t.NonEmptyStr,
             m.Field(description="Upstream floating release tag the action rides"),
         ]
-    class CiPrivateSubmoduleDeployKeySpec(FlextInfraConfigModelsContract._ConfigContract):
+
+    class CiPrivateSubmoduleDeployKeySpec(
+        FlextInfraConfigModelsContract._ConfigContract
+    ):
         """One read-only deploy key that unlocks a private workspace subproject in CI."""
 
         secret: Annotated[
@@ -103,6 +109,7 @@ class FlextInfraConfigModelsProvider:
                 description="Canonical GitHub SSH clone URL without a Host alias",
             ),
         ]
+
     class CiPrivateDependencyAuthSpec(FlextInfraConfigModelsContract._ConfigContract):
         """GitHub App identity minting installation tokens for private deps."""
 
@@ -120,6 +127,7 @@ class FlextInfraConfigModelsProvider:
                 description="CI secret holding the private-dependency App key",
             ),
         ]
+
     class CiPrivateSubmodulesSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Per-distribution private submodule init contract for generated CI."""
 
@@ -140,7 +148,9 @@ class FlextInfraConfigModelsProvider:
             ),
         ]
         deploy_keys: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsProvider.CiPrivateSubmoduleDeployKeySpec],
+            t.VariadicTuple[
+                FlextInfraConfigModelsProvider.CiPrivateSubmoduleDeployKeySpec
+            ],
             m.Field(min_length=1, description="Ordered deploy-key materializations"),
         ]
 

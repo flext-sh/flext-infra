@@ -149,6 +149,7 @@ class FlextInfraConfigModelsRender:
                 ),
             ),
         ] = ()
+
     class MakeWorkflowRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Typed input shared by generated local workflow surfaces."""
 
@@ -157,6 +158,7 @@ class FlextInfraConfigModelsRender:
             FlextInfraConfigModelsMake.MakeSpec,
             m.Field(description="Canonical workflow command contract"),
         ]
+
     class ToolingRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Typed input for project-independent generated tooling surfaces."""
 
@@ -164,6 +166,7 @@ class FlextInfraConfigModelsRender:
             FlextInfraModelsDepsToolSettings.ToolConfigDocument,
             m.Field(description="Canonical validated tooling policy"),
         ]
+
     class DistroDockerRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Typed input consumed by generated distro Dockerfiles."""
 
@@ -181,6 +184,7 @@ class FlextInfraConfigModelsRender:
             FlextInfraConfigModelsContract.MiseBootstrapEnvironmentSpec,
             m.Field(description="Strict Mise environment projected into containers"),
         ]
+
     class EnvrcRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Typed input consumed only by the generated project ``.envrc``."""
 
@@ -214,6 +218,7 @@ class FlextInfraConfigModelsRender:
                 )
             ),
         ] = None
+
     class UvPackageSelectorSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Package selector for one official uv scoped dependency exclusion."""
 
@@ -222,7 +227,10 @@ class FlextInfraConfigModelsRender:
             t.NonEmptyStr | None,
             m.Field(description="Optional selected package version expression"),
         ] = None
-    class UvScopedDependencyExclusionSpec(FlextInfraConfigModelsContract._ConfigContract):
+
+    class UvScopedDependencyExclusionSpec(
+        FlextInfraConfigModelsContract._ConfigContract
+    ):
         """Project-routed official uv scoped dependency exclusion."""
 
         project: Annotated[

@@ -33,6 +33,7 @@ class FlextInfraModelsCodegenLazyInitModels:
                 description="Whether the directory resolves to an importable package."
             ),
         ] = False
+
     class LazyInitPlan(m.ArbitraryTypesModel):
         """Fully resolved lazy-init action and render payload.
 
@@ -87,6 +88,7 @@ class FlextInfraModelsCodegenLazyInitModels:
             default_factory=tuple,
             description="Names excluded from runtime child lazy import merges.",
         )
+
     class QualityGateCheck(m.ArbitraryTypesModel):
         """A single quality gate check result entry."""
 
@@ -94,6 +96,7 @@ class FlextInfraModelsCodegenLazyInitModels:
         passed: Annotated[bool, m.Field(description="Whether check passed")]
         detail: Annotated[str, m.Field(description="Human-readable check detail")] = ""
         critical: Annotated[bool, m.Field(description="Whether failure is critical")]
+
     class QualityGateProjectFinding(mm.ProjectNameMixin, m.ArbitraryTypesModel):
         """Per-project quality gate findings."""
 

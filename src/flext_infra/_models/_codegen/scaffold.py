@@ -24,11 +24,14 @@ class FlextInfraModelsCodegenScaffoldModels:
         )
         message: t.NonEmptyStr = m.Field(description="Human-readable violation message")
         fixable: bool = m.Field(description="Whether this violation can be auto-fixed")
+
     class CensusReport(mm.ProjectNameMixin, m.ArbitraryTypesModel):
         """Aggregated census report for a single project."""
 
         @staticmethod
-        def _violations_default() -> list[FlextInfraModelsCodegenScaffoldModels.CensusViolation]:
+        def _violations_default() -> list[
+            FlextInfraModelsCodegenScaffoldModels.CensusViolation
+        ]:
             """Violations default."""
             return []
 
@@ -42,6 +45,7 @@ class FlextInfraModelsCodegenScaffoldModels:
         fixable: Annotated[
             t.NonNegativeInt, m.Field(description="Count of auto-fixable violations")
         ]
+
     class ScaffoldResult(mm.ProjectNameMixin, m.ArbitraryTypesModel):
         """Result of scaffolding base modules for a project.
 
@@ -55,6 +59,7 @@ class FlextInfraModelsCodegenScaffoldModels:
         files_skipped: t.StrSequence = m.Field(
             default_factory=tuple, description="Skipped (already existing) file paths"
         )
+
     class ScaffoldDirRequest(m.ArbitraryTypesModel):
         """Directory-level scaffold request and accumulation state."""
 

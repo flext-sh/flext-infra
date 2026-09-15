@@ -6,7 +6,6 @@ from typing import Annotated
 
 from ... import m, s
 from .._conform_gitignore import FlextInfraCodegenConformGitignoreMixin
-
 from .bootstrap import FlextInfraCodegenConformBootstrap
 from .execute import FlextInfraCodegenConformExecute
 from .misc import FlextInfraCodegenConformMisc

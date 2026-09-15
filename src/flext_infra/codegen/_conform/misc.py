@@ -1,35 +1,17 @@
-"""Beads routes, docs ownership, and projection plan helpers"""
+"""Beads routes, docs ownership, and projection plan helpers."""
 
 from __future__ import annotations
 
 import re
-import time
-from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal, override
 
-from ... import c, config, m, p, r, s, t, u
-from ...deps import FlextInfraEnsureRuffConfigPhase, FlextInfraPyprojectModernizer
-from ...docs import FlextInfraDocGenerator
-from ...services.codegen import FlextInfraCodegen
+from ... import c, config, m, p, r, t, u
 from ...workspace import FlextInfraWorkspaceDetector
-from .. import (
-    FlextInfraCodegenLazyInit,
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-)
-from .._conform_gitignore import FlextInfraCodegenConformGitignoreMixin
 
-if TYPE_CHECKING:
-    from .base import FlextInfraCodegenConform
-
-
-
-from .bootstrap import FlextInfraCodegenConformBootstrap
-from .execute import FlextInfraCodegenConformExecute
 
 class FlextInfraCodegenConformMisc:
     """Beads routes, docs ownership, and projection plan helpers."""
+
     @staticmethod
     def _member_repository_roots(
         request: m.Infra.CodegenConformRequest, plan: m.Infra.CodegenPlan
@@ -40,6 +22,7 @@ class FlextInfraCodegenConformMisc:
             for repository in plan.repositories
             if repository.path != Path()
         )
+
     @classmethod
     def _owned_docs_files(
         cls,
@@ -59,6 +42,7 @@ class FlextInfraCodegenConformMisc:
         """
         root = request.root.resolve()
         return tuple(file for file in files if file.project.resolve() == root)
+
     @classmethod
     def _owned_docs_directories(
         cls,
@@ -78,6 +62,7 @@ class FlextInfraCodegenConformMisc:
                 continue
             owned.append(directory)
         return tuple(owned)
+
     def _conform_workspace_beads_routes(
         self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[bool]:
@@ -108,12 +93,11 @@ class FlextInfraCodegenConformMisc:
         if owner.is_dir():
             owner.chmod(c.Infra.BEADS_DIRECTORY_MODE)
         for repository in workspace.subprojects:
-            state = self._beads_route_state(
-                (root / repository.path).resolve()
-            )
+            state = self._beads_route_state((root / repository.path).resolve())
             if state.failure:
                 return state
         return r[bool].ok(True)
+
     @staticmethod
     def _beads_route_state(root: Path) -> p.Result[bool]:
         """Prove one repository reaches the ledger through its own directory.
@@ -150,7 +134,7 @@ class FlextInfraCodegenConformMisc:
             entry.name
             for entry in route.iterdir()
             if entry.name not in allowed_entries
-            and not FlextInfraCodegenConform._is_dry_run_config_backup(entry.name)
+            and not FlextInfraCodegenConformExecute._is_dry_run_config_backup(entry.name)
         )
         if unexpected:
             return r[bool].fail(
@@ -159,6 +143,7 @@ class FlextInfraCodegenConformMisc:
             )
         route.chmod(c.Infra.BEADS_DIRECTORY_MODE)
         return r[bool].ok(True)
+
     @staticmethod
     def _mise_config_plans(
         plan: m.Infra.CodegenPlan,
@@ -180,6 +165,7 @@ class FlextInfraCodegenConformMisc:
         return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(
             tuple(by_path[path] for path in expected)
         )
+
     @staticmethod
     def _scaffold_python_dirs(
         entries: t.SequenceOf[p.Infra.TemplateEntrySpec], profile: c.Infra.MakeProfile
@@ -199,6 +185,7 @@ class FlextInfraCodegenConformMisc:
             for directory in config.Infra.tooling.tools.pyright.path_rules.env_dirs
             if directory in generated_roots
         )
+
     @staticmethod
     def _conformed_pyproject_source(
         source: str,
@@ -219,7 +206,7 @@ class FlextInfraCodegenConformMisc:
             workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
-            uv_link_mode=FlextInfraCodegenConform._link_mode(
+            uv_link_mode=FlextInfraCodegenConformBootstrap._link_mode(
                 repository, codegen.toolchain
             ),
             uv_exclude_dependencies=uv_exclude_dependencies,
@@ -229,6 +216,7 @@ class FlextInfraCodegenConformMisc:
                 else None
             ),
         )
+
     @staticmethod
     def _routed_uv_exclude_dependencies(
         *,
@@ -249,6 +237,7 @@ class FlextInfraCodegenConformMisc:
             for item in codegen.uv_exclude_dependencies
             if item.project == repository.distribution
         )
+
     @staticmethod
     def _file_plan(
         root: Path,
@@ -282,6 +271,7 @@ class FlextInfraCodegenConformMisc:
                 source_states=source_states,
             )
         )
+
     @staticmethod
     def _uv_environment_plan(
         *,
@@ -311,6 +301,7 @@ class FlextInfraCodegenConformMisc:
             groups=groups,
             editable_repositories=editable_repositories,
         )
+
     @staticmethod
     def _absent_file_plan(root: Path, path: Path) -> p.Result[m.Infra.CodegenFilePlan]:
         """Plan the removal of one retired projection."""
@@ -321,6 +312,7 @@ class FlextInfraCodegenConformMisc:
             desired_content=None,
             desired_mode=None,
         )
+
     @classmethod
     def retired_projection_plans(
         cls, root: Path, profile: c.Infra.MakeProfile
@@ -348,6 +340,7 @@ class FlextInfraCodegenConformMisc:
                 )
             planned.append(absent_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
+
     @staticmethod
     def validate_custom_make(
         content: str, policy: m.Infra.CustomHandlerPolicy

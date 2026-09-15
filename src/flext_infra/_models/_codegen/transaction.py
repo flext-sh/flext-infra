@@ -53,7 +53,9 @@ class FlextInfraModelsCodegenTransactionModels:
             m.Field(description="Source identities used by staging"),
         ]
         directories: Annotated[
-            t.VariadicTuple[FlextInfraModelsCodegenJournalModels.CodegenJournalDirectory],
+            t.VariadicTuple[
+                FlextInfraModelsCodegenJournalModels.CodegenJournalDirectory
+            ],
             m.Field(description="Directories whose prior absence authorizes creation"),
         ]
         entries: Annotated[
@@ -121,6 +123,7 @@ class FlextInfraModelsCodegenTransactionModels:
                 msg = "non-recovering codegen journal contains rollback identities"
                 raise ValueError(msg)
             return self
+
     class CodegenFileSessionPlan(m.ArbitraryTypesModel):
         """File-only transaction topology; contains no Mise artifact snapshot."""
 
@@ -137,6 +140,7 @@ class FlextInfraModelsCodegenTransactionModels:
                 msg = "file-only session must contain only file capabilities"
                 raise ValueError(msg)
             return self
+
     class CodegenTransactionSession(m.ArbitraryTypesModel):
         """Immutable cursor for one live prepared generation transaction."""
 

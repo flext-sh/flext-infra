@@ -21,7 +21,9 @@ class FlextInfraModelsCodegenFixModels:
         # Enforcement exemption: MutableSequence accumulators are appended to
         # as fixes proceed; fresh per-instance — no shared state.
         @staticmethod
-        def _violations_default() -> list[FlextInfraModelsCodegenScaffoldModels.CensusViolation]:
+        def _violations_default() -> list[
+            FlextInfraModelsCodegenScaffoldModels.CensusViolation
+        ]:
             """Violations default."""
             return []
 
@@ -41,6 +43,7 @@ class FlextInfraModelsCodegenFixModels:
         files_modified: t.StrSequence = m.Field(
             default_factory=tuple, description="Modified file paths"
         )
+
     class ConsolidatorFileResult(m.ContractModel):
         """Per-file result emitted by the constants consolidator."""
 
@@ -55,6 +58,7 @@ class FlextInfraModelsCodegenFixModels:
             t.StrSequence,
             m.Field(default_factory=tuple, description="Applied replacements"),
         ]
+
     class ConsolidatorReport(m.ContractModel):
         """JSON report emitted by the constants consolidator."""
 
@@ -71,6 +75,7 @@ class FlextInfraModelsCodegenFixModels:
             t.SequenceOf[FlextInfraModelsCodegenFixModels.ConsolidatorFileResult],
             m.Field(default_factory=tuple, description="Per-file processing results"),
         ]
+
     class NamespaceModulePolicy(m.ArbitraryTypesModel):
         """Derived gen-init policy for one governed module."""
 
@@ -122,12 +127,14 @@ class FlextInfraModelsCodegenFixModels:
             default_factory=tuple,
             description="Canonical root names allowed inside TYPE_CHECKING imports.",
         )
+
     class BulkFixItem(
         mm.AbsoluteFilePathTextMixin, mm.PositiveLineMixin, m.ArbitraryTypesModel
     ):
         """Shared line-addressable item used by bulk codegen fixes."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Item identifier")]
+
     class ConstantDefinition(mm.ProjectNameMixin, mm.NestedClassPathMixin, BulkFixItem):
         """A single constant extracted from a constants.py file."""
 
@@ -137,17 +144,19 @@ class FlextInfraModelsCodegenFixModels:
         type_annotation: Annotated[
             str, m.Field(description="Type annotation string")
         ] = ""
+
     class DuplicateConstantGroup(m.ArbitraryTypesModel):
         """Cross-project duplicate group with consolidation metadata."""
 
         constant_name: t.NonEmptyStr = m.Field(description="Constant identifier")
-        definitions: Sequence[FlextInfraModelsCodegenFixModels.ConstantDefinition] = m.Field(
-            description="Definitions across projects"
+        definitions: Sequence[FlextInfraModelsCodegenFixModels.ConstantDefinition] = (
+            m.Field(description="Definitions across projects")
         )
         is_value_identical: bool = m.Field(description="Whether all values match")
         canonical_ref: Annotated[
             str, m.Field(description="Canonical parent reference")
         ] = ""
+
     class DirectConstantRef(mm.ProjectNameMixin, m.ArbitraryTypesModel):
         """Direct FlextXConstants.Y.Z reference that should use c.* alias."""
 
@@ -162,6 +171,7 @@ class FlextInfraModelsCodegenFixModels:
             t.NonEmptyStr, m.Field(description="File containing the reference")
         ]
         line: Annotated[t.PositiveInt, m.Field(description="Line number")]
+
     class FixContext(m.ArbitraryTypesModel):
         """Mutable accumulation context for fix operations.
 
@@ -171,7 +181,9 @@ class FlextInfraModelsCodegenFixModels:
         """
 
         @staticmethod
-        def _violations_default() -> list[FlextInfraModelsCodegenScaffoldModels.CensusViolation]:
+        def _violations_default() -> list[
+            FlextInfraModelsCodegenScaffoldModels.CensusViolation
+        ]:
             """Violations default."""
             return []
 
@@ -224,6 +236,7 @@ class FlextInfraModelsCodegenFixModels:
                     module=module, rule=rule, line=line, message=message, fixable=True
                 )
             )
+
     class ViolationKey(m.ContractModel):
         """Content-stable violation identifier — resilient to line shifts."""
 

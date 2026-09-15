@@ -1,36 +1,17 @@
-"""Artifact composition and render context projection"""
+"""Artifact composition and render context projection."""
 
 from __future__ import annotations
 
-import re
-import time
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal, override
 
-from ... import c, config, m, p, r, s, t, u
-from ...deps import FlextInfraEnsureRuffConfigPhase, FlextInfraPyprojectModernizer
-from ...docs import FlextInfraDocGenerator
-from ...services.codegen import FlextInfraCodegen
-from ...workspace import FlextInfraWorkspaceDetector
-from .. import (
-    FlextInfraCodegenLazyInit,
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-)
-from .._conform_gitignore import FlextInfraCodegenConformGitignoreMixin
+from ... import c, config, m, p, r, t, u
+from ...deps import FlextInfraEnsureRuffConfigPhase
 
-if TYPE_CHECKING:
-    from .base import FlextInfraCodegenConform
-
-
-
-from .bootstrap import FlextInfraCodegenConformBootstrap
-from .misc import FlextInfraCodegenConformMisc
-from .plan import FlextInfraCodegenConformPlan
 
 class FlextInfraCodegenConformRender:
     """Artifact composition and render context projection."""
+
     @staticmethod
     def compose_project_artifact(
         repository_root: Path,
@@ -67,13 +48,13 @@ class FlextInfraCodegenConformRender:
                     else c.Infra.MakeProfile.STANDALONE
                 )
                 excludes = (
-                    FlextInfraCodegenConform._routed_uv_exclude_dependencies(
+                    FlextInfraCodegenConformMisc._routed_uv_exclude_dependencies(
                         repository=repository, target=target, codegen=codegen
                     )
                     if target is not None
                     else ()
                 )
-                conformed = FlextInfraCodegenConform._conformed_pyproject_source(
+                conformed = FlextInfraCodegenConformMisc._conformed_pyproject_source(
                     rendered,
                     repository=repository,
                     workspace=workspace,
@@ -122,6 +103,7 @@ class FlextInfraCodegenConformRender:
                 rendered=composed.value, source_states=config_sources.value
             )
         )
+
     def _rendered_artifact_source(
         self,
         *,
@@ -169,6 +151,7 @@ class FlextInfraCodegenConformRender:
                 f"{rendered.error or 'template render failed'}"
             )
         return rendered
+
     def _artifact_render_context(
         self,
         *,
@@ -223,9 +206,7 @@ class FlextInfraCodegenConformRender:
                     environment_path_prepends=(
                         codegen.toolchain.environment_path_prepends
                     ),
-                    mise_bootstrap=(
-                        self._mise_bootstrap_environment()
-                    ),
+                    mise_bootstrap=(self._mise_bootstrap_environment()),
                     gascity=(
                         m.Infra.BeadsWorkspaceEnvironmentSpec()
                         if target.gascity_enabled
@@ -320,9 +301,7 @@ class FlextInfraCodegenConformRender:
                     checkout_submodules=codegen.checkout_submodules_overrides.get(
                         dist, codegen.checkout_submodules
                     ),
-                    custom_steps=self._custom_ci_steps(
-                        repository_root
-                    ),
+                    custom_steps=self._custom_ci_steps(repository_root),
                     private_submodules=codegen.ci_private_submodules.get(dist),
                     private_dependency_auth=codegen.ci_private_dependency_auth.get(
                         dist
@@ -373,17 +352,13 @@ class FlextInfraCodegenConformRender:
                     infra_cli=config.Infra.name,
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                    repository_root_rel=self._repository_root_rel(
-                        workspace
-                    ),
+                    repository_root_rel=self._repository_root_rel(workspace),
                     workspace_subprojects=tuple(
                         item.path.as_posix() for item in workspace.subprojects
                     ),
                     workspace_repositories=subprojects,
                     workspace_gitlinks=gitlinks.value,
-                    uv_link_mode=self._link_mode(
-                        repository, codegen.toolchain
-                    ),
+                    uv_link_mode=self._link_mode(repository, codegen.toolchain),
                     uv_version=codegen.toolchain.uv_version,
                     make=codegen.make,
                     extra_verbs=(
@@ -392,9 +367,7 @@ class FlextInfraCodegenConformRender:
                             (
                                 ()
                                 if repository.script_dispatch is None
-                                else self._discover_script_verbs(
-                                    repository_root
-                                )
+                                else self._discover_script_verbs(repository_root)
                             ),
                             frozenset(verb.name for verb in codegen.make.verbs),
                         )
@@ -451,8 +424,9 @@ class FlextInfraCodegenConformRender:
         if context_result.failure:
             return r[p.Model].from_failure(context_result)
         return r[p.Model].ok(context_result.value)
-    @staticmethod
+
     def make_render_context(
+        self,
         repository: m.Infra.RepositoryRef,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
@@ -471,10 +445,8 @@ class FlextInfraCodegenConformRender:
         gitlinks = self._managed_gitlinks(workspace, codegen)
         if gitlinks.failure:
             return r[m.Infra.MakeRenderContext].from_failure(gitlinks)
-        cooldown_exclusions, cooldown_overrides = (
-            self._dependency_cooldown_policy(
-                repository, codegen.toolchain
-            )
+        cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
+            repository, codegen.toolchain
         )
         extra_verbs = self._merge_extra_verbs(
             repository.extra_verbs,
@@ -502,18 +474,14 @@ class FlextInfraCodegenConformRender:
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,
                 python_version=codegen.toolchain.python_version,
-                uv_link_mode=self._link_mode(
-                    repository, codegen.toolchain
-                ),
+                uv_link_mode=self._link_mode(repository, codegen.toolchain),
                 # ProjectRenderContext replaces this with the composed map.
                 # Pass the neutral value explicitly so Pydantic never deep-copies
                 # the MappingProxyType model default while building the base.
                 ruff_per_file_ignores={},
                 make_profile=profile,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
-                repository_root_rel=self._repository_root_rel(
-                    workspace
-                ),
+                repository_root_rel=self._repository_root_rel(workspace),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                 workspace_subprojects=tuple(
                     item.path.as_posix() for item in workspace.subprojects
@@ -527,6 +495,7 @@ class FlextInfraCodegenConformRender:
                 dependency_cooldown_overrides=cooldown_overrides,
             )
         )
+
     @staticmethod
     def _project_spec_from_existing(
         repository: m.Infra.RepositoryRef,
@@ -624,6 +593,7 @@ class FlextInfraCodegenConformRender:
                 year=codegen.scaffold.project.copyright_year,
             )
         )
+
     def _project_render_context(
         self,
         repository: m.Infra.RepositoryRef,
@@ -708,9 +678,7 @@ class FlextInfraCodegenConformRender:
         )
         if make_context.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(make_context)
-        repository_provider = self._repository_provider(
-            repository, codegen
-        )
+        repository_provider = self._repository_provider(repository, codegen)
         if repository_provider.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(repository_provider)
         flext_provider = repository_provider.value
@@ -844,6 +812,7 @@ class FlextInfraCodegenConformRender:
                 year=project.year,
             )
         )
+
     @classmethod
     def _managed_gitlinks(
         cls, workspace: m.Infra.WorkspaceSpec, codegen: m.Infra.CodegenConfigSpec
@@ -863,6 +832,7 @@ class FlextInfraCodegenConformRender:
                 )
             )
         return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].ok(tuple(resolved))
+
     @staticmethod
     def _beads_project_id(repository_root: Path) -> str | None:
         """Return the checkout's own ledger identity, or None if unminted.
@@ -887,6 +857,7 @@ class FlextInfraCodegenConformRender:
             return None
         value = project.get("id")
         return value.strip() if isinstance(value, str) and value.strip() else None
+
     @staticmethod
     def _custom_ci_steps(repository_root: Path) -> str:
         """Read the project-owned workflow steps, if the project declares any.

@@ -8,14 +8,11 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import override
 
 from flext_cli import cli
 
-from .. import FlextInfraServiceBase, c, m, p, r, settings, t, u, config
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
+from .. import FlextInfraServiceBase, c, config, m, p, r, t, u
 
 
 class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
@@ -30,7 +27,9 @@ class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             return r[t.Cli.ResultValue].ok(True)
 
         if self.effective_dry_run:
-            cli.display_text(f"sed: scan {len(sed_config.patterns)} declared pattern(s)")
+            cli.display_text(
+                f"sed: scan {len(sed_config.patterns)} declared pattern(s)"
+            )
             return self._dry_run()
         return self._execute_apply()
 
@@ -100,8 +99,9 @@ class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             try:
                 re.compile(pattern_spec.pattern, flags)
             except re.error as exc:
+                msg = f"sed pattern {idx} invalid regex {pattern_spec.pattern!r}: {exc}"
                 raise ValueError(
-                    f"sed pattern {idx} invalid regex {pattern_spec.pattern!r}: {exc}"
+                    msg
                 ) from exc
 
     def _compile_flags(self, flags: t.StrSequence) -> int:
@@ -114,13 +114,12 @@ class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         combined = 0
         for name in flags:
             if name not in flag_map:
-                raise ValueError(f"unknown regex flag {name!r}")
+                msg = f"unknown regex flag {name!r}"
+                raise ValueError(msg)
             combined |= flag_map[name]
         return combined
 
-    def _scan_pattern(
-        self, pattern_spec: m.Infra.SedPatternSpec
-    ) -> tuple[int, int]:
+    def _scan_pattern(self, pattern_spec: m.Infra.SedPatternSpec) -> tuple[int, int]:
         """Scan for matches without applying. Returns (file_count, change_count)."""
         flags = self._compile_flags(pattern_spec.flags)
         compiled = re.compile(pattern_spec.pattern, flags)
@@ -171,13 +170,12 @@ class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             compiled = re.compile(pattern_spec.pattern, flags)
             for file_path in self._iter_target_files(pattern_spec.file_glob):
                 source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-                for match in compiled.finditer(source):
-                    entries.append((
+                entries.extend((
                         pattern_spec.pattern,
                         pattern_spec.replacement,
                         file_path.as_posix(),
                         match.group(0),
-                    ))
+                    ) for match in compiled.finditer(source))
         return tuple(sorted(entries))
 
     def _run_gates(self) -> p.Result[bool]:

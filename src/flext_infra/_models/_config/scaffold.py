@@ -22,6 +22,7 @@ class FlextInfraConfigModelsScaffold:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Build-system requirements"),
         ]
+
     class ScaffoldDependencyProfileSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Dependencies selected by the declared upstream FLEXT facade."""
 
@@ -42,6 +43,7 @@ class FlextInfraConfigModelsScaffold:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Code-generation requirements"),
         ] = ()
+
     class ScaffoldProjectSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Project metadata policy for newly scaffolded distributions."""
 
@@ -77,9 +79,12 @@ class FlextInfraConfigModelsScaffold:
             ),
         ]
         dependency_profiles: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsScaffold.ScaffoldDependencyProfileSpec],
+            t.VariadicTuple[
+                FlextInfraConfigModelsScaffold.ScaffoldDependencyProfileSpec
+            ],
             m.Field(min_length=1, description="Upstream dependency profiles"),
         ]
+
     class ScaffoldPingExampleSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Values for the functional ping example created only by codegen new."""
 
@@ -99,6 +104,7 @@ class FlextInfraConfigModelsScaffold:
         disabled_reply: Annotated[
             t.NonEmptyStr, m.Field(description="Disabled ping response")
         ]
+
     class ScaffoldGitignoreSectionSpec(FlextInfraConfigModelsContract._ConfigContract):
         """One configured section of the generated Git ignore policy."""
 
@@ -120,6 +126,7 @@ class FlextInfraConfigModelsScaffold:
                 )
             ),
         ] = ()
+
     class ScaffoldSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Complete typed policy consumed only by new-project templates."""
 
@@ -136,6 +143,8 @@ class FlextInfraConfigModelsScaffold:
             m.Field(description="Functional scaffold example"),
         ]
         gitignore_sections: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec],
+            t.VariadicTuple[
+                FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec
+            ],
             m.Field(min_length=1, description="Generated Git ignore sections"),
         ]

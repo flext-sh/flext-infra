@@ -19,6 +19,7 @@ class FlextInfraConfigModelsContract:
         model_config = m.ConfigDict(
             strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
         )
+
     immutable_empty_mapping = immutable_empty_mapping
     MiseToolSpec = FlextInfraModelsMiseToolchain.MiseToolSpec
     ProtectedMiseToolSpec = FlextInfraModelsMiseToolchain.ProtectedMiseToolSpec

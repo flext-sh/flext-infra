@@ -1,29 +1,23 @@
-"""Transactional execution of conformance plans"""
+"""Transactional execution of conformance plans."""
 
 from __future__ import annotations
 
-import re
-import time
-from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import Annotated, Literal, override
+from typing import override
 
-from ... import c, config, m, p, r, s, t, u
-from ...deps import FlextInfraEnsureRuffConfigPhase, FlextInfraPyprojectModernizer
+from ... import c, config, m, p, r, t, u
 from ...docs import FlextInfraDocGenerator
-from ...services.codegen import FlextInfraCodegen
 from ...workspace import FlextInfraWorkspaceDetector
 from .. import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
-from .._conform_gitignore import FlextInfraCodegenConformGitignoreMixin
-
 
 
 class FlextInfraCodegenConformExecute:
     """Transactional execution of conformance plans."""
+
     @classmethod
     def execute_request(
         cls,
@@ -127,6 +121,7 @@ class FlextInfraCodegenConformExecute:
                 prepare=False, operation=lambda _scope_root: self._execute_plan(request)
             )
         return self._execute_plan(request)
+
     def _execute_plan(
         self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenResult]:
@@ -193,6 +188,7 @@ class FlextInfraCodegenConformExecute:
         return r[m.Infra.CodegenResult].ok(
             m.Infra.CodegenResult(plan=verified.value, written_files=written)
         )
+
     def _execute_managed(
         self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenResult]:
@@ -210,6 +206,7 @@ class FlextInfraCodegenConformExecute:
                 request, scope_root, transaction
             ),
         )
+
     def _execute_managed_locked(
         self,
         request: m.Infra.CodegenConformRequest,
@@ -230,6 +227,7 @@ class FlextInfraCodegenConformExecute:
                 f"scaffold directory rollback failed: {rollback.error}"
             )
         return result
+
     def _execute_managed_locked_prepared(
         self,
         request: m.Infra.CodegenConformRequest,
@@ -395,6 +393,7 @@ class FlextInfraCodegenConformExecute:
         return r[m.Infra.CodegenResult].ok(
             m.Infra.CodegenResult(plan=verified.value, written_files=published.value)
         )
+
     def _prepare_scaffold_directories(
         self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicDirectoryState]]:
@@ -469,6 +468,7 @@ class FlextInfraCodegenConformExecute:
                 )
             created.extend(materialized.value)
         return r[tuple[m.Cli.AtomicDirectoryState, ...]].ok(tuple(created))
+
     @staticmethod
     def _rollback_scaffold_directories(
         created: tuple[m.Cli.AtomicDirectoryState, ...],
@@ -479,6 +479,7 @@ class FlextInfraCodegenConformExecute:
             if removed.failure:
                 return removed
         return r[bool].ok(True)
+
     def _allow_direnv_after_apply(
         self,
         request: m.Infra.CodegenConformRequest,
@@ -517,6 +518,7 @@ class FlextInfraCodegenConformExecute:
                     f"{result.value.stderr.strip() or result.value.stdout.strip()}"
                 )
         return r[bool].ok(True)
+
     def _validate_managed_fixed_point(
         self,
         request: m.Infra.CodegenConformRequest,
@@ -557,6 +559,7 @@ class FlextInfraCodegenConformExecute:
             if validated.failure:
                 return r[bool].from_failure(validated)
         return r[bool].ok(True)
+
     @staticmethod
     def _is_dry_run_config_backup(name: str) -> bool:
         """Return whether ``name`` is a dry-run ``config.yaml`` backup snapshot.

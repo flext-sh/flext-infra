@@ -45,6 +45,7 @@ class FlextInfraModelsCodegenPipelineModels:
                 msg = "codegen phase receipt input paths must be unique"
                 raise ValueError(msg)
             return self
+
     class CodegenPipelineState(m.ArbitraryTypesModel):
         """Typed inter-stage state for the codegen pipeline — Pydantic v2 model."""
 

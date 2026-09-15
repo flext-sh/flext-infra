@@ -51,6 +51,7 @@ class FlextInfraModelsCodegenJournalModels:
                 msg = "codegen staged replacement must be present"
                 raise ValueError(msg)
             return self
+
     class CodegenJournalProject(m.ArbitraryTypesModel):
         """One journal participant bound to its physical directory identity."""
 
@@ -78,6 +79,7 @@ class FlextInfraModelsCodegenJournalModels:
                 msg = f"unsafe codegen project selector: {value}"
                 raise ValueError(msg)
             return value
+
     class CodegenJournalDirectory(m.ArbitraryTypesModel):
         """One journal-authorized directory creation and its physical identity."""
 
@@ -176,6 +178,7 @@ class FlextInfraModelsCodegenJournalModels:
                     msg = "temporary-tree manifest differs from created directory"
                     raise ValueError(msg)
             return self
+
     class CodegenJournalSource(m.ArbitraryTypesModel):
         """One immutable source identity, including authenticated absence."""
 
@@ -278,6 +281,7 @@ class FlextInfraModelsCodegenJournalModels:
                 msg = f"generation source is a reparse point: {self.path}"
                 raise ValueError(msg)
             return self
+
     class CodegenJournalEntry(m.ArbitraryTypesModel):
         """Recoverable full before/after identity for one generated file."""
 
@@ -543,6 +547,7 @@ class FlextInfraModelsCodegenJournalModels:
                 msg = f"codegen journal contains a reparse identity: {self.path}"
                 raise ValueError(msg)
             return self
+
     class CodegenRecoveryAction(m.ArbitraryTypesModel):
         """One preclassified recovery decision with no live effect applied."""
 

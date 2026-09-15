@@ -44,6 +44,7 @@ class FlextInfraConfigModelsBeads:
                 msg = "beads custom_issue_types must be unique"
                 raise ValueError(msg)
             return self
+
     class BeadsConfigRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Field-only render input for the generated Beads ledger config."""
 
@@ -85,6 +86,7 @@ class FlextInfraConfigModelsBeads:
         dolt_disable_event_flush: Annotated[
             bool, m.Field(description="From toolchain.beads.dolt_disable_event_flush")
         ]
+
     class MiseTomlRenderSpec(FlextInfraConfigModelsContract.ToolchainSpec):
         """Toolchain render context for ``.mise.toml`` plus per-project gates.
 
@@ -99,6 +101,7 @@ class FlextInfraConfigModelsBeads:
                 description=("Whether the gc tool block is projected into .mise.toml.")
             ),
         ] = True
+
     class BeadsMetadataRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Field-only render input for the generated Beads ledger marker.
 
@@ -130,6 +133,7 @@ class FlextInfraConfigModelsBeads:
                 ),
             ),
         ] = None
+
     class BeadsWorkspaceEnvironmentSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Declarative contract for one generated beads-workspace .envrc.
 
@@ -166,7 +170,10 @@ class FlextInfraConfigModelsBeads:
             "BEADS_DOLT_DATA_DIR",
             "BEADS_DOLT_SHARED_SERVER",
         )
-    class WorkspaceEnvironmentCliRequest(FlextInfraConfigModelsContract._ConfigContract):
+
+    class WorkspaceEnvironmentCliRequest(
+        FlextInfraConfigModelsContract._ConfigContract
+    ):
         """CLI-safe request for one Python workspace environment sync."""
 
         repository_root: Annotated[
@@ -182,7 +189,10 @@ class FlextInfraConfigModelsBeads:
             bool,
             m.Field(description="Authorize the rendered .envrc after an applied sync"),
         ] = True
-    class WorkspaceEnvironmentSyncRequest(FlextInfraConfigModelsContract._ConfigContract):
+
+    class WorkspaceEnvironmentSyncRequest(
+        FlextInfraConfigModelsContract._ConfigContract
+    ):
         """Validated internal request for one workspace environment sync."""
 
         repository_root: Annotated[
@@ -213,7 +223,10 @@ class FlextInfraConfigModelsBeads:
                 )
             ),
         ] = True
-    class WorkspaceEnvironmentSyncResult(FlextInfraConfigModelsContract._ConfigContract):
+
+    class WorkspaceEnvironmentSyncResult(
+        FlextInfraConfigModelsContract._ConfigContract
+    ):
         """Outcome of one workspace environment sync."""
 
         changed_files: Annotated[

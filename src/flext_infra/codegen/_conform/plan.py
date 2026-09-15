@@ -1,34 +1,21 @@
-"""Conformance planning across scaffold and existing repositories"""
+"""Conformance planning across scaffold and existing repositories."""
 
 from __future__ import annotations
 
-import re
 import time
-from collections.abc import Mapping, MutableMapping
+from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal, override
+from typing import Literal
 
-from ... import c, config, m, p, r, s, t, u
-from ...deps import FlextInfraEnsureRuffConfigPhase, FlextInfraPyprojectModernizer
-from ...docs import FlextInfraDocGenerator
+from ... import c, config, m, p, r, t, u
+from ...deps import FlextInfraPyprojectModernizer
 from ...services.codegen import FlextInfraCodegen
 from ...workspace import FlextInfraWorkspaceDetector
-from .. import (
-    FlextInfraCodegenLazyInit,
-    FlextInfraCodegenMiseArtifacts,
-    FlextInfraCodegenTransaction,
-)
-from .._conform_gitignore import FlextInfraCodegenConformGitignoreMixin
 
-if TYPE_CHECKING:
-    from .base import FlextInfraCodegenConform
-
-
-
-from .misc import FlextInfraCodegenConformMisc
 
 class FlextInfraCodegenConformPlan:
     """Conformance planning across scaffold and existing repositories."""
+
     def plan(
         self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenPlan]:
@@ -222,6 +209,7 @@ class FlextInfraCodegenConformPlan:
                 files=tuple(files),
             )
         )
+
     def _plan_scaffold_repository(
         self,
         *,
@@ -390,6 +378,7 @@ class FlextInfraCodegenConformPlan:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(file_plan)
             planned.append(file_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
+
     def _plan_existing_repository(
         self,
         *,
@@ -482,6 +471,7 @@ class FlextInfraCodegenConformPlan:
                 )
             planned.extend(custom_result.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
+
     def _plan_existing_templates(
         self,
         *,
@@ -629,6 +619,7 @@ class FlextInfraCodegenConformPlan:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(file_plan)
             planned.append(file_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
+
     def _plan_existing_custom(
         self,
         root: Path,
@@ -677,6 +668,7 @@ class FlextInfraCodegenConformPlan:
                     )
                 plans.append(utility_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(plans))
+
     @staticmethod
     def _complete_governed_plans(
         root: Path,
@@ -754,7 +746,7 @@ class FlextInfraCodegenConformPlan:
                 if merged.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(merged)
                 if merged.value != current:
-                    merged_plan = FlextInfraCodegenConform._file_plan(
+                    merged_plan = FlextInfraCodegenConformMisc._file_plan(
                         root, relative.as_posix(), merged.value, mode=governed.mode
                     )
                     if merged_plan.failure:
@@ -767,7 +759,7 @@ class FlextInfraCodegenConformPlan:
                         )
                     )
                     continue
-            current_plan = FlextInfraCodegenConform._file_plan(
+            current_plan = FlextInfraCodegenConformMisc._file_plan(
                 root, relative.as_posix(), current, mode=governed.mode
             )
             if current_plan.failure:
@@ -780,6 +772,7 @@ class FlextInfraCodegenConformPlan:
                 )
             )
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(completed))
+
     @staticmethod
     @staticmethod
     def _select_repositories(
@@ -810,6 +803,7 @@ class FlextInfraCodegenConformPlan:
                 "selected repositories do not permit code generation"
             )
         return r[tuple[m.Infra.RepositoryRef, ...]].ok(mutable)
+
     @staticmethod
     def _repository_root(
         root: Path, workspace: p.Infra.WorkspaceSpec, repository: p.Infra.RepositoryRef
@@ -825,10 +819,12 @@ class FlextInfraCodegenConformPlan:
                 f"{repository.path.as_posix()}"
             )
         return r[Path].ok(resolved)
+
     @staticmethod
     def _package_root() -> Path:
         """Return the installed flext-infra package root."""
         return Path(__file__).resolve().parent.parent
+
     @staticmethod
     def _repository_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:
         """Return the environment root owned by the inferred target."""
@@ -836,6 +832,7 @@ class FlextInfraCodegenConformPlan:
             project_root_rel: str = workspace.project.repository_root_rel
             return project_root_rel
         return "."
+
     @staticmethod
     def _repository_provider(
         repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec

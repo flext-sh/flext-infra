@@ -48,6 +48,7 @@ class FlextInfraConfigModelsArtifact:
         source_scan_ignore: Annotated[
             bool, m.Field(description="Feed source_scan.ignored_resources")
         ] = False
+
     class CodegenVscodeSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Fully modeled content of the ``vscode`` section of ``config/codegen.yaml``."""
 
@@ -63,6 +64,7 @@ class FlextInfraConfigModelsArtifact:
             Mapping[str, Mapping[str, str | bool | int]],
             m.Field(description="VS Code map keys union-merged over project settings"),
         ]
+
     class CodegenLocCapSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Per-module logical-LOC ceiling policy (scc code lines)."""
 
@@ -76,6 +78,7 @@ class FlextInfraConfigModelsArtifact:
                 ),
             ),
         ] = 1000
+
     class CodegenConfigSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Fully modeled content of ``config/codegen.yaml``."""
 
@@ -147,7 +150,9 @@ class FlextInfraConfigModelsArtifact:
             ),
         ]
         uv_exclude_dependencies: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsRender.UvScopedDependencyExclusionSpec],
+            t.VariadicTuple[
+                FlextInfraConfigModelsRender.UvScopedDependencyExclusionSpec
+            ],
             m.Field(description="Project-scoped official uv dependency exclusions"),
         ] = ()
         infra_repository: Annotated[
@@ -240,7 +245,9 @@ class FlextInfraConfigModelsArtifact:
         @property
         def gitignore_sections(
             self,
-        ) -> t.VariadicTuple[FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec]:
+        ) -> t.VariadicTuple[
+            FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec
+        ]:
             """Derived canonical ``.gitignore`` sections (SSOT order, deduplicated).
 
             Ignore files are order-sensitive: a pattern placed before a
@@ -379,6 +386,7 @@ class FlextInfraConfigModelsArtifact:
                 msg = f"GitHub artifacts must be full-managed: {non_full}"
                 raise ValueError(msg)
             return self
+
     class CodegenConformSurfaceContract(m.Value):
         """Typed ownership contract for one requested conformance surface."""
 
@@ -405,6 +413,7 @@ class FlextInfraConfigModelsArtifact:
         custom: Annotated[
             bool, m.Field(description="Whether custom Make policy is planned")
         ] = True
+
     class CodegenConformRequest(FlextInfraConfigModelsContract._ConfigContract):
         """Validated public request for ``flext-infra codegen conform``."""
 
@@ -421,6 +430,7 @@ class FlextInfraConfigModelsArtifact:
             FlextInfraConstantsCodegenProject.CodegenConformMode,
             m.Field(description="Read-only check or atomic apply"),
         ] = FlextInfraConstantsCodegenProject.CodegenConformMode.CHECK
+
     class CodegenArtifactComposition(FlextInfraConfigModelsContract._ConfigContract):
         """Rendered artifact plus the exact source states used to compose it."""
 
@@ -431,6 +441,7 @@ class FlextInfraConfigModelsArtifact:
             t.VariadicTuple[m.Cli.AtomicFileState],
             m.Field(description="Ordered immutable sources consumed by composition"),
         ] = ()
+
     class CodegenFilePlan(FlextInfraConfigModelsContract._ConfigContract):
         """Exact before state and desired state for one managed file."""
 
@@ -508,6 +519,7 @@ class FlextInfraConfigModelsArtifact:
                 )
                 raise ValueError(msg)
             return self
+
     class CodegenPlan(FlextInfraConfigModelsContract._ConfigContract):
         """Fully validated plan produced before any managed-file write."""
 
@@ -535,6 +547,7 @@ class FlextInfraConfigModelsArtifact:
             t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenFilePlan],
             m.Field(description="All render results validated before application"),
         ]
+
     class CodegenResult(FlextInfraConfigModelsContract._ConfigContract):
         """Public conformance outcome for check and apply modes."""
 
@@ -550,6 +563,7 @@ class FlextInfraConfigModelsArtifact:
             t.VariadicTuple[str],
             m.Field(description="Fail-closed validation or write errors"),
         ] = ()
+
     class ReleaseAutomationOverrideSpec(FlextInfraConfigModelsContract._ConfigContract):
         """One distribution's deviation from the shared release contract."""
 
@@ -565,6 +579,7 @@ class FlextInfraConfigModelsArtifact:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Extra file:variable version anchors"),
         ] = ()
+
     class ReleaseAutomationSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Automated semantic versioning, owned by the market tool.
 
@@ -611,7 +626,8 @@ class FlextInfraConfigModelsArtifact:
         ]
         overrides: Annotated[
             Mapping[
-                t.NonEmptyStr, FlextInfraConfigModelsArtifact.ReleaseAutomationOverrideSpec
+                t.NonEmptyStr,
+                FlextInfraConfigModelsArtifact.ReleaseAutomationOverrideSpec,
             ],
             m.Field(
                 default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
@@ -627,6 +643,7 @@ class FlextInfraConfigModelsArtifact:
                     msg = f"release version anchor must be '<file>:<target>': {anchor}"
                     raise ValueError(msg)
             return self
+
     class ReleasePolicySpec(FlextInfraConfigModelsContract._ConfigContract):
         """The release protocol's declared data: who publishes, what bumps, where.
 
@@ -687,6 +704,7 @@ class FlextInfraConfigModelsArtifact:
                 ),
             ),
         ]
+
     class BuildConstraintSpec(FlextInfraConfigModelsContract._ConfigContract):
         """One hash-pinned build requirement (``uv build --require-hashes``)."""
 
@@ -696,13 +714,12 @@ class FlextInfraConfigModelsArtifact:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Accepted sha256 digests"),
         ]
+
     class SedPatternSpec(FlextInfraConfigModelsContract._ConfigContract):
         """One declared literal regex substitution applied across the mod scope."""
 
         pattern: Annotated[t.NonEmptyStr, m.Field(description="Regex source to match")]
-        replacement: Annotated[
-            str, m.Field(description="Literal replacement text")
-        ]
+        replacement: Annotated[str, m.Field(description="Literal replacement text")]
         file_glob: Annotated[
             t.NonEmptyStr | None,
             m.Field(default=None, description="Optional file glob filter"),
@@ -711,15 +728,14 @@ class FlextInfraConfigModelsArtifact:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
-                description=(
-                    "Regex flags by name (IGNORECASE, MULTILINE, DOTALL)"
-                ),
+                description=("Regex flags by name (IGNORECASE, MULTILINE, DOTALL)"),
             ),
         ] = ()
         description: Annotated[
             t.NonEmptyStr | None,
             m.Field(default=None, description="Why this substitution exists"),
         ] = None
+
     class SedPatternsSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Declared sed-by-list substitution set with optional per-pattern filters."""
 
@@ -727,6 +743,7 @@ class FlextInfraConfigModelsArtifact:
             t.VariadicTuple[SedPatternSpec],
             m.Field(default=(), description="Ordered substitution patterns"),
         ] = ()
+
     class Infra(FlextInfraConfigModelsContract._ConfigContract):
         """Complete flext-infra configuration namespace."""
 
@@ -764,12 +781,13 @@ class FlextInfraConfigModelsArtifact:
         sed_patterns: Annotated[
             FlextInfraConfigModelsArtifact.SedPatternsSpec,
             m.Field(
-                default_factory=lambda: FlextInfraConfigModelsArtifact.SedPatternsSpec(),
+                default_factory=FlextInfraConfigModelsArtifact.SedPatternsSpec,
                 description=(
                     "Sed-by-list mass replacement patterns for literal refactoring"
                 ),
             ),
         ]
+
     class Root(FlextInfraConfigModelsContract._ConfigContract):
         """Root payload deep-merged from flext-infra config files."""
 
@@ -777,6 +795,7 @@ class FlextInfraConfigModelsArtifact:
             FlextInfraConfigModelsArtifact.Infra,
             m.Field(description="Validated flext-infra namespace"),
         ]
+
     class CodegenOverridesRoot(FlextInfraConfigModelsContract._ConfigContract):
         """Override root mirroring the Infra.codegen structure with override-only fields.
 
@@ -789,6 +808,7 @@ class FlextInfraConfigModelsArtifact:
             FlextInfraConfigModelsArtifact._CodegenOverridesSection,
             m.Field(description="Override sections for the codegen namespace"),
         ]
+
     class _CodegenOverridesSection(FlextInfraConfigModelsContract._ConfigContract):
         """Override deltas that deep-merge onto CodegenConfigSpec fields."""
 
@@ -814,6 +834,7 @@ class FlextInfraConfigModelsArtifact:
             FlextInfraConfigModelsArtifact._LayoutOverridesSection | None,
             m.Field(default=None, description="Layout override deltas"),
         ] = None
+
     class _MakeOverridesSection(FlextInfraConfigModelsContract._ConfigContract):
         """Override deltas for the generated Make contract."""
 
@@ -824,6 +845,7 @@ class FlextInfraConfigModelsArtifact:
                 description="Per-profile custom handler policy relaxations",
             ),
         ]
+
     class _LayoutOverridesSection(FlextInfraConfigModelsContract._ConfigContract):
         """Override deltas for the layout conformance contract."""
 
@@ -834,6 +856,7 @@ class FlextInfraConfigModelsArtifact:
                 description="Per-project layout deltas",
             ),
         ]
+
     class CodegenOverridesSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Typed content of the config overrides layer (config/codegen-overrides.yaml).
 
@@ -847,6 +870,7 @@ class FlextInfraConfigModelsArtifact:
             FlextInfraConfigModelsArtifact.CodegenOverridesRoot,
             m.Field(description="flext-infra override namespace"),
         ]
+
     class UvEnvironmentPlan(FlextInfraConfigModelsContract._ConfigContract):
         """One deterministic uv environment operation plan."""
 

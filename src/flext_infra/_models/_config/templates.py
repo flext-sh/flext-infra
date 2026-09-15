@@ -34,6 +34,7 @@ class FlextInfraConfigModelsTemplates:
         overwrite: Annotated[
             bool, m.Field(description="Whether the template owns existing content")
         ] = False
+
     class TemplatesSpec(FlextInfraConfigModelsContract._ConfigContract):
         """New-project scaffold root and its complete ordered manifest."""
 
@@ -42,6 +43,7 @@ class FlextInfraConfigModelsTemplates:
             t.VariadicTuple[FlextInfraConfigModelsTemplates.TemplateEntrySpec],
             m.Field(description="Complete ordered template manifest"),
         ]
+
     class ManagedFileSpec(FlextInfraConfigModelsContract._ConfigContract):
         """One versioned file governed by codegen lifecycle policy."""
 
@@ -108,22 +110,29 @@ class FlextInfraConfigModelsTemplates:
                     if section.startswith("tool.") and "." in section
                 )
             )
+
     class GitignoreRenderContext(FlextInfraConfigModelsContract._ConfigContract):
         """Profile-filtered input consumed by the Git ignore template."""
 
         gitignore_sections: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec],
+            t.VariadicTuple[
+                FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec
+            ],
             m.Field(min_length=1, description="Applicable Git ignore sections"),
         ]
+
     class GitignoreRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Typed, profile-filtered input for the generated Git ignore file."""
 
         gitignore_sections: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec],
+            t.VariadicTuple[
+                FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec
+            ],
             m.Field(
                 min_length=1,
                 description="Canonical ignore sections applicable to one profile",
             ),
         ]
+
     class StaticTextRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Empty typed context for a variable-free governed text template."""

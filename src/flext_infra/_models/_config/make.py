@@ -79,6 +79,7 @@ class FlextInfraConfigModelsMake:
                 for gate in FlextInfraConstantsMake.CANONICAL_DEFAULT_GATE_IDS
                 if gate not in local
             )
+
     class MakeVerbSpec(FlextInfraConfigModelsContract._ConfigContract):
         """One selector-free public Make operation."""
 
@@ -86,6 +87,7 @@ class FlextInfraConfigModelsMake:
         description: Annotated[
             t.NonEmptyStr, m.Field(description="Operator-facing help text")
         ]
+
     class MakeWorkflowStepSpec(FlextInfraConfigModelsContract._ConfigContract):
         """One canonical workflow step."""
 
@@ -127,6 +129,7 @@ class FlextInfraConfigModelsMake:
                 )
                 raise ValueError(msg)
             return self
+
     class MakeCleanSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Disposable artifacts the generated clean verb removes.
 
@@ -151,6 +154,7 @@ class FlextInfraConfigModelsMake:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Trace/profile globs removed anywhere in the tree"),
         ]
+
     class MakeDocsSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
@@ -214,6 +218,7 @@ class FlextInfraConfigModelsMake:
                     msg = f"docs api module is not importable: {invalid}"
                     raise ValueError(msg)
             return self
+
     class TestmonCacheSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Adaptive pytest-testmon GitHub Actions cache policy."""
 
@@ -285,6 +290,7 @@ class FlextInfraConfigModelsMake:
                 msg = "testmon cache thresholds must satisfy warning < maintenance < block"
                 raise ValueError(msg)
             return self
+
     class MakeWorkInProgressSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Predicate for work-in-progress branches and draft-PR gate behavior.
 
@@ -312,6 +318,7 @@ class FlextInfraConfigModelsMake:
                 description="Target branches that are blocked for WIP merges",
             ),
         ]
+
     class MakeRuffSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Ruff CLI contract for generated Make verbs and quality gates.
 
@@ -351,6 +358,7 @@ class FlextInfraConfigModelsMake:
                 )
             ),
         ]
+
     class MakeSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Complete generated Makefile public and extension contract."""
 
@@ -409,7 +417,9 @@ class FlextInfraConfigModelsMake:
             m.Field(description="Private custom target policy"),
         ]
         custom_handler_profile_overrides: Annotated[
-            Mapping[t.NonEmptyStr, FlextInfraConfigModelsMake.CustomHandlerPolicyOverride],
+            Mapping[
+                t.NonEmptyStr, FlextInfraConfigModelsMake.CustomHandlerPolicyOverride
+            ],
             m.Field(
                 default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
                 description="Per-profile overrides of the custom handler policy",
@@ -573,6 +583,7 @@ class FlextInfraConfigModelsMake:
                     *FlextInfraConstantsCodegenProject.MakeProfile,
                 )
             }
+
     class DocsGithubRepoSpec(FlextInfraConfigModelsContract._ConfigContract):
         """One governed GitHub repository used for cross-repo doc links."""
 
@@ -592,6 +603,7 @@ class FlextInfraConfigModelsMake:
                 ),
             ),
         ] = ""
+
     class CustomHandlerPolicy(FlextInfraConfigModelsContract._ConfigContract):
         """Strict schema for the only handwritten Make extension file."""
 
@@ -606,6 +618,7 @@ class FlextInfraConfigModelsMake:
         allow_toolchain_declarations: bool = m.Field(
             description="Permit toolchain declarations"
         )
+
     class CustomHandlerPolicyOverride(FlextInfraConfigModelsContract._ConfigContract):
         """Per-profile relaxation of the strict custom-handler contract.
 

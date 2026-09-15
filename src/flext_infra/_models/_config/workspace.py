@@ -39,6 +39,7 @@ class FlextInfraConfigModelsWorkspace:
             Literal["off", "on", "batch"],
             m.Field(description="Dolt auto-commit policy"),
         ]
+
     class WorkspaceIntegrationSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Workspace overlay for one provider integration branch."""
 
@@ -56,6 +57,7 @@ class FlextInfraConfigModelsWorkspace:
             t.NonEmptyStr | None,
             m.Field(description="Optional provider base URL override"),
         ] = None
+
     class RepositoryPolicyOverlaySpec(FlextInfraConfigModelsContract._ConfigContract):
         """Bounded per-project policy declared by a workspace manifest."""
 
@@ -86,11 +88,13 @@ class FlextInfraConfigModelsWorkspace:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Repository-local generated ignore patterns"),
         ] = ()
+
     class WorkspaceExclusionSpec(FlextInfraConfigModelsContract._ConfigContract):
         """One explicitly excluded workspace-relative path."""
 
         path: Annotated[Path, m.Field(description="Workspace-relative path")]
         reason: Annotated[t.NonEmptyStr, m.Field(description="Exclusion rationale")]
+
     class RefactorConfigSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Refactor file-selection configuration."""
 
@@ -108,6 +112,7 @@ class FlextInfraConfigModelsWorkspace:
                 description="Allowed file extensions (empty = all by pattern)",
             ),
         ]
+
     class WorkspaceManifestSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Complete versioned input contract for ``config/workspace.yaml``."""
 
@@ -160,7 +165,9 @@ class FlextInfraConfigModelsWorkspace:
             m.Field(description="Optional integration provider overlay"),
         ] = None
         repository_policy_overlays: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsWorkspace.RepositoryPolicyOverlaySpec],
+            t.VariadicTuple[
+                FlextInfraConfigModelsWorkspace.RepositoryPolicyOverlaySpec
+            ],
             m.Field(description="Repository-local policy overlays"),
         ] = ()
         refactor: Annotated[
@@ -204,6 +211,7 @@ class FlextInfraConfigModelsWorkspace:
                 )
                 raise ValueError(msg)
             return self
+
     class WorkspaceSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Local identity plus topology read from this repository's Git inputs."""
 

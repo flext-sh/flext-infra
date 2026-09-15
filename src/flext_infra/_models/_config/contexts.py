@@ -30,6 +30,7 @@ class FlextInfraConfigModelsContexts:
             FlextInfraModelsDepsToolSettings.PytestConfig,
             m.Field(description="Typed pytest execution policy"),
         ]
+
     class MakefileRenderSpec(MakeCommandContext):
         """Field-only render input for an existing repository Makefile."""
 
@@ -124,6 +125,7 @@ class FlextInfraConfigModelsContexts:
         pytest_process_timeout_seconds: Annotated[
             int, m.Field(gt=0, description="Pytest process wall-time boundary")
         ]
+
     class MakeRenderContext(MakeCommandContext):
         """Typed input consumed by the generated Make surface."""
 
@@ -250,6 +252,7 @@ class FlextInfraConfigModelsContexts:
                 ),
             ),
         ]
+
     class ProjectRenderContext(MakeRenderContext):
         """Complete typed input consumed by project scaffold templates."""
 
@@ -275,7 +278,9 @@ class FlextInfraConfigModelsContexts:
             m.Field(description="New-project scaffold policy"),
         ]
         gitignore_sections: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec],
+            t.VariadicTuple[
+                FlextInfraConfigModelsScaffold.ScaffoldGitignoreSectionSpec
+            ],
             m.Field(
                 min_length=1,
                 description=(
@@ -460,6 +465,7 @@ class FlextInfraConfigModelsContexts:
             t.NonEmptyStr, m.Field(description="Canonical repository Git branch")
         ]
         year: Annotated[int, m.Field(description="Copyright year")]
+
     class ProjectSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
 
@@ -565,6 +571,7 @@ class FlextInfraConfigModelsContexts:
             m.Field(description="Declared relative path to the workspace root"),
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
+
     class RepositoryRef(FlextInfraConfigModelsContract._ConfigContract):
         """One declared repository and its immutable Git origin contract."""
 
@@ -687,6 +694,7 @@ class FlextInfraConfigModelsContexts:
                 ),
             ),
         ]
+
     class RepositoryConformTarget(FlextInfraConfigModelsContract._ConfigContract):
         """Runtime-derived conformance identity for one repository."""
 
@@ -737,6 +745,7 @@ class FlextInfraConfigModelsContexts:
             t.VariadicTuple[Path],
             m.Field(description="Observed external or fork Git submodule paths"),
         ] = ()
+
     class ManagedGitlinkSpec(FlextInfraConfigModelsContract._ConfigContract):
         """One governed submodule with its provider-owned baseline branch."""
 
@@ -748,6 +757,7 @@ class FlextInfraConfigModelsContexts:
             t.NonEmptyStr,
             m.Field(description="Declared gitlink branch (. follows the superproject)"),
         ]
+
     class SgconfigRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Typed input for the generated ast-grep project config.
 
@@ -773,6 +783,7 @@ class FlextInfraConfigModelsContexts:
                 description="Directories holding rule fixtures and snapshots",
             ),
         ]
+
     class ScriptDispatchSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
 
@@ -795,6 +806,7 @@ class FlextInfraConfigModelsContexts:
                 ),
             ),
         ]
+
     class ProfileSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Execution semantics for one generated Make profile."""
 

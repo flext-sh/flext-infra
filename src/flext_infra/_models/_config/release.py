@@ -35,6 +35,7 @@ class FlextInfraConfigModelsRelease:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Extra file:variable version anchors"),
         ] = ()
+
     class ReleaseAutomationSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Automated semantic versioning, owned by the market tool.
 
@@ -81,7 +82,8 @@ class FlextInfraConfigModelsRelease:
         ]
         overrides: Annotated[
             Mapping[
-                t.NonEmptyStr, FlextInfraConfigModelsRelease.ReleaseAutomationOverrideSpec
+                t.NonEmptyStr,
+                FlextInfraConfigModelsRelease.ReleaseAutomationOverrideSpec,
             ],
             m.Field(
                 default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
@@ -97,6 +99,7 @@ class FlextInfraConfigModelsRelease:
                     msg = f"release version anchor must be '<file>:<target>': {anchor}"
                     raise ValueError(msg)
             return self
+
     class ReleasePolicySpec(FlextInfraConfigModelsContract._ConfigContract):
         """The release protocol's declared data: who publishes, what bumps, where.
 
@@ -157,6 +160,7 @@ class FlextInfraConfigModelsRelease:
                 ),
             ),
         ]
+
     class BuildConstraintSpec(FlextInfraConfigModelsContract._ConfigContract):
         """One hash-pinned build requirement (``uv build --require-hashes``)."""
 
@@ -166,6 +170,7 @@ class FlextInfraConfigModelsRelease:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Accepted sha256 digests"),
         ]
+
     class Infra(FlextInfraConfigModelsContract._ConfigContract):
         """Complete flext-infra configuration namespace."""
 
@@ -200,6 +205,7 @@ class FlextInfraConfigModelsRelease:
             FlextInfraConfigModelsStatic.StaticEnforcementSpec,
             m.Field(description="Rope-only static enforcement policy"),
         ]
+
     class Root(FlextInfraConfigModelsContract._ConfigContract):
         """Root payload deep-merged from flext-infra config files."""
 
@@ -207,6 +213,7 @@ class FlextInfraConfigModelsRelease:
             FlextInfraConfigModelsRelease.Infra,
             m.Field(description="Validated flext-infra namespace"),
         ]
+
     class CodegenOverridesRoot(FlextInfraConfigModelsContract._ConfigContract):
         """Override root mirroring the Infra.codegen structure with override-only fields.
 
@@ -219,6 +226,7 @@ class FlextInfraConfigModelsRelease:
             FlextInfraConfigModelsRelease._CodegenOverridesSection,
             m.Field(description="Override sections for the codegen namespace"),
         ]
+
     class _CodegenOverridesSection(FlextInfraConfigModelsContract._ConfigContract):
         """Override deltas that deep-merge onto CodegenConfigSpec fields."""
 
@@ -244,6 +252,7 @@ class FlextInfraConfigModelsRelease:
             FlextInfraConfigModelsRelease._LayoutOverridesSection | None,
             m.Field(default=None, description="Layout override deltas"),
         ] = None
+
     class _MakeOverridesSection(FlextInfraConfigModelsContract._ConfigContract):
         """Override deltas for the generated Make contract."""
 
@@ -254,6 +263,7 @@ class FlextInfraConfigModelsRelease:
                 description="Per-profile custom handler policy relaxations",
             ),
         ]
+
     class _LayoutOverridesSection(FlextInfraConfigModelsContract._ConfigContract):
         """Override deltas for the layout conformance contract."""
 
@@ -264,6 +274,7 @@ class FlextInfraConfigModelsRelease:
                 description="Per-project layout deltas",
             ),
         ]
+
     class CodegenOverridesSpec(FlextInfraConfigModelsContract._ConfigContract):
         """Typed content of the config overrides layer (config/codegen-overrides.yaml).
 
@@ -277,6 +288,7 @@ class FlextInfraConfigModelsRelease:
             FlextInfraConfigModelsRelease.CodegenOverridesRoot,
             m.Field(description="flext-infra override namespace"),
         ]
+
     class UvEnvironmentPlan(FlextInfraConfigModelsContract._ConfigContract):
         """One deterministic uv environment operation plan."""
 
