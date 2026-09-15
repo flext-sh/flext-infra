@@ -158,14 +158,14 @@ class TestsPlanCollection:
         with pytest.raises(ValueError, match="topology changed"):
             u.Infra.verify_plan_collection_sources(tmp_path, config, bundle)
 
-    @pytest.mark.parametrize(("value", "expected"), (
+    @pytest.mark.parametrize(("value", "expected"), [
         ("2026-09-14T17:20:28Z", "2026-09-14T17:20:28Z"),
         ("2026-09-14T14:20:28-03:00", "2026-09-14T17:20:28Z"),
         ("2026-09-14", "2026-09-14"),
         ("2026-09-14T14:20:28", "2026-09-14T14:20:28"),
-    ))
-    @pytest.mark.parametrize("newline", ("\n", "\r\n"))
-    @pytest.mark.parametrize("prefix", ("", "\ufeff"))
+    ])
+    @pytest.mark.parametrize("newline", ["\n", "\r\n"])
+    @pytest.mark.parametrize("prefix", ["", "\ufeff"])
     def test_native_yaml_timestamp_preserves_precision(
         self, tmp_path: Path, value: str, expected: str, newline: str, prefix: str
     ) -> None:
@@ -178,7 +178,7 @@ class TestsPlanCollection:
 
         tm.that(bundle.revisions[0].source_updated_at, eq=expected)
         tm.that(bundle.revisions[0].source_updated_at_original is not None, eq=True)
-        if value in ("2026-09-14", "2026-09-14T14:20:28"):
+        if value in {"2026-09-14", "2026-09-14T14:20:28"}:
             tm.that(bundle.revisions[0].source_updated_at_utc, eq=None)
 
     def test_new_companion_file_changes_source_topology(self, tmp_path: Path) -> None:

@@ -69,4 +69,3 @@ class TestsBatchReplacements:
         finding = report.entries[0].model_copy(update={"source_state": None})
         invalid = report.model_copy(update={"entries": (finding,)})
         tm.fail(FlextInfraModReplacements.publish(root, invalid))
-

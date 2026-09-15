@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from datetime import UTC, date, datetime
 from hashlib import sha256
+from pathlib import Path
 
 from flext_cli import u as cli_u
+
 from flext_infra import m, t
 
 
@@ -18,7 +19,8 @@ class FlextInfraUtilitiesDocsCollectionSources:
         """Resolve a declared source without allowing lexical parent traversal."""
         selected = source.root.expanduser()
         if ".." in selected.parts:
-            raise ValueError(f"collection source escapes its association: {selected}")
+            msg = f"collection source escapes its association: {selected}"
+            raise ValueError(msg)
         return selected if selected.is_absolute() else root / selected
 
     @classmethod
@@ -33,14 +35,16 @@ class FlextInfraUtilitiesDocsCollectionSources:
             raise FileNotFoundError(selected)
         for pattern in (*source.plan_globs, *source.exclude_globs):
             if Path(pattern).is_absolute() or ".." in Path(pattern).parts:
-                raise ValueError(f"unsafe collection pattern: {pattern}")
+                msg = f"unsafe collection pattern: {pattern}"
+                raise ValueError(msg)
         inventory = cli_u.Cli.atomic_inventory_physical_tree(selected).unwrap()
         for entry in inventory.entries:
             if entry.kind == "symlink" and any(
                 entry.path.relative_to(selected).full_match(pattern)
                 for pattern in source.plan_globs
             ):
-                raise ValueError(f"selected plan source is a symlink: {entry.path}")
+                msg = f"selected plan source is a symlink: {entry.path}"
+                raise ValueError(msg)
         candidates = tuple(sorted(
             entry.path for entry in inventory.entries
             if entry.kind == "file" and entry.path not in excluded_outputs and any(
@@ -63,7 +67,8 @@ class FlextInfraUtilitiesDocsCollectionSources:
         """Capture one required regular source through the shared CAS owner."""
         state = cli_u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
         if state.content is None:
-            raise ValueError(f"collection source disappeared: {path}")
+            msg = f"collection source disappeared: {path}"
+            raise ValueError(msg)
         return state
 
     @staticmethod
@@ -74,7 +79,8 @@ class FlextInfraUtilitiesDocsCollectionSources:
         state = cli_u.Cli.atomic_read_binary_file_state(path, required=False).unwrap()
         previous = states.get(path)
         if previous is not None and previous != state:
-            raise ValueError(f"collection input changed between reads: {path}")
+            msg = f"collection input changed between reads: {path}"
+            raise ValueError(msg)
         states[path] = state
         return state
 
@@ -92,7 +98,8 @@ class FlextInfraUtilitiesDocsCollectionSources:
                 inventory = cli_u.Cli.atomic_inventory_physical_tree(companion).unwrap()
                 for entry in inventory.entries:
                     if entry.kind == "symlink":
-                        raise ValueError(f"plan companion is a symlink: {entry.path}")
+                        msg = f"plan companion is a symlink: {entry.path}"
+                        raise ValueError(msg)
                 states.extend(
                     cls.collection_read(entry.path)
                     for entry in sorted(inventory.entries, key=lambda item: item.path)
@@ -110,7 +117,8 @@ class FlextInfraUtilitiesDocsCollectionSources:
             return None, None
         closing = next((index for index, line in enumerate(lines[1:], 1) if line == "---"), None)
         if closing is None:
-            raise ValueError("plan frontmatter has no closing delimiter")
+            msg = "plan frontmatter has no closing delimiter"
+            raise ValueError(msg)
         metadata = "\n".join(lines[1:closing])
         parsed = cli_u.Cli.yaml_roundtrip_load_map_text(metadata).unwrap()
         selected = next((field for field in fields if field in parsed), None)
@@ -150,37 +158,43 @@ class FlextInfraUtilitiesDocsCollectionSources:
         for revision in manifest.revisions:
             for locator in (revision.canonical_path, revision.source_path):
                 if locator.is_absolute() or not locator.parts or ".." in locator.parts:
-                    raise ValueError(f"collection receipt has unsafe relative locator: {locator}")
+                    msg = f"collection receipt has unsafe relative locator: {locator}"
+                    raise ValueError(msg)
         plans = {canonical / revision.canonical_path for revision in manifest.revisions}
         affected: set[Path] = set()
         for artifact in manifest.artifacts:
             path = artifact.relative_path
             if path.is_absolute() or not path.parts or ".." in path.parts:
-                raise ValueError(f"collection manifest has unsafe owned path: {path}")
+                msg = f"collection manifest has unsafe owned path: {path}"
+                raise ValueError(msg)
             for root in roots:
                 candidate = root / path
                 state = cls.collection_capture(candidate, states)
                 if state.content is not None and sha256(state.content).hexdigest() == artifact.digest:
                     excluded.append(candidate)
                 elif candidate not in plans and root == canonical:
-                    raise ValueError(f"immutable canonical artifact changed or disappeared: {candidate}")
+                    msg = f"immutable canonical artifact changed or disappeared: {candidate}"
+                    raise ValueError(msg)
                 elif root == projection and state.content is not None:
                     projected_plans = {root / plan.relative_to(canonical) for plan in plans}
                     owners = tuple(plan for plan in projected_plans if candidate.is_relative_to(plan.with_suffix("")))
                     if candidate not in projected_plans and not owners:
-                        raise ValueError(f"projected collection metadata was modified: {candidate}")
+                        msg = f"projected collection metadata was modified: {candidate}"
+                        raise ValueError(msg)
                     for plan in plans:
                         projected_plan = root / plan.relative_to(canonical)
                         if candidate.is_relative_to(projected_plan.with_suffix("")):
                             affected.add(projected_plan)
                 elif root == projection and state.content is None:
-                    raise ValueError(f"owned projection artifact disappeared: {candidate}")
+                    msg = f"owned projection artifact disappeared: {candidate}"
+                    raise ValueError(msg)
         if projection is not None:
             projected_manifest = projection / manifest_path.name
             projected = cls.collection_capture(projected_manifest, states)
             if projected.content is not None:
                 if projected.content != before.content:
-                    raise ValueError(f"projected collection manifest was modified: {projected_manifest}")
+                    msg = f"projected collection manifest was modified: {projected_manifest}"
+                    raise ValueError(msg)
                 excluded.append(projected_manifest)
         return manifest, tuple(path for path in excluded if path not in affected)
 
