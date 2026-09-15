@@ -154,11 +154,17 @@ class FlextInfraUtilitiesDocsRender:
         (producing nav 404s). The rooted ``/README.md`` excludes only the
         docs-dir root README (the project README mirror), preserving nested
         section READMEs. [flext-3o9s nav404 fix]
+
+        Curated ``API/**`` mirrors duplicate the generated public-API page and
+        register the same flat symbol anchors (for example ``cosmos_main.s``),
+        producing ``Multiple primary URLs`` autorefs conflicts. The generated
+        page is canonical; the curated mirror is excluded.
         """
         patterns = list(
             dict.fromkeys([
                 *FlextInfraUtilitiesDocsRender.as_string_sequence(data, "exclude_docs"),
                 "/README.md",
+                "/API/**",
             ])
         )
         return ["exclude_docs: |", *[f"  {pattern}" for pattern in patterns], ""]
