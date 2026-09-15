@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED FILE — regenerate through `make gen` from the workspace root. -->
+<!-- Source of truth: `docs/guides/using-flext-core.md`; adjust that source, never this projection. -->
+
 # flext-infra - Using flext-core
 
 > Project profile: `flext-infra`
@@ -47,8 +50,6 @@ unexpected runtime exceptions into success or ad-hoc error dictionaries.
 ```python
 from __future__ import annotations
 
-from math import isclose
-
 from flext_core import r
 
 
@@ -59,7 +60,7 @@ def safe_divide(a: float, b: float) -> r[float]:
 
 
 assert safe_divide(10, 2).success
-assert isclose(safe_divide(10, 2).value, 5.0)
+assert safe_divide(10, 2).value == 5.0
 assert safe_divide(10, 0).failure
 ```
 
