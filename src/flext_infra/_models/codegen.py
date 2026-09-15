@@ -228,7 +228,9 @@ class FlextInfraModelsCodegen(
         ]
         absent_parent: Annotated[
             m.Cli.AtomicDirectoryChainPlan | None,
-            m.Field(description="Physical ancestor witness when the source parent is absent"),
+            m.Field(
+                description="Physical ancestor witness when the source parent is absent"
+            ),
         ] = None
         file_attributes: Annotated[
             int | None, m.Field(ge=0, strict=True, description="Host file attributes")
@@ -249,7 +251,13 @@ class FlextInfraModelsCodegen(
         @u.model_validator(mode="after")
         def _validate_source_physical_state(self) -> Self:
             """Reject a persisted source identity that represents a reparse point."""
-            physical = (self.sha256, self.mode, self.device, self.inode, self.link_count)
+            physical = (
+                self.sha256,
+                self.mode,
+                self.device,
+                self.inode,
+                self.link_count,
+            )
             populated = tuple(value is not None for value in physical)
             if any(populated) != all(populated):
                 msg = "generation source physical identity is incomplete"
@@ -262,13 +270,18 @@ class FlextInfraModelsCodegen(
                 if any(populated) or self.absent_parent is None:
                     msg = "absent source parent requires an authenticated ancestor witness"
                     raise ValueError(msg)
-                if self.absent_parent.target != self.path.parent or not self.absent_parent.directories:
+                if (
+                    self.absent_parent.target != self.path.parent
+                    or not self.absent_parent.directories
+                ):
                     msg = "source absence witness does not describe its missing parent"
                     raise ValueError(msg)
             elif self.absent_parent is not None:
                 msg = "existing source parent cannot carry an absence witness"
                 raise ValueError(msg)
-            if not any(populated) and (self.file_attributes is not None or self.reparse_tag is not None):
+            if not any(populated) and (
+                self.file_attributes is not None or self.reparse_tag is not None
+            ):
                 msg = "absent generation source cannot carry host metadata"
                 raise ValueError(msg)
             marker = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
@@ -590,9 +603,7 @@ class FlextInfraModelsCodegen(
         ]
         projects: Annotated[
             t.VariadicTuple[FlextInfraModelsCodegen.CodegenJournalProject],
-            m.Field(
-                description="Ordered project selectors owned by this transaction",
-            ),
+            m.Field(description="Ordered project selectors owned by this transaction"),
         ]
         file_participants: Annotated[
             t.VariadicTuple[FlextInfraModelsCodegen.CodegenFileParticipant],
@@ -615,7 +626,8 @@ class FlextInfraModelsCodegen(
         def _validate_lifecycle(self) -> Self:
             """Bind staging and publication payloads to one safe project set."""
             selectors = tuple(
-                project.selector for project in (*self.projects, *self.file_participants)
+                project.selector
+                for project in (*self.projects, *self.file_participants)
             )
             if not selectors:
                 msg = "generation journal requires an explicit participant"

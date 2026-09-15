@@ -136,9 +136,7 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(content, contains=f"from {rendered_owner} import Demo")
         tm.that(content, contains=f'"{rendered_owner}": ("Demo",)')
-        tm.that(
-            resolve_name(rendered_owner, package), eq=resolve_name(owner, package)
-        )
+        tm.that(resolve_name(rendered_owner, package), eq=resolve_name(owner, package))
 
     def test_root_initializer_contains_static_and_lazy_contracts(self) -> None:
         """Public root initializer keeps typing and runtime targets aligned."""

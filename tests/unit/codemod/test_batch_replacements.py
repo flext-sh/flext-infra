@@ -16,22 +16,34 @@ class TestsBatchReplacements:
     """Only authenticated authored bytes may receive engine-proposed edits."""
 
     @staticmethod
-    def _report(path: Path, content: bytes, *, generated: bool = False) -> m.Infra.ModScanReport:
+    def _report(
+        path: Path, content: bytes, *, generated: bool = False
+    ) -> m.Infra.ModScanReport:
         path.write_bytes(content)
         state = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
         start = content.index(b"before")
         offsets = {"start": start, "end": start + len(b"before")}
         finding = m.Infra.ModScanFinding(
-            rule_file=str(path.parent / "rule.yaml"), rule_id="fixture-rewrite",
-            repository=path.parent.name, file=path,
-            source_owner="generator" if generated else "authored", source_state=state,
-            range={"byteOffset": offsets}, text="before", replacement="after",
-            actionable=True, classification=c.Infra.ModScanFindingClass.ACTIONABLE,
+            rule_file=str(path.parent / "rule.yaml"),
+            rule_id="fixture-rewrite",
+            repository=path.parent.name,
+            file=path,
+            source_owner="generator" if generated else "authored",
+            source_state=state,
+            range={"byteOffset": offsets},
+            text="before",
+            replacement="after",
+            actionable=True,
+            classification=c.Infra.ModScanFindingClass.ACTIONABLE,
             payload={"replacementOffsets": offsets, "severity": "error"},
         )
         return m.Infra.ModScanReport(
-            findings=1, actionable=1, detection_only=0, non_actionable_with_fix=0,
-            files=frozenset({path}), entries=(finding,),
+            findings=1,
+            actionable=1,
+            detection_only=0,
+            non_actionable_with_fix=0,
+            files=frozenset({path}),
+            entries=(finding,),
         )
 
     def test_utf8_replacements_use_engine_byte_offsets(self, tmp_path: Path) -> None:
@@ -42,7 +54,9 @@ class TestsBatchReplacements:
         tm.ok(FlextInfraModReplacements.publish(root, report))
         tm.that(path.read_bytes(), eq=original.replace(b"before", b"after"))
 
-    def test_generator_findings_remain_visible_and_unmodified(self, tmp_path: Path) -> None:
+    def test_generator_findings_remain_visible_and_unmodified(
+        self, tmp_path: Path
+    ) -> None:
         root = test_u.Tests.git_repository(tmp_path)
         path = root / "generated.py"
         original = b'value = "before"\n'
@@ -53,8 +67,12 @@ class TestsBatchReplacements:
         tm.that(report.findings, eq=1)
         tm.that(path.read_bytes(), eq=original)
 
-    @pytest.mark.parametrize("changed", [b'value = "before"\n\n', b'value = "third-party"\n'])
-    def test_changed_source_is_not_overwritten(self, tmp_path: Path, changed: bytes) -> None:
+    @pytest.mark.parametrize(
+        "changed", [b'value = "before"\n\n', b'value = "third-party"\n']
+    )
+    def test_changed_source_is_not_overwritten(
+        self, tmp_path: Path, changed: bytes
+    ) -> None:
         root = test_u.Tests.git_repository(tmp_path)
         path = root / "subject.py"
         report = self._report(path, b'value = "before"\n')

@@ -31,9 +31,7 @@ class TestsFlextInfraDocsGenerator:
         )
         _ = u.Tests.plan_docs_bundle(generator)
         result = generator.generate(
-            m.Infra.DocsGenerateRequest(
-                repository_root=workspace, projects=["flext-a"]
-            )
+            m.Infra.DocsGenerateRequest(repository_root=workspace, projects=["flext-a"])
         )
 
         tm.ok(result)
@@ -134,9 +132,7 @@ class TestsFlextInfraDocsGenerator:
             for state in bundle.source_states
             if workspace in state.path.parents
         )
-        watched.write_text(
-            '"""Source changed after rendering."""\n', encoding="utf-8"
-        )
+        watched.write_text('"""Source changed after rendering."""\n', encoding="utf-8")
         tm.fail(generator.plan_files(bundle))
 
     def test_root_generated_catalog_survives_project_pass_and_required_indexes_validate(

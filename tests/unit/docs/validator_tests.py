@@ -37,9 +37,7 @@ class TestsFlextInfraDocsValidator:
         workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 
         result = FlextInfraDocValidator().validate_workspace(
-            m.Infra.DocsGenerateRequest(
-                repository_root=workspace, projects=["flext-a"]
-            )
+            m.Infra.DocsGenerateRequest(repository_root=workspace, projects=["flext-a"])
         )
 
         tm.ok(result)
@@ -56,15 +54,15 @@ class TestsFlextInfraDocsValidator:
         generated = u.Tests.materialize_docs_bundle(prepared.value)
         tm.ok(generated)
         result = FlextInfraDocValidator().validate_workspace(
-            m.Infra.DocsGenerateRequest(
-                repository_root=workspace, projects=["flext-a"]
-            )
+            m.Infra.DocsGenerateRequest(repository_root=workspace, projects=["flext-a"])
         )
 
         tm.ok(result)
         tm.that(all(report.result == "OK" for report in result.value), eq=True)
 
-    def test_validate_workspace_does_not_write_project_todo(self, tmp_path: Path) -> None:
+    def test_validate_workspace_does_not_write_project_todo(
+        self, tmp_path: Path
+    ) -> None:
         """Read-only validation does not publish a project TODO ledger."""
         workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 
@@ -74,9 +72,7 @@ class TestsFlextInfraDocsValidator:
         tm.ok(prepared)
         tm.ok(u.Tests.materialize_docs_bundle(prepared.value))
         result = FlextInfraDocValidator().validate_workspace(
-            m.Infra.DocsGenerateRequest(
-                repository_root=workspace, projects=["flext-a"]
-            )
+            m.Infra.DocsGenerateRequest(repository_root=workspace, projects=["flext-a"])
         )
 
         tm.ok(result)

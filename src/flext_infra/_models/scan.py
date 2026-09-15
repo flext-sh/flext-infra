@@ -129,8 +129,12 @@ class FlextInfraModelsScan:
     class ModReplacementOffsets(m.ContractModel):
         """UTF-8 byte coordinates supplied by the ast-grep JSON contract."""
 
-        start: Annotated[int, m.Field(ge=0, strict=True, description="Inclusive start byte")]
-        end: Annotated[int, m.Field(ge=0, strict=True, description="Exclusive end byte")]
+        start: Annotated[
+            int, m.Field(ge=0, strict=True, description="Inclusive start byte")
+        ]
+        end: Annotated[
+            int, m.Field(ge=0, strict=True, description="Exclusive end byte")
+        ]
 
     class ModScanReport(m.ArbitraryTypesModel):
         """Verified structural findings and actionable rewrite targets."""

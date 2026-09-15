@@ -12,20 +12,16 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import Annotated, Literal, override
 
-from flext_core import r
-from flext_infra import config, p, u
-from flext_infra.base import s
-from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
-from flext_infra.constants import c
-from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-from flext_infra.docs.generator import FlextInfraDocGenerator
-from flext_infra.models import m
-from flext_infra.services.codegen import FlextInfraCodegen
-from flext_infra.typings import t
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from .. import c, config, m, p, r, s, t, u
+from ..deps import FlextInfraEnsureRuffConfigPhase, FlextInfraPyprojectModernizer
+from ..docs import FlextInfraDocGenerator
+from ..services.codegen import FlextInfraCodegen
+from ..workspace import FlextInfraWorkspaceDetector
+from . import (
+    FlextInfraCodegenLazyInit,
+    FlextInfraCodegenMiseArtifacts,
+    FlextInfraCodegenTransaction,
+)
 
 
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
@@ -41,11 +37,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
     ) -> str:
         """Resolve the repository override through one codegen authority."""
-        link_mode = repository.uv_link_mode or toolchain.uv_link_mode
-        if not isinstance(link_mode, str):
-            msg = "resolved uv link mode must be a string"
-            raise TypeError(msg)
-        return link_mode
+        return repository.uv_link_mode or toolchain.uv_link_mode
 
     @staticmethod
     def _dependency_cooldown_policy(
@@ -575,10 +567,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 docs_directories.error or "docs directory planning failed",
             )
             return r[m.Infra.CodegenResult].from_failure(aborted)
+        owned_docs_directories = self._owned_docs_directories(
+            request, plan, docs_directories.value
+        )
         with_directories = transaction.append_directories_locked(
-            extended.value,
-            "docs",
-            self._owned_docs_directories(request, plan, docs_directories.value),
+            extended.value, "docs", owned_docs_directories
         )
         if with_directories.failure:
             return r[m.Infra.CodegenResult].from_failure(with_directories)
@@ -2777,7 +2770,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if layout is not None and layout.class_stem:
             families: tuple[Literal["u", "p"], ...] = ("u", "p")
             for family in families:
-                rendered = u.Infra.render_utility_facade(layout.package_dir, family=family)
+                rendered = u.Infra.render_utility_facade(
+                    layout.package_dir, family=family
+                )
                 if rendered is None:
                     continue
                 relative = (

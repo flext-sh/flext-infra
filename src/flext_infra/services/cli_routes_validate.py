@@ -25,7 +25,69 @@ class ValidationRoutes(ValidationCommandRoutes):
     validation_routes: ClassVar[
         MutableMapping[str, tuple[m.Cli.ResultCommandRoute, ...]]
     ] = {
-        c.Infra.CLI_GROUP_DOCS: (m.Cli.ResultCommandRoute(name="collect", help_text="Collect associated plan sources and publish authenticated projections", model_cls=m.Infra.DocsCollectRequest, handler=ValidationCommandRoutes.result_handler(FlextInfraDocCollector.collect), success_message="Configured plan sources collected and published"), m.Cli.ResultCommandRoute(name="generate", help_text="Generate project docs through the publication transaction", model_cls=m.Infra.DocsGenerateRequest, handler=ValidationCommandRoutes.result_handler(FlextInfraDocGenerator.execute_request), success_message="Generated documentation committed and verified"), *tuple(m.Cli.ResultCommandRoute(name=route_name, help_text=help_text, model_cls=model_cls, handler=ValidationCommandRoutes.result_handler(model_cls.execute_command), success_message=success_message) for route_name, help_text, model_cls, success_message in (("audit", "Audit documentation for broken links and forbidden terms", FlextInfraDocAuditor, "Audit completed successfully"), ("fix", "Fix documentation issues", FlextInfraDocFixer, "Fix completed successfully"), ("build", "Build MkDocs sites", FlextInfraDocBuilder, "Build completed successfully"), ("serve", "Serve one MkDocs site in dev mode (blocking preview)", FlextInfraDocServer, "Serve completed successfully"), ("validate", "Validate documentation", FlextInfraDocValidator, "Validate completed successfully")))),
+        c.Infra.CLI_GROUP_DOCS: (
+            m.Cli.ResultCommandRoute(
+                name="collect",
+                help_text="Collect associated plan sources and publish authenticated projections",
+                model_cls=m.Infra.DocsCollectRequest,
+                handler=ValidationCommandRoutes.result_handler(
+                    FlextInfraDocCollector.collect
+                ),
+                success_message="Configured plan sources collected and published",
+            ),
+            m.Cli.ResultCommandRoute(
+                name="generate",
+                help_text="Generate project docs through the publication transaction",
+                model_cls=m.Infra.DocsGenerateRequest,
+                handler=ValidationCommandRoutes.result_handler(
+                    FlextInfraDocGenerator.execute_request
+                ),
+                success_message="Generated documentation committed and verified",
+            ),
+            *tuple(
+                m.Cli.ResultCommandRoute(
+                    name=route_name,
+                    help_text=help_text,
+                    model_cls=model_cls,
+                    handler=ValidationCommandRoutes.result_handler(
+                        model_cls.execute_command
+                    ),
+                    success_message=success_message,
+                )
+                for route_name, help_text, model_cls, success_message in (
+                    (
+                        "audit",
+                        "Audit documentation for broken links and forbidden terms",
+                        FlextInfraDocAuditor,
+                        "Audit completed successfully",
+                    ),
+                    (
+                        "fix",
+                        "Fix documentation issues",
+                        FlextInfraDocFixer,
+                        "Fix completed successfully",
+                    ),
+                    (
+                        "build",
+                        "Build MkDocs sites",
+                        FlextInfraDocBuilder,
+                        "Build completed successfully",
+                    ),
+                    (
+                        "serve",
+                        "Serve one MkDocs site in dev mode (blocking preview)",
+                        FlextInfraDocServer,
+                        "Serve completed successfully",
+                    ),
+                    (
+                        "validate",
+                        "Validate documentation",
+                        FlextInfraDocValidator,
+                        "Validate completed successfully",
+                    ),
+                )
+            ),
+        ),
         c.Infra.CLI_GROUP_MAINTENANCE: (
             m.Cli.ResultCommandRoute(
                 name=c.Infra.VERB_RUN,

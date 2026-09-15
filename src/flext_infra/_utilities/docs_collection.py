@@ -28,10 +28,12 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         canonical = root / relative
         projection = (
             configuration.projection_root.expanduser()
-            if configuration.projection_root is not None else None
+            if configuration.projection_root is not None
+            else None
         )
         if projection is not None and (
-            not projection.is_absolute() or ".." in projection.parts
+            not projection.is_absolute()
+            or ".." in projection.parts
             or projection == canonical
         ):
             msg = f"unsafe collection projection association: {projection}"
@@ -41,7 +43,9 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
             msg = "collection source identities must be unique"
             raise ValueError(msg)
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
-        manifest, excluded_outputs = cls.collection_manifest(canonical, projection, states)
+        manifest, excluded_outputs = cls.collection_manifest(
+            canonical, projection, states
+        )
         history = list(manifest.revisions)
         observed = {(item.identity, item.digest) for item in history}
         revisions_by_identity = {item.identity: item for item in manifest.revisions}
@@ -62,15 +66,21 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
                 if source.publication != "private":
                     msg = f"private source cannot publish: {source.id}"
                     raise ValueError(msg)
-                coverage.append(m.Infra.PlanCollectionCoverage(
-                    source_id=source.id, provider=source.provider,
-                    adapter=source.adapter, files=len(paths),
-                    status="private-inventory" if paths else "empty",
-                    private_paths=paths,
-                ))
-                inventories.append(m.Infra.PlanCollectionSourceInventory(
-                    source_id=source.id, paths=paths,
-                ))
+                coverage.append(
+                    m.Infra.PlanCollectionCoverage(
+                        source_id=source.id,
+                        provider=source.provider,
+                        adapter=source.adapter,
+                        files=len(paths),
+                        status="private-inventory" if paths else "empty",
+                        private_paths=paths,
+                    )
+                )
+                inventories.append(
+                    m.Infra.PlanCollectionSourceInventory(
+                        source_id=source.id, paths=paths
+                    )
+                )
                 continue
             if source.publication != "plan-artifacts":
                 msg = f"file source requires publication approval: {source.id}"
@@ -86,37 +96,70 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
                         raise ValueError(msg)
                     states[state.path] = state
                 revision = cls._collect_revision(
-                    canonical, source_root, source, path, artifacts, desired,
+                    canonical,
+                    source_root,
+                    source,
+                    path,
+                    artifacts,
+                    desired,
                     states=states,
-                    previous=next((
-                        item for item in manifest.revisions
-                        if canonical / item.canonical_path == path or (
-                            projection is not None and path.is_relative_to(projection)
-                            and item.canonical_path == path.relative_to(projection)
-                        )
-                    ), None),
+                    previous=next(
+                        (
+                            item
+                            for item in manifest.revisions
+                            if canonical / item.canonical_path == path
+                            or (
+                                projection is not None
+                                and path.is_relative_to(projection)
+                                and item.canonical_path == path.relative_to(projection)
+                            )
+                        ),
+                        None,
+                    ),
                 )
                 key = (revision.identity, revision.digest)
                 if key not in observed:
                     history.append(revision)
                     observed.add(key)
                     revisions_by_identity[revision.identity] = revision
-            inventories.append(m.Infra.PlanCollectionSourceInventory(
-                source_id=source.id, paths=tuple(sorted(source_paths)),
-            ))
-            coverage.append(m.Infra.PlanCollectionCoverage(
-                source_id=source.id, provider=source.provider, adapter=source.adapter,
-                files=len(paths), status="collected" if paths else "empty",
-            ))
-        revisions = sorted(revisions_by_identity.values(), key=lambda item: (
-            item.source_updated_at_utc is not None, item.source_updated_at_utc or "", item.identity
-        ))
-        lines = ["# Collected plans", "",
-                 "Source order only; execution status and closure belong to Beads.", ""]
-        lines.extend(f"- [{revision.identity}]({revision.canonical_path.name})"
-                f" — {revision.source_updated_at or 'source update unknown'}"
-                + (" (chronology unresolved: no timezone-aware instant)"
-                   if revision.source_updated_at_utc is None else "") for revision in revisions)
+            inventories.append(
+                m.Infra.PlanCollectionSourceInventory(
+                    source_id=source.id, paths=tuple(sorted(source_paths))
+                )
+            )
+            coverage.append(
+                m.Infra.PlanCollectionCoverage(
+                    source_id=source.id,
+                    provider=source.provider,
+                    adapter=source.adapter,
+                    files=len(paths),
+                    status="collected" if paths else "empty",
+                )
+            )
+        revisions = sorted(
+            revisions_by_identity.values(),
+            key=lambda item: (
+                item.source_updated_at_utc is not None,
+                item.source_updated_at_utc or "",
+                item.identity,
+            ),
+        )
+        lines = [
+            "# Collected plans",
+            "",
+            "Source order only; execution status and closure belong to Beads.",
+            "",
+        ]
+        lines.extend(
+            f"- [{revision.identity}]({revision.canonical_path.name})"
+            f" — {revision.source_updated_at or 'source update unknown'}"
+            + (
+                " (chronology unresolved: no timezone-aware instant)"
+                if revision.source_updated_at_utc is None
+                else ""
+            )
+            for revision in revisions
+        )
         index, _changed = FlextInfraUtilitiesDocsContract.docs_update_toc(
             "\n".join(lines) + "\n"
         )
@@ -127,11 +170,16 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
             path.relative_to(canonical): m.Infra.PlanCollectionOwnedArtifact(
                 relative_path=path.relative_to(canonical),
                 digest=sha256(content).hexdigest(),
-            ) for path, content in desired.items()
+            )
+            for path, content in desired.items()
         })
-        desired[manifest_path] = (m.Infra.PlanCollectionManifest(
-            revisions=tuple(history), artifacts=tuple(owned[path] for path in sorted(owned)),
-        ).model_dump_json(indent=2) + "\n").encode()
+        desired[manifest_path] = (
+            m.Infra.PlanCollectionManifest(
+                revisions=tuple(history),
+                artifacts=tuple(owned[path] for path in sorted(owned)),
+            ).model_dump_json(indent=2)
+            + "\n"
+        ).encode()
         if projection is not None:
             for path, content in tuple(desired.items()):
                 desired[projection / path.relative_to(canonical)] = content
@@ -143,34 +191,50 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
                 msg = f"undeclared collection destination: {path}"
                 raise ValueError(msg)
             planned = FlextInfraUtilitiesDocsContract.docs_file_plan(
-                owner, path, content, desired_mode=0o644, source_states=inputs,
+                owner, path, content, desired_mode=0o644, source_states=inputs
             ).unwrap()
             expected = states.get(path)
             if expected is not None and planned.before != expected:
                 msg = f"collection target changed after source read: {path}"
                 raise ValueError(msg)
             plans.append(planned)
-        directories = tuple(sorted({path.parent for path in desired},
-                                   key=lambda path: (len(path.parts), path.as_posix())))
+        directories = tuple(
+            sorted(
+                {path.parent for path in desired},
+                key=lambda path: (len(path.parts), path.as_posix()),
+            )
+        )
         return m.Infra.PlanCollectionBundle(
-            files=tuple(plans), source_states=inputs, required_directories=directories,
-            revisions=tuple(revisions), coverage=tuple(coverage),
+            files=tuple(plans),
+            source_states=inputs,
+            required_directories=directories,
+            revisions=tuple(revisions),
+            coverage=tuple(coverage),
             inventories=tuple(inventories),
             excluded_outputs=excluded_outputs,
         )
 
     @classmethod
     def _collect_revision(
-        cls, canonical: Path, source_root: Path, source: m.Infra.PlanCollectionSource,
-        path: Path, artifacts: tuple[m.Cli.AtomicFileState, ...],
+        cls,
+        canonical: Path,
+        source_root: Path,
+        source: m.Infra.PlanCollectionSource,
+        path: Path,
+        artifacts: tuple[m.Cli.AtomicFileState, ...],
         desired: t.MutableMappingKV[Path, bytes],
-        *, previous: m.Infra.PlanCollectionRevision | None,
+        *,
+        previous: m.Infra.PlanCollectionRevision | None,
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
     ) -> m.Infra.PlanCollectionRevision:
         """Keep curated canonical text intact while recording incoming revisions."""
-        identity = previous.identity if previous is not None else sha256(
-            f"{source.id}:{path.relative_to(source_root).as_posix()}".encode()
-        ).hexdigest()
+        identity = (
+            previous.identity
+            if previous is not None
+            else sha256(
+                f"{source.id}:{path.relative_to(source_root).as_posix()}".encode()
+            ).hexdigest()
+        )
         digest = sha256()
         for artifact in artifacts:
             if artifact.content is None:
@@ -182,7 +246,9 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
             digest.update(len(artifact.content).to_bytes(8, "big"))
             digest.update(artifact.content)
         filename = f"{source.id}-{path.stem}-{identity[:16]}"
-        target = canonical / (previous.canonical_path if previous is not None else Path(f"{filename}.md"))
+        target = canonical / (
+            previous.canonical_path if previous is not None else Path(f"{filename}.md")
+        )
         incoming = target.with_suffix("") / "incoming" / digest.hexdigest()
         plan = artifacts[0].content
         if plan is None:
@@ -199,26 +265,40 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
             name = attachment.path.relative_to(path.with_suffix(""))
             desired[incoming / "attachments" / name] = attachment.content
             attachment_names.append(name.as_posix())
-        original, normalized = cls.collection_source_updated(plan, source.updated_fields)
+        original, normalized = cls.collection_source_updated(
+            plan, source.updated_fields
+        )
         revision = m.Infra.PlanCollectionRevision(
-            identity=identity, provider=source.provider, source_id=source.id,
-            source_path=path.relative_to(source_root), driver=source.driver, driver_version=source.driver_version,
-            digest=digest.hexdigest(), canonical_path=target.relative_to(canonical),
+            identity=identity,
+            provider=source.provider,
+            source_id=source.id,
+            source_path=path.relative_to(source_root),
+            driver=source.driver,
+            driver_version=source.driver_version,
+            digest=digest.hexdigest(),
+            canonical_path=target.relative_to(canonical),
             source_updated_at=normalized or original,
-            source_updated_at_original=original, source_updated_at_utc=normalized,
+            source_updated_at_original=original,
+            source_updated_at_utc=normalized,
             collected_at=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             attachments=tuple(attachment_names),
         )
         receipt_path = incoming / "provenance.json"
         receipt = cls.collection_capture(receipt_path, states)
         if receipt.content is not None:
-            recorded = m.Infra.PlanCollectionRevision.model_validate_json(receipt.content)
-            if (recorded.identity, recorded.digest) != (revision.identity, revision.digest):
+            recorded = m.Infra.PlanCollectionRevision.model_validate_json(
+                receipt.content
+            )
+            if (recorded.identity, recorded.digest) != (
+                revision.identity,
+                revision.digest,
+            ):
                 msg = f"incoming revision receipt identity changed: {receipt_path}"
                 raise ValueError(msg)
             revision = recorded
         desired[receipt_path] = (
-            receipt.content if receipt.content is not None
+            receipt.content
+            if receipt.content is not None
             else (revision.model_dump_json(indent=2) + "\n").encode()
         )
         return revision

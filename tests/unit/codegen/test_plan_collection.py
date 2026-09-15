@@ -22,14 +22,23 @@ class TestsPlanCollection:
     def _config() -> m.Infra.PlanCollectionConfig:
         return m.Infra.PlanCollectionConfig(
             canonical_dir=Path("docs/plans"),
-            sources=(m.Infra.PlanCollectionSource(
-                id="fixture", provider="files", root=Path("input"),
-                adapter="files", driver="fixture", driver_version="1",
-                plan_globs=("*.md",), publication="plan-artifacts",
-            ),),
+            sources=(
+                m.Infra.PlanCollectionSource(
+                    id="fixture",
+                    provider="files",
+                    root=Path("input"),
+                    adapter="files",
+                    driver="fixture",
+                    driver_version="1",
+                    plan_globs=("*.md",),
+                    publication="plan-artifacts",
+                ),
+            ),
         )
 
-    def test_plan_and_companion_are_snapshotted_without_writing(self, tmp_path: Path) -> None:
+    def test_plan_and_companion_are_snapshotted_without_writing(
+        self, tmp_path: Path
+    ) -> None:
         self._write(tmp_path / "input" / "design.md", "# Design\n")
         self._write(tmp_path / "input" / "design" / "research.md", "# Research\n")
         config = self._config()
@@ -66,17 +75,26 @@ class TestsPlanCollection:
         tm.that(plan.desired_content, eq=curated.encode())
         tm.that(canonical.read_text(), eq=curated)
 
-    def test_private_inventory_never_publishes_session_contents(self, tmp_path: Path) -> None:
+    def test_private_inventory_never_publishes_session_contents(
+        self, tmp_path: Path
+    ) -> None:
         secret_text = "Private session text must stay at its source."
         session = tmp_path / "sessions" / "session.jsonl"
         self._write(session, secret_text)
         config = m.Infra.PlanCollectionConfig(
             canonical_dir=Path("docs/plans"),
-            sources=(m.Infra.PlanCollectionSource(
-                id="private", provider="fixture", root=Path("sessions"),
-                adapter="private-inventory", driver="fixture", driver_version="1",
-                plan_globs=("*.jsonl",), publication="private",
-            ),),
+            sources=(
+                m.Infra.PlanCollectionSource(
+                    id="private",
+                    provider="fixture",
+                    root=Path("sessions"),
+                    adapter="private-inventory",
+                    driver="fixture",
+                    driver_version="1",
+                    plan_globs=("*.jsonl",),
+                    publication="private",
+                ),
+            ),
         )
 
         bundle = u.Infra.collect_plan_files(tmp_path, config)
@@ -92,7 +110,9 @@ class TestsPlanCollection:
         with pytest.raises(FileNotFoundError, match="input"):
             u.Infra.collect_plan_files(tmp_path, self._config())
 
-    def test_projection_is_explicit_and_carries_its_own_owner(self, tmp_path: Path) -> None:
+    def test_projection_is_explicit_and_carries_its_own_owner(
+        self, tmp_path: Path
+    ) -> None:
         self._write(tmp_path / "input" / "design.md", "# Design\n")
         projection = tmp_path / "home-docs" / "plans"
         config = self._config().model_copy(update={"projection_root": projection})
@@ -111,12 +131,20 @@ class TestsPlanCollection:
         projection = tmp_path / "home" / "plans"
         self._write(projection / "design.md", "# Original home plan\n")
         config = m.Infra.PlanCollectionConfig(
-            canonical_dir=Path("docs/plans"), projection_root=projection,
-            sources=(m.Infra.PlanCollectionSource(
-                id="home", provider="files", root=projection,
-                adapter="files", driver="fixture", driver_version="1",
-                plan_globs=("*.md",), publication="plan-artifacts",
-            ),),
+            canonical_dir=Path("docs/plans"),
+            projection_root=projection,
+            sources=(
+                m.Infra.PlanCollectionSource(
+                    id="home",
+                    provider="files",
+                    root=projection,
+                    adapter="files",
+                    driver="fixture",
+                    driver_version="1",
+                    plan_globs=("*.md",),
+                    publication="plan-artifacts",
+                ),
+            ),
         )
         first = u.Infra.collect_plan_files(tmp_path, config)
         for plan in first.files:
@@ -139,8 +167,14 @@ class TestsPlanCollection:
         tm.that(len(third.revisions), eq=1)
         tm.that(third.revisions[0].identity, eq=imported.identity)
         tm.that(third.revisions[0].digest != imported.digest, eq=True)
-        tm.that(any(item.desired_content == edited.encode() for item in third.files), eq=True)
-        tm.that((tmp_path / config.canonical_dir / imported.canonical_path).read_text(), eq="# Original home plan\n")
+        tm.that(
+            any(item.desired_content == edited.encode() for item in third.files),
+            eq=True,
+        )
+        tm.that(
+            (tmp_path / config.canonical_dir / imported.canonical_path).read_text(),
+            eq="# Original home plan\n",
+        )
         for plan in third.files:
             assert plan.desired_content is not None
             self._write(plan.path, plan.desired_content.decode())
@@ -149,7 +183,9 @@ class TestsPlanCollection:
         for plan in fourth.files:
             tm.that(u.Infra.codegen_file_requires_effect(plan), eq=False)
 
-    def test_source_topology_change_fails_publication_preflight(self, tmp_path: Path) -> None:
+    def test_source_topology_change_fails_publication_preflight(
+        self, tmp_path: Path
+    ) -> None:
         self._write(tmp_path / "input" / "design.md", "# Design\n")
         config = self._config()
         bundle = u.Infra.collect_plan_files(tmp_path, config)
@@ -158,12 +194,15 @@ class TestsPlanCollection:
         with pytest.raises(ValueError, match="topology changed"):
             u.Infra.verify_plan_collection_sources(tmp_path, config, bundle)
 
-    @pytest.mark.parametrize(("value", "expected"), [
-        ("2026-09-14T17:20:28Z", "2026-09-14T17:20:28Z"),
-        ("2026-09-14T14:20:28-03:00", "2026-09-14T17:20:28Z"),
-        ("2026-09-14", "2026-09-14"),
-        ("2026-09-14T14:20:28", "2026-09-14T14:20:28"),
-    ])
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            ("2026-09-14T17:20:28Z", "2026-09-14T17:20:28Z"),
+            ("2026-09-14T14:20:28-03:00", "2026-09-14T17:20:28Z"),
+            ("2026-09-14", "2026-09-14"),
+            ("2026-09-14T14:20:28", "2026-09-14T14:20:28"),
+        ],
+    )
     @pytest.mark.parametrize("newline", ["\n", "\r\n"])
     @pytest.mark.parametrize("prefix", ["", "\ufeff"])
     def test_native_yaml_timestamp_preserves_precision(
@@ -171,7 +210,14 @@ class TestsPlanCollection:
     ) -> None:
         self._write(
             tmp_path / "input" / "design.md",
-            prefix + newline.join(("---", f"source_updated_at: {value}", "---", "# Design", "")),
+            prefix
+            + newline.join((
+                "---",
+                f"source_updated_at: {value}",
+                "---",
+                "# Design",
+                "",
+            )),
         )
 
         bundle = u.Infra.collect_plan_files(tmp_path, self._config())
@@ -197,12 +243,20 @@ class TestsPlanCollection:
         self._write(projection / "design.md", "# Original\n")
         self._write(projection / "design" / "research.md", "# Research\n")
         config = m.Infra.PlanCollectionConfig(
-            canonical_dir=Path("docs/plans"), projection_root=projection,
-            sources=(m.Infra.PlanCollectionSource(
-                id="home", provider="files", root=projection,
-                adapter="files", driver="fixture", driver_version="1",
-                plan_globs=("*.md",), publication="plan-artifacts",
-            ),),
+            canonical_dir=Path("docs/plans"),
+            projection_root=projection,
+            sources=(
+                m.Infra.PlanCollectionSource(
+                    id="home",
+                    provider="files",
+                    root=projection,
+                    adapter="files",
+                    driver="fixture",
+                    driver_version="1",
+                    plan_globs=("*.md",),
+                    publication="plan-artifacts",
+                ),
+            ),
         )
         initial = u.Infra.collect_plan_files(tmp_path, config)
         for plan in initial.files:
@@ -210,8 +264,12 @@ class TestsPlanCollection:
             self._write(plan.path, plan.desired_content.decode())
         revision = initial.revisions[0]
         attachment = (
-            projection / revision.canonical_path.stem / "incoming"
-            / revision.digest / "attachments" / "research.md"
+            projection
+            / revision.canonical_path.stem
+            / "incoming"
+            / revision.digest
+            / "attachments"
+            / "research.md"
         )
         amendment = "# Updated projected research\n"
         self._write(attachment, amendment)
@@ -220,7 +278,10 @@ class TestsPlanCollection:
 
         tm.that(changed.revisions[0].identity, eq=revision.identity)
         tm.that(changed.revisions[0].digest != revision.digest, eq=True)
-        tm.that(any(plan.desired_content == amendment.encode() for plan in changed.files), eq=True)
+        tm.that(
+            any(plan.desired_content == amendment.encode() for plan in changed.files),
+            eq=True,
+        )
         u.Infra.verify_plan_collection_sources(tmp_path, config, changed)
         for plan in changed.files:
             assert plan.desired_content is not None
@@ -243,7 +304,9 @@ class TestsPlanCollection:
         with pytest.raises(ValueError, match="source changed"):
             u.Infra.verify_plan_collection_sources(tmp_path, config, pending)
 
-    def test_corpus_relocation_preserves_identity_and_exact_receipts(self, tmp_path: Path) -> None:
+    def test_corpus_relocation_preserves_identity_and_exact_receipts(
+        self, tmp_path: Path
+    ) -> None:
         first_root, next_root = tmp_path / "first", tmp_path / "next"
         config = self._config()
         for root in (first_root, next_root):
@@ -251,7 +314,10 @@ class TestsPlanCollection:
         first = u.Infra.collect_plan_files(first_root, config)
         for plan in first.files:
             assert plan.desired_content is not None
-            self._write(next_root / plan.path.relative_to(first_root), plan.desired_content.decode())
+            self._write(
+                next_root / plan.path.relative_to(first_root),
+                plan.desired_content.decode(),
+            )
 
         relocated = u.Infra.collect_plan_files(next_root, config)
 
@@ -261,7 +327,9 @@ class TestsPlanCollection:
             tm.that(revision.source_path.is_absolute(), eq=False)
         for plan in relocated.files:
             tm.that(u.Infra.codegen_file_requires_effect(plan), eq=False)
-            tm.that(str(first_root).encode() not in (plan.desired_content or b""), eq=True)
+            tm.that(
+                str(first_root).encode() not in (plan.desired_content or b""), eq=True
+            )
 
 
 __all__: list[str] = ["TestsPlanCollection"]
