@@ -156,6 +156,8 @@ class FlextInfraConstantsCodegenProject:
     CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"
     TEMPLATE_MODULE_SKELETON: Final[str] = "module_skeleton.py.j2"
     "Scaffold module-skeleton template (replaces the legacy f-string)."
+    TEMPLATE_TEST_MODULE_SKELETON: Final[str] = "test_module_skeleton.py.j2"
+    "Scaffold template for canonical test c/t/p/m/u facades."
     CODEGEN_CONFIG_FILENAME: Final[str] = "codegen.yaml"
     CODEGEN_OVERRIDES_FILENAME: Final[str] = "codegen-overrides.yaml"
 

@@ -122,6 +122,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsGitIdentity",
     "FlextInfraModelsLayout",
     "FlextInfraModelsMiseToolchain",
+    "FlextInfraModelsMiseToolchainBase",
     "FlextInfraModelsMixins",
     "FlextInfraModelsNamespaceEnforcer",
     "FlextInfraModelsPromoted",
@@ -143,7 +144,6 @@ __all__: tuple[str, ...] = (
     "_config",
     "_git",
     "immutable_empty_mapping",
-    "tool_version_field",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

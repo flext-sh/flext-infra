@@ -112,17 +112,14 @@ class FlextInfraConstantsNamespace:
         "object",
     })
     NAMESPACE_PYDANTIC_V1_MEMBERS: Final[frozenset[str]] = frozenset({
-        "dict",
-        "json",
         "parse_obj",
         "parse_raw",
         "validator",
         "root_validator",
     })
-    # The subset reached by bare name rather than through a model instance:
-    # `@validator(...)` is imported from pydantic and called directly, while
-    # `dict`, `json`, `parse_obj` and `parse_raw` are only Pydantic when they
-    # appear as an attribute -- as bare names they are the builtins.
+    # Attribute syntax alone cannot prove the receiver type. Ambiguous names
+    # such as ``dict`` and ``json`` are intentionally absent; only Pydantic-v1-
+    # exclusive members are detected without qualified import provenance.
     NAMESPACE_PYDANTIC_V1_DECORATORS: Final[frozenset[str]] = frozenset({
         "validator",
         "root_validator",
