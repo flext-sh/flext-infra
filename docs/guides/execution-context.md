@@ -39,6 +39,22 @@ rig e confira uma leitura real. Se a geração apagar a escolha de servidor,
 corrija seu modelo/template e regenere; não inicialize um banco embedded ou
 grave host/porta manualmente. O Gas City mantém a resolução do endpoint.
 
+O contrato recuperado do histórico de `.envrc` é gerado em `.envrc.local`:
+`AGENTS_GAS_CITY_ROOT` seleciona a cidade, a publicação de runtime do Gas City
+fornece a porta e a metadata do rig fornece seu banco em modo `server`.
+O `.envrc` carrega esse arquivo ao final. A fonte de ambiente declarada em
+`BeadsWorkspaceEnvironmentSpec.environment_sources` fornece a identidade da
+cidade; o template não fixa sua localização nem uma porta. As leituras JSON
+precisam terminar com sucesso antes de exportar as variáveis.
+
+Servidor central não significa substituir a identidade de um rig pela do HQ.
+Um redirecionamento para o HQ combinado com o banco do rig causou
+`PROJECT IDENTITY MISMATCH`. A operação nativa
+`gc rig set-endpoint <rig> --inherit`, executada na cidade, recuperou a
+vinculação; a prova foi uma leitura real com
+`direnv exec <rig> bd show <id> --json`. Não recrie metadata ou bancos
+manualmente para contornar essa validação.
+
 As correções mais recentes do operador exigem provisionamento e atualização
 exclusivamente por `make setup`, dependências Git nos tips das branches de
 integração declaradas e remoção de `APPLY`, `uv.lock` e `mise.lock` em todos os
