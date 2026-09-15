@@ -723,15 +723,10 @@ class FlextInfraUtilitiesPyprojectConform:
             else:
                 u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
         member_paths = tuple(member.path.as_posix() for member in workspace.subprojects)
-        # A standalone authority must terminate uv's ancestor discovery even
-        # when physically placed below another checkout. Composed members keep
-        # the workspace root's overlay instead.
-        standalone_root = (
-            workspace_mode is c.Infra.MakeProfile.STANDALONE
-            and project_name == workspace.repository.distribution
-            and not member_paths
-        )
-        if (repository_root and member_paths) or standalone_root:
+        # Only an actual multi-project owner declares a uv workspace. A leaf
+        # can also be a composed member; inserting an empty workspace there
+        # breaks execution from the parent with uv's nested-workspace error.
+        if repository_root and member_paths:
             workspace_table = u.Cli.toml_table_child(uv, "workspace")
             if workspace_table is None:
                 workspace_table = u.Cli.toml_ensure_table(uv, "workspace")
