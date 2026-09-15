@@ -18,6 +18,29 @@ from .docs_collection import FlextInfraModelsDocsCollection
 class _FlextInfraDocsContracts:
     """Field-only source and rendering contracts for documentation."""
 
+    class DocsTocToken(m.ContractModel):
+        """One rendered heading and its nested headings from Python-Markdown."""
+
+        level: Annotated[int, m.Field(description="Rendered heading level")]
+        id: Annotated[str, m.Field(description="Actual rendered heading ID")]
+        name: Annotated[str, m.Field(description="Sanitized heading label")]
+        html: Annotated[str, m.Field(description="Rendered inline heading HTML")]
+        data_toc_label: Annotated[
+            str, m.Field(alias="data-toc-label", description="Explicit TOC label")
+        ]
+        children: Annotated[
+            t.SequenceOf[_FlextInfraDocsContracts.DocsTocToken],
+            m.Field(description="Nested heading tokens"),
+        ]
+
+    class DocsRenderedToc(m.ContractModel):
+        """Validated output of Python-Markdown's registered TOC extension."""
+
+        toc_tokens: Annotated[
+            t.SequenceOf[_FlextInfraDocsContracts.DocsTocToken],
+            m.Field(description="Rendered table of contents tokens"),
+        ]
+
     class DocsExportBinding(m.ContractModel):
         """One public export bound to its defining module."""
 

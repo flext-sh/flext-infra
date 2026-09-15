@@ -671,7 +671,7 @@ class FlextInfraMiseArtifactsVerification:
         else:
             expected = (
                 entry.original_sha256,
-                files.JOURNAL_MODE,
+                c.Infra.JOURNAL_MODE,
                 observed.device,
                 observed.inode,
                 1,
@@ -777,7 +777,7 @@ class FlextInfraMiseArtifactsVerification:
             )
             observed: list[bytes] = []
             for expected, (_name, required_mode) in zip(
-                artifacts, files.PUBLICATION_SPECS, strict=True
+                artifacts, c.Infra.PUBLICATION_SPECS, strict=True
             ):
                 current = files.read_state(expected.path, required=True)
                 if current.failure or current.value.content is None:

@@ -18,8 +18,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestAuditorForbiddenTerms:
-    """Tests for forbidden_term_issues."""
+class TestsFlextInfraAuditorScope:
+    """Tests for FlextInfraDocAuditor scope, forbidden terms, and audit_scope."""
 
     def test_forbidden_term_issues_empty_scope(self, tmp_path: Path) -> None:
         """Test forbidden_term_issues with no markdown files."""
@@ -75,10 +75,6 @@ class TestAuditorForbiddenTerms:
         )
         issues = auditor.forbidden_term_issues(scope)
         tm.that(len(issues), gte=0)
-
-
-class TestAuditorScope:
-    """Tests for audit_scope."""
 
     def test_audit_scope_with_links_check(self, tmp_path: Path) -> None:
         """Test audit_scope runs links check."""
@@ -193,10 +189,6 @@ class TestAuditorScope:
         tm.that(report.passed, eq=False)
         tm.that(report.result, eq=c.Infra.ResultStatus.FAIL)
 
-
-class TestAuditorMachinePaths:
-    """Tests for machine_path_issues (per-user absolute paths frozen into docs)."""
-
     def test_machine_path_issues_flags_user_home_and_skips_container_identity(
         self, tmp_path: Path
     ) -> None:
@@ -235,3 +227,6 @@ class TestAuditorMachinePaths:
         )
         issues = auditor.machine_path_issues(scope)
         tm.that([issue.file for issue in issues], eq=["docs/live.md"])
+
+
+__all__: list[str] = ["TestsFlextInfraAuditorScope"]

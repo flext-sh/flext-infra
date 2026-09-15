@@ -392,7 +392,7 @@ class FlextInfraUtilitiesDiscovery(
 
     @classmethod
     def rope_repository_root(cls, repository_root: Path) -> Path:
-        """Return the execution-context root for one conditional Rope scan."""
+        """Resolve a local project without expanding it to an ancestor workspace."""
         resolved_root = repository_root.resolve()
         execution_dir = (
             resolved_root if resolved_root.is_dir() else resolved_root.parent
@@ -414,24 +414,6 @@ class FlextInfraUtilitiesDiscovery(
                 or relative_parts[0] not in c.Infra.ROOT_WRAPPER_SEGMENTS
             ):
                 project_root = resolved_root
-        ownership_root = (
-            project_root.resolve() if project_root is not None else resolved_root
-        )
-        from .git import FlextInfraUtilitiesGit
-
-        for candidate in (execution_dir, *execution_dir.parents):
-            if not (candidate / c.Infra.GITMODULES).is_file():
-                continue
-            if execution_dir == candidate:
-                return candidate.resolve()
-            declared = FlextInfraUtilitiesGit.git_declared_submodule_paths(candidate)
-            if declared.failure:
-                continue
-            member_roots = tuple(
-                (candidate / path).resolve() for path in declared.value
-            )
-            if ownership_root == candidate or ownership_root in member_roots:
-                return candidate.resolve()
         if project_root is not None and (
             (project_root / c.Infra.PYPROJECT_FILENAME).is_file()
             or (project_root / c.Infra.GIT_DIR).exists()

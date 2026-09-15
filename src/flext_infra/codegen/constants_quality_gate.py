@@ -231,12 +231,12 @@ class FlextInfraCodegenQualityGate(s[bool]):
             census_report.projects, lambda project: project.violations_total == 0
         )
         modified_python_files: list[t.Infra.InfraValue] = list(modified_files)
-        violations_by_rule: dict[str, t.Infra.InfraValue] = dict(
+        violations_by_rule: t.MutableMappingKV[str, t.Infra.InfraValue] = dict(
             sorted(by_kind.items())
         )
         summary: MutableMapping[str, t.Infra.InfraValue] = {
             "total_violations": census_report.total_violations,
-            "violations_by_rule": violations_by_rule,
+            "violations_by_rule": dict(violations_by_rule),
             "duplicate_groups": len(census_report.duplicates),
             "projects_total": total,
             "projects_passed": passed,

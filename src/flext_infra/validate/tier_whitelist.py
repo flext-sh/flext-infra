@@ -57,8 +57,9 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
         Cache/temp/state directories (virtual envs, tool caches, test temp dirs,
         IDE/editor dirs, etc.) are not project source and must not be scanned.
         """
-        _ = repository_root
-        # Skip cache/temp/state directories at any level
+        # The checkout's ancestors do not belong to this scan. A linked lane
+        # under .claude/worktrees is still a complete project source root.
+        relative = _file_path.relative_to(repository_root)
         excluded_dirs = {
             ".test-tmp",
             ".venv",
@@ -90,13 +91,13 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
             ".gc",
             ".agents",
         }
-        for part in _file_path.parts:
+        for part in relative.parts:
             if part in excluded_dirs:
                 return False
 
         # Skip git submodule directories
-        repo = _file_path
-        while repo != repo.parent:
+        repo = _file_path.parent
+        while repo != repository_root:
             if (repo / ".git").is_file():
                 return False
             repo = repo.parent
@@ -119,12 +120,19 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
         configuration is ``class Foo(FlextSettings, BaseSettings)`` per
         ``flext_core._settings.base`` docstring, and that base name only
         lives in ``pydantic_settings``.
+
+        Leaf config modules (``_config.py``) are exempt for ALL banned
+        libraries: they sit at the bottom of the c/t/p/m/u chain and own
+        their external-library imports directly as the canonical ingress
+        seam.
         """
         rooted = self._rooted_posix(_file_path, repository_root)
         if any(
             part in c.Infra.TIER_WHITELIST_NON_RUNTIME_DIR_PARTS
             for part in rooted.split("/")[:-1]
         ):
+            return True
+        if _file_path.name in c.Infra.TIER_WHITELIST_LEAF_CONFIG_FILES:
             return True
         top = self._top_module(_module_name)
         if (

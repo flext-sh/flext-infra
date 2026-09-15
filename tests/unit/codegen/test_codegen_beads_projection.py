@@ -10,15 +10,14 @@ from flext_tests import tm
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import u
-from tests.unit.workspace import WorktreeFixture
 
 
-class TestsCodegenBeadsProjection:
+class TestsFlextInfraCodegenBeadsProjection:
     """Keep codegen on its declarative projection boundary."""
 
     @staticmethod
     def _project(root: Path, *, database: str, issue_prefix: str) -> Path:
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             root,
             "fixture-project",
             workspace="fixture-workspace",
@@ -78,9 +77,10 @@ class TestsCodegenBeadsProjection:
         # its own key on first write and left every governed checkout dirty.
         tm.that(rendered_config, has='issue_prefix: "project-prefix"')
         tm.that(rendered_config, lacks="issue-prefix:")
-        tm.that(rendered_config, has="gc.endpoint_origin: inherited_city")
-        tm.that(rendered_config, has="gc.endpoint_status: verified")
-        tm.that(rendered_config, has="types.custom:")
+        tm.that(rendered_config, lacks="gc.endpoint_origin:")
+        tm.that(rendered_config, lacks="gc.endpoint_status:")
+        tm.that(rendered_config, lacks="types.custom:")
+        tm.that(rendered_config, lacks="dolt.auto-start:")
         # Beads owns and mints metadata at first use. Codegen must not create
         # that runtime artifact in a fresh checkout.
         tm.that(rendered_metadata, none=True)
@@ -89,12 +89,7 @@ class TestsCodegenBeadsProjection:
     def test_gascity_disabled_renders_standalone_beads_config(
         self, tmp_path: Path
     ) -> None:
-        """A ``gascity_enabled: false`` overlay drops every gc endpoint key.
-
-        The repository owns its Dolt server in that shape: ``dolt.auto-start``
-        flips to ``true`` so bd materializes and starts the per-project server
-        itself, and the inherited-city endpoint keys never render.
-        """
+        """A disabled city never moves runtime ownership into generated config."""
         root = self._project(
             tmp_path / "project",
             database="project_database",
@@ -112,7 +107,7 @@ class TestsCodegenBeadsProjection:
             pytest.fail("standalone identity must produce the declarative Beads config")
         tm.that(rendered_config, has='issue_prefix: "project-prefix"')
         tm.that(rendered_config, lacks="issue-prefix:")
-        tm.that(rendered_config, has="dolt.auto-start: true")
+        tm.that(rendered_config, lacks="dolt.auto-start:")
         tm.that(rendered_config, lacks="gc.endpoint_origin")
         tm.that(rendered_config, lacks="gc.endpoint_status")
         tm.that(rendered_config, lacks="Gas City contract")
@@ -193,3 +188,6 @@ class TestsCodegenBeadsProjection:
         tm.that("endpoint" in tool_fields, eq=False)
         tm.that("endpoint_origin" in tool_fields, eq=True)
         tm.that("endpoint_status" in tool_fields, eq=True)
+
+
+__all__: list[str] = ["TestsFlextInfraCodegenBeadsProjection"]

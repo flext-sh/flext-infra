@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from tests import t
 
 
-class TestWorkspaceCheckCli:
+class TestsFlextInfraWorkspaceCheckCli:
     """Exercise the public check CLI without patching internal services."""
 
     @staticmethod
@@ -126,7 +126,7 @@ class TestWorkspaceCheckCli:
 
         tm.that(exit_code, eq=0)
 
-    def test_run_cli_fix_contract_reports_findings_without_failing(
+    def test_run_cli_fix_contract_preserves_failure_when_reporting(
         self, tmp_path: Path
     ) -> None:
         workspace = self._create_workspace(tmp_path)
@@ -147,10 +147,9 @@ class TestWorkspaceCheckCli:
             "flext-core",
         ])
 
-        # Apply + report-findings is the `make fix` contract (operator
-        # 2026-09-14): it reports what still fails without failing the run;
+        # Reporting cannot turn remaining gate failures into success;
         # an unparsable module is never rewritten.
-        tm.that(exit_code, eq=0)
+        tm.that(exit_code, eq=1)
         tm.that(
             module_path.read_text(encoding="utf-8"),
             eq='"""Fixture module."""\n\ndef broken(:\n',
@@ -216,3 +215,6 @@ class TestWorkspaceCheckCli:
         exit_code = main(["check", "--dry-run", "run", "--projects", "flext-core"])
 
         tm.that(exit_code, eq=0)
+
+
+__all__: t.StrSequence = ["TestsFlextInfraWorkspaceCheckCli"]

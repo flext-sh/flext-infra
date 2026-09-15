@@ -16,11 +16,9 @@ from tests import m
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
 
-
-class TestInventoryServiceCore:
-    """Core tests for FlextInfraInventoryService."""
+class TestsFlextInfraInventory:
+    """Core, script-scanning, and report-generation tests for FlextInfraInventoryService."""
 
     def test_init_creates_service(self) -> None:
         """Service initializes with required attributes."""
@@ -45,10 +43,6 @@ class TestInventoryServiceCore:
         """Generate returns r type."""
         service = FlextInfraInventoryService()
         service.generate(tmp_path)
-
-
-class TestInventoryServiceScripts:
-    """Script scanning tests for FlextInfraInventoryService."""
 
     def test_generate_scans_python_scripts(self, tmp_path: Path) -> None:
         """Python scripts are detected."""
@@ -114,10 +108,6 @@ class TestInventoryServiceScripts:
         (scripts / "m_script.py").write_text("")
         tm.ok(service.generate(tmp_path))
 
-
-class TestInventoryServiceReports:
-    """Report generation tests for FlextInfraInventoryService."""
-
     def test_generate_returns_reports_written_list(self, tmp_path: Path) -> None:
         """Reports written is a list."""
         service = FlextInfraInventoryService()
@@ -157,4 +147,4 @@ class TestInventoryServiceReports:
             output_dir.chmod(0o755)
 
 
-__all__: t.StrSequence = []
+__all__: list[str] = ["TestsFlextInfraInventory"]

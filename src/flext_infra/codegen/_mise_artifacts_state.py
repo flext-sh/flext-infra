@@ -390,7 +390,7 @@ class FlextInfraMiseArtifactsState:
             residue.extend(
                 child
                 for child in children
-                if child.name.startswith(files.TRANSACTION_DIR_PREFIX)
+                if child.name.startswith(c.Infra.TRANSACTION_DIR_PREFIX)
             )
         return tuple(sorted(set(residue)))
 
@@ -422,7 +422,7 @@ class FlextInfraMiseArtifactsState:
             residue.extend(
                 path
                 for path in state_root.iterdir()
-                if path.name.startswith(files.TRANSACTION_DIR_PREFIX)
+                if path.name.startswith(c.Infra.TRANSACTION_DIR_PREFIX)
             )
         return tuple(sorted(set(residue)))
 
@@ -592,10 +592,10 @@ class FlextInfraMiseArtifactsState:
     ) -> p.Result[t.Pair[int, int] | bool]:
         if not target.exists() and not target.is_symlink():
             return r[tuple[int, int] | bool].ok(False)
-        identifier = target.name.removeprefix(files.TRANSACTION_DIR_PREFIX)
+        identifier = target.name.removeprefix(c.Infra.TRANSACTION_DIR_PREFIX)
         if (
-            not target.name.startswith(files.TRANSACTION_DIR_PREFIX)
-            or len(identifier) != files.TRANSACTION_ID_LENGTH
+            not target.name.startswith(c.Infra.TRANSACTION_DIR_PREFIX)
+            or len(identifier) != c.Infra.TRANSACTION_ID_LENGTH
             or any(character not in "0123456789abcdef" for character in identifier)
             or target.is_symlink()
         ):

@@ -78,12 +78,24 @@ class FlextInfraCodegenGenerationPathsMixin:
         )
 
     @staticmethod
+    def _relative_owned_module(current_pkg: str, mod: str) -> str:
+        """Resolve a same-owner ancestor or sibling without a private absolute import."""
+        current_parts = current_pkg.split(".")
+        module_parts = mod.split(".")
+        common = 0
+        for current, target in zip(current_parts, module_parts, strict=False):
+            if current != target:
+                break
+            common += 1
+        return "." * (len(current_parts) - common + 1) + ".".join(module_parts[common:])
+
+    @staticmethod
     def _compact_lazy_module_path(current_pkg: str, mod: str) -> str:
         """Compact a lazy module path relative to ``current_pkg`` when valid."""
         if not current_pkg or mod.startswith("."):
             return mod
         if mod.split(".", maxsplit=1)[0] == current_pkg.split(".", maxsplit=1)[0]:
-            return FlextInfraCodegenGenerationPathsMixin._relative_owned_module_path(
+            return FlextInfraCodegenGenerationPathsMixin._relative_owned_module(
                 current_pkg, mod
             )
         if mod.startswith("_"):
@@ -102,20 +114,6 @@ class FlextInfraCodegenGenerationPathsMixin:
         return mod
 
     @staticmethod
-    def _relative_owned_module_path(current_pkg: str, mod: str) -> str:
-        """Preserve a same-root owner through its common package ancestor."""
-        package_parts = current_pkg.split(".")
-        module_parts = mod.split(".")
-        common = 0
-        for package_part, module_part in zip(package_parts, module_parts, strict=False):
-            if package_part != module_part:
-                break
-            common += 1
-        return "." * (len(package_parts) - common + 1) + ".".join(
-            module_parts[common:]
-        )
-
-    @staticmethod
     def _normalize_type_checking_module_path(
         mod: str, local_package_root: str | None
     ) -> str:
@@ -127,7 +125,7 @@ class FlextInfraCodegenGenerationPathsMixin:
         root_pkg = local_package_root.split(".", maxsplit=1)[0]
         first_segment = mod.split(".", maxsplit=1)[0]
         if first_segment == root_pkg:
-            return FlextInfraCodegenGenerationPathsMixin._relative_owned_module_path(
+            return FlextInfraCodegenGenerationPathsMixin._relative_owned_module(
                 local_package_root, mod
             )
         internal_segments = frozenset(local_package_root.split(".")[1:])

@@ -115,7 +115,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
         would hide distinct invalid UTF-8 bytes; treating None as empty bytes
         would erase the distinction between an absent and an empty file.
         """
-        return (before.content, before.mode) != (desired_content, desired_mode)
+        return before.content != desired_content or before.mode != desired_mode
 
     @staticmethod
     def codegen_file_requires_effect(plan: m.Infra.CodegenFilePlan) -> bool:

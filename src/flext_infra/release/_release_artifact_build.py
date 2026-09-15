@@ -96,7 +96,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
         version: str,
         versions: t.StrMapping,
         license_sha256: str,
-    ) -> p.Result[tuple[m.Infra.BuildArtifact, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.BuildArtifact]]:
         """Validate a complete artifact set and persist it atomically."""
         built_result = self._build_artifact_paths(temporary_dist)
         if built_result.failure:

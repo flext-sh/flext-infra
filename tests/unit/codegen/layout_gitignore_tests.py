@@ -10,136 +10,147 @@ from flext_tests import tm
 from flext_infra import c, config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
-from tests import t, u
+from tests import u
 from tests.unit.codegen.layout_fixture import (
     archive_root,
     build_loose_project,
     layout_engine,
 )
-from tests.unit.workspace import WorktreeFixture
 
 
-def test_apply_adds_gitignore_entries_exactly_once(tmp_path: Path) -> None:
-    """Gitignore additions from the SSOT are appended once across applies."""
-    project = build_loose_project(tmp_path, name="flext-cli")
-    (project / "settings.json").write_text("{}\n", encoding="utf-8")
-    engine = layout_engine(tmp_path, apply_changes=True)
+class TestsFlextInfraCodegenLayoutGitignore:
+    """Test suite for layout gitignore, tracked-file moves, and canonical render."""
 
-    first = engine.execute()
-    tm.ok(first)
-    second = engine.execute()
-    tm.ok(second)
+    def test_apply_adds_gitignore_entries_exactly_once(self, tmp_path: Path) -> None:
+        """Gitignore additions from the SSOT are appended once across applies."""
+        project = build_loose_project(tmp_path, name="flext-cli")
+        (project / "settings.json").write_text("{}\n", encoding="utf-8")
+        engine = layout_engine(tmp_path, apply_changes=True)
 
-    gitignore = (project / c.Infra.GITIGNORE).read_text(encoding="utf-8")
-    # Why: count exact ENTRIES, never substrings. The SSOT also carries
-    # negations such as !.vscode/settings.json, so a substring count reports
-    # two occurrences for a file that was appended exactly once.
-    entries = gitignore.splitlines()
-    tm.that(entries.count("settings.json"), eq=1)
-    tm.that(entries.count(f"{archive_root()}/"), eq=1)
-    tm.that(
-        (project / archive_root() / project.name / "settings.json").is_file(), eq=True
-    )
+        first = engine.execute()
+        tm.ok(first)
+        second = engine.execute()
+        tm.ok(second)
 
+        gitignore = (project / c.Infra.GITIGNORE).read_text(encoding="utf-8")
+        # Why: count exact ENTRIES, never substrings. The SSOT also carries
+        # negations such as !.vscode/settings.json, so a substring count reports
+        # two occurrences for a file that was appended exactly once.
+        entries = gitignore.splitlines()
+        tm.that(entries.count("settings.json"), eq=1)
+        tm.that(entries.count(f"{archive_root()}/"), eq=1)
+        tm.that(
+            (project / archive_root() / project.name / "settings.json").is_file(),
+            eq=True,
+        )
 
-def test_apply_uses_git_mv_for_tracked_files(tmp_path: Path) -> None:
-    """Tracked sources move through git so history follows the rename."""
-    project = build_loose_project(tmp_path)
-    engine = layout_engine(tmp_path, apply_changes=True)
+    def test_apply_uses_git_mv_for_tracked_files(self, tmp_path: Path) -> None:
+        """Tracked sources move through git so history follows the rename."""
+        project = build_loose_project(tmp_path)
+        engine = layout_engine(tmp_path, apply_changes=True)
 
-    result = engine.execute()
+        result = engine.execute()
 
-    tm.ok(result)
-    tracked = u.Cli.capture([c.Infra.GIT, "ls-files"], cwd=project)
-    tm.ok(tracked)
-    tracked_names = set(tracked.value.split())
-    tm.that("docs/guides/intro.md" in tracked_names, eq=True)
-    tm.that("guides/intro.md" in tracked_names, eq=False)
-    tm.that(f"{archive_root()}/{project.name}/output.log" in tracked_names, eq=False)
+        tm.ok(result)
+        tracked = u.Cli.capture([c.Infra.GIT, "ls-files"], cwd=project)
+        tm.ok(tracked)
+        tracked_names = set(tracked.value.split())
+        tm.that("docs/guides/intro.md" in tracked_names, eq=True)
+        tm.that("guides/intro.md" in tracked_names, eq=False)
+        tm.that(
+            f"{archive_root()}/{project.name}/output.log" in tracked_names, eq=False
+        )
 
+    def test_managed_gitignore_render_includes_layout_additions(self) -> None:
+        """The canonical gitignore render owns the layout SSOT additions."""
+        rendered = FlextInfraCodegenConform.render_project_gitignore(
+            config.Infra.codegen,
+            profile=c.Infra.MakeProfile.STANDALONE,
+            project_name="flext-cli",
+        )
 
-def test_managed_gitignore_render_includes_layout_additions() -> None:
-    """The canonical gitignore render owns the layout SSOT additions."""
-    rendered = FlextInfraCodegenConform.render_project_gitignore(
-        config.Infra.codegen,
-        profile=c.Infra.MakeProfile.STANDALONE,
-        project_name="flext-cli",
-    )
+        tm.ok(rendered)
+        tm.that(rendered.value, has="settings.json")
+        tm.that(rendered.value, has=f"{archive_root()}/")
 
-    tm.ok(rendered)
-    tm.that(rendered.value, has="settings.json")
-    tm.that(rendered.value, has=f"{archive_root()}/")
+    @pytest.mark.slow
+    def test_conform_materializes_layout_gitignore_additions(
+        self, tmp_path: Path
+    ) -> None:
+        """``codegen conform`` renders the layout override additions into ``.gitignore``.
 
-
-@pytest.mark.slow
-def test_conform_materializes_layout_gitignore_additions(tmp_path: Path) -> None:
-    """``codegen conform`` renders the layout override additions into ``.gitignore``.
-
-    The planner used to render ``base/gitignore.j2`` from its own section list
-    without the layout override, so ``make gen`` never satisfied the layout gate
-    and a governed member ended up hand-editing the projection. One owner now
-    derives the sections for every renderer: after conform, the layout engine
-    finds no missing gitignore pattern for a project declared in the SSOT.
-    """
-    owner, override = next(
-        (name, item)
-        for name, item in sorted(config.Infra.codegen.layout.project_overrides.items())
-        if item.gitignore_additions
-    )
-    root = tmp_path / owner
-    WorktreeFixture.initialize_governed_project(
-        root,
-        owner,
-        workspace="fixture-workspace",
-        database="fixture-database",
-        issue_prefix="fixture-prefix",
-    )
-    u.Tests.commit_git_changes(root, "Declare project identity")
-    tm.ok(
-        FlextInfraCodegenConform.execute_request(
-            u.Tests.conform_request(
-                root,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.APPLY,
+        The planner used to render ``base/gitignore.j2`` from its own section list
+        without the layout override, so ``make gen`` never satisfied the layout gate
+        and a governed member ended up hand-editing the projection. One owner now
+        derives the sections for every renderer: after conform, the layout engine
+        finds no missing gitignore pattern for a project declared in the SSOT.
+        """
+        owner, override = next(
+            (name, item)
+            for name, item in sorted(
+                config.Infra.codegen.layout.project_overrides.items()
+            )
+            if item.gitignore_additions
+        )
+        root = tmp_path / owner
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            owner,
+            workspace="fixture-workspace",
+            database="fixture-database",
+            issue_prefix="fixture-prefix",
+        )
+        u.Tests.commit_git_changes(root, "Declare project identity")
+        tm.ok(
+            FlextInfraCodegenConform.execute_request(
+                u.Tests.conform_request(
+                    root,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                )
             )
         )
-    )
 
-    entries = (root / c.Infra.GITIGNORE).read_text(encoding="utf-8").splitlines()
-    missing = tuple(
-        pattern
-        for pattern in override.gitignore_additions
-        if entries.count(pattern) != 1
-    )
-    tm.that(missing, eq=())
-    report = FlextInfraCodegenLayout(repository_root=root).check_project(root)
-    tm.that(
-        tuple(finding for finding in report.findings if finding.rule == "gitignore"),
-        eq=(),
-    )
+        entries = (root / c.Infra.GITIGNORE).read_text(encoding="utf-8").splitlines()
+        missing = tuple(
+            pattern
+            for pattern in override.gitignore_additions
+            if entries.count(pattern) != 1
+        )
+        tm.that(missing, eq=())
+        report = FlextInfraCodegenLayout(repository_root=root).check_project(root)
+        tm.that(
+            tuple(
+                finding for finding in report.findings if finding.rule == "gitignore"
+            ),
+            eq=(),
+        )
+
+    def test_layout_preserves_tracked_ignored_files_and_ignores_local_artifacts(
+        self, tmp_path: Path
+    ) -> None:
+        """Local ignored files are not layout inputs; tracked files remain reviewable."""
+        project = build_loose_project(tmp_path)
+        local = project / "local-artifact"
+        tracked = project / "tracked-artifact"
+        local.write_text("local\n", encoding="utf-8")
+        tracked.write_text("tracked\n", encoding="utf-8")
+        ignore = project / c.Infra.GITIGNORE
+        content = ignore.read_text(encoding="utf-8") if ignore.exists() else ""
+        ignore.write_text(
+            f"{content}\n{local.name}\n{tracked.name}\n", encoding="utf-8"
+        )
+        tm.ok(
+            u.Cli.capture(
+                [c.Infra.GIT, "add", "--force", "--", tracked.name], cwd=project
+            )
+        )
+
+        report = layout_engine(tmp_path, apply_changes=False).plan_project(project)
+
+        paths = {finding.path for finding in report.findings}
+        tm.that(local.name in paths, eq=False)
+        tm.that(tracked.name in paths, eq=True)
 
 
-def test_layout_preserves_tracked_ignored_files_and_ignores_local_artifacts(
-    tmp_path: Path,
-) -> None:
-    """Local ignored files are not layout inputs; tracked files remain reviewable."""
-    project = build_loose_project(tmp_path)
-    local = project / "local-artifact"
-    tracked = project / "tracked-artifact"
-    local.write_text("local\n", encoding="utf-8")
-    tracked.write_text("tracked\n", encoding="utf-8")
-    ignore = project / c.Infra.GITIGNORE
-    content = ignore.read_text(encoding="utf-8") if ignore.exists() else ""
-    ignore.write_text(f"{content}\n{local.name}\n{tracked.name}\n", encoding="utf-8")
-    tm.ok(
-        u.Cli.capture([c.Infra.GIT, "add", "--force", "--", tracked.name], cwd=project)
-    )
-
-    report = layout_engine(tmp_path, apply_changes=False).plan_project(project)
-
-    paths = {finding.path for finding in report.findings}
-    tm.that(local.name in paths, eq=False)
-    tm.that(tracked.name in paths, eq=True)
-
-
-__all__: t.StrSequence = []
+__all__: list[str] = ["TestsFlextInfraCodegenLayoutGitignore"]

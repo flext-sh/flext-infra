@@ -204,7 +204,7 @@ class FlextInfraWorkspaceDetector(
         *,
         observed: m.Infra.RepositoryRef,
         beads: m.Infra.BeadsProjectSpec,
-    ) -> p.Result[tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]]:
+    ) -> p.Result[t.Triple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]]:
         """Load a selected repository manifest and reconcile it with Git truth.
 
         A checkout without ``config/workspace.yaml`` remains a valid observed

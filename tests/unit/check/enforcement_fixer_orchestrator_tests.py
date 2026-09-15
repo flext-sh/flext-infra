@@ -16,7 +16,7 @@ from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrat
 from tests import c, u
 
 
-class TestsEnforcementFixerOrchestrator:
+class TestsFlextInfraEnforcementFixerOrchestrator:
     """Root-cause guardrails for fixer collection and routing."""
 
     @staticmethod
@@ -38,6 +38,7 @@ class TestsEnforcementFixerOrchestrator:
         source_file = project_dir / "src" / "demo" / "sample.py"
         source_file.parent.mkdir(parents=True)
         source_file.write_text("from __future__ import annotations\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(project_dir)
         orchestrator = FlextInfraEnforcementFixerOrchestrator(
             repository_root=project_dir,
             selected_projects=("demo",),
@@ -312,3 +313,6 @@ class TestsEnforcementFixerOrchestrator:
         # The read-only guarantee is the worktree itself: a dry run forces
         # check_after=False, so no gate can rewrite a file behind the preview.
         tm.that(pre_status, eq=post_status)
+
+
+__all__: list[str] = ["TestsFlextInfraEnforcementFixerOrchestrator"]

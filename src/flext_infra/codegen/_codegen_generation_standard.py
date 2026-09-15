@@ -100,7 +100,7 @@ class FlextInfraCodegenGenerationStandardMixin(
     @classmethod
     def _lazy_groups(
         cls, plan: m.Infra.LazyInitPlan
-    ) -> tuple[
+    ) -> t.Triple[
         t.SequenceOf[t.StrSequencePair],
         t.SequenceOf[t.StrPairSequencePair],
         t.LazyAliasMap,

@@ -4,18 +4,22 @@
 - [Resumo](#resumo)
 - [Como usar](#como-usar)
 - [Findings](#findings)
-  - [2 · 🟠 HIGH · conf medium · `trailofbits.python.tarfile-extractall-traversal.tarfile-extractall-traversal`](#2-high-conf-medium-trailofbitspythontarfile-extractall-traversaltarfile-extractall-traversal)
-  - [3 · 🟡 MEDIUM · conf high · `package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown`](#3-medium-conf-high-package_managersdependabotdependabot-missing-cooldowndependabot-missing-cooldown)
-  - [4 · 🟡 MEDIUM · conf high · `package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown`](#4-medium-conf-high-package_managersdependabotdependabot-missing-cooldowndependabot-missing-cooldown)
-  - [5 · 🟡 MEDIUM · conf high · `package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown`](#5-medium-conf-high-package_managersdependabotdependabot-missing-cooldowndependabot-missing-cooldown)
-  - [6 · 🟡 MEDIUM · conf low · `python.lang.security.audit.non-literal-import.non-literal-import`](#6-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
-  - [7 · 🟡 MEDIUM · conf low · `python.lang.security.audit.non-literal-import.non-literal-import`](#7-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
-  - [8 · 🟡 MEDIUM · conf low · `python.lang.security.audit.non-literal-import.non-literal-import`](#8-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
-  - [9 · 🟡 MEDIUM · conf low · `python.lang.security.audit.non-literal-import.non-literal-import`](#9-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
-  - [10 · 🟡 MEDIUM · conf low · `python.lang.security.audit.non-literal-import.non-literal-import`](#10-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
+  - [2 · 🟠 HIGH · conf medium · trailofbits.python.tarfile-extractall-traversal.tarfile-extractall-traversal](#2-high-conf-medium-trailofbitspythontarfile-extractall-traversaltarfile-extractall-traversal)
+  - [3 · 🟡 MEDIUM · conf high · package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown](#3-medium-conf-high-package_managersdependabotdependabot-missing-cooldowndependabot-missing-cooldown)
+  - [4 · 🟡 MEDIUM · conf high · package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown](#4-medium-conf-high-package_managersdependabotdependabot-missing-cooldowndependabot-missing-cooldown)
+  - [5 · 🟡 MEDIUM · conf high · package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown](#5-medium-conf-high-package_managersdependabotdependabot-missing-cooldowndependabot-missing-cooldown)
+  - [6 · 🟡 MEDIUM · conf low · python.lang.security.audit.non-literal-import.non-literal-import](#6-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
+  - [7 · 🟡 MEDIUM · conf low · python.lang.security.audit.non-literal-import.non-literal-import](#7-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
+  - [8 · 🟡 MEDIUM · conf low · python.lang.security.audit.non-literal-import.non-literal-import](#8-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
+  - [9 · 🟡 MEDIUM · conf low · python.lang.security.audit.non-literal-import.non-literal-import](#9-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
+  - [10 · 🟡 MEDIUM · conf low · python.lang.security.audit.non-literal-import.non-literal-import](#10-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
 <!-- TOC END -->
 
 Gerado do dump da plataforma Semgrep (deployment `datacosmos`, 2026-08-06).
+
+Os blocos com números de linha e marcadores `>>>` são saídas históricas do
+scanner. Eles preservam trechos incompletos para triagem; não são exemplos Python
+executáveis nem comprovam o estado atual dos arquivos citados.
 
 Bead: `flext-p57t.12`
 
@@ -42,7 +46,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 
 > Possible path traversal through `tarfile.open($PATH).extractall()` if the source tar is controlled by an attacker
 
-```python
+```text
 207                  archive_result.error or "git archive failed"
       208              )
       209          try:
@@ -116,7 +120,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 
 > Untrusted user input in `importlib.import_module()` function allows an attacker to load arbitrary code. Avoid dynamic values in `importlib.import_module()` or use a whitelist to prevent running untrusted code.
 
-```python
+```text
 36      def _ensure_default_post_hooks_registered(cls) -> None:
        37          """Load and register built-in rope post-hooks once."""
        38          if cls._default_post_hooks_registered:
@@ -134,7 +138,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 
 > Untrusted user input in `importlib.import_module()` function allows an attacker to load arbitrary code. Avoid dynamic values in `importlib.import_module()` or use a whitelist to prevent running untrusted code.
 
-```python
+```text
 13      """Resolve Rope runtime attributes without importing Rope in leaf modules."""
        14  
        15      @classmethod
@@ -152,7 +156,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 
 > Untrusted user input in `importlib.import_module()` function allows an attacker to load arbitrary code. Avoid dynamic values in `importlib.import_module()` or use a whitelist to prevent running untrusted code.
 
-```python
+```text
 89          owner = _GROUP_OWNERS.get(group)
        90          if owner is None:
        91              return ()
@@ -170,7 +174,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 
 > Untrusted user input in `importlib.import_module()` function allows an attacker to load arbitrary code. Avoid dynamic values in `importlib.import_module()` or use a whitelist to prevent running untrusted code.
 
-```python
+```text
 65      @classmethod
        66      def _walk_modules(cls, package_name: str) -> t.SequenceOf[str]:
        67          """Return all importable module names under ``package_name``."""
@@ -188,7 +192,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 
 > Untrusted user input in `importlib.import_module()` function allows an attacker to load arbitrary code. Avoid dynamic values in `importlib.import_module()` or use a whitelist to prevent running untrusted code.
 
-```python
+```text
 82  
        83      def _check_module(self, module_name: str) -> t.SequenceOf[m.Infra.ValidationReport]:
        84          """Import one module and run runtime enforcement on its local classes."""

@@ -828,7 +828,7 @@ class FlextInfraCodegenTransaction:
         staged: t.VariadicTuple[m.Infra.CodegenStagedFile],
     ) -> t.VariadicTuple[Path]:
         """Recover the distinct staging roots this attempt created on disk."""
-        roots: dict[Path, None] = {}
+        roots: t.MutableMappingKV[Path, None] = {}
         for item in staged:
             if item.replacement is not None:
                 roots.setdefault(item.replacement.path.parent, None)
@@ -954,7 +954,8 @@ class FlextInfraCodegenTransaction:
     ) -> p.Result[bool]:
         recovered = self._recover(layout)
         if recovered.failure:
-            return r[bool].from_failure(recovered)
+            # Recovery must never replace the failure that initiated it.
+            return r[bool].fail(failure, error_data={"recovery_error": recovered.error})
         return r[bool].fail(failure)
 
     def _recover(self, layout: m.Infra.MiseToolchainWorkspaceLayout) -> p.Result[bool]:

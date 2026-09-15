@@ -111,7 +111,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
         if not isinstance(normalized, Mapping):
             msg = "normalized TOML document is not a mapping"
             raise TypeError(msg)
-        result: dict[str, t.JsonValue] = dict(normalized)
+        result: t.MutableMappingKV[str, t.JsonValue] = dict(normalized)
         return result
 
     @staticmethod
@@ -122,7 +122,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
         if not isinstance(normalized, Mapping):
             msg = "normalized TOML value is not a mapping"
             raise TypeError(msg)
-        result: dict[str, t.JsonValue] = dict(normalized)
+        result: t.MutableMappingKV[str, t.JsonValue] = dict(normalized)
         return result
 
     @staticmethod

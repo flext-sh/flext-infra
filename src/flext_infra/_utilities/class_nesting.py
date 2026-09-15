@@ -71,11 +71,22 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
                     ancestry.extend(base_names(classes[candidate]))
         return frozenset(bound)
 
-    @staticmethod
+    @classmethod
     def class_nesting_plan(
-        rope_workspace: p.Infra.RopeWorkspaceDsl, file_path: Path
+        cls, rope_workspace: p.Infra.RopeWorkspaceDsl, file_path: Path
     ) -> p.Result[t.VariadicTuple[m.Infra.ClassNestingViolation]]:
         """Return top-level classes that must move under the declared module owner."""
+        return cls._class_nesting_source_plan(
+            rope_workspace,
+            file_path,
+            file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+        )
+
+    @staticmethod
+    def _class_nesting_source_plan(
+        rope_workspace: p.Infra.RopeWorkspaceDsl, file_path: Path, source: str
+    ) -> p.Result[t.VariadicTuple[m.Infra.ClassNestingViolation]]:
+        """Bind proposed syntax to the module ownership discovered by Rope."""
         resolved_file = file_path.resolve()
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(resolved_file.name)
         if family is None:
@@ -92,10 +103,8 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
         convention = rope_workspace.convention(resolved_file)
         top_level_classes = tuple(
             item
-            for item in rope_workspace.objects(
-                resolved_file, include_local_scopes=False, include_references=False
-            )
-            if item.kind == "class" and item.class_path == item.name
+            for item in ast.parse(source, filename=str(resolved_file)).body
+            if isinstance(item, ast.ClassDef)
         )
         if len(top_level_classes) <= 1:
             return r[tuple[m.Infra.ClassNestingViolation, ...]].ok(())
@@ -112,7 +121,7 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
             )
 
         bound = FlextInfraUtilitiesClassNesting._inheritance_bound_to_owner(
-            resolved_file.read_text(encoding=c.Cli.ENCODING_DEFAULT), target_namespace
+            source, target_namespace
         )
         relative_file = resolved_file.relative_to(
             rope_workspace.repository_root.resolve()
@@ -124,7 +133,7 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
             tuple(
                 m.Infra.ClassNestingViolation(
                     file=relative_file,
-                    line=max(1, item.line),
+                    line=max(1, item.lineno),
                     class_name=item.name,
                     target_namespace=target_namespace,
                     confidence=confidence,
@@ -154,7 +163,9 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
             module = modules.get(resolved_file)
             if module is None or source.startswith(c.Infra.AUTOGEN_HEADERS):
                 continue
-            violations = cls.class_nesting_plan(rope_workspace, resolved_file).unwrap()
+            violations = cls._class_nesting_source_plan(
+                rope_workspace, resolved_file, source
+            ).unwrap()
             if not violations:
                 continue
             plans_by_file[resolved_file] = violations

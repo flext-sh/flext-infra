@@ -159,7 +159,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse a single ast-grep scan result into issues."""
         _ = ctx
         rules = self._rules(project_dir)

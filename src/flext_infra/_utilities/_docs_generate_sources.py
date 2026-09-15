@@ -5,14 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import u, u as cli_u
+from flext_cli import u as cli_u
 
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
 from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
@@ -158,51 +157,12 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                 f"added={[path.as_posix() for path in added]}, "
                 f"removed={[path.as_posix() for path in removed]}"
             )
-        current = FlextInfraUtilitiesCodegenFilePlan.required_file_states(
-            discovered.value
-        )
-        if current.failure:
-            return r[bool].from_failure(current)
-        for expected, observed in zip(source_states, current.value, strict=True):
-            if observed != expected:
-                model_fields = type(expected).model_fields
-                differing = tuple(
-                    field
-                    for field in model_fields
-                    if getattr(expected, field) != getattr(observed, field)
-                )
-                # Compare semantically relevant fields only (content, mode)
-                expected_content = getattr(expected, "content", None)
-                observed_content = getattr(observed, "content", None)
-                expected_mode = getattr(expected, "mode", None)
-                observed_mode = getattr(observed, "mode", None)
-                content_drift = False
-                if expected_content is not None and observed_content is not None:
-                    expected_norm = expected_content.rstrip(b"\r\n") + b"\n"
-                    observed_norm = observed_content.rstrip(b"\r\n") + b"\n"
-                    if expected_norm != observed_norm:
-                        content_drift = True
-                elif expected_content != observed_content:
-                    content_drift = True
-                mode_drift = expected_mode != observed_mode
-                if content_drift or mode_drift:
-                    u.Cli.warning(
-                        f"docs source drift detected: {expected.path}; "
-                        f"content_drift={content_drift}, mode_drift={mode_drift}"
-                    )
-                else:
-                    # Only non-semantic fields differ (metadata)
-                    differing = tuple(
-                        field
-                        for field in model_fields
-                        if field not in {"content", "mode"}
-                        and getattr(expected, field) != getattr(observed, field)
-                    )
-                    if differing:
-                        return r[bool].fail(
-                            f"docs source metadata changed during planning: {expected.path}; "
-                            f"differing={dict(zip(differing, [(field, getattr(expected, field), getattr(observed, field)) for field in differing], strict=False))}"
-                        )
+        verified = cli_u.Cli.atomic_verify_binary_file_states(source_states)
+        if verified.failure:
+            return r[bool].fail(
+                f"docs source changed during planning: {verified.error}",
+                exception=verified.exception,
+            )
         return r[bool].ok(True)
 
 

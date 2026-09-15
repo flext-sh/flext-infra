@@ -43,8 +43,8 @@ class FlextInfraModelsCheck:
             m.Field(
                 alias="report-findings",
                 description=(
-                    "Warn about findings left after applying instead of failing "
-                    "(the fix verb); check fails on them"
+                    "Emit additional context for findings left after applying; "
+                    "remaining findings still fail the command"
                 ),
             ),
         ] = False

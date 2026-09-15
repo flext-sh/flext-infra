@@ -11,7 +11,7 @@ from flext_infra import main
 from tests import u
 
 
-class TestWorkspaceCheckCLI:
+class TestsFlextInfraExtendedCliEntry:
     """Tests for the check CLI entry points."""
 
     @staticmethod
@@ -127,3 +127,6 @@ class TestWorkspaceCheckCLI:
         tm.that(exit_code, eq=0)
         tm.that((runner_root / "reports/check/check-report.md").exists(), eq=True)
         tm.that((runner_root / "reports/check/check-report.sarif").exists(), eq=True)
+
+
+__all__: list[str] = ["TestsFlextInfraExtendedCliEntry"]

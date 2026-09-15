@@ -592,9 +592,9 @@ Infra:
         # process wall adds one minute for orderly worker/report shutdown.
         run-timeout-seconds: 600
         termination-grace-seconds: 2
-        # The first failing test is the only actionable red. Continuing after
-        # it wastes runtime and obscures the causal failure.
-        max-failures: 1
+        # Operator decision 2026-09-14: collect every selected test's outcome.
+        # Pytest zero disables early stopping; failures retain their nonzero exit.
+        max-failures: 0
         enforcement-plugin: flext_tests_enforcement
         asyncio-default-fixture-loop-scope: function
         progress-args: [--verbose]
@@ -609,9 +609,7 @@ Infra:
         # Reserve physical memory for each xdist worker and its child process
         # tree; this bound may reduce the tested ceiling on smaller hosts.
         parallel-worker-memory-gb: 2
-        # Keep scheduling centralized so -x stops feeding workers after the
-        # first failure. Work stealing pre-allocated an entire worker queue and
-        # continued hundreds of cases for minutes after a decisive failure.
+        # Keep scheduling centralized within the measured worker budget.
         parallel-distribution: load
         profile-sort: cumulative
         profile-limit: 50
@@ -654,6 +652,9 @@ Infra:
         # runner records them as NOT EXECUTED. Direct invocation (`pytest -m
         # remote`) selects them and then their required environment is exact.
         external-gate-markers: [remote, docker]
+        # Operator 2026-09-14: CI and pre-commit share make.ci.value;
+        # local and pre-push execution retain slow tests.
+        ci-excluded-markers: [slow]
         standard-addopts:
           - --benchmark-disable
           - --strict-markers

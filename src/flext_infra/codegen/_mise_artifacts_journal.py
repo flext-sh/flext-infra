@@ -348,7 +348,7 @@ class FlextInfraMiseArtifactsJournal:
                 "codegen journal expected state belongs to another path"
             )
         written = u.Cli.atomic_write_binary_file_guarded(
-            expected, content, permission_mode=files.JOURNAL_MODE
+            expected, content, permission_mode=c.Infra.JOURNAL_MODE
         )
         if written.failure:
             return r[m.Cli.AtomicFileState].from_failure(written)
@@ -362,7 +362,7 @@ class FlextInfraMiseArtifactsJournal:
             )
         if (
             observed_snapshot.content != content
-            or observed_snapshot.mode != files.JOURNAL_MODE
+            or observed_snapshot.mode != c.Infra.JOURNAL_MODE
         ):
             return r[m.Cli.AtomicFileState].fail(
                 "published codegen journal differs from exact bytes or mode"
@@ -381,7 +381,7 @@ class FlextInfraMiseArtifactsJournal:
         journal_snapshot = state.journal_snapshot(snapshot.value)
         if journal_snapshot is None or journal_snapshot.content is None:
             return result_type.fail("codegen transaction journal is absent")
-        if journal_snapshot.mode != files.JOURNAL_MODE:
+        if journal_snapshot.mode != c.Infra.JOURNAL_MODE:
             return result_type.fail("codegen transaction journal mode is not 0600")
         try:
             journal = m.Infra.CodegenTransactionJournal.model_validate_json(
@@ -681,7 +681,7 @@ class FlextInfraMiseArtifactsJournal:
                         return r[m.Infra.CodegenJournalEntry].from_failure(created)
                 recovery_roots.add(recovery_root)
             backup = recovery_root / f"{index:06d}.original"
-            written = process.write_new(backup, before.content, files.JOURNAL_MODE)
+            written = process.write_new(backup, before.content, c.Infra.JOURNAL_MODE)
             if written.failure:
                 return r[m.Infra.CodegenJournalEntry].from_failure(written)
             relative_backup = files.workspace_relative(plan.layout.scope_root, backup)

@@ -156,7 +156,7 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
         *,
         project_names: t.StrSequence = (),
         selected_projects: t.StrSequence | None = None,
-    ) -> tuple[Path, FlextInfraDocGenerator]:
+    ) -> t.Pair[Path, FlextInfraDocGenerator]:
         """Create one docs workspace plus the generator scoped to its selection."""
         workspace = TestsFlextInfraUtilitiesDocsFixtureMixin.create_docs_workspace(
             root, project_names=project_names
@@ -182,7 +182,7 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
     @staticmethod
     def plan_docs_bundle(
         generator: FlextInfraDocGenerator,
-    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
         """Prepare one docs bundle, create its required parents, and plan files."""
         bundle = TestsFlextInfraUtilitiesDocsFixtureMixin.prepare_docs_bundle(generator)
         planned = generator.plan_files(bundle)
@@ -192,7 +192,7 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
     @staticmethod
     def publish_docs_bundle(
         generator: FlextInfraDocGenerator,
-    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
         """Publish one planned docs bundle through the test transaction adapter."""
         plans = TestsFlextInfraUtilitiesDocsFixtureMixin.plan_docs_bundle(generator)
         published = TestsFlextInfraUtilitiesCodegenMixin.materialize_codegen_plans(

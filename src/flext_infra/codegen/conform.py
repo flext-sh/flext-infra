@@ -65,7 +65,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     @staticmethod
     def _discover_script_verbs(
         repository_root: Path,
-    ) -> tuple[m.Infra.MakeVerbSpec, ...]:
+    ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]:
         """Discover script verbs from scripts/<verb>/all.sh in the repository root.
 
         The filesystem is the SSOT: a verb is emitted only when its all.sh
@@ -85,10 +85,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def _merge_extra_verbs(
-        declared: tuple[m.Infra.MakeVerbSpec, ...],
-        discovered: tuple[m.Infra.MakeVerbSpec, ...],
+        declared: t.VariadicTuple[m.Infra.MakeVerbSpec],
+        discovered: t.VariadicTuple[m.Infra.MakeVerbSpec],
         canonical_names: frozenset[str],
-    ) -> tuple[m.Infra.MakeVerbSpec, ...]:
+    ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]:
         """Union declared and discovered script verbs deduplicated by name.
 
         Why (cosmos-3flk9): object-level dedup never converges because declared

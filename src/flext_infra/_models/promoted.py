@@ -13,6 +13,8 @@ from pathlib import Path
 
 from flext_cli import m
 
+from flext_infra import t
+
 from .base import FlextInfraModelsBase
 
 
@@ -31,7 +33,7 @@ class FlextInfraModelsPromoted(FlextInfraModelsBase):
             help: str
             required: bool = False
             default: str = ""
-            choices: tuple[str, ...] = ()
+            choices: t.VariadicTuple[str] = ()
 
         class Command(m.BaseModel):
             """One promoted command discovered from a cosmos-command header."""
@@ -46,9 +48,9 @@ class FlextInfraModelsPromoted(FlextInfraModelsBase):
             example: str
             path: Path
             mutates: bool
-            aliases: tuple[str, ...]
-            params: tuple[FlextInfraModelsPromoted.Promoted.Param, ...]
-            rules: tuple[str, ...]
+            aliases: t.VariadicTuple[str]
+            params: t.VariadicTuple[FlextInfraModelsPromoted.Promoted.Param]
+            rules: t.VariadicTuple[str]
 
         class AliasTarget(m.BaseModel):
             """Resolved command alias target."""
@@ -66,7 +68,7 @@ class FlextInfraModelsPromoted(FlextInfraModelsBase):
             root: Path
             scripts: Path
             local_python: Path
-            submodule_script_roots: tuple[Path, ...] = ()
+            submodule_script_roots: t.VariadicTuple[Path] = ()
             consumer_scripts_root: Path | None = None
 
 

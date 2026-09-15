@@ -7,10 +7,10 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService, c
-from tests.unit.workspace import WorktreeFixture
+from tests import t, u
 
 
-class TestsWorktreeRemoval(WorktreeFixture):
+class TestsFlextInfraWorktreeRemoval(u.Tests.WorktreeFixture):
     """Group cohesive worktree behavior."""
 
     def test_remove_refuses_an_epic_lane_with_registered_children(
@@ -87,4 +87,4 @@ class TestsWorktreeRemoval(WorktreeFixture):
         tm.that(not missing.exists(), where=bool)
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

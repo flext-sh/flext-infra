@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shutil
-import tomllib
 from functools import cache, lru_cache
 from pathlib import Path
 
@@ -73,8 +72,17 @@ class FlextInfraUtilitiesPyproject:
         )
         if live.failure:
             return r[p.ProjectMetadata].from_failure(live)
+        # The facade returns None for unparseable text rather than raising, so
+        # the invalid case is named here instead of reaching model_validate as
+        # a None that fails with a shape error about the wrong subject.
+        payload = u.Cli.toml_mapping_from_text(live.value)
+        if payload is None:
+            return r[p.ProjectMetadata].fail(
+                f"cannot read project metadata from {project_root}: "
+                f"{c.Infra.PYPROJECT_FILENAME} is not valid TOML"
+            )
         try:
-            document = u.PyprojectDocument.model_validate(tomllib.loads(live.value))
+            document = u.PyprojectDocument.model_validate(payload)
             metadata = u.build_project_metadata(project_root, document)
         except (OSError, ValueError) as exc:
             return r[p.ProjectMetadata].fail(
@@ -245,9 +253,11 @@ class FlextInfraUtilitiesPyproject:
         if live.failure:
             msg = f"failed to read pyproject payload at {pyproject_path}: {live.error}"
             raise RuntimeError(msg)
-        return FlextInfraUtilitiesPyproject.validate_infra_payload(
-            tomllib.loads(live.value)
-        )
+        payload = u.Cli.toml_mapping_from_text(live.value)
+        if payload is None:
+            msg = f"pyproject payload at {pyproject_path} is not valid TOML"
+            raise RuntimeError(msg)
+        return FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
 
     @staticmethod
     def normalized_toml_payload(document: t.Cli.TomlDocument) -> t.JsonMapping:

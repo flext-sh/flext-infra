@@ -20,7 +20,7 @@ from ._support import CodegenTestSupport
 pytestmark = pytest.mark.slow
 
 
-class TestCodegenCiMatrix:
+class TestsFlextInfraCodegenCiMatrix:
     """Prove codegen emits the CI matrix workflow and distro Dockerfiles."""
 
     @staticmethod
@@ -594,4 +594,4 @@ class TestCodegenCiMatrix:
             tm.that(content, has=marker)
 
 
-__all__: list[str] = []
+__all__: list[str] = ["TestsFlextInfraCodegenCiMatrix"]
