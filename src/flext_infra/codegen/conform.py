@@ -2879,7 +2879,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return m.Infra.UvEnvironmentPlan(
             project_root=root,
             environment_root=environment_root,
-            lock_path=root / "uv.lock",
             python_version=config.toolchain.python_version,
             groups=groups,
             editable_repositories=editable_repositories,
