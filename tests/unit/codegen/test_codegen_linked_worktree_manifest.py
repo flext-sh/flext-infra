@@ -233,7 +233,9 @@ class TestsFlextInfraCodegenLinkedWorktreeManifest:
         )
 
         tm.fail(result, has="escapes workspace root")
-        tm.that(u.Tests.WorktreeFixture.repository_snapshot(outside), eq=outside_snapshot)
+        tm.that(
+            u.Tests.WorktreeFixture.repository_snapshot(outside), eq=outside_snapshot
+        )
 
 
 __all__: list[str] = ["TestsFlextInfraCodegenLinkedWorktreeManifest"]

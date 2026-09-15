@@ -1082,7 +1082,9 @@ class TestsFlextInfraCodegenConform:
             ).plan(request)
             plan = tm.ok(planned)
             makefile = next(
-                file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
+                file
+                for file in plan.files
+                if file.path.name == c.Infra.MAKEFILE_FILENAME
             )
             rendered: str = u.Tests.codegen_file_text(makefile)
             return rendered
@@ -1132,13 +1134,17 @@ class TestsFlextInfraCodegenConform:
             rendered = self._render_root_makefile(
                 tmp_path,
                 extra_verbs=(
-                    m.Infra.MakeVerbSpec(name="deploy", description="Publish the runtime."),
+                    m.Infra.MakeVerbSpec(
+                        name="deploy", description="Publish the runtime."
+                    ),
                 ),
                 script_dispatch=None,
             )
             tm.that(rendered.count("\ndeploy: _builtin_require_environment\n"), eq=1)
 
-        def test_dispatch_routes_custom_what_before_allowlist(self, tmp_path: Path) -> None:
+        def test_dispatch_routes_custom_what_before_allowlist(
+            self, tmp_path: Path
+        ) -> None:
             """Custom ``_custom_<verb>`` handlers bypass the builtin allowlist.
 
             ai-hub and other projects extend ``run`` / ``check`` via custom.mk. The
@@ -1189,7 +1195,9 @@ class TestsFlextInfraCodegenConform:
                 tmp_path, extra_verbs=(), script_dispatch=None
             )
             public_line = next(
-                line for line in rendered.splitlines() if line.startswith("PUBLIC_VERBS :=")
+                line
+                for line in rendered.splitlines()
+                if line.startswith("PUBLIC_VERBS :=")
             )
             tm.that(" gen" in public_line, eq=True)
             tm.that(" codegen" in public_line, eq=False)
@@ -1239,7 +1247,9 @@ class TestsFlextInfraCodegenConform:
                 lacks=["codegen lazy-init", "docs generate", "_generated_docs"],
             )
             tm.that("define _generated_docs" in rendered, eq=False)
-            gen_init_body = rendered.split("_builtin_gen_init:", 1)[1].split("\n\n", 1)[0]
+            gen_init_body = rendered.split("_builtin_gen_init:", 1)[1].split("\n\n", 1)[
+                0
+            ]
             tm.that(gen_init_body.count("codegen init"), eq=2)
             tm.that(gen_init_body, lacks=["codegen conform", "REPOSITORY_ROOT", "bd"])
             # The regeneration contract published on every projection speaks gen.
@@ -1339,7 +1349,9 @@ class TestsFlextInfraCodegenConform:
                 tmp_path, extra_verbs=(), script_dispatch=None
             )
             public_line = next(
-                line for line in rendered.splitlines() if line.startswith("PUBLIC_VERBS :=")
+                line
+                for line in rendered.splitlines()
+                if line.startswith("PUBLIC_VERBS :=")
             )
             tm.that(" work" in public_line, eq=False)
             tm.that(rendered, lacks="_builtin_work_")

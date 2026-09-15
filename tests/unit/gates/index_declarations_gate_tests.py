@@ -69,7 +69,9 @@ class TestsFlextInfraIndexDeclarationsGate:
                         encoding="utf-8",
                     )
                     u.Infra.git_add_paths(
-                        m.Infra.GitPathsRequest(repo_root=tmp_path, paths=(".gitmodules",))
+                        m.Infra.GitPathsRequest(
+                            repo_root=tmp_path, paths=(".gitmodules",)
+                        )
                     ).unwrap()
             u.Infra.git_commit(
                 m.Infra.GitCommitRequest(repo_root=tmp_path, message="seed")

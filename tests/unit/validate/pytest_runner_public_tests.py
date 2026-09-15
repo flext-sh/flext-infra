@@ -106,7 +106,9 @@ class TestsFlextInfraPytestRunner:
     ) -> None:
         """Retain all failures and later outcomes in one persistent-cache run."""
         cache = config.Infra.codegen.make.testmon_cache
-        (cached_runner_project / cache.target_directory / "test_failures.py").write_text(
+        (
+            cached_runner_project / cache.target_directory / "test_failures.py"
+        ).write_text(
             "def test_first_failure() -> None:\n"
             "    assert False, 'first failure evidence'\n\n"
             "def test_second_failure() -> None:\n"
@@ -118,7 +120,7 @@ class TestsFlextInfraPytestRunner:
 
         tm.that(exit_code, ne=0)
         reports_root = cached_runner_project / cache.reports_directory
-        report_path, = reports_root.glob("*/junit.xml")
+        (report_path,) = reports_root.glob("*/junit.xml")
         report = tm.ok(u.Cli.files_read_text(report_path))
         tm.that(
             report,

@@ -80,7 +80,9 @@ class TestsFlextInfraWorktreeBinding:
                 database="flext",
                 issue_prefix="flext",
             )
-        u.Tests.WorktreeFixture.write_gitmodules(flext_root, ("flext-core", "flext-cli"))
+        u.Tests.WorktreeFixture.write_gitmodules(
+            flext_root, ("flext-core", "flext-cli")
+        )
         return flext_root
 
     def test_binding_targets_only_the_flext_packages_the_consumer_declares(

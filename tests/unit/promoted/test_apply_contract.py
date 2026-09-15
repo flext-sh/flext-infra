@@ -33,7 +33,9 @@ class TestsFlextInfraPromotedApplyContract:
             self, tmp_path: Path
         ) -> None:
             """A mutating command declaring no APPLY parameter is a valid contract."""
-            command = u.Tests.promoted_command(path=tmp_path / "scripts" / "probe" / "all.py")
+            command = u.Tests.promoted_command(
+                path=tmp_path / "scripts" / "probe" / "all.py"
+            )
             validate_command_contract(command)
 
         def test_command_contract_accepts_mutating_command_with_apply(
@@ -45,7 +47,9 @@ class TestsFlextInfraPromotedApplyContract:
             declared parameter by that name is an ordinary parameter, not a
             check-mode selector.
             """
-            param = m.Infra.Promoted.Param(name="APPLY", help="ignored", choices=("N", "Y"))
+            param = m.Infra.Promoted.Param(
+                name="APPLY", help="ignored", choices=("N", "Y")
+            )
             command = u.Tests.promoted_command(
                 path=tmp_path / "scripts" / "probe" / "all.py", params=(param,)
             )

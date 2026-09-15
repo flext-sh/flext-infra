@@ -87,9 +87,7 @@ class FlextInfraCodegenGenerationPathsMixin:
             if current != target:
                 break
             common += 1
-        return "." * (len(current_parts) - common + 1) + ".".join(
-            module_parts[common:]
-        )
+        return "." * (len(current_parts) - common + 1) + ".".join(module_parts[common:])
 
     @staticmethod
     def _compact_lazy_module_path(current_pkg: str, mod: str) -> str:
