@@ -44,8 +44,12 @@ class TestsFlextInfraCodegenMakeEnvironment:
         test_u.Tests.WorktreeFixture.write_python_project(
             project_root, repository.distribution
         )
+        # The generated Makefile consumes the tracked Mise launcher for every
+        # orchestrated verb (setup/check/fix/...), not only at bootstrap: the
+        # fixture must carry the governed toolchain seeds exactly as a managed
+        # repository does, or the very first mise exec dies with exit 127.
+        test_u.Tests.copy_tracked_mise_seeds(project_root)
         if bootstrap:
-            test_u.Tests.copy_tracked_mise_seeds(project_root)
             tm.ok(
                 u.Cli.atomic_write_text_file(
                     project_root / config.Infra.codegen.scaffold.project.readme,
@@ -124,6 +128,26 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 project_root / ".envrc", test_u.Tests.codegen_file_text(envrc)
             )
         )
+        # The generated .envrc owns a fail-loud Gas City activation contract:
+        # when the host exports the city identity, direnv reads the managed
+        # Beads marker (`.beads/metadata.json`) before any verb runs. A fixture
+        # that materializes .envrc without the plan's own Beads artifacts
+        # asserts host-dependent behavior — green on machines without the city
+        # environment, red on the operator's. Materialize every planned file
+        # under `.beads/` so the fixture carries the full managed contract the
+        # generated environment actually consumes.
+        for artifact in (
+            file
+            for file in plan.files
+            if c.Infra.BEADS_DIRNAME in file.path.parts
+            and project_root in file.path.parents
+            and file.desired_content is not None
+        ):
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    artifact.path, test_u.Tests.codegen_file_text(artifact)
+                )
+            )
         if bootstrap:
             for relative in (c.Infra.PYPROJECT_FILENAME, c.Infra.MISE_TOML_FILENAME):
                 artifact = next(
@@ -416,6 +440,11 @@ class TestsFlextInfraCodegenMakeEnvironment:
         project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
+        # The fixture carries the governed toolchain seeds; this contract
+        # needs the launcher ABSENT, so remove exactly what a clean clone
+        # without seeds looks like to the generated setup owner.
+        (project_root / "bin" / "mise").unlink()
+        (project_root / "bin" / "mise.cmd").unlink()
         tool_bin = tmp_path / "managed-tools" / "bin"
         mise_log = tmp_path / "mise.log"
         mise = tool_bin / "mise"

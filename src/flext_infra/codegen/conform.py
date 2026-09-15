@@ -523,7 +523,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenResult].from_failure(docs_plans)
             docs_changed = tuple(
                 file
-                for file in self._owned_docs_files(request, plan, docs_plans.value)
+                for file in self._owned_docs_files(request, docs_plans.value)
                 if u.Infra.codegen_file_requires_effect(file)
             )
             if docs_changed:
@@ -581,7 +581,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 with_directories.value, docs_plans.error or "docs planning failed"
             )
             return r[m.Infra.CodegenResult].from_failure(aborted)
-        owned_docs_files = self._owned_docs_files(request, plan, docs_plans.value)
+        owned_docs_files = self._owned_docs_files(request, docs_plans.value)
         docs_analysis = m.Infra.CodegenPhaseAnalysis(
             phase="docs", files=owned_docs_files, inputs=docs_bundle.value.source_states
         )
@@ -669,7 +669,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _owned_docs_files(
         cls,
         request: m.Infra.CodegenConformRequest,
-        plan: m.Infra.CodegenPlan,
         files: t.SequenceOf[m.Infra.CodegenFilePlan],
     ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Keep only docs plans owned by the invoked repository's own scope.
@@ -1550,16 +1549,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             if not contract.delegates and destination != c.Infra.PYPROJECT_FILENAME:
                 continue
-            if (
-                destination == c.Infra.BEADS_METADATA_RELPATH
-                and not (root / destination).is_file()
-            ):
-                # Why (flext-l2296 family): the ledger metadata is minted by
-                # Beads at first use, so a fresh clone legitimately lacks it.
-                # Planning the absent runtime artifact failed the gen check
-                # gate on every clean checkout. When present, the render below
-                # stays identity-preserving.
-                continue
+            # Why (flext-l2296 → superseded): same rationale as the managed
+            # path above — the generated .envrc Gas City activation reads this
+            # marker fail-loudly at direnv load, so a fresh scaffold must seed
+            # it (mintable project_id=None) instead of skipping the plan.
             rendered = self._rendered_artifact_source(
                 templates_root=templates_root,
                 template_relpath=entry.source,
@@ -1753,16 +1746,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"managed destination escapes repository root: {entry.destination}"
                 )
             path = (root / relative).resolve()
-            if (
-                entry.destination == c.Infra.BEADS_METADATA_RELPATH
-                and not path.is_file()
-            ):
-                # Why (flext-l2296 family): the ledger metadata is minted by
-                # Beads at first use, so a fresh clone legitimately lacks it.
-                # Planning an absent runtime artifact made the gen check gate
-                # fail on every clean checkout. When the file exists, the
-                # identity-preserving refresh below still applies.
-                continue
+            # Why (flext-l2296 → superseded): the ledger metadata used to be
+            # minted by Beads at first use, so a fresh clone lacked it and
+            # planning an absent artifact failed the check gate. The generated
+            # .envrc Gas City activation contract changed that reality: it is
+            # rendered for every managed repository and fail-loudly reads this
+            # marker at direnv load whenever the host carries the city
+            # identity. Skipping the marker made every make verb die on jq for
+            # a fresh checkout on such a host. The marker is therefore always
+            # planned; a fresh render carries a mintable identity
+            # (project_id=None) and Beads still owns the first mint.
             try:
                 path.relative_to(root.resolve())
             except ValueError:
