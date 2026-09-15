@@ -1,6 +1,7 @@
 """Conformance planning across scaffold and existing repositories."""
 
 from __future__ import annotations
+from .misc import FlextInfraCodegenConformMisc
 
 import time
 from collections.abc import MutableMapping
