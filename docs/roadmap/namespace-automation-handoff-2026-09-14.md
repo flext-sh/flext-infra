@@ -31,6 +31,14 @@ customizados podem permanecer vermelhos, com evidência explícita. Testes, buil
 e o runtime trabalhado continuam obrigatórios. Essa exceção não declara os
 defeitos customizados resolvidos nem autoriza desativar seus detectores.
 
+**Instruções mais recentes do operador:** integrar por `merge --admin --merge`
+nas branches de integração, comprovar geração/runtime também em `ai-hub` e
+`cosmos-main`, e exterminar o contrato `APPLY` em todos os projetos. A exceção
+de simulação encontrada nas orientações desses consumidores está superada;
+nenhuma forma `APPLY=N` ou `APPLY=Y` deve permanecer como interface suportada.
+A autorização administrativa é registrada como autorização do operador, não
+como aprovação independente nem como evidência de testes aprovados.
+
 | Contexto para retomada imediata | Estado observado |
 | --- | --- |
 | Branch e PR de entrega | `fix/docs-renderer-contract`, [PR #732](https://github.com/flext-sh/flext-infra/pull/732), ainda Draft/WIP para `0.12.0-dev` |
@@ -42,14 +50,15 @@ defeitos customizados resolvidos nem autoriza desativar seus detectores.
 | Runtime medido antes do merge | `make status`: exit 0, perfil standalone no checkout; `make setup`: exit 0, 160 pacotes resolvidos, instalação local de `flext-infra==0.12.0`; recibo efetivo `uv 0.12.10` |
 | Outra contribuição a avaliar | [PR #733](https://github.com/flext-sh/flext-infra/pull/733), `flext-ro6mj.1`, inclui coletor, transação e alterações sobre os mesmos responsáveis de codemod/docs; ainda não incorporada neste merge |
 | Atualização remota posterior | Novo fetch exit 0: a branch do PR #731 avançou de `8b03723cb` para `de3c7811a`, com reparo de imports relativos e testes; esses quatro commits posteriores ainda não foram absorvidos |
-| Aceite ainda não obtido | Nenhuma rodada completa válida de Ruff/Mypy/Pyright/Pyrefly, testes, build e runtime após esta composição; nenhum merge deste PR na integração |
-| Nova rodada de check | `stabilize-merged-check.log`, exit 2, 608,43 s: Ruff/lint 0, Mypy 0, Pyright 0, Pyrefly 3; total 569, incluindo namespace 382, codemod 180, LOC 3 e censo 1. Os três erros Pyrefly foram corrigidos depois da medição, ainda sem novo aceite. |
+| Aceite ainda não obtido | A suíte não completou; a validação integrada dos consumidores e o merge deste PR continuam pendentes |
+| Nova rodada de check | `stabilize-runtime-check.log`, exit 2 em 2026-09-15T00:08:11Z: Ruff/lint 0, Mypy 0, Pyright 0 e Pyrefly 0. Total 386, exclusivamente custom: namespace 382, LOC 3, censo 1. Essa rodada satisfaz o recorte de check autorizado; não certifica alterações posteriores. |
 | Automação realmente exercitada | `stabilize-mod-local.log`, exit 2 às 23:30:07Z: publicou o aninhamento de `_models/mise_toolchain.py`; a segunda passagem teve zero alterações semânticas. Terminou por ausência de progresso com 16 findings de detecção (14 ambiente, 2 ancestry), sem falso verde. |
 | Causa de escopo e custo | Rope promovia a chamada do membro para o superprojeto: 632 diretórios/4.737 módulos, 115,81 s. Após retirar a promoção no responsável de descoberta, a nova execução abriu o próprio infra: 54 diretórios/921 módulos, 1,35 s. A publicação semântica concluiu; o comando permaneceu vermelho pelos findings de detecção. |
 | Geração e build | `make build`: exit 0, wheel e sdist. `make gen`, após corrigir o contrato sem seletores no template: exit 0, com verificações de ponto fixo, lazy-init e docs |
 | Primeira barreira obrigatória | `make test`: exit 2; recibo `20260914T233654.583765Z-456708` informa `raw_return_code=-15`, `timed_out=true`. Houve falhas de contrato Make e timeouts de 60 s antes do limite de 600 s da suíte; nenhum aceite completo |
 | Tracker atual | Comentários anteriores foram gravados; nova leitura de `flext-5fxu6.4` falhou com `no beads database found`. `bd where` resolve `.beads` de flext, mas `bd doctor` declara modo embedded; não houve reinitialização nem banco substituto |
-| Próxima ação concreta | Concluir a rodada dos quatro analisadores em `stabilize-runtime-check.log`; corrigir custos de setup/conform que interrompem a suíte; reconciliar as contribuições posteriores antes de nova validação final, review e merge |
+| Consumidores externos | `make help` exit 0 em ambos: ai-hub standalone, integração `dev`, PRs #777/#778; Cosmos workspace, integração `develop`, checkout agora em `fix/revalidation-apply-contract`. Nenhuma prova de geração ou runtime integrado desses consumidores foi obtida por esta execução |
+| Próxima ação concreta | Concluir a remoção do contrato nos responsáveis e consumidores; reparar/revalidar a suíte; absorver contribuições relacionadas, publicar e integrar administrativamente com prova dos SHAs integrados nos três projetos |
 
 Para recuperar contexto sem repetir a investigação: consulte o
 [guia de execução](../guides/execution-context.md), o
@@ -87,6 +96,10 @@ As chamadas do operador estabeleceram esta sequência:
    trabalho operacional, integrar os PRs e testar a revisão integrada.
 7. Entregar imediatamente o handoff atualizado e melhorar a recuperação de
    contexto em orientações, skills, planos, docs e ADRs nos seus responsáveis.
+8. Usar merge administrativo e comprovar os consumidores externos `ai-hub` e
+   `cosmos-main` nas respectivas branches de integração.
+9. Exterminar `APPLY` em todos os projetos, superando as orientações antigas
+   que ainda declaravam uma exceção de simulação.
 
 As chamadas seis e sete superam o encerramento somente documental da quinta.
 A publicação WIP preserva o trabalho intermediário; o resultado solicitado
@@ -262,6 +275,17 @@ O operador esclareceu que queria a revisão do plano que o próprio agente
 vinha executando. A pergunta transferiu ao operador uma reconstrução que podia
 ser feita com a conversa e o histórico. Este documento corrige esse enquadramento.
 
+### 4.8 A compatibilidade foi investigada tarde demais
+
+O agente removeu o seletor no template guiando-se pelo plano de verbos fixos,
+antes de ler os contratos atuais dos consumidores externos. Ao encontrá-los,
+anunciou que preservaria a exceção de simulação. O operador então esclareceu
+que o contrato inteiro deve ser exterminado em todos os projetos. O desvio foi
+decidir a propagação sem confrontar conjuntamente intenção atual, responsável,
+consumidores e orientação publicada. A correção vigente é uma migração completa
+para verbos de operação fixa, incluindo a remoção das instruções contraditórias;
+não criar uma exceção por projeto nem enfraquecer os testes para manter o seletor.
+
 ## 5. O que foi preservado no código
 
 | Responsável ou conjunto | Alteração preservada | Limite da prova |
@@ -295,6 +319,10 @@ da máquina.
 | `make fix-enforcement` | Exit 2; 156 fixed, 0 previewed, 9.931 skipped, 81 failed | Aplicação parcial com falhas; contagens recuperadas da sessão, sem log bruto completo retido |
 | `make check`, `check-repair-unrestricted.log` | Exit 2; 1.119 erros agregados: pyrefly 9, mypy 6, LOC 4, censo 1, namespace 1.099; 481,45 s | Rodada anterior ao merge; terminou em 2026-09-14T21:39:53Z |
 | `make check`, `stabilize-merged-check.log` | Exit 2; 569 erros; Ruff/lint 0, Mypy 0, Pyright 0, Pyrefly 3; namespace 382, codemod 180, LOC 3, censo 1; 608,43 s | Terminou em 2026-09-14T23:12:38Z; alterações posteriores e concorrentes impedem certificar o checkpoint final com esta medição |
+| `make check`, `stabilize-runtime-check.log` | Exit 2 em 2026-09-15T00:08:11Z; Ruff/lint, Mypy, Pyright e Pyrefly com zero erros; total 386, exclusivamente custom | Satisfaz o recorte de check autorizado sobre as fontes daquela rodada, sem transformar o agregado vermelho em sucesso |
+| `make gen`, `stabilize-fixed-verbs-gen.log` | Exit 0; `project conformance complete`, incluindo verificação de ponto fixo e recibos lazy-init/docs | Makefile regenerado pelo responsável após retirar o seletor; não constitui prova dos consumidores externos |
+| `make build`, `stabilize-runtime-build.log` | Exit 0; wheel e sdist produzidos | Artefatos do checkpoint foram construídos |
+| `make test`, `stabilize-runtime-test.log` | Exit 2; recibo `20260914T233654.583765Z-456708`: retorno bruto -15, timeout verdadeiro, nenhum sinal encaminhado | Suíte interrompida pelo limite de 600 s, após erros de contrato e timeouts por caso; não houve aceite completo |
 | `make mod`, `stabilize-mod.log` | Exit 2; fixtures exit 0; 16 correções AST aplicadas; erro `deferred-models phase left residue after application` | A automação avançou, mas a transação semântica não foi publicada; o problema de permissão inicial deixou de ser a primeira falha |
 | `make mod`, `stabilize-mod-local.log` | Exit 2 às 2026-09-14T23:30:07Z; publicação semântica de um arquivo; reaplicação sem alterações; 16 findings de detecção | Escopo e ordem corrigidos no caminho real; o comando acusa ausência de progresso e mantém a dívida visível |
 | `make fmt`, `stabilize-runtime-fmt.log` | Exit 0 | Formatação após os reparos de escopo e ordem; não comprova o runtime semântico |

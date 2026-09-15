@@ -120,7 +120,6 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace_mode: c.Infra.MakeProfile,
         toolchain: p.Infra.ToolchainSpec,
         required_dev_dependencies: t.StrSequence,
-        workspace_member: bool = False,
         uv_link_mode: str | None = None,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
         namespace_scan_dirs: t.StrSequence | None = None,
@@ -163,7 +162,6 @@ class FlextInfraUtilitiesPyprojectConform:
             exclude_dependencies=uv_exclude_dependencies,
             uv_environments=toolchain.uv_environments,
             constraint_dependencies=toolchain.uv_constraint_dependencies,
-            workspace_member=workspace_member,
         )
         if sources_result.failure:
             return r[str].from_failure(sources_result)
@@ -639,7 +637,6 @@ class FlextInfraUtilitiesPyprojectConform:
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] | None = None,
         uv_environments: t.StrSequence | None = None,
-        workspace_member: bool = False,
     ) -> p.Result[bool]:
         """Keep managed uv sources only as the root local-workspace overlay."""
         repository_root = cls._is_workspace_context_root(
@@ -726,16 +723,10 @@ class FlextInfraUtilitiesPyprojectConform:
             else:
                 u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
         member_paths = tuple(member.path.as_posix() for member in workspace.subprojects)
-        # A standalone authority must terminate uv's ancestor discovery even
-        # when physically placed below another checkout. Composed members keep
-        # the workspace root's overlay instead.
-        standalone_root = (
-            workspace_mode is c.Infra.MakeProfile.STANDALONE
-            and project_name == workspace.repository.distribution
-            and not member_paths
-            and not workspace_member
-        )
-        if (repository_root and member_paths) or standalone_root:
+        # Only an actual multi-project owner declares a uv workspace. A leaf
+        # can also be a composed member; inserting an empty workspace there
+        # breaks execution from the parent with uv's nested-workspace error.
+        if repository_root and member_paths:
             workspace_table = u.Cli.toml_table_child(uv, "workspace")
             if workspace_table is None:
                 workspace_table = u.Cli.toml_ensure_table(uv, "workspace")

@@ -697,16 +697,10 @@ class TestsFlextInfraCodegenMakeEnvironment:
             ),
         )
 
-    def test_dependency_upgrade_runs_unconditionally_with_apply_n_set(
+    def test_dependency_upgrade_runs_with_unrelated_environment_input(
         self, tmp_path: Path
     ) -> None:
-        """`make deps APPLY=N` still runs the full upgrade/lock path.
-
-        S1 (operator law 2026-09-14) removed every APPLY/check-mode selector
-        from the generated Makefile: `deps` routes unconditionally to
-        `_builtin_deps_upgrade`, so an ambient `APPLY=N` is inert and never
-        diverts it to a separate check-only recipe.
-        """
+        """Unrelated ambient input cannot divert the declared dependency operation."""
         project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
@@ -721,7 +715,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
 
         process = tm.ok(
             u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "deps", "APPLY=N"],
+                [c.Infra.MAKE, "--no-print-directory", "deps", "UNDECLARED_INPUT=value"],
                 cwd=project_root,
                 env=env,
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
@@ -888,32 +882,6 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that("scripts/dispatch.py" in makefile, eq=True)
         tm.that("sync" in makefile, eq=True)
 
-    def test_apply_y_on_the_command_line_is_ignored(self, tmp_path: Path) -> None:
-        """`make help APPLY=Y` succeeds: an unknown input is inert, not rejected.
-
-        S1 (operator law 2026-09-14) removed every APPLY validation branch;
-        APPLY is not a declared Make variable at all any more, so setting it
-        on the command line never blocks or changes `help`.
-        """
-        project_root, _repository_root = self._render_makefile(
-            tmp_path, c.Infra.MakeProfile.STANDALONE
-        )
-
-        process = tm.ok(
-            u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "help", "APPLY=Y"],
-                cwd=project_root,
-                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
-            )
-        )
-
-        tm.that(
-            u.Cli.process_succeeded(process.outcome),
-            eq=True,
-            msg=process.stdout + process.stderr,
-        )
-        tm.that(process.stdout + process.stderr, lacks="APPLY must")
-
     def test_arbitrary_unknown_command_line_variable_is_ignored(
         self, tmp_path: Path
     ) -> None:
@@ -921,7 +889,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
 
         There is no declared-input allowlist left in the generated Makefile
         (S1, operator law 2026-09-14): passing any undeclared `NAME=value`
-        (not only `APPLY=...`) is inert.
+        is inert.
         """
         project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE

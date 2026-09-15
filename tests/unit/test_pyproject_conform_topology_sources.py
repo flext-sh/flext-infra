@@ -226,7 +226,6 @@ workspace = true
                     repository=consumer.model_copy(update={"path": Path()}),
                 ),
                 workspace_mode=self._ROLE.STANDALONE,
-                workspace_member=consumer.path != Path(),
                 toolchain=config.Infra.codegen.toolchain,
                 required_dev_dependencies=(),
             )
@@ -266,30 +265,6 @@ workspace = true
         provider_source = tu.Tests.toml_mapping(provider_packages[0]["source"])
         tm.that(provider_source.get("editable"), eq=provider.path.as_posix())
         tm.that("git" in provider_source, eq=False)
-
-    def test_standalone_keeps_its_uv_discovery_boundary(self) -> None:
-        """An independently selected repository still isolates ancestor workspaces."""
-        reference = self._member_ref("flext-library", ".")
-        workspace = m.Infra.WorkspaceSpec(
-            name=reference.name,
-            beads=test_u.Tests.beads_project(reference.distribution),
-            repository=reference,
-        )
-        rendered = tm.ok(
-            u.Infra.pyproject_conform(
-                f'[project]\nname = "{reference.distribution}"\n'
-                'version = "0.1.0"\n\n[tool.uv.workspace]\n',
-                providers=config.Infra.codegen.providers,
-                workspace=workspace,
-                workspace_mode=self._ROLE.STANDALONE,
-                toolchain=config.Infra.codegen.toolchain,
-                required_dev_dependencies=(),
-            )
-        )
-        parsed = tu.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
-        uv = tu.Tests.toml_mapping(tu.Tests.toml_mapping(parsed["tool"])["uv"])
-        tm.that("workspace" in uv, eq=True)
-        tm.that(tu.Tests.toml_mapping(uv["workspace"]), eq={})
 
     def test_standalone_resolves_dependency_groups_with_direct_requirements(
         self,
