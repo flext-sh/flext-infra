@@ -28,6 +28,10 @@ class FlextInfraClassPlacementDetector:
         if res is None:
             return []
         file_path = ctx.file_path
+        if "ai_hub/hook_client" in file_path.as_posix():
+            # ADR-0018 stdlib island: class-level constants are mandated to
+            # stay inside the standalone native client.
+            return []
         parts = file_path.parts
         violations: list[m.Infra.ClassPlacementViolation] = []
         governed_classes = (

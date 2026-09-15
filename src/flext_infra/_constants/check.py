@@ -131,7 +131,10 @@ class FlextInfraConstantsCheck:
         "_config.py",
         "_settings.py",
     })
-    BOUNDARY_SKIP_PATH_FRAGMENTS: Final[t.StrSequence] = ("/ai_hub_hook_client/",)
+    # ADR-0018 stdlib island: the native hook client runs as `python3 -I -S`
+    # and is excluded from the facade-boundary rules; the fragment matches the
+    # real posix path segments (src/ai_hub/hook_client.py).
+    BOUNDARY_SKIP_PATH_FRAGMENTS: Final[t.StrSequence] = ("/ai_hub/hook_client",)
     BOUNDARY_BANNED_LIBS: Final[t.MappingKV[str, str]] = MappingProxyType({
         "typer": "cli.create_app_with_common_params / cli.register_command",
         "click": "flext_cli.cli application, registration, execution, and invocation methods",

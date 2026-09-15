@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import m, u
+from flext_infra import c, m, u
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 
 from ._codegen_staging import stage_file_plans
@@ -95,7 +95,7 @@ class FlextInfraCodegenTransaction:
                 ):
                     if participant.root in self._file_leases:
                         continue
-                    lease_path = participant.root / files.JOURNAL_NAME
+                    lease_path = participant.root / c.Infra.JOURNAL_NAME
                     u.Cli.atomic_read_binary_file_state(
                         lease_path.with_name(f"{lease_path.name}.lock"), required=False
                     ).unwrap()

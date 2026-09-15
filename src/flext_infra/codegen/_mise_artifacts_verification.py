@@ -348,15 +348,17 @@ class FlextInfraMiseArtifactsVerification:
                 rebound = cls._bind_source_parent(expected, journal)
                 if rebound.failure:
                     return r[bool].from_failure(rebound)
-                expected = rebound.value
+                rebound_expected = rebound.value
+            else:
+                rebound_expected = expected
             observed = files.read_state(
-                expected.path, required=expected.content is not None
+                rebound_expected.path, required=rebound_expected.content is not None
             )
             if observed.failure:
                 return r[bool].from_failure(observed)
-            if observed.value != expected:
+            if observed.value != rebound_expected:
                 return r[bool].fail(
-                    f"generation authenticated state changed: {expected.path}"
+                    f"generation authenticated state changed: {rebound_expected.path}"
                 )
         return r[bool].ok(True)
 

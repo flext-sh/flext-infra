@@ -135,7 +135,7 @@ class FlextInfraMiseWorkspacePlanner:
                     device=physical.value[0],
                     inode=physical.value[1],
                     transaction_root=staging.value
-                    / f"{files.TRANSACTION_DIR_PREFIX}{transaction_id}",
+                    / f"{c.Infra.TRANSACTION_DIR_PREFIX}{transaction_id}",
                 )
             )
         state_root = self._state_root(scope_root)
