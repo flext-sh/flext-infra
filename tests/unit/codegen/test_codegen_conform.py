@@ -492,7 +492,6 @@ class TestsFlextInfraCodegenConform:
         tm.ok(planned)
         environment = planned.value.uv_environments[0]
         tm.that(environment.environment_root, eq=root.resolve())
-        tm.that(environment.lock_path, eq=root.resolve() / "uv.lock")
         tm.that(environment.groups, eq=("dev", "codegen", "workspace"))
         tm.that(
             tuple(item.name for item in environment.editable_repositories),

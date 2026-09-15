@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -9,6 +10,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import c, m, u
+from tests import u as test_u
 
 
 class TestsFlextInfraUtilitiesResourceLimits:
@@ -149,7 +151,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
 
     @pytest.mark.parametrize("invalid_value", ["", "1024.0", "-1", " 1024"])
     def test_mypy_resource_limit_rejects_non_integer_environment(
-        self, invalid_value: str, monkeypatch: pytest.MonkeyPatch
+        self, invalid_value: str
     ) -> None:
         """Reject non-integer process text before constructing the strict model.
 
@@ -158,13 +160,18 @@ class TestsFlextInfraUtilitiesResourceLimits:
         repair `` 1024`` into a valid limit and make the padded case untestable.
         The contract under test is exactly that no such repair happens.
         """
-        monkeypatch.setenv(c.Infra.MYPY_MEMORY_LIMIT_MB_ENV, invalid_value)
-        monkeypatch.setenv(c.Infra.MYPY_TIMEOUT_SECONDS_ENV, "120")
-
-        with pytest.raises(
-            ValueError, match=f"{c.Infra.MYPY_MEMORY_LIMIT_MB_ENV} must be"
-        ):
-            u.Infra.mypy_resource_limit()
+        original_memory = os.environ.get(c.Infra.MYPY_MEMORY_LIMIT_MB_ENV)
+        original_timeout = os.environ.get(c.Infra.MYPY_TIMEOUT_SECONDS_ENV)
+        os.environ[c.Infra.MYPY_MEMORY_LIMIT_MB_ENV] = invalid_value
+        os.environ[c.Infra.MYPY_TIMEOUT_SECONDS_ENV] = "120"
+        try:
+            with pytest.raises(
+                ValueError, match=f"{c.Infra.MYPY_MEMORY_LIMIT_MB_ENV} must be"
+            ):
+                u.Infra.mypy_resource_limit()
+        finally:
+            test_u.Tests.restore_env(c.Infra.MYPY_MEMORY_LIMIT_MB_ENV, original_memory)
+            test_u.Tests.restore_env(c.Infra.MYPY_TIMEOUT_SECONDS_ENV, original_timeout)
 
     def test_mypy_resource_contract_rejects_memory_above_ceiling(self) -> None:
         """Reject a configured limit above the canonical hard ceiling."""

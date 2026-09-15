@@ -424,6 +424,7 @@ markers = [
   "performance: performance and benchmark tests",
   "slow: slow-running tests",
   "docker: tests requiring Docker",
+  "oracle: tests requiring the shared Oracle database",
   "remote: tests requiring remote/external network services",
   "e2e: end-to-end integration tests",
   "edge_cases: edge case tests",
@@ -596,8 +597,6 @@ dependencies = ["flext-infra"]
 
 [tool.uv.exclude-dependencies.package]
 name = "flext-tests"
-
-[tool.uv.workspace]
 [tool.interrogate]
 fail-under = 70
 ignore-init-method = true

@@ -55,7 +55,7 @@ class TestsFlextInfraCodegenPyprojectConform:
         root.mkdir(parents=True)
         (parent / "pyproject.toml").write_text(
             '[project]\nname = "parent"\nversion = "1.0"\n'
-            'dependencies = []\n'
+            "dependencies = []\n"
             '[tool.uv.workspace]\nmembers = ["member"]\n',
             encoding="utf-8",
         )

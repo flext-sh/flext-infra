@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
 
 from flext_infra import main as infra_main
@@ -91,15 +90,9 @@ class TestsFlextInfraWorkspaceMain:
 
         tm.that(exit_code, eq=0)
 
-    def test_workspace_main_orchestrate_returns_failure_for_unknown_verb(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Unknown verbs fail only after the write-enable gate is satisfied."""
-        monkeypatch.setenv("APPLY", "Y")
-        tm.that(
-            (self._workspace_main(["orchestrate", "--verb", "legacy-check"]) == 1),
-            eq=True,
-        )
+    def test_workspace_main_orchestrate_returns_failure_for_unknown_verb(self) -> None:
+        """The public command rejects an undeclared operation."""
+        tm.that(self._workspace_main(["orchestrate", "--verb", "legacy-check"]), eq=1)
 
     def test_workspace_main_without_command_returns_failure(self) -> None:
         tm.that(self._workspace_main([]), eq=1)

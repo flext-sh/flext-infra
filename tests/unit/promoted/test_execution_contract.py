@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import m
 from flext_infra.promoted.dispatcher import dispatch
@@ -59,25 +60,21 @@ class TestsFlextInfraPromotedExecutionContract:
             registry.add(u.Tests.promoted_command(path=command_path))
             return registry, marker
 
-        @pytest.mark.parametrize("ambient_value", (None, "arbitrary"))
+        @pytest.mark.parametrize("ambient_value", [None, "arbitrary"])
         def test_dispatch_executes_declared_operation(
-            self,
-            tmp_path: Path,
-            monkeypatch: pytest.MonkeyPatch,
-            ambient_value: str | None,
+            self, tmp_path: Path, ambient_value: str | None
         ) -> None:
             """Unrelated ambient input never changes the declared operation."""
             registry, marker = self._write_registry(tmp_path)
-            monkeypatch.setenv("WHAT", "all")
-            if ambient_value is None:
-                monkeypatch.delenv("UNDECLARED_INPUT", raising=False)
-            else:
-                monkeypatch.setenv("UNDECLARED_INPUT", ambient_value)
-            monkeypatch.delenv("HELP", raising=False)
-            monkeypatch.delenv("OPTIONS", raising=False)
-            exit_code = dispatch(registry, "probe")
-            assert exit_code == 0
-            assert marker.exists()
+            environment = {"WHAT": "all"}
+            if ambient_value is not None:
+                environment["UNDECLARED_INPUT"] = ambient_value
+            with tm.scope(
+                env=environment, remove_env_keys=("HELP", "OPTIONS", "UNDECLARED_INPUT")
+            ):
+                exit_code = dispatch(registry, "probe")
+                assert exit_code == 0
+                assert marker.exists()
 
 
 __all__: list[str] = ["TestsFlextInfraPromotedExecutionContract"]

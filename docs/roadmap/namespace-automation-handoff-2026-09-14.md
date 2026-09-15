@@ -39,24 +39,51 @@ nenhuma forma `APPLY=N` ou `APPLY=Y` deve permanecer como interface suportada.
 A autorização administrativa é registrada como autorização do operador, não
 como aprovação independente nem como evidência de testes aprovados.
 
+**Correção posterior:** exterminar também `uv.lock` e `mise.lock`, incluindo
+geração e leitura em setup/deps/build/audit/release; consumir os tips Git das
+branches declaradas e publicar tudo nas branches de integração. Provisionamento
+e atualização são exclusivamente por `make setup`. O agente consultou o help
+do uv para pesquisar o responsável; nenhuma instalação manual foi executada.
+A migração completa para execução sem lock ainda está pendente: o template
+atual executa `uv sync`/`uv lock`, e o modernizer e release ainda leem o lock.
+
+**Fechamento e testes:** a última instrução exige concluir esta execução e
+parar após integrar, provar runtime e atualizar/fechar os Beads afetados.
+Revalidar testes pela interface pública: eliminar fake/mock, acesso privado e
+asserções que só congelam a implementação; preservar a cobertura de comportamento
+válido. O runtime define o contrato, incluindo ambiente, geração e consumidores.
+`flext-c4k44` registra esse trabalho. Todas as chamadas de Beads usam `direnv exec`
+no checkout do rig e o banco central já mantido pelo Gas City. Não inicializar
+outro banco nem interpretar uma leitura de metadata como prova de conectividade.
+
 | Contexto para retomada imediata | Estado observado |
 | --- | --- |
-| Branch e PR de entrega | `fix/docs-renderer-contract`, [PR #732](https://github.com/flext-sh/flext-infra/pull/732), ainda Draft/WIP para `0.12.0-dev` |
+| Checkpoint da continuação | [PR #734](https://github.com/flext-sh/flext-infra/pull/734), Draft, branch `fix/workspace-hygiene-0.12.0`, tip publicado `5eb47cd2106ace4dc2a62818f84d107459a0f79f`. Preserva `cb312a46b` (produtores de Beads e revalidação de testes) e o guia de ativação automática. Os jobs CI desse Draft aparecem SKIPPED; isso não constitui aceite. O remoto de integração já contém `712624c9d`, inclusive o checkpoint `cb312a46b`, por contribuição concorrente |
+| Última suíte concluída | `make test`, cwd flext-infra, exit 2; recibo `20260915T021753.505056Z-2111735/suite-outcome.json`: retorno bruto -15, `timed_out=true`, nenhum sinal encaminhado. Dois workers, 2.305 casos selecionados, execução interrompida em aproximadamente 10%. A rodada anterior `20260915T020045.360053Z-1956983` também terminou exit 2, retorno bruto -9 e timeout. Nenhuma suíte completa verde |
+| Causa comum confirmada em setup | Os eventos de `real_detector_project` preservam stdout/stderr de `make setup`: construção do infra local falha porque `flext-api/pyproject.toml` conserva uma tabela vazia `tool.uv.workspace` dentro do workspace composto. O responsável foi corrigido em `ee9e5e018`; a projeção dos demais membros ainda precisa convergir pelo gerador. Não alterar fixtures para esconder esse defeito de ambiente |
+| Correção de relatórios em validação | `RunCommand.reports_dir_path` usava `Path.cwd()` e sobrescrevia o relatório do chamador em checks de outro repositório. Agora usa `repository_root`. O teste público existente executa Ruff real em dois projetos, confere o destino e preserva um relatório do chamador; caso `artifacts/check` PASS na rodada acima. Isso não certifica o restante da suíte. Bead `flext-9oljq` atualizado via direnv, exit 0 |
+| Beads central e recuperação nativa | Sem override manual de porta, `direnv exec /home/marlonsc/flext bd context --json` e `bd show flext-c4k44 --json` retornaram exit 0: banco flext, modo server, identidade preservada. Uma leitura posterior falhou com connection refused; `gc doctor` confirmou runtime Dolt indisponível e indicou `gc start`. Esse comando, via direnv no city, retornou exit 0; novas leituras de contexto e de `flext-9oljq` retornaram exit 0. Nenhum banco substituto, cópia de dados, porta manual ou segundo servidor foi criado. `gc doctor` completo ainda não recebeu aceite |
+| Branch e PR de entrega | GitHub confirma [PR #732 MERGED](https://github.com/flext-sh/flext-infra/pull/732), `mergedAt=2026-09-15T00:44:57Z`, mergeCommit informado pela API `758467a6a`. O remoto contém o merge de dois pais `b82eefa3e7e00241eaeba7bd663809a47b58d169` e avançou até `ee9e5e018`. A continuação na branch existente `fix/workspace-hygiene-0.12.0` absorveu esse tip por merge no-ff `7b0b89c59`, exit 0; mudanças posteriores aguardam validação e publicação |
 | Handoff e reparos publicados | `4cb1f038c0bc6988acb87bd0e5c84335ba38dba7`, push exit 0; inclui guia de contexto, mapa de ADRs, skill e reparos de escopo/ordem da automação |
 | Último checkpoint antes do merge | `a895de0c9`, preserva a projeção standalone após setup |
-| Base consultada | `origin/0.12.0-dev` em `a254c1f3f`; fetch exit 0; merge no-ff da base respondeu `Already up to date`, exit 0 |
+| Base consultada | Fetch atualizado exit 0 nos três repositórios. Infra `origin/0.12.0-dev=b82eefa3e`; `git merge --no-ff origin/0.12.0-dev` exit 0, `Already up to date`. Em ai-hub, `git merge --no-ff origin/dev` também exit 0, `Already up to date`. Adotar sempre a composição corrente, preservando trabalho concorrente |
 | Composição preservada | Merge no-ff `d0b32d7d6`, publicado com push exit 0, absorve `origin/bugfix/stabilize-0.12.0` em `8b03723cb`, que reúne os PRs #723, #724 e #730; os 80 arquivos conflitantes foram reconciliados |
 | Reconciliação | Fontes Python de `src`/`tests` parsearam; nenhum nome de teste dos dois lados conflitantes foi perdido; métodos da fixture antiga existem no novo responsável. Isso não substitui execução dos testes. |
 | Runtime medido antes do merge | `make status`: exit 0, perfil standalone no checkout; `make setup`: exit 0, 160 pacotes resolvidos, instalação local de `flext-infra==0.12.0`; recibo efetivo `uv 0.12.10` |
 | Outra contribuição a avaliar | [PR #733](https://github.com/flext-sh/flext-infra/pull/733), `flext-ro6mj.1`, inclui coletor, transação e alterações sobre os mesmos responsáveis de codemod/docs; ainda não incorporada neste merge |
-| Atualização remota posterior | Novo fetch exit 0: a branch do PR #731 avançou de `8b03723cb` para `de3c7811a`, com reparo de imports relativos e testes; esses quatro commits posteriores ainda não foram absorvidos |
-| Aceite ainda não obtido | A suíte não completou; a validação integrada dos consumidores e o merge deste PR continuam pendentes |
-| Nova rodada de check | `stabilize-runtime-check.log`, exit 2 em 2026-09-15T00:08:11Z: Ruff/lint 0, Mypy 0, Pyright 0 e Pyrefly 0. Total 386, exclusivamente custom: namespace 382, LOC 3, censo 1. Essa rodada satisfaz o recorte de check autorizado; não certifica alterações posteriores. |
+| Atualização remota posterior | Fetch exit 0: a branch do PR #731 avançou até `ec9813edd`, incluindo reparo de diagnóstico Mypy e fixtures. Esse complemento e o PR #733 ainda precisam ser reconciliados |
+| Aceite ainda não obtido | A suíte não completou; a validação integrada dos consumidores e a integração das mudanças posteriores ao PR #732 continuam pendentes |
+| Check mais recente desta execução | `make check`, exit 2, relatório observado em 2026-09-15T01:12:23Z: Ruff/lint 0, Mypy 0, Pyrefly 0; Pyright retornou -2 com KeyboardInterrupt, causa não determinada. Total 387: namespace 382, LOC 3, censo 1 e uma falha da ferramenta Pyright. A rodada anterior de 00:08:11Z tinha os quatro analisadores verdes, mas não certifica o estado atual. O arquivo de relatório compartilhado foi depois sobrescrito por testes de fixture; não usar seu conteúdo atual para reclassificar esta rodada |
 | Automação realmente exercitada | `stabilize-mod-local.log`, exit 2 às 23:30:07Z: publicou o aninhamento de `_models/mise_toolchain.py`; a segunda passagem teve zero alterações semânticas. Terminou por ausência de progresso com 16 findings de detecção (14 ambiente, 2 ancestry), sem falso verde. |
 | Causa de escopo e custo | Rope promovia a chamada do membro para o superprojeto: 632 diretórios/4.737 módulos, 115,81 s. Após retirar a promoção no responsável de descoberta, a nova execução abriu o próprio infra: 54 diretórios/921 módulos, 1,35 s. A publicação semântica concluiu; o comando permaneceu vermelho pelos findings de detecção. |
 | Geração e build | `make build`: exit 0, wheel e sdist. `make gen`, após corrigir o contrato sem seletores no template: exit 0, com verificações de ponto fixo, lazy-init e docs |
 | Primeira barreira obrigatória | `make test`: exit 2; recibo `20260914T233654.583765Z-456708` informa `raw_return_code=-15`, `timed_out=true`. Houve falhas de contrato Make e timeouts de 60 s antes do limite de 600 s da suíte; nenhum aceite completo |
-| Tracker atual | Comentários anteriores foram gravados; nova leitura de `flext-5fxu6.4` falhou com `no beads database found`. `bd where` resolve `.beads` de flext, mas `bd doctor` declara modo embedded; não houve reinitialização nem banco substituto |
+| Revalidação do merge local | `make test` exit 2; recibo `20260915T002455.009064Z-1005606/suite-outcome.json`: retorno bruto -15, timeout verdadeiro, nenhum sinal encaminhado. 276 testes selecionados; preparação de fixtures de deps excedeu 60 s ao baixar/reconstruir dependências; a suíte parou em aproximadamente 21% |
+| Último setup completo e falha posterior | Setup anterior exit 0, Mise 2026.9.8, uv 0.12.13, 160 pacotes; instalou flext-cli `641700e5f1d82c841aaaea496e22733d56ca3133`, flext-core `5a1317238e7e00a5d4250732bd4247c6dbce8d8c` e flext-tests `1e0bb2b334943c8299ffb6ad1258522ce2fd6ce9` por Git. Nova execução com Make gerado retornou exit 2: `Nested workspaces are not supported`, membro flext-api; seu recibo uv voltou a 0.12.10. Não há aceite atual de setup |
+| Divergência de ferramenta observada | `make status` exit 0, standalone/local, 160 pacotes compatíveis, mas exibiu uv 0.12.10 após setup usar 0.12.13. O template escolhe uv pelo PATH do chamador fora do bootstrap; ainda falta unificar essa escolha no responsável provisionado |
+| Geração e concorrência | Após liberação observada do lock, `make gen` exit 0 publicou Makefile/pyproject e verificou ponto fixo, lazy-init e docs. A nova geração para corrigir Beads retornou exit 2 por `filelock._error.Timeout`; `lslocks` confirmou outro processo com o journal de flext. Nenhum lock foi removido, processo interrompido ou timeout aumentado |
+| Cache e contrato de ambiente | O bootstrap passou a declarar `UV_CACHE_DIR` no armazenamento persistente, porque o XDG cache do scratch forçava downloads/rebuilds por fixture. Removidos `UvEnvironmentPlan.lock_path` e sua asserção obsoleta; alterações ainda aguardam prova completa pelo caminho Make |
+| Tracker atual | `direnv exec /home/marlonsc/flext gc status`, cwd ~/gc, exit 0: supervisor ativo, banco central com 26.296 registros. `direnv exec /home/marlonsc/flext bd show flext-c4k44 --json` e leitura de flext-5fxu6.4 exit 0 após ajuste concorrente em .envrc.local. Comentário de fechamento em flext-5fxu6.4 gravado com exit 0. Causa no gerador: metadata omitia dolt_mode apesar de SSOT=server; correção do produtor aguarda geração. Não houve banco substituto ou reinicialização |
 | Consumidores externos | `make help` exit 0 em ambos: ai-hub standalone, integração `dev`, PRs #777/#778; Cosmos workspace, integração `develop`, checkout agora em `fix/revalidation-apply-contract`. Nenhuma prova de geração ou runtime integrado desses consumidores foi obtida por esta execução |
 | Próxima ação concreta | Concluir a remoção do contrato nos responsáveis e consumidores; reparar/revalidar a suíte; absorver contribuições relacionadas, publicar e integrar administrativamente com prova dos SHAs integrados nos três projetos |
 
@@ -69,8 +96,9 @@ critério de aceite; continua `in_progress`.
 Registro crítico da execução de 14/09/2026, preparado por solicitação do
 operador. O destinatário é quem retomará a correção. Este documento preserva
 evidências e a sequência de retomada; o estado de execução continua no Beads.
-O resultado está em **WIP**, sem aceite de runtime completo e sem merge desta
-entrega na integração.
+O registro original abaixo é histórico. O PR #732 já foi integrado; a
+continuação permanece em **WIP**, sem aceite de runtime completo. A tabela
+inicial prevalece sobre descrições antigas de branch e estado do PR.
 
 O checkpoint de implementação é
 [`3bd09bddc`](https://github.com/flext-sh/flext-infra/commit/3bd09bddc2e835a6aa1412945d3859d9b74459e4),

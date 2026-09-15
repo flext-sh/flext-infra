@@ -106,12 +106,15 @@ class TestsFlextInfraWorkspaceCheckCli:
 
         tm.that(exit_code, eq=1)
 
-    def test_run_cli_handles_multiple_projects(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("reports_directory", [None, "artifacts/check"])
+    def test_run_cli_handles_multiple_projects(
+        self, tmp_path: Path, reports_directory: str | None
+    ) -> None:
         workspace = self._create_workspace(tmp_path, project_names=("proj1", "proj2"))
         _ = self._write_module(workspace, "proj1", "value = 1\n")
         _ = self._write_module(workspace, "proj2", "other = 2\n")
 
-        exit_code = main([
+        arguments = [
             "check",
             "run",
             "--repository-root",
@@ -122,9 +125,28 @@ class TestsFlextInfraWorkspaceCheckCli:
             "proj1",
             "--projects",
             "proj2",
-        ])
+        ]
+        if reports_directory is not None:
+            arguments.extend(["--reports-dir", reports_directory])
+        caller = tmp_path / "caller"
+        caller.mkdir()
+        relative_reports = reports_directory or f"{c.Infra.REPORTS_DIR_NAME}/check"
+        caller_report = caller / relative_reports / "check-report.md"
+        caller_report.parent.mkdir(parents=True)
+        caller_report.write_text("Caller report must survive.\n", encoding="utf-8")
+
+        with tm.scope(cwd=caller):
+            exit_code = main(arguments)
 
         tm.that(exit_code, eq=0)
+        report = (workspace / relative_reports / "check-report.md").read_text(
+            encoding="utf-8"
+        )
+        tm.that(report, has=["proj1", "proj2"])
+        tm.that(
+            caller_report.read_text(encoding="utf-8"),
+            eq="Caller report must survive.\n",
+        )
 
     def test_run_cli_fix_contract_preserves_failure_when_reporting(
         self, tmp_path: Path
