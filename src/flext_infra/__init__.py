@@ -71,6 +71,7 @@ if TYPE_CHECKING:
     from .codegen.version_file import FlextInfraCodegenVersionFile
     from .codemod.batch_apply import FlextInfraCodemodBatchApply
     from .codemod.batch_gates import FlextInfraModGateEngine
+    from .codemod.batch_replacements import FlextInfraModReplacements
     from .codemod.semantic_apply import FlextInfraCodemodSemanticApply
     from .codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
     from .constants import FlextInfraConstants, FlextInfraConstants as c
@@ -133,6 +134,7 @@ if TYPE_CHECKING:
     from .docs.auditor_mixin import FlextInfraDocAuditorMixin
     from .docs.base import FlextInfraDocServiceBase
     from .docs.builder import FlextInfraDocBuilder
+    from .docs.collector import FlextInfraDocCollector
     from .docs.fixer import FlextInfraDocFixer
     from .docs.generator import FlextInfraDocGenerator
     from .docs.server import FlextInfraDocServer
@@ -320,6 +322,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraDocAuditor",
     "FlextInfraDocAuditorMixin",
     "FlextInfraDocBuilder",
+    "FlextInfraDocCollector",
     "FlextInfraDocFixer",
     "FlextInfraDocGenerator",
     "FlextInfraDocServer",
@@ -369,6 +372,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraMarkdownGate",
     "FlextInfraMiseWorkspacePlanner",
     "FlextInfraModGateEngine",
+    "FlextInfraModReplacements",
     "FlextInfraModels",
     "FlextInfraModernizeOrchestrator",
     "FlextInfraMypyGate",
@@ -538,6 +542,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codemod": ("codemod",),
             ".codemod.batch_apply": ("FlextInfraCodemodBatchApply",),
             ".codemod.batch_gates": ("FlextInfraModGateEngine",),
+            ".codemod.batch_replacements": ("FlextInfraModReplacements",),
             ".codemod.semantic_apply": ("FlextInfraCodemodSemanticApply",),
             ".codemod.snapshot_reconciler": ("FlextInfraCodemodSnapshotReconciler",),
             ".constants": ("FlextInfraConstants", "c"),
@@ -613,6 +618,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".docs.auditor_mixin": ("FlextInfraDocAuditorMixin",),
             ".docs.base": ("FlextInfraDocServiceBase",),
             ".docs.builder": ("FlextInfraDocBuilder",),
+            ".docs.collector": ("FlextInfraDocCollector",),
             ".docs.fixer": ("FlextInfraDocFixer",),
             ".docs.generator": ("FlextInfraDocGenerator",),
             ".docs.server": ("FlextInfraDocServer",),

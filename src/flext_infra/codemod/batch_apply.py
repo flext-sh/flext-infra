@@ -9,6 +9,7 @@ from flext_cli import cli
 
 from .. import FlextInfraServiceBase, m, p, r, t, u
 from . import FlextInfraCodemodSemanticApply, FlextInfraModGateEngine
+from .batch_replacements import FlextInfraModReplacements
 
 
 class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
@@ -53,17 +54,31 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             t.VariadicTuple[t.Quad[str, str, str, str | None]], int
         ] = {}
         iteration = 0
-        while current.findings:
+        transaction_paths = FlextInfraCodemodSemanticApply.plan_transaction_paths(
+            root, current
+        )
+        while current.findings or transaction_paths:
             iteration += 1
             fingerprint = tuple(
                 sorted(
-                    (
-                        finding.rule_id,
-                        finding.file.as_posix(),
-                        finding.text,
-                        finding.replacement,
-                    )
-                    for finding in current.entries
+                    [
+                        (
+                            finding.rule_id,
+                            finding.file.as_posix(),
+                            finding.text,
+                            finding.replacement,
+                        )
+                        for finding in current.entries
+                    ]
+                    + [
+                        (
+                            "transaction-path-capability",
+                            edit.file_path.as_posix(),
+                            u.Cli.sha256_bytes(edit.original_source.encode()),
+                            u.Cli.sha256_bytes(edit.updated_source.encode()),
+                        )
+                        for edit in transaction_paths
+                    ]
                 )
             )
             if fingerprint in seen:
@@ -92,8 +107,26 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 FlextInfraModGateEngine.scan(root, fix=True).unwrap()
             after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
             FlextInfraCodemodBatchApply._validate_fix_match(current, after_ast)
+            transaction_paths = FlextInfraCodemodSemanticApply.plan_transaction_paths(
+                root, after_ast
+            )
+            if transaction_paths:
+                FlextInfraCodemodSemanticApply.apply_transaction_paths(
+                    root, transaction_paths
+                )
+                current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+                transaction_paths = (
+                    FlextInfraCodemodSemanticApply.plan_transaction_paths(root, current)
+                )
+                continue
+            owned = FlextInfraModReplacements.require_authored(after_ast)
+            if owned.failure:
+                return r[t.Cli.ResultValue].from_failure(owned)
             FlextInfraCodemodSemanticApply.apply(root, after_ast)
             current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+            transaction_paths = FlextInfraCodemodSemanticApply.plan_transaction_paths(
+                root, current
+            )
         cli.display_text(
             "mod: require canonical formatting and zero Ruff, Pyrefly, and LSP diagnostics"
         )

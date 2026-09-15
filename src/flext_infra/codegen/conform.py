@@ -10,7 +10,7 @@ import re
 import time
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import Annotated, override
+from typing import Annotated, Literal, override
 
 from flext_core import r
 from flext_infra import config, p, u
@@ -2055,7 +2055,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.MarkdownLintRenderSpec(tooling=config.Infra.tooling)
             )
-        if destination in {".envrc", ".envrc.local"}:
+        if destination == ".envrc":
             return r[p.Model].ok(
                 m.Infra.EnvrcRenderSpec(
                     state_directory_name=codegen.toolchain.state_directory_name,
@@ -2720,9 +2720,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             plans.append(planned.value)
         layout = u.Infra.layout(root)
         if layout is not None and layout.class_stem:
-            rendered = u.Infra.render_utility_facade(layout.package_dir)
-            if rendered is not None:
-                relative = (layout.package_dir / c.Infra.UTILITIES_PY).relative_to(root)
+            families: tuple[Literal["u", "p"], ...] = ("u", "p")
+            for family in families:
+                rendered = u.Infra.render_utility_facade(layout.package_dir, family=family)
+                if rendered is None:
+                    continue
+                relative = (
+                    layout.package_dir
+                    / (c.Infra.FAMILY_PUBLIC_MODULES[family] + c.Infra.EXT_PYTHON)
+                ).relative_to(root)
                 utility_plan = self._file_plan(root, relative.as_posix(), rendered)
                 if utility_plan.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(

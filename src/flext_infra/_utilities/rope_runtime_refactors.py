@@ -16,6 +16,28 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
     _WORD_RANGE_SIZE: ClassVar[int] = 2
 
     @classmethod
+    def restructure_changes(
+        cls,
+        rope_project: p.Infra.RopeProject,
+        pattern: str,
+        goal: str,
+        *,
+        arguments: t.MappingKV[str, str],
+        resources: t.SequenceOf[p.Infra.RopeResource],
+    ) -> p.Infra.RopeChangeSet:
+        """Plan Rope 1.14 semantic changes without invoking Project.do."""
+        factory = cls._runtime_callable("rope.refactor.restructure", "Restructure")
+        restructuring = factory(rope_project, pattern, goal, args=dict(arguments))
+        if not isinstance(restructuring, p.Infra.RopeRestructure):
+            msg = "rope Restructure does not satisfy its public planning contract"
+            raise TypeError(msg)
+        changes = restructuring.get_changes(resources=list(resources))
+        if not isinstance(changes, p.Infra.RopeChangeSet):
+            msg = "rope Restructure returned an invalid ChangeSet"
+            raise TypeError(msg)
+        return changes
+
+    @classmethod
     def create_move(
         cls,
         rope_project: t.Infra.RopeProject,

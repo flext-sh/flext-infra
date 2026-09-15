@@ -54,11 +54,6 @@ class FlextInfraDocGeneratorBundleMixin:
         cls, request: m.Infra.DocsGenerateRequest
     ) -> p.Result[m.Infra.DocsGenerationBundle]:
         """Render and source-verify one canonical docs artifact inventory."""
-        if request.apply:
-            return r[m.Infra.DocsGenerationBundle].fail(
-                "docs publication is owned by codegen conform; "
-                "the generation transaction must publish plan_files()"
-            )
         roots = u.Infra.docs_repository_roots(request.repository_root)
         if roots.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(roots)

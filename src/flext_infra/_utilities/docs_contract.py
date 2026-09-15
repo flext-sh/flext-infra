@@ -146,42 +146,9 @@ class FlextInfraUtilitiesDocsContract:
     @staticmethod
     def docs_workspace_contract(repository_root: Path) -> t.JsonMapping:
         """Return the root docs contract using root ``pyproject.toml`` metadata."""
-        payload = FlextInfraUtilitiesDocsScope.project_payload(repository_root)
-        docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
-        exclude_docs = FlextInfraUtilitiesDocsScope.docs_meta_list(
-            repository_root, "exclude_docs"
+        return FlextInfraUtilitiesDocsContract.docs_current_project_contract(
+            repository_root, t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
         )
-        project_meta_value = payload.get(c.Infra.PROJECT)
-        project_meta: t.JsonMapping = (
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project_meta_value)
-            if isinstance(project_meta_value, Mapping)
-            else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
-        )
-        project_urls_value = project_meta.get("urls")
-        project_urls: t.JsonMapping = (
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project_urls_value)
-            if isinstance(project_urls_value, Mapping)
-            else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
-        )
-        result: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
-            "name": str(project_meta.get("name", "flext")).strip() or "flext",
-            "description": str(project_meta.get("description", "")).strip(),
-            "version": str(project_meta.get(c.Infra.VERSION, "")).strip(),
-            "site_title": str(docs_meta.get("site_title", "")).strip()
-            or "FLEXT Workspace",
-            "site_url": str(
-                project_urls.get("Documentation")
-                or project_urls.get("Homepage")
-                or c.Infra.GITHUB_REPO_URL
-            ).strip(),
-            "repo_url": str(
-                project_urls.get("Repository")
-                or project_urls.get("Homepage")
-                or c.Infra.GITHUB_REPO_URL
-            ).strip(),
-            "exclude_docs": list(exclude_docs),
-        })
-        return result
 
     @staticmethod
     def docs_current_project_contract(
@@ -206,6 +173,7 @@ class FlextInfraUtilitiesDocsContract:
         exclude_docs_value = docs_meta.get("exclude_docs")
         updated = dict(rendered_contract)
         updated.update({
+            "name": project_name,
             "description": str(project.get("description", "")).strip(),
             "version": str(project.get(c.Infra.VERSION, "")).strip(),
             "classifiers": list(classifiers_value)

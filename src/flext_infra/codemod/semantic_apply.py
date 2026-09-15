@@ -15,6 +15,31 @@ class FlextInfraCodemodSemanticApply:
     """Plan semantic cutovers, preflight the batch, then publish guarded files."""
 
     @classmethod
+    def plan_transaction_paths(
+        cls, root: Path, preflight: m.Infra.ModScanReport
+    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+        """Return one immutable Rope callback for the mod loop's progress identity."""
+        original = cls._source_inventory(root, preflight)
+        from .._utilities.codegen_path_cutover import FlextInfraUtilitiesCodegenPathCutover
+
+        with infra.rope_workspace(root) as rope_workspace:
+            return FlextInfraUtilitiesCodegenPathCutover.plan_transaction_path_cutover(
+                rope_workspace=rope_workspace, sources=original
+            )
+
+    @classmethod
+    def apply_transaction_paths(
+        cls, root: Path, edits: tuple[m.Infra.SemanticMigrationEdit, ...]
+    ) -> None:
+        """Publish the exact callback included in the existing progress fingerprint."""
+        original = {edit.file_path: edit.original_source for edit in edits}
+        working = dict(original)
+        changed: set[Path] = set()
+        cls._apply_plan(working, edits, changed)
+        cls._publish(root, original, working, changed)
+        cli.display_text(f"mod: Rope transaction paths changed_files={len(changed)}")
+
+    @classmethod
     def apply(cls, root: Path, preflight: m.Infra.ModScanReport) -> None:
         """Apply every semantic cutover selected by the canonical mod circuit."""
         original = cls._source_inventory(root, preflight)
