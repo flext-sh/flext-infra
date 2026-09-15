@@ -620,6 +620,57 @@ class FlextInfraModelsDepsToolSettings(
     class LazyInitConfig(m.ArbitraryTypesModel):
         """Declarative policy for ``__init__.py`` lazy export generation."""
 
+        import_layer_order: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(
+                    "settings",
+                    "config",
+                    "c",
+                    "t",
+                    "p",
+                    "m",
+                    "u",
+                    "base",
+                    "services",
+                    "api",
+                    "cli",
+                ),
+                description=(
+                    "Canonical dependency layer order for project "
+                    "imports. Lower index = lower layer. A module may "
+                    "runtime-import modules at equal or lower index "
+                    "(relative-dot within the same package); importing "
+                    "a module at higher index is a reverse dependency "
+                    "and the engine emits it under ``if TYPE_CHECKING:`` "
+                    "(see ``reverse_import_mode``). Any value not in "
+                    "the fleet SSOT is rejected."
+                ),
+            ),
+        ]
+        reverse_import_mode: Annotated[
+            Literal["type_checking"],
+            m.Field(
+                description=(
+                    "How reverse (upward) runtime dependencies are "
+                    "emitted. ``type_checking`` moves the import into "
+                    "an ``if TYPE_CHECKING:`` block. The engine rejects "
+                    "any other value; reverse runtime imports are a "
+                    "module defect fixed at the module root cause."
+                ),
+            ),
+        ] = "type_checking"
+        forward_import_form: Annotated[
+            Literal["relative_dot"],
+            m.Field(
+                description=(
+                    "How forward (downward) intra-project imports are "
+                    "emitted. ``relative_dot`` uses relative imports "
+                    "within the same package."
+                ),
+            ),
+        ] = "relative_dot"
+
     class ToolConfigDocument(m.ArbitraryTypesModel):
         """Root schema for canonical ``config/tooling.yaml`` policy data."""
 

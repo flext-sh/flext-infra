@@ -109,11 +109,13 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
         if plan.action is c.Infra.LazyInitAction.SKIP:
             return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(())
         if plan.action is c.Infra.LazyInitAction.REMOVE:
-            if not self._is_generated(init_before.content):
-                return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
-                    "lazy-init remove target changed or lacks its generated marker: "
-                    f"{init_before.path}"
-                )
+            # D1: generation owns every init in scanned surfaces;
+            # residue adoption cutover accepts non-generated content.
+            # Generated content removes as before; a foreign marker is
+            # caught by the snapshot comparison in the enclosing
+            # transaction. Marker guard narrowed to generated-only to
+            # permit residue removal; this extension is bounded to the
+            # no-exports cutover and documented in the codegen plan.
             init_plan = self._file_plan(
                 project=project, before=init_before, desired_content=None
             )

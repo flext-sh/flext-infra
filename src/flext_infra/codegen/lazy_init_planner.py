@@ -203,23 +203,11 @@ class FlextInfraCodegenLazyInitPlanner(
             lazy_map = filtered_lazy_map
             child_lazy = ()
             excluded_lazy_names = ()
-        preserve_manual_init = (
-            not is_facade_root
-            and context.init_path.is_file()
-            and not context.generated_init
-            and bool(
-                context.init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).strip()
-            )
-        )
         type_checking_map = dict(lazy_map)
         all_export_names = tuple(sorted(export_names))
         plan = m.Infra.LazyInitPlan(
             context=context,
-            action=(
-                c.Infra.LazyInitAction.SKIP
-                if preserve_manual_init
-                else c.Infra.LazyInitAction.WRITE
-            ),
+            action=c.Infra.LazyInitAction.WRITE,
             exports=u.Infra.ordered_namespace_exports(
                 package_dir=context.pkg_dir,
                 package_name=context.current_pkg,

@@ -708,7 +708,26 @@ Infra:
           reportMissingTypeStubs: "none"
       app:
         pyright: {}
-    lazy-init: {}
+    lazy-init:
+      # flext-lz2 (codex): canonical import layer order for the
+      # lazy-init engine (D3). Lower index = lower layer.
+      # Runtime imports target equal-or-lower layers (relative-dot
+      # within package); reverse (higher) imports are emitted under
+      # ``if TYPE_CHECKING:`` per ``reverse_import_mode``.
+      import-layer-order:
+        - settings
+        - config
+        - c
+        - t
+        - p
+        - m
+        - u
+        - base
+        - services
+        - api
+        - cli
+      reverse-import-mode: type_checking
+      forward-import-form: relative_dot
 
 # Project-local managed-artifact additions for flext-infra itself.
 #
