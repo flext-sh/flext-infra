@@ -100,6 +100,11 @@ class FlextInfraConstantsNamespace:
         "_utilities": "u",
         "services": "services",
     })
+    # ADR-0018 stdlib island: the native hook client runs as `python3 -I -S`
+    # and cannot consume the flext typing surface; its annotations stay stdlib.
+    NAMESPACE_STDLIB_ISLAND_PATH_FRAGMENTS: Final[t.StrSequence] = (
+        "/ai_hub/hook_client",
+    )
     NAMESPACE_BANNED_ANNOTATIONS: Final[frozenset[str]] = frozenset({
         "Any",
         "Optional",
