@@ -10,6 +10,12 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from . import _codegen, _config, _git
+    from ._codegen.fix import FlextInfraModelsCodegenFixModels
+    from ._codegen.journal import FlextInfraModelsCodegenJournalModels
+    from ._codegen.lazy_init import FlextInfraModelsCodegenLazyInitModels
+    from ._codegen.pipeline import FlextInfraModelsCodegenPipelineModels
+    from ._codegen.scaffold import FlextInfraModelsCodegenScaffoldModels
+    from ._codegen.transaction import FlextInfraModelsCodegenTransactionModels
     from ._defaults import (
         ImmutableEmptyMapping,
         immutable_empty_mapping,
@@ -65,9 +71,15 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsCensus",
     "FlextInfraModelsCheck",
     "FlextInfraModelsCodegen",
+    "FlextInfraModelsCodegenFixModels",
     "FlextInfraModelsCodegenJournal",
+    "FlextInfraModelsCodegenJournalModels",
+    "FlextInfraModelsCodegenLazyInitModels",
+    "FlextInfraModelsCodegenPipelineModels",
     "FlextInfraModelsCodegenRender",
+    "FlextInfraModelsCodegenScaffoldModels",
     "FlextInfraModelsCodegenToolchain",
+    "FlextInfraModelsCodegenTransactionModels",
     "FlextInfraModelsCodemod",
     "FlextInfraModelsCore",
     "FlextInfraModelsDeps",
@@ -114,6 +126,12 @@ _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             "._codegen": ("_codegen",),
+            "._codegen.fix": ("FlextInfraModelsCodegenFixModels",),
+            "._codegen.journal": ("FlextInfraModelsCodegenJournalModels",),
+            "._codegen.lazy_init": ("FlextInfraModelsCodegenLazyInitModels",),
+            "._codegen.pipeline": ("FlextInfraModelsCodegenPipelineModels",),
+            "._codegen.scaffold": ("FlextInfraModelsCodegenScaffoldModels",),
+            "._codegen.transaction": ("FlextInfraModelsCodegenTransactionModels",),
             "._config": ("_config",),
             "._defaults": (
                 "ImmutableEmptyMapping",
