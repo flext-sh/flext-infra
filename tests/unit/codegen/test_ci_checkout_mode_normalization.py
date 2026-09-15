@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from flext_cli import t, u
 from flext_tests import tm
 
 from flext_infra import config
@@ -18,13 +19,30 @@ class TestsFlextInfraCiCheckoutModeNormalization:
         rendered = TestsFlextInfraCiIntegrationBranchTriggers.render_ci(
             repository_branch="0.12.0-dev"
         )
-        tm.that("chmod -R go-w ." in rendered, eq=True)
-        normalize_at = rendered.index("Normalize checkout modes")
+        document = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            tm.ok(u.Cli.yaml_parse(rendered))
+        )
+        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(document["jobs"])
+        job = t.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
+        steps = job["steps"]
+        if not isinstance(steps, list):
+            msg = "workflow job steps must be a sequence"
+            raise TypeError(msg)
+        commands: list[str] = []
+        for raw_step in steps:
+            step = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_step)
+            script = step.get("run")
+            if isinstance(script, str):
+                commands.extend(line.strip() for line in script.splitlines())
+        normalize_at = commands.index("chmod -R go-w .")
+        ci = config.Infra.codegen.make.ci
+        generation_at = commands.index(f"{ci.variable}={ci.value} make gen")
+        tm.that(normalize_at < generation_at, eq=True)
         for step in config.Infra.codegen.make.workflow:
             if "ci" not in step.contexts:
                 continue
-            gate = f"{step.verb} (blocking)"
-            tm.that(normalize_at < rendered.index(gate), eq=True)
+            gate_at = commands.index(f"{ci.variable}={ci.value} make {step.verb}")
+            tm.that(normalize_at < gate_at, eq=True)
 
 
 __all__: list[str] = ["TestsFlextInfraCiCheckoutModeNormalization"]

@@ -712,6 +712,7 @@ Infra:
         - .gitattributes
         - .gitmodules
         - .envrc
+        - .envrc.local
         - .env.example
         - .python-version
         - .pre-commit-config.yaml
@@ -931,6 +932,9 @@ Infra:
       - path: .envrc
         owner: codegen
         policy: full
+      - path: .envrc.local
+        owner: codegen
+        policy: merge
       - path: .gitignore
         owner: codegen
         policy: merge

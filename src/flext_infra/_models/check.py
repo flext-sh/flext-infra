@@ -65,7 +65,7 @@ class FlextInfraModelsCheck:
             reports_dir = Path(self.reports_dir).expanduser()
             if reports_dir.is_absolute():
                 return reports_dir.resolve()
-            return (Path.cwd() / reports_dir).resolve()
+            return (self.repository_root / reports_dir).resolve()
 
     class CheckProjectTarget(m.ArbitraryTypesModel):
         """Resolved project target for workspace gate execution."""

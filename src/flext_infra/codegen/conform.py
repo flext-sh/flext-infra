@@ -661,7 +661,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _conform_workspace_beads_routes(
         self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[bool]:
-        """Reject any composed project that reaches the ledger by symbolic link.
+        """Reconcile private metadata directories without cross-project links.
 
         A composed project follows the workspace ledger through its own rendered
         ``.beads`` configuration, which every checkout resolves identically. It
@@ -670,15 +670,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         configuration already declares, resolvable only on one machine's exact
         layout, and invisible to review because it reads as a directory. This
         method used to create those links and delete the real directory first;
-        now it only proves none survive.
+        now it proves none survive and enforces the client's private-directory
+        contract after publication, for the root and its composed members.
         """
         root = request.root.expanduser().resolve()
         workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
         if workspace_result.failure:
             return r[bool].from_failure(workspace_result)
         workspace = workspace_result.value
-        if not workspace.subprojects:
-            return r[bool].ok(False)
         owner = root / c.Infra.BEADS_DIRNAME
         # The ledger directory is a conform projection: absent before the
         # first render is normal; a link, or a non-directory, is not physical.
@@ -686,6 +685,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[bool].fail(
                 f"workspace Beads ledger owner is not physical: {owner}"
             )
+        if owner.is_dir():
+            owner.chmod(c.Infra.BEADS_DIRECTORY_MODE)
         for repository in workspace.subprojects:
             state = FlextInfraCodegenConform._beads_route_state(
                 (root / repository.path).resolve()
@@ -720,7 +721,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"cross-project symbolic link: {route}"
             )
         if not route.exists():
-            route.mkdir(parents=True)
+            route.mkdir(mode=c.Infra.BEADS_DIRECTORY_MODE, parents=True)
             return r[bool].ok(True)
         if not route.is_dir():
             return r[bool].fail(
@@ -737,6 +738,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"composed project has unmerged Beads state at {route}: "
                 + ", ".join(unexpected)
             )
+        route.chmod(c.Infra.BEADS_DIRECTORY_MODE)
         return r[bool].ok(True)
 
     @staticmethod
