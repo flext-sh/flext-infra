@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from tests import t
 
 
-class TestRealGateRunners:
+class TestsFlextInfraRealGateRunners:
     """Exercise real gate behavior through public gate APIs."""
 
     @staticmethod
@@ -129,4 +129,4 @@ class TestRealGateRunners:
         tm.that(len(result.issues), gte=1)
 
 
-__all__: t.StrSequence = []
+__all__: t.StrSequence = ["TestsFlextInfraRealGateRunners"]

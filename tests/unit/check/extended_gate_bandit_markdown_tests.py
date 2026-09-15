@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestBanditAndMarkdownGates:
+class TestsFlextInfraBanditAndMarkdownGates:
     """Declarative public-contract tests for Bandit and Markdown gates."""
 
     @pytest.mark.parametrize(
@@ -54,7 +54,7 @@ class TestBanditAndMarkdownGates:
         *,
         tmp_path: Path,
         with_src: bool,
-        runner_results: tuple[r[m.Cli.CommandOutput], ...],
+        runner_results: t.VariadicTuple[r[m.Cli.CommandOutput]],
         passed: bool,
         issues_len: int,
     ) -> None:
@@ -365,4 +365,4 @@ class TestBanditAndMarkdownGates:
         tm.that(runner.commands[0], lacks="--fix")
 
 
-__all__: t.StrSequence = []
+__all__: t.StrSequence = ["TestsFlextInfraBanditAndMarkdownGates"]

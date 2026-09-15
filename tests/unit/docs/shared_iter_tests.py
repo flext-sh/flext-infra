@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestIterMarkdownFiles:
+class TestsFlextInfraDocsSharedIter:
     """Tests for u.Infra.iter_markdown_files."""
 
     def test_empty_directory(self, tmp_path: Path) -> None:
@@ -116,3 +116,6 @@ class TestIterMarkdownFiles:
 
         tm.that(backup in files, eq=False)
         tm.that(archived in files, eq=False)
+
+
+__all__: list[str] = ["TestsFlextInfraDocsSharedIter"]

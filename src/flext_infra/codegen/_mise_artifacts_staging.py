@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import m, u
+from flext_infra import c, m, u
 
 from ._mise_artifacts_candidates import publication_plan
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
@@ -77,14 +77,14 @@ class FlextInfraMiseStaging:
         if created.failure:
             return r[bool].from_failure(created)
         config_write = process.write_new(
-            stage_root / files.CONFIG_SPEC[0],
+            stage_root / c.Infra.CONFIG_SPEC[0],
             project.config.replacement_content,
             project.config.replacement_mode,
         )
         if config_write.failure:
             return config_write
         for source, (name, mode) in zip(
-            seed_launchers, files.ARTIFACT_SPECS, strict=True
+            seed_launchers, c.Infra.ARTIFACT_SPECS, strict=True
         ):
             if source.content is None:
                 return r[bool].fail(f"Mise launcher seed content is absent: {name}")

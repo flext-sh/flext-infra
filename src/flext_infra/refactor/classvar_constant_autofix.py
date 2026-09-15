@@ -574,26 +574,12 @@ class FlextInfraRefactorClassvarConstantAutofix:
             if a != b:
                 break
             common += 1
-        ups = len(class_parts) - common - 1  # minus the source module itself
-        rel_parts = constants_parts[common:]
-        if ups == 0 and rel_parts == [constants_alias]:
-            import_line = f"from . import {constants_alias}\n"
-        elif ups == 0 and len(rel_parts) > 1:
-            import_line = f"from .{'.'.join(rel_parts[:-1])} import {constants_alias}\n"
-        elif ups == 0 and rel_parts:
-            import_line = f"from .{'.'.join(rel_parts)} import {constants_alias}\n"
-        elif ups > 0 and len(rel_parts) > 1:
-            import_line = (
-                f"from {'.' * ups}{'.'.join(rel_parts[:-1])} import {constants_alias}\n"
-            )
-        elif ups > 0 and rel_parts:
-            import_line = (
-                f"from {'.' * ups}{'.'.join(rel_parts)} import {constants_alias}\n"
-            )
-        elif ups > 0:
-            import_line = f"from {'.' * ups} import {constants_alias}\n"
+        if common:
+            parent = "." * (len(class_parts) - common)
+            parent += ".".join(constants_parts[common:-1])
         else:
-            import_line = f"from {constants_module} import {constants_alias}\n"
+            parent = ".".join(constants_parts[:-1])
+        import_line = f"from {parent} import {constants_alias}\n"
 
         lines = source.splitlines(keepends=True)
         existing = {line.strip() for line in lines}

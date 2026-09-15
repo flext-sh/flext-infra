@@ -12,10 +12,10 @@ from flext_infra import m, p, u
 from flext_infra.codegen import codegen_transaction as transaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
-from tests import u as test_u
+from tests import t, u as test_u
 
 
-class TestsTransactionDirectoryJournal:
+class TestsFlextInfraTransactionDirectoryJournal:
     """Exercise creation and cleanup against real physical filesystem state."""
 
     _TRANSACTION_ID = "a" * 32
@@ -98,7 +98,11 @@ class TestsTransactionDirectoryJournal:
         journal = FlextInfraMiseWorkspacePlanner.journal_path(identity)
         tm.that(journal.exists(), eq=foreign_change)
         if foreign_change:
-            tm.that(failed.error, has="new generated file changed before recovery")
+            assert failed.error_data is not None
+            tm.that(
+                failed.error_data["recovery_error"],
+                has="new generated file changed before recovery",
+            )
             tm.that(target.read_bytes(), eq=b"foreign content\n")
         else:
             tm.that(failed.error, lacks="recovery failed")
@@ -175,19 +179,19 @@ class TestsTransactionDirectoryJournal:
         planned = FlextInfraMiseWorkspacePlanner(owner).layout_from_selectors(
             root.resolve(),
             (".",),
-            transaction_id=TestsTransactionDirectoryJournal._TRANSACTION_ID,
+            transaction_id=TestsFlextInfraTransactionDirectoryJournal._TRANSACTION_ID,
         )
         return tm.ok(planned)
 
     @staticmethod
     def _journal(
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        directories: tuple[m.Infra.CodegenJournalDirectory, ...],
+        directories: t.VariadicTuple[m.Infra.CodegenJournalDirectory],
     ) -> m.Infra.CodegenTransactionJournal:
         physical = layout.scope_root.lstat()
         return m.Infra.CodegenTransactionJournal(
             version=8,
-            transaction_id=TestsTransactionDirectoryJournal._TRANSACTION_ID,
+            transaction_id=TestsFlextInfraTransactionDirectoryJournal._TRANSACTION_ID,
             scope_device=physical.st_dev,
             scope_inode=physical.st_ino,
             state="prepared",
@@ -204,8 +208,8 @@ class TestsTransactionDirectoryJournal:
     @staticmethod
     def _materialize(
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        directories: tuple[m.Infra.CodegenJournalDirectory, ...],
-    ) -> tuple[m.Infra.CodegenJournalDirectory, ...]:
+        directories: t.VariadicTuple[m.Infra.CodegenJournalDirectory],
+    ) -> t.VariadicTuple[m.Infra.CodegenJournalDirectory]:
         current = directories
         for intent in directories:
             created = tm.ok(
@@ -220,7 +224,7 @@ class TestsTransactionDirectoryJournal:
     def _register_manifest(
         cls,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        directories: tuple[m.Infra.CodegenJournalDirectory, ...],
+        directories: t.VariadicTuple[m.Infra.CodegenJournalDirectory],
     ) -> m.Infra.CodegenTransactionJournal:
         journal = cls._journal(layout, directories)
         registered = tm.ok(
@@ -382,4 +386,4 @@ class TestsTransactionDirectoryJournal:
         tm.that(marker.read_bytes(), eq=b"preserve")
 
 
-__all__: tuple[str, ...] = ()
+__all__: list[str] = ["TestsFlextInfraTransactionDirectoryJournal"]

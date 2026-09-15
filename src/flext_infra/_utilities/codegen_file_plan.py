@@ -51,8 +51,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
         desired_mode: int | None,
         source_states: t.SequenceOf[cli_m.Cli.AtomicFileState] = (),
         owner: str = "",
-        policy: Literal["full", "merge", "create-only", "delegated", "manual"]
-        | None = None,
+        policy: Literal["full", "merge"] | None = None,
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Capture one destination's before state and bind it to its desired state.
 
@@ -116,9 +115,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
         would hide distinct invalid UTF-8 bytes; treating None as empty bytes
         would erase the distinction between an absent and an empty file.
         """
-        before_text = (before.content or b"").decode("utf-8", errors="replace")
-        desired_text = (desired_content or b"").decode("utf-8", errors="replace")
-        return before_text != desired_text or before.mode != desired_mode
+        return before.content != desired_content or before.mode != desired_mode
 
     @staticmethod
     def codegen_file_requires_effect(plan: m.Infra.CodegenFilePlan) -> bool:

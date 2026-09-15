@@ -100,7 +100,7 @@ class FlextInfraCodegenGenerationStandardMixin(
     @classmethod
     def _lazy_groups(
         cls, plan: m.Infra.LazyInitPlan
-    ) -> tuple[
+    ) -> t.Triple[
         t.SequenceOf[t.StrSequencePair],
         t.SequenceOf[t.StrPairSequencePair],
         t.LazyAliasMap,
@@ -235,12 +235,22 @@ class FlextInfraCodegenGenerationStandardMixin(
         lazy_module_groups, lazy_alias_groups, lazy_map = cls._lazy_groups(plan)
         current_pkg = plan.context.current_pkg
         public_type_checking_imports = cls._type_checking_filtered(plan)
+        # For test facade roots (current_pkg == "tests"), the project's own
+        # package (e.g. "flext_web") must also be classified as first-party so
+        # isort sectioning matches ruff's known_first_party config. Without this,
+        # flext_web and flext_tests are lumped into the same third-party section,
+        # omitting the blank line ruff expects and violating I001.
+        type_checking_root_names: frozenset[str] | None = None
+        if current_pkg == c.Infra.DIR_TESTS:
+            project_pkg = plan.context.pkg_dir.parent.name.replace("-", "_")
+            type_checking_root_names = frozenset({current_pkg, project_pkg})
         type_checking_lines = "\n".join(
             cls.generate_type_checking(
                 cls._group_imports(public_type_checking_imports),
                 include_flext_types=False,
                 child_packages=plan.child_packages_for_lazy,
                 local_package_root=current_pkg,
+                root_names=type_checking_root_names,
             )
         )
         return m.Infra.LazyInitRootRender(

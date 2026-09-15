@@ -13,62 +13,70 @@ from flext_infra.services.cli_routes import CliRouteService
 from tests import u
 
 
-@pytest.fixture
-def rendered_makefile(tmp_path: Path) -> str:
-    """Use the conform owner and typed fixtures, not a copied Make recipe."""
-    repository = u.Tests.repository_ref("scope-contract-fixture")
-    request = u.Tests.conform_request(
-        tmp_path, what=c.Infra.CodegenConformSurface.MAKEFILE
-    )
-    plan = tm.ok(
-        FlextInfraCodegenConform(
-            repository_root=tmp_path,
-            request=request,
-            initial_workspace=m.Infra.WorkspaceSpec(
-                name=repository.name,
-                beads=u.Tests.beads_project(repository.name),
-                repository=repository,
-                project=u.Tests.project_spec(repository.name),
-            ),
-        ).plan(request)
-    )
-    return u.Tests.codegen_file_text(
-        next(file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME)
-    )
+class TestsFlextInfraCliRepositoryRootContract:
+    @pytest.fixture
+    def rendered_makefile(self, tmp_path: Path) -> str:
+        """Use the conform owner and typed fixtures, not a copied Make recipe."""
+        repository = u.Tests.repository_ref("scope-contract-fixture")
+        request = u.Tests.conform_request(
+            tmp_path, what=c.Infra.CodegenConformSurface.MAKEFILE
+        )
+        plan = tm.ok(
+            FlextInfraCodegenConform(
+                repository_root=tmp_path,
+                request=request,
+                initial_workspace=m.Infra.WorkspaceSpec(
+                    name=repository.name,
+                    beads=u.Tests.beads_project(repository.name),
+                    repository=repository,
+                    project=u.Tests.project_spec(repository.name),
+                ),
+            ).plan(request)
+        )
+        return u.Tests.codegen_file_text(
+            next(
+                file
+                for file in plan.files
+                if file.path.name == c.Infra.MAKEFILE_FILENAME
+            )
+        )
 
-
-@pytest.mark.parametrize(
-    ("group", "command", "generated_command"),
-    [
-        (c.Infra.CLI_GROUP_CHECK, c.Infra.VERB_RUN, c.Infra.VERB_RUN),
-        (c.Infra.CLI_GROUP_DEPS, "modernize", "modernize"),
-        (c.Infra.CLI_GROUP_CODEGEN, "init", "init"),
-        *[
-            (c.Infra.CLI_GROUP_DOCS, action, '"$$action"')
-            for action in config.Infra.codegen.make.docs.mutable_actions
+    @pytest.mark.parametrize(
+        ("group", "command", "generated_command"),
+        [
+            (c.Infra.CLI_GROUP_CHECK, c.Infra.VERB_RUN, c.Infra.VERB_RUN),
+            (c.Infra.CLI_GROUP_DEPS, "modernize", "modernize"),
+            (c.Infra.CLI_GROUP_CODEGEN, "init", "init"),
+            *[
+                (c.Infra.CLI_GROUP_DOCS, action, '"$$action"')
+                for action in config.Infra.codegen.make.docs.mutable_actions
+            ],
         ],
-    ],
-)
-def test_generated_scope_matches_route_and_help(
-    rendered_makefile: str, group: str, command: str, generated_command: str
-) -> None:
-    """Reject stale recipes and hidden service aliases as well as CLI drift."""
-    route = next(
-        route
-        for route in CliRouteService.route_table_for(group)
-        if route.name == command
     )
-    fields = route.model_cls.model_fields
-    tm.that(fields, has="repository_root")
-    tm.that(fields, lacks="workspace")
-    scope = fields["repository_root"]
-    tm.that(scope.alias is None, eq=True)
-    tm.that(scope.validation_alias is None, eq=True)
-    tm.that(scope.serialization_alias is None, eq=True)
-    option = "--repository-root"
-    tm.that(
-        rendered_makefile, has=f'{group} {generated_command} {option} "$(PROJECT_ROOT)"'
-    )
-    # The route model field IS the CLI option (typed contract above); help must
-    # render, and its styled text is presentation, never the contract.
-    tm.that(main([group, route.name, "--help"]), eq=0)
+    def test_generated_scope_matches_route_and_help(
+        self, rendered_makefile: str, group: str, command: str, generated_command: str
+    ) -> None:
+        """Reject stale recipes and hidden service aliases as well as CLI drift."""
+        route = next(
+            route
+            for route in CliRouteService.route_table_for(group)
+            if route.name == command
+        )
+        fields = route.model_cls.model_fields
+        tm.that(fields, has="repository_root")
+        tm.that(fields, lacks="workspace")
+        scope = fields["repository_root"]
+        tm.that(scope.alias is None, eq=True)
+        tm.that(scope.validation_alias is None, eq=True)
+        tm.that(scope.serialization_alias is None, eq=True)
+        option = "--repository-root"
+        tm.that(
+            rendered_makefile,
+            has=f'{group} {generated_command} {option} "$(PROJECT_ROOT)"',
+        )
+        # The route model field IS the CLI option (typed contract above); help must
+        # render, and its styled text is presentation, never the contract.
+        tm.that(main([group, route.name, "--help"]), eq=0)
+
+
+__all__: list[str] = ["TestsFlextInfraCliRepositoryRootContract"]

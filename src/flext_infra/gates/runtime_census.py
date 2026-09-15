@@ -32,9 +32,7 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
         """Run the runtime census scoped to ``project_dir``."""
         _ = ctx
         started = time.monotonic()
-        validator = FlextInfraRuntimeCensusValidator(
-            repository_root=self._repository_root, project_filter=project_dir.name
-        )
+        validator = FlextInfraRuntimeCensusValidator(repository_root=project_dir)
         result = validator.execute()
         passed = result.success and result.value is True
         errors: list[str] = []

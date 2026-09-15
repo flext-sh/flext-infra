@@ -39,12 +39,36 @@ src/flext_infra/
 - Rules-as-data: policy in `rules/*.yaml` + `config/*.yaml` (Pydantic); add a YAML row, not a detector class.
 - Codegen owns facets / `py.typed` / `[MANAGED]` sections — change SSOT/templates, run the generator; never hand-edit output.
 - Enforcement target is rope-semantic (ADR-005); some detectors still use AST — verify before claiming AST is banned.
-- Config/settings canonical pattern: ADR-012.
+- Config/settings canonical pattern: ADR-005 §§1–2 and `_settings.py`/`_config.py` docstrings (flext-z0zkq; fleet follow-up flext-la3z5).
 - Codemod governance (ast-grep + make mod): ADR-014.
+
+## Recovering this work
+
+For the namespace/runtime stabilization, start with
+`docs/roadmap/namespace-automation-handoff-2026-09-14.md`. Its opening table
+records the latest operator scope, branch/PR, measured runtime, first failed
+gate and next action; its body links the execution plan, ADRs and canonical
+Beads. Read that context before restarting discovery. Historical receipts do
+not validate a changed revision. `docs/guides/execution-context.md` defines
+how to keep this context useful without creating another tracker.
 
 ## Commands
 
+Correct runtime behavior is the authority. Exercise the real setup, generation
+and consumer paths first, then make tests verify that contract. Never alter the
+environment to preserve an obsolete fixture or treat a passing test as proof
+of integrated runtime behavior.
+
+Provisioning and dependency updates run exclusively through `make setup`.
+Fix its configuration/templates when the lifecycle is wrong; do not install,
+resolve or synchronize dependencies manually. The current operator contract
+removes `APPLY`, `uv.lock` and `mise.lock` throughout producers and consumers.
+Git dependencies follow each repository's declared integration branch tip.
+Publish the validated change through a merge-commit PR into that integration
+branch and verify the remote merge SHA before claiming delivery.
+
 ```bash
+make setup
 make check
 make test
 make build

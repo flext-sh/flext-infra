@@ -184,7 +184,8 @@ class FlextInfraRefactorTypingUnifier(
             ) : self._offset(source, end_lineno, end_col)
         ]
         return any(
-            prefix in text for prefix in ("MutableMapping[", "Dict[", "list[", "List[")
+            prefix in text
+            for prefix in ("dict[", "MutableMapping[", "Dict[", "list[", "List[")
         )
 
     @staticmethod

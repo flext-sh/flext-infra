@@ -89,7 +89,7 @@ class FlextInfraWorkspaceChecker(
         gate_ctx = m.Infra.GateContext(
             repository_root=params.repository_root,
             reports_dir=params.reports_dir_path,
-            apply_fixes=params.fix,
+            apply_fixes=params.apply,
             check_only=params.check_only,
             ruff_args=tuple(cls.parse_tool_args(params.ruff_args)),
             pyright_args=tuple(cls.parse_tool_args(params.pyright_args)),
@@ -108,6 +108,13 @@ class FlextInfraWorkspaceChecker(
         ]
         if failed_projects:
             failed_names = ", ".join(project.project for project in failed_projects)
+            if params.report_findings:
+                # Reporting adds context; failed gates retain their causal
+                # status in repair mode as well as in check mode.
+                u.Cli.warning(
+                    f"fix applied; quality gates still report findings for: "
+                    f"{failed_names} (see the check summary)"
+                )
             return r[bool].fail(f"quality gates failed for: {failed_names}")
         return r[bool].ok(True)
 

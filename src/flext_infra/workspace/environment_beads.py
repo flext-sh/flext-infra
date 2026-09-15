@@ -1,9 +1,8 @@
 """Beads-workspace environment sync: generated Gas City + Beads activation.
 
-Owns the generated ``.envrc`` for workspaces whose activation is the Beads /
-Gas City wiring (identity var, managed Dolt state) instead of the Python
-package environment, plus the post-sync ``direnv allow`` that keeps every
-managed root free of a stale allow.
+Owns the generated ``.envrc`` for Beads-only workspaces and composes selected
+Beads / Gas City wiring with Python activation when a pyproject exists, plus
+the post-sync ``direnv allow`` that keeps managed roots free of stale allows.
 """
 
 from __future__ import annotations
@@ -32,7 +31,10 @@ class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMix
         runner: p.Cli.CommandRunner | None = None,
     ) -> p.Result[m.Infra.WorkspaceEnvironmentSyncResult]:
         """Dispatch beads workspaces, then heal the direnv allow state."""
-        if request.beads is not None:
+        if (
+            request.beads is not None
+            and not (request.repository_root / c.Infra.PYPROJECT_FILENAME).is_file()
+        ):
             beads_result = cls._sync_beads_environment(request)
             if beads_result.failure:
                 return beads_result

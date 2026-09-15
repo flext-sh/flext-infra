@@ -15,25 +15,41 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-@pytest.fixture
-def command_contract_scope(infra_test_workspace: Path) -> m.Infra.DocScope:
-    """Declare the same repository identity in Git and the typed topology."""
-    name = "infra-pkg"
-    u.Tests.write_project_beads_config(infra_test_workspace, name)
-    u.Tests.write_standalone_workspace_manifest(infra_test_workspace, name)
-    u.Tests.initialize_git_repo(
-        infra_test_workspace, origin_url=u.Tests.repository_ref(name).url
-    )
-    return m.Infra.DocScope(
-        name=name,
-        path=infra_test_workspace,
-        report_dir=infra_test_workspace / ".reports" / "docs",
-        package_name="infra_pkg",
-    )
-
-
-class TestsDocsCommandContract:
+class TestsFlextInfraAuditorCommandContract:
     """Prove canonical Make, Testmon, and public-test documentation policy."""
+
+    @pytest.fixture
+    def command_contract_scope(self, infra_test_workspace: Path) -> m.Infra.DocScope:
+        """Declare the same repository identity in Git and the typed topology."""
+        name = "infra-pkg"
+        u.Tests.write_project_beads_config(infra_test_workspace, name)
+        u.Tests.write_standalone_workspace_manifest(infra_test_workspace, name)
+        u.Tests.initialize_git_repo(
+            infra_test_workspace, origin_url=u.Tests.repository_ref(name).url
+        )
+        return m.Infra.DocScope(
+            name=name,
+            path=infra_test_workspace,
+            report_dir=infra_test_workspace / ".reports" / "docs",
+            package_name="infra_pkg",
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("tool", ["uv", "mkdocs", "ruff", "pyright", "pre-commit"])
+    def test_tool_filename_is_not_a_command(tool: str) -> None:
+        """Filename prefixes remain prose; actual tool invocations are rejected."""
+        for content, expected in (
+            (f"Configuration is stored in `{tool}.toml`.", 0),
+            (f"The documentation uses `{tool}`.", 0),
+            (f"```bash\n{tool}\n```", 1),
+            (f"```bash\n{tool} --help\n```", 1),
+        ):
+            issues = u.Infra.docs_command_contract_content_issues(
+                content,
+                relative_path="docs/guides/commands.md",
+                effective_verbs=config.Infra.codegen.make.verbs,
+            )
+            tm.that(len(issues), eq=expected)
 
     @staticmethod
     def test_accepts_every_declared_verb_rendered_from_the_ssot() -> None:
@@ -84,10 +100,11 @@ make test PROJECT=flext-demo MATCH=unit
         tm.that(issues[0].message, has="invented Make selector")
 
     @staticmethod
-    def test_rejects_legacy_apply_flag_on_a_declared_verb() -> None:
+    @pytest.mark.parametrize("value", ["Y", "N", "", "invalid"])
+    def test_rejects_legacy_apply_flag_on_a_declared_verb(value: str) -> None:
         """The exterminated `APPLY` flag is rejected in documented commands."""
         verb = next(spec.name for spec in config.Infra.codegen.make.verbs)
-        content = f"```bash\nmake {verb} APPLY=Y\n```\n"
+        content = f"```bash\nmake {verb} APPLY={value}\n```\n"
 
         issues = u.Infra.docs_command_contract_content_issues(
             content,
@@ -339,3 +356,6 @@ result = patch("package.owner")
 
         tm.that(len(issues), eq=2)
         tm.that(issues[0].message, has="test-double code")
+
+
+__all__: list[str] = ["TestsFlextInfraAuditorCommandContract"]

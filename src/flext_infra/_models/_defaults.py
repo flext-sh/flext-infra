@@ -6,6 +6,8 @@ from collections.abc import Iterator, Mapping, MutableMapping
 from types import MappingProxyType
 from typing import Any, Never, override
 
+from flext_cli import m
+
 from flext_infra import t
 
 
@@ -38,5 +40,24 @@ def immutable_empty_mapping() -> Mapping[Any, Never]:
     return MappingProxyType(empty)
 
 
+def tool_version_field(description: str) -> t.Infra.ModelFieldSpec:
+    """Return the shared field metadata for one native-toolchain version.
+
+    Every toolchain version field previously repeated an identical
+    ``m.Field(description=...)`` shape, differing only in the description —
+    a structural clone the duplication detector flags as one family whatever
+    the literal string. One factory collapses every call site.
+
+    It lives here because ``_models`` declaration modules carry data, not
+    behaviour: a field factory is a shared default, so its owner is this
+    module, beside ``immutable_empty_mapping``, not a model module.
+    """
+    return m.Field(description=description)
+
+
 # Internal owner: direct module imports are intentional; no facade ABI is published.
-__all__: t.VariadicTuple[str] = ("ImmutableEmptyMapping", "immutable_empty_mapping")
+__all__: t.VariadicTuple[str] = (
+    "ImmutableEmptyMapping",
+    "immutable_empty_mapping",
+    "tool_version_field",
+)

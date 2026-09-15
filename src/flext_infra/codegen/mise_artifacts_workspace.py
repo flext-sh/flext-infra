@@ -6,7 +6,7 @@ import stat
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .. import m, r, u
+from .. import c, m, r, u
 from ..workspace import FlextInfraWorkspaceDetector
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 
@@ -110,15 +110,52 @@ class FlextInfraMiseWorkspacePlanner:
         """Build the no-effect journal layout from the descriptor-locked identity."""
         return self._layout_from_identity(identity, (".",), transaction_id=None)
 
+    def file_layout(
+        self, scope_root: Path, roots: t.MappingKV[str, Path], *, transaction_id: str
+    ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
+        """Bind explicit file capabilities without reading any Mise declaration."""
+        result_type = r[m.Infra.MiseToolchainWorkspaceLayout]
+        identity = self._exact_git_identity(scope_root)
+        if identity.failure:
+            return result_type.from_failure(identity)
+        participants: list[m.Infra.CodegenFileParticipant] = []
+        for selector, root in sorted(roots.items()):
+            if not root.is_absolute() or ".." in root.parts or root.resolve() != root:
+                return result_type.fail(f"file capability root is not physical: {root}")
+            physical = files.physical_directory_identity(root)
+            if physical.failure:
+                return result_type.from_failure(physical)
+            staging = self._state_root(root)
+            if staging.failure:
+                return result_type.from_failure(staging)
+            participants.append(
+                m.Infra.CodegenFileParticipant(
+                    selector=selector,
+                    root=root,
+                    device=physical.value[0],
+                    inode=physical.value[1],
+                    transaction_root=staging.value
+                    / f"{c.Infra.TRANSACTION_DIR_PREFIX}{transaction_id}",
+                )
+            )
+        state_root = self._state_root(scope_root)
+        if state_root.failure:
+            return result_type.from_failure(state_root)
+        return result_type.ok(
+            m.Infra.MiseToolchainWorkspaceLayout(
+                scope_root=scope_root,
+                state_root=state_root.value,
+                journal_path=self.journal_path(identity.value),
+                transaction_id=transaction_id,
+                projects=(),
+                file_participants=tuple(participants),
+            )
+        )
+
     @staticmethod
     def journal_path(identity: m.Infra.GitIdentityReport) -> Path:
-        """Return the shared journal anchor without materializing layout state.
-
-        Uses the Git common directory (shared across all linked worktrees)
-        instead of the per-worktree .git directory to ensure the journal
-        persists across worktree lifecycle and is always accessible.
-        """
-        return identity.common_dir / files.JOURNAL_NAME
+        """Return the shared journal anchor without materializing layout state."""
+        return identity.git_dir / c.Infra.JOURNAL_NAME
 
     def _layout_from_identity(
         self,
@@ -215,7 +252,7 @@ class FlextInfraMiseWorkspacePlanner:
         selectors: list[str] = []
         expected_paths: list[Path] = []
         for plan in config_plans:
-            if plan.path.name != files.CONFIG_SPEC[0] or ".." in plan.path.parts:
+            if plan.path.name != c.Infra.CONFIG_SPEC[0] or ".." in plan.path.parts:
                 return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
                     f"invalid Mise configuration plan path: {plan.path}"
                 )
@@ -326,7 +363,7 @@ class FlextInfraMiseWorkspacePlanner:
                 config=m.Infra.MiseToolchainConfigState(
                     before=config_state.value,
                     replacement_content=replacement_content,
-                    replacement_mode=files.CONFIG_SPEC[1],
+                    replacement_mode=c.Infra.CONFIG_SPEC[1],
                     sources=config_sources,
                 ),
                 artifacts=artifact_set,
@@ -347,14 +384,15 @@ class FlextInfraMiseWorkspacePlanner:
                 selector=selector,
                 root=root.value,
                 transaction_root=(
-                    state_root.value / f"{files.TRANSACTION_DIR_PREFIX}{transaction_id}"
+                    state_root.value
+                    / f"{c.Infra.TRANSACTION_DIR_PREFIX}{transaction_id}"
                     if transaction_id is not None
                     else None
                 ),
                 artifacts=m.Infra.MiseToolchainArtifactPaths(
-                    config=root.value / files.CONFIG_SPEC[0],
-                    unix_launcher=root.value / files.ARTIFACT_NAMES[0],
-                    windows_launcher=root.value / files.ARTIFACT_NAMES[1],
+                    config=root.value / c.Infra.CONFIG_SPEC[0],
+                    unix_launcher=root.value / c.Infra.ARTIFACT_NAMES[0],
+                    windows_launcher=root.value / c.Infra.ARTIFACT_NAMES[1],
                 ),
             )
         )

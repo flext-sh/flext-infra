@@ -13,7 +13,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, p, r, t, u
-from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 from ._layout_plan import FlextInfraCodegenLayoutPlanMixin
@@ -39,7 +38,7 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         self, project_dir: Path, profile: c.Infra.MakeProfile
     ) -> p.Result[t.Infra.LayoutStatus]:
         """Write the canonical rendered gitignore for a governed project."""
-        rendered = FlextInfraCodegenConform.render_project_gitignore(
+        rendered = self.render_project_gitignore(
             config.Infra.codegen,
             profile=profile,
             project_name=FlextInfraCodegenLayoutPlanMixin.layout_project_name(

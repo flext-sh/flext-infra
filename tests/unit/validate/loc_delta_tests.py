@@ -6,17 +6,12 @@ positive delta and passes everything else.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from flext_tests import tm
 
 from flext_infra.validate.loc_delta import FlextInfraLocDeltaValidator
 
-if TYPE_CHECKING:
-    from tests import t
 
-
-class TestLocDeltaValidator:
+class TestsFlextInfraLocDelta:
     def test_refactor_positive_delta_fails(self) -> None:
         result = FlextInfraLocDeltaValidator.evaluate(
             subject="refactor: collapse helpers", insertions=10, deletions=3
@@ -42,4 +37,4 @@ class TestLocDeltaValidator:
         tm.that(result.success, eq=True)
 
 
-__all__: t.StrSequence = []
+__all__: list[str] = ["TestsFlextInfraLocDelta"]

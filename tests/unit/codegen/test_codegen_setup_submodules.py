@@ -11,7 +11,7 @@ from flext_tests import tm
 
 from flext_infra import c, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from tests import u as test_u
+from tests import t, u as test_u
 
 # Why (suite budget): every scenario provisions a real scaffolded project
 # template plus live git submodule topologies; the per-case wall only holds
@@ -19,7 +19,35 @@ from tests import u as test_u
 pytestmark = pytest.mark.slow
 
 
-class TestsCodegenSetupSubmodules:
+class TestsFlextInfraCodegenSetupSubmodules:
+    @pytest.fixture(scope="module")
+    def generated_project_template(
+        self, tmp_path_factory: pytest.TempPathFactory
+    ) -> Path:
+        root = tmp_path_factory.mktemp("setup-submodules") / "project"
+        # Mirror the production `codegen new` spec assembly (its single delegate is
+        # the conform pipeline below) so the template is the full managed render.
+        repository = test_u.Tests.repository_ref(
+            "flext-demo", role=c.Infra.MakeProfile.STANDALONE
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            name=repository.name,
+            beads=test_u.Tests.beads_project(repository.name),
+            repository=repository,
+            project=test_u.Tests.project_spec(repository.name),
+        )
+        tm.ok(
+            FlextInfraCodegenConform.execute_request(
+                test_u.Tests.conform_request(
+                    root,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                ),
+                initial_workspace=workspace,
+            )
+        )
+        return root
+
     @staticmethod
     def _git(root: Path, *arguments: str) -> str:
         return tm.ok(u.Cli.capture(["git", *arguments], cwd=root)).strip()
@@ -46,7 +74,7 @@ class TestsCodegenSetupSubmodules:
     @staticmethod
     def _fake_uv(
         root: Path, expected_submodule_file: Path | None = None
-    ) -> dict[str, str]:
+    ) -> t.MutableMappingKV[str, str]:
         bin_dir = root / "fixture-bin"
         bin_dir.mkdir()
         # The bootstrap re-enters Make under a sanitized environment (only the
@@ -122,7 +150,7 @@ class TestsCodegenSetupSubmodules:
         *,
         superproject_branch: str,
         member_branch: str,
-    ) -> tuple[Path, dict[str, str]]:
+    ) -> t.Pair[Path, t.MutableMappingKV[str, str]]:
         """Provision a project whose member sits on the requested branch."""
         source = tmp_path / "source"
         cls._commit_repository(source, "declared-dev", "source")
@@ -490,31 +518,4 @@ class TestsCodegenSetupSubmodules:
         tm.that(self._git(checkout, "branch", "--show-current"), eq="declared-dev")
 
 
-@pytest.fixture(scope="module")
-def generated_project_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    root = tmp_path_factory.mktemp("setup-submodules") / "project"
-    # Mirror the production `codegen new` spec assembly (its single delegate is
-    # the conform pipeline below) so the template is the full managed render.
-    repository = test_u.Tests.repository_ref(
-        "flext-demo", role=c.Infra.MakeProfile.STANDALONE
-    )
-    workspace = m.Infra.WorkspaceSpec(
-        name=repository.name,
-        beads=test_u.Tests.beads_project(repository.name),
-        repository=repository,
-        project=test_u.Tests.project_spec(repository.name),
-    )
-    tm.ok(
-        FlextInfraCodegenConform.execute_request(
-            test_u.Tests.conform_request(
-                root,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.APPLY,
-            ),
-            initial_workspace=workspace,
-        )
-    )
-    return root
-
-
-__all__: tuple[str, ...] = ()
+__all__: list[str] = ["TestsFlextInfraCodegenSetupSubmodules"]

@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from tests import m, p, t
 
 
-class TestGateErrorReportingPublicBehavior:
+class TestsFlextInfraGateErrorReporting:
     """Verify gate issue parsing through the public ``check()`` contract."""
 
     @staticmethod
@@ -109,7 +109,7 @@ class TestGateErrorReportingPublicBehavior:
     ) -> None:
         runner = u.Tests.command_runner(stderr="rumdl execution failed", returncode=2)
 
-        result = TestGateErrorReportingPublicBehavior.failing_markdown_run(
+        result = TestsFlextInfraGateErrorReporting.failing_markdown_run(
             tmp_path, runner
         )
 
@@ -124,7 +124,7 @@ class TestGateErrorReportingPublicBehavior:
         diagnostic = "README.md:3:2: [MD057] Relative link 'missing.md' does not exist"
         runner = u.Tests.command_runner(stdout=diagnostic, returncode=1)
 
-        result = TestGateErrorReportingPublicBehavior.failing_markdown_run(
+        result = TestsFlextInfraGateErrorReporting.failing_markdown_run(
             tmp_path, runner
         )
 
@@ -135,3 +135,6 @@ class TestGateErrorReportingPublicBehavior:
             f"{captured.out}\n{captured.err}",
             has="README.md:3:2 [MD057] Relative link 'missing.md' does not exist",
         )
+
+
+__all__: t.StrSequence = ["TestsFlextInfraGateErrorReporting"]

@@ -7,6 +7,7 @@ after every generated write so a regression can never land silently.
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import Final
@@ -29,7 +30,13 @@ class FlextInfraWorkspaceEnvironmentContracts:
     def _resolve_env_target(
         cls, raw: str, root: Path, *, resolve_home: bool
     ) -> Path | None:
-        """Resolve one quoted target to a concrete path, or None when dynamic."""
+        """Resolve one quoted target to a concrete path, or None when dynamic.
+
+        A ``$HOME``/``~`` target describes machine state: it is skipped at
+        generation time and, when resolved at check time, the REAL home is
+        substituted for the prefix — stripping the prefix without substituting
+        would probe a bogus absolute path (``/.config/...``) that never exists.
+        """
         home_match = _HOME_PREFIX.match(raw)
         candidate = home_match.group(1) if home_match is not None else raw
         if candidate.startswith("~"):
@@ -38,8 +45,17 @@ class FlextInfraWorkspaceEnvironmentContracts:
             candidate = home_match.group(1) if home_match is not None else candidate
         if "$" in candidate:
             return None
-        if home_match is not None and not resolve_home:
-            return None
+        if home_match is not None:
+            if not resolve_home:
+                return None
+            # A $HOME target describes machine state, so it probes the real
+            # account home (pwd), never the ambient HOME: check pipelines run
+            # under redirected homes where the referenced files legitimately
+            # live only in the real account.
+            import pwd
+
+            real_home = pwd.getpwuid(os.getuid()).pw_dir
+            return Path(real_home) / candidate.lstrip("/")
         resolved = Path(candidate)
         if not resolved.is_absolute():
             resolved = root / resolved

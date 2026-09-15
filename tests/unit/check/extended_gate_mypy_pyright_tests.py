@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c, m
 from flext_infra.gates.mypy import FlextInfraMypyGate
@@ -17,23 +18,48 @@ if TYPE_CHECKING:
     from flext_infra.gates.base_gate import FlextInfraGate
 
 
-@pytest.fixture
-def checker_context(real_python_package: Path) -> m.Infra.GateContext:
-    """Configure the existing real package for native checker execution."""
-    pyproject = real_python_package / "pyproject.toml"
-    pyproject.write_text(
-        pyproject.read_text(encoding="utf-8")
-        + '\n[tool.mypy]\n[tool.pyright]\ninclude = ["src"]\n'
-        + '[tool.pyrefly]\nproject-includes = ["src"]\n',
-        encoding="utf-8",
-    )
-    reports = real_python_package / ".reports"
-    reports.mkdir()
-    return m.Infra.GateContext(repository_root=real_python_package, reports_dir=reports)
-
-
-class TestTypeGates:
+class TestsFlextInfraTypeGates:
     """The selected project's actual findings determine acceptance."""
+
+    @pytest.fixture
+    def checker_context(self, real_python_package: Path) -> m.Infra.GateContext:
+        """Configure the existing real package for native checker execution."""
+        pyproject = real_python_package / "pyproject.toml"
+        pyproject.write_text(
+            pyproject.read_text(encoding="utf-8")
+            + '\n[tool.mypy]\n[tool.pyright]\ninclude = ["src"]\n'
+            + '[tool.pyrefly]\nproject-includes = ["src"]\n',
+            encoding="utf-8",
+        )
+        reports = real_python_package / ".reports"
+        reports.mkdir()
+        return m.Infra.GateContext(
+            repository_root=real_python_package, reports_dir=reports
+        )
+
+    @pytest.mark.slow
+    def test_mypy_preserves_protocol_member_diagnostics(
+        self, checker_context: m.Infra.GateContext
+    ) -> None:
+        """Native protocol conflict details remain visible in reported issues."""
+        project = checker_context.repository_root
+        source = project / "src" / "test_pkg" / "contract.py"
+        source.write_text(
+            "from typing import Protocol\n"
+            "class Expected(Protocol):\n"
+            "    def size(self) -> int: ...\n"
+            "class Actual:\n"
+            "    def size(self) -> str:\n"
+            "        return 'incorrect'\n"
+            "value: Expected = Actual()\n",
+            encoding="utf-8",
+        )
+
+        result = FlextInfraMypyGate(project).check(project, checker_context)
+
+        tm.that(result.result.passed, eq=False)
+        messages = "\n".join(issue.message for issue in result.issues)
+        tm.that(messages, has=["Expected", "Actual", "def size", "int", "str"])
 
     @pytest.mark.slow
     @pytest.mark.parametrize(
@@ -234,4 +260,4 @@ class TestTypeGates:
             m.Infra.MypyCoverageReport.model_validate_json(payload, strict=True)
 
 
-__all__: list[str] = []
+__all__: list[str] = ["TestsFlextInfraTypeGates"]

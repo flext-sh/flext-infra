@@ -11,54 +11,53 @@ from flext_tests import tm
 from flext_infra import c, m, t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from tests import u
-from tests.unit.workspace import WorktreeFixture
 
 
-def _beads_fixture_root(tmp_path: Path, directory: str) -> Path:
-    """Initialize one governed checkout carrying the canonical Beads identity."""
-    return WorktreeFixture.governed_workspace(
-        tmp_path,
-        directory,
-        distribution=f"fixture-{directory}",
-        workspace="fixture-workspace",
-        database="fixture-database",
-        issue_prefix="fixture-prefix",
-    )
-
-
-def _beads_fixture_payload() -> dict[str, t.JsonValue]:
-    """Return the canonical Beads identity payload a fixture checkout declares."""
-    return {
-        "version": 1,
-        "workspace": "fixture-workspace",
-        "database": "fixture-database",
-        "issue_prefix": "fixture-prefix",
-    }
-
-
-def _self_named_governed_root(tmp_path: Path, directory: str) -> Path:
-    """Initialize one governed checkout whose identity derives from its directory."""
-    name = f"fixture-{directory}"
-    return WorktreeFixture.governed_workspace(
-        tmp_path,
-        directory,
-        distribution=name,
-        workspace=name,
-        database=name.replace("-", "_"),
-        issue_prefix=name,
-    )
-
-
-class TestsRepositoryLocalTopology:
+class TestsFlextInfraRepositoryLocalTopology:
     """Prove each repository owns its topology and typed Beads identity."""
+
+    @staticmethod
+    def _beads_fixture_root(tmp_path: Path, directory: str) -> Path:
+        """Initialize one governed checkout carrying the canonical Beads identity."""
+        return u.Tests.WorktreeFixture.governed_workspace(
+            tmp_path,
+            directory,
+            distribution=f"fixture-{directory}",
+            workspace="fixture-workspace",
+            database="fixture-database",
+            issue_prefix="fixture-prefix",
+        )
+
+    @staticmethod
+    def _beads_fixture_payload() -> t.MutableMappingKV[str, t.JsonValue]:
+        """Return the canonical Beads identity payload a fixture checkout declares."""
+        return {
+            "version": 1,
+            "workspace": "fixture-workspace",
+            "database": "fixture-database",
+            "issue_prefix": "fixture-prefix",
+        }
+
+    @staticmethod
+    def _self_named_governed_root(tmp_path: Path, directory: str) -> Path:
+        """Initialize one governed checkout whose identity derives from its directory."""
+        name = f"fixture-{directory}"
+        return u.Tests.WorktreeFixture.governed_workspace(
+            tmp_path,
+            directory,
+            distribution=name,
+            workspace=name,
+            database=name.replace("-", "_"),
+            issue_prefix=name,
+        )
 
     def test_selected_workspace_manifest_owns_repository_policy(
         self, tmp_path: Path
     ) -> None:
         """Preserve typed local policy after reconciling it with observed Git."""
-        root = _self_named_governed_root(tmp_path, "manifest-policy")
+        root = self._self_named_governed_root(tmp_path, "manifest-policy")
         observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        manifest: dict[str, t.JsonValue] = {
+        manifest: t.MutableMappingKV[str, t.JsonValue] = {
             "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
             "name": observed.name,
             "repository": {
@@ -82,8 +81,8 @@ class TestsRepositoryLocalTopology:
         self, tmp_path: Path
     ) -> None:
         """Fail closed when selected declarative identity disagrees with Git."""
-        root = _self_named_governed_root(tmp_path, "manifest-contradiction")
-        _ = WorktreeFixture.override_repository_manifest(
+        root = self._self_named_governed_root(tmp_path, "manifest-contradiction")
+        _ = u.Tests.WorktreeFixture.override_repository_manifest(
             root, {"distribution": "different-distribution"}
         )
 
@@ -105,14 +104,14 @@ class TestsRepositoryLocalTopology:
     def test_selected_workspace_manifest_validates_the_complete_document(
         self,
         tmp_path: Path,
-        overrides: dict[str, t.JsonValue],
+        overrides: t.MappingKV[str, t.JsonValue],
         missing_field: str | None,
         expected_error: str,
     ) -> None:
         """Reject incompatible or partial manifest envelopes before policy use."""
-        root = _self_named_governed_root(tmp_path, expected_error)
+        root = self._self_named_governed_root(tmp_path, expected_error)
         observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        payload: dict[str, t.JsonValue] = {
+        payload: t.MutableMappingKV[str, t.JsonValue] = {
             "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
             "name": f"fixture-{expected_error}",
             "repository": observed.repository.model_dump(mode="json"),
@@ -136,7 +135,7 @@ class TestsRepositoryLocalTopology:
     ) -> None:
         """Parse required identity and project extensions into one typed model."""
         root = tmp_path / "project"
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             root,
             "fixture-project",
             workspace="fixture-workspace",
@@ -168,8 +167,8 @@ class TestsRepositoryLocalTopology:
         self, tmp_path: Path, missing_field: str
     ) -> None:
         """Reject partial identity instead of inferring a value elsewhere."""
-        root = _beads_fixture_root(tmp_path, missing_field)
-        payload = _beads_fixture_payload()
+        root = self._beads_fixture_root(tmp_path, missing_field)
+        payload = self._beads_fixture_payload()
         del payload[missing_field]
         tm.ok(u.Cli.yaml_dump(root / "config" / "beads.yaml", payload))
 
@@ -195,8 +194,8 @@ class TestsRepositoryLocalTopology:
         self, tmp_path: Path, field: str, invalid_value: t.JsonValue
     ) -> None:
         """Fail closed on values outside the typed local contract."""
-        root = _beads_fixture_root(tmp_path, field)
-        payload = _beads_fixture_payload()
+        root = self._beads_fixture_root(tmp_path, field)
+        payload = self._beads_fixture_payload()
         payload["custom_issue_types"] = list[t.JsonValue]()
         payload[field] = invalid_value
         tm.ok(u.Cli.yaml_dump(root / "config" / "beads.yaml", payload))
@@ -210,14 +209,14 @@ class TestsRepositoryLocalTopology:
     ) -> None:
         """Vendored or empty Git topology does not create a FLEXT workspace."""
         root = tmp_path / "workspace"
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             root,
             "fixture-workspace",
             workspace="fixture-workspace",
             database="fixture-database",
             issue_prefix="fixture-prefix",
         )
-        WorktreeFixture.write_gitmodules(root, ())
+        u.Tests.WorktreeFixture.write_gitmodules(root, ())
 
         mode = tm.ok(FlextInfraWorkspaceDetector().detect(root))
         target = tm.ok(FlextInfraWorkspaceDetector.conform_target(root))
@@ -231,9 +230,9 @@ class TestsRepositoryLocalTopology:
         """Ignore every parent input when deriving one child repository."""
         parent = tmp_path / "parent"
         parent.mkdir()
-        WorktreeFixture.write_gitmodules(parent, ("child",))
+        u.Tests.WorktreeFixture.write_gitmodules(parent, ("child",))
         child = parent / "child"
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             child,
             "child",
             workspace="child-workspace",
@@ -258,7 +257,7 @@ class TestsRepositoryLocalTopology:
     def _attached_member(tmp_path: Path) -> Path:
         """Attach a governed member to a parent workspace and return its path."""
         child_source = tmp_path / "child-source"
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             child_source,
             "fixture-member",
             workspace="member-workspace",
@@ -267,7 +266,7 @@ class TestsRepositoryLocalTopology:
             beads_owner=False,
         )
         parent = tmp_path / "parent"
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             parent,
             "fixture-parent",
             workspace="parent-workspace",
@@ -279,13 +278,13 @@ class TestsRepositoryLocalTopology:
         # A composed project follows the workspace ledger through its own
         # declared identity. The ``.beads -> ../.beads`` link that used to
         # carry it is prohibited, and both conform and the detector reject it.
-        WorktreeFixture.write_beads_project(
+        u.Tests.WorktreeFixture.write_beads_project(
             member,
             workspace="parent-workspace",
             database="parent-database",
             issue_prefix="parent-prefix",
         )
-        WorktreeFixture.attach_submodule(
+        u.Tests.WorktreeFixture.attach_submodule(
             parent, member, distribution="fixture-member", relative_path="apps/member"
         )
         return member
@@ -310,7 +309,7 @@ class TestsRepositoryLocalTopology:
     ) -> None:
         """One manifest loads standalone and inside a workspace unchanged."""
         member = self._attached_member(tmp_path)
-        _ = WorktreeFixture.override_repository_manifest(
+        _ = u.Tests.WorktreeFixture.override_repository_manifest(
             member, {"uv_link_mode": "clone"}
         )
 
@@ -324,8 +323,8 @@ class TestsRepositoryLocalTopology:
         self, tmp_path: Path
     ) -> None:
         """A checkout without .gitmodules cannot declare the workspace role."""
-        root = _self_named_governed_root(tmp_path, "manifest-role-claim")
-        _ = WorktreeFixture.override_repository_manifest(
+        root = self._self_named_governed_root(tmp_path, "manifest-role-claim")
+        _ = u.Tests.WorktreeFixture.override_repository_manifest(
             root, {"role": c.Infra.MakeProfile.WORKSPACE}
         )
 
@@ -338,7 +337,7 @@ class TestsRepositoryLocalTopology:
     ) -> None:
         """Reject member-local identities and retain exactly the root ledger."""
         root = tmp_path / "workspace"
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             root,
             "fixture-workspace",
             workspace="root-workspace",
@@ -350,7 +349,7 @@ class TestsRepositoryLocalTopology:
             "fixture-beta": ("beta-workspace", "beta-database", "beta-prefix"),
         }
         for project_name, identity in identities.items():
-            WorktreeFixture.initialize_governed_project(
+            u.Tests.WorktreeFixture.initialize_governed_project(
                 root / project_name,
                 project_name,
                 workspace=identity[0],
@@ -358,14 +357,14 @@ class TestsRepositoryLocalTopology:
                 issue_prefix=identity[2],
                 beads_owner=False,
             )
-            WorktreeFixture.link_member_beads(
+            u.Tests.WorktreeFixture.link_member_beads(
                 root / project_name,
                 root,
                 workspace_name="root-workspace",
                 database="root-database",
                 issue_prefix="root-prefix",
             )
-        WorktreeFixture.write_gitmodules(root, tuple(identities))
+        u.Tests.WorktreeFixture.write_gitmodules(root, tuple(identities))
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
@@ -388,7 +387,7 @@ class TestsRepositoryLocalTopology:
     ) -> None:
         """Keep provider-owned services outside Python conformance ownership."""
         root = tmp_path / "workspace"
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             root,
             "fixture-workspace",
             workspace="root-workspace",
@@ -396,7 +395,7 @@ class TestsRepositoryLocalTopology:
             issue_prefix="root-prefix",
         )
         python_project = "fixture-python"
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             root / python_project,
             python_project,
             workspace="python-workspace",
@@ -404,7 +403,7 @@ class TestsRepositoryLocalTopology:
             issue_prefix="python-prefix",
             beads_owner=False,
         )
-        WorktreeFixture.link_member_beads(
+        u.Tests.WorktreeFixture.link_member_beads(
             root / python_project,
             root,
             workspace_name="root-workspace",
@@ -419,9 +418,11 @@ class TestsRepositoryLocalTopology:
         )
         u.Tests.initialize_git_repo(
             service_root,
-            origin_url=WorktreeFixture.governed_repository_url(service_project),
+            origin_url=u.Tests.WorktreeFixture.governed_repository_url(service_project),
         )
-        WorktreeFixture.write_gitmodules(root, (python_project, service_project))
+        u.Tests.WorktreeFixture.write_gitmodules(
+            root, (python_project, service_project)
+        )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
@@ -444,7 +445,7 @@ class TestsRepositoryLocalTopology:
     def test_repository_without_origin_fails_closed(self, tmp_path: Path) -> None:
         """Require an explicit origin before classifying provider ownership."""
         root = tmp_path / "without-origin"
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             root,
             "without-origin",
             workspace="without-origin",
@@ -469,7 +470,7 @@ class TestsRepositoryLocalTopology:
     ) -> None:
         """Reject a declared_repository entry without its exact URL or branch."""
         root = tmp_path / missing_key
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             root,
             "fixture-workspace",
             workspace="fixture-workspace",
@@ -495,7 +496,7 @@ class TestsRepositoryLocalTopology:
 
     def test_gitmodule_rejects_duplicate_paths(self, tmp_path: Path) -> None:
         """Reject two declarations that claim the same checkout path."""
-        root = WorktreeFixture.governed_workspace(tmp_path, "duplicate")
+        root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "duplicate")
         provider = u.Tests.provider()
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "first"]\n'
@@ -515,7 +516,9 @@ class TestsRepositoryLocalTopology:
 
     def test_gitmodule_rejects_malformed_configuration(self, tmp_path: Path) -> None:
         """Reject syntax that cannot define an exact submodule contract."""
-        root = WorktreeFixture.governed_workspace(tmp_path, "malformed-gitmodules")
+        root = u.Tests.WorktreeFixture.governed_workspace(
+            tmp_path, "malformed-gitmodules"
+        )
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "unterminated"\npath = fixture-child\n', encoding="utf-8"
         )
@@ -529,7 +532,7 @@ class TestsRepositoryLocalTopology:
         self, tmp_path: Path, declared_path: str
     ) -> None:
         """Reject relative traversal and absolute checkout destinations."""
-        root = WorktreeFixture.governed_workspace(tmp_path, "escaping-path")
+        root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "escaping-path")
         provider = u.Tests.provider()
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "fixture-child"]\n'
@@ -545,8 +548,8 @@ class TestsRepositoryLocalTopology:
 
     def test_gitmodule_rejects_missing_checkout(self, tmp_path: Path) -> None:
         """Reject a governed declaration whose checkout is absent."""
-        root = WorktreeFixture.governed_workspace(tmp_path, "missing-checkout")
-        WorktreeFixture.write_gitmodules(root, ("fixture-child",))
+        root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "missing-checkout")
+        u.Tests.WorktreeFixture.write_gitmodules(root, ("fixture-child",))
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
@@ -556,9 +559,11 @@ class TestsRepositoryLocalTopology:
         self, tmp_path: Path
     ) -> None:
         """Classify an indexed but uninitialized checkout as an external dependency."""
-        root = WorktreeFixture.governed_workspace(tmp_path, "uninitialized-gitlink")
+        root = u.Tests.WorktreeFixture.governed_workspace(
+            tmp_path, "uninitialized-gitlink"
+        )
         child_path = Path("fixture-child")
-        WorktreeFixture.write_gitmodules(root, (child_path.as_posix(),))
+        u.Tests.WorktreeFixture.write_gitmodules(root, (child_path.as_posix(),))
         recorded = tm.ok(
             u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=root)
         ).strip()
@@ -583,8 +588,8 @@ class TestsRepositoryLocalTopology:
 
     def test_gitmodule_rejects_provider_branch_divergence(self, tmp_path: Path) -> None:
         """Reject a governed checkout declared on another integration line."""
-        root = WorktreeFixture.governed_workspace(tmp_path, "branch-divergence")
-        WorktreeFixture.write_gitmodules(root, ("fixture-child",))
+        root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "branch-divergence")
+        u.Tests.WorktreeFixture.write_gitmodules(root, ("fixture-child",))
         gitmodules = root / c.Infra.GITMODULES
         gitmodules.write_text(
             gitmodules.read_text(encoding="utf-8").replace(
@@ -601,7 +606,7 @@ class TestsRepositoryLocalTopology:
         self, tmp_path: Path
     ) -> None:
         """Honor the .gitmodules overlay: flext-managed=false is never governed."""
-        root = WorktreeFixture.governed_workspace(tmp_path, "overlay-external")
+        root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "overlay-external")
         (root / "external-fork").mkdir()
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "external-fork"]\n'
@@ -622,7 +627,7 @@ class TestsRepositoryLocalTopology:
         self, tmp_path: Path
     ) -> None:
         """Accept a governed checkout declared on the published integration line."""
-        root = WorktreeFixture.governed_workspace(tmp_path, "integration-line")
+        root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "integration-line")
         provider = u.Tests.provider()
         baseline = tm.ok(u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=root))
         tm.ok(
@@ -642,11 +647,11 @@ class TestsRepositoryLocalTopology:
                 cwd=root,
             )
         )
-        _ = WorktreeFixture.attach_member_child(root)
+        _ = u.Tests.WorktreeFixture.attach_member_child(root)
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "fixture-child"]\n'
             "\tpath = fixture-child\n"
-            f"\turl = {WorktreeFixture.governed_repository_url('fixture-child')}\n"
+            f"\turl = {u.Tests.WorktreeFixture.governed_repository_url('fixture-child')}\n"
             "\tbranch = develop\n",
             encoding="utf-8",
         )
@@ -660,8 +665,8 @@ class TestsRepositoryLocalTopology:
 
     def test_gitmodule_rejects_origin_url_divergence(self, tmp_path: Path) -> None:
         """Reject a checkout whose origin identity differs from its declaration."""
-        root = WorktreeFixture.governed_workspace(tmp_path, "url-divergence")
-        _ = WorktreeFixture.attach_member_child(root)
+        root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "url-divergence")
+        _ = u.Tests.WorktreeFixture.attach_member_child(root)
         provider = u.Tests.provider()
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "fixture-child"]\n'
@@ -679,7 +684,7 @@ class TestsRepositoryLocalTopology:
         self, tmp_path: Path
     ) -> None:
         """Reject unknown declared_repository ownership before inspecting its checkout."""
-        root = WorktreeFixture.governed_workspace(tmp_path, "unknown-provider")
+        root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "unknown-provider")
         raw_host_marker = "private-submodule-host"
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "fixture-child"]\n'
@@ -709,3 +714,6 @@ class TestsRepositoryLocalTopology:
             FlextInfraWorkspaceDetector.repository_is_governed(repository, provider),
             eq=True,
         )
+
+
+__all__: list[str] = ["TestsFlextInfraRepositoryLocalTopology"]

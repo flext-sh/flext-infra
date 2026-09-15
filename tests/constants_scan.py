@@ -26,7 +26,7 @@ class TestsFlextInfraConstantsScanMixin:
         "E  AssertionError: mismatch",
         "FAILED tests/test_foo.py::test_bar",
     )
-    LOG_PATTERN_CASES: ClassVar[tuple[tuple[str, int], ...]] = (
+    LOG_PATTERN_CASES: ClassVar[t.VariadicTuple[t.Pair[str, int]]] = (
         ("error: compilation failed", 1),
         ("E  AssertionError: mismatch", 1),
         ("FAILED tests/test_foo.py::test_bar", 1),

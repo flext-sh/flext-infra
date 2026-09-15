@@ -71,10 +71,18 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
         return groups
 
     @staticmethod
-    def _import_item_sort_key(item: t.StrPair) -> t.Pair[str, bool]:
-        """Order an imported symbol by source name, then alias status."""
+    def _import_item_sort_key(item: t.StrPair) -> t.Pair[t.Pair[int, str], bool]:
+        """Order an imported symbol like Ruff isort (``order-by-type``).
+
+        Constants (all upper case) precede CamelCase classes, which precede
+        lower-case names; the name is the secondary key and the alias status
+        the tertiary one. Plain lexicographic ordering fights ``ruff format``
+        isort on the same generated block, producing a gen/fmt flip-flop.
+        """
         export_name, imported_name = item
-        return imported_name or export_name, export_name != imported_name
+        imported = imported_name or export_name
+        category = 0 if imported.isupper() else 1 if imported[:1].isupper() else 2
+        return (category, imported), export_name != imported_name
 
     @staticmethod
     def _generate_import_lines(

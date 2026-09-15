@@ -18,6 +18,7 @@ from tests.utilities_fixture_workspace import (
 )
 from tests.utilities_gates import TestsFlextInfraUtilitiesGatesMixin
 from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
+from tests.utilities_promoted import TestsFlextInfraUtilitiesPromotedMixin
 from tests.utilities_release import TestsFlextInfraUtilitiesReleaseMixin
 from tests.utilities_replay import TestsFlextInfraUtilitiesReplayRunnerMixin
 from tests.utilities_replay_sequence import TestsFlextInfraUtilitiesReplaySequenceMixin
@@ -36,6 +37,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         TestsFlextInfraUtilitiesWorkspaceFixtureMixin,
         TestsFlextInfraUtilitiesToolingFixtureMixin,
         TestsFlextInfraUtilitiesDocsFixtureMixin,
+        TestsFlextInfraUtilitiesPromotedMixin,
         TestsFlextInfraUtilitiesReleaseMixin,
         TestsFlextInfraUtilitiesGitMixin,
         TestsFlextInfraUtilitiesGatesMixin,

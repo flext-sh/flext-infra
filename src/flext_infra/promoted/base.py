@@ -23,14 +23,8 @@ COMMAND_SUFFIXES = frozenset({".sh", ".py"})
 # structure inside a verb directory, never a public command.
 PACKAGE_MARKERS = frozenset({"__init__.py"})
 IGNORED_DIRS = frozenset({"__pycache__", "hooks", "legado", "lib"})
-# R28 (operator decision A, 2026-09-12): mutation is the default for every
-# promoted command; APPLY is no longer a required mutation parameter. Only the
-# incident domain still requires its own explicit safety parameters.
+# Incident mutations retain their domain-specific safety parameters.
 INCIDENT_MUTATION_REQUIRED_PARAMS = frozenset({"EMERGENCY", "BREAKING_GLASS_BEAD"})
-# R28: the only ambient APPLY values a promoted command accepts. "" mutates
-# (the default); "N" selects check/dry-run mode. Any other value, in
-# particular the legacy "Y", is a hard error (see invocation.validate_apply_env).
-PROMOTED_APPLY_VALUES = frozenset({"", "N"})
 
 
 class RegistryError(Exception):

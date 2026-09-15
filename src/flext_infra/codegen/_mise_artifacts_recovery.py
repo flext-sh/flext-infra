@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
-from flext_infra import m
+from flext_infra import c, m
 
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 from ._mise_artifacts_journal import FlextInfraMiseArtifactsJournal as journal_io
@@ -93,8 +93,8 @@ class FlextInfraMiseRecovery:
         result_type = r[tuple[m.Infra.CodegenRecoveryAction, ...]]
         actions: list[m.Infra.CodegenRecoveryAction] = []
         for entry in journal.entries:
-            target = files.resolve_relative(
-                layout.scope_root, entry.path, purpose="generated destination"
+            target = files.resolve_transaction(
+                layout, entry.path, purpose="generated destination"
             )
             if target.failure:
                 return result_type.from_failure(target)
@@ -116,12 +116,10 @@ class FlextInfraMiseRecovery:
             ):
                 operation = "noop"
             elif identity == desired:
-                operation = "noop" if entry.original_exists else "delete"
-            elif entry.original_exists:
-                operation = "restore"
+                operation = "restore" if entry.original_exists else "delete"
             else:
                 return result_type.fail(
-                    f"new generated file changed before recovery: {entry.path}"
+                    f"generated file has an unowned state before recovery: {entry.path}"
                 )
             actions.append(
                 m.Infra.CodegenRecoveryAction(
@@ -141,8 +139,8 @@ class FlextInfraMiseRecovery:
             if not action.entry.original_exists or action.entry.original_backup is None:
                 candidates.append(None)
                 continue
-            backup_path = files.resolve_relative(
-                layout.scope_root,
+            backup_path = files.resolve_transaction(
+                layout,
                 action.entry.original_backup,
                 purpose="generation recovery backup",
             )
@@ -171,10 +169,8 @@ class FlextInfraMiseRecovery:
             return r[m.Infra.CodegenStagedFile].fail(
                 f"generation recovery tuple is incomplete: {entry.path}"
             )
-        backup_path = files.resolve_relative(
-            layout.scope_root,
-            entry.original_backup,
-            purpose="generation recovery backup",
+        backup_path = files.resolve_transaction(
+            layout, entry.original_backup, purpose="generation recovery backup"
         )
         if backup_path.failure:
             return r[m.Infra.CodegenStagedFile].from_failure(backup_path)
@@ -184,7 +180,7 @@ class FlextInfraMiseRecovery:
                 backup.error or f"generation recovery backup is absent: {entry.path}"
             )
         if (
-            backup.value.mode != files.JOURNAL_MODE
+            backup.value.mode != c.Infra.JOURNAL_MODE
             or files.digest(backup.value.content) != entry.original_sha256
         ):
             return r[m.Infra.CodegenStagedFile].fail(
@@ -211,7 +207,9 @@ class FlextInfraMiseRecovery:
                 f"generation restore candidate differs: {entry.path}"
             )
         project = next(
-            item.root for item in layout.projects if item.selector == entry.project
+            item.root
+            for item in files.transaction_participants(layout)
+            if item.selector == entry.project
         )
         return r[m.Infra.CodegenStagedFile].ok(
             m.Infra.CodegenStagedFile(
@@ -238,10 +236,8 @@ class FlextInfraMiseRecovery:
                 return result_type.fail(
                     f"generation rollback backup is absent: {entry.path}"
                 )
-            backup = files.resolve_relative(
-                layout.scope_root,
-                entry.original_backup,
-                purpose="generation recovery backup",
+            backup = files.resolve_transaction(
+                layout, entry.original_backup, purpose="generation recovery backup"
             )
             if backup.failure:
                 return result_type.from_failure(backup)
@@ -258,7 +254,9 @@ class FlextInfraMiseRecovery:
                     f"generation rollback candidate changed: {entry.path}"
                 )
             project = next(
-                item.root for item in layout.projects if item.selector == entry.project
+                item.root
+                for item in files.transaction_participants(layout)
+                if item.selector == entry.project
             )
             candidates.append(
                 m.Infra.CodegenStagedFile(
@@ -297,8 +295,8 @@ class FlextInfraMiseRecovery:
     ) -> p.Result[bool]:
         by_path = {action.entry.path: action for action in actions}
         for entry in journal.entries:
-            target = files.resolve_relative(
-                layout.scope_root, entry.path, purpose="generated destination"
+            target = files.resolve_transaction(
+                layout, entry.path, purpose="generated destination"
             )
             if target.failure:
                 return r[bool].from_failure(target)

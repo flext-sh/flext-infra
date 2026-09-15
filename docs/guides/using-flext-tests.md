@@ -92,7 +92,7 @@ Use the `r` alias instead of importing from `returns` directly:
 from flext_tests import r
 
 
-def safe_divide(a: float, b: float) -> r[float]:
+def safe_divide(a: float, b: float) -> p.Result[float]:
     if b == 0:
         return r[float].fail("division_by_zero")
     return r[float].ok(a / b)
@@ -122,7 +122,7 @@ workspace inventory.
 
 Repository conformance and the complete generated Makefile are owned solely by
 `flext-infra codegen conform`. Discover the current selector-free verbs through
-`make help` in the owning repository root. Mutating execution requires `APPLY=Y`;
+`make help` in the owning repository root. Each verb executes its operation directly;
 do not add a `WHAT` selector or duplicate the dispatcher in a test helper.
 
 Tests for this contract exercise the generated public commands and observable

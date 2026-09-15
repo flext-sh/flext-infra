@@ -10,7 +10,7 @@ from flext_tests import tm
 from flext_infra import c, u
 
 
-class TestsMiseRuntimeStorage:
+class TestsFlextInfraMiseRuntimeStorage:
     """Validate storage behavior only through the public utility facade."""
 
     def test_runtime_storage_is_persistent_and_release_addressed(self) -> None:
@@ -52,4 +52,4 @@ class TestsMiseRuntimeStorage:
         tm.that(candidate.exists(), eq=False)
 
 
-__all__: tuple[str, ...] = ()
+__all__: list[str] = ["TestsFlextInfraMiseRuntimeStorage"]

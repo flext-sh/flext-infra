@@ -65,8 +65,10 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
         """Use configured search paths without Pyrefly's inherited-path warning."""
-        _ = project_dir, ctx
-        return (c.Infra.ORCHESTRATOR_ENV_PYTHONPATH,)
+        return (
+            *super()._check_remove_env_keys(project_dir, ctx),
+            c.Infra.ORCHESTRATOR_ENV_PYTHONPATH,
+        )
 
     @override
     def _parse_check_output(

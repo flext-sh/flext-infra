@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Final
 from .._constants.codegen_detection import FlextInfraConstantsCodegenDetection
 from .._constants.codegen_lazy import FlextInfraConstantsCodegenLazy
 from .._constants.codegen_render_names import FlextInfraConstantsCodegenRenderNames
+from .workspace import FlextInfraConstantsWorkspace
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -27,6 +28,33 @@ class FlextInfraConstantsCodegen(
     FlextInfraConstantsCodegenRenderNames,
 ):
     """Namespace for all codegen-related constants."""
+
+    ARTIFACT_SPECS: Final[t.VariadicTuple[t.Pair[str, int]]] = (
+        ("bin/mise", 0o755),
+        ("bin/mise.cmd", 0o644),
+    )
+
+    CONFIG_SPEC: Final[t.Pair[str, int]] = (
+        FlextInfraConstantsWorkspace.MISE_TOML_FILENAME,
+        0o644,
+    )
+
+    PUBLICATION_SPECS: Final[t.VariadicTuple[t.Pair[str, int]]] = (
+        CONFIG_SPEC,
+        *ARTIFACT_SPECS,
+    )
+
+    ARTIFACT_NAMES: Final[t.VariadicTuple[str]] = tuple(
+        name for name, _mode in ARTIFACT_SPECS
+    )
+
+    JOURNAL_NAME: Final[str] = "flext-infra-codegen-transaction-journal.json"
+
+    JOURNAL_MODE: Final[int] = 0o600
+
+    TRANSACTION_DIR_PREFIX: Final[str] = "transaction-"
+
+    TRANSACTION_ID_LENGTH: Final[int] = 32
 
     SRC_MODULES: Final[t.VariadicTuple[t.Quad[str, str, str, str]]] = (
         ("constants.py", "Constants", "FlextConstants", "Constants"),
@@ -144,8 +172,9 @@ class FlextInfraConstantsCodegen(
         ("MISE_STATE_DIR", "state"),
         ("MISE_INSTALLS_DIR", "installs"),
         ("MISE_SHIMS_DIR", "shims"),
+        ("UV_CACHE_DIR", "uv-cache"),
     )
-    "Mise paths rooted in the required caller-owned persistent directory."
+    "Tool and package caches rooted in the required persistent storage directory."
     MISE_BOOTSTRAP_EMPTY_FILES: Final[t.StrSequence] = (
         "global-config.toml",
         "system-config/config.toml",

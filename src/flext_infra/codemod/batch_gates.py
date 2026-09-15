@@ -287,6 +287,7 @@ class FlextInfraModGateEngine:
         root: Path,
         rule_files_by_id: Mapping[str, Path],
         fixable_ids: frozenset[str],
+        source_states: Mapping[Path, m.Cli.AtomicFileState],
     ) -> p.Result[m.Infra.ModScanReport]:
         """Validate every JSONL finding without dropping malformed output."""
         findings = 0
@@ -342,15 +343,19 @@ class FlextInfraModGateEngine:
                 )
             file_path = Path(file)
             resolved_file = (root / file_path).resolve()
-            if resolved_file.is_file():
-                try:
-                    source = resolved_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-                except OSError as exc:
-                    return r[m.Infra.ModScanReport].fail(
-                        f"cannot read finding source {resolved_file}: {exc}"
-                    )
-                if source.startswith(c.Infra.AUTOGEN_HEADERS):
-                    continue
+            snapshot = source_states.get(resolved_file)
+            if snapshot is None or snapshot.content is None:
+                return r[m.Infra.ModScanReport].fail(
+                    f"finding has no authenticated source snapshot: {resolved_file}"
+                )
+            observed = u.Cli.atomic_read_binary_file_state(resolved_file, required=True)
+            if observed.failure:
+                return r[m.Infra.ModScanReport].from_failure(observed)
+            if observed.value != snapshot:
+                return r[m.Infra.ModScanReport].fail(
+                    f"finding source changed during scanning: {resolved_file}"
+                )
+            source = snapshot.content.decode(c.Cli.ENCODING_DEFAULT)
             files.add(file_path)
             replacement = raw_replacement if isinstance(raw_replacement, str) else None
             actionable = False
@@ -387,6 +392,10 @@ class FlextInfraModGateEngine:
                     rule_id=rule_id,
                     repository=repository,
                     file=file_path,
+                    source_owner="generator"
+                    if source.startswith(c.Infra.AUTOGEN_HEADERS)
+                    else "authored",
+                    source_state=snapshot,
                     range=t.Cli.JSON_MAPPING_ADAPTER.validate_python(source_range),
                     text=text,
                     replacement=replacement,
@@ -482,6 +491,19 @@ class FlextInfraModGateEngine:
         )
         sys.stderr.flush()
         for ruleset in plan.rulesets:
+            source_paths: set[Path] = set()
+            for target in targets:
+                path = root / target
+                if path.is_dir():
+                    source_paths.update(u.Infra.iter_directory_python_files(path))
+                else:
+                    source_paths.add(path)
+            source_states = {
+                path.resolve(): u.Cli.atomic_read_binary_file_state(
+                    path, required=True
+                ).unwrap()
+                for path in sorted(source_paths)
+            }
             ruleset_files = {
                 rule_id: rule_files_by_id[rule_id] for rule_id in ruleset.rule_ids
             }
@@ -499,6 +521,7 @@ class FlextInfraModGateEngine:
                 root,
                 ruleset_files,
                 frozenset(ruleset.fixable_rule_ids),
+                source_states,
             ).unwrap()
             if run.value.outcome.raw_return_code != 0:
                 error_findings = sum(
@@ -511,19 +534,6 @@ class FlextInfraModGateEngine:
             non_actionable_with_fix_findings += report.non_actionable_with_fix
             files.update(report.files)
             entries.extend(report.entries)
-            if not (fix and report.actionable and ruleset.fixable_rule_ids):
-                continue
-            apply_command = u.Infra.ast_grep_scan_command(
-                ruleset.config,
-                rule_ids=ruleset.fixable_rule_ids,
-                targets=targets,
-                update_all=True,
-            )
-            apply_run = cls._run_tool(
-                root, apply_command, accept_source_apply_receipt=True
-            )
-            if apply_run.failure:
-                return r[m.Infra.ModScanReport].from_failure(apply_run)
         complete_report = m.Infra.ModScanReport(
             findings=findings,
             actionable=actionable_findings,
@@ -543,6 +553,12 @@ class FlextInfraModGateEngine:
         if receipt.failure:
             return r[m.Infra.ModScanReport].from_failure(receipt)
         cls._report_evidence(receipt.value)
+        if fix:
+            from .batch_replacements import FlextInfraModReplacements
+
+            published = FlextInfraModReplacements.publish(root, complete_report)
+            if published.failure:
+                return r[m.Infra.ModScanReport].from_failure(published)
         return r[m.Infra.ModScanReport].ok(complete_report)
 
 

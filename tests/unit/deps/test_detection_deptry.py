@@ -18,7 +18,7 @@ class TestsFlextInfraDepsDetectionDeptry:
     """Test flext infra deps detection deptry behavior."""
 
     @staticmethod
-    def _deptry_environment(tmp_path: Path) -> tuple[Path, Path]:
+    def _deptry_environment(tmp_path: Path) -> t.Pair[Path, Path]:
         """Create one venv bin directory and a minimal deptry project."""
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
