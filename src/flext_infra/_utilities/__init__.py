@@ -51,8 +51,15 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
     )
     from ._project_discovery_shape import FlextInfraUtilitiesProjectDiscoveryShapeMixin
+    from ._rope.analysis import FlextInfraUtilitiesRopeAnalysisAnalysis
+    from ._rope.ast import FlextInfraUtilitiesRopeAnalysisAst
+    from ._rope.base import FlextInfraUtilitiesRopeAnalysisBase
+    from ._rope.imports import FlextInfraUtilitiesRopeAnalysisImports
+    from ._rope.nodes import FlextInfraUtilitiesRopeAnalysisNodes
     from ._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
     from ._rope.project import FlextInfraRopeProject
+    from ._rope.scope import FlextInfraUtilitiesRopeAnalysisScope
+    from ._rope.source import FlextInfraUtilitiesRopeAnalysisSource
     from ._rope_bracket_balance import FlextInfraUtilitiesRopeBracketBalanceMixin
     from ._rope_core_pymodule import FlextInfraUtilitiesRopeCorePyModuleMixin
     from ._rope_core_resources import FlextInfraUtilitiesRopeCoreResourcesMixin
@@ -264,7 +271,14 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRepository",
     "FlextInfraUtilitiesResourceLimits",
     "FlextInfraUtilitiesRopeAnalysis",
+    "FlextInfraUtilitiesRopeAnalysisAnalysis",
+    "FlextInfraUtilitiesRopeAnalysisAst",
+    "FlextInfraUtilitiesRopeAnalysisBase",
+    "FlextInfraUtilitiesRopeAnalysisImports",
     "FlextInfraUtilitiesRopeAnalysisIntrospection",
+    "FlextInfraUtilitiesRopeAnalysisNodes",
+    "FlextInfraUtilitiesRopeAnalysisScope",
+    "FlextInfraUtilitiesRopeAnalysisSource",
     "FlextInfraUtilitiesRopeAnalysisWorkspace",
     "FlextInfraUtilitiesRopeBracketBalanceMixin",
     "FlextInfraUtilitiesRopeClassMove",
@@ -355,8 +369,15 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraUtilitiesProjectDiscoveryShapeMixin",
             ),
             "._rope": ("_rope",),
+            "._rope.analysis": ("FlextInfraUtilitiesRopeAnalysisAnalysis",),
+            "._rope.ast": ("FlextInfraUtilitiesRopeAnalysisAst",),
+            "._rope.base": ("FlextInfraUtilitiesRopeAnalysisBase",),
+            "._rope.imports": ("FlextInfraUtilitiesRopeAnalysisImports",),
+            "._rope.nodes": ("FlextInfraUtilitiesRopeAnalysisNodes",),
             "._rope.pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
             "._rope.project": ("FlextInfraRopeProject",),
+            "._rope.scope": ("FlextInfraUtilitiesRopeAnalysisScope",),
+            "._rope.source": ("FlextInfraUtilitiesRopeAnalysisSource",),
             "._rope_bracket_balance": ("FlextInfraUtilitiesRopeBracketBalanceMixin",),
             "._rope_core_pymodule": ("FlextInfraUtilitiesRopeCorePyModuleMixin",),
             "._rope_core_resources": ("FlextInfraUtilitiesRopeCoreResourcesMixin",),
