@@ -430,7 +430,20 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 printf '%s\n' "$$mise_storage_root/shims" >> "$$GITHUB_PATH"; \
 fi; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
-	mise_exec project "$$latest_mise" -C "$$project_root" exec -- env "SETUP_DIRENV=$$direnv_executable" "SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" "CI=$(CI)" $(SELF_MAKE) _setup_lifecycle
+	env \
+"MISE_DATA_DIR=$$mise_storage_root" \
+"MISE_CACHE_DIR=$$mise_storage_root/cache" \
+"MISE_STATE_DIR=$$mise_storage_root/state" \
+"MISE_INSTALLS_DIR=$$mise_storage_root/installs" \
+"MISE_SHIMS_DIR=$$mise_storage_root/shims" \
+"UV_CACHE_DIR=$$mise_storage_root/uv-cache" \
+"GIT_CEILING_DIRECTORIES=$$project_parent" \
+		"MISE_CEILING_PATHS=$$project_parent" \
+		"MISE_TRUSTED_CONFIG_PATHS=$$project_root" \
+		"$$latest_mise" -C "$$project_root" exec -- env \
+		"SETUP_DIRENV=$$direnv_executable" \
+		"SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" \
+		"CI=$(CI)" $(SELF_MAKE) _setup_lifecycle
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
@@ -552,70 +565,198 @@ endef
 .PHONY: _builtin_gen_init _builtin_gen_all
 
 
+
 help:
+
 	$(call RUN_PUBLIC,help)
 
-deps: _builtin_require_environment
+
+deps:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-deps
+
+.PHONY: _activated-deps
+_activated-deps: _builtin_require_environment
+
 	$(call RUN_PUBLIC,deps)
 
-build: _builtin_require_environment
+
+build:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-build
+
+.PHONY: _activated-build
+_activated-build: _builtin_require_environment
+
 	$(call RUN_PUBLIC,build)
 
-check: _builtin_require_environment
+
+check:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-check
+
+.PHONY: _activated-check
+_activated-check: _builtin_require_environment
+
 	$(call RUN_PUBLIC,check)
 
-test: _builtin_require_environment
+
+test:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-test
+
+.PHONY: _activated-test
+_activated-test: _builtin_require_environment
+
 	$(call RUN_PUBLIC,test)
 
-fmt: _builtin_require_environment
+
+fmt:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-fmt
+
+.PHONY: _activated-fmt
+_activated-fmt: _builtin_require_environment
+
 	$(call RUN_PUBLIC,fmt)
 
-fix: _builtin_require_environment
+
+fix:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-fix
+
+.PHONY: _activated-fix
+_activated-fix: _builtin_require_environment
+
 	$(call RUN_PUBLIC,fix)
 
-fix-enforcement: _builtin_require_environment
+
+fix-enforcement:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-fix-enforcement
+
+.PHONY: _activated-fix-enforcement
+_activated-fix-enforcement: _builtin_require_environment
+
 	$(call RUN_PUBLIC,fix-enforcement)
 
-audit: _builtin_require_environment
+
+audit:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-audit
+
+.PHONY: _activated-audit
+_activated-audit: _builtin_require_environment
+
 	$(call RUN_PUBLIC,audit)
 
-status: _builtin_require_environment
+
+status:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-status
+
+.PHONY: _activated-status
+_activated-status: _builtin_require_environment
+
 	$(call RUN_PUBLIC,status)
 
-docs: _builtin_require_environment
+
+docs:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-docs
+
+.PHONY: _activated-docs
+_activated-docs: _builtin_require_environment
+
 	$(call RUN_PUBLIC,docs)
 
-clean: _builtin_require_environment
+
+clean:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-clean
+
+.PHONY: _activated-clean
+_activated-clean: _builtin_require_environment
+
 	$(call RUN_PUBLIC,clean)
 
-release-plan: _builtin_require_environment
+
+release-plan:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-release-plan
+
+.PHONY: _activated-release-plan
+_activated-release-plan: _builtin_require_environment
+
 	$(call RUN_PUBLIC,release-plan)
 
-release-version: _builtin_require_environment
+
+release-version:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-release-version
+
+.PHONY: _activated-release-version
+_activated-release-version: _builtin_require_environment
+
 	$(call RUN_PUBLIC,release-version)
 
-release-tag: _builtin_require_environment
+
+release-tag:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-release-tag
+
+.PHONY: _activated-release-tag
+_activated-release-tag: _builtin_require_environment
+
 	$(call RUN_PUBLIC,release-tag)
 
-release-build: _builtin_require_environment
+
+release-build:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-release-build
+
+.PHONY: _activated-release-build
+_activated-release-build: _builtin_require_environment
+
 	$(call RUN_PUBLIC,release-build)
 
-publication: _builtin_require_environment
+
+publication:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-publication
+
+.PHONY: _activated-publication
+_activated-publication: _builtin_require_environment
+
 	$(call RUN_PUBLIC,publication)
 
-gen: _builtin_require_environment
+
+gen:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-gen
+
+.PHONY: _activated-gen
+_activated-gen: _builtin_require_environment
+
 	$(call RUN_PUBLIC,gen)
 
-initialize: _builtin_require_environment
+
+initialize:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-initialize
+
+.PHONY: _activated-initialize
+_activated-initialize: _builtin_require_environment
+
 	$(call RUN_PUBLIC,initialize)
 
-mod: _builtin_require_environment
+
+mod:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-mod
+
+.PHONY: _activated-mod
+_activated-mod: _builtin_require_environment
+
 	$(call RUN_PUBLIC,mod)
 
-waza: _builtin_require_environment
+
+waza:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-waza
+
+.PHONY: _activated-waza
+_activated-waza: _builtin_require_environment
+
 	$(call RUN_PUBLIC,waza)
 
-duplication: _builtin_require_environment
+
+duplication:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-duplication
+
+.PHONY: _activated-duplication
+_activated-duplication: _builtin_require_environment
+
 	$(call RUN_PUBLIC,duplication)
 
 
@@ -635,6 +776,11 @@ _setup_lifecycle:
 		*" pre-setup "*) $(SELF_MAKE) pre-setup ;; \
 	esac
 	@$(SELF_MAKE) _builtin_setup_environment
+	+@XDG_DATA_HOME="$${SETUP_DIRENV_XDG_DATA_HOME:?missing persistent direnv data home}" \
+		"$${SETUP_DIRENV:?missing Mise-resolved direnv executable}" exec "$(PROJECT_ROOT)" $(SELF_MAKE) _setup_activated
+
+.PHONY: _setup_activated
+_setup_activated:
 	@set -eu; \
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" post-setup "*) $(SELF_MAKE) post-setup ;; \
@@ -1082,4 +1228,5 @@ _builtin-waza:
 	@cd "$(PROJECT_ROOT)" && "$(SETUP_MISE)" exec -- waza check --no-update-check
 _builtin-duplication:
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates duplication --projects .
+
 
