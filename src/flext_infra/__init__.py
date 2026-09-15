@@ -71,8 +71,11 @@ if TYPE_CHECKING:
     from .codegen.version_file import FlextInfraCodegenVersionFile
     from .codemod.batch_apply import FlextInfraCodemodBatchApply
     from .codemod.batch_gates import FlextInfraModGateEngine
+    from .codemod.batch_replacements import FlextInfraModReplacements
+    from .codemod.sed_apply import FlextInfraCodemodSedApply
     from .codemod.semantic_apply import FlextInfraCodemodSemanticApply
     from .codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
+    from .codemod.text_gates import FlextInfraModTextGateEngine
     from .constants import FlextInfraConstants, FlextInfraConstants as c
     from .deps.detection import FlextInfraDependencyDetectionService
     from .deps.detection_analysis import FlextInfraDependencyDetectionAnalysis
@@ -133,6 +136,7 @@ if TYPE_CHECKING:
     from .docs.auditor_mixin import FlextInfraDocAuditorMixin
     from .docs.base import FlextInfraDocServiceBase
     from .docs.builder import FlextInfraDocBuilder
+    from .docs.collector import FlextInfraDocCollector
     from .docs.fixer import FlextInfraDocFixer
     from .docs.generator import FlextInfraDocGenerator
     from .docs.server import FlextInfraDocServer
@@ -144,7 +148,6 @@ if TYPE_CHECKING:
     from .gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
     from .gates.bandit import FlextInfraBanditGate
     from .gates.base_gate import FlextInfraGate, FlextInfraScannerGateMixin
-    from .gates.budget import FlextInfraBudgetGate
     from .gates.canonical_alias import FlextInfraCanonicalAliasGate
     from .gates.deferred_self_reference import FlextInfraDeferredSelfReferenceGate
     from .gates.direnv import FlextInfraDirenvGate
@@ -278,7 +281,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraAccessorMigrationOrchestrator",
     "FlextInfraBanditGate",
     "FlextInfraBooleanLogicFixer",
-    "FlextInfraBudgetGate",
     "FlextInfraCProfileReport",
     "FlextInfraCanonicalAliasGate",
     "FlextInfraCensusImportDiscoveryVisitor",
@@ -305,6 +307,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenTransaction",
     "FlextInfraCodegenVersionFile",
     "FlextInfraCodemodBatchApply",
+    "FlextInfraCodemodSedApply",
     "FlextInfraCodemodSemanticApply",
     "FlextInfraCodemodSnapshotReconciler",
     "FlextInfraCompatibilityAliasDetector",
@@ -322,6 +325,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraDocAuditor",
     "FlextInfraDocAuditorMixin",
     "FlextInfraDocBuilder",
+    "FlextInfraDocCollector",
     "FlextInfraDocFixer",
     "FlextInfraDocGenerator",
     "FlextInfraDocServer",
@@ -371,6 +375,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraMarkdownGate",
     "FlextInfraMiseWorkspacePlanner",
     "FlextInfraModGateEngine",
+    "FlextInfraModReplacements",
+    "FlextInfraModTextGateEngine",
     "FlextInfraModels",
     "FlextInfraModernizeOrchestrator",
     "FlextInfraMypyGate",
@@ -540,8 +546,11 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codemod": ("codemod",),
             ".codemod.batch_apply": ("FlextInfraCodemodBatchApply",),
             ".codemod.batch_gates": ("FlextInfraModGateEngine",),
+            ".codemod.batch_replacements": ("FlextInfraModReplacements",),
+            ".codemod.sed_apply": ("FlextInfraCodemodSedApply",),
             ".codemod.semantic_apply": ("FlextInfraCodemodSemanticApply",),
             ".codemod.snapshot_reconciler": ("FlextInfraCodemodSnapshotReconciler",),
+            ".codemod.text_gates": ("FlextInfraModTextGateEngine",),
             ".constants": ("FlextInfraConstants", "c"),
             ".deps": ("deps",),
             ".deps.detection": ("FlextInfraDependencyDetectionService",),
@@ -615,6 +624,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".docs.auditor_mixin": ("FlextInfraDocAuditorMixin",),
             ".docs.base": ("FlextInfraDocServiceBase",),
             ".docs.builder": ("FlextInfraDocBuilder",),
+            ".docs.collector": ("FlextInfraDocCollector",),
             ".docs.fixer": ("FlextInfraDocFixer",),
             ".docs.generator": ("FlextInfraDocGenerator",),
             ".docs.server": ("FlextInfraDocServer",),
@@ -628,7 +638,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates.abstraction_boundary": ("FlextInfraAbstractionBoundaryGate",),
             ".gates.bandit": ("FlextInfraBanditGate",),
             ".gates.base_gate": ("FlextInfraGate", "FlextInfraScannerGateMixin"),
-            ".gates.budget": ("FlextInfraBudgetGate",),
             ".gates.canonical_alias": ("FlextInfraCanonicalAliasGate",),
             ".gates.deferred_self_reference": ("FlextInfraDeferredSelfReferenceGate",),
             ".gates.direnv": ("FlextInfraDirenvGate",),

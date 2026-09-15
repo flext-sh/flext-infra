@@ -108,6 +108,23 @@ class FlextInfraConstantsRefactor:
     CODEMOD_SCOPE_KEY: Final[str] = "scope"
     CODEMOD_SCOPE_UNIVERSAL: Final[str] = "universal"
     CODEMOD_SCOPE_RUNTIME: Final[str] = "runtime"
+    # Declarative sed-by-list rules: one list entry drives one regex rewrite
+    # across the governed scan surface with an exact expected-count receipt.
+    CODEMOD_TEXT_RULES_FILENAME: Final[str] = "text_rules.yml"
+    CODEMOD_TEXT_RULES_KEY: Final[str] = "rules"
+    CODEMOD_TEXT_KEY_ID: Final[str] = "id"
+    CODEMOD_TEXT_KEY_DESCRIPTION: Final[str] = "description"
+    CODEMOD_TEXT_KEY_INCLUDE: Final[str] = "include"
+    CODEMOD_TEXT_KEY_EXCLUDE: Final[str] = "exclude"
+    CODEMOD_TEXT_KEY_FIND: Final[str] = "find"
+    CODEMOD_TEXT_KEY_REPLACE: Final[str] = "replace"
+    CODEMOD_TEXT_KEY_FLAGS: Final[str] = "flags"
+    CODEMOD_TEXT_KEY_EXPECTED: Final[str] = "expected"
+    CODEMOD_TEXT_FLAG_NAMES: Final[t.MappingKV[str, int]] = MappingProxyType({
+        "IGNORECASE": re.IGNORECASE,
+        "MULTILINE": re.MULTILINE,
+        "DOTALL": re.DOTALL,
+    })
     CODEMOD_SNAPSHOT_DIRNAME: Final[str] = "__snapshots__"
     CODEMOD_SNAPSHOT_SUFFIX: Final[str] = "-snapshot.yml"
     CODEMOD_EPHEMERAL_DIRNAME: Final[str] = "__pycache__"

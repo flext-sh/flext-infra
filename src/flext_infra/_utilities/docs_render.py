@@ -154,11 +154,17 @@ class FlextInfraUtilitiesDocsRender:
         (producing nav 404s). The rooted ``/README.md`` excludes only the
         docs-dir root README (the project README mirror), preserving nested
         section READMEs. [flext-3o9s nav404 fix]
+
+        Curated ``API/**`` mirrors duplicate the generated public-API page and
+        register the same flat symbol anchors (for example ``cosmos_main.s``),
+        producing ``Multiple primary URLs`` autorefs conflicts. The generated
+        page is canonical; the curated mirror is excluded.
         """
         patterns = list(
             dict.fromkeys([
                 *FlextInfraUtilitiesDocsRender.as_string_sequence(data, "exclude_docs"),
                 "/README.md",
+                "/API/**",
             ])
         )
         return ["exclude_docs: |", *[f"  {pattern}" for pattern in patterns], ""]
@@ -245,9 +251,9 @@ class FlextInfraUtilitiesDocsRender:
             "## Quality Gates",
             "",
             (
-                f"Canonical `make` verbs (`check`, `test`, `fmt`, `conform`, "
-                f"`docs`) mutate by default; `APPLY=N` selects check mode where "
-                f"the verb has one — see [`/flext/AGENTS.md`]({agents_link}) "
+                f"Canonical `make` verbs (`gen`, `check`, `test`, `fmt`, "
+                f"`docs`) execute their declared operations directly — see "
+                f"[`/flext/AGENTS.md`]({agents_link}) "
                 f"`Build & Test` and `Required Python quality gates`."
             ),
         ]

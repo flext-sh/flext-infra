@@ -132,9 +132,10 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         max_failures: Annotated[
-            Literal[1],
+            Literal[0],
             m.Field(
-                alias="max-failures", description="Fail-fast pytest failure ceiling."
+                alias="max-failures",
+                description="Run every selected test while preserving failure status.",
             ),
         ]
         enforcement_plugin: Annotated[
@@ -290,6 +291,14 @@ class FlextInfraModelsDepsToolSettings(
             """Pytest ``-m`` expression that skips external gates."""
             return f"not ({' or '.join(self.external_gate_markers)})"
 
+        ci_excluded_markers: Annotated[
+            t.StrTuple,
+            m.Field(
+                alias="ci-excluded-markers",
+                description="Declared markers deselected in CI and pre-commit only.",
+            ),
+        ]
+
         process_timeout_seconds: Annotated[
             int,
             m.Field(
@@ -363,6 +372,11 @@ class FlextInfraModelsDepsToolSettings(
             declared_markers = {
                 marker.split(":", 1)[0].strip() for marker in self.standard_markers
             }
+            if any(
+                marker not in declared_markers for marker in self.ci_excluded_markers
+            ):
+                msg = "pytest ci-excluded-markers must be declared in standard-markers"
+                raise ValueError(msg)
             undeclared = [
                 marker
                 for marker in self.external_gate_markers

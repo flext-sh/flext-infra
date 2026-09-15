@@ -196,7 +196,14 @@ class FlextInfraWorktreeService(s[str]):
             m.Infra.GitCommitishRequest(repo_root=primary_root, commitish=base)
         )
         if resolved.failure:
-            return r[str].from_failure(resolved)
+            # `from_failure` handed the caller GitPython's own sentence about
+            # refs, which names neither the worktree nor the base it refused.
+            # The service states its own contract, the way the option-like
+            # base above already does, and carries the cause with it.
+            return r[str].fail(
+                f"cannot resolve worktree base: {base} ({resolved.error})",
+                exception=resolved.exception,
+            )
         base_oid = resolved.value.oid
         if self.epic_lane is not None:
             if self.epic_lane.is_symlink():

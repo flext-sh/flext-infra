@@ -16,23 +16,62 @@ if TYPE_CHECKING:
 class FlextInfraMiseArtifactsFiles:
     """Exact filesystem-state primitives for Mise artifact transactions."""
 
-    ARTIFACT_SPECS: Final[t.VariadicTuple[t.Pair[str, int]]] = (
-        ("bin/mise", 0o755),
-        ("bin/mise.cmd", 0o644),
-    )
-    CONFIG_SPEC: Final[t.Pair[str, int]] = (c.Infra.MISE_TOML_FILENAME, 0o644)
-    PUBLICATION_SPECS: Final[t.VariadicTuple[t.Pair[str, int]]] = (
-        CONFIG_SPEC,
-        *ARTIFACT_SPECS,
-    )
-    ARTIFACT_NAMES: Final[t.VariadicTuple[str]] = tuple(
-        name for name, _mode in ARTIFACT_SPECS
-    )
-    JOURNAL_NAME: Final[str] = "flext-infra-codegen-transaction-journal.json"
-    JOURNAL_MODE: Final[int] = 0o600
     STATE_DIRECTORY: Final[Path] = Path(".state") / "mise-artifacts"
-    TRANSACTION_DIR_PREFIX: Final[str] = "transaction-"
-    TRANSACTION_ID_LENGTH: Final[int] = 32
+
+    @classmethod
+    def transaction_participants(
+        cls, layout: m.Infra.MiseToolchainWorkspaceLayout
+    ) -> tuple[
+        m.Infra.MiseToolchainProjectLayout | m.Infra.CodegenFileParticipant, ...
+    ]:
+        """Return only explicitly registered publication owners."""
+        return (*layout.projects, *layout.file_participants)
+
+    @classmethod
+    def transaction_relative(
+        cls, layout: m.Infra.MiseToolchainWorkspaceLayout, path: Path
+    ) -> p.Result[str]:
+        """Encode a file capability path without weakening workspace containment."""
+        participants = sorted(
+            layout.file_participants, key=lambda item: -len(item.root.parts)
+        )
+        for participant in participants:
+            if path.is_relative_to(participant.root):
+                relative = cls.workspace_relative(participant.root, path)
+                if relative.failure:
+                    return relative
+                return r[str].ok(f"{participant.selector}/{relative.value}")
+        relative = cls.workspace_relative(layout.scope_root, path)
+        if relative.success and relative.value.startswith("@"):
+            return r[str].fail(f"reserved file capability path: {path}")
+        return relative
+
+    @classmethod
+    def resolve_transaction(
+        cls,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        selector: str,
+        *,
+        purpose: str,
+    ) -> p.Result[Path]:
+        """Resolve one journal path against its exact registered physical root."""
+        if not selector.startswith("@"):
+            return cls.resolve_relative(layout.scope_root, selector, purpose=purpose)
+        identity, separator, relative = selector.partition("/")
+        participant = next(
+            (item for item in layout.file_participants if item.selector == identity),
+            None,
+        )
+        if not separator or participant is None:
+            return r[Path].fail(f"unknown file publication capability: {selector}")
+        physical = cls.physical_directory_identity(participant.root)
+        if physical.failure:
+            return r[Path].from_failure(physical)
+        if physical.value != (participant.device, participant.inode):
+            return r[Path].fail(
+                f"file publication root identity changed: {participant.root}"
+            )
+        return cls.resolve_relative(participant.root, relative, purpose=purpose)
 
     @classmethod
     def digest(cls, content: bytes) -> str:
@@ -47,7 +86,7 @@ class FlextInfraMiseArtifactsFiles:
         )
         # Package resources are data; staging owns executable output permissions.
         states: list[m.Cli.AtomicFileState] = []
-        for name in cls.ARTIFACT_NAMES:
+        for name in c.Infra.ARTIFACT_NAMES:
             path = seed_directory / Path(name).name
             state = u.Cli.atomic_read_binary_file_state(path, required=True)
             if state.failure:

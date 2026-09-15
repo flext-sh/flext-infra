@@ -29,11 +29,6 @@ class FlextInfraWorkspaceDetector(
         """Return the mandatory repository-local Beads identity path."""
         return repository_root / c.CONFIG_DIR_NAME / c.Infra.BEADS_CONFIG_FILENAME
 
-    @staticmethod
-    def _workspace_manifest_path(repository_root: Path) -> Path:
-        """Return the optional, explicitly selected workspace manifest path."""
-        return repository_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME
-
     @classmethod
     def _composed_beads_identity_error(
         cls, subproject_root: Path, workspace_beads: m.Infra.BeadsProjectSpec
@@ -209,7 +204,7 @@ class FlextInfraWorkspaceDetector(
         *,
         observed: m.Infra.RepositoryRef,
         beads: m.Infra.BeadsProjectSpec,
-    ) -> p.Result[tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]]:
+    ) -> p.Result[t.Triple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]]:
         """Load a selected repository manifest and reconcile it with Git truth.
 
         A checkout without ``config/workspace.yaml`` remains a valid observed
@@ -219,7 +214,7 @@ class FlextInfraWorkspaceDetector(
         matched repository policy overlay's Gas City participation rides along:
         ``True`` when the manifest is absent or declares no overlay.
         """
-        manifest_path = cls._workspace_manifest_path(repository_root)
+        manifest_path = u.Infra.workspace_manifest_path(repository_root)
         if not manifest_path.is_file():
             return r[tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]].ok((
                 observed,
@@ -485,7 +480,7 @@ class FlextInfraWorkspaceDetector(
         )
         if repository.failure:
             return result_type.from_failure(repository)
-        if not cls._workspace_manifest_path(subproject_root).is_file():
+        if not u.Infra.is_fleet_umbrella(subproject_root):
             return result_type.ok(repository.value)
         member_beads = cls.load_beads_spec(subproject_root)
         if member_beads.failure:
@@ -623,17 +618,6 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryConformTarget].fail(
                 "local workspace repository path must be '.'"
             )
-        providers = tuple(
-            provider
-            for provider in config.Infra.codegen.providers
-            if provider.name == workspace.repository.provider
-        )
-        if len(providers) != 1:
-            return r[m.Infra.RepositoryConformTarget].fail(
-                "repository provider must resolve exactly once: "
-                f"{workspace.repository.provider}"
-            )
-        (provider,) = providers
         metadata = u.Infra.read_project_metadata_result(resolved_root)
         if metadata.failure:
             return r[m.Infra.RepositoryConformTarget].from_failure(metadata)
@@ -643,39 +627,17 @@ class FlextInfraWorkspaceDetector(
                 "project metadata and repository identity differ: "
                 f"{canonical_project_name} != {workspace.repository.distribution}"
             )
-        make_profile = workspace.repository.role
-        # The provider default is the fallback, never the answer: this
-        # repository's own published integration branch decides. Line 206 of
-        # this same file already derives it that way for submodule discovery;
-        # the conform target must not disagree with it.
-        baseline_result = u.Infra.repository_baseline_branch(
-            resolved_root,
-            fallback=provider.branch,
-            preference=(
-                config.Infra.codegen.branch_policy.integration_branch_preference
-            ),
-        )
-        if baseline_result.failure:
-            return r[m.Infra.RepositoryConformTarget].from_failure(baseline_result)
         return r[m.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget(
                 repository=workspace.repository,
                 root=resolved_root,
-                make_profile=make_profile,
+                make_profile=workspace.repository.role,
                 beads=workspace.beads,
                 project=workspace.project,
                 canonical_project_name=canonical_project_name,
-                baseline_branch=baseline_result.value,
-                baseline_reference=f"refs/remotes/origin/{baseline_result.value}",
                 ci_enabled=True,
                 gascity_enabled=workspace.gascity_enabled,
                 external_dependency_paths=workspace.external_dependency_paths,
-                technical_branch_patterns=(
-                    config.Infra.codegen.branch_policy.technical_branch_patterns
-                ),
-                governed_branch_patterns=(
-                    config.Infra.codegen.branch_policy.governed_branch_patterns
-                ),
             )
         )
 

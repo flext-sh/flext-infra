@@ -9,7 +9,7 @@ from flext_infra.docs.auditor import FlextInfraDocAuditor
 from tests import c, m
 
 
-class TestAuditContract:
+class TestsFlextInfraAuditorContract:
     """The typed owner has no budget or optional strict-mode contract."""
 
     def test_default_request_has_no_permissive_controls(self) -> None:
@@ -41,3 +41,6 @@ class TestAuditContract:
             m.Infra.AuditScopeParams.model_validate({
                 "budgets": (None, {"test-project": 3})
             })
+
+
+__all__: list[str] = ["TestsFlextInfraAuditorContract"]

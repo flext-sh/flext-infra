@@ -21,17 +21,15 @@ from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import u as test_u
 
 
-def _repository_root() -> Path:
-    """Return the workspace root that owns this checkout."""
-    return Path(flext_infra.__file__).resolve().parents[2]
-
-
-def _is_allowed_by_policy(rendered: str, relative_path: str) -> bool:
-    """Return whether one policy snapshot keeps *relative_path* trackable."""
-    return test_u.Tests.is_tracked_under(rendered, relative_path)
-
-
 class TestsFlextInfraGitignoreIsGeneratedFromSsot:
+    def _repository_root(self) -> Path:
+        """Return the workspace root that owns this checkout."""
+        return Path(flext_infra.__file__).resolve().parents[2]
+
+    def _is_allowed_by_policy(self, rendered: str, relative_path: str) -> bool:
+        """Return whether one policy snapshot keeps *relative_path* trackable."""
+        return test_u.Tests.is_tracked_under(rendered, relative_path)
+
     def test_every_managed_file_survives_the_ignore_policy(self) -> None:
         """No committed managed artifact is ignored by the shipped policy.
 
@@ -39,23 +37,15 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         verifies the tree through git. A whitelist that blocks one of those
         paths makes the artifact untrackable, so conform re-reports it as a new
         file on every run and the whole transaction never converges.
-
-        ``delegated`` entries are the deliberate exception: they are generated
-        into each checkout rather than committed, so being ignored is correct.
-        The distinction is read from the managed-file policy, never hardcoded.
         """
-        committed = tuple(
-            item
-            for item in config.Infra.codegen.managed_files
-            if item.policy != c.Infra.MANAGED_FILE_POLICY_DELEGATED
-        )
+        committed = config.Infra.codegen.managed_files
         rendered = (
-            "\n".join(test_u.Tests.ignore_patterns_for(_repository_root())) + "\n"
+            "\n".join(test_u.Tests.ignore_patterns_for(self._repository_root())) + "\n"
         )
         blocked = tuple(
             item.path.as_posix()
             for item in committed
-            if not _is_allowed_by_policy(rendered, item.path.as_posix())
+            if not self._is_allowed_by_policy(rendered, item.path.as_posix())
         )
 
         tm.that(blocked, eq=())
@@ -123,3 +113,6 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         )
 
         tm.that(blocked, eq=())
+
+
+__all__: list[str] = ["TestsFlextInfraGitignoreIsGeneratedFromSsot"]

@@ -130,8 +130,8 @@ class FlextInfraConstantsDocs:
         re.IGNORECASE,
     )
     """Match selectors outside the canonical root Make grammar."""
-    DOCS_APPLY_RE: Final[t.RegexPattern] = re.compile(r"\bAPPLY=Y\b")
-    """Match the sole canonical mutation flag in documented commands."""
+    DOCS_APPLY_RE: Final[t.RegexPattern] = re.compile(r"\bAPPLY\s*=")
+    """Reject the removed mutation selector for every supplied value."""
     DOCS_COMMAND_CONTRACT_DIRNAMES: Final[frozenset[str]] = frozenset({
         "guides",
         "standards",
@@ -146,11 +146,13 @@ class FlextInfraConstantsDocs:
     """Match direct pytest execution that bypasses the root Testmon verb."""
     DOCS_RAW_TOOL_COMMAND_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*(?:\$\s*)?(?:(?:[A-Za-z_][A-Za-z0-9_]*=\S+)\s+)*"
-        r"(?:ruff|pyrefly|mypy|pyright|mkdocs|uv|poetry|pdm|tox|nox|pre-commit|"
+        r"(?:(?:ruff|pyrefly|mypy|pyright|mkdocs|uv|poetry|pdm|tox|nox|pre-commit)(?=\s|$)|"
         r"python(?:3(?:\.\d+)?)?(?:\s+-m|\s+[^\s]+\.py\b))",
         re.IGNORECASE,
     )
     """Match tool and script commands that bypass the root Make dispatcher."""
+    ISO_DATE_STRING_LENGTH: Final[int] = 10
+    """Length of an ISO date string ``YYYY-MM-DD``."""
     DOCS_TEST_DOUBLE_CODE_RE: Final[t.RegexPattern] = re.compile(
         r"(?:from\s+unittest(?:\.mock)?\s+import|import\s+unittest\.mock|"
         r"(?:^|\W)(?:MagicMock|Mock|patch)\s*\(|mock\.patch\s*\(|"

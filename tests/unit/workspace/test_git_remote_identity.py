@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from tests import u
+from tests import t, u
 
 
-class TestsGitRemoteIdentity:
+class TestsFlextInfraGitRemoteIdentity:
     """Private CI may rewrite origin to aliased SSH without changing the repo."""
 
     def test_https_ssh_and_host_alias_urls_match(self) -> None:
@@ -30,4 +30,4 @@ class TestsGitRemoteIdentity:
         )
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

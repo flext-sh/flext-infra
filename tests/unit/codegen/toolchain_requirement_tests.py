@@ -7,7 +7,7 @@ from flext_tests import tm
 from flext_infra import config
 
 
-class TestsToolchainRequirement:
+class TestsFlextInfraToolchainRequirement:
     """Toolchain requirements tolerate compatible Python patch drift."""
 
     def test_python_requirement_uses_declared_minor_as_floor(self) -> None:
@@ -26,4 +26,4 @@ class TestsToolchainRequirement:
         tm.that(toolchain.python_required_version, has=f",<{major}.{int(minor) + 1}")
 
 
-__all__: tuple[str, ...] = ()
+__all__: list[str] = ["TestsFlextInfraToolchainRequirement"]

@@ -5,36 +5,22 @@ from __future__ import annotations
 from fnmatch import fnmatchcase
 from typing import Annotated, Literal, Self
 
-from flext_cli import m, u
+from flext_core import m, u
 
-from flext_infra import t
+from flext_core import t
 
-from ._defaults import immutable_empty_mapping
-
-
-def tool_version_field(description: str) -> object:
-    """Shared ``Annotated[t.NonEmptyStr, ...]`` metadata for one tool version.
-
-    Every native-toolchain version field in ``ToolchainSpec`` and its
-    ``ProjectRenderContext`` render mirror previously repeated an identical
-    ``m.Field(description=...)`` shape, differing only in the description
-    text -- a structural clone SonarCloud's duplication detector flags as one
-    family regardless of the literal string. One owned factory collapses
-    every call site to this single declaration (SSOT, DRY).
-    """
-    return m.Field(description=description)
-
-
-class _ConfigContract(m.ContractModel):
-    """Private declarative base for schema-loaded codegen records."""
-
-    model_config = m.ConfigDict(
-        strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
-    )
+from ._defaults import immutable_empty_mapping, tool_version_field
 
 
 class FlextInfraModelsMiseToolchain:
     """Mise toolchain and beads configuration models."""
+
+    class _ConfigContract(m.ContractModel):
+        """Private declarative base for schema-loaded codegen records."""
+
+        model_config = m.ConfigDict(
+            strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
+        )
 
     class MiseToolSpec(_ConfigContract):
         """One mise backend declared in ``codegen.yaml``, projected to ``.mise.toml``.
@@ -114,6 +100,96 @@ class FlextInfraModelsMiseToolchain:
                 raise ValueError(msg)
             return self
 
+    class ProtectedMiseToolSpec(MiseToolSpec):
+        """One fleet-owned mise distribution identity."""
+
+        selector_patterns: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description="Glob patterns identifying equivalent mise distributions",
+            ),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_distribution_patterns(self) -> Self:
+            """Require one unambiguous pattern set covering the canonical selector."""
+            if len(set(self.selector_patterns)) != len(self.selector_patterns):
+                msg = "protected mise selector_patterns must be unique"
+                raise ValueError(msg)
+            if not any(
+                fnmatchcase(self.selector, pattern)
+                for pattern in self.selector_patterns
+            ):
+                msg = (
+                    "canonical mise selector is not covered by selector_patterns: "
+                    f"{self.selector}"
+                )
+                raise ValueError(msg)
+            return self
+
+    class BeadsToolSpec(ProtectedMiseToolSpec):
+        """Canonical Beads distribution and Gas City projection contract."""
+
+        endpoint_origin: Annotated[
+            Literal["inherited_city"],
+            m.Field(description="Gas City-owned endpoint inheritance mode"),
+        ]
+        endpoint_status: Annotated[
+            Literal["verified"],
+            m.Field(description="Canonical status for a managed-city inherited rig"),
+        ]
+        required_custom_types: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                min_length=1,
+                description="Immutable custom bead types required by Gas City",
+            ),
+        ]
+        dolt_mode: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Rendered as dolt.mode in .beads/config.yaml. Change "
+                    "toolchain.beads.dolt_mode; never the projection."
+                )
+            ),
+        ]
+        export_auto: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Rendered as export.auto. Override toolchain.beads.export_auto."
+                )
+            ),
+        ]
+        backup_enabled: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Rendered as backup.enabled. Override "
+                    "toolchain.beads.backup_enabled."
+                )
+            ),
+        ]
+        dolt_disable_event_flush: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Rendered as dolt.disable-event-flush. Override "
+                    "toolchain.beads.dolt_disable_event_flush."
+                )
+            ),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_required_custom_types(self) -> Self:
+            """Reject ambiguous duplicate type declarations at the owner."""
+            if len(set(self.required_custom_types)) != len(self.required_custom_types):
+                msg = "beads required_custom_types must be unique"
+                raise ValueError(msg)
+            return self
+
     class ToolchainSpec(_ConfigContract):
         """Language-runtime and native-tool versions shared by generated projects.
 
@@ -128,7 +204,7 @@ class FlextInfraModelsMiseToolchain:
         # operator-owned forks resolved as latest, so the default frees every
         # selector family and the vocabulary stays declared on this owner.
         suspended_mise_selector_patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(
@@ -312,11 +388,11 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         beads: Annotated[
-            FlextInfraModelsMiseToolchain.BeadsToolSpec,
+            BeadsToolSpec,
             m.Field(description="Official Beads CLI installed through mise"),
         ]
         gascity: Annotated[
-            FlextInfraModelsMiseToolchain.ProtectedMiseToolSpec,
+            ProtectedMiseToolSpec,
             m.Field(description="Gas City CLI (gc) installed through mise"),
         ]
         protected_mise_tools: Annotated[
@@ -382,34 +458,6 @@ class FlextInfraModelsMiseToolchain:
             """Mise/pyenv-style selector for the configured Python minor line."""
             return self.python_version
 
-    class ProtectedMiseToolSpec(MiseToolSpec):
-        """One fleet-owned mise distribution identity."""
-
-        selector_patterns: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                min_length=1,
-                description="Glob patterns identifying equivalent mise distributions",
-            ),
-        ]
-
-        @u.model_validator(mode="after")
-        def _validate_distribution_patterns(self) -> Self:
-            """Require one unambiguous pattern set covering the canonical selector."""
-            if len(set(self.selector_patterns)) != len(self.selector_patterns):
-                msg = "protected mise selector_patterns must be unique"
-                raise ValueError(msg)
-            if not any(
-                fnmatchcase(self.selector, pattern)
-                for pattern in self.selector_patterns
-            ):
-                msg = (
-                    "canonical mise selector is not covered by selector_patterns: "
-                    f"{self.selector}"
-                )
-                raise ValueError(msg)
-            return self
-
     class BeadsEndpointSpec(_ConfigContract):
         """Static network endpoint projected into Beads configuration."""
 
@@ -422,68 +470,6 @@ class FlextInfraModelsMiseToolchain:
                 description="Beads server TCP port declared by deployment",
             ),
         ]
-
-    class BeadsToolSpec(ProtectedMiseToolSpec):
-        """Canonical Beads distribution and Gas City projection contract."""
-
-        endpoint_origin: Annotated[
-            Literal["inherited_city"],
-            m.Field(description="Gas City-owned endpoint inheritance mode"),
-        ]
-        endpoint_status: Annotated[
-            Literal["verified"],
-            m.Field(description="Canonical status for a managed-city inherited rig"),
-        ]
-        required_custom_types: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                min_length=1,
-                description="Immutable custom bead types required by Gas City",
-            ),
-        ]
-        dolt_mode: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description=(
-                    "Rendered as dolt.mode in .beads/config.yaml. Change "
-                    "toolchain.beads.dolt_mode; never the projection."
-                )
-            ),
-        ]
-        export_auto: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Rendered as export.auto. Override toolchain.beads.export_auto."
-                )
-            ),
-        ]
-        backup_enabled: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Rendered as backup.enabled. Override "
-                    "toolchain.beads.backup_enabled."
-                )
-            ),
-        ]
-        dolt_disable_event_flush: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Rendered as dolt.disable-event-flush. Override "
-                    "toolchain.beads.dolt_disable_event_flush."
-                )
-            ),
-        ]
-
-        @u.model_validator(mode="after")
-        def _validate_required_custom_types(self) -> Self:
-            """Reject ambiguous duplicate type declarations at the owner."""
-            if len(set(self.required_custom_types)) != len(self.required_custom_types):
-                msg = "beads required_custom_types must be unique"
-                raise ValueError(msg)
-            return self
 
     class MiseBootstrapEnvironmentSpec(_ConfigContract):
         """Validated environment contract rendered into generated Mise setup."""
@@ -551,4 +537,4 @@ class FlextInfraModelsMiseToolchain:
             return self
 
 
-__all__: list[str] = ["FlextInfraModelsMiseToolchain", "tool_version_field"]
+__all__: list[str] = ["FlextInfraModelsMiseToolchain"]

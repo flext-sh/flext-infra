@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from html import unescape
 from typing import TYPE_CHECKING
 
+from markdown import Markdown
 from markdown.extensions.toc import slugify
 
 from flext_core import r
@@ -108,56 +110,45 @@ class FlextInfraUtilitiesDocsContract:
         sections: markdown renders them verbatim and emits no anchor, so a TOC
         entry pointing at them is a dead link that fails the strict docs build.
         """
-        scannable: str = c.Infra.FENCED_BLOCK_RE.sub("", content)
+        renderer = Markdown(
+            extensions=["attr_list", "md_in_html", "toc", "pymdownx.superfences"],
+            extension_configs={"toc": {"toc_depth": "2-3"}},
+        )
+        body = c.Infra.TOC_BLOCK_RE.sub("", content)
+        lines = body.splitlines()
+        renderer.convert(
+            "\n".join(lines[FlextInfraUtilitiesDocsContract._docs_body_start(lines) :])
+        )
         items: t.MutableSequenceOf[str] = []
-        for level, title in c.Infra.HEADING_H2_H3_RE.findall(scannable):
-            anchor = FlextInfraUtilitiesDocsContract.docs_anchorize(title)
-            if anchor:
-                indent = "  " if level == "###" else ""
-                items.append(f"{indent}- [{title}](#{anchor})")
+        rendered = m.Infra.DocsRenderedToc.model_validate(
+            renderer, from_attributes=True
+        )
+        FlextInfraUtilitiesDocsContract._docs_toc_items(rendered.toc_tokens, items)
         if not items:
             items = ["- No sections found"]
         return f"{c.Infra.TOC_START}\n" + "\n".join(items) + f"\n{c.Infra.TOC_END}"
 
     @staticmethod
+    def _docs_toc_items(
+        tokens: t.SequenceOf[m.Infra.DocsTocToken],
+        items: t.MutableSequenceOf[str],
+        depth: int = 0,
+    ) -> None:
+        """Serialize the renderer's own TOC without reparsing heading Markdown."""
+        for token in tokens:
+            title = unescape(token.name).replace("[", r"\[").replace("]", r"\]")
+            indent = "  " * depth
+            items.append(f"{indent}- [{title}](#{token.id})")
+            FlextInfraUtilitiesDocsContract._docs_toc_items(
+                token.children, items, depth + 1
+            )
+
+    @staticmethod
     def docs_workspace_contract(repository_root: Path) -> t.JsonMapping:
         """Return the root docs contract using root ``pyproject.toml`` metadata."""
-        payload = FlextInfraUtilitiesDocsScope.project_payload(repository_root)
-        docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
-        exclude_docs = FlextInfraUtilitiesDocsScope.docs_meta_list(
-            repository_root, "exclude_docs"
+        return FlextInfraUtilitiesDocsContract.docs_current_project_contract(
+            repository_root, t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
         )
-        project_meta_value = payload.get(c.Infra.PROJECT)
-        project_meta: t.JsonMapping = (
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project_meta_value)
-            if isinstance(project_meta_value, Mapping)
-            else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
-        )
-        project_urls_value = project_meta.get("urls")
-        project_urls: t.JsonMapping = (
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project_urls_value)
-            if isinstance(project_urls_value, Mapping)
-            else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
-        )
-        result: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
-            "name": str(project_meta.get("name", "flext")).strip() or "flext",
-            "description": str(project_meta.get("description", "")).strip(),
-            "version": str(project_meta.get(c.Infra.VERSION, "")).strip(),
-            "site_title": str(docs_meta.get("site_title", "")).strip()
-            or "FLEXT Workspace",
-            "site_url": str(
-                project_urls.get("Documentation")
-                or project_urls.get("Homepage")
-                or c.Infra.GITHUB_REPO_URL
-            ).strip(),
-            "repo_url": str(
-                project_urls.get("Repository")
-                or project_urls.get("Homepage")
-                or c.Infra.GITHUB_REPO_URL
-            ).strip(),
-            "exclude_docs": list(exclude_docs),
-        })
-        return result
 
     @staticmethod
     def docs_current_project_contract(
@@ -182,6 +173,7 @@ class FlextInfraUtilitiesDocsContract:
         exclude_docs_value = docs_meta.get("exclude_docs")
         updated = dict(rendered_contract)
         updated.update({
+            "name": project_name,
             "description": str(project.get("description", "")).strip(),
             "version": str(project.get(c.Infra.VERSION, "")).strip(),
             "classifiers": list(classifiers_value)

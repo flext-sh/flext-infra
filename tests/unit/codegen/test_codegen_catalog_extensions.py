@@ -10,23 +10,21 @@ from flext_tests import tm
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import u
-from tests.unit.workspace import WorktreeFixture
 
 pytestmark = pytest.mark.slow
 
 
-def _repository(
-    name: str, *, path: str, role: c.Infra.MakeProfile
-) -> m.Infra.RepositoryRef:
-    reference = u.Tests.repository_ref(name, path=Path(path), role=role)
-    is_standalone = role is c.Infra.MakeProfile.STANDALONE
-    return reference.model_copy(
-        update={"package": is_standalone, "editable": is_standalone}
-    )
-
-
-class TestsCodegenCatalogExtensions:
+class TestsFlextInfraCodegenCatalogExtensions:
     """Prove generic extensions without a repository registry or second manifest."""
+
+    def _repository(
+        self, name: str, *, path: str, role: c.Infra.MakeProfile
+    ) -> m.Infra.RepositoryRef:
+        reference = u.Tests.repository_ref(name, path=Path(path), role=role)
+        is_standalone = role is c.Infra.MakeProfile.STANDALONE
+        return reference.model_copy(
+            update={"package": is_standalone, "editable": is_standalone}
+        )
 
     def test_infra_repository_identity_is_owned_by_codegen_config(self) -> None:
         codegen = config.Infra.codegen
@@ -101,8 +99,11 @@ class TestsCodegenCatalogExtensions:
         tm.that(mise_template, has='direnv = "{{ direnv_version }}"')
         tm.that(mise_template, lacks="credential_command")
         tm.that(mise_template, lacks="minimum_release_age")
-        tm.that("_builtin_gen_check:" in content, eq=True)
-        tm.that("_builtin_gen_apply:" in content, eq=True)
+        # S1 (operator law 2026-09-14): gen has one always-apply recipe; the
+        # CHECK_ONLY-selected check/apply pair no longer exists.
+        tm.that("_builtin_gen_check:" in content, eq=False)
+        tm.that("_builtin_gen_apply:" in content, eq=False)
+        tm.that("_builtin_gen_all:" in content, eq=True)
         bootstrap = template.with_name("tool_bootstrap_recipe.j2").read_text(
             encoding="utf-8"
         )
@@ -143,10 +144,10 @@ class TestsCodegenCatalogExtensions:
     def test_local_manifest_conforms_without_global_repository_rows(
         self, tmp_path: Path
     ) -> None:
-        root = _repository(
+        root = self._repository(
             "acme-platform", path=".", role=c.Infra.MakeProfile.WORKSPACE
         )
-        member = _repository(
+        member = self._repository(
             "acme-charts", path="acme-charts", role=c.Infra.MakeProfile.STANDALONE
         )
         workspace = m.Infra.WorkspaceSpec(
@@ -158,7 +159,7 @@ class TestsCodegenCatalogExtensions:
         )
         provider = u.Tests.provider()
         member_source = tmp_path / "member-source"
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             member_source,
             member.distribution,
             workspace=member.name,
@@ -190,7 +191,7 @@ class TestsCodegenCatalogExtensions:
         )
 
         repository_root = tmp_path / "workspace"
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             repository_root,
             root.distribution,
             workspace=root.name,
@@ -237,7 +238,9 @@ class TestsCodegenCatalogExtensions:
                 cwd=member_checkout,
             )
         )
-        gitmodules = WorktreeFixture.write_gitmodules(repository_root, (member.name,))
+        gitmodules = u.Tests.WorktreeFixture.write_gitmodules(
+            repository_root, (member.name,)
+        )
         tm.ok(
             u.Cli.run_checked(
                 [c.Infra.GIT, "add", c.Infra.GITMODULES, member.name],
@@ -293,4 +296,4 @@ class TestsCodegenCatalogExtensions:
         tm.that(gitmodules.read_bytes(), eq=declared_gitmodules)
 
 
-__all__: tuple[str, ...] = ()
+__all__: list[str] = ["TestsFlextInfraCodegenCatalogExtensions"]

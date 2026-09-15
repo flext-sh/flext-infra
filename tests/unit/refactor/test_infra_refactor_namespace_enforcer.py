@@ -500,7 +500,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self,
         tmp_path: Path,
         rope_project: t.Infra.RopeProject,
-        module_parts: tuple[str, ...],
+        module_parts: t.VariadicTuple[str],
         owner_class: str,
     ) -> None:
         """Allow ClassVar in a constants class and in a private constants module."""

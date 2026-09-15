@@ -4,9 +4,6 @@ Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-# New file per operator live
-# order (ULW). ctx via u.derive_class_stem (no parallel detection, ADR-005 §9);
-# accessor typing/config+settings symmetry fixed in templates in the same lane.
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,6 +11,10 @@ from typing import TYPE_CHECKING, Annotated, override
 
 from .. import c, config, m, r, s, u
 from .conform import FlextInfraCodegenConform
+
+# New file per operator live
+# order (ULW). ctx via u.derive_class_stem (no parallel detection, ADR-005 §9);
+# accessor typing/config+settings symmetry fixed in templates in the same lane.
 
 if TYPE_CHECKING:
     from .. import p

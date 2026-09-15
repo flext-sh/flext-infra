@@ -7,14 +7,15 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import c, config, u
+from tests import t
 
 
 class TestsFlextInfraManagedMaintenanceHeaders:
     """Validate machine-readable maintenance metadata at canonical owners."""
 
     @staticmethod
-    def _fields(text: str) -> dict[str, str]:
-        fields: dict[str, str] = {}
+    def _fields(text: str) -> t.MutableMappingKV[str, str]:
+        fields: t.MutableMappingKV[str, str] = {}
         for line in text.splitlines():
             marker = line.lstrip("# ")
             if not marker.startswith("@flext-") or ":" not in marker:
@@ -86,9 +87,9 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         """Fmt APPLY uses ruff --preview and --unsafe-fixes from make.ruff."""
         ruff = config.Infra.codegen.make.ruff
         tm.that("--preview" in ruff.format_apply, eq=True)
-        tm.that("--preview" in ruff.lint_fix, eq=True)
-        tm.that("--unsafe-fixes" in ruff.lint_fix, eq=True)
-        tm.that("--fix" in ruff.lint_fix, eq=True)
+        tm.that("--preview" in ruff.lint_apply, eq=True)
+        tm.that("--unsafe-fixes" in ruff.lint_apply, eq=True)
+        tm.that("--fix" in ruff.lint_apply, eq=True)
         template = (
             Path(__file__).parents[3]
             / "src"
@@ -99,4 +100,9 @@ class TestsFlextInfraManagedMaintenanceHeaders:
             / "Makefile.j2"
         ).read_text(encoding="utf-8")
         tm.that(template, has="make.ruff.format_apply")
-        tm.that(template, has="make.ruff.lint_fix")
+        tm.that(template, has="make.ruff.lint_apply")
+        tm.that(template, has="make.ruff.format_check")
+        tm.that(template, has="make.ruff.lint_check")
+
+
+__all__: list[str] = ["TestsFlextInfraManagedMaintenanceHeaders"]

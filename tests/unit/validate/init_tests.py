@@ -6,8 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import pytest
 from flext_tests import tm
 
@@ -19,11 +17,8 @@ from flext_infra.validate import FlextInfraInventoryService
 # ill-typed. The name is data here, and getattr is the access it tests.
 _ABSENT_SYMBOL = "nonexistent_xyz_attribute"
 
-if TYPE_CHECKING:
-    from tests import t
 
-
-class TestCoreModuleInit:
+class TestsFlextInfraValidateInit:
     """Test core module lazy loading and exports."""
 
     def test_core_getattr_raises_attribute_error(self) -> None:
@@ -46,4 +41,4 @@ class TestCoreModuleInit:
         tm.that(FlextInfraInventoryService, none=False)
 
 
-__all__: t.StrSequence = []
+__all__: list[str] = ["TestsFlextInfraValidateInit"]

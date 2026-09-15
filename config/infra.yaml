@@ -99,3 +99,15 @@ Infra:
          detail: "Fix the underlying typing contract instead of suppressing it."}
       - {operator: comment, marker: "# noqa", kind: noqa,
          detail: "Fix the underlying lint defect instead of suppressing it."}
+
+  # Sed-by-list mass replacement patterns for literal refactoring.
+  # Each entry: pattern (regex), replacement, optional file_glob, optional flags, optional description.
+  sed_patterns:
+    patterns:
+      - pattern: "FIXME"
+        replacement: "TODO"
+        description: "Replace FIXME with TODO"
+      - pattern: "\\bprint\\("
+        replacement: "cli.display_text("
+        file_glob: "*.py"
+        description: "Replace print() with cli.display_text()"

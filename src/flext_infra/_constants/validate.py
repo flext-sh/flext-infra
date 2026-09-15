@@ -176,19 +176,7 @@ class FlextInfraConstantsSharedInfra:
         "Project ignore patterns (config/*.yaml ManagedArtifacts.Gitignore)"
     )
     "Heading of the trailing .gitignore section holding layout-SSOT additions."
-    MANAGED_FILE_POLICY_DELEGATED: Final[str] = "delegated"
     MANAGED_FILE_POLICY_FULL: Final[str] = "full"
-    MANAGED_FILE_POLICY_MERGE: Final[str] = "merge"
-    MANAGED_FILE_POLICY_CREATE_ONLY: Final[str] = "create-only"
-    MANAGED_FILE_POLICY_MANUAL: Final[str] = "manual"
-    "Managed-file policies that bypass or skip generation — forbidden by .gen requirements."
-    MANAGED_FILE_POLICIES_BYPASS: Final[frozenset[str]] = frozenset({
-        MANAGED_FILE_POLICY_DELEGATED,
-        MANAGED_FILE_POLICY_CREATE_ONLY,
-        MANAGED_FILE_POLICY_MANUAL,
-    })
-    "Bypass policies forbidden by strict .gen compliance."
-    "Managed-file policy whose artifact is generated per checkout, not committed."
     INIT_PY: Final[str] = "__init__.py"
     API_PY: Final[str] = "api.py"
     CONSTANTS_PY: Final[str] = "constants.py"
@@ -204,7 +192,6 @@ class FlextInfraConstantsSharedInfra:
     GIT_ORIGIN: Final[str] = "origin"
     GIT_MAIN: Final[str] = "main"
     GIT_HEAD: Final[str] = "HEAD"
-    GIT_MERGE_HEAD: Final[str] = "MERGE_HEAD"
 
     # --- Package name prefixes (was: class Packages) ---
     PKG_CORE: Final[str] = "flext-core"
@@ -242,6 +229,9 @@ class FlextInfraConstantsSharedInfra:
     TIER_WHITELIST_SETTINGS_MODULE_LIBRARIES: Final[frozenset[str]] = frozenset({
         "pydantic_settings"
     })
+    TIER_WHITELIST_LEAF_CONFIG_FILES: Final[frozenset[str]] = frozenset({"_config.py"})
+    "Leaf config modules (e.g. ai-hub/_config.py) that own their external-library"
+    "imports directly as the bottom of the c/t/p/m/u chain."
     DIR_TYPINGS: Final[str] = "typings"
     DIR_DOCS: Final[str] = "docs"
     DIR_BUILD: Final[str] = "build"

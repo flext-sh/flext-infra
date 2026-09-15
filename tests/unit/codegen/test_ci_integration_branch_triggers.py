@@ -12,7 +12,7 @@ from flext_infra import c, config
 from ._support import CodegenTestSupport
 
 
-class TestsCiIntegrationBranchTriggers:
+class TestsFlextInfraCiIntegrationBranchTriggers:
     """Keep integration triggers on one typed owner."""
 
     ci_template = (
@@ -62,4 +62,4 @@ class TestsCiIntegrationBranchTriggers:
             tm.that(self._branch_count(triggers, branch), eq=2)
 
 
-__all__: tuple[str, ...] = ()
+__all__: list[str] = ["TestsFlextInfraCiIntegrationBranchTriggers"]

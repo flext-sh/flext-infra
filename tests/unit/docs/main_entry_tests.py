@@ -13,8 +13,10 @@ from tests import u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tests import t
 
-class TestsDocsCli:
+
+class TestsFlextInfraDocsMainEntry:
     """Verify docs commands through their public CLI entry points."""
 
     @staticmethod
@@ -40,7 +42,7 @@ class TestsDocsCli:
             ["docs", "validate", "--help"],
         ],
     )
-    def test_help_routes(self, argv: list[str]) -> None:
+    def test_help_routes(self, argv: t.SequenceOf[str]) -> None:
         """Expose help successfully for every public docs route."""
         tm.that(infra_main(argv), eq=0)
 
@@ -126,3 +128,6 @@ class TestsDocsCli:
             eq=0,
         )
         tm.that((build_workspace / ".reports/docs/build-report.md").exists(), eq=True)
+
+
+__all__: list[str] = ["TestsFlextInfraDocsMainEntry"]

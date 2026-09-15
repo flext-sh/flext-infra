@@ -35,13 +35,6 @@ def installed_dependency_path(tmp_path: Path) -> Iterator[Path]:
 
 
 @pytest.fixture
-def isolate_github_trigger_sha() -> Iterator[None]:
-    """Remove the outer checkout identity for explicit conform test consumers."""
-    with u.Tests.env_vars_context(vars_to_clear=(c.Infra.ENV_VAR_GITHUB_SHA,)):
-        yield
-
-
-@pytest.fixture
 def infra_public_root() -> Iterator[ModuleType]:
     """Reload the root public package after clearing lazy-export caches.
 
@@ -202,7 +195,7 @@ def infra_git_repo(infra_test_workspace: Path) -> Path:
 
     Conformance reads this repository twice and both reads must agree. Detection
     only accepts a remote whose host and organization match the provider, while
-    baseline ancestry resolves the already materialized provider tracking ref.
+    integration-branch discovery reads the already materialized tracking ref.
     Declaring the real upstream URL satisfies detection but grades the fixture
     against the live repository; declaring a local path fails detection outright.
     The fixture therefore declares the provider URL and rewrites it to a local

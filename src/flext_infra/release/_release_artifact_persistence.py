@@ -20,7 +20,7 @@ class FlextInfraReleaseArtifactPersistenceMixin(FlextInfraReleaseArtifactSourceM
     """Validate and atomically persist complete project artifact sets."""
 
     @staticmethod
-    def _build_artifact_paths(output_dir: Path) -> p.Result[tuple[Path, ...]]:
+    def _build_artifact_paths(output_dir: Path) -> p.Result[t.VariadicTuple[Path]]:
         """Resolve exactly one wheel and one sdist from uv build output."""
         try:
             entries = tuple(sorted(output_dir.iterdir()))
@@ -49,9 +49,9 @@ class FlextInfraReleaseArtifactPersistenceMixin(FlextInfraReleaseArtifactSourceM
         artifacts: t.SequenceOf[
             t.Triple[Path, t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
         ],
-        destinations: tuple[Path, ...],
+        destinations: t.VariadicTuple[Path],
         destination_dir: Path,
-    ) -> p.Result[tuple[Path, ...]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Validate an already persisted immutable project artifact set."""
         try:
             existing = tuple(sorted(destination_dir.iterdir()))
@@ -79,9 +79,9 @@ class FlextInfraReleaseArtifactPersistenceMixin(FlextInfraReleaseArtifactSourceM
         artifacts: t.SequenceOf[
             t.Triple[Path, t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
         ],
-        destinations: tuple[Path, ...],
+        destinations: t.VariadicTuple[Path],
         destination_dir: Path,
-    ) -> p.Result[tuple[Path, ...]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Copy and atomically rename one complete project artifact set."""
         try:
             with TemporaryDirectory(
@@ -102,7 +102,7 @@ class FlextInfraReleaseArtifactPersistenceMixin(FlextInfraReleaseArtifactSourceM
             t.Triple[Path, t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
         ],
         destination_dir: Path,
-    ) -> p.Result[tuple[Path, ...]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Persist a project's complete validated artifact set atomically."""
         destinations = tuple(
             destination_dir / source.name for source, _, _ in artifacts

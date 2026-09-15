@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, config, m, u
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -42,7 +43,21 @@ class FlextInfraWorkspaceEnvironmentMixin:
         cls, request: m.Infra.WorkspaceEnvironmentSyncRequest
     ) -> p.Result[bool]:
         """Write canonical ``.envrc`` when absent, generated, or forced."""
-        rendered = cls._render_environment_template(c.Infra.ENVRC_FILENAME)
+        gascity = request.beads
+        identity = (
+            request.repository_root / c.CONFIG_DIR_NAME / c.Infra.BEADS_CONFIG_FILENAME
+        )
+        if gascity is None and identity.is_file():
+            workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+                request.repository_root
+            )
+            if workspace.failure:
+                return r[bool].from_failure(workspace)
+            if workspace.value.gascity_enabled:
+                gascity = m.Infra.BeadsWorkspaceEnvironmentSpec()
+        rendered = cls._render_environment_template(
+            c.Infra.ENVRC_FILENAME, gascity=gascity
+        )
         if rendered.failure:
             return r[bool].from_failure(rendered)
         return cls._write_generated_text(
@@ -58,6 +73,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
         destination: str,
         *,
         context: m.Infra.BeadsWorkspaceEnvironmentSpec | None = None,
+        gascity: m.Infra.BeadsWorkspaceEnvironmentSpec | None = None,
     ) -> p.Result[str]:
         """Render one SSOT environment template from the toolchain spec."""
         template_path = (
@@ -83,6 +99,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
                     config.Infra.codegen.toolchain.environment_path_prepends
                 ),
                 mise_bootstrap=u.Infra.mise_bootstrap_environment(),
+                gascity=gascity,
             )
         )
         return u.Cli.template_render(template_path, render_context)

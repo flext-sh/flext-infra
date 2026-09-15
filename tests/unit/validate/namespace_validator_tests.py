@@ -53,7 +53,7 @@ def _make_project_with_module_path(
     return project_root, target
 
 
-class TestFlextInfraNamespaceValidator:
+class TestsFlextInfraNamespaceValidator:
     """Test suite for namespace validator rules 0-3."""
 
     @pytest.mark.parametrize("family", tuple(c.Infra.FAMILY_SUFFIXES))
@@ -1119,3 +1119,6 @@ class TestFlextInfraNamespaceValidator:
             any(violation_substr in v for v in result.value.violations),
             eq=expect_violation,
         )
+
+
+__all__: list[str] = ["TestsFlextInfraNamespaceValidator"]

@@ -561,7 +561,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
     @staticmethod
     def _subjects(
         root: Path, since: str, *, merges_only: bool
-    ) -> p.Result[tuple[str, ...]]:
+    ) -> p.Result[t.VariadicTuple[str]]:
         """Return commit subjects reachable from HEAD since ``since`` (all when empty).
 
         Merge commits carry the pull-request titles the bump is derived from;

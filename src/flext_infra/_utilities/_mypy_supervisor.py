@@ -17,6 +17,8 @@ import sys
 import time
 from types import FrameType
 
+from flext_infra import t
+
 
 class MypyDarwinSupervisor:
     """Own the checker process group and stop it on resource-control failure."""
@@ -44,7 +46,7 @@ class MypyDarwinSupervisor:
             raise MypyDarwinSupervisor.ProcessGroupAbsentError from None
 
     @staticmethod
-    def _usage(pid: int) -> tuple[int, bool]:
+    def _usage(pid: int) -> t.Pair[int, bool]:
         snapshot = subprocess.run(  # nosec B603 - constant argv (/bin/ps), no shell, no untrusted input
             ("/bin/ps", "-axo", "pgid=,rss=,stat="),
             capture_output=True,
@@ -63,7 +65,11 @@ class MypyDarwinSupervisor:
 
     @classmethod
     def run(
-        cls, command: list[str], memory_bytes: int, timeout: int, kill_after: int
+        cls,
+        command: t.SequenceOf[str],
+        memory_bytes: int,
+        timeout: int,
+        kill_after: int,
     ) -> int:
         """Run one command with inherited streams and bounded group lifetime."""
         if not command or min(memory_bytes, timeout, kill_after) <= 0:

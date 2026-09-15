@@ -53,12 +53,10 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         """Repository-local variables Git exports to hooks and aliases."""
 
         MAKE_ISOLATION_ENV_KEYS: Final[t.StrSequence] = (
-            "APPLY",
             "BASH_ENV",
             "CHANGED_ONLY",
             "CHECK_GATES",
             "CHECK_ONLY",
-            "FAIL_FAST",
             "FILE",
             "FILES",
             "FIX",
@@ -105,7 +103,9 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "flext_infra.typings",
             "flext_infra.utilities",
         )
-        INFRA_PUBLIC_ROOT_ALIAS_EXPECTATIONS: ClassVar[tuple[tuple[str, str], ...]] = (
+        INFRA_PUBLIC_ROOT_ALIAS_EXPECTATIONS: ClassVar[
+            t.VariadicTuple[t.Pair[str, str]]
+        ] = (
             ("c", "FlextInfraConstants"),
             ("m", "FlextInfraModels"),
             ("p", "FlextInfraProtocols"),
@@ -114,7 +114,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             ("u", "FlextInfraUtilities"),
         )
         INFRA_PUBLIC_WRAPPER_ALIAS_EXPECTATIONS: ClassVar[
-            tuple[tuple[str, str, str], ...]
+            t.VariadicTuple[t.Triple[str, str, str]]
         ] = (
             ("flext_infra.constants", "c", "FlextInfraConstants"),
             ("flext_infra.models", "m", "FlextInfraModels"),
@@ -176,10 +176,10 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         RELEASE_VERSION_BASE: Final[str] = "0.1.0"
         RELEASE_VERSION_PATCH: Final[str] = "0.1.1"
         RELEASE_VERSION_PRERELEASE: Final[str] = "0.1.0rc0"
-        RELEASE_PROJECTS: Final[tuple[str, str]] = ("flext-a", "flext-b")
+        RELEASE_PROJECTS: Final[t.Pair[str, str]] = ("flext-a", "flext-b")
         # Fixture members depend on these siblings, so a release build must see
         # them to pin their declared versions.
-        RELEASE_INTERNAL_DEPENDENCIES: Final[tuple[str, str]] = (
+        RELEASE_INTERNAL_DEPENDENCIES: Final[t.Pair[str, str]] = (
             "flext-core",
             "flext-tests",
         )

@@ -19,7 +19,9 @@ class TestsFlextInfraCyclicImportDetector:
     """Prospective graph contracts for canonical alias migrations."""
 
     @staticmethod
-    def _project(tmp_path: Path, files: t.StrMapping) -> tuple[Path, dict[str, Path]]:
+    def _project(
+        tmp_path: Path, files: t.StrMapping
+    ) -> t.Pair[Path, t.MutableMappingKV[str, Path]]:
         project = tmp_path / "demo-project"
         package = project / "src" / "demo_pkg"
         package.mkdir(parents=True)
@@ -27,7 +29,7 @@ class TestsFlextInfraCyclicImportDetector:
         (project / "pyproject.toml").write_text(
             '[project]\nname = "demo-project"\nversion = "0.1.0"\n', encoding="utf-8"
         )
-        paths: dict[str, Path] = {}
+        paths: t.MutableMappingKV[str, Path] = {}
         for filename, source in files.items():
             path = package / filename
             path.write_text(source, encoding="utf-8")
@@ -94,4 +96,4 @@ class TestsFlextInfraCyclicImportDetector:
         tm.that(cycles, eq=[])
 
 
-__all__: t.StrSequence = []
+__all__: t.StrSequence = ["TestsFlextInfraCyclicImportDetector"]
