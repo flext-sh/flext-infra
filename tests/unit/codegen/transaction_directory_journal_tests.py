@@ -98,7 +98,11 @@ class TestsFlextInfraTransactionDirectoryJournal:
         journal = FlextInfraMiseWorkspacePlanner.journal_path(identity)
         tm.that(journal.exists(), eq=foreign_change)
         if foreign_change:
-            tm.that(failed.error, has="new generated file changed before recovery")
+            assert failed.error_data is not None
+            tm.that(
+                failed.error_data["recovery_error"],
+                has="new generated file changed before recovery",
+            )
             tm.that(target.read_bytes(), eq=b"foreign content\n")
         else:
             tm.that(failed.error, lacks="recovery failed")

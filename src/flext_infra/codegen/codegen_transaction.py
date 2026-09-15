@@ -781,7 +781,8 @@ class FlextInfraCodegenTransaction:
     ) -> p.Result[bool]:
         recovered = self._recover(layout)
         if recovered.failure:
-            return r[bool].from_failure(recovered)
+            # Recovery must never replace the failure that initiated it.
+            return r[bool].fail(failure, error_data={"recovery_error": recovered.error})
         return r[bool].fail(failure)
 
     def _recover(self, layout: m.Infra.MiseToolchainWorkspaceLayout) -> p.Result[bool]:

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from flext_tests import tm
 
+from flext_infra import config
+
 from .test_ci_integration_branch_triggers import (
     TestsFlextInfraCiIntegrationBranchTriggers,
 )
@@ -18,7 +20,10 @@ class TestsFlextInfraCiCheckoutModeNormalization:
         )
         tm.that("chmod -R go-w ." in rendered, eq=True)
         normalize_at = rendered.index("Normalize checkout modes")
-        for gate in ("setup (blocking)", "gen check (blocking)", "check (blocking)"):
+        for step in config.Infra.codegen.make.workflow:
+            if "ci" not in step.contexts:
+                continue
+            gate = f"{step.verb} (blocking)"
             tm.that(normalize_at < rendered.index(gate), eq=True)
 
 
