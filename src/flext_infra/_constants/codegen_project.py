@@ -122,6 +122,7 @@ class FlextInfraConstantsCodegenProject:
 
     BEADS_CONFIG_FILENAME: Final[str] = "beads.yaml"
     BEADS_DIRNAME: Final[str] = ".beads"
+    BEADS_DIRECTORY_MODE: Final[int] = 0o700
     BEADS_LOCAL_VERSION_FILENAME: Final[str] = ".local_version"
     BEADS_LAST_TOUCHED_FILENAME: Final[str] = "last-touched"
     BEADS_CONFIG_VERSION: Final = 1
