@@ -54,7 +54,7 @@ class FlextInfraConsumerImportViolationsDetector:
     @classmethod
     def detect_file(
         cls, ctx: m.Infra.DetectorContext
-    ) -> tuple[m.Infra.ConsumerImportViolation, ...]:
+    ) -> t.VariadicTuple[m.Infra.ConsumerImportViolation]:
         """Detect R1 violations in one file with true statement line numbers."""
         path: Path = ctx.file_path
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))

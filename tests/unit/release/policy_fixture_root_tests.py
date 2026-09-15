@@ -17,7 +17,7 @@ from flext_infra import c, config
 from tests import u
 
 
-class TestsReleasePolicyOwner:
+class TestsFlextInfraReleasePolicyOwner:
     """Policy sources: one projected template, one config-rendered policy."""
 
     def test_policy_sources_resolve_from_the_checkout_in_use(self) -> None:
@@ -99,3 +99,6 @@ class TestsReleasePolicyOwner:
         entry = entries[c.Infra.RELEASE_GITLEAKS_CONFIG_PATH]
         tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
         tm.that(entry.overwrite, eq=True)
+
+
+__all__: list[str] = ["TestsFlextInfraReleasePolicyOwner"]

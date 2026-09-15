@@ -21,17 +21,14 @@ from tests import m
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
 
+class TestsFlextInfraFreshImport:
+    """Fresh-process import smoke test suite."""
 
-@pytest.fixture
-def v() -> FlextInfraValidateFreshImport:
-    """Shared validator instance."""
-    return FlextInfraValidateFreshImport()
-
-
-class TestFreshImportValidatorCore:
-    """Core validation: clean imports vs broken imports."""
+    @pytest.fixture
+    def v(self) -> FlextInfraValidateFreshImport:
+        """Shared validator instance."""
+        return FlextInfraValidateFreshImport()
 
     def test_empty_package_list_passes(self, v: FlextInfraValidateFreshImport) -> None:
         report: m.Infra.ValidationReport = tm.ok(v.build_report(packages=()))
@@ -87,10 +84,6 @@ class TestFreshImportValidatorCore:
         )
         tm.that(report.passed, eq=True, msg=str(report.violations))
 
-
-class TestFreshImportValidatorFlextPackages:
-    """Smoke: core flext packages must import cleanly."""
-
     def test_flext_core_imports_cleanly(self, v: FlextInfraValidateFreshImport) -> None:
         report: m.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("flext_core",))
@@ -106,4 +99,4 @@ class TestFreshImportValidatorFlextPackages:
         tm.that(report.passed, eq=True, msg=report.summary)
 
 
-__all__: t.StrSequence = []
+__all__: list[str] = ["TestsFlextInfraFreshImport"]

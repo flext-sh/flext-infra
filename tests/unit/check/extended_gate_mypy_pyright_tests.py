@@ -17,23 +17,24 @@ if TYPE_CHECKING:
     from flext_infra.gates.base_gate import FlextInfraGate
 
 
-@pytest.fixture
-def checker_context(real_python_package: Path) -> m.Infra.GateContext:
-    """Configure the existing real package for native checker execution."""
-    pyproject = real_python_package / "pyproject.toml"
-    pyproject.write_text(
-        pyproject.read_text(encoding="utf-8")
-        + '\n[tool.mypy]\n[tool.pyright]\ninclude = ["src"]\n'
-        + '[tool.pyrefly]\nproject-includes = ["src"]\n',
-        encoding="utf-8",
-    )
-    reports = real_python_package / ".reports"
-    reports.mkdir()
-    return m.Infra.GateContext(repository_root=real_python_package, reports_dir=reports)
-
-
-class TestTypeGates:
+class TestsFlextInfraTypeGates:
     """The selected project's actual findings determine acceptance."""
+
+    @pytest.fixture
+    def checker_context(self, real_python_package: Path) -> m.Infra.GateContext:
+        """Configure the existing real package for native checker execution."""
+        pyproject = real_python_package / "pyproject.toml"
+        pyproject.write_text(
+            pyproject.read_text(encoding="utf-8")
+            + '\n[tool.mypy]\n[tool.pyright]\ninclude = ["src"]\n'
+            + '[tool.pyrefly]\nproject-includes = ["src"]\n',
+            encoding="utf-8",
+        )
+        reports = real_python_package / ".reports"
+        reports.mkdir()
+        return m.Infra.GateContext(
+            repository_root=real_python_package, reports_dir=reports
+        )
 
     @pytest.mark.slow
     @pytest.mark.parametrize(
@@ -234,4 +235,4 @@ class TestTypeGates:
             m.Infra.MypyCoverageReport.model_validate_json(payload, strict=True)
 
 
-__all__: list[str] = []
+__all__: list[str] = ["TestsFlextInfraTypeGates"]

@@ -78,6 +78,18 @@ class FlextInfraCodegenGenerationPathsMixin:
         )
 
     @staticmethod
+    def _relative_owned_module(current_pkg: str, mod: str) -> str:
+        """Resolve a same-owner ancestor or sibling without a private absolute import."""
+        current_parts = current_pkg.split(".")
+        module_parts = mod.split(".")
+        common = 0
+        for current, target in zip(current_parts, module_parts, strict=False):
+            if current != target:
+                break
+            common += 1
+        return "." * (len(current_parts) - common + 1) + ".".join(module_parts[common:])
+
+    @staticmethod
     def _compact_lazy_module_path(current_pkg: str, mod: str) -> str:
         """Compact a lazy module path relative to ``current_pkg`` when valid."""
         if not current_pkg:
@@ -91,10 +103,11 @@ class FlextInfraCodegenGenerationPathsMixin:
         root_pkg = current_pkg.split(".", maxsplit=1)[0]
         first_segment = mod.split(".", maxsplit=1)[0]
         internal_segments = frozenset(current_pkg.split(".")[1:])
-        if (
-            first_segment == root_pkg
-            or internal_segments & c.Infra.LOCAL_INFERRED_SEGMENTS
-        ):
+        if first_segment == root_pkg:
+            return FlextInfraCodegenGenerationPathsMixin._relative_owned_module(
+                current_pkg, mod
+            )
+        if internal_segments & c.Infra.LOCAL_INFERRED_SEGMENTS:
             return mod
         if first_segment in internal_segments or (
             current_pkg == root_pkg
@@ -119,6 +132,10 @@ class FlextInfraCodegenGenerationPathsMixin:
             return f".{mod.removeprefix(f'{local_package_root}.')}"
         root_pkg = local_package_root.split(".", maxsplit=1)[0]
         first_segment = mod.split(".", maxsplit=1)[0]
+        if first_segment == root_pkg:
+            return FlextInfraCodegenGenerationPathsMixin._relative_owned_module(
+                local_package_root, mod
+            )
         internal_segments = frozenset(local_package_root.split(".")[1:])
         if (
             mod.startswith("_")
@@ -136,19 +153,7 @@ class FlextInfraCodegenGenerationPathsMixin:
     def _reject_noncanonical_type_checking_import(
         mod: str, local_package_root: str | None, items: t.StrPairSequence
     ) -> None:
-        """Reject a relative TYPE_CHECKING import with no local package context.
-
-        flext-udpm5: an absolute import that shares the current package's own
-        project root but is not one of its descendants (an ancestor, sibling,
-        or cousin package, e.g. flext-ldif's ``servers._oid`` importing
-        ``servers.rfc``) is intentionally left absolute by
-        ``_normalize_type_checking_module_path`` and accepted here rather
-        than rejected: converting it to a relative import would require more
-        than one leading dot, which the member project's own Ruff
-        configuration (``ban-relative-imports = "parents"``) forbids. Only a
-        descendant import lacking any local package context at all -- which
-        cannot be resolved to any owner -- is rejected.
-        """
+        """Reject a relative TYPE_CHECKING import with no local package context."""
         if mod.startswith(".") and not local_package_root:
             exports = ", ".join(name for name, _ in items)
             msg = (

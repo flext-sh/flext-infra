@@ -130,8 +130,8 @@ class FlextInfraConstantsDocs:
         re.IGNORECASE,
     )
     """Match selectors outside the canonical root Make grammar."""
-    DOCS_APPLY_RE: Final[t.RegexPattern] = re.compile(r"\bAPPLY=")
-    """Match any APPLY input in documented commands; Make verbs have no mode."""
+    DOCS_APPLY_RE: Final[t.RegexPattern] = re.compile(r"\bAPPLY\s*=")
+    """Reject the removed mutation selector for every supplied value."""
     DOCS_COMMAND_CONTRACT_DIRNAMES: Final[frozenset[str]] = frozenset({
         "guides",
         "standards",
@@ -146,7 +146,7 @@ class FlextInfraConstantsDocs:
     """Match direct pytest execution that bypasses the root Testmon verb."""
     DOCS_RAW_TOOL_COMMAND_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*(?:\$\s*)?(?:(?:[A-Za-z_][A-Za-z0-9_]*=\S+)\s+)*"
-        r"(?:ruff|pyrefly|mypy|pyright|mkdocs|uv|poetry|pdm|tox|nox|pre-commit|"
+        r"(?:(?:ruff|pyrefly|mypy|pyright|mkdocs|uv|poetry|pdm|tox|nox|pre-commit)(?=\s|$)|"
         r"python(?:3(?:\.\d+)?)?(?:\s+-m|\s+[^\s]+\.py\b))",
         re.IGNORECASE,
     )

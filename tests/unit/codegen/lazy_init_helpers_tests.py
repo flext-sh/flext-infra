@@ -7,15 +7,15 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from tests import c, u
+from tests import c, t, u
 
 
 class TestsFlextInfraLazyInitHelpers:
     """Validate lazy-init through the public service surface only."""
 
     @staticmethod
-    def _workspace(tmp_path: Path) -> tuple[Path, Path]:
-        workspace: tuple[Path, Path] = u.Tests.create_lazy_init_workspace(
+    def _workspace(tmp_path: Path) -> t.Pair[Path, Path]:
+        workspace: t.Pair[Path, Path] = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         return workspace

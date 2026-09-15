@@ -12,12 +12,11 @@ from flext_infra.gates.smells import FlextInfraSmellsGate
 from tests import m, u
 
 
-def _ctx(root: Path) -> m.Infra.GateContext:
-    return m.Infra.GateContext(repository_root=root, reports_dir=root / "reports")
-
-
-class TestSmellsGate:
+class TestsFlextInfraSmellsGate:
     """Exercise observable gate behavior with the real setup-provisioned tool."""
+
+    def _ctx(self, root: Path) -> m.Infra.GateContext:
+        return m.Infra.GateContext(repository_root=root, reports_dir=root / "reports")
 
     def test_registry_exposes_the_canonical_gate(self) -> None:
         gate = FlextInfraGateRegistry.default().get("smells")
@@ -28,7 +27,7 @@ class TestSmellsGate:
     ) -> None:
         project = u.Tests.mk_project(tmp_path, "smells-project", with_src=True)
 
-        execution = FlextInfraSmellsGate(tmp_path).check(project, _ctx(tmp_path))
+        execution = FlextInfraSmellsGate(tmp_path).check(project, self._ctx(tmp_path))
 
         tm.that(execution.result.passed, eq=False)
         tm.that(len(execution.issues), eq=1)
@@ -53,7 +52,10 @@ class TestSmellsGate:
         )
         project = u.Tests.mk_project(tmp_path, "smells-project", with_src=True)
 
-        execution = FlextInfraSmellsGate(tmp_path).check(project, _ctx(tmp_path))
+        execution = FlextInfraSmellsGate(tmp_path).check(project, self._ctx(tmp_path))
 
         tm.that(execution.result.passed, eq=True)
         tm.that(len(execution.issues), eq=0)
+
+
+__all__: list[str] = ["TestsFlextInfraSmellsGate"]

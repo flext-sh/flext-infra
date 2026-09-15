@@ -5,8 +5,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 from typing import override
+from uuid import uuid4
 
-from flext_infra import r, u
+from flext_infra import config, r, u
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from tests import c, m, p, t
@@ -16,6 +17,20 @@ from tests.utilities_replay_sequence import TestsFlextInfraUtilitiesReplaySequen
 
 class TestsFlextInfraUtilitiesDepsMixin:
     """Shared dependency-test execution and service fixture owners."""
+
+    @staticmethod
+    def record_dependency_command_output(output: p.Cli.CommandOutput) -> None:
+        """Keep the original subprocess evidence outside disposable test scratch."""
+        receipt = (
+            Path(__file__).resolve().parents[1]
+            / config.Infra.codegen.make.testmon_cache.reports_directory
+            / "dependency-commands"
+            / f"{uuid4()}.json"
+        )
+        recorded = m.Cli.CommandOutput.model_validate(output, from_attributes=True)
+        u.Cli.atomic_write_text_file(
+            receipt, recorded.model_dump_json(indent=2) + "\n"
+        ).unwrap()
 
     @staticmethod
     def run_real_detector(
@@ -32,7 +47,7 @@ class TestsFlextInfraUtilitiesDepsMixin:
         }
         if env is not None:
             environment.update(env)
-        return u.Cli.run_raw(
+        result = u.Cli.run_raw(
             [
                 str(runtime / "bin" / "python"),
                 "-m",
@@ -48,6 +63,11 @@ class TestsFlextInfraUtilitiesDepsMixin:
             cwd=root,
             env=environment,
         )
+        if result.success:
+            TestsFlextInfraUtilitiesDepsMixin.record_dependency_command_output(
+                result.value
+            )
+        return result
 
     class DeptrySelector:
         """Protocol-compatible selector backed by a real Result."""
@@ -96,7 +116,7 @@ class TestsFlextInfraUtilitiesDepsMixin:
         @override
         def run_pip_check(
             self, repository_root: Path, venv_bin: Path
-        ) -> p.Result[tuple[t.StrSequence, int]]:
+        ) -> p.Result[t.Pair[t.StrSequence, int]]:
             del repository_root, venv_bin
             return r[tuple[t.StrSequence, int]].ok(([], self._pip_exit))
 
@@ -165,7 +185,7 @@ class TestsFlextInfraUtilitiesDepsMixin:
             self, limits_path: Path | None = None
         ) -> t.StrMapping:
             del limits_path
-            limits: dict[str, str] = {}
+            limits: t.MutableMappingKV[str, str] = {}
             return limits
 
     @staticmethod

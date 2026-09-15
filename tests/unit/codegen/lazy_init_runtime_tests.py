@@ -9,14 +9,14 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from tests import c, u
+from tests import c, t, u
 
 
 class TestsFlextInfraLazyInitRuntime:
     """Exercise generated roots through Python's real import machinery."""
 
     @staticmethod
-    def _generate_package(tmp_path: Path) -> tuple[Path, Path]:
+    def _generate_package(tmp_path: Path) -> t.Pair[Path, Path]:
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-runtime", package_name="flext_runtime"
         )

@@ -78,7 +78,7 @@ class FlextInfraCodegenLazyInitPlanner(
     ) -> m.Infra.LazyInitPlan:
         """Build the lazy-init render plan for one package directory."""
         context = self.context(pkg_dir)
-        if self._shadows_stdlib_module(pkg_dir):
+        if not context.importable or self._shadows_stdlib_module(pkg_dir):
             # flext-mh7g4: no generated content can repair a package name that
             # shadows a stdlib module, so the plan removes generator-owned
             # residue and otherwise skips the directory. The ALL_SCAN_PATTERNS
@@ -106,10 +106,6 @@ class FlextInfraCodegenLazyInitPlanner(
                 else c.Infra.LazyInitAction.SKIP
             )
         )
-        if not context.importable:
-            return self._publish_plan(
-                m.Infra.LazyInitPlan(context=context, action=empty_action)
-            )
         lazy_map = self._package_exports(context)
         version_map = self._module_exports(
             context.pkg_dir / self._version_module_name,

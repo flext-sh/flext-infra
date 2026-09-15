@@ -6,7 +6,7 @@ import stat
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .. import m, r, u
+from .. import c, m, r, u
 from ..workspace import FlextInfraWorkspaceDetector
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 
@@ -113,7 +113,7 @@ class FlextInfraMiseWorkspacePlanner:
     @staticmethod
     def journal_path(identity: m.Infra.GitIdentityReport) -> Path:
         """Return the shared journal anchor without materializing layout state."""
-        return identity.git_dir / files.JOURNAL_NAME
+        return identity.git_dir / c.Infra.JOURNAL_NAME
 
     def _layout_from_identity(
         self,
@@ -210,7 +210,7 @@ class FlextInfraMiseWorkspacePlanner:
         selectors: list[str] = []
         expected_paths: list[Path] = []
         for plan in config_plans:
-            if plan.path.name != files.CONFIG_SPEC[0] or ".." in plan.path.parts:
+            if plan.path.name != c.Infra.CONFIG_SPEC[0] or ".." in plan.path.parts:
                 return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
                     f"invalid Mise configuration plan path: {plan.path}"
                 )
@@ -321,7 +321,7 @@ class FlextInfraMiseWorkspacePlanner:
                 config=m.Infra.MiseToolchainConfigState(
                     before=config_state.value,
                     replacement_content=replacement_content,
-                    replacement_mode=files.CONFIG_SPEC[1],
+                    replacement_mode=c.Infra.CONFIG_SPEC[1],
                     sources=config_sources,
                 ),
                 artifacts=artifact_set,
@@ -342,14 +342,15 @@ class FlextInfraMiseWorkspacePlanner:
                 selector=selector,
                 root=root.value,
                 transaction_root=(
-                    state_root.value / f"{files.TRANSACTION_DIR_PREFIX}{transaction_id}"
+                    state_root.value
+                    / f"{c.Infra.TRANSACTION_DIR_PREFIX}{transaction_id}"
                     if transaction_id is not None
                     else None
                 ),
                 artifacts=m.Infra.MiseToolchainArtifactPaths(
-                    config=root.value / files.CONFIG_SPEC[0],
-                    unix_launcher=root.value / files.ARTIFACT_NAMES[0],
-                    windows_launcher=root.value / files.ARTIFACT_NAMES[1],
+                    config=root.value / c.Infra.CONFIG_SPEC[0],
+                    unix_launcher=root.value / c.Infra.ARTIFACT_NAMES[0],
+                    windows_launcher=root.value / c.Infra.ARTIFACT_NAMES[1],
                 ),
             )
         )

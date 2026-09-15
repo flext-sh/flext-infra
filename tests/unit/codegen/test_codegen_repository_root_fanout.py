@@ -17,7 +17,7 @@ from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import u, u as test_u
 
 
-class TestsCodegenRepositoryRootFanout:
+class TestsFlextInfraCodegenRepositoryRootFanout:
     def test_conform_owns_repository_root_makefile(self) -> None:
         """The single Makefile render entry includes the workspace profile."""
         makefile_entries = tuple(
@@ -32,7 +32,7 @@ class TestsCodegenRepositoryRootFanout:
         self, tmp_path: Path
     ) -> None:
         """The workspace projection exposes both gate routes and the CLI owner."""
-        repository_root = _render_root_makefile(tmp_path)
+        repository_root = self._render_root_makefile(tmp_path)
         rendered = (repository_root / c.Infra.MAKEFILE_FILENAME).read_text(
             encoding=c.Infra.ENCODING_DEFAULT
         )
@@ -45,7 +45,7 @@ class TestsCodegenRepositoryRootFanout:
         self, tmp_path: Path
     ) -> None:
         """Generated workspace check/test route through workspace orchestrate."""
-        repository_root = _render_root_makefile(tmp_path)
+        repository_root = self._render_root_makefile(tmp_path)
         for verb in (c.Infra.VERB_CHECK, c.Infra.VERB_TEST):
             execution = tm.ok(
                 test_u.Cli.run_raw(
@@ -61,7 +61,7 @@ class TestsCodegenRepositoryRootFanout:
         self, tmp_path: Path
     ) -> None:
         """Generated deps renders the exact lock-upgrade and modernizer invocation."""
-        repository_root = _render_root_makefile(tmp_path)
+        repository_root = self._render_root_makefile(tmp_path)
 
         execution = tm.ok(
             test_u.Cli.run_raw(
@@ -78,48 +78,48 @@ class TestsCodegenRepositoryRootFanout:
         tm.that(rendered, has="uv lock --project")
         tm.that(rendered, has="--upgrade")
 
+    def _render_root_makefile(self, tmp_path: Path) -> Path:
+        """Render base/Makefile.j2 from a typed workspace fixture."""
+        repository = u.Tests.repository_ref("workspace-fixture")
+        workspace = m.Infra.WorkspaceSpec(
+            name=repository.name,
+            beads=m.Infra.BeadsProjectSpec(
+                version=1,
+                workspace=repository.name,
+                database=repository.name,
+                issue_prefix=repository.name,
+            ),
+            repository=repository,
+            project=u.Tests.project_spec(repository.name),
+        )
+        repository_root = tmp_path / "workspace"
+        # The bootstrap projection refreshes the dispatcher of an existing checkout:
+        # the root is present, even when it carries no metadata or topology yet.
+        repository_root.mkdir()
+        request = u.Tests.conform_request(
+            repository_root,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        plan: m.Infra.CodegenPlan = tm.ok(
+            FlextInfraCodegenConform(
+                repository_root=repository_root,
+                request=request,
+                initial_workspace=workspace,
+            ).plan(request)
+        )
+        makefile_plans = tuple(
+            fp for fp in plan.files if Path(fp.path).name == c.Infra.MAKEFILE_FILENAME
+        )
+        tm.that(makefile_plans, len=1)
+        makefile_path = repository_root / c.Infra.MAKEFILE_FILENAME
+        tm.not_none(makefile_plans[0].desired_content)
+        makefile_path.write_text(
+            u.Tests.codegen_file_text(makefile_plans[0]),
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        return repository_root
 
-def _render_root_makefile(tmp_path: Path) -> Path:
-    """Render base/Makefile.j2 from a typed workspace fixture."""
-    repository = u.Tests.repository_ref("workspace-fixture")
-    workspace = m.Infra.WorkspaceSpec(
-        name=repository.name,
-        beads=m.Infra.BeadsProjectSpec(
-            version=1,
-            workspace=repository.name,
-            database=repository.name,
-            issue_prefix=repository.name,
-        ),
-        repository=repository,
-        project=u.Tests.project_spec(repository.name),
-    )
-    repository_root = tmp_path / "workspace"
-    # The bootstrap projection refreshes the dispatcher of an existing checkout:
-    # the root is present, even when it carries no metadata or topology yet.
-    repository_root.mkdir()
-    request = u.Tests.conform_request(
-        repository_root,
-        what=c.Infra.CodegenConformSurface.MAKEFILE,
-        scope=c.Infra.CodegenConformScope.SELF,
-        mode=c.Infra.CodegenConformMode.CHECK,
-    )
-    plan: m.Infra.CodegenPlan = tm.ok(
-        FlextInfraCodegenConform(
-            repository_root=repository_root,
-            request=request,
-            initial_workspace=workspace,
-        ).plan(request)
-    )
-    makefile_plans = tuple(
-        fp for fp in plan.files if Path(fp.path).name == c.Infra.MAKEFILE_FILENAME
-    )
-    tm.that(makefile_plans, len=1)
-    makefile_path = repository_root / c.Infra.MAKEFILE_FILENAME
-    tm.not_none(makefile_plans[0].desired_content)
-    makefile_path.write_text(
-        u.Tests.codegen_file_text(makefile_plans[0]), encoding=c.Infra.ENCODING_DEFAULT
-    )
-    return repository_root
 
-
-__all__: tuple[str, ...] = ()
+__all__: list[str] = ["TestsFlextInfraCodegenRepositoryRootFanout"]

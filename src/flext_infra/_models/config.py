@@ -1773,7 +1773,7 @@ class FlextInfraConfigModels:
             m.Field(default=None, description="Command that produces the artifacts"),
         ] = None
         version_variables: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Extra file:variable version anchors"),
         ] = ()
 
@@ -1805,11 +1805,11 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Branch that produces releases")
         ]
         version_variables: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="file:variable anchors the tool rewrites"),
         ]
         version_toml: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="file:tomlpath anchors the tool rewrites"),
         ]
         build_command: Annotated[
@@ -1852,14 +1852,14 @@ class FlextInfraConfigModels:
         """
 
         rule_dirs: Annotated[
-            tuple[str, ...],
+            t.VariadicTuple[str],
             m.Field(
                 min_length=1,
                 description="Directories holding this project's ast-grep rules",
             ),
         ]
         test_dirs: Annotated[
-            tuple[str, ...],
+            t.VariadicTuple[str],
             m.Field(
                 default=(),
                 description="Directories holding rule fixtures and snapshots",

@@ -5,13 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
 
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from tests import c, u
 
 if TYPE_CHECKING:
-    from tests import p
+    from tests import p, t
 
 
 # NOTE (multi-agent, flext-wkii.17.15): prove scoped writes and read-only drift publicly.
@@ -26,7 +27,7 @@ class TestsFlextInfraCodegenLazyInitService:
         check_only: bool = True,
         apply_changes: bool = False,
         dry_run: bool = False,
-    ) -> tuple[FlextInfraCodegenLazyInit, p.Result[bool], Path, bytes]:
+    ) -> t.Quad[FlextInfraCodegenLazyInit, p.Result[bool], Path, bytes]:
         """Run one lazy-init pass without writing and return its observable drift."""
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py", class_name="FlextTestsModels", alias="m"
@@ -531,20 +532,21 @@ class TestsFlextInfraCodegenLazyInitService:
     # it (stdlib-module-shadowing). Apply must remove generator-owned residue,
     # never write a new initializer, drop the child from the parent inventory
     # in the same pass, and a following check must be a byte fixed point.
-    def test_stdlib_shadowing_directory_is_never_a_generated_package(
-        self, tmp_path: Path
+    @pytest.mark.parametrize("directory_name", ["typing", "done-check", "class", "123"])
+    def test_invalid_directory_is_never_a_generated_package(
+        self, tmp_path: Path, directory_name: str
     ) -> None:
-        """A stdlib-named tests directory is skipped and its residue removed."""
+        """Unimportable and stdlib-shadowing directories lose generated residue."""
         repository_root, _package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         tests_root = repository_root / c.Infra.DIR_TESTS
         tests_root.mkdir()
         tests_init = tests_root / c.Infra.INIT_PY
         tests_init.write_text("", encoding=c.Cli.ENCODING_DEFAULT)
-        shadowing_root = tests_root / "typing"
+        shadowing_root = tests_root / directory_name
         shadowing_root.mkdir()
         residue_init = shadowing_root / c.Infra.INIT_PY
         residue_init.write_text(
-            f'{c.Infra.AUTOGEN_HEADER}\n"""Tests.typing package."""\n',
+            f'{c.Infra.AUTOGEN_HEADER}\n"""Generated package."""\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         shadowing_root.joinpath("test_contracts.py").write_text(
@@ -576,8 +578,8 @@ class TestsFlextInfraCodegenLazyInitService:
 
         tm.that(apply_result.success, eq=True)
         tm.that(residue_init.exists(), eq=False)
-        tm.that(generated_tests_init, lacks=".typing")
-        tm.that(generated_tests_init, lacks='"typing"')
+        tm.that(generated_tests_init, lacks=f".{directory_name}")
+        tm.that(generated_tests_init, lacks=f'"{directory_name}"')
         tm.that((nested_io_root / c.Infra.INIT_PY).exists(), eq=True)
         tm.that(check_result.success, eq=True)
         tm.that(check_service.modified_files, eq=())

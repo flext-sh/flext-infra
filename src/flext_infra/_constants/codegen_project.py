@@ -19,6 +19,8 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import Final
 
+from flext_infra import t
+
 
 class FlextInfraConstantsCodegenProject:
     """Manifest + naming constants for project creation (flat in ``c.Infra.*``)."""
@@ -123,7 +125,11 @@ class FlextInfraConstantsCodegenProject:
     BEADS_LOCAL_VERSION_FILENAME: Final[str] = ".local_version"
     BEADS_LAST_TOUCHED_FILENAME: Final[str] = "last-touched"
     BEADS_CONFIG_VERSION: Final = 1
-    CONFORM_NAMESPACE_TABLE: Final[tuple[str, ...]] = ("tool", "flext", "namespace")
+    CONFORM_NAMESPACE_TABLE: Final[t.VariadicTuple[str]] = (
+        "tool",
+        "flext",
+        "namespace",
+    )
     """Table the conform pipeline writes from the project SSOT.
 
     One owner for the path, consumed by the writer and by the managed-file

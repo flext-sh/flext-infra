@@ -14,31 +14,29 @@ from tests import m
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
 
+class TestsFlextInfraPytestDiag:
+    def _extractor(
+        self,
+        junit: Path,
+        log: Path,
+        *,
+        failed: Path | None = None,
+        errors: Path | None = None,
+        warnings: Path | None = None,
+        slowest: Path | None = None,
+        skips: Path | None = None,
+    ) -> FlextInfraPytestDiagExtractor:
+        return FlextInfraPytestDiagExtractor(
+            junit=junit,
+            log_path=log,
+            failed=failed,
+            errors=errors,
+            warnings=warnings,
+            slowest=slowest,
+            skips=skips,
+        )
 
-def _extractor(
-    junit: Path,
-    log: Path,
-    *,
-    failed: Path | None = None,
-    errors: Path | None = None,
-    warnings: Path | None = None,
-    slowest: Path | None = None,
-    skips: Path | None = None,
-) -> FlextInfraPytestDiagExtractor:
-    return FlextInfraPytestDiagExtractor(
-        junit=junit,
-        log_path=log,
-        failed=failed,
-        errors=errors,
-        warnings=warnings,
-        slowest=slowest,
-        skips=skips,
-    )
-
-
-class TestPytestDiagExtractorBehavior:
     def test_extract_valid_junit_xml(self, tmp_path: Path) -> None:
         junit = tmp_path / "junit.xml"
         junit.write_text(
@@ -49,7 +47,7 @@ class TestPytestDiagExtractorBehavior:
         log.write_text("")
 
         report: m.Infra.PytestDiagnostics = tm.ok(
-            _extractor(junit, log).extract(junit, log)
+            self._extractor(junit, log).extract(junit, log)
         )
 
         tm.that(report, is_=m.Infra.PytestDiagnostics)
@@ -62,7 +60,7 @@ class TestPytestDiagExtractorBehavior:
         missing_xml = tmp_path / "missing.xml"
 
         with pytest.raises(FileNotFoundError):
-            _extractor(missing_xml, log).extract(missing_xml, log)
+            self._extractor(missing_xml, log).extract(missing_xml, log)
 
     def test_extract_invalid_xml_preserves_parser_error(self, tmp_path: Path) -> None:
         log = tmp_path / "log.txt"
@@ -72,7 +70,7 @@ class TestPytestDiagExtractorBehavior:
         bad_xml.write_text("invalid xml content")
 
         with pytest.raises(DefusedET.ParseError):
-            _extractor(bad_xml, log).extract(bad_xml, log)
+            self._extractor(bad_xml, log).extract(bad_xml, log)
 
     def test_extract_failed_and_error_tests_from_xml(self, tmp_path: Path) -> None:
         log = tmp_path / "log.txt"
@@ -86,7 +84,7 @@ class TestPytestDiagExtractorBehavior:
         )
 
         fail_report: m.Infra.PytestDiagnostics = tm.ok(
-            _extractor(fail_xml, log).extract(fail_xml, log)
+            self._extractor(fail_xml, log).extract(fail_xml, log)
         )
         tm.that(fail_report.failed_count, eq=1)
         tm.that(fail_report.error_count, eq=0)
@@ -101,7 +99,7 @@ class TestPytestDiagExtractorBehavior:
         )
 
         err_report: m.Infra.PytestDiagnostics = tm.ok(
-            _extractor(err_xml, log).extract(err_xml, log)
+            self._extractor(err_xml, log).extract(err_xml, log)
         )
         tm.that(err_report.error_count, eq=1)
 
@@ -117,7 +115,7 @@ class TestPytestDiagExtractorBehavior:
         )
 
         skip_report: m.Infra.PytestDiagnostics = tm.ok(
-            _extractor(skip_xml, log).extract(skip_xml, log)
+            self._extractor(skip_xml, log).extract(skip_xml, log)
         )
         tm.that(skip_report.skipped_count, eq=1)
 
@@ -129,7 +127,7 @@ class TestPytestDiagExtractorBehavior:
         )
 
         slow_report: m.Infra.PytestDiagnostics = tm.ok(
-            _extractor(slow_xml, log).extract(slow_xml, log)
+            self._extractor(slow_xml, log).extract(slow_xml, log)
         )
         tm.that(slow_report.slow_entries, length_gt=0)
 
@@ -141,7 +139,7 @@ class TestPytestDiagExtractorBehavior:
         )
 
         with pytest.raises(FileNotFoundError):
-            _extractor(junit, tmp_path / "missing.txt").extract(
+            self._extractor(junit, tmp_path / "missing.txt").extract(
                 junit, tmp_path / "missing.txt"
             )
 
@@ -155,7 +153,7 @@ class TestPytestDiagExtractorBehavior:
         log_is_dir.mkdir()
 
         with pytest.raises(IsADirectoryError):
-            _extractor(junit, log_is_dir).extract(junit, log_is_dir)
+            self._extractor(junit, log_is_dir).extract(junit, log_is_dir)
 
     def test_extract_warnings_from_log(self, tmp_path: Path) -> None:
         junit = tmp_path / "junit.xml"
@@ -175,7 +173,7 @@ class TestPytestDiagExtractorBehavior:
         )
 
         report: m.Infra.PytestDiagnostics = tm.ok(
-            _extractor(junit, log).extract(junit, log)
+            self._extractor(junit, log).extract(junit, log)
         )
 
         tm.that(report.error_count, eq=0)
@@ -192,7 +190,7 @@ class TestPytestDiagExtractorBehavior:
         log.write_text("test_case.py:10: DeprecationWarning: test warning")
 
         report: m.Infra.PytestDiagnostics = tm.ok(
-            _extractor(junit, log).extract(junit, log)
+            self._extractor(junit, log).extract(junit, log)
         )
 
         tm.that(report.warning_lines, length_gt=0)
@@ -210,7 +208,7 @@ class TestPytestDiagExtractorBehavior:
         log.write_text("")
 
         with pytest.raises(ValueError, match="not-a-number"):
-            _extractor(junit, log).extract(junit, log)
+            self._extractor(junit, log).extract(junit, log)
 
     def test_execute_writes_selected_output_files(self, tmp_path: Path) -> None:
         junit = tmp_path / "junit.xml"
@@ -227,7 +225,7 @@ class TestPytestDiagExtractorBehavior:
             "DeprecationWarning: test warning\n"
             "-- Docs: https://docs.pytest.org/\n"
         )
-        extractor = _extractor(
+        extractor = self._extractor(
             junit,
             log,
             failed=tmp_path / "failed.txt",
@@ -246,4 +244,4 @@ class TestPytestDiagExtractorBehavior:
         tm.that((tmp_path / "skips.txt").read_text(), contains="TC::test_skip")
 
 
-__all__: t.StrSequence = []
+__all__: list[str] = ["TestsFlextInfraPytestDiag"]

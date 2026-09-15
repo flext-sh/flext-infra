@@ -7,11 +7,10 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService, c, m
-from tests import u
-from tests.unit.workspace import WorktreeFixture
+from tests import t, u
 
 
-class TestsWorktreePaths(WorktreeFixture):
+class TestsFlextInfraWorktreePaths(u.Tests.WorktreeFixture):
     """Group cohesive worktree behavior."""
 
     def test_list_reports_the_primary_worktree(self, tmp_path: Path) -> None:
@@ -150,4 +149,4 @@ class TestsWorktreePaths(WorktreeFixture):
         tm.that(first_lane.parent.parent != second_lane.parent.parent, where=bool)
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

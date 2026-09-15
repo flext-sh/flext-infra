@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
 from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, ClassVar
@@ -268,7 +267,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def _is_exempt_literal_position(
-        cls, node: p.AttributeProbe, parent_map: MutableMapping[int, p.AttributeProbe]
+        cls, node: p.AttributeProbe, parent_map: t.MappingKV[int, p.AttributeProbe]
     ) -> bool:
         """Return True when a Constant node lives in an exempt syntactic position."""
         parent = parent_map.get(id(node))

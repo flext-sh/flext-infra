@@ -36,7 +36,7 @@ locked = {{ "true" if mise_locked else "false" }}
 #         (kubectl_version, helm_version, kind_version, taplo_version, ast_grep_version,
 #          gitleaks_version, scc_selector/scc_version, kubeconform_version, qlty_selector/qlty_version,
 #          node_version, jscpd_selector/jscpd_version, waza_selector/waza_version,
-#          beads (selector/track/version/prerelease/branch){{ ", gascity (selector/track/version/prerelease/branch)" if gascity_enabled else "" }})
+#          beads (selector/track/version/prerelease/branch))
 [tools]
 python = "{{ python_version }}"
 uv = "{{ uv_version }}"
@@ -58,7 +58,4 @@ go = "{{ go_version }}"
 version = "{{ qlty_version }}"
 github_attestations = false
 {{ github_fork_tool(beads) }}
-{%- if gascity_enabled %}
-{{ github_fork_tool(gascity) }}
-{%- endif %}
 # End SECTION: tools

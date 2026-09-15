@@ -141,3 +141,22 @@ Read those skills and root `AGENTS.md`; this file adds only FLEXT domain law.
   implementations.
 - Historical branches, archives, generated outputs, and other worktrees are
   evidence only. The active branch-matched canonical sources define behavior.
+
+## Recovering namespace and runtime work
+
+- Start from the repository's maintained execution handoff and ADR index before
+  rescanning the fleet. In flext-infra, `docs/guides/execution-context.md` points
+  to the current namespace/runtime handoff, its plan, measured revision and
+  canonical Beads. Resolve an absent ADR at its documented owner; do not invent
+  a missing record or load a parent runtime to compensate for missing context.
+- Compare namespace, codemod and runtime-census inventories by the contracts
+  they actually inspect. Zero codemod findings alone never proves namespace
+  conformance or working runtime. Record which transformations execute and
+  which findings remain before expanding a batch.
+- Preserve mutability, inheritance, expression dependencies and consumer
+  imports through the public transformation. Test-name preservation after a
+  merge is only an inventory check; execute the public runtime and collection
+  before claiming the combined code works.
+- Keep operator-approved acceptance exceptions attached to that execution's
+  handoff and Beads. A limited check acceptance does not change the fleet law,
+  suppress a diagnostic or close the remaining architecture defects.

@@ -20,23 +20,22 @@ if TYPE_CHECKING:
     from tests import t
 
 
-def _project(tmp_path: Path, *, name: str, filename: str, src: str) -> Path:
-    project_path: Path = u.Tests.create_codegen_project(
-        tmp_path=tmp_path,
-        name=name,
-        pkg_name=name.replace("-", "_"),
-        files={filename: src},
-    )
-    return project_path
+class TestsFlextInfraAbstractionBoundaryGate:
+    def _project(self, tmp_path: Path, *, name: str, filename: str, src: str) -> Path:
+        project_path: Path = u.Tests.create_codegen_project(
+            tmp_path=tmp_path,
+            name=name,
+            pkg_name=name.replace("-", "_"),
+            files={filename: src},
+        )
+        return project_path
 
-
-class TestAbstractionBoundaryGate:
     def test_gate_identity(self) -> None:
         tm.that(FlextInfraAbstractionBoundaryGate.gate_id, eq="boundary")
         tm.that(FlextInfraAbstractionBoundaryGate.can_fix, eq=False)
 
     def test_banned_cli_lib_is_flagged(self, tmp_path: Path) -> None:
-        project = _project(
+        project = self._project(
             tmp_path, name="flext-demo", filename="logic.py", src="import typer\n"
         )
 
@@ -48,7 +47,7 @@ class TestAbstractionBoundaryGate:
         tm.that(any("typer" in issue.message for issue in result.issues), eq=True)
 
     def test_click_allowed_in_singer_boundary(self, tmp_path: Path) -> None:
-        project = _project(
+        project = self._project(
             tmp_path, name="flext-tap-demo", filename="logic.py", src="import click\n"
         )
 
@@ -59,7 +58,7 @@ class TestAbstractionBoundaryGate:
         tm.that(result.result.passed, eq=True)
 
     def test_concrete_flext_cli_import_flagged(self, tmp_path: Path) -> None:
-        project = _project(
+        project = self._project(
             tmp_path,
             name="flext-demo",
             filename="service.py",
@@ -73,7 +72,7 @@ class TestAbstractionBoundaryGate:
         tm.that(not result.result.passed, eq=True)
 
     def test_concrete_flext_cli_allowed_in_extension_file(self, tmp_path: Path) -> None:
-        project = _project(
+        project = self._project(
             tmp_path,
             name="flext-demo",
             filename="models.py",
@@ -89,7 +88,7 @@ class TestAbstractionBoundaryGate:
     def test_declared_boundary_owner_passes_by_design(self, tmp_path: Path) -> None:
         """A declared boundary owner is exempt: the gate passes with no issues."""
         owner = min(c.Infra.BOUNDARY_SKIP_PROJECTS)
-        project = _project(
+        project = self._project(
             tmp_path, name=owner, filename="logic.py", src="import typer\n"
         )
 
@@ -102,4 +101,4 @@ class TestAbstractionBoundaryGate:
         tm.that(len(result.result.errors), eq=0)
 
 
-__all__: t.StrSequence = []
+__all__: t.StrSequence = ["TestsFlextInfraAbstractionBoundaryGate"]

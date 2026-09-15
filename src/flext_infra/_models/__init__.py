@@ -21,18 +21,14 @@ if TYPE_CHECKING:
     from .check import FlextInfraModelsCheck
     from .codegen import FlextInfraModelsCodegen
     from .codegen_render import FlextInfraModelsCodegenRender
+    from .codegen_toolchain import FlextInfraModelsCodegenToolchain
     from .codemod import FlextInfraModelsCodemod
     from .config import FlextInfraConfigModels
     from .deps import FlextInfraModelsDeps
     from .deps_toml import FlextInfraModelsDepsToml
     from .deps_tool_config import FlextInfraModelsDepsToolSettings
     from .deps_tool_config_linters import FlextInfraModelsDepsToolConfigLinters
-    from .deps_tool_config_project import (
-        FlextInfraModelsDepsToolConfigProject,
-        FlextInfraModelsDepsToolConfigProjectArtifacts,
-        FlextInfraModelsDepsToolConfigProjectMise,
-        FlextInfraModelsDepsToolConfigProjectRuff,
-    )
+    from .deps_tool_config_project import FlextInfraModelsDepsToolConfigProject
     from .deps_tool_config_type_checkers import (
         FlextInfraModelsDepsToolConfigTypeCheckers,
     )
@@ -68,15 +64,13 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsCheck",
     "FlextInfraModelsCodegen",
     "FlextInfraModelsCodegenRender",
+    "FlextInfraModelsCodegenToolchain",
     "FlextInfraModelsCodemod",
     "FlextInfraModelsCore",
     "FlextInfraModelsDeps",
     "FlextInfraModelsDepsToml",
     "FlextInfraModelsDepsToolConfigLinters",
     "FlextInfraModelsDepsToolConfigProject",
-    "FlextInfraModelsDepsToolConfigProjectArtifacts",
-    "FlextInfraModelsDepsToolConfigProjectMise",
-    "FlextInfraModelsDepsToolConfigProjectRuff",
     "FlextInfraModelsDepsToolConfigTypeCheckers",
     "FlextInfraModelsDepsToolSettings",
     "FlextInfraModelsDocs",
@@ -125,18 +119,14 @@ _LAZY_IMPORTS = MappingProxyType(
             ".check": ("FlextInfraModelsCheck",),
             ".codegen": ("FlextInfraModelsCodegen",),
             ".codegen_render": ("FlextInfraModelsCodegenRender",),
+            ".codegen_toolchain": ("FlextInfraModelsCodegenToolchain",),
             ".codemod": ("FlextInfraModelsCodemod",),
             ".config": ("FlextInfraConfigModels",),
             ".deps": ("FlextInfraModelsDeps",),
             ".deps_toml": ("FlextInfraModelsDepsToml",),
             ".deps_tool_config": ("FlextInfraModelsDepsToolSettings",),
             ".deps_tool_config_linters": ("FlextInfraModelsDepsToolConfigLinters",),
-            ".deps_tool_config_project": (
-                "FlextInfraModelsDepsToolConfigProject",
-                "FlextInfraModelsDepsToolConfigProjectArtifacts",
-                "FlextInfraModelsDepsToolConfigProjectMise",
-                "FlextInfraModelsDepsToolConfigProjectRuff",
-            ),
+            ".deps_tool_config_project": ("FlextInfraModelsDepsToolConfigProject",),
             ".deps_tool_config_type_checkers": (
                 "FlextInfraModelsDepsToolConfigTypeCheckers",
             ),

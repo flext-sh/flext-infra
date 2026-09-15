@@ -7,11 +7,10 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService, c, m
-from tests import u
-from tests.unit.workspace import WorktreeFixture
+from tests import t, u
 
 
-class TestsWorktreeTopology(WorktreeFixture):
+class TestsFlextInfraWorktreeTopology(u.Tests.WorktreeFixture):
     """Group cohesive worktree behavior."""
 
     def test_update_merges_the_requested_base_with_an_explicit_merge_commit(
@@ -95,4 +94,4 @@ class TestsWorktreeTopology(WorktreeFixture):
         )
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

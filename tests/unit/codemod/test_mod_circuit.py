@@ -8,10 +8,21 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import c, m, main as infra_main, u
+from tests import t
 
 
+@pytest.mark.slow
 class TestsFlextInfraModCliRoute:
-    """Exercise reporter behavior only through exported CLI and utility facades."""
+    """Exercise reporter behavior only through exported CLI and utility facades.
+
+    Every test here drives the real ``refactor mod`` CLI, which runs ast-grep
+    over a workspace, so they all belong to the declared slow class. Only one
+    method carried the marker while its four identical siblings ran under the
+    10s per-case budget: measured at 9.55s on an idle machine,
+    ``test_scan_keeps_prefix_rule_ids_exact`` exceeded it under parallel load
+    and failed as ``Timeout (>10.0s)``. The class-level marker states the cost
+    once instead of leaving four tests one scheduling decision away from red.
+    """
 
     def test_receipt_is_complete_and_replaced_by_zero_scan(
         self, mod_workspace: Path, capsys: pytest.CaptureFixture[str]
@@ -102,7 +113,6 @@ class TestsFlextInfraModCliRoute:
         tm.that(second_console, has=second_digest)
         tm.that(second_console, lacks=first_digest)
 
-    @pytest.mark.slow
     def test_apply_validates_rewrites_before_reporting_detection_only_findings(
         self, mod_workspace: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -220,7 +230,7 @@ class TestsFlextInfraModCliRoute:
         self, mod_workspace: Path
     ) -> None:
         """Execute each elected provider config and retain its exact rule owner."""
-        expected_rule_files: dict[str, str] = {}
+        expected_rule_files: t.MutableMappingKV[str, str] = {}
         source_lines: list[str] = []
         for package, rule_id, severity in (
             ("first_provider", "first-provider-finding", "warning"),
@@ -353,3 +363,6 @@ class TestsFlextInfraModCliRoute:
             eq=c.Infra.ModScanFindingClass.NON_ACTIONABLE_WITH_FIX,
         )
         tm.that(report.non_actionable_with_fix, gte=1)
+
+
+__all__: list[str] = ["TestsFlextInfraModCliRoute"]

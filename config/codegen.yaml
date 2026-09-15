@@ -298,17 +298,15 @@ Infra:
       # Every ruff invocation uses --preview. Never weaken ruff to keep a
       # file; change the code. [tool.ruff] preview: true in tooling.yaml is
       # the same policy projected into pyproject.
-      # Operator 2026-09-14: fix and fmt APPLY and report leftover findings
-      # without failing the make run; leftovers keep failing `make check`.
-      # lint_fix is the lint gate's apply mode (make fix): ruff reports the
-      # leftovers the gate parses. lint_apply is make fmt's ruff check: it
-      # applies the same fixes and prints leftovers with a zero exit.
+      # Repair and formatting apply fixes and retain a failing exit status
+      # for remaining findings. Reporting never normalizes a red gate.
+      # lint_fix is the lint gate's apply mode; lint_apply is make fmt's check.
       ruff:
         format_check: [--preview, --check]
         format_apply: [--preview]
         lint_check: [--preview, --no-fix]
         lint_fix: [--preview, --fix, --unsafe-fixes]
-        lint_apply: [--preview, --fix, --unsafe-fixes, --exit-zero]
+        lint_apply: [--preview, --fix, --unsafe-fixes]
       # Why (mro-dipb): adaptive testmon GitHub Actions cache policy.
       # save_enabled stays false while storage-limit API returns HTTP 402 /
       # flext-infra sits near the default Actions cache ceiling (QUOTA_HOLD).
@@ -329,6 +327,7 @@ Infra:
         block_threshold_percent: 80
         allowed_save_refs: [refs/heads/0.12.0-dev]
         key_prefix: testmon-v1
+      # Public verbs execute their declared operation without mode selectors.
       ci:
         variable: CI
         value: Y
@@ -347,7 +346,9 @@ Infra:
         # check_gates_skip list, which could drift out of sync with the set it
         # was meant to complement.
         # RULING 1: CI is ternary (Y/N/absent). CI=Y owns the Review workflow,
-        # including full pytest+coverage while attestation is not selected;
+        # including pytest+coverage while attestation is not selected;
+        # tooling.tools.pytest.ci-excluded-markers defines the operator-selected
+        # slow-test exclusion for CI and pre-commit, not local/pre-push runs.
         # CI=N owns the complementary local check gates; absent uses testmon
         # for incremental developer runs.
         #
@@ -705,6 +706,7 @@ Infra:
         - CLAUDE.md
         - conftest.py
         - mkdocs.yml
+        - sgconfig.yml
       canonical_root_dotfiles:
         - .gitignore
         - .gitattributes
@@ -731,6 +733,7 @@ Infra:
         - docker
         - dbt_packages
         - ast-grep-rules
+        - ast-grep-rule-tests
       # Per-project-type extra canonical root files; the profile of a project
       # is resolved by matching its name against profile_project_patterns.
       profile_extra_root_files:
@@ -1065,6 +1068,7 @@ Infra:
           - pytest-cov
           - pytest-markdown-docs
           - pytest-randomly>=4.1.0
+          - pytest-reportlog
           - pytest-testmon>=2.2.0
           - pytest-timeout
           - pytest-xdist
@@ -1164,7 +1168,7 @@ Infra:
             runtime: [flext-cli]
           - upstream: flext_core
             project: flext-ldap
-            runtime: [flext-ldif, ldap3>=2.9.1]
+            runtime: [flext-ldif, ldap3>=2.10.2rc4]
           - upstream: flext_cli
             project: flext-meltano
             runtime: [flext-cli, meltano>=4.2.2, singer-sdk>=0.54.5, sqlalchemy>=2.0.52, psycopg2-binary>=2.9.13, redis>=8.1.0]
@@ -1280,6 +1284,12 @@ Infra:
             - "scripts/*.sh"
             - "scripts/*.md"
             - "scripts/maintenance/"
+        - name: "TRACK: Local structural rules and their regression fixtures"
+          profiles: [workspace]
+          patterns:
+            - "!/sgconfig.yml"
+            - "!/ast-grep-rules/"
+            - "!/ast-grep-rule-tests/"
         - name: "TRACK: Beads team config; keep Dolt data, runtime state, and JSONL exports local."
           profiles: [workspace, standalone]
           patterns:
@@ -1484,6 +1494,11 @@ Infra:
       # carry it. *.bak are safety-cycle backup residue (cleaned by design;
       # ignore guards against interrupted runs). *aihub-prior* are ai-hub
       # sync prior-state backups that must never land in git.
+        # Prior-generation AI Hub artifacts are runtime residue in every
+        # profile; same provenance as the pattern above.
+        - name: "Banned residue (never source, any profile)"
+          patterns:
+            - "*aihub-prior*"
         - name: "RESIDUE: never track backups or repo-local policy copies"
           profiles: [workspace, standalone]
           patterns:
@@ -1627,6 +1642,12 @@ Infra:
         - name: "Backup files inside allowed directories"
           patterns:
             - "**/*.bak"
+        # A safety cycle that backs a file up more than once appends its own
+        # suffix (`x.bak.1`, `x.bak.20260824`), which `**/*.bak` does not match.
+        # Adopted from the lane PRs that had added it to the generated
+        # .gitignore of sixteen repositories; the pattern belongs here, where
+        # every repository inherits it.
+            - "**/*.bak.*"
             - "**/*.bkp"
             - "**/*.bkp?"
             - "**/*.backup"
