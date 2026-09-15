@@ -3299,7 +3299,7 @@ class FlextInfraConfigModels:
         environment_sources: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Environment files sourced on activation"),
-        ] = ("~/.config/environment.d/projects/agent-tools.envrc",)
+        ] = ("$HOME/.config/environment.d/projects/agent-tools.envrc",)
         identity_var: Annotated[
             t.NonEmptyStr,
             m.Field(description="Required variable naming the Gas City checkout"),
