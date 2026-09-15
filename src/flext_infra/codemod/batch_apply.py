@@ -8,7 +8,11 @@ from typing import override
 from flext_cli import cli
 
 from .. import FlextInfraServiceBase, m, p, r, t, u
-from . import FlextInfraCodemodSemanticApply, FlextInfraModGateEngine
+from . import (
+    FlextInfraCodemodSemanticApply,
+    FlextInfraModGateEngine,
+    FlextInfraModTextGateEngine,
+)
 from .batch_replacements import FlextInfraModReplacements
 
 
@@ -28,16 +32,22 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 self.repository_root, fix=False
             ).unwrap()
             pending_count = pending.findings
+            text_pending = FlextInfraModTextGateEngine.scan(
+                self.repository_root, fix=False, validate_receipts=True
+            ).unwrap()
+            pending_count += text_pending.findings
             if pending_count:
                 return r[t.Cli.ResultValue].fail(
-                    f"{pending_count} pending ast-grep finding(s), "
+                    f"{pending.findings} pending ast-grep finding(s), "
                     f"{pending.actionable} actionable and "
                     f"{pending.detection_only} detection-only and "
-                    f"{pending.non_actionable_with_fix} non-actionable with fix, across "
+                    f"{pending.non_actionable_with_fix} non-actionable with fix, plus "
+                    f"{text_pending.findings} pending sed-by-list finding(s) "
+                    f"({text_pending.actionable} actionable), across "
                     f"{len(rules)} rule file(s)"
                 )
             FlextInfraModGateEngine.validate(self.repository_root).unwrap()
-            cli.display_text("mod: no pending ast-grep fixes")
+            cli.display_text("mod: no pending ast-grep or sed-by-list fixes")
             return r[t.Cli.ResultValue].ok(True)
         return self._execute_apply(self.repository_root, rules)
 
@@ -124,9 +134,54 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 return r[t.Cli.ResultValue].from_failure(owned)
             FlextInfraCodemodSemanticApply.apply(root, after_ast)
             current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-            transaction_paths = FlextInfraCodemodSemanticApply.plan_transaction_paths(
-                root, current
+        current_text = FlextInfraModTextGateEngine.scan(
+            root, fix=False, validate_receipts=True
+        ).unwrap()
+        seen_text: dict[tuple[tuple[str, str, int, str, str], ...], int] = {}
+        iteration = 0
+        while current_text.findings:
+            iteration += 1
+            fingerprint = tuple(
+                sorted(
+                    (
+                        finding.rule_id,
+                        finding.file.as_posix(),
+                        finding.line,
+                        finding.text,
+                        finding.replacement,
+                    )
+                    for finding in current_text.entries
+                )
             )
+            if fingerprint in seen_text:
+                prev_iter = seen_text[fingerprint]
+                stalled = {
+                    finding.rule_id
+                    for finding in current_text.entries
+                    if finding.text != finding.replacement
+                }
+                return r[t.Cli.ResultValue].fail(
+                    f"mod text phase iteration {iteration} made no progress since "
+                    f"iteration {prev_iter}; stalled sed-by-list rules: "
+                    f"{', '.join(sorted(stalled)) or 'none'}; changes retained "
+                    "for mandatory owner repair"
+                )
+            seen_text[fingerprint] = iteration
+            cli.display_text(
+                f"mod: text phase iteration {iteration} — "
+                f"{current_text.findings} sed-by-list finding(s), "
+                f"{current_text.actionable} actionable"
+            )
+            if current_text.actionable:
+                cli.display_text("mod: apply sed-by-list rule cascade")
+                FlextInfraModTextGateEngine.scan(root, fix=True).unwrap()
+            current_text = FlextInfraModTextGateEngine.scan(root, fix=False).unwrap()
+            if not current_text.actionable and current_text.findings:
+                detection_only = {finding.rule_id for finding in current_text.entries}
+                return r[t.Cli.ResultValue].fail(
+                    "mod text phase retains detection-only findings without a "
+                    f"rewrite: {', '.join(sorted(detection_only))}"
+                )
         cli.display_text(
             "mod: require canonical formatting and zero Ruff, Pyrefly, and LSP diagnostics"
         )

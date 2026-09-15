@@ -14,11 +14,13 @@ if TYPE_CHECKING:
     from .batch_replacements import FlextInfraModReplacements
     from .semantic_apply import FlextInfraCodemodSemanticApply
     from .snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
+    from .text_gates import FlextInfraModTextGateEngine
 __all__: tuple[str, ...] = (
     "FlextInfraCodemodBatchApply",
     "FlextInfraCodemodSemanticApply",
     "FlextInfraCodemodSnapshotReconciler",
     "FlextInfraModGateEngine",
+    "FlextInfraModTextGateEngine",
     "FlextInfraModReplacements",
 )
 
@@ -30,6 +32,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".batch_replacements": ("FlextInfraModReplacements",),
             ".semantic_apply": ("FlextInfraCodemodSemanticApply",),
             ".snapshot_reconciler": ("FlextInfraCodemodSnapshotReconciler",),
+            ".text_gates": ("FlextInfraModTextGateEngine",),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

@@ -159,6 +159,75 @@ class FlextInfraModelsScan:
             m.Field(description="Every validated ast-grep finding in stable order"),
         ]
 
+    class ModTextRule(m.ArbitraryTypesModel):
+        """One declarative sed-by-list entry with its exact rewrite receipt."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        rule_id: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact unique text-rule identifier")
+        ]
+        description: Annotated[
+            str, m.Field(description="Human-readable rewrite intent")
+        ] = ""
+        include: Annotated[
+            t.StrSequence, m.Field(description="fnmatch globs a target path must match")
+        ] = ()
+        exclude: Annotated[
+            t.StrSequence,
+            m.Field(description="fnmatch globs a target path must not match"),
+        ] = ()
+        find: Annotated[
+            t.NonEmptyStr, m.Field(description="Regex source pattern to locate")
+        ]
+        replace: Annotated[
+            str, m.Field(description="Expansion template replacing each match")
+        ] = ""
+        flags: Annotated[
+            t.StrSequence, m.Field(description="Regex flag names from the SSOT map")
+        ] = ()
+        expected: Annotated[
+            int | None,
+            m.Field(
+                ge=0, description="Exact finding count the rule must produce when set"
+            ),
+        ] = None
+
+    class ModTextFinding(m.ArbitraryTypesModel):
+        """One text-rule match with its computed replacement."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        rule_id: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact text-rule identifier")
+        ]
+        file: Annotated[Path, m.Field(description="Workspace-relative target path")]
+        line: Annotated[t.NonNegativeInt, m.Field(description="One-based match line")]
+        text: Annotated[str, m.Field(description="Exact matched source text")]
+        replacement: Annotated[
+            str, m.Field(description="Expanded replacement for the match")
+        ]
+
+    class ModTextReport(m.ArbitraryTypesModel):
+        """Complete text-rule findings for one fixed-point pass."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        findings: Annotated[
+            t.NonNegativeInt, m.Field(description="Complete finding count")
+        ]
+        actionable: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Matches whose replacement differs from the text"),
+        ]
+        files: Annotated[
+            frozenset[Path], m.Field(description="Files containing findings")
+        ]
+        entries: Annotated[
+            t.VariadicTuple[FlextInfraModelsScan.ModTextFinding],
+            m.Field(description="Every validated text finding in stable order"),
+        ]
+
     class ModScanEvidence(m.ArbitraryTypesModel):
         """Complete replace-on-run evidence for one public mod scan."""
 
