@@ -8,7 +8,7 @@ from pathlib import Path
 
 from flext_cli import u as cli_u
 
-from flext_infra import m, t
+from flext_infra import c, m, t
 
 
 class FlextInfraUtilitiesDocsCollectionSources:
@@ -151,7 +151,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
             timestamp = updated
         elif isinstance(updated, date):
             return original, None
-        elif len(updated) == 10:
+        elif len(updated) == c.Infra.ISO_DATE_STRING_LENGTH:
             date.fromisoformat(updated)
             return original, None
         else:

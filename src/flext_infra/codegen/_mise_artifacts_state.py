@@ -118,7 +118,6 @@ class FlextInfraMiseArtifactsState:
     @classmethod
     def bind_created_parents(
         cls,
-        layout: m.Infra.MiseToolchainWorkspaceLayout,
         directories: t.VariadicTuple[m.Infra.CodegenJournalDirectory],
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]:

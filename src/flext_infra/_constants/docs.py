@@ -151,6 +151,8 @@ class FlextInfraConstantsDocs:
         re.IGNORECASE,
     )
     """Match tool and script commands that bypass the root Make dispatcher."""
+    ISO_DATE_STRING_LENGTH: Final[int] = 10
+    """Length of an ISO date string ``YYYY-MM-DD``."""
     DOCS_TEST_DOUBLE_CODE_RE: Final[t.RegexPattern] = re.compile(
         r"(?:from\s+unittest(?:\.mock)?\s+import|import\s+unittest\.mock|"
         r"(?:^|\W)(?:MagicMock|Mock|patch)\s*\(|mock\.patch\s*\(|"

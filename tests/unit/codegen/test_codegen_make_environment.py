@@ -202,7 +202,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
 
     @pytest.mark.parametrize("invalid_envrc", [False, True])
     def test_public_dispatch_activates_once_before_hooks(
-        self, tmp_path: Path, invalid_envrc: bool
+        self, tmp_path: Path, *, invalid_envrc: bool
     ) -> None:
         """Real direnv evaluates before dispatch and stops an invalid environment."""
         project_root, _ = self._render_makefile(

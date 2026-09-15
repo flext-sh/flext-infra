@@ -23,7 +23,9 @@ class FlextInfraNamespaceRulesContracts(FlextInfraNamespaceRulesBase):
     ) -> t.StrSequence:
         """Return contract and clean-architecture violations."""
         posix = filepath.as_posix()
-        if any(frag in posix for frag in c.Infra.NAMESPACE_STDLIB_ISLAND_PATH_FRAGMENTS):
+        if any(
+            frag in posix for frag in c.Infra.NAMESPACE_STDLIB_ISLAND_PATH_FRAGMENTS
+        ):
             # ADR-0018 stdlib island: no flext typing surface is importable.
             return []
         messages: list[str] = []
