@@ -17,13 +17,18 @@ from typing import TYPE_CHECKING, override
 from .. import c, config, m, r, s, u
 from ..workspace.rope import FlextInfraRopeWorkspace
 from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
+from ._lazy_init_import_alignment import FlextInfraCodegenLazyInitImportAlignmentMixin
 from .lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 
 if TYPE_CHECKING:
     from .. import p, t
 
 
-class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixin):
+class FlextInfraCodegenLazyInit(
+    s[bool],
+    FlextInfraCodegenLazyInitGenerationMixin,
+    FlextInfraCodegenLazyInitImportAlignmentMixin,
+):
     """Plan ``__init__.py`` artifacts with PEP 562 lazy imports.
 
     Scans sibling ``.py`` files in each package directory, discovers their
@@ -182,18 +187,36 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 "lazy-init public export ownership is ambiguous: "
                 f"{planner.collision_count} collision(s)"
             )
+        project_package = workspace_index.project_package_by_root.get(
+            str(resolved_repository_root)
+        )
+        alignment_plans: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
+        if project_package is not None:
+            aligned = self.align_imports(
+                rope_workspace=rope,
+                index=workspace_index,
+                project_package=project_package,
+                package_dirs=package_dirs,
+                config=config.Infra.tooling.lazy_init,
+            )
+            if aligned.failure:
+                return r[m.Infra.CodegenPhaseAnalysis].from_failure(
+                    aligned
+                )
+            alignment_plans = aligned.value
         file_plans = self._build_file_plans(
             package_plans, index=workspace_index, snapshots=snapshots.value
         )
         if file_plans.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(file_plans)
+        all_plans = file_plans.value + alignment_plans
         stable = self._verify_snapshots(snapshots.value)
         if stable.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(stable)
         return r[m.Infra.CodegenPhaseAnalysis].ok(
             m.Infra.CodegenPhaseAnalysis(
                 phase="lazy-init",
-                files=file_plans.value,
+                files=all_plans,
                 inputs=tuple(snapshots.value[path] for path in sorted(snapshots.value)),
             )
         )

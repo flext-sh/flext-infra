@@ -361,8 +361,8 @@ class FlextInfraCodegenConformRender:
                     workspace_repositories=subprojects,
                     workspace_gitlinks=gitlinks.value,
                     uv_link_mode=FlextInfraCodegenConformBootstrap.link_mode(
-                    repository, codegen.toolchain
-                ),
+                        repository, codegen.toolchain
+                    ),
                     uv_version=codegen.toolchain.uv_version,
                     make=codegen.make,
                     extra_verbs=(

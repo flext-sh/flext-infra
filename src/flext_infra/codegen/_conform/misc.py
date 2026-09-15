@@ -136,9 +136,7 @@ class FlextInfraCodegenConformMisc:
             entry.name
             for entry in route.iterdir()
             if entry.name not in allowed_entries
-            and not FlextInfraCodegenConformExecute.is_dry_run_config_backup(
-                entry.name
-            )
+            and not FlextInfraCodegenConformExecute.is_dry_run_config_backup(entry.name)
         )
         if unexpected:
             return r[bool].fail(

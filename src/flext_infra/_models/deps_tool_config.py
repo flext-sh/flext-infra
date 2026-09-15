@@ -623,6 +623,7 @@ class FlextInfraModelsDepsToolSettings(
         import_layer_order: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
+                alias="import-layer-order",
                 default=(
                     "settings",
                     "config",
@@ -651,6 +652,7 @@ class FlextInfraModelsDepsToolSettings(
         reverse_import_mode: Annotated[
             Literal["type_checking"],
             m.Field(
+                alias="reverse-import-mode",
                 description=(
                     "How reverse (upward) runtime dependencies are "
                     "emitted. ``type_checking`` moves the import into "
@@ -663,6 +665,7 @@ class FlextInfraModelsDepsToolSettings(
         forward_import_form: Annotated[
             Literal["relative_dot"],
             m.Field(
+                alias="forward-import-form",
                 description=(
                     "How forward (downward) intra-project imports are "
                     "emitted. ``relative_dot`` uses relative imports "

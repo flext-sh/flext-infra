@@ -56,4 +56,3 @@ class FlextInfraConfigModelsContract:
 # under lazy loading. The rebuild happens at module import time, before any
 # runtime use, so it does not affect correctness or introduce shims.
 FlextInfraConfigModelsContract.MiseTomlRenderSpec.model_rebuild()
-

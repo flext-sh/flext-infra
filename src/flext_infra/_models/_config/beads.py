@@ -156,9 +156,7 @@ class FlextInfraConfigModelsBeads:
             "BEADS_DOLT_SHARED_SERVER",
         )
 
-    class WorkspaceEnvironmentCliRequest(
-        FlextInfraConfigModelsContract.ConfigContract
-    ):
+    class WorkspaceEnvironmentCliRequest(FlextInfraConfigModelsContract.ConfigContract):
         """CLI-safe request for one Python workspace environment sync."""
 
         repository_root: Annotated[
@@ -209,9 +207,7 @@ class FlextInfraConfigModelsBeads:
             ),
         ] = True
 
-    class WorkspaceEnvironmentSyncResult(
-        FlextInfraConfigModelsContract.ConfigContract
-    ):
+    class WorkspaceEnvironmentSyncResult(FlextInfraConfigModelsContract.ConfigContract):
         """Outcome of one workspace environment sync."""
 
         changed_files: Annotated[

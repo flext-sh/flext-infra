@@ -238,9 +238,7 @@ class FlextInfraCodegenConformExecute:
         ADR-014: lazy-init ownership stays inside conform's
         transaction.
         """
-        return FlextInfraCodegenLazyInit(
-            repository_root=request.root
-        ).plan_files()
+        return FlextInfraCodegenLazyInit(repository_root=request.root).plan_files()
 
     def _execute_managed_locked_prepared(
         self,
