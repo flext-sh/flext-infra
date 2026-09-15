@@ -208,6 +208,7 @@ if TYPE_CHECKING:
     )
     from .transformers.class_reconstructor import FlextInfraRefactorClassReconstructor
     from .transformers.compatibility_alias import FlextInfraRefactorCompatibilityAlias
+    from .transformers.dataclass_modelizer import FlextInfraRefactorDataclassModelizer
     from .transformers.deprecated_remover import FlextInfraRefactorDeprecatedRemover
     from .transformers.future_import import FlextInfraRefactorFutureImport
     from .transformers.hardcoded_version import FlextInfraRefactorHardcodedVersion
@@ -403,6 +404,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorClassReconstructor",
     "FlextInfraRefactorClassvarConstantAutofix",
     "FlextInfraRefactorCompatibilityAlias",
+    "FlextInfraRefactorDataclassModelizer",
     "FlextInfraRefactorDeprecatedRemover",
     "FlextInfraRefactorFutureImport",
     "FlextInfraRefactorHardcodedVersion",
@@ -727,6 +729,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".transformers.pattern": ("FlextInfraRefactorPatternTransformer",),
             ".transformers.pydantic_modernizer": (
                 "FlextInfraRefactorPydanticModernizer",
+            ),
+            ".transformers.dataclass_modelizer": (
+                "FlextInfraRefactorDataclassModelizer",
             ),
             ".transformers.signature_propagator": (
                 "FlextInfraRefactorSignaturePropagator",

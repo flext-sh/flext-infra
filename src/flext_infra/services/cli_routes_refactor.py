@@ -17,6 +17,9 @@ from flext_infra.refactor.wrapper_root_namespace import (
     FlextInfraWrapperRootNamespaceRefactor,
 )
 from flext_infra.services.cli_route_base import CliRouteBase
+from flext_infra.transformers.dataclass_modelizer import (
+    FlextInfraRefactorDataclassModelizer,
+)
 from flext_infra.transformers.pydantic_modernizer import (
     FlextInfraRefactorPydanticModernizer,
 )
@@ -67,6 +70,19 @@ class RefactorRoutes(CliRouteBase):
                 FlextInfraModernizeOrchestrator.execute_command,
                 transformer_factory=FlextInfraRefactorPydanticModernizer,
                 description="pydantic modernizer",
+            ),
+        ),
+        m.Cli.ResultCommandRoute(
+            name="modernize-dataclass",
+            help_text=(
+                "Convert serializable frozen dataclasses to canonical "
+                "m.FrozenModel contracts; catalog unsafe skips with reasons"
+            ),
+            model_cls=m.Infra.ModernizeInput,
+            handler=functools.partial(
+                FlextInfraModernizeOrchestrator.execute_command,
+                transformer_factory=FlextInfraRefactorDataclassModelizer,
+                description="dataclass modelizer",
             ),
         ),
         m.Cli.ResultCommandRoute(

@@ -156,7 +156,11 @@ class FlextInfraAccessorMigrationRewriteMixin:
             scope_stack.append((f"def:{function_name}", indent))
             if parent_scope.startswith("def:"):
                 continue
-            if function_name.startswith("_") or function_name in self._AUTOMATED_NAMES:
+            if (
+                function_name.startswith("_")
+                or function_name in self._AUTOMATED_NAMES
+                or function_name in c.ENFORCEMENT_ACCESSOR_EXTERNAL_CONTRACTS
+            ):
                 continue
             matched_prefix = next(
                 (

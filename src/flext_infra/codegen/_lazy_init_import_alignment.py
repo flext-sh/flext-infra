@@ -24,14 +24,15 @@ compatibility shim for a violation it surfaces.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 import libcst as cst
 from libcst import Import, ImportFrom, Tuple
 
-from flext_core import m, r, u
-
-from flext_infra import c, t
+from flext_core import r
+from flext_infra import t
+from flext_infra.models import m
+from flext_infra.utilities import u
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 if TYPE_CHECKING:
@@ -51,7 +52,7 @@ def layer_of_module(module_name: str, order: Sequence[str]) -> str | None:
     """Return the canonical layer of a project module path."""
     for seg in reversed(module_name.split(".")):
         for layer in order:
-            if seg == layer or seg == f"_{layer}":
+            if seg in {layer, f"_{layer}"}:
                 return layer
     return None
 
@@ -60,9 +61,7 @@ def is_project_internal(target: str, project_package: str) -> bool:
     """Return whether an import target lives inside the project namespace."""
     if target == project_package:
         return True
-    if target.startswith(project_package + "."):
-        return True
-    return False
+    return bool(target.startswith(project_package + "."))
 
 
 def relative_import_form(
@@ -80,14 +79,8 @@ def relative_import_form(
     tgt_parts = target_module.split(".")
     src_is_pkg = source_module in package_dirs
     tgt_is_pkg = target_module in package_dirs
-    if src_is_pkg:
-        src_depth = len(src_parts)
-    else:
-        src_depth = len(src_parts) - 1
-    if tgt_is_pkg:
-        tgt_depth = len(tgt_parts)
-    else:
-        tgt_depth = len(tgt_parts) - 1
+    src_depth = len(src_parts) if src_is_pkg else len(src_parts) - 1
+    tgt_depth = len(tgt_parts) if tgt_is_pkg else len(tgt_parts) - 1
     common = 0
     for i in range(min(src_depth, tgt_depth)):
         if src_parts[i] == tgt_parts[i]:
@@ -124,18 +117,23 @@ class _ImportAlignmentVisitor(cst.CSTVisitor):
         self._order = order
         self._package_dirs = package_dirs
         self._file_path = file_path
-        self._project_imports: list[
-            tuple[cst.ImportFrom | cst.Import, str, str]
-        ] = []
+        self._project_imports: list[tuple[cst.ImportFrom | cst.Import, str, str]] = []
         self._needs_realign = False
         self._module_uses_future = False
 
     def needs_realign(self) -> bool:
         return self._needs_realign
 
+    @property
+    def project_imports(self) -> list[tuple[cst.ImportFrom | cst.Import, str, str]]:
+        """The project imports collected during the CST walk."""
+        return self._project_imports
+
+    @override
     def visit_ImportFrom(self, node: ImportFrom) -> None:
         self._collect_from(node)
 
+    @override
     def visit_Import(self, node: Import) -> None:
         self._collect_plain(node)
 
@@ -148,7 +146,7 @@ class _ImportAlignmentVisitor(cst.CSTVisitor):
         if self._is_future_import(target):
             self._module_uses_future = True
             return
-        self._record(node, target, self._names_from_tuple(node.names))
+        self._record(node, target)
 
     def _collect_plain(self, node: Import) -> None:
         for alias in node.names:
@@ -158,7 +156,7 @@ class _ImportAlignmentVisitor(cst.CSTVisitor):
             if self._is_future_import(target):
                 self._module_uses_future = True
                 continue
-            self._record(node, target, None)
+            self._record(node, target)
 
     def _is_future_import(self, target: str) -> bool:
         return target == "__future__" or target.startswith("__future__.")
@@ -173,19 +171,15 @@ class _ImportAlignmentVisitor(cst.CSTVisitor):
             result.append(names.name.value)
             return result
         if isinstance(names, Tuple):
-            for elt in names.elements:
-                if isinstance(elt, cst.Element) and isinstance(
-                    elt.value, cst.ImportAlias
-                ):
-                    result.append(elt.value.name.value)
+            result.extend(
+                elt.value.name.value
+                for elt in names.elements
+                if isinstance(elt, cst.Element)
+                and isinstance(elt.value, cst.ImportAlias)
+            )
         return result
 
-    def _record(
-        self,
-        node: cst.ImportFrom | cst.Import,
-        target: str,
-        names: list[str] | None,
-    ) -> None:
+    def _record(self, node: cst.ImportFrom | cst.Import, target: str) -> None:
         target_layer = layer_of_module(target, self._order)
         if target_layer is None:
             return
@@ -219,8 +213,7 @@ def _format_import_names(node: ImportFrom) -> str:
         aliases = [
             elt.value.name.value
             for elt in node.names.elements
-            if isinstance(elt, cst.Element)
-            and isinstance(elt.value, cst.ImportAlias)
+            if isinstance(elt, cst.Element) and isinstance(elt.value, cst.ImportAlias)
         ]
         return " " + ", ".join(aliases) if aliases else ""
     return ""
@@ -303,21 +296,24 @@ class FlextInfraCodegenLazyInitImportAlignmentMixin:
         project_package: str,
         package_dirs: t.SequenceOf[Path],
         config: m.Infra.LazyInitConfig | None = None,
-        snapshots: t.MappingKV[Path, m.Cli.AtomicFileState] | None = None,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Produce CodegenFilePlans for import realignment."""
-        order = tuple(config.import_layer_order) if config else (
-            "settings",
-            "config",
-            "c",
-            "t",
-            "p",
-            "m",
-            "u",
-            "base",
-            "services",
-            "api",
-            "cli",
+        order = (
+            tuple(config.import_layer_order)
+            if config
+            else (
+                "settings",
+                "config",
+                "c",
+                "t",
+                "p",
+                "m",
+                "u",
+                "base",
+                "services",
+                "api",
+                "cli",
+            )
         )
         pkg_dirs_set = frozenset(str(d.resolve()) for d in package_dirs)
         repo_root = rope_workspace.repository_root
@@ -333,7 +329,7 @@ class FlextInfraCodegenLazyInitImportAlignmentMixin:
                 continue
             try:
                 content = file_path.read_text(encoding="utf-8")
-            except Exception:
+            except (UnicodeDecodeError, OSError):
                 continue
             source_module = entry.module_name
             visitor = _ImportAlignmentVisitor(
@@ -345,7 +341,7 @@ class FlextInfraCodegenLazyInitImportAlignmentMixin:
             )
             try:
                 tree = cst.parse_module(content)
-            except Exception:
+            except cst.ParserSyntaxError:
                 continue
             tree.visit(visitor)
             if not visitor.needs_realign():
@@ -359,13 +355,9 @@ class FlextInfraCodegenLazyInitImportAlignmentMixin:
             )
             if new_content is None or new_content == content:
                 continue
-            before = u.Cli.atomic_read_binary_file_state(
-                file_path, required=False
-            )
+            before = u.Cli.atomic_read_binary_file_state(file_path, required=False)
             if before.failure:
-                return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(
-                    before
-                )
+                return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(before)
             desired = new_content.encode("utf-8")
             plan = m.Infra.CodegenFilePlan(
                 project=repo_root,
@@ -387,29 +379,30 @@ class FlextInfraCodegenLazyInitImportAlignmentMixin:
         order: tuple[str, ...],
         package_dirs: frozenset[str],
     ) -> str | None:
-        grouped: dict[tuple[bool, int], list[tuple[cst.ImportFrom | cst.Import, str, str]]] = {}
+        grouped: dict[
+            tuple[bool, int], list[tuple[cst.ImportFrom | cst.Import, str, str]]
+        ] = {}
         source_layer = layer_of_module(source_module, order)
         if source_layer is None:
             source_layer = order[-1] if order else "services"
-        for node, target, target_layer in visitor._project_imports:
+        for node, target, target_layer in visitor.project_imports:
             direction = target_layer < source_layer
             rank = order.index(target_layer) if target_layer in order else len(order)
-            grouped.setdefault((direction, rank), []).append(
-                (node, target, target_layer)
-            )
-        lines = [l.rstrip() for l in content.splitlines()]
+            grouped.setdefault((direction, rank), []).append((
+                node,
+                target,
+                target_layer,
+            ))
+        lines = [line.rstrip() for line in content.splitlines()]
         for key in sorted(grouped.keys()):
             for node, target, _target_layer in grouped[key]:
-                try:
-                    replacement = _rewrite_import(
-                        node=node,
-                        target=target,
-                        source_module=source_module,
-                        order=order,
-                        package_dirs=package_dirs,
-                    )
-                except Exception:
-                    continue
+                replacement = _rewrite_import(
+                    node=node,
+                    target=target,
+                    source_module=source_module,
+                    order=order,
+                    package_dirs=package_dirs,
+                )
                 if replacement is not None:
                     old_line = node.lineno - 1
                     if 0 <= old_line < len(lines):

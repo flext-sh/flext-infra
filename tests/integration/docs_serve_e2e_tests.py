@@ -24,6 +24,8 @@ from flext_infra.docs.server import FlextInfraDocServer
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from flext_infra import p
+
 _PYTEST_POLICY = config.Infra.tooling.tools.pytest
 # A real MkDocs dev server cold-starts a fresh interpreter and builds the
 # site; under full-suite xdist contention that legitimately exceeds the

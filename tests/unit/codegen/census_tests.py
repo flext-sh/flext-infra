@@ -21,6 +21,8 @@ from tests import m, u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from flext_infra import p
+
 
 class TestsFlextInfraCodegenCensus:
     def _parse_violation(self, violation: str) -> p.Result[m.Infra.CensusViolation]:

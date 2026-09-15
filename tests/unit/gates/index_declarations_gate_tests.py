@@ -15,7 +15,6 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import u
 from flext_infra.gates.index_declarations import FlextInfraIndexDeclarationsGate
 from tests import m, u
 
