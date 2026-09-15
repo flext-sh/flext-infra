@@ -15,6 +15,15 @@ evidência e instruções de retomada, sem criar uma fila paralela de tarefas.
 
 ## Começar pela decisão pendente
 
+O runtime correto define o comportamento; os testes verificam esse contrato.
+Extermine mocks, ferramentas falsas, acesso a funções privadas e asserções que
+só verificam como o código foi escrito. Substitua-os por entradas e efeitos
+observáveis através das interfaces públicas, preservando a cobertura funcional.
+Primeiro reproduza o caminho público real e identifique o artefato executado.
+Corrija testes ou fixtures obsoletos depois dessa prova, sem mudar o ambiente
+para preservar suas expectativas. O resultado de um teste não certifica, por
+si só, setup, geração ou consumo na revisão integrada.
+
 Leia a tabela inicial do handoff e o Bead indicado antes de repetir uma busca
 ampla. Confirme branch, HEAD, alterações locais, PR e base declarada. Verifique
 o runtime por `make status`; o caminho de execução e a versão instalada precisam
@@ -25,6 +34,17 @@ Na execução de 14/09/2026, o operador selecionou o tracker do checkout `flext`
 explicitamente. O comando Beads precisa do diretório de trabalho dessa raiz,
 além do ambiente carregado por `direnv`. Isso é contexto autorizado dessa
 execução, não uma regra para procurar runtimes no pai de todo repositório.
+O banco é o central do Gas City. Use `direnv exec <rig> bd ...` no checkout do
+rig e confira uma leitura real. Se a geração apagar a escolha de servidor,
+corrija seu modelo/template e regenere; não inicialize um banco embedded ou
+grave host/porta manualmente. O Gas City mantém a resolução do endpoint.
+
+As correções mais recentes do operador exigem provisionamento e atualização
+exclusivamente por `make setup`, dependências Git nos tips das branches de
+integração declaradas e remoção de `APPLY`, `uv.lock` e `mise.lock` em todos os
+produtores e consumidores. Corrija o responsável do setup e regenere pelo
+`make gen`; instalações manuais não substituem o ciclo. Ignorar um lock no Git
+não remove o contrato se setup, deps, build ou release ainda o recriam ou leem.
 
 ## Registrar antes de ampliar o trabalho
 

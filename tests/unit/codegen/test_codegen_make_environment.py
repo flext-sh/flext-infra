@@ -656,7 +656,12 @@ class TestsFlextInfraCodegenMakeEnvironment:
 
         process = tm.ok(
             u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "deps", "UNDECLARED_INPUT=value"],
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "deps",
+                    "UNDECLARED_INPUT=value",
+                ],
                 cwd=project_root,
                 env=env,
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,

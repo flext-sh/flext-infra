@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
 
 from tests import c, t, u
@@ -533,7 +533,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(generated, lacks='"flext_parent": ("x",)')
 
     def test_installed_parent_alias_uses_the_nearest_actual_owner(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
         """Skip an importable parent that does not export the requested alias."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
@@ -542,33 +542,36 @@ class TestsFlextInfraLazyInitHelpers:
         installed_root = tmp_path / "installed"
         # The parents are what the active environment declares; their
         # exports are read by path, never imported (the modules raise).
-        monkeypatch.syspath_prepend(str(installed_root))
-        nearest = installed_root / "nearest_parent"
-        owner = installed_root / "owner_parent"
-        nearest.mkdir(parents=True)
-        owner.mkdir(parents=True)
-        nearest.joinpath(c.Infra.INIT_PY).write_text(
-            '__all__ = ("c",)\nc = object()\nraise RuntimeError("must not import")\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        owner.joinpath(c.Infra.INIT_PY).write_text(
-            '__all__ = ("r",)\nr = object()\nraise RuntimeError("must not import")\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
-            "from nearest_parent import c\n"
-            "from owner_parent import r\n\n"
-            "class FlextChildConstants(c):\n"
-            "    pass\n\n"
-            '__all__ = ("FlextChildConstants",)\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
+        sys.path.insert(0, str(installed_root))
+        try:
+            nearest = installed_root / "nearest_parent"
+            owner = installed_root / "owner_parent"
+            nearest.mkdir(parents=True)
+            owner.mkdir(parents=True)
+            nearest.joinpath(c.Infra.INIT_PY).write_text(
+                '__all__ = ("c",)\nc = object()\nraise RuntimeError("must not import")\n',
+                encoding=c.Cli.ENCODING_DEFAULT,
+            )
+            owner.joinpath(c.Infra.INIT_PY).write_text(
+                '__all__ = ("r",)\nr = object()\nraise RuntimeError("must not import")\n',
+                encoding=c.Cli.ENCODING_DEFAULT,
+            )
+            package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+                "from nearest_parent import c\n"
+                "from owner_parent import r\n\n"
+                "class FlextChildConstants(c):\n"
+                "    pass\n\n"
+                '__all__ = ("FlextChildConstants",)\n',
+                encoding=c.Cli.ENCODING_DEFAULT,
+            )
 
-        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
-        generated = self._generated_init(package_root)
+            tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+            generated = self._generated_init(package_root)
 
-        tm.that(generated, has='"owner_parent": ("r",)')
-        tm.that(generated, lacks='"nearest_parent": ("r",)')
+            tm.that(generated, has='"owner_parent": ("r",)')
+            tm.that(generated, lacks='"nearest_parent": ("r",)')
+        finally:
+            sys.path.remove(str(installed_root))
 
     def test_non_flext_root_derives_inherited_aliases_beyond_stale_all(
         self, tmp_path: Path

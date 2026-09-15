@@ -92,6 +92,15 @@ Read those skills and root `AGENTS.md`; this file adds only FLEXT domain law.
 - Invoke the standard Make verbs directly. Mutating verbs mutate by default with zero variables;
   agents never add `WHAT=` or `PROJECT=` to setup, generation, repair,
   formatting, checking, or testing.
+- Provision and update dependency environments exclusively through `make setup`.
+  Correct its canonical generator when setup fails; never install or resolve
+  packages manually to make the next gate pass. The operator cutover removes
+  `APPLY`, `uv.lock` and `mise.lock` from producers and consumers, including
+  regeneration and required-input paths, not only version control.
+- Adopt concurrent work by fix-forward. Fetch each repository's integration
+  tip, absorb it with `git merge --no-ff`, and preserve all compatible work.
+  Publish through that integration branch and measure the remote merge SHA;
+  a local merge or an old gate receipt never proves integrated runtime.
 - Structural rewires run through `make mod`. Its canonical FLEXT engine
   composes `ast-grep` rewrites, Rope semantic refactors, and real
   `pyright-langserver` diagnostics before the fixed point is accepted.
