@@ -108,7 +108,7 @@ class FlextInfraCodegenConformMisc:
         if owner.is_dir():
             owner.chmod(c.Infra.BEADS_DIRECTORY_MODE)
         for repository in workspace.subprojects:
-            state = FlextInfraCodegenConform._beads_route_state(
+            state = self._beads_route_state(
                 (root / repository.path).resolve()
             )
             if state.failure:
