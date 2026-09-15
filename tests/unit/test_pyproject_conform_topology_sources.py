@@ -212,15 +212,22 @@ workspace = true
             )
         )
         consumer_rendered = tm.ok(
-            u.Infra.pyproject_dependencies_conform(
+            u.Infra.pyproject_conform(
                 (
                     f'[project]\nname = "{consumer.distribution}"\n'
                     'version = "0.1.0"\n'
                     f'dependencies = ["{self._inline_requirement(provider)}"]\n'
+                    "\n[tool.uv.workspace]\n"
                 ),
                 providers=config.Infra.codegen.providers,
-                workspace=workspace,
-                workspace_mode=self._ROLE.WORKSPACE,
+                workspace=m.Infra.WorkspaceSpec(
+                    name=consumer.name,
+                    beads=workspace.beads,
+                    repository=consumer.model_copy(update={"path": Path()}),
+                ),
+                workspace_mode=self._ROLE.STANDALONE,
+                toolchain=config.Infra.codegen.toolchain,
+                required_dev_dependencies=(),
             )
         )
         (root / c.Infra.PYPROJECT_FILENAME).write_text(root_rendered, encoding="utf-8")

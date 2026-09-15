@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import secrets
-from collections.abc import Callable, MutableMapping
+from collections.abc import Callable, Generator, MutableMapping
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -12,6 +13,7 @@ from flext_infra import m, u
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 
 from ._codegen_staging import stage_file_plans
+from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 from ._mise_artifacts_journal import FlextInfraMiseArtifactsJournal as journal_io
 from ._mise_artifacts_publication import publish
 from ._mise_artifacts_recovery import FlextInfraMiseRecovery
@@ -32,6 +34,163 @@ class FlextInfraCodegenTransaction:
         self._planner = FlextInfraMiseWorkspacePlanner(owner)
         self._recovery = FlextInfraMiseRecovery()
         self._mise_staging = FlextInfraMiseStaging(owner)
+        self._file_leases: dict[Path, m.Infra.CodegenFileParticipant] = {}
+
+    def run_files_locked[T](
+        self,
+        roots: t.MappingKV[str, Path],
+        operation: Callable[[Path], p.Result[T]],
+    ) -> p.Result[T]:
+        """Hold Git and shared destination leases before planning or recovery."""
+        identity = self._planner.scope_identity()
+        if identity.failure:
+            return r[T].from_failure(identity)
+        proposed = self._planner.file_layout(
+            identity.value.repo_root, roots, transaction_id=secrets.token_hex(16)
+        )
+        if proposed.failure:
+            return r[T].from_failure(proposed)
+        with u.Infra.codegen_transaction_lease(self._planner.journal_path(identity.value)):
+            participants = {item.root: item for item in proposed.value.file_participants}
+            observed = state.journal_state(proposed.value)
+            if observed.failure:
+                return r[T].from_failure(observed)
+            snapshot = state.journal_snapshot(observed.value)
+            if snapshot is not None and snapshot.content is not None:
+                loaded = journal_io.read(proposed.value)
+                if loaded.failure:
+                    return r[T].from_failure(loaded)
+                for participant in loaded.value[0].file_participants:
+                    current = participants.get(participant.root)
+                    if current is not None and (current.device, current.inode) != (
+                        participant.device, participant.inode
+                    ):
+                        return r[T].fail("file capability identity changed before recovery")
+                    participants[participant.root] = participant
+            with self._lease_file_participants(tuple(participants.values())):
+                return self._run_locked_operation(
+                    identity.value, prepare=True, operation=operation
+                )
+
+    @contextmanager
+    def _lease_file_participants(
+        self, participants: tuple[m.Infra.CodegenFileParticipant, ...]
+    ) -> Generator[None]:
+        """Serialize shared destinations across worktrees in stable path order."""
+        for participant in participants:
+            physical = files.physical_directory_identity(participant.root).unwrap()
+            if physical != (participant.device, participant.inode):
+                msg = f"file publication root changed before lease: {participant.root}"
+                raise ValueError(msg)
+        acquired: set[Path] = set()
+        try:
+            with ExitStack() as stack:
+                for participant in sorted(participants, key=lambda item: str(item.root)):
+                    if participant.root in self._file_leases:
+                        continue
+                    lease_path = participant.root / files.JOURNAL_NAME
+                    u.Cli.atomic_read_binary_file_state(
+                        lease_path.with_name(f"{lease_path.name}.lock"), required=False
+                    ).unwrap()
+                    stack.enter_context(
+                        u.Infra.codegen_transaction_lease(
+                            lease_path
+                        )
+                    )
+                    acquired.add(participant.root)
+                    self._file_leases[participant.root] = participant
+                    physical = files.physical_directory_identity(participant.root).unwrap()
+                    if physical != (participant.device, participant.inode):
+                        msg = f"file publication root changed during lease: {participant.root}"
+                        raise ValueError(msg)
+                yield
+        finally:
+            for root in acquired:
+                self._file_leases.pop(root)
+
+    def begin_files_locked(
+        self,
+        scope_root: Path,
+        roots: t.MappingKV[str, Path],
+        inputs: tuple[m.Cli.AtomicFileState, ...],
+    ) -> p.Result[m.Infra.CodegenTransactionSession]:
+        """Create a durable file-only cursor using the existing journal lifecycle."""
+        result_type = r[m.Infra.CodegenTransactionSession]
+        if set(roots.values()) - self._file_leases.keys():
+            return result_type.fail("file session requires every destination lease")
+        transaction_id = secrets.token_hex(16)
+        prepared = self._planner.file_layout(scope_root, roots, transaction_id=transaction_id)
+        if prepared.failure:
+            return result_type.from_failure(prepared)
+        layout = prepared.value
+        for participant in layout.file_participants:
+            leased = self._file_leases[participant.root]
+            if (participant.device, participant.inode) != (leased.device, leased.inode):
+                return result_type.fail("file capability root changed after lease acquisition")
+        plan = m.Infra.CodegenFileSessionPlan(layout=layout)
+        observed = state.journal_state(layout)
+        if observed.failure:
+            return result_type.from_failure(observed)
+        before = state.journal_snapshot(observed.value)
+        if before is None or before.content is not None:
+            return result_type.fail("file transaction journal is not absent after recovery")
+        if state.transaction_residue(layout):
+            return result_type.fail("file transaction has unowned staging residue")
+        stable = verify.states_current(inputs)
+        if stable.failure:
+            return result_type.from_failure(stable)
+        directories = state.plan_transaction_directories(layout)
+        if directories.failure:
+            return result_type.from_failure(directories)
+        journal = journal_io.begin(
+            plan,
+            transaction_id=transaction_id,
+            sources=tuple(("docs", source) for source in inputs),
+            directories=directories.value,
+        )
+        if journal.failure:
+            return result_type.from_failure(journal)
+        persisted = journal_io.write(layout, journal.value, expected=before)
+        if persisted.failure:
+            return result_type.from_failure(persisted)
+        materialized = self._materialize_directories(layout, journal.value, persisted.value)
+        if materialized.failure:
+            return result_type.from_failure(materialized)
+        recorded, recorded_state = materialized.value
+        prepared_journal = journal_io.append_prepared(plan, recorded, ())
+        if prepared_journal.failure:
+            return result_type.from_failure(
+                self._recover_failure(layout, prepared_journal.error or "file preparation failed")
+            )
+        ready = journal_io.write(layout, prepared_journal.value, expected=recorded_state)
+        if ready.failure:
+            return result_type.from_failure(self._handle_journal_write_failure(layout, ready.error or "file cursor persistence failed"))
+        return result_type.ok(
+            m.Infra.CodegenTransactionSession(
+                plan=plan, journal=prepared_journal.value, journal_state=ready.value
+            )
+        )
+
+    def publish_file_phase_locked(
+        self,
+        scope_root: Path,
+        roots: t.MappingKV[str, Path],
+        analysis: m.Infra.CodegenPhaseAnalysis,
+        directories: tuple[Path, ...],
+        validator: Callable[[], p.Result[bool]],
+    ) -> p.Result[tuple[Path, ...]]:
+        """Compose file publication through the same durable phase lifecycle."""
+        result_type = r[tuple[Path, ...]]
+        started = self.begin_files_locked(scope_root, roots, analysis.inputs)
+        if started.failure:
+            return result_type.from_failure(started)
+        prepared = self.append_directories_locked(started.value, analysis.phase, directories)
+        if prepared.failure:
+            return result_type.from_failure(prepared)
+        published = self.append_phase_locked(prepared.value, analysis.phase, analysis.files)
+        if published.failure:
+            return result_type.from_failure(published)
+        return self.commit_locked(published.value, validator)
 
     def validate(
         self, config_plans: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
@@ -310,7 +469,9 @@ class FlextInfraCodegenTransaction:
                 self._recover_failure(layout, sources.error or "invalid phase sources")
             )
         source_states = tuple(source for _phase, source in sources.value)
-        source_barrier = verify.states_current(self._unique_states(source_states))
+        source_barrier = verify.states_current(
+            self._unique_states(source_states), journal=session.journal
+        )
         if source_barrier.failure:
             return result_type.from_failure(
                 self._recover_failure(
@@ -399,7 +560,9 @@ class FlextInfraCodegenTransaction:
                     layout, persisted.error or f"cannot persist {phase} journal phase"
                 )
             )
-        source_barrier = verify.states_current(self._unique_states(source_states))
+        source_barrier = verify.states_current(
+            self._unique_states(source_states), journal=manifested.value
+        )
         destination_barrier = verify.states_current(
             tuple(item.before for item in staged.value)
         )
@@ -503,6 +666,11 @@ class FlextInfraCodegenTransaction:
         validator: Callable[[], p.Result[bool]],
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Validate final reality while recoverable, then commit and clean up."""
+        exact = verify.journal_destinations_live(session.plan.layout, session.journal)
+        if exact.failure:
+            return r[tuple[Path, ...]].from_failure(
+                self._recover_failure(session.plan.layout, exact.error or "publication identity changed")
+            )
         validated = validator()
         if validated.failure or not validated.value:
             return r[tuple[Path, ...]].from_failure(
@@ -517,6 +685,11 @@ class FlextInfraCodegenTransaction:
         if unchanged.failure:
             return r[tuple[Path, ...]].from_failure(unchanged)
         session = unchanged.value
+        exact = verify.journal_destinations_live(session.plan.layout, session.journal)
+        if exact.failure:
+            return r[tuple[Path, ...]].from_failure(
+                self._recover_failure(session.plan.layout, exact.error or "publication identity changed before commit")
+            )
         committed = journal_io.commit(session.journal)
         if committed.failure:
             return r[tuple[Path, ...]].from_failure(
@@ -676,7 +849,7 @@ class FlextInfraCodegenTransaction:
         """
         return tuple(
             project.transaction_root / f"phase-{phase}"
-            for project in layout.projects
+            for project in files.transaction_participants(layout)
             if project.transaction_root is not None
         )
 
@@ -790,6 +963,20 @@ class FlextInfraCodegenTransaction:
         if loaded.failure:
             return r[bool].from_failure(loaded)
         journal, journal_state = loaded.value
+        if journal.file_participants:
+            if journal.projects:
+                return r[bool].fail("mixed Mise and file-only recovery requires explicit composition")
+            recovery_layout = self._planner.file_layout(
+                layout.scope_root,
+                {item.selector: item.root for item in journal.file_participants},
+                transaction_id=journal.transaction_id,
+            )
+            if recovery_layout.failure:
+                return r[bool].from_failure(recovery_layout)
+            if recovery_layout.value.journal_path != layout.journal_path:
+                return r[bool].fail("file journal identity changed during recovery")
+            with self._lease_file_participants(journal.file_participants):
+                return self._recovery.execute(recovery_layout.value, journal, journal_state)
         selectors = tuple(project.selector for project in journal.projects)
         recovery_layout = self._planner.layout_from_selectors(
             layout.scope_root, selectors, transaction_id=journal.transaction_id

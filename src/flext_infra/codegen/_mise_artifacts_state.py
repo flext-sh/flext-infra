@@ -41,7 +41,9 @@ class FlextInfraMiseArtifactsState:
         raise FileNotFoundError(msg)
 
     @classmethod
-    def _project_depth(cls, item: m.Infra.MiseToolchainProjectLayout) -> int:
+    def _project_depth(
+        cls, item: m.Infra.MiseToolchainProjectLayout | m.Infra.CodegenFileParticipant
+    ) -> int:
         """Order the narrowest project owner before its ancestors."""
         return -len(item.root.parts)
 
@@ -83,6 +85,7 @@ class FlextInfraMiseArtifactsState:
                     f"Mise state is not on destination filesystem: {project.selector}"
                 )
             roots.append(transaction_root)
+        roots.extend(participant.transaction_root for participant in layout.file_participants)
         temporary = cls.plan_directories(
             layout, phase="transaction", requested=tuple(roots), disposition="temporary"
         )
@@ -126,7 +129,8 @@ class FlextInfraMiseArtifactsState:
                 (
                     entry.created
                     for entry in directories
-                    if layout.scope_root / entry.path == before.path.parent
+                    if entry.created is not None
+                    and entry.created.path == before.path.parent
                     and entry.disposition == "generated"
                 ),
                 None,
@@ -183,7 +187,9 @@ class FlextInfraMiseArtifactsState:
         result_type = r[tuple[m.Infra.CodegenJournalDirectory, ...]]
         if len(set(requested)) != len(requested):
             return result_type.fail(f"duplicate {phase} directory request")
-        projects = tuple(sorted(layout.projects, key=cls._project_depth))
+        projects = tuple(
+            sorted(files.transaction_participants(layout), key=cls._project_depth)
+        )
         planned: MutableMapping[Path, m.Infra.CodegenJournalDirectory] = {}
         for target in requested:
             path = target.expanduser().absolute()
@@ -262,7 +268,12 @@ class FlextInfraMiseArtifactsState:
         if target.failure:
             return result_type.from_failure(target)
         project = next(
-            (item for item in layout.projects if item.selector == entry.project), None
+            (
+                item
+                for item in files.transaction_participants(layout)
+                if item.selector == entry.project
+            ),
+            None,
         )
         if project is None or not target.value.is_relative_to(project.root):
             return result_type.fail(
@@ -274,8 +285,8 @@ class FlextInfraMiseArtifactsState:
                 (
                     candidate
                     for candidate in directories
-                    if (layout.scope_root / candidate.path).absolute()
-                    == target.value.parent
+                    if candidate.created is not None
+                    and candidate.created.path == target.value.parent
                 ),
                 None,
             )
@@ -360,7 +371,7 @@ class FlextInfraMiseArtifactsState:
     ) -> t.VariadicTuple[Path]:
         """Return every transaction-prefixed child or unsafe state-root alias."""
         residue: list[Path] = []
-        for project in layout.projects:
+        for project in files.transaction_participants(layout):
             state_root = project.root / files.STATE_DIRECTORY
             if not state_root.exists() and not state_root.is_symlink():
                 continue
@@ -467,7 +478,7 @@ class FlextInfraMiseArtifactsState:
         if validated.failure:
             return validated
         removed_temporary_roots: set[str] = set()
-        for project in layout.projects:
+        for project in files.transaction_participants(layout):
             transaction_root = project.transaction_root
             if transaction_root is None:
                 return r[bool].fail("Mise recovery layout has no transaction root")
@@ -540,7 +551,7 @@ class FlextInfraMiseArtifactsState:
         """Authenticate the sole journal-derived staging root in every project."""
         expected = {
             project.transaction_root
-            for project in layout.projects
+            for project in files.transaction_participants(layout)
             if project.transaction_root is not None
         }
         unexpected = sorted(set(cls.transaction_residue(layout)) - expected)
@@ -548,7 +559,7 @@ class FlextInfraMiseArtifactsState:
             return r[bool].fail(
                 f"foreign generation transaction residue exists: {unexpected[0]}"
             )
-        for project in layout.projects:
+        for project in files.transaction_participants(layout):
             transaction_root = project.transaction_root
             if transaction_root is None:
                 return r[bool].fail("Mise recovery layout has no transaction root")

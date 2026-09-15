@@ -149,7 +149,7 @@ class TestsFlextInfraDocsGeneratorInternals:
 
         result = generator.generate(
             m.Infra.DocsGenerateRequest(
-                repository_root=workspace, projects=["flext-a"], apply=False
+                repository_root=workspace, projects=["flext-a"]
             )
         )
 

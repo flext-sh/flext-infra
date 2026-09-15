@@ -32,7 +32,7 @@ class TestsFlextInfraDocsGenerator:
         _ = u.Tests.plan_docs_bundle(generator)
         result = generator.generate(
             m.Infra.DocsGenerateRequest(
-                repository_root=workspace, projects=["flext-a"], apply=False
+                repository_root=workspace, projects=["flext-a"]
             )
         )
 
@@ -74,7 +74,7 @@ class TestsFlextInfraDocsGenerator:
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text('"""Public fixture module."""\n', encoding="utf-8")
         request = m.Infra.DocsGenerateRequest(
-            repository_root=workspace, projects=selected_projects, apply=False
+            repository_root=workspace, projects=selected_projects
         )
         generator = FlextInfraDocGenerator(
             repository_root=workspace, selected_projects=selected_projects
@@ -127,8 +127,15 @@ class TestsFlextInfraDocsGenerator:
         tm.that(all(report.changed_files == 0 for report in fixed_point.value), eq=True)
 
         bundle = u.Tests.prepare_docs_bundle(generator)
-        (package / "__init__.py").write_text(
-            '"""Root source changed after rendering."""\n', encoding="utf-8"
+        # Mutate an authenticated source selected by the bundle itself.
+        # Different project selections legitimately watch different sources.
+        watched = next(
+            state.path
+            for state in bundle.source_states
+            if workspace in state.path.parents
+        )
+        watched.write_text(
+            '"""Source changed after rendering."""\n', encoding="utf-8"
         )
         tm.fail(generator.plan_files(bundle))
 
@@ -138,7 +145,7 @@ class TestsFlextInfraDocsGenerator:
         """Preserve root output while leaving optional curated indexes unowned."""
         workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
         request = m.Infra.DocsGenerateRequest(
-            repository_root=workspace, projects=["flext-a"], apply=False
+            repository_root=workspace, projects=["flext-a"]
         )
         generator = FlextInfraDocGenerator(
             repository_root=workspace, selected_projects=["flext-a"]
@@ -200,7 +207,7 @@ class TestsFlextInfraDocsGenerator:
         curated = workspace / "docs/README.md"
         curated_content = curated.read_bytes()
         request = m.Infra.DocsGenerateRequest(
-            repository_root=workspace, projects=["flext-infra-fixture"], apply=False
+            repository_root=workspace, projects=["flext-infra-fixture"]
         )
         generator = FlextInfraDocGenerator(
             repository_root=workspace, selected_projects=["flext-infra-fixture"]

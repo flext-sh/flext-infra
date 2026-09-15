@@ -65,6 +65,7 @@ if TYPE_CHECKING:
     from .codegen import FlextInfraUtilitiesCodegen
     from .codegen_facades import FlextInfraUtilitiesCodegenFacades
     from .codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
+    from .codegen_path_cutover import FlextInfraUtilitiesCodegenPathCutover
     from .codemod_rules import FlextInfraUtilitiesCodemodRules
     from .compatibility_alias_cst import FlextInfraUtilitiesCompatibilityAliasCst
     from .compatibility_alias_validation import (
@@ -81,6 +82,9 @@ if TYPE_CHECKING:
     from .docs_api import FlextInfraUtilitiesDocsApi
     from .docs_audit import FlextInfraUtilitiesDocsAudit
     from .docs_build import FlextInfraUtilitiesDocsBuild
+    from .docs_collection import FlextInfraUtilitiesDocsCollection
+    from .docs_collection_sources import FlextInfraUtilitiesDocsCollectionSources
+    from .docs_collection_verify import FlextInfraUtilitiesDocsCollectionVerify
     from .docs_contract import FlextInfraUtilitiesDocsContract
     from .docs_fix import FlextInfraUtilitiesDocsFix
     from .docs_generate import FlextInfraUtilitiesDocsGenerate
@@ -165,6 +169,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodegenFacades",
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
+    "FlextInfraUtilitiesCodegenPathCutover",
     "FlextInfraUtilitiesCodemodRules",
     "FlextInfraUtilitiesCompatibilityAliasCst",
     "FlextInfraUtilitiesCompatibilityAliasValidation",
@@ -178,6 +183,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsAudit",
     "FlextInfraUtilitiesDocsAuditDetectorsMixin",
     "FlextInfraUtilitiesDocsBuild",
+    "FlextInfraUtilitiesDocsCollection",
+    "FlextInfraUtilitiesDocsCollectionSources",
+    "FlextInfraUtilitiesDocsCollectionVerify",
     "FlextInfraUtilitiesDocsCommandContractMixin",
     "FlextInfraUtilitiesDocsContract",
     "FlextInfraUtilitiesDocsFix",
@@ -361,6 +369,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen": ("FlextInfraUtilitiesCodegen",),
             ".codegen_facades": ("FlextInfraUtilitiesCodegenFacades",),
             ".codegen_file_plan": ("FlextInfraUtilitiesCodegenFilePlan",),
+            ".codegen_path_cutover": ("FlextInfraUtilitiesCodegenPathCutover",),
             ".codemod_rules": ("FlextInfraUtilitiesCodemodRules",),
             ".compatibility_alias_cst": ("FlextInfraUtilitiesCompatibilityAliasCst",),
             ".compatibility_alias_validation": (
@@ -379,6 +388,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".docs_api": ("FlextInfraUtilitiesDocsApi",),
             ".docs_audit": ("FlextInfraUtilitiesDocsAudit",),
             ".docs_build": ("FlextInfraUtilitiesDocsBuild",),
+            ".docs_collection": ("FlextInfraUtilitiesDocsCollection",),
+            ".docs_collection_sources": ("FlextInfraUtilitiesDocsCollectionSources",),
+            ".docs_collection_verify": ("FlextInfraUtilitiesDocsCollectionVerify",),
             ".docs_contract": ("FlextInfraUtilitiesDocsContract",),
             ".docs_fix": ("FlextInfraUtilitiesDocsFix",),
             ".docs_generate": ("FlextInfraUtilitiesDocsGenerate",),

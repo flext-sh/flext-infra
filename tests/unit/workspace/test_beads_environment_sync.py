@@ -61,6 +61,25 @@ class TestsFlextInfraBeadsEnvironmentSync:
         tm.ok(result)
         tm.that((tmp_path / c.Infra.ENVRC_FILENAME).is_file(), eq=True)
 
+    def test_python_activation_composes_external_beads_server(
+        self, tmp_path: Path
+    ) -> None:
+        """Selecting Beads retains Python activation and explicit server mode."""
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "beads-python"\nversion = "0.1.0"\n',
+            encoding="utf-8",
+        )
+        tm.ok(infra.sync_environment_files(
+            self.make_request(tmp_path, allow_direnv=False)
+        ))
+        content = (tmp_path / c.Infra.ENVRC_FILENAME).read_text(encoding="utf-8")
+        tm.that(content, has='PROJECT_ROOT="$(find_up pyproject.toml)"')
+        tm.that(content, has='export VIRTUAL_ENV="${VENV_DIR}"')
+        tm.that(content, has="export BEADS_DOLT_SERVER_MODE=1")
+        tm.that(content, has='BEADS_DOLT_SERVER_PORT="$(')
+        tm.that(content, lacks='export BEADS_DOLT_SERVER_PORT="$(')
+        tm.that(content, has="source_env_if_exists .envrc.local")
+
     def test_report_mode_writes_nothing(self, tmp_path: Path) -> None:
         """apply=False is read-only and consumes no runner."""
         result = infra.sync_environment_files(self.make_request(tmp_path, apply=False))
