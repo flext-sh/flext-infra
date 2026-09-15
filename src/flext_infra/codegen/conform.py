@@ -619,7 +619,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _conform_workspace_beads_routes(
         self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[bool]:
-        """Reject any composed project that reaches the ledger by symbolic link.
 
         A composed project follows the workspace ledger through its own rendered
         ``.beads`` configuration, which every checkout resolves identically. It
