@@ -639,6 +639,7 @@ Infra:
           - "smoke: public-interface smoke tests"
           - "unit: unit tests"
           - "integration: integration tests"
+          - "functional: functional behavior tests"
           - "performance: performance and benchmark tests"
           - "slow: slow-running tests"
           - "docker: tests requiring Docker"
@@ -648,6 +649,8 @@ Infra:
           - "edge_cases: edge case tests"
           - "stress: stress tests"
           - "resilience: resilience tests"
+          - "discovery: catalog and stream discovery tests"
+          - "singer: Singer protocol contract tests"
         # gate-budget/engineering-core: external-token gates never run inside
         # offline verification (`make test`); they are deselected here and the
         # runner records them as NOT EXECUTED. Direct invocation (`pytest -m
