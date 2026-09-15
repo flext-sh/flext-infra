@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from .test_codegen_hook_conformance import TestGitHookConformance
     from .test_codegen_render_purity_golden import TestsCodegenRenderPurityGolden
     from .test_managed_conflicts import TestsFlextInfraManagedConflictRecovery
+    from .test_plan_collection import TestsPlanCollection
     from .test_utility_facade_projection import TestsFlextInfraUtilityFacadeProjection
 __all__: tuple[str, ...] = (
     "CodegenTestSupport",
@@ -39,6 +40,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraLazyInitRuntime",
     "TestsFlextInfraManagedConflictRecovery",
     "TestsFlextInfraUtilityFacadeProjection",
+    "TestsPlanCollection",
     "archive_root",
     "build_loose_project",
     "c",
@@ -77,6 +79,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_codegen_hook_conformance": ("TestGitHookConformance",),
             ".test_codegen_render_purity_golden": ("TestsCodegenRenderPurityGolden",),
             ".test_managed_conflicts": ("TestsFlextInfraManagedConflictRecovery",),
+            ".test_plan_collection": ("TestsPlanCollection",),
             ".test_utility_facade_projection": (
                 "TestsFlextInfraUtilityFacadeProjection",
             ),

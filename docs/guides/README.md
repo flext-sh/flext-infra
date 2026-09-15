@@ -15,6 +15,7 @@ pages sourced from code and docstrings.
 - [Make commands](make-commands.md)
 - [Migration to v0.13.0](migration-to-v0.13.0.md)
 - [Onboarding](onboarding.md)
+- [Plan collection](plan-collection.md)
 - [Security](security.md)
 - [Skill automation pattern](skill-automation-pattern.md)
 - [Testing](testing.md)

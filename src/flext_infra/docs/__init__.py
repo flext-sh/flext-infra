@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from .auditor_mixin import FlextInfraDocAuditorMixin
     from .base import FlextInfraDocServiceBase
     from .builder import FlextInfraDocBuilder
+    from .collector import FlextInfraDocCollector
     from .fixer import FlextInfraDocFixer
     from .generator import FlextInfraDocGenerator
     from .server import FlextInfraDocServer
@@ -26,6 +27,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraDocAuditorMixin",
     "FlextInfraDocAuditorReportMixin",
     "FlextInfraDocBuilder",
+    "FlextInfraDocCollector",
     "FlextInfraDocFixer",
     "FlextInfraDocGenerator",
     "FlextInfraDocGeneratorBundleMixin",
@@ -44,6 +46,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".auditor_mixin": ("FlextInfraDocAuditorMixin",),
             ".base": ("FlextInfraDocServiceBase",),
             ".builder": ("FlextInfraDocBuilder",),
+            ".collector": ("FlextInfraDocCollector",),
             ".fixer": ("FlextInfraDocFixer",),
             ".generator": ("FlextInfraDocGenerator",),
             ".server": ("FlextInfraDocServer",),

@@ -84,6 +84,13 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         assignments: t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeAssignment]
 
     @runtime_checkable
+    class RopeImportedName(RopePyName, Protocol):
+        """Import binding with its declaring module and original symbol."""
+
+        imported_module: FlextInfraProtocolsRopeRuntime.RopePyName
+        imported_name: str
+
+    @runtime_checkable
     class RopeScope(Protocol):
         """Rope semantic scope shape."""
 

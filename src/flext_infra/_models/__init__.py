@@ -37,6 +37,7 @@ if TYPE_CHECKING:
         FlextInfraModelsDepsToolConfigTypeCheckers,
     )
     from .docs import FlextInfraModelsDocs
+    from .docs_collection import FlextInfraModelsDocsCollection
     from .docs_generation import FlextInfraModelsDocsGeneration
     from .duplication import FlextInfraModelsDuplication
     from .enforcement import FlextInfraModelsEnforcement
@@ -80,6 +81,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsDepsToolConfigTypeCheckers",
     "FlextInfraModelsDepsToolSettings",
     "FlextInfraModelsDocs",
+    "FlextInfraModelsDocsCollection",
     "FlextInfraModelsDocsGeneration",
     "FlextInfraModelsDuplication",
     "FlextInfraModelsEnforcement",
@@ -141,6 +143,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraModelsDepsToolConfigTypeCheckers",
             ),
             ".docs": ("FlextInfraModelsDocs",),
+            ".docs_collection": ("FlextInfraModelsDocsCollection",),
             ".docs_generation": ("FlextInfraModelsDocsGeneration",),
             ".duplication": ("FlextInfraModelsDuplication",),
             ".enforcement": ("FlextInfraModelsEnforcement",),
