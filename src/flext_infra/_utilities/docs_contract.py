@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from html import unescape
 from typing import TYPE_CHECKING
 
+from markdown import Markdown
 from markdown.extensions.toc import slugify
 
 from flext_core import r
@@ -108,16 +110,38 @@ class FlextInfraUtilitiesDocsContract:
         sections: markdown renders them verbatim and emits no anchor, so a TOC
         entry pointing at them is a dead link that fails the strict docs build.
         """
-        scannable: str = c.Infra.FENCED_BLOCK_RE.sub("", content)
+        renderer = Markdown(
+            extensions=["attr_list", "md_in_html", "toc", "pymdownx.superfences"],
+            extension_configs={"toc": {"toc_depth": "2-3"}},
+        )
+        body = c.Infra.TOC_BLOCK_RE.sub("", content)
+        lines = body.splitlines()
+        renderer.convert(
+            "\n".join(lines[FlextInfraUtilitiesDocsContract._docs_body_start(lines) :])
+        )
         items: t.MutableSequenceOf[str] = []
-        for level, title in c.Infra.HEADING_H2_H3_RE.findall(scannable):
-            anchor = FlextInfraUtilitiesDocsContract.docs_anchorize(title)
-            if anchor:
-                indent = "  " if level == "###" else ""
-                items.append(f"{indent}- [{title}](#{anchor})")
+        rendered = m.Infra.DocsRenderedToc.model_validate(
+            renderer, from_attributes=True
+        )
+        FlextInfraUtilitiesDocsContract._docs_toc_items(rendered.toc_tokens, items)
         if not items:
             items = ["- No sections found"]
         return f"{c.Infra.TOC_START}\n" + "\n".join(items) + f"\n{c.Infra.TOC_END}"
+
+    @staticmethod
+    def _docs_toc_items(
+        tokens: t.SequenceOf[m.Infra.DocsTocToken],
+        items: t.MutableSequenceOf[str],
+        depth: int = 0,
+    ) -> None:
+        """Serialize the renderer's own TOC without reparsing heading Markdown."""
+        for token in tokens:
+            title = unescape(token.name).replace("[", r"\[").replace("]", r"\]")
+            indent = "  " * depth
+            items.append(f"{indent}- [{title}](#{token.id})")
+            FlextInfraUtilitiesDocsContract._docs_toc_items(
+                token.children, items, depth + 1
+            )
 
     @staticmethod
     def docs_workspace_contract(repository_root: Path) -> t.JsonMapping:

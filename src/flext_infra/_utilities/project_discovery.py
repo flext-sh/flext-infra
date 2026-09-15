@@ -26,7 +26,7 @@ class FlextInfraUtilitiesProjectDiscovery(
     @classmethod
     @lru_cache(maxsize=1)
     def load_refactor_config(cls, repository_root: Path) -> m.Infra.RefactorConfigSpec:
-        """Load declared refactor settings, propagating invalid manifest errors."""
+        """Load declared refactor configuration, propagating invalid manifests."""
         manifest_path = FlextInfraUtilitiesWorkspaceManifest.workspace_manifest_path(
             repository_root
         )
@@ -57,8 +57,8 @@ class FlextInfraUtilitiesProjectDiscovery(
         directories may share a leaf, and excluding by name would silently
         exclude the wrong tree.
 
-        A standalone checkout may have no manifest. A present manifest must
-        parse and validate before discovery can use its participant scope.
+        An absent manifest declares no exclusions. An unreadable or invalid
+        manifest fails before discovery can expand the declared scope.
         """
         manifest_path = FlextInfraUtilitiesWorkspaceManifest.workspace_manifest_path(
             repository_root

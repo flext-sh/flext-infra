@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import config, main, u
+from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.release import FlextInfraReleasePolicyRender
 from tests import c, m, t
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
@@ -73,9 +74,14 @@ class TestsFlextInfraUtilitiesReleaseMixin:
             ),
             encoding="utf-8",
         )
-        # Generated repositories ignore their report tree; the protocol's
-        # plan receipt must never count as a dirty checkout.
-        (workspace / ".gitignore").write_text(".reports/\n", encoding="utf-8")
+        # The integration baseline uses the same ignore contract as its release
+        # lane, so local resolver state never becomes an untracked source file.
+        gitignore = FlextInfraCodegenConform.render_project_gitignore(
+            config.Infra.codegen,
+            profile=c.Infra.MakeProfile.STANDALONE,
+            project_name=workspace.name,
+        ).unwrap()
+        (workspace / ".gitignore").write_text(gitignore, encoding="utf-8")
         # Gitleaks is projected by codegen; build constraints are rendered
         # from the typed config SSOT exactly as the release policy phase
         # renders them (flext-gufl8) — no repository projection exists.

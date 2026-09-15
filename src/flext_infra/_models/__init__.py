@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from .check import FlextInfraModelsCheck
     from .codegen import FlextInfraModelsCodegen
     from .codegen_render import FlextInfraModelsCodegenRender
+    from .codegen_toolchain import FlextInfraModelsCodegenToolchain
     from .codemod import FlextInfraModelsCodemod
     from .config import FlextInfraConfigModels
     from .deps import FlextInfraModelsDeps
@@ -63,6 +64,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsCheck",
     "FlextInfraModelsCodegen",
     "FlextInfraModelsCodegenRender",
+    "FlextInfraModelsCodegenToolchain",
     "FlextInfraModelsCodemod",
     "FlextInfraModelsCore",
     "FlextInfraModelsDeps",
@@ -117,6 +119,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".check": ("FlextInfraModelsCheck",),
             ".codegen": ("FlextInfraModelsCodegen",),
             ".codegen_render": ("FlextInfraModelsCodegenRender",),
+            ".codegen_toolchain": ("FlextInfraModelsCodegenToolchain",),
             ".codemod": ("FlextInfraModelsCodemod",),
             ".config": ("FlextInfraConfigModels",),
             ".deps": ("FlextInfraModelsDeps",),

@@ -16,7 +16,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import CliRouteService, c, config, main as infra_main
-from tests import u
+from tests import t, u
 
 
 class TestsFlextInfraCodegenMain:
@@ -82,7 +82,7 @@ class TestsFlextInfraCodegenMain:
         )
 
     @staticmethod
-    def _mise_transaction_state(root: Path) -> tuple[Path, Path]:
+    def _mise_transaction_state(root: Path) -> t.Pair[Path, Path]:
         """Return the public workspace journal and root-project staging paths."""
         toolchain = config.Infra.codegen.toolchain
         state_root = (
@@ -250,11 +250,7 @@ class TestsFlextInfraCodegenMain:
                 "\n"
                 "[tool.pytest.ini_options]\n"
                 "addopts = [\n"
-                "<<<<<<< HEAD\n"
-                '  "--timeout=90",\n'
-                "=======\n"
                 '  "--timeout=10",\n'
-                ">>>>>>> origin/0.12.0-dev\n"
                 "]\n",
                 encoding="utf-8",
             )

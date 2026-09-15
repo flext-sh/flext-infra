@@ -9,7 +9,7 @@ from flext_tests import tm
 
 from flext_infra import c
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import u
+from tests import t, u
 
 _TRANSACTION_MARKER = "-transaction-"
 
@@ -24,7 +24,7 @@ class TestsFlextInfraCodegenConformNoTransactionWorktrees:
     unreachable from any branch (one ``git gc`` away from destruction).
     """
 
-    def _transaction_worktree_siblings(self, root: Path) -> tuple[str, ...]:
+    def _transaction_worktree_siblings(self, root: Path) -> t.VariadicTuple[str]:
         """Name sibling directories that look like detached transaction worktrees."""
         return tuple(
             entry.name
@@ -32,7 +32,7 @@ class TestsFlextInfraCodegenConformNoTransactionWorktrees:
             if entry.is_dir() and _TRANSACTION_MARKER in entry.name
         )
 
-    def _seed_committed_drift(self, tmp_path: Path) -> tuple[Path, Path]:
+    def _seed_committed_drift(self, tmp_path: Path) -> t.Pair[Path, Path]:
         """Materialize the managed tree, then commit one drifted managed Makefile.
 
         Returns the conformed repository root and the drifted file: the shared

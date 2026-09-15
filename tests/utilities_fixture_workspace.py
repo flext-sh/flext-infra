@@ -49,7 +49,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         return project_dir
 
     @staticmethod
-    def demo_project(root: Path, *, name: str = "demo-project") -> tuple[Path, Path]:
+    def demo_project(root: Path, *, name: str = "demo-project") -> t.Pair[Path, Path]:
         """Create one minimal buildable project; return its root and package dir."""
         project = root / name
         package_dir = project / "src" / name.replace("-", "_")
@@ -83,7 +83,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         package_name: str = "sample_pkg",
         pyproject: str = "[project]\nname='sample'\n",
         declare: bool = True,
-    ) -> tuple[Path, Path, Path]:
+    ) -> t.Triple[Path, Path, Path]:
         """Materialize the workspace tree the namespace enforcer scans.
 
         Returns ``(workspace, project, package)``. ``declare`` writes the
@@ -111,7 +111,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         inherited_facets: t.StrSequence = (),
         root_modules: t.StrSequence = (),
         root_packages: t.StrSequence = (),
-        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...] = (),
+        extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec] = (),
         gascity_enabled: bool | None = None,
     ) -> Path:
         """Write the declared ``config/workspace.yaml`` of one standalone repository.
@@ -295,7 +295,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
     @staticmethod
     def create_checker_project(
         tmp_path: Path, *, project_name: str = "p1", with_src: bool = False
-    ) -> tuple[FlextInfraWorkspaceChecker, Path]:
+    ) -> t.Pair[FlextInfraWorkspaceChecker, Path]:
         """Provide the typed test helper `create_checker_project`."""
         checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
         project_dir = TestsFlextInfraUtilitiesWorkspaceFixtureMixin.mk_project(
@@ -498,11 +498,11 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             workspace: str,
             database: str,
             issue_prefix: str,
-            custom_issue_types: tuple[str, ...] = (),
+            custom_issue_types: t.VariadicTuple[str] = (),
         ) -> Path:
             """Write one repository-local Beads identity input."""
             path = root / "config" / "beads.yaml"
-            payload: dict[str, t.JsonValue] = {
+            payload: t.MutableMappingKV[str, t.JsonValue] = {
                 "version": 1,
                 "workspace": workspace,
                 "database": database,
@@ -575,7 +575,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             workspace: str,
             database: str,
             issue_prefix: str,
-            custom_issue_types: tuple[str, ...] = (),
+            custom_issue_types: t.VariadicTuple[str] = (),
             beads_owner: bool = True,
         ) -> Path:
             """Create one self-identifying governed project with a real Git origin.
@@ -621,7 +621,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             return pyproject
 
         @classmethod
-        def write_gitmodules(cls, root: Path, projects: tuple[str, ...]) -> Path:
+        def write_gitmodules(cls, root: Path, projects: t.VariadicTuple[str]) -> Path:
             """Declare governed subprojects from the configured provider contract."""
             provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
             path = root / c.Infra.GITMODULES
@@ -642,7 +642,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         @staticmethod
         def repository_snapshot(
             root: Path,
-        ) -> tuple[tuple[tuple[str, bytes], ...], str]:
+        ) -> t.Pair[t.VariadicTuple[t.Pair[str, bytes]], str]:
             """Capture all repository bytes and porcelain status.
 
             Git metadata is excluded; every runtime-state owner lives outside the

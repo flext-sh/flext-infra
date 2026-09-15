@@ -35,6 +35,20 @@ class FlextInfraRefactorTypingUnificationRule:
 class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
     """Behavior contract for test_infra_refactor_typing_unifier."""
 
+    def test_builtin_dict_keeps_mutable_field_and_return_contracts(self) -> None:
+        """The callable's consumers retain item-assignment capability."""
+        source = (
+            "class Store:\n"
+            "    values: dict[str, str] = {}\n"
+            "    def contents(self) -> dict[str, str]:\n"
+            "        return self.values\n"
+        )
+        updated, _ = FlextInfraRefactorTypingUnifier(canonical_map={}).apply_to_source(
+            source
+        )
+        tm.that(updated, has="values: dict[str, str]")
+        tm.that(updated, has="-> dict[str, str]")
+
     def test_converts_typealias_to_pep695(self) -> None:
         """Verify converts typealias to pep695."""
         source = (

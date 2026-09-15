@@ -15,7 +15,7 @@ import pytest
 from flext_cli import cli
 from flext_tests import tm
 
-from tests import TestsFlextInfraUtilities as u, c, m
+from tests import TestsFlextInfraUtilities as u, c, m, t
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -109,7 +109,7 @@ class TestsFlextInfraReleaseProtocol:
         return self._plan(workspace)
 
     @contextmanager
-    def _lane_with_shim(self, tmp_path: Path) -> Generator[tuple[Path, Path]]:
+    def _lane_with_shim(self, tmp_path: Path) -> Generator[t.Pair[Path, Path]]:
         """Yield the release-lane fixture with the recording ``gh`` shim on PATH.
 
         Why: PATH is restored by the public ``env_vars_context`` facade rather
@@ -359,7 +359,8 @@ class TestsFlextInfraReleaseProtocol:
                     cwd=workspace,
                 )
             )
-            tm.that(committed, has=["pyproject.toml", "uv.lock", "docs/index.md"])
+            tm.that(committed, has=["pyproject.toml", "docs/index.md"])
+            tm.that(committed, lacks="uv.lock")
             tm.that(
                 (workspace / "uv.lock").read_text(encoding="utf-8"),
                 has=f'version = "{c.Tests.RELEASE_VERSION_BASE}"',

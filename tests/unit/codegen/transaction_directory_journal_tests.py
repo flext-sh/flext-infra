@@ -12,7 +12,7 @@ from flext_infra import m, p, u
 from flext_infra.codegen import codegen_transaction as transaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
-from tests import u as test_u
+from tests import t, u as test_u
 
 
 class TestsFlextInfraTransactionDirectoryJournal:
@@ -98,7 +98,11 @@ class TestsFlextInfraTransactionDirectoryJournal:
         journal = FlextInfraMiseWorkspacePlanner.journal_path(identity)
         tm.that(journal.exists(), eq=foreign_change)
         if foreign_change:
-            tm.that(failed.error, has="new generated file changed before recovery")
+            assert failed.error_data is not None
+            tm.that(
+                failed.error_data["recovery_error"],
+                has="new generated file changed before recovery",
+            )
             tm.that(target.read_bytes(), eq=b"foreign content\n")
         else:
             tm.that(failed.error, lacks="recovery failed")
@@ -182,7 +186,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
     @staticmethod
     def _journal(
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        directories: tuple[m.Infra.CodegenJournalDirectory, ...],
+        directories: t.VariadicTuple[m.Infra.CodegenJournalDirectory],
     ) -> m.Infra.CodegenTransactionJournal:
         physical = layout.scope_root.lstat()
         return m.Infra.CodegenTransactionJournal(
@@ -204,8 +208,8 @@ class TestsFlextInfraTransactionDirectoryJournal:
     @staticmethod
     def _materialize(
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        directories: tuple[m.Infra.CodegenJournalDirectory, ...],
-    ) -> tuple[m.Infra.CodegenJournalDirectory, ...]:
+        directories: t.VariadicTuple[m.Infra.CodegenJournalDirectory],
+    ) -> t.VariadicTuple[m.Infra.CodegenJournalDirectory]:
         current = directories
         for intent in directories:
             created = tm.ok(
@@ -220,7 +224,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
     def _register_manifest(
         cls,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
-        directories: tuple[m.Infra.CodegenJournalDirectory, ...],
+        directories: t.VariadicTuple[m.Infra.CodegenJournalDirectory],
     ) -> m.Infra.CodegenTransactionJournal:
         journal = cls._journal(layout, directories)
         registered = tm.ok(

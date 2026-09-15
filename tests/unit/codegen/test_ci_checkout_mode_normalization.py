@@ -36,8 +36,10 @@ class TestsFlextInfraCiCheckoutModeNormalization:
                 commands.extend(line.strip() for line in script.splitlines())
         normalize_at = commands.index("chmod -R go-w .")
         ci = config.Infra.codegen.make.ci
-        for verb in ("setup", "gen", "check"):
-            gate_at = commands.index(f"{ci.variable}={ci.value} make {verb}")
+        for step in config.Infra.codegen.make.workflow:
+            if "ci" not in step.contexts:
+                continue
+            gate_at = commands.index(f"{ci.variable}={ci.value} make {step.verb}")
             tm.that(normalize_at < gate_at, eq=True)
 
 

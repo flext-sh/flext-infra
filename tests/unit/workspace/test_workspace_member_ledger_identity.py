@@ -9,7 +9,7 @@ from flext_tests import tm
 
 from flext_infra import c, m
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import u
+from tests import t, u
 
 
 class TestsFlextInfraWorkspaceMemberLedgerIdentity:
@@ -27,7 +27,7 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
         return tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
 
     @staticmethod
-    def _attach_member_to_workspace(tmp_path: Path) -> tuple[Path, Path]:
+    def _attach_member_to_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
         """Create one governed, committed workspace/member checkout pair."""
         child_source = tmp_path / "child-source"
         u.Tests.WorktreeFixture.initialize_governed_project(
@@ -152,4 +152,4 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
         tm.that(str(workspace.error), has="rogue-workspace")
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

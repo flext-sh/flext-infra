@@ -653,6 +653,9 @@ Infra:
         # runner records them as NOT EXECUTED. Direct invocation (`pytest -m
         # remote`) selects them and then their required environment is exact.
         external-gate-markers: [remote, docker]
+        # Operator 2026-09-14: CI and pre-commit share make.ci.value;
+        # local and pre-push execution retain slow tests.
+        ci-excluded-markers: [slow]
         standard-addopts:
           - --benchmark-disable
           - --strict-markers

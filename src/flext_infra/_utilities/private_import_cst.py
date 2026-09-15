@@ -22,7 +22,7 @@ class FlextInfraUtilitiesPrivateImportCst:
     class _DeclaredExports(cst.CSTTransformer):
         """Relocate imports without renaming their consumer-side bindings."""
 
-        def __init__(self, exports: t.MappingKV[str, tuple[str, str]]) -> None:
+        def __init__(self, exports: t.MappingKV[str, t.Pair[str, str]]) -> None:
             self.exports = exports
 
         @override
@@ -68,7 +68,7 @@ class FlextInfraUtilitiesPrivateImportCst:
 
     @classmethod
     def relocate_declared_exports(
-        cls, source: str, exports: t.MappingKV[str, tuple[str, str]]
+        cls, source: str, exports: t.MappingKV[str, t.Pair[str, str]]
     ) -> str:
         """Keep lexical scopes and ``as`` aliases while selecting public owners."""
         return cst.parse_module(source).visit(cls._DeclaredExports(exports)).code

@@ -25,7 +25,6 @@ from ._models.enforcement import FlextInfraModelsEnforcement
 from ._models.gates import FlextInfraModelsGates
 from ._models.git import FlextInfraModelsGit
 from ._models.layout import FlextInfraModelsLayout
-from ._models.mise_toolchain import FlextInfraModelsMiseToolchain
 from ._models.mixins import FlextInfraModelsMixins
 from ._models.promoted import FlextInfraModelsPromoted
 from ._models.refactor import FlextInfraModelsRefactor
@@ -63,7 +62,6 @@ class FlextInfraModels(m):
         FlextInfraModelsEnforcement,
         FlextInfraModelsGates,
         FlextInfraModelsLayout,
-        FlextInfraModelsMiseToolchain,
         FlextInfraModelsPromoted,
         FlextInfraModelsRefactor,
         FlextInfraModelsRelease,

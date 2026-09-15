@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from tests import u
+from tests import t, u
 
 
 class TestsFlextInfraGitRemoteIdentity:
@@ -30,4 +30,4 @@ class TestsFlextInfraGitRemoteIdentity:
         )
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

@@ -49,7 +49,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
         cli.display_text("mod: preflight complete AST inventory")
         current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-        seen: dict[t.VariadicTuple[t.Quad[str, str, str, str | None]], int] = {}
+        seen: t.MutableMappingKV[
+            t.VariadicTuple[t.Quad[str, str, str, str | None]], int
+        ] = {}
         iteration = 0
         while current.findings:
             iteration += 1
@@ -83,16 +85,15 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"{current.actionable} actionable, {current.detection_only} detection-only, "
                 f"{current.non_actionable_with_fix} non-actionable with fix"
             )
-            FlextInfraCodemodSemanticApply.apply(root, current)
-            # Fix!=match validation: verify semantic phase actually reduced findings
-            after_semantic = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-            if after_semantic.actionable:
+            # Validated mechanical rewrites are independent of later semantic
+            # ambiguity. Publish their complete batch before selecting that phase.
+            if current.actionable:
                 cli.display_text(f"mod: apply {len(rules)} ast-grep rule file(s)")
                 FlextInfraModGateEngine.scan(root, fix=True).unwrap()
-            # Fix!=match validation: check that ast-grep apply actually changed what was expected
-            after_apply = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-            FlextInfraCodemodBatchApply._validate_fix_match(current, after_apply)
-            current = after_apply
+            after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+            FlextInfraCodemodBatchApply._validate_fix_match(current, after_ast)
+            FlextInfraCodemodSemanticApply.apply(root, after_ast)
+            current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
         cli.display_text(
             "mod: require canonical formatting and zero Ruff, Pyrefly, and LSP diagnostics"
         )

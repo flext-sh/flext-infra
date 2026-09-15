@@ -22,6 +22,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import c, config
+from tests import t
 
 
 class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
@@ -31,7 +32,7 @@ class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
         """Return the repository root that owns this checkout."""
         return Path(__file__).resolve().parents[2]
 
-    def _custom_surfaces(self) -> tuple[Path, ...]:
+    def _custom_surfaces(self) -> t.VariadicTuple[Path]:
         """Return every custom Make surface present in the workspace."""
         root = self._repository_root()
         name = c.Infra.CUSTOM_MAKE_FILENAME
@@ -43,7 +44,7 @@ class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
             )
         )
 
-    def _shadowed_verbs(self, surface: Path) -> tuple[str, ...]:
+    def _shadowed_verbs(self, surface: Path) -> t.VariadicTuple[str]:
         """Return public verbs this custom surface declares as targets."""
         public = frozenset(verb.name for verb in config.Infra.codegen.make.verbs)
         found: list[str] = []

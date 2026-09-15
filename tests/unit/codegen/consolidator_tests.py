@@ -44,7 +44,7 @@ class TestsFlextInfraCodegenConsolidator:
         )
         return payload
 
-    def _consolidator_layout(self, tmp_path: Path) -> tuple[Path, Path, Path]:
+    def _consolidator_layout(self, tmp_path: Path) -> t.Triple[Path, Path, Path]:
         """Create the consolidator workspace, project root, and package directory."""
         repository_root = tmp_path / "workspace"
         repository_root.mkdir(parents=True)

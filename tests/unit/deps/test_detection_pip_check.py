@@ -56,7 +56,7 @@ class TestsFlextInfraDepsDetectionPipCheck:
             tm.fail(result)
             return
 
-        pip_check_result: tuple[t.StrSequence, int] = tm.ok(result)
+        pip_check_result: t.Pair[t.StrSequence, int] = tm.ok(result)
         lines, exit_code = pip_check_result
         tm.that(lines, eq=expected_lines)
         tm.that(exit_code, eq=expected_exit_code)

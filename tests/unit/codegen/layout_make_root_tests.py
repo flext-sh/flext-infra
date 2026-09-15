@@ -13,7 +13,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests import u
+from tests import t, u
 
 
 class TestsFlextInfraCodegenLayoutMakeRoot:
@@ -32,10 +32,12 @@ class TestsFlextInfraCodegenLayoutMakeRoot:
             "rev-parse",
             *args,
         ])
-        return result.value.stdout.strip() if result.success else ""
+        output = tm.ok(result)
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
+        return output.stdout.strip()
 
     def _make_database_repository_root(
-        self, *extra_args: str, env: dict[str, str]
+        self, *extra_args: str, env: t.MappingKV[str, str]
     ) -> str:
         """Read REPOSITORY_ROOT from the flext-infra make database."""
         result = u.Cli.run_raw(
@@ -54,9 +56,7 @@ class TestsFlextInfraCodegenLayoutMakeRoot:
         """A poisoned environment REPOSITORY_ROOT never wins over the checkout."""
         env = dict(os.environ, REPOSITORY_ROOT=str(tmp_path / "foreign-checkout"))
         resolved = self._make_database_repository_root(env=env)
-        expected = self._git_root("--show-superproject-working-tree") or self._git_root(
-            "--show-toplevel"
-        )
+        expected = self._git_root("--show-toplevel")
         tm.that(resolved, eq=expected)
 
     def test_make_repository_root_honors_command_line_override(

@@ -11,6 +11,8 @@ from tests import m, u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tests import t
+
 
 class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
     """Behavior contract for test_infra_refactor_namespace_moves."""
@@ -21,7 +23,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         path.write_text(content, encoding="utf-8")
 
     @classmethod
-    def _build_project(cls, tmp_path: Path) -> tuple[Path, Path]:
+    def _build_project(cls, tmp_path: Path) -> t.Pair[Path, Path]:
         project_root = tmp_path / "flext-demo"
         package_root = project_root / "src" / "demo_pkg"
         cls._write_file(

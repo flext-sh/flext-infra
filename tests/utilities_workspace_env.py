@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import tempfile
 from pathlib import Path
 
 from flext_tests import tm
@@ -93,8 +94,6 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
             ``True`` when git would track the path.
 
         """
-        import tempfile
-
         with tempfile.TemporaryDirectory() as raw_root:
             probe_root = Path(raw_root)
             tm.ok(u.Cli.run_checked(["git", "init", "-q", str(probe_root)]))

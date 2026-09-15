@@ -33,7 +33,6 @@ class TestsFlextInfraCastRemoverDeactivated:
 
     _LOAD_BEARING_SOURCE = '''"""Probe module."""
 
-from __future__ import annotations
 
 from typing import Literal, cast
 

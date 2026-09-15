@@ -32,6 +32,18 @@ class TestsFlextInfraTierWhitelist:
         """Shared validator instance."""
         return FlextInfraValidateTierWhitelist()
 
+    @pytest.mark.parametrize("placement", [".claude/worktrees/lane", "worktrees/lane"])
+    def test_linked_checkout_ancestors_do_not_hide_violations(
+        self, tmp_path: Path, v: FlextInfraValidateTierWhitelist, placement: str
+    ) -> None:
+        project = tmp_path / placement
+        pkg = u.Tests.write_package_init(project / "src" / "pkg", "").parent
+        (project / ".git").write_text("gitdir: ../metadata\n", encoding="utf-8")
+        tf(base_dir=pkg).create("from pydantic import BaseModel\n", "bad.py")
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(project))
+        tm.that(report.passed, eq=False)
+        tm.that(" | ".join(report.violations), has="bad.py")
+
     def test_empty_workspace_passes(
         self, tmp_path: Path, v: FlextInfraValidateTierWhitelist
     ) -> None:

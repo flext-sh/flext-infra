@@ -38,6 +38,7 @@ class TestsFlextInfraEnforcementFixerOrchestrator:
         source_file = project_dir / "src" / "demo" / "sample.py"
         source_file.parent.mkdir(parents=True)
         source_file.write_text("from __future__ import annotations\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(project_dir)
         orchestrator = FlextInfraEnforcementFixerOrchestrator(
             repository_root=project_dir,
             selected_projects=("demo",),

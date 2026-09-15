@@ -23,6 +23,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
+    from tests import t
+
 
 class TestsFlextInfraTierWhitelistGateReporting:
     """Each violation reaches the report as its own issue."""
@@ -36,7 +38,7 @@ class TestsFlextInfraTierWhitelistGateReporting:
         would be a structural clone.
         """
 
-        def run(*modules: tuple[str, str]) -> m.Infra.GateResult:
+        def run(*modules: t.Pair[str, str]) -> m.Infra.GateResult:
             package = u.Tests.write_package_init(tmp_path / "src" / "pkg", "").parent
             files = tf(base_dir=package)
             for source, filename in modules:

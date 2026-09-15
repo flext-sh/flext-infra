@@ -17,7 +17,7 @@ import pytest
 from flext_tests import tf, tm
 
 from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles
-from tests import m, u
+from tests import m, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,7 +33,7 @@ class TestsFlextInfraImportCycles:
 
     @staticmethod
     def _seed_project(
-        workspace: Path, name: str, files: dict[str, str], *, pkg: str = "tests"
+        workspace: Path, name: str, files: t.MappingKV[str, str], *, pkg: str = "tests"
     ) -> Path:
         project = workspace / name
         pkg_dir = project / "src" / pkg

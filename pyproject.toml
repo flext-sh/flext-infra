@@ -93,6 +93,7 @@ dev = [
   "pytest-cov",
   "pytest-markdown-docs",
   "pytest-randomly>=4.1.0",
+  "pytest-reportlog",
   "pytest-testmon>=2.2.0",
   "pytest-timeout",
   "pytest-xdist",
@@ -596,6 +597,8 @@ dependencies = ["flext-infra"]
 
 [tool.uv.exclude-dependencies.package]
 name = "flext-tests"
+
+[tool.uv.workspace]
 [tool.interrogate]
 fail-under = 70
 ignore-init-method = true

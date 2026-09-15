@@ -14,6 +14,8 @@ from tests import u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tests import t
+
 
 class TestsFlextInfraWorkspaceEnvironmentProvenance:
     """Validate real PEP 610 and distribution file metadata."""
@@ -74,7 +76,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             encoding="utf-8",
         )
 
-    def _stale_checkout(self, tmp_path: Path) -> tuple[Path, Path, Path]:
+    def _stale_checkout(self, tmp_path: Path) -> t.Triple[Path, Path, Path]:
         """Create the governed workspace, its member, and one stale checkout tree."""
         workspace = self._workspace(tmp_path / "workspace")
         member = workspace / "sample-member"

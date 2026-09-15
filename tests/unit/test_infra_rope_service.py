@@ -20,7 +20,7 @@ class TestsFlextInfraInfraRopeService:
 
     def _demo_module(
         self, tmp_path: Path, module_name: str, source: str
-    ) -> tuple[Path, Path]:
+    ) -> t.Pair[Path, Path]:
         """Create one flext-demo workspace and write ``source`` into its module."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
@@ -60,7 +60,7 @@ class TestsFlextInfraInfraRopeService:
 
     def _module_exports(
         self, repository_root: Path, module_path: Path, options: t.JsonMapping
-    ) -> tuple[str, ...]:
+    ) -> t.VariadicTuple[str]:
         """Read one module's public export contract through the Rope workspace."""
         with flext_infra.infra.rope_workspace(repository_root) as rope:
             return tuple(
@@ -72,7 +72,7 @@ class TestsFlextInfraInfraRopeService:
 
     def _module_objects_by_name(
         self, repository_root: Path, module_path: Path
-    ) -> dict[str, m.Infra.Census.Object]:
+    ) -> t.MutableMappingKV[str, m.Infra.Census.Object]:
         """Index one module's non-local objects by their declared name."""
         with flext_infra.infra.rope_workspace(repository_root) as rope:
             return {
@@ -298,10 +298,10 @@ class TestsFlextInfraInfraRopeService:
         tm.that(result.failure, eq=True)
         tm.that(result.error or "", has="requires exactly one declared module owner")
 
-    def test_open_workspace_indexes_every_project_from_any_internal_call(
+    def test_open_workspace_keeps_the_requested_repository_boundary(
         self, tmp_path: Path
     ) -> None:
-        """A workspace-context Rope call indexes declared and undeclared projects."""
+        """Only an explicit workspace call includes sibling repositories."""
         monorepo_root = tmp_path / "repo"
         monorepo_root.mkdir()
         u.Tests.declare_workspace_projects(monorepo_root, ("flext-infra",))
@@ -314,14 +314,19 @@ class TestsFlextInfraInfraRopeService:
         ) = self._paired_namespace_projects(monorepo_root)
 
         for call_root in (monorepo_root, repository_root, package_root):
+            workspace_scope = call_root == monorepo_root
+            expected_root = monorepo_root if workspace_scope else repository_root
+            expected_projects = {repository_root.resolve()}
+            if workspace_scope:
+                expected_projects.add(sibling_root.resolve())
             with flext_infra.infra.rope_workspace(call_root) as rope:
-                tm.that(rope.rope_repository_root, eq=monorepo_root.resolve())
+                tm.that(rope.rope_repository_root, eq=expected_root.resolve())
                 tm.that(
                     {entry.project_root for entry in rope.modules()},
-                    eq={repository_root.resolve(), sibling_root.resolve()},
+                    eq=expected_projects,
                 )
                 tm.that(rope.module(module_path), none=False)
-                tm.that(rope.module(sibling_module_path), none=False)
+                tm.that(rope.module(sibling_module_path), none=not workspace_scope)
 
     def test_open_standalone_keeps_local_project_scope(self, tmp_path: Path) -> None:
         """Without a workspace context, sibling projects remain outside Rope."""

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
-from tests import c, u
+from tests import c, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -35,7 +35,7 @@ version = "{project_version}"
 class TestsFlextInfraCodegenVersionFile:
     def _create_workspace(
         self, tmp_path: Path, project_name: str
-    ) -> tuple[Path, Path, Path]:
+    ) -> t.Triple[Path, Path, Path]:
         """Create minimal workspace/project/package structure."""
         ws = tmp_path / "workspace"
         ws.mkdir()

@@ -229,6 +229,9 @@ class FlextInfraConstantsSharedInfra:
     TIER_WHITELIST_SETTINGS_MODULE_LIBRARIES: Final[frozenset[str]] = frozenset({
         "pydantic_settings"
     })
+    TIER_WHITELIST_LEAF_CONFIG_FILES: Final[frozenset[str]] = frozenset({"_config.py"})
+    "Leaf config modules (e.g. ai-hub/_config.py) that own their external-library"
+    "imports directly as the bottom of the c/t/p/m/u chain."
     DIR_TYPINGS: Final[str] = "typings"
     DIR_DOCS: Final[str] = "docs"
     DIR_BUILD: Final[str] = "build"

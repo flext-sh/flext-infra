@@ -12,16 +12,15 @@ from flext_infra import t
 from ._defaults import immutable_empty_mapping, tool_version_field
 
 
-class _ConfigContract(m.ContractModel):
-    """Private declarative base for schema-loaded codegen records."""
-
-    model_config = m.ConfigDict(
-        strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
-    )
-
-
 class FlextInfraModelsMiseToolchain:
     """Mise toolchain and beads configuration models."""
+
+    class _ConfigContract(m.ContractModel):
+        """Private declarative base for schema-loaded codegen records."""
+
+        model_config = m.ConfigDict(
+            strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
+        )
 
     class MiseToolSpec(_ConfigContract):
         """One mise backend declared in ``codegen.yaml``, projected to ``.mise.toml``.
@@ -115,7 +114,7 @@ class FlextInfraModelsMiseToolchain:
         # operator-owned forks resolved as latest, so the default frees every
         # selector family and the vocabulary stays declared on this owner.
         suspended_mise_selector_patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(

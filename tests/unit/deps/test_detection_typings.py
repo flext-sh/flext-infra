@@ -17,7 +17,7 @@ class TestsFlextInfraDepsDetectionTypings:
 
     class _StubToml:
         def __init__(self, values: t.SequenceOf[p.Result[t.JsonMapping]]) -> None:
-            self._values: tuple[p.Result[t.JsonMapping], ...] = tuple(values)
+            self._values: t.VariadicTuple[p.Result[t.JsonMapping]] = tuple(values)
             self._idx = 0
 
         def read_plain(self, path: Path) -> p.Result[t.JsonMapping]:

@@ -1635,7 +1635,7 @@ class FlextInfraUtilitiesRopeAnalysis:
 
     @classmethod
     def is_module_level_node(
-        cls, node: p.AttributeProbe, parent_map: MutableMapping[int, p.AttributeProbe]
+        cls, node: p.AttributeProbe, parent_map: t.MappingKV[int, p.AttributeProbe]
     ) -> bool:
         """Return True when ``node`` is a direct child of the module body.
 

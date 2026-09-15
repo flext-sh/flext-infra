@@ -21,11 +21,13 @@ from tests import u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tests import t
+
 
 class TestsFlextInfraInfraMaintenanceMain:
     """Tests for the maintenance main entry point."""
 
-    def _maintenance_main(self, argv: list[str] | None = None) -> int:
+    def _maintenance_main(self, argv: t.SequenceOf[str] | None = None) -> int:
         args = ["maintenance"]
         if argv is not None:
             args.extend(argv)

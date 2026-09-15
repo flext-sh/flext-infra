@@ -69,6 +69,36 @@ class TestsFlextInfraDocsGeneratorInternals:
         tm.that(toc, lacks="Wave Assignment")
         tm.that(toc, lacks="Tilde Sample")
 
+    def test_build_toc_uses_rendered_ids_and_plain_link_labels(self) -> None:
+        """Explicit IDs, inline links and duplicates resolve to real rendered anchors."""
+        content = (
+            "# Main\n\n"
+            "## Vault pending {#incident-vault}\n\n"
+            "## [Architecture](decisions.md)\n\n"
+            "## Architecture\n\n"
+            "### Architecture\n"
+            "\n## Copyright &copy; {#copyright}\n"
+        )
+        toc = u.Infra.build_toc(content)
+        rendered = Markdown(extensions=["attr_list", "toc"]).convert(content)
+        for anchor in (
+            "incident-vault",
+            "architecture",
+            "architecture_1",
+            "architecture_2",
+            "copyright",
+        ):
+            tm.that(rendered, has=f'id="{anchor}"')
+            tm.that(toc, has=f"](#{anchor})")
+        tm.that(toc, has="[Vault pending](#incident-vault)")
+        tm.that(toc, has="[Architecture](#architecture)")
+        tm.that(toc, lacks="decisions.md")
+        tm.that(toc, has="[Copyright ©](#copyright)")
+        updated, _ = u.Infra.update_toc(content)
+        twice, changed = u.Infra.update_toc(updated)
+        tm.that(twice, eq=updated)
+        tm.that(changed, eq=0)
+
     def test_update_toc_replaces_existing_block(self) -> None:
         updated, changed = u.Infra.update_toc(
             "# Main\n\n<!-- TOC START -->\n- stale\n<!-- TOC END -->\n\n## Section\n"

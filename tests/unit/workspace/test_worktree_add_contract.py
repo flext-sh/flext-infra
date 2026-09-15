@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService, c, m
-from tests import u
+from tests import t, u
 
 
 class TestsFlextInfraWorktreeAddContract(u.Tests.WorktreeFixture):
@@ -116,4 +116,4 @@ class TestsFlextInfraWorktreeAddContract(u.Tests.WorktreeFixture):
         tm.fail(result, has="requires --base")
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

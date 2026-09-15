@@ -24,6 +24,7 @@ from flext_tests import tm
 
 import flext_infra
 from flext_infra import c
+from tests import t
 
 
 class TestsFlextInfraMakeParseIsSideEffectFree:
@@ -42,7 +43,7 @@ class TestsFlextInfraMakeParseIsSideEffectFree:
         """Return the repository root that owns this checkout."""
         return Path(__file__).resolve().parents[2]
 
-    def _make_surfaces(self) -> tuple[Path, ...]:
+    def _make_surfaces(self) -> t.VariadicTuple[Path]:
         """Return every Make surface plus the templates that generate them."""
         root = self._repository_root()
         names = (c.Infra.MAKEFILE_FILENAME, c.Infra.CUSTOM_MAKE_FILENAME)
@@ -64,7 +65,7 @@ class TestsFlextInfraMakeParseIsSideEffectFree:
             and self._INTERPRETER_RUN.search(line) is not None
         )
 
-    def _interpreter_at_parse_time(self, surface: Path) -> tuple[str, ...]:
+    def _interpreter_at_parse_time(self, surface: Path) -> t.VariadicTuple[str]:
         """Return immediate assignments that spawn an interpreter while parsing."""
         return tuple(
             f"{surface.name}:{number}: {line.strip()}"
@@ -74,7 +75,7 @@ class TestsFlextInfraMakeParseIsSideEffectFree:
             if self._is_immediate_shell_assignment(line)
         )
 
-    def _silencing_lines(self, surface: Path) -> tuple[str, ...]:
+    def _silencing_lines(self, surface: Path) -> t.VariadicTuple[str]:
         """Return recipe lines that discard a command's exit status."""
         return tuple(
             f"{surface.name}:{number}: {line.strip()}"

@@ -35,6 +35,23 @@ class TestsFlextInfraAuditorCommandContract:
         )
 
     @staticmethod
+    @pytest.mark.parametrize("tool", ["uv", "mkdocs", "ruff", "pyright", "pre-commit"])
+    def test_tool_filename_is_not_a_command(tool: str) -> None:
+        """Filename prefixes remain prose; actual tool invocations are rejected."""
+        for content, expected in (
+            (f"Configuration is stored in `{tool}.toml`.", 0),
+            (f"The documentation uses `{tool}`.", 0),
+            (f"```bash\n{tool}\n```", 1),
+            (f"```bash\n{tool} --help\n```", 1),
+        ):
+            issues = u.Infra.docs_command_contract_content_issues(
+                content,
+                relative_path="docs/guides/commands.md",
+                effective_verbs=config.Infra.codegen.make.verbs,
+            )
+            tm.that(len(issues), eq=expected)
+
+    @staticmethod
     def test_accepts_every_declared_verb_rendered_from_the_ssot() -> None:
         """Each declared verb passes without the exterminated apply token."""
         lines = "\n".join(
@@ -83,30 +100,11 @@ make test PROJECT=flext-demo MATCH=unit
         tm.that(issues[0].message, has="invented Make selector")
 
     @staticmethod
-    def test_rejects_legacy_apply_flag_on_a_declared_verb() -> None:
+    @pytest.mark.parametrize("value", ["Y", "N", "", "invalid"])
+    def test_rejects_legacy_apply_flag_on_a_declared_verb(value: str) -> None:
         """The exterminated `APPLY` flag is rejected in documented commands."""
         verb = next(spec.name for spec in config.Infra.codegen.make.verbs)
-        content = f"```bash\nmake {verb} APPLY=Y\n```\n"
-
-        issues = u.Infra.docs_command_contract_content_issues(
-            content,
-            relative_path="docs/guides/getting-started.md",
-            effective_verbs=config.Infra.codegen.make.verbs,
-        )
-
-        tm.that(len(issues), eq=1)
-        tm.that(issues[0].message, has="legacy `APPLY` flag is exterminated")
-
-    @staticmethod
-    def test_rejects_apply_n_on_a_declared_verb() -> None:
-        """`APPLY=N` is rejected too: no APPLY value is a valid Make input.
-
-        S1 (operator law 2026-09-14) removed every APPLY selector from the
-        generated Makefile, so `APPLY=N` is exactly as invented as the legacy
-        `APPLY=Y`, not merely a stale check-mode token.
-        """
-        verb = next(spec.name for spec in config.Infra.codegen.make.verbs)
-        content = f"```bash\nmake {verb} APPLY=N\n```\n"
+        content = f"```bash\nmake {verb} APPLY={value}\n```\n"
 
         issues = u.Infra.docs_command_contract_content_issues(
             content,

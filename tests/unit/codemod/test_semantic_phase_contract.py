@@ -1,0 +1,78 @@
+"""Real-source regression evidence for staged semantic cutovers."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from flext_tests import tm
+
+from flext_infra import infra
+from flext_infra.codemod import FlextInfraCodemodSemanticApply
+from tests import c, m, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+class TestsFlextInfraSemanticPhaseContract:
+    """Require planned and published sources to reach the same fixed point."""
+
+    def test_annotations_and_nesting_complete_in_one_atomic_cutover(
+        self, tmp_path: Path
+    ) -> None:
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        owner = f"{u.derive_class_stem(root.name)}{c.Infra.FAMILY_SUFFIXES['c']}"
+        path = package / "constants.py"
+        u.Tests.write_lazy_init_namespace_module(
+            path, class_name=owner, alias="c", extra_class_names=(f"{owner}Member",)
+        )
+        source = path.read_text(encoding="utf-8").replace(
+            "from __future__ import annotations\n", ""
+        )
+        path.write_text(source, encoding="utf-8")
+        finding = m.Infra.ModScanFinding(
+            rule_file="require-future-annotations.yml",
+            rule_id="require-future-annotations",
+            repository=root.name,
+            file=path.relative_to(root),
+            range={},
+            text=source,
+            actionable=False,
+            classification=c.Infra.ModScanFindingClass.DETECTION_ONLY,
+            payload={},
+        )
+        report = m.Infra.ModScanReport(
+            findings=1,
+            actionable=0,
+            detection_only=1,
+            non_actionable_with_fix=0,
+            files=frozenset({path}),
+            entries=(finding,),
+        )
+        FlextInfraCodemodSemanticApply.apply(root, report)
+        published = path.read_text(encoding="utf-8")
+        tm.that(published, has="from __future__ import annotations")
+        tm.that(published, has=f"    class {owner}Member")
+        FlextInfraCodemodSemanticApply.apply(root, report)
+        tm.that(path.read_text(encoding="utf-8"), eq=published)
+
+    def test_nesting_replans_proposed_sources_without_publishing(
+        self, tmp_path: Path
+    ) -> None:
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        owner = f"{u.derive_class_stem(root.name)}{c.Infra.FAMILY_SUFFIXES['c']}"
+        path = package / "constants.py"
+        u.Tests.write_lazy_init_namespace_module(
+            path, class_name=owner, alias="c", extra_class_names=(f"{owner}Member",)
+        )
+        original = path.read_text(encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            edits = u.Infra.plan_class_nesting_cutover(
+                rope_workspace=rope, sources={path: original}
+            )
+            tm.that(len(edits), eq=1)
+            remaining = u.Infra.plan_class_nesting_cutover(
+                rope_workspace=rope, sources={path: edits[0].updated_source}
+            )
+        tm.that(remaining, empty=True)
+        tm.that(path.read_text(encoding="utf-8"), eq=original)

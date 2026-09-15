@@ -17,12 +17,14 @@ from flext_infra import u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tests import t
+
 
 class TestsFlextInfraReleaseDependencyOrder:
     """Behavior contract for wave computation over declared dependencies."""
 
     def _write_project(
-        self, root: Path, name: str, dependencies: tuple[str, ...]
+        self, root: Path, name: str, dependencies: t.VariadicTuple[str]
     ) -> None:
         """Materialize one project whose pyproject declares the given dependencies."""
         project = root / name

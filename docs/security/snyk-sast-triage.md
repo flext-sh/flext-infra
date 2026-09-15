@@ -10,6 +10,10 @@
 
 Gerado do scan Snyk da org Datacosmos (dump 2026-08-06). Bead: `flext-32k4`
 
+Os blocos com números de linha e marcadores `>>>` são saídas históricas do
+scanner. Eles preservam trechos incompletos para triagem; não são exemplos Python
+executáveis nem comprovam o estado atual dos arquivos citados.
+
 ## Resumo
 
 **2 achados** — critical 0, high 0, medium 1, low 1
@@ -29,7 +33,7 @@ Preencha **Decisão**: `corrigir` / `falso-positivo` (registrar em `.snyk`) / `r
 ### 1 · 🟡 MEDIUM · Arbitrary File Write via Archive Extraction (Tar Slip)
 **Local**: `src/flext_infra/release/_release_artifact_source.py:212` · **CWE**: -
 
-```python
+```text
 208              )
       209          try:
       210              stage_path.mkdir(parents=True, exist_ok=False)
@@ -45,7 +49,7 @@ Preencha **Decisão**: `corrigir` / `falso-positivo` (registrar em `.snyk`) / `r
 ### 2 · ⚪ LOW · Jinja auto-escape is set to false
 **Local**: `tests/unit/codegen/test_codegen_catalog_extensions.py:209` · **CWE**: -
 
-```python
+```text
 205              / "gitmodules.j2"
       206          )
       207          import jinja2

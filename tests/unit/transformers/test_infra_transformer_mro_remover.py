@@ -15,14 +15,16 @@ from flext_infra.transformers.mro_remover import FlextInfraRefactorMroRemover
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from tests import t
+
 
 class TestsFlextInfraTransformersMroRemover:
     """Behavior contract for FlextInfraRefactorMroRemover."""
 
-    def _transform(self, source: str) -> tuple[str, Sequence[str]]:
+    def _transform(self, source: str) -> t.Pair[str, Sequence[str]]:
         """Apply the MRO remover to source text."""
         transformer = FlextInfraRefactorMroRemover()
-        result: tuple[str, Sequence[str]] = transformer.apply_to_source(source)
+        result: t.Pair[str, Sequence[str]] = transformer.apply_to_source(source)
         return result
 
     def test_empty_inner_class_reinheriting_outer_is_removed(self) -> None:

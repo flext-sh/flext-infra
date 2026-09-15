@@ -237,7 +237,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 f"cannot open committed project config catalog at {resolved}: "
                 f"{blobs.error}"
             )
-        payloads: dict[Path, bytes] = {
+        payloads: t.MutableMappingKV[Path, bytes] = {
             resolved / c.CONFIG_DIR_NAME / name: content
             for name, content in sorted(blobs.value.items())
             if name.endswith(".yaml")
@@ -258,7 +258,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         cls, source_snapshot: t.VariadicTuple[m.Cli.AtomicFileState]
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Parse one caller-owned immutable project YAML snapshot."""
-        payloads: dict[Path, bytes] = {}
+        payloads: t.MutableMappingKV[Path, bytes] = {}
         for source_state in source_snapshot:
             if source_state.content is None:
                 return r[m.Infra.ProjectManagedArtifactsResolution].fail(
@@ -269,7 +269,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
     @classmethod
     def _load_project_managed_artifacts_from_payloads(
-        cls, payloads: dict[Path, bytes]
+        cls, payloads: t.MappingKV[Path, bytes]
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Parse one immutable path-to-bytes project YAML catalog."""
         if not payloads:

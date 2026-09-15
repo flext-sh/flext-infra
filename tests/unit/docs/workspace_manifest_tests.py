@@ -30,6 +30,23 @@ _PROBE = "flext-probe"
 class TestsFlextInfraWorkspaceManifest:
     """Classification of a checkout as a fleet umbrella."""
 
+    def test_invalid_manifest_cannot_expand_discovery(self, tmp_path: Path) -> None:
+        """Invalid declarations fail before exclusions or refactor policy are used."""
+        manifest = u.Infra.workspace_manifest_path(tmp_path)
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text("version: invalid\n", encoding="utf-8")
+        with pytest.raises(c.ValidationError):
+            u.Infra.manifest_nonparticipant_paths(tmp_path)
+        with pytest.raises(c.ValidationError):
+            u.Infra.load_refactor_config(tmp_path)
+
+    @staticmethod
+    def _config_dir(root: Path) -> Path:
+        """Create and return the checkout's config directory."""
+        config = root / c.CONFIG_DIR_NAME
+        config.mkdir(parents=True, exist_ok=True)
+        return config
+
     def test_manifest_path_is_derived_from_the_declared_names(
         self, tmp_path: Path
     ) -> None:

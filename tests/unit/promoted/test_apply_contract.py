@@ -20,7 +20,7 @@ from flext_infra import m
 from flext_infra.promoted.dispatcher import dispatch
 from flext_infra.promoted.invocation import validate_command_contract
 from flext_infra.promoted.registry import Registry
-from tests import u
+from tests import t, u
 
 
 class TestsFlextInfraPromotedApplyContract:
@@ -59,7 +59,7 @@ class TestsFlextInfraPromotedApplyContract:
         """Exercise dispatch()'s unconditional execution through a real command."""
 
         @staticmethod
-        def _write_registry(tmp_path: Path) -> tuple[Registry, Path]:
+        def _write_registry(tmp_path: Path) -> t.Pair[Registry, Path]:
             (tmp_path / "pyproject.toml").write_text(
                 "[project]\nname = 'probe'\n", encoding="utf-8"
             )

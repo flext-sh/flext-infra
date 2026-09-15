@@ -54,7 +54,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         *,
         tmp_path: Path,
         with_src: bool,
-        runner_results: tuple[r[m.Cli.CommandOutput], ...],
+        runner_results: t.VariadicTuple[r[m.Cli.CommandOutput]],
         passed: bool,
         issues_len: int,
     ) -> None:

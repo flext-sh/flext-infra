@@ -5,6 +5,7 @@ from __future__ import annotations
 from flext_tests import tm
 
 from flext_infra import config
+from tests import t
 
 
 class TestsFlextInfraWorkflowOrphanGuard:
@@ -19,7 +20,7 @@ class TestsFlextInfraWorkflowOrphanGuard:
 
     _WORKFLOW_PREFIX = ".github/workflows/"
 
-    _ALLOWED_WORKFLOWS: tuple[str, ...] = (
+    _ALLOWED_WORKFLOWS: t.VariadicTuple[str] = (
         "ci-matrix.yml",
         "ci.yml",
         "docs.yml",

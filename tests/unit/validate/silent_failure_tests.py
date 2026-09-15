@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from typing import TYPE_CHECKING
 
 from flext_cli import u as cli_u
@@ -80,8 +81,6 @@ class TestsFlextInfraSilentFailure:
         bare ``except:`` yields. Every tuple handler was therefore reported as
         a broad handler that fails to propagate.
         """
-        import ast
-
         source = (
             "def narrow_tuple(path):\n"
             "    try:\n"
@@ -122,8 +121,6 @@ class TestsFlextInfraSilentFailure:
 
     def test_relaxations_for_collectors_predicates_and_test_teardown(self) -> None:
         """Only production failure paths are flagged, per cosmos-3flk9 relaxations."""
-        import ast
-
         source = (
             "import contextlib\n"
             "\n"

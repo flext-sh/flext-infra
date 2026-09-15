@@ -7,6 +7,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import c, m, u
+from tests import t
 
 
 class TestsFlextInfraRopeStructure:
@@ -52,7 +53,7 @@ class TestsFlextInfraRopeStructure:
             eq=["namespace", "regular", "stubs"],
         )
 
-    def _by_line(self) -> dict[int, m.Infra.LogicalStatement]:
+    def _by_line(self) -> t.MutableMappingKV[int, m.Infra.LogicalStatement]:
         return {s.line: s for s in u.Infra.logical_statements(self._SOURCE)}
 
     def test_reports_real_statement_lines_not_target_module_lines(self) -> None:

@@ -122,15 +122,8 @@ class TestsFlextInfraGenRespectsInvocationScope:
             assert all("deps modernize" not in line for line in bodies[target])
             assert all("deps extra-paths" not in line for line in bodies[target])
 
-    def test_gen_init_is_a_direct_hermetic_owner_route(self) -> None:
-        """The `initialize` verb never enters conform, hooks, or topology.
-
-        Root cause (R28/bff9326a3): the `gen WHAT=init` indirection was retired.
-        `initialize` is now its own declared public verb, dispatched straight to
-        `_builtin_gen_init` without `_builtin_require_environment`, and it derives
-        `GEN_INIT_ONLY` from `MAKECMDGOALS` so the repository-root probe stays
-        hermetic (`REPOSITORY_ROOT := $(MAKEFILE_ROOT)`, no git shell-out).
-        """
+    def test_gen_init_uses_the_provisioned_owner_route(self) -> None:
+        """Initialize uses its declared interpreter and one initializer owner."""
         text = self._template_text()
         init_lines = self._recipe_bodies()["_builtin_gen_init"]
         init_commands = [line for line in init_lines if "codegen init" in line]
@@ -140,7 +133,7 @@ class TestsFlextInfraGenRespectsInvocationScope:
             '--repository-root "$(PROJECT_ROOT)"' in line for line in init_commands
         )
         assert all("codegen conform" not in line for line in init_lines)
-        assert '{% if verb.name not in ("help", "initialize") %}' in text
+        assert '{% if verb.name != "help" %} _builtin_require_environment' in text
         assert "_builtin-initialize: _builtin_gen_init" in text
         assert "ifneq ($(filter initialize,$(MAKECMDGOALS)),)" in text
         assert "GEN_INIT_ONLY := Y" in text

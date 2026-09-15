@@ -21,10 +21,11 @@ from flext_tests import tm
 
 import flext_infra
 from flext_infra import c
+from tests import t
 
 
 class TestsFlextInfraCustomMakeSurfaceIsDerived:
-    def _engine_modules(self) -> tuple[Path, ...]:
+    def _engine_modules(self) -> t.VariadicTuple[Path]:
         """Return every shipped engine module, excluding the template tree."""
         root = Path(flext_infra.__file__).resolve().parent
         templates = root / "templates"
@@ -32,7 +33,9 @@ class TestsFlextInfraCustomMakeSurfaceIsDerived:
             sorted(path for path in root.rglob("*.py") if templates not in path.parents)
         )
 
-    def _string_literals(self, module: Path, *, containing: str) -> tuple[str, ...]:
+    def _string_literals(
+        self, module: Path, *, containing: str
+    ) -> t.VariadicTuple[str]:
         """Return every string literal in *module*, excluding docstrings."""
         source = module.read_text(encoding="utf-8")
         if containing not in source:

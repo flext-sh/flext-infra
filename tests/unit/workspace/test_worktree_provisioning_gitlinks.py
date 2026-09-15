@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorktreeService, c, config
-from tests import u
+from tests import t, u
 
 _VENV_NAME = config.Infra.tooling.tools.pyright.path_rules.venv_name
 
@@ -27,7 +27,9 @@ class TestsFlextInfraWorktreeProvisioningGitlinks:
         u.Tests.initialize_git_repo(source)
         return source
 
-    def _lane(self, tmp_path: Path, *, managed: bool = True) -> tuple[Path, Path, str]:
+    def _lane(
+        self, tmp_path: Path, *, managed: bool = True
+    ) -> t.Triple[Path, Path, str]:
         lane = tmp_path / "lane"
         lane.mkdir()
         (lane / "pyproject.toml").write_text(

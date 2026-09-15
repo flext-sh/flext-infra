@@ -83,7 +83,7 @@ raise SystemExit(
     @classmethod
     def _read_ready(
         cls, streams: Mapping[int, str], timeout: float = BARRIER_TIMEOUT
-    ) -> tuple[str, str]:
+    ) -> t.Pair[str, str]:
         stdout = ""
         stderr = ""
         pending = dict(streams)

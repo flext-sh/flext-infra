@@ -18,6 +18,8 @@ from tests import u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tests import t
+
 
 class TestsFlextInfraRunProjects:
     """Verify project execution through the public checker methods."""
@@ -28,7 +30,7 @@ class TestsFlextInfraRunProjects:
         *,
         default_stdout: str,
         default_exit: int,
-        per_project: dict[str, tuple[str, int]] | None = None,
+        per_project: t.MappingKV[str, t.Pair[str, int]] | None = None,
     ) -> str:
         """Install a fake ``python -m ruff`` module (venv-anchored gate).
 

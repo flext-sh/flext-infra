@@ -72,6 +72,8 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             # inline map that replaces them.
             if child_dir.name in c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES:
                 continue
+            if not self.context(child_dir).importable:
+                continue
             resolved_child_dir = child_dir.resolve()
             # flext-mh7g4: children are planned before their parent (depth
             # descending), so the parent inventory follows the child's plan in
