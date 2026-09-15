@@ -17,7 +17,7 @@ class FlextInfraCodegenConformBootstrap:
         return u.Infra.mise_bootstrap_environment()
 
     @staticmethod
-    def _link_mode(
+    def link_mode(
         repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
     ) -> str:
         """Resolve the repository override through one codegen authority."""

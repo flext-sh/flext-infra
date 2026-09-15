@@ -5,9 +5,9 @@ from __future__ import annotations
 from fnmatch import fnmatchcase
 from typing import Annotated, Literal, Self
 
-from flext_cli import m, u
+from flext_core import m, u
 
-from flext_infra import t
+from flext_core import t
 
 from ._defaults import immutable_empty_mapping, tool_version_field
 

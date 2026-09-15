@@ -561,7 +561,7 @@ class FlextInfraCodegenConformExecute:
         return r[bool].ok(True)
 
     @staticmethod
-    def _is_dry_run_config_backup(name: str) -> bool:
+    def is_dry_run_config_backup(name: str) -> bool:
         """Return whether ``name`` is a dry-run ``config.yaml`` backup snapshot.
 
         Why (cosmos-3flk9): the bd client rewrites ``last-touched`` on every

@@ -16,7 +16,7 @@ from .scaffold import FlextInfraConfigModelsScaffold
 class FlextInfraConfigModelsTemplates:
     """Managed file and template entry specification models."""
 
-    class TemplateEntrySpec(FlextInfraConfigModelsContract._ConfigContract):
+    class TemplateEntrySpec(FlextInfraConfigModelsContract.ConfigContract):
         """One scaffold-only template mapping consumed by ``codegen new``."""
 
         source: Annotated[Path, m.Field(description="Template-root-relative source")]
@@ -35,7 +35,7 @@ class FlextInfraConfigModelsTemplates:
             bool, m.Field(description="Whether the template owns existing content")
         ] = False
 
-    class TemplatesSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class TemplatesSpec(FlextInfraConfigModelsContract.ConfigContract):
         """New-project scaffold root and its complete ordered manifest."""
 
         root: Annotated[Path, m.Field(description="Package-relative template root")]
@@ -44,7 +44,7 @@ class FlextInfraConfigModelsTemplates:
             m.Field(description="Complete ordered template manifest"),
         ]
 
-    class ManagedFileSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class ManagedFileSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One versioned file governed by codegen lifecycle policy."""
 
         path: Annotated[Path, m.Field(description="Repository-relative file path")]
@@ -111,7 +111,7 @@ class FlextInfraConfigModelsTemplates:
                 )
             )
 
-    class GitignoreRenderContext(FlextInfraConfigModelsContract._ConfigContract):
+    class GitignoreRenderContext(FlextInfraConfigModelsContract.ConfigContract):
         """Profile-filtered input consumed by the Git ignore template."""
 
         gitignore_sections: Annotated[
@@ -121,7 +121,7 @@ class FlextInfraConfigModelsTemplates:
             m.Field(min_length=1, description="Applicable Git ignore sections"),
         ]
 
-    class GitignoreRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class GitignoreRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed, profile-filtered input for the generated Git ignore file."""
 
         gitignore_sections: Annotated[
@@ -134,5 +134,5 @@ class FlextInfraConfigModelsTemplates:
             ),
         ]
 
-    class StaticTextRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class StaticTextRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Empty typed context for a variable-free governed text template."""

@@ -17,7 +17,7 @@ from .contract import FlextInfraConfigModelsContract
 class FlextInfraConfigModelsWorkspace:
     """Workspace manifest, integration, and policy models."""
 
-    class WorkspaceBeadsServerSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class WorkspaceBeadsServerSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Optional Dolt connection declared by a versioned workspace manifest."""
 
         backend: Annotated[
@@ -40,7 +40,7 @@ class FlextInfraConfigModelsWorkspace:
             m.Field(description="Dolt auto-commit policy"),
         ]
 
-    class WorkspaceIntegrationSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class WorkspaceIntegrationSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Workspace overlay for one provider integration branch."""
 
         provider: Annotated[
@@ -58,7 +58,7 @@ class FlextInfraConfigModelsWorkspace:
             m.Field(description="Optional provider base URL override"),
         ] = None
 
-    class RepositoryPolicyOverlaySpec(FlextInfraConfigModelsContract._ConfigContract):
+    class RepositoryPolicyOverlaySpec(FlextInfraConfigModelsContract.ConfigContract):
         """Bounded per-project policy declared by a workspace manifest."""
 
         project: Annotated[
@@ -89,13 +89,13 @@ class FlextInfraConfigModelsWorkspace:
             m.Field(description="Repository-local generated ignore patterns"),
         ] = ()
 
-    class WorkspaceExclusionSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class WorkspaceExclusionSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One explicitly excluded workspace-relative path."""
 
         path: Annotated[Path, m.Field(description="Workspace-relative path")]
         reason: Annotated[t.NonEmptyStr, m.Field(description="Exclusion rationale")]
 
-    class RefactorConfigSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class RefactorConfigSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Refactor file-selection configuration."""
 
         project_scan_dirs: Annotated[
@@ -113,7 +113,7 @@ class FlextInfraConfigModelsWorkspace:
             ),
         ]
 
-    class WorkspaceManifestSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class WorkspaceManifestSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Complete versioned input contract for ``config/workspace.yaml``."""
 
         version: Annotated[
@@ -212,7 +212,7 @@ class FlextInfraConfigModelsWorkspace:
                 raise ValueError(msg)
             return self
 
-    class WorkspaceSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class WorkspaceSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Local identity plus topology read from this repository's Git inputs."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]

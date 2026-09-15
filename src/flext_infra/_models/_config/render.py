@@ -20,7 +20,7 @@ from .provider import FlextInfraConfigModelsProvider
 class FlextInfraConfigModelsRender:
     """Render specification models for generated workflow and env surfaces."""
 
-    class GithubWorkflowRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class GithubWorkflowRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
@@ -150,7 +150,7 @@ class FlextInfraConfigModelsRender:
             ),
         ] = ()
 
-    class MakeWorkflowRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class MakeWorkflowRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed input shared by generated local workflow surfaces."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
@@ -159,7 +159,7 @@ class FlextInfraConfigModelsRender:
             m.Field(description="Canonical workflow command contract"),
         ]
 
-    class ToolingRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class ToolingRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed input for project-independent generated tooling surfaces."""
 
         tooling: Annotated[
@@ -167,7 +167,7 @@ class FlextInfraConfigModelsRender:
             m.Field(description="Canonical validated tooling policy"),
         ]
 
-    class DistroDockerRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class DistroDockerRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed input consumed by generated distro Dockerfiles."""
 
         package_name: Annotated[
@@ -185,7 +185,7 @@ class FlextInfraConfigModelsRender:
             m.Field(description="Strict Mise environment projected into containers"),
         ]
 
-    class EnvrcRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class EnvrcRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed input consumed only by the generated project ``.envrc``."""
 
         state_directory_name: Annotated[
@@ -219,7 +219,7 @@ class FlextInfraConfigModelsRender:
             ),
         ] = None
 
-    class UvPackageSelectorSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class UvPackageSelectorSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Package selector for one official uv scoped dependency exclusion."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Selected package name")]
@@ -229,7 +229,7 @@ class FlextInfraConfigModelsRender:
         ] = None
 
     class UvScopedDependencyExclusionSpec(
-        FlextInfraConfigModelsContract._ConfigContract
+        FlextInfraConfigModelsContract.ConfigContract
     ):
         """Project-routed official uv scoped dependency exclusion."""
 

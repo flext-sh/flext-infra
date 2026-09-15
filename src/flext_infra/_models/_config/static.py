@@ -13,7 +13,7 @@ from .contract import FlextInfraConfigModelsContract
 class FlextInfraConfigModelsStatic:
     """Static enforcement rule specification models."""
 
-    class SourceScanSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class SourceScanSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Canonical production roots and recursively ignored directories."""
 
         roots: Annotated[
@@ -34,7 +34,7 @@ class FlextInfraConfigModelsStatic:
         m.Field(discriminator="operator"),
     ]
 
-    class StaticRule(FlextInfraConfigModelsContract._ConfigContract):
+    class StaticRule(FlextInfraConfigModelsContract.ConfigContract):
         """Shared immutable metadata for one Rope static-analysis rule."""
 
         kind: t.NonEmptyStr = m.Field(description="Violation kind")
@@ -99,7 +99,7 @@ class FlextInfraConfigModelsStatic:
         operator: Literal["comment"] = m.Field(description="Operator")
         marker: t.NonEmptyStr = m.Field(description="Rejected comment marker")
 
-    class StaticEnforcementSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class StaticEnforcementSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Complete validated static policy evaluated only through Rope facts."""
 
         rules: Annotated[

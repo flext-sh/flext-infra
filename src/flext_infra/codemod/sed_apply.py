@@ -100,9 +100,7 @@ class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 re.compile(pattern_spec.pattern, flags)
             except re.error as exc:
                 msg = f"sed pattern {idx} invalid regex {pattern_spec.pattern!r}: {exc}"
-                raise ValueError(
-                    msg
-                ) from exc
+                raise ValueError(msg) from exc
 
     def _compile_flags(self, flags: t.StrSequence) -> int:
         """Compile regex flags from string names."""
@@ -170,12 +168,15 @@ class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             compiled = re.compile(pattern_spec.pattern, flags)
             for file_path in self._iter_target_files(pattern_spec.file_glob):
                 source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-                entries.extend((
+                entries.extend(
+                    (
                         pattern_spec.pattern,
                         pattern_spec.replacement,
                         file_path.as_posix(),
                         match.group(0),
-                    ) for match in compiled.finditer(source))
+                    )
+                    for match in compiled.finditer(source)
+                )
         return tuple(sorted(entries))
 
     def _run_gates(self) -> p.Result[bool]:

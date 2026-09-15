@@ -14,7 +14,7 @@ from .contract import FlextInfraConfigModelsContract
 class FlextInfraConfigModelsBeads:
     """Beads projection and workspace environment models."""
 
-    class BeadsProjectSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class BeadsProjectSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Repository-local Beads identity from ``config/beads.yaml``."""
 
         version: Annotated[
@@ -45,7 +45,7 @@ class FlextInfraConfigModelsBeads:
                 raise ValueError(msg)
             return self
 
-    class BeadsConfigRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class BeadsConfigRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Field-only render input for the generated Beads ledger config."""
 
         issue_prefix: Annotated[
@@ -102,7 +102,7 @@ class FlextInfraConfigModelsBeads:
             ),
         ] = True
 
-    class BeadsMetadataRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class BeadsMetadataRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Field-only render input for the generated Beads ledger marker.
 
         The marker carries portable storage and database identity plus the
@@ -134,7 +134,7 @@ class FlextInfraConfigModelsBeads:
             ),
         ] = None
 
-    class BeadsWorkspaceEnvironmentSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class BeadsWorkspaceEnvironmentSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Declarative contract for one generated beads-workspace .envrc.
 
         Defaults encode the canonical Gas City + Beads wiring: the sync owns
@@ -172,7 +172,7 @@ class FlextInfraConfigModelsBeads:
         )
 
     class WorkspaceEnvironmentCliRequest(
-        FlextInfraConfigModelsContract._ConfigContract
+        FlextInfraConfigModelsContract.ConfigContract
     ):
         """CLI-safe request for one Python workspace environment sync."""
 
@@ -191,7 +191,7 @@ class FlextInfraConfigModelsBeads:
         ] = True
 
     class WorkspaceEnvironmentSyncRequest(
-        FlextInfraConfigModelsContract._ConfigContract
+        FlextInfraConfigModelsContract.ConfigContract
     ):
         """Validated internal request for one workspace environment sync."""
 
@@ -225,7 +225,7 @@ class FlextInfraConfigModelsBeads:
         ] = True
 
     class WorkspaceEnvironmentSyncResult(
-        FlextInfraConfigModelsContract._ConfigContract
+        FlextInfraConfigModelsContract.ConfigContract
     ):
         """Outcome of one workspace environment sync."""
 

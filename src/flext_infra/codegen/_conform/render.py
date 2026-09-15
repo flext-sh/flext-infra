@@ -1,13 +1,14 @@
 """Artifact composition and render context projection."""
 
 from __future__ import annotations
-from .misc import FlextInfraCodegenConformMisc
 
 from collections.abc import Mapping
 from pathlib import Path
 
 from ... import c, config, m, p, r, t, u
 from ...deps import FlextInfraEnsureRuffConfigPhase
+from .bootstrap import FlextInfraCodegenConformBootstrap
+from .misc import FlextInfraCodegenConformMisc
 
 
 class FlextInfraCodegenConformRender:
@@ -49,13 +50,13 @@ class FlextInfraCodegenConformRender:
                     else c.Infra.MakeProfile.STANDALONE
                 )
                 excludes = (
-                    FlextInfraCodegenConformMisc._routed_uv_exclude_dependencies(
+                    FlextInfraCodegenConformMisc.routed_uv_exclude_dependencies(
                         repository=repository, target=target, codegen=codegen
                     )
                     if target is not None
                     else ()
                 )
-                conformed = FlextInfraCodegenConformMisc._conformed_pyproject_source(
+                conformed = FlextInfraCodegenConformMisc.conformed_pyproject_source(
                     rendered,
                     repository=repository,
                     workspace=workspace,
@@ -359,7 +360,9 @@ class FlextInfraCodegenConformRender:
                     ),
                     workspace_repositories=subprojects,
                     workspace_gitlinks=gitlinks.value,
-                    uv_link_mode=self._link_mode(repository, codegen.toolchain),
+                    uv_link_mode=FlextInfraCodegenConformBootstrap.link_mode(
+                    repository, codegen.toolchain
+                ),
                     uv_version=codegen.toolchain.uv_version,
                     make=codegen.make,
                     extra_verbs=(
@@ -475,7 +478,9 @@ class FlextInfraCodegenConformRender:
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,
                 python_version=codegen.toolchain.python_version,
-                uv_link_mode=self._link_mode(repository, codegen.toolchain),
+                uv_link_mode=FlextInfraCodegenConformBootstrap.link_mode(
+                    repository, codegen.toolchain
+                ),
                 # ProjectRenderContext replaces this with the composed map.
                 # Pass the neutral value explicitly so Pydantic never deep-copies
                 # the MappingProxyType model default while building the base.

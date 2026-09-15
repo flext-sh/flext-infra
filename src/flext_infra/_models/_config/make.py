@@ -16,7 +16,7 @@ from .contract import FlextInfraConfigModelsContract
 class FlextInfraConfigModelsMake:
     """Make workflow, verb, CI, and cache specification models."""
 
-    class MakeCiSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class MakeCiSpec(FlextInfraConfigModelsContract.ConfigContract):
         """The only permitted environment delta between local and CI execution."""
 
         variable: Annotated[t.NonEmptyStr, m.Field(description="CI environment key")]
@@ -80,7 +80,7 @@ class FlextInfraConfigModelsMake:
                 if gate not in local
             )
 
-    class MakeVerbSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class MakeVerbSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One selector-free public Make operation."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Public Make verb")]
@@ -88,7 +88,7 @@ class FlextInfraConfigModelsMake:
             t.NonEmptyStr, m.Field(description="Operator-facing help text")
         ]
 
-    class MakeWorkflowStepSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class MakeWorkflowStepSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One canonical workflow step."""
 
         verb: Annotated[t.NonEmptyStr, m.Field(description="Declared public verb")]
@@ -130,7 +130,7 @@ class FlextInfraConfigModelsMake:
                 raise ValueError(msg)
             return self
 
-    class MakeCleanSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class MakeCleanSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Disposable artifacts the generated clean verb removes.
 
         Stale caches and traces cause FALSE DIAGNOSES, so the disposable set is
@@ -155,7 +155,7 @@ class FlextInfraConfigModelsMake:
             m.Field(description="Trace/profile globs removed anywhere in the tree"),
         ]
 
-    class MakeDocsSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class MakeDocsSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
         api_modules: Annotated[
@@ -219,7 +219,7 @@ class FlextInfraConfigModelsMake:
                     raise ValueError(msg)
             return self
 
-    class TestmonCacheSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class TestmonCacheSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Adaptive pytest-testmon GitHub Actions cache policy."""
 
         schema_version: Annotated[
@@ -291,7 +291,7 @@ class FlextInfraConfigModelsMake:
                 raise ValueError(msg)
             return self
 
-    class MakeWorkInProgressSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class MakeWorkInProgressSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Predicate for work-in-progress branches and draft-PR gate behavior.
 
         A hook that runs the full gate matrix on every push turns an
@@ -319,7 +319,7 @@ class FlextInfraConfigModelsMake:
             ),
         ]
 
-    class MakeRuffSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class MakeRuffSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Ruff CLI contract for generated Make verbs and quality gates.
 
         Operator 2026-09-08: ruff is the style and autofix rule. Every
@@ -359,7 +359,7 @@ class FlextInfraConfigModelsMake:
             ),
         ]
 
-    class MakeSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class MakeSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Complete generated Makefile public and extension contract."""
 
         ruff: Annotated[
@@ -584,7 +584,7 @@ class FlextInfraConfigModelsMake:
                 )
             }
 
-    class DocsGithubRepoSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class DocsGithubRepoSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One governed GitHub repository used for cross-repo doc links."""
 
         organization: Annotated[
@@ -604,7 +604,7 @@ class FlextInfraConfigModelsMake:
             ),
         ] = ""
 
-    class CustomHandlerPolicy(FlextInfraConfigModelsContract._ConfigContract):
+    class CustomHandlerPolicy(FlextInfraConfigModelsContract.ConfigContract):
         """Strict schema for the only handwritten Make extension file."""
 
         filename: Annotated[
@@ -619,7 +619,7 @@ class FlextInfraConfigModelsMake:
             description="Permit toolchain declarations"
         )
 
-    class CustomHandlerPolicyOverride(FlextInfraConfigModelsContract._ConfigContract):
+    class CustomHandlerPolicyOverride(FlextInfraConfigModelsContract.ConfigContract):
         """Per-profile relaxation of the strict custom-handler contract.
 
         Every field is optional: a profile declares ONLY what it relaxes, so a

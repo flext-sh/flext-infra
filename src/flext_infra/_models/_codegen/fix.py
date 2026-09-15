@@ -262,6 +262,6 @@ class FlextInfraModelsCodegenFixModels:
             ctx_end = min(len(source_lines), violation.line + 3)
             context = "\n".join(source_lines[ctx_start:ctx_end])
             content_hash = u.Cli.sha256_content(context)
-            return ViolationKey(
+            return FlextInfraModelsCodegenFixModels.ViolationKey(
                 module=violation.module, rule=violation.rule, content_hash=content_hash
             )

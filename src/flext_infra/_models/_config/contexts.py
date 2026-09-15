@@ -20,7 +20,7 @@ from .scaffold import FlextInfraConfigModelsScaffold
 class FlextInfraConfigModelsContexts:
     """Render context and repository reference models."""
 
-    class MakeCommandContext(FlextInfraConfigModelsContract._ConfigContract):
+    class MakeCommandContext(FlextInfraConfigModelsContract.ConfigContract):
         """Shared command identity required by every generated Make surface."""
 
         infra_cli: Annotated[
@@ -466,7 +466,7 @@ class FlextInfraConfigModelsContexts:
         ]
         year: Annotated[int, m.Field(description="Copyright year")]
 
-    class ProjectSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class ProjectSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
 
         package_name: Annotated[
@@ -572,7 +572,7 @@ class FlextInfraConfigModelsContexts:
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
 
-    class RepositoryRef(FlextInfraConfigModelsContract._ConfigContract):
+    class RepositoryRef(FlextInfraConfigModelsContract.ConfigContract):
         """One declared repository and its immutable Git origin contract."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
@@ -695,7 +695,7 @@ class FlextInfraConfigModelsContexts:
             ),
         ]
 
-    class RepositoryConformTarget(FlextInfraConfigModelsContract._ConfigContract):
+    class RepositoryConformTarget(FlextInfraConfigModelsContract.ConfigContract):
         """Runtime-derived conformance identity for one repository."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
@@ -746,7 +746,7 @@ class FlextInfraConfigModelsContexts:
             m.Field(description="Observed external or fork Git submodule paths"),
         ] = ()
 
-    class ManagedGitlinkSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class ManagedGitlinkSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One governed submodule with its provider-owned baseline branch."""
 
         repository: Annotated[
@@ -758,7 +758,7 @@ class FlextInfraConfigModelsContexts:
             m.Field(description="Declared gitlink branch (. follows the superproject)"),
         ]
 
-    class SgconfigRenderSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class SgconfigRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Typed input for the generated ast-grep project config.
 
         Why (ai-hub-qwoc): a provider manifest can declare ``sgconfig.yml`` as a
@@ -784,7 +784,7 @@ class FlextInfraConfigModelsContexts:
             ),
         ]
 
-    class ScriptDispatchSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class ScriptDispatchSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
 
         dispatcher: Annotated[
@@ -807,7 +807,7 @@ class FlextInfraConfigModelsContexts:
             ),
         ]
 
-    class ProfileSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class ProfileSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Execution semantics for one generated Make profile."""
 
         name: Annotated[

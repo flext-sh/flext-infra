@@ -1,14 +1,14 @@
 """Beads routes, docs ownership, and projection plan helpers."""
 
 from __future__ import annotations
-from .bootstrap import FlextInfraCodegenConformBootstrap
-from .execute import FlextInfraCodegenConformExecute
 
 import re
 from pathlib import Path
 
 from ... import c, config, m, p, r, t, u
 from ...workspace import FlextInfraWorkspaceDetector
+from .bootstrap import FlextInfraCodegenConformBootstrap
+from .execute import FlextInfraCodegenConformExecute
 
 
 class FlextInfraCodegenConformMisc:
@@ -136,7 +136,9 @@ class FlextInfraCodegenConformMisc:
             entry.name
             for entry in route.iterdir()
             if entry.name not in allowed_entries
-            and not FlextInfraCodegenConformExecute._is_dry_run_config_backup(entry.name)
+            and not FlextInfraCodegenConformExecute.is_dry_run_config_backup(
+                entry.name
+            )
         )
         if unexpected:
             return r[bool].fail(
@@ -189,7 +191,7 @@ class FlextInfraCodegenConformMisc:
         )
 
     @staticmethod
-    def _conformed_pyproject_source(
+    def conformed_pyproject_source(
         source: str,
         *,
         repository: m.Infra.RepositoryRef,
@@ -208,7 +210,7 @@ class FlextInfraCodegenConformMisc:
             workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
-            uv_link_mode=FlextInfraCodegenConformBootstrap._link_mode(
+            uv_link_mode=FlextInfraCodegenConformBootstrap.link_mode(
                 repository, codegen.toolchain
             ),
             uv_exclude_dependencies=uv_exclude_dependencies,
@@ -220,7 +222,7 @@ class FlextInfraCodegenConformMisc:
         )
 
     @staticmethod
-    def _routed_uv_exclude_dependencies(
+    def routed_uv_exclude_dependencies(
         *,
         repository: m.Infra.RepositoryRef,
         target: m.Infra.RepositoryConformTarget,
@@ -241,7 +243,7 @@ class FlextInfraCodegenConformMisc:
         )
 
     @staticmethod
-    def _file_plan(
+    def file_plan(
         root: Path,
         relative_path: str,
         rendered: str,

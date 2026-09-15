@@ -11,8 +11,8 @@ from ..mise_toolchain import FlextInfraModelsMiseToolchain
 class FlextInfraConfigModelsContract:
     """Shared contract base and root aliases for config models."""
 
-    class _ConfigContract(m.ContractModel):
-        """Private declarative base for schema-loaded codegen records."""
+    class ConfigContract(m.ContractModel):
+        """Public declarative base for schema-loaded codegen records."""
 
         # Rendered file payloads are
         # byte contracts; Pydantic must never trim their final newline.

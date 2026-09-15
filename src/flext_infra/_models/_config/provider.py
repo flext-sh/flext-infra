@@ -14,7 +14,7 @@ from .contract import FlextInfraConfigModelsContract
 class FlextInfraConfigModelsProvider:
     """Provider, repository source, and CI private-submodule models."""
 
-    class ProviderSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class ProviderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One GitHub organization and its mandatory branch policy."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Provider key")]
@@ -24,7 +24,7 @@ class FlextInfraConfigModelsProvider:
         base_url: Annotated[t.NonEmptyStr, m.Field(description="GitHub HTTPS base URL")]
         branch: Annotated[t.NonEmptyStr, m.Field(description="Provider branch")]
 
-    class RepositorySourceSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class RepositorySourceSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Portable repository identity derived through one declared provider."""
 
         distribution: Annotated[
@@ -41,7 +41,7 @@ class FlextInfraConfigModelsProvider:
             namespace, _, _ = self.distribution.partition("-")
             return f"{namespace}-"
 
-    class BranchPolicySpec(FlextInfraConfigModelsContract._ConfigContract):
+    class BranchPolicySpec(FlextInfraConfigModelsContract.ConfigContract):
         """Global branch policy shared by every provider."""
 
         ci_trigger_branches: Annotated[
@@ -71,7 +71,7 @@ class FlextInfraConfigModelsProvider:
             ),
         ] = FlextInfraConstantsSharedInfra.INTEGRATION_BRANCH_PREFERENCE
 
-    class GithubActionPinSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class GithubActionPinSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One GitHub Action reference from the codegen catalog."""
 
         repository: Annotated[
@@ -83,7 +83,7 @@ class FlextInfraConfigModelsProvider:
         ]
 
     class CiPrivateSubmoduleDeployKeySpec(
-        FlextInfraConfigModelsContract._ConfigContract
+        FlextInfraConfigModelsContract.ConfigContract
     ):
         """One read-only deploy key that unlocks a private workspace subproject in CI."""
 
@@ -110,7 +110,7 @@ class FlextInfraConfigModelsProvider:
             ),
         ]
 
-    class CiPrivateDependencyAuthSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class CiPrivateDependencyAuthSpec(FlextInfraConfigModelsContract.ConfigContract):
         """GitHub App identity minting installation tokens for private deps."""
 
         app_id_secret: Annotated[
@@ -128,7 +128,7 @@ class FlextInfraConfigModelsProvider:
             ),
         ]
 
-    class CiPrivateSubmodulesSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class CiPrivateSubmodulesSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Per-distribution private submodule init contract for generated CI."""
 
         _KNOWN_HOSTS_FIELD_COUNT: ClassVar[int] = 3

@@ -5,7 +5,7 @@ from __future__ import annotations
 from http.client import HTTPConnection, HTTPException, HTTPSConnection
 from urllib.parse import urlsplit
 
-from flext_core import r
+from flext_core import p, r
 
 
 class FlextInfraUtilitiesNetwork:

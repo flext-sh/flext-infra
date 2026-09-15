@@ -14,7 +14,7 @@ from .contract import FlextInfraConfigModelsContract
 class FlextInfraConfigModelsScaffold:
     """Project scaffold specification models."""
 
-    class ScaffoldBuildSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class ScaffoldBuildSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Configured Python build backend for newly scaffolded projects."""
 
         backend: Annotated[t.NonEmptyStr, m.Field(description="PEP 517 backend")]
@@ -23,7 +23,7 @@ class FlextInfraConfigModelsScaffold:
             m.Field(min_length=1, description="Build-system requirements"),
         ]
 
-    class ScaffoldDependencyProfileSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class ScaffoldDependencyProfileSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Dependencies selected by the declared upstream FLEXT facade."""
 
         upstream: Annotated[
@@ -44,7 +44,7 @@ class FlextInfraConfigModelsScaffold:
             m.Field(description="Code-generation requirements"),
         ] = ()
 
-    class ScaffoldProjectSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class ScaffoldProjectSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Project metadata policy for newly scaffolded distributions."""
 
         readme: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 readme path")]
@@ -85,7 +85,7 @@ class FlextInfraConfigModelsScaffold:
             m.Field(min_length=1, description="Upstream dependency profiles"),
         ]
 
-    class ScaffoldPingExampleSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class ScaffoldPingExampleSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Values for the functional ping example created only by codegen new."""
 
         command_name: Annotated[
@@ -105,7 +105,7 @@ class FlextInfraConfigModelsScaffold:
             t.NonEmptyStr, m.Field(description="Disabled ping response")
         ]
 
-    class ScaffoldGitignoreSectionSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class ScaffoldGitignoreSectionSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One configured section of the generated Git ignore policy."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Section heading")]
@@ -127,7 +127,7 @@ class FlextInfraConfigModelsScaffold:
             ),
         ] = ()
 
-    class ScaffoldSpec(FlextInfraConfigModelsContract._ConfigContract):
+    class ScaffoldSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Complete typed policy consumed only by new-project templates."""
 
         build: Annotated[
