@@ -696,6 +696,37 @@ class FlextInfraConfigModelsArtifact:
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Accepted sha256 digests"),
         ]
+    class SedPatternSpec(FlextInfraConfigModelsContract._ConfigContract):
+        """One declared literal regex substitution applied across the mod scope."""
+
+        pattern: Annotated[t.NonEmptyStr, m.Field(description="Regex source to match")]
+        replacement: Annotated[
+            str, m.Field(description="Literal replacement text")
+        ]
+        file_glob: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(default=None, description="Optional file glob filter"),
+        ]
+        flags: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Regex flags by name (IGNORECASE, MULTILINE, DOTALL)"
+                ),
+            ),
+        ] = ()
+        description: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(default=None, description="Why this substitution exists"),
+        ] = None
+    class SedPatternsSpec(FlextInfraConfigModelsContract._ConfigContract):
+        """Declared sed-by-list substitution set with optional per-pattern filters."""
+
+        patterns: Annotated[
+            t.VariadicTuple[SedPatternSpec],
+            m.Field(default=(), description="Ordered substitution patterns"),
+        ] = ()
     class Infra(FlextInfraConfigModelsContract._ConfigContract):
         """Complete flext-infra configuration namespace."""
 
@@ -729,6 +760,15 @@ class FlextInfraConfigModelsArtifact:
         enforcement: Annotated[
             FlextInfraConfigModelsStatic.StaticEnforcementSpec,
             m.Field(description="Rope-only static enforcement policy"),
+        ]
+        sed_patterns: Annotated[
+            FlextInfraConfigModelsArtifact.SedPatternsSpec,
+            m.Field(
+                default_factory=lambda: FlextInfraConfigModelsArtifact.SedPatternsSpec(),
+                description=(
+                    "Sed-by-list mass replacement patterns for literal refactoring"
+                ),
+            ),
         ]
     class Root(FlextInfraConfigModelsContract._ConfigContract):
         """Root payload deep-merged from flext-infra config files."""

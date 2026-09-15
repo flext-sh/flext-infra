@@ -68,7 +68,7 @@ class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
 
         while True:
             iteration += 1
-            fingerprint = self._compute_fingercli.display_text()
+            fingerprint = self._compute_fingerprint()
             if fingerprint in seen:
                 prev_iter = seen[fingerprint]
                 return r[t.Cli.ResultValue].fail(
@@ -163,7 +163,7 @@ class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     modified_files.add(file_path)
         return len(modified_files)
 
-    def _compute_fingercli.display_text(self) -> tuple:
+    def _compute_fingerprint(self) -> tuple:
         """Compute a fingerprint of all pattern matches across the repository."""
         entries: list[tuple[str, str, str, str]] = []
         for pattern_spec in config.Infra.sed_patterns.patterns:
