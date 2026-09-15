@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 import libcst as cst
-from libcst import Import, ImportFrom, Tuple
+from libcst import Import, ImportFrom
 
 from flext_core import r
 from flext_infra import t
@@ -55,6 +55,15 @@ def layer_of_module(module_name: str, order: Sequence[str]) -> str | None:
             if seg in {layer, f"_{layer}"}:
                 return layer
     return None
+
+
+def dotted_name(node: cst.BaseExpression) -> str:
+    """Return the full dotted name of a Name/Attribute import expression."""
+    if isinstance(node, cst.Name):
+        return node.value
+    if isinstance(node, cst.Attribute):
+        return f"{dotted_name(node.value)}.{node.attr.value}"
+    return ""
 
 
 def is_project_internal(target: str, project_package: str) -> bool:
@@ -140,7 +149,7 @@ class _ImportAlignmentVisitor(cst.CSTVisitor):
     def _collect_from(self, node: ImportFrom) -> None:
         if node.module is None:
             return
-        target = node.module.value
+        target = dotted_name(node.module)
         if not is_project_internal(target, self._project_package):
             return
         if self._is_future_import(target):
@@ -150,7 +159,7 @@ class _ImportAlignmentVisitor(cst.CSTVisitor):
 
     def _collect_plain(self, node: Import) -> None:
         for alias in node.names:
-            target = alias.name.value
+            target = dotted_name(alias.name)
             if not is_project_internal(target, self._project_package):
                 continue
             if self._is_future_import(target):
@@ -168,15 +177,20 @@ class _ImportAlignmentVisitor(cst.CSTVisitor):
         if isinstance(names, cst.ImportStar):
             return result
         if isinstance(names, cst.ImportAlias):
-            result.append(names.name.value)
+            result.append(dotted_name(names.name))
             return result
-        if isinstance(names, Tuple):
+        if isinstance(names, cst.Tuple):
             result.extend(
-                elt.value.name.value
+                dotted_name(elt.value.name)
                 for elt in names.elements
-                if isinstance(elt, cst.Element)
-                and isinstance(elt.value, cst.ImportAlias)
+                if isinstance(elt, cst.Element) and isinstance(elt.value, cst.ImportAlias)
             )
+            return result
+        result.extend(
+            dotted_name(alias.name)
+            for alias in names
+            if isinstance(alias, cst.ImportAlias)
+        )
         return result
 
     def _record(self, node: cst.ImportFrom | cst.Import, target: str) -> None:
@@ -202,27 +216,34 @@ class _ImportAlignmentVisitor(cst.CSTVisitor):
 # ---------------------------------------------------------------------------
 
 
+def _alias_text(alias: cst.ImportAlias) -> str:
+    """Render one import alias with its optional ``as`` binding."""
+    base = dotted_name(alias.name)
+    if alias.asname is not None:
+        return f"{base} as {alias.asname.name.value}"
+    return base
+
+
 def _format_import_names(node: ImportFrom) -> str:
     if node.names is None:
         return ""
     if isinstance(node.names, cst.ImportStar):
         return "*"
     if isinstance(node.names, cst.ImportAlias):
-        return f" {node.names.name.value}"
-    if isinstance(node.names, Tuple):
+        aliases = [_alias_text(node.names)]
+    elif isinstance(node.names, cst.Tuple):
         aliases = [
-            elt.value.name.value
+            _alias_text(elt.value)
             for elt in node.names.elements
             if isinstance(elt, cst.Element) and isinstance(elt.value, cst.ImportAlias)
         ]
-        return " " + ", ".join(aliases) if aliases else ""
-    return ""
-
-
-def _format_import_asname(node: ImportFrom) -> str:
-    if isinstance(node.names, cst.ImportAlias) and node.names.asname:
-        return f" as {node.names.asname.name.value}"
-    return ""
+    else:
+        aliases = [
+            _alias_text(alias)
+            for alias in node.names
+            if isinstance(alias, cst.ImportAlias)
+        ]
+    return " " + ", ".join(aliases) if aliases else ""
 
 
 def _rewrite_import(
@@ -267,17 +288,14 @@ def _rewrite_import(
 
     if isinstance(node, ImportFrom):
         names = _format_import_names(node)
-        asname = _format_import_asname(node)
-        return _render_from(relative=relative, names=names, asname=asname)
+        return _render_from(relative=relative, names=names)
     return None
 
 
-def _render_from(*, relative: str, names: str, asname: str) -> str:
+def _render_from(*, relative: str, names: str) -> str:
     if names == "*":
-        return f"from {relative} import*{asname}"
-    if names:
-        return f"from {relative} import {names.strip()}{asname}"
-    return f"from {relative} import{asname}"
+        return f"from {relative} import *"
+    return f"from {relative} import{names}"
 
 
 # ---------------------------------------------------------------------------
@@ -347,7 +365,7 @@ class FlextInfraCodegenLazyInitImportAlignmentMixin:
             if not visitor.needs_realign():
                 continue
             new_content = self._rewrite_module(
-                content=content,
+                tree=tree,
                 visitor=visitor,
                 source_module=source_module,
                 order=order,
@@ -373,38 +391,50 @@ class FlextInfraCodegenLazyInitImportAlignmentMixin:
     def _rewrite_module(
         self,
         *,
-        content: str,
+        tree: cst.Module,
         visitor: _ImportAlignmentVisitor,
         source_module: str,
         order: tuple[str, ...],
         package_dirs: frozenset[str],
     ) -> str | None:
-        grouped: dict[
-            tuple[bool, int], list[tuple[cst.ImportFrom | cst.Import, str, str]]
-        ] = {}
-        source_layer = layer_of_module(source_module, order)
-        if source_layer is None:
-            source_layer = order[-1] if order else "services"
-        for node, target, target_layer in visitor.project_imports:
-            direction = target_layer < source_layer
-            rank = order.index(target_layer) if target_layer in order else len(order)
-            grouped.setdefault((direction, rank), []).append((
-                node,
-                target,
-                target_layer,
-            ))
-        lines = [line.rstrip() for line in content.splitlines()]
-        for key in sorted(grouped.keys()):
-            for node, target, _target_layer in grouped[key]:
-                replacement = _rewrite_import(
-                    node=node,
-                    target=target,
-                    source_module=source_module,
-                    order=order,
-                    package_dirs=package_dirs,
-                )
-                if replacement is not None:
-                    old_line = node.lineno - 1
-                    if 0 <= old_line < len(lines):
-                        lines[old_line] = replacement
-        return "\n".join(lines)
+        class _ImportRewriteTransformer(cst.CSTTransformer):
+            """Replace collected ImportFrom nodes with their realigned forms."""
+
+            def __init__(self, mapping: dict[cst.ImportFrom, str]) -> None:
+                self._mapping = mapping
+
+            @override
+            def leave_ImportFrom(
+                self, original: ImportFrom, updated: ImportFrom
+            ) -> cst.ImportFrom:
+                replacement = self._mapping.get(original)
+                if replacement is None:
+                    return updated
+                statement = cst.parse_statement(replacement)
+                if isinstance(statement, cst.SimpleStatementLine):
+                    for inner in statement.body:
+                        if isinstance(inner, cst.ImportFrom):
+                            return inner
+                if isinstance(statement, cst.ImportFrom):
+                    return statement
+                return updated
+
+        mapping: dict[cst.ImportFrom, str] = {}
+        for node, target, _target_layer in visitor.project_imports:
+            if not isinstance(node, ImportFrom):
+                continue
+            replacement = _rewrite_import(
+                node=node,
+                target=target,
+                source_module=source_module,
+                order=order,
+                package_dirs=package_dirs,
+            )
+            if replacement is not None:
+                mapping[node] = replacement
+        if not mapping:
+            return None
+        rewritten = tree.visit(_ImportRewriteTransformer(mapping))
+        if rewritten.code == tree.code:
+            return None
+        return rewritten.code
