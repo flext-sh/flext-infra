@@ -87,21 +87,6 @@ class FlextInfraConfigModelsBeads:
             bool, m.Field(description="From toolchain.beads.dolt_disable_event_flush")
         ]
 
-    class MiseTomlRenderSpec(FlextInfraConfigModelsContract.ToolchainSpec):
-        """Toolchain render context for ``.mise.toml`` plus per-project gates.
-
-        The template consumes flat toolchain field names, so the context is the
-        fleet ToolchainSpec narrowed by the per-project Gas City participation
-        resolved from the workspace manifest overlay.
-        """
-
-        gascity_enabled: Annotated[
-            bool,
-            m.Field(
-                description=("Whether the gc tool block is projected into .mise.toml.")
-            ),
-        ] = True
-
     class BeadsMetadataRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Field-only render input for the generated Beads ledger marker.
 

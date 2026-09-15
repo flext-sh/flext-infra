@@ -5,9 +5,7 @@ from __future__ import annotations
 from fnmatch import fnmatchcase
 from typing import Annotated, Literal, Self
 
-from flext_core import m, u
-
-from flext_core import t
+from flext_core import m, t, u
 
 from ._defaults import immutable_empty_mapping, tool_version_field
 
@@ -388,11 +386,11 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         beads: Annotated[
-            BeadsToolSpec,
+            FlextInfraModelsMiseToolchain.BeadsToolSpec,
             m.Field(description="Official Beads CLI installed through mise"),
         ]
         gascity: Annotated[
-            ProtectedMiseToolSpec,
+            FlextInfraModelsMiseToolchain.ProtectedMiseToolSpec,
             m.Field(description="Gas City CLI (gc) installed through mise"),
         ]
         protected_mise_tools: Annotated[
