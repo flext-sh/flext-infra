@@ -92,21 +92,17 @@ class FlextInfraCodegenGenerationPathsMixin:
     @staticmethod
     def _compact_lazy_module_path(current_pkg: str, mod: str) -> str:
         """Compact a lazy module path relative to ``current_pkg`` when valid."""
-        if not current_pkg:
+        if not current_pkg or mod.startswith("."):
             return mod
-        if mod.startswith("_"):
-            return f".{mod}"
-        if mod == current_pkg:
-            return "."
-        if mod.startswith(f"{current_pkg}."):
-            return f".{mod.removeprefix(f'{current_pkg}.')}"
-        root_pkg = current_pkg.split(".", maxsplit=1)[0]
-        first_segment = mod.split(".", maxsplit=1)[0]
-        internal_segments = frozenset(current_pkg.split(".")[1:])
-        if first_segment == root_pkg:
+        if mod.split(".", maxsplit=1)[0] == current_pkg.split(".", maxsplit=1)[0]:
             return FlextInfraCodegenGenerationPathsMixin._relative_owned_module(
                 current_pkg, mod
             )
+        if mod.startswith("_"):
+            return f".{mod}"
+        root_pkg = current_pkg.split(".", maxsplit=1)[0]
+        first_segment = mod.split(".", maxsplit=1)[0]
+        internal_segments = frozenset(current_pkg.split(".")[1:])
         if internal_segments & c.Infra.LOCAL_INFERRED_SEGMENTS:
             return mod
         if first_segment in internal_segments or (
@@ -126,10 +122,6 @@ class FlextInfraCodegenGenerationPathsMixin:
             return mod
         if mod.startswith("."):
             return mod
-        if mod == local_package_root:
-            return "."
-        if mod.startswith(f"{local_package_root}."):
-            return f".{mod.removeprefix(f'{local_package_root}.')}"
         root_pkg = local_package_root.split(".", maxsplit=1)[0]
         first_segment = mod.split(".", maxsplit=1)[0]
         if first_segment == root_pkg:
@@ -153,7 +145,13 @@ class FlextInfraCodegenGenerationPathsMixin:
     def _reject_noncanonical_type_checking_import(
         mod: str, local_package_root: str | None, items: t.StrPairSequence
     ) -> None:
-        """Reject a relative TYPE_CHECKING import with no local package context."""
+        """Reject a relative TYPE_CHECKING import with no local package context.
+
+        Same-project sibling, ancestor, and cousin owners use the same relative
+        path in static declarations and the runtime lazy map. Cross-project
+        owners remain absolute. Relative imports require a package context so
+        Python can resolve their declared owner.
+        """
         if mod.startswith(".") and not local_package_root:
             exports = ", ".join(name for name, _ in items)
             msg = (

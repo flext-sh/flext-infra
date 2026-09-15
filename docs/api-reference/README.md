@@ -1,9 +1,10 @@
 # flext-infra API Reference
 
 <!-- TOC START -->
-- [Source of Truth](#source-of-truth)
-- [Generated Pages](#generated-pages)
-- [Surface Summary](#surface-summary)
+- [flext-infra API Reference](#flext-infra-api-reference)
+  - [Source of Truth](#source-of-truth)
+  - [Generated Pages](#generated-pages)
+  - [Surface Summary](#surface-summary)
 <!-- TOC END -->
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
@@ -27,7 +28,7 @@ This section is generated from public exports and real docstrings.
 
 - Primary facades: `FlextInfra`, `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
-  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+176 more)
-- Generated module pages: `202`
+  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+177 more)
+- Generated module pages: `203`
 
 Back to [project docs](../index.md).

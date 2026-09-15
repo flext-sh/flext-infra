@@ -96,6 +96,14 @@ class FlextInfraModelsScan:
             t.NonEmptyStr, m.Field(description="Workspace repository owning the file")
         ]
         file: Annotated[Path, m.Field(description="Workspace-relative finding path")]
+        source_owner: Annotated[
+            Literal["authored", "generator"],
+            m.Field(description="Writable authority for the finding source"),
+        ] = "authored"
+        source_state: Annotated[
+            m.Cli.AtomicFileState | None,
+            m.Field(description="Exact source snapshot authenticated before scanning"),
+        ] = None
         range: Annotated[
             t.JsonMapping, m.Field(description="Exact ast-grep source range payload")
         ]
@@ -117,6 +125,12 @@ class FlextInfraModelsScan:
                 description="Complete validated ast-grep finding without field loss"
             ),
         ]
+
+    class ModReplacementOffsets(m.ContractModel):
+        """UTF-8 byte coordinates supplied by the ast-grep JSON contract."""
+
+        start: Annotated[int, m.Field(ge=0, strict=True, description="Inclusive start byte")]
+        end: Annotated[int, m.Field(ge=0, strict=True, description="Exclusive end byte")]
 
     class ModScanReport(m.ArbitraryTypesModel):
         """Verified structural findings and actionable rewrite targets."""

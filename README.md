@@ -1,13 +1,14 @@
 # flext-infra
 
 <!-- TOC START -->
-- [Purpose](#purpose)
-- [Module Map](#module-map)
-- [Collection Rules](#collection-rules)
-- [Operation Flow](#operation-flow)
-- [Integration Points](#integration-points)
-- [Quality Gates](#quality-gates)
-- [Governance Pointer](#governance-pointer)
+- [flext-infra](#flext-infra)
+  - [Purpose](#purpose)
+  - [Module Map](#module-map)
+  - [Collection Rules](#collection-rules)
+  - [Operation Flow](#operation-flow)
+  - [Integration Points](#integration-points)
+  - [Quality Gates](#quality-gates)
+  - [Governance Pointer](#governance-pointer)
 <!-- TOC END -->
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->

@@ -81,15 +81,20 @@ else
 fi
 # End SECTION: virtual environment
 
-{% if gascity is not none -%}
-{% with environment_sources=gascity.environment_sources,
-        identity_var=gascity.identity_var,
-        city_state_relpath=gascity.city_state_relpath,
-        beads_metadata_relpath=gascity.beads_metadata_relpath,
-        unset_vars=gascity.unset_vars -%}
-{% include ".envrc.gascity.j2" %}
-{% endwith -%}
-{% endif -%}
+{% if gascity is not none %}
+# Repository policy permits this capability; the caller's explicit city
+# identity selects its runtime. Standalone activation owns no inherited ledger.
+if [[ -v {{ gascity.identity_var }} ]]; then
+{% include "_envrc_beads.j2" %}
+else
+{% for var in gascity.unset_vars -%}
+  unset {{ var }}
+{% endfor -%}
+  unset BEADS_DOLT_SERVER_HOST BEADS_DOLT_SERVER_PORT
+  unset BEADS_DOLT_SERVER_DATABASE BEADS_DOLT_SERVER_MODE
+  unset BEADS_DOLT_AUTO_START
+fi
+{% endif %}
 
 # === SECTION: local overrides (managed) ===
 # Source: template. Repository-local, tracked overrides load last and win;

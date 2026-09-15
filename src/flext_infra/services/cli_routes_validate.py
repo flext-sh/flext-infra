@@ -8,6 +8,7 @@ from typing import ClassVar
 from flext_infra import c, m
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.builder import FlextInfraDocBuilder
+from flext_infra.docs.collector import FlextInfraDocCollector
 from flext_infra.docs.fixer import FlextInfraDocFixer
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.server import FlextInfraDocServer
@@ -24,7 +25,22 @@ class ValidationRoutes(ValidationCommandRoutes):
     validation_routes: ClassVar[
         MutableMapping[str, tuple[m.Cli.ResultCommandRoute, ...]]
     ] = {
-        c.Infra.CLI_GROUP_DOCS: tuple(
+        c.Infra.CLI_GROUP_DOCS: (
+            m.Cli.ResultCommandRoute(
+                name="collect",
+                help_text="Collect associated plan sources and publish authenticated projections",
+                model_cls=m.Infra.DocsCollectRequest,
+                handler=ValidationCommandRoutes.result_handler(FlextInfraDocCollector.collect),
+                success_message="Configured plan sources collected and published",
+            ),
+            m.Cli.ResultCommandRoute(
+                name="generate",
+                help_text="Generate project docs through the publication transaction",
+                model_cls=m.Infra.DocsGenerateRequest,
+                handler=ValidationCommandRoutes.result_handler(FlextInfraDocGenerator.execute_request),
+                success_message="Generated documentation committed and verified",
+            ),
+        ) + tuple(
             m.Cli.ResultCommandRoute(
                 name=route_name,
                 help_text=help_text,
@@ -52,12 +68,6 @@ class ValidationRoutes(ValidationCommandRoutes):
                     "Build MkDocs sites",
                     FlextInfraDocBuilder,
                     "Build completed successfully",
-                ),
-                (
-                    "generate",
-                    "Generate project docs",
-                    FlextInfraDocGenerator,
-                    "Generate completed successfully",
                 ),
                 (
                     "serve",

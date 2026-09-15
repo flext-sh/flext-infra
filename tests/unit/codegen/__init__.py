@@ -86,6 +86,7 @@ if TYPE_CHECKING:
         TestsFlextInfraManagedMaintenanceHeaders,
     )
     from .test_mise_runtime_storage import TestsFlextInfraMiseRuntimeStorage
+    from .test_plan_collection import TestsPlanCollection
     from .test_root_artifact_ownership import TestsFlextInfraRootArtifactOwnership
     from .test_setup_never_destroys import TestsFlextInfraSetupNeverDestroys
     from .test_template_formatter_fixed_point import (
@@ -171,6 +172,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraVscodeOwnerMerge",
     "TestsFlextInfraWorkflowOrphanGuard",
     "TestsFlextInfraWorkspaceRootSetupSubmodules",
+    "TestsPlanCollection",
     "archive_root",
     "build_loose_project",
     "c",
@@ -288,6 +290,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraManagedMaintenanceHeaders",
             ),
             ".test_mise_runtime_storage": ("TestsFlextInfraMiseRuntimeStorage",),
+            ".test_plan_collection": ("TestsPlanCollection",),
             ".test_root_artifact_ownership": ("TestsFlextInfraRootArtifactOwnership",),
             ".test_setup_never_destroys": ("TestsFlextInfraSetupNeverDestroys",),
             ".test_template_formatter_fixed_point": (

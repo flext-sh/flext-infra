@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -142,6 +143,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
                     "pre-setup:\n"
                     '\t@test ! -e "$(RUNTIME_PYTHON)"\n'
                     "post-setup:\n"
+                    '\t@test "$$MAKE_ACTIVATION_PROOF" = "$(PROJECT_ROOT)"\n'
                     '\t@test -x "$(MAKE_COMMAND)"\n'
                     '\t@test "$(MAKE_COMMAND)" = "$(SELF_MAKE_EXECUTABLE)"\n'
                     "\t@$(UV_RUN) python -c 'import importlib.metadata, sys; "
@@ -163,7 +165,64 @@ class TestsFlextInfraCodegenMakeEnvironment:
                     "'\n",
                 )
             )
+            (project_root / ".envrc.local").write_text(
+                'export MAKE_ACTIVATION_PROOF="$PROJECT_ROOT"\n', encoding="utf-8"
+            )
+        else:
+            tm.ok(
+                u.Cli.run_checked(["direnv", "allow", str(project_root)], cwd=project_root)
+            )
         return project_root, repository_root
+
+    @pytest.mark.parametrize("invalid_envrc", [False, True])
+    def test_public_dispatch_activates_once_before_hooks(
+        self, tmp_path: Path, invalid_envrc: bool
+    ) -> None:
+        """Real direnv evaluates before dispatch and stops an invalid environment."""
+        project_root, _ = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["uv", "venv", "--python", sys.executable, str(project_root / ".venv")],
+                cwd=project_root,
+            )
+        )
+        (project_root / ".envrc.local").write_text(
+            "printf 'activated\\n' >> activation.log\n"
+            'export MAKE_ACTIVATION_PROOF="$PROJECT_ROOT"\n'
+            + ("return 37\n" if invalid_envrc else ""),
+            encoding="utf-8",
+        )
+        (project_root / "custom.mk").write_text(
+            ".PHONY: pre-status _custom-status post-status\n"
+            + "".join(
+                f"{target}:\n"
+                '\t@test "$$MAKE_ACTIVATION_PROOF" = "$(PROJECT_ROOT)"\n'
+                f"\t@printf '%s\\n' '{target}' >> dispatch.log\n"
+                for target in ("pre-status", "_custom-status", "post-status")
+            ),
+            encoding="utf-8",
+        )
+        process = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["--no-print-directory", "status"], cwd=project_root
+            )
+        )
+        tm.that((project_root / "activation.log").read_text(), eq="activated\n")
+        if invalid_envrc:
+            tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
+            tm.that((project_root / "dispatch.log").exists(), eq=False)
+        else:
+            tm.that(
+                u.Cli.process_succeeded(process.outcome),
+                eq=True,
+                msg=process.stdout + process.stderr,
+            )
+            tm.that(
+                (project_root / "dispatch.log").read_text().splitlines(),
+                eq=["pre-status", "_custom-status", "post-status"],
+            )
 
     @pytest.mark.parametrize(
         "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]

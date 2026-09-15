@@ -38,7 +38,12 @@ def stage_file_plans(
     phase_roots: set[Path] = set()
     for index, file_plan in enumerate(changed):
         project = next(
-            (item for item in layout.projects if item.root == file_plan.project), None
+            (
+                item
+                for item in files.transaction_participants(layout)
+                if item.root == file_plan.project
+            ),
+            None,
         )
         if project is None or project.transaction_root is None:
             return result_type.fail(

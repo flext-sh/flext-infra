@@ -19,6 +19,52 @@ class FlextInfraMiseArtifactsFiles:
     STATE_DIRECTORY: Final[Path] = Path(".state") / "mise-artifacts"
 
     @classmethod
+    def transaction_participants(
+        cls, layout: m.Infra.MiseToolchainWorkspaceLayout
+    ) -> tuple[m.Infra.MiseToolchainProjectLayout | m.Infra.CodegenFileParticipant, ...]:
+        """Return only explicitly registered publication owners."""
+        return (*layout.projects, *layout.file_participants)
+
+    @classmethod
+    def transaction_relative(
+        cls, layout: m.Infra.MiseToolchainWorkspaceLayout, path: Path
+    ) -> p.Result[str]:
+        """Encode a file capability path without weakening workspace containment."""
+        participants = sorted(
+            layout.file_participants, key=lambda item: -len(item.root.parts)
+        )
+        for participant in participants:
+            if path.is_relative_to(participant.root):
+                relative = cls.workspace_relative(participant.root, path)
+                if relative.failure:
+                    return relative
+                return r[str].ok(f"{participant.selector}/{relative.value}")
+        relative = cls.workspace_relative(layout.scope_root, path)
+        if relative.success and relative.value.startswith("@"):
+            return r[str].fail(f"reserved file capability path: {path}")
+        return relative
+
+    @classmethod
+    def resolve_transaction(
+        cls, layout: m.Infra.MiseToolchainWorkspaceLayout, selector: str, *, purpose: str
+    ) -> p.Result[Path]:
+        """Resolve one journal path against its exact registered physical root."""
+        if not selector.startswith("@"):
+            return cls.resolve_relative(layout.scope_root, selector, purpose=purpose)
+        identity, separator, relative = selector.partition("/")
+        participant = next(
+            (item for item in layout.file_participants if item.selector == identity), None
+        )
+        if not separator or participant is None:
+            return r[Path].fail(f"unknown file publication capability: {selector}")
+        physical = cls.physical_directory_identity(participant.root)
+        if physical.failure:
+            return r[Path].from_failure(physical)
+        if physical.value != (participant.device, participant.inode):
+            return r[Path].fail(f"file publication root identity changed: {participant.root}")
+        return cls.resolve_relative(participant.root, relative, purpose=purpose)
+
+    @classmethod
     def digest(cls, content: bytes) -> str:
         """Return the exact lowercase SHA-256 identity for raw bytes."""
         return u.Cli.sha256_bytes(content)

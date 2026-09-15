@@ -14,6 +14,15 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
     """Load Rope project/module/import objects behind protocols."""
 
     @classmethod
+    def imported_name_at(
+        cls, pymodule: t.Infra.RopePyModule, offset: int
+    ) -> p.Infra.RopeImportedName | None:
+        """Resolve a lexical binding; local shadows are not imported names."""
+        resolver = cls._runtime_callable("rope.base.evaluate", "eval_location")
+        result = resolver(pymodule, offset)
+        return result if isinstance(result, p.Infra.RopeImportedName) else None
+
+    @classmethod
     def new_project(
         cls,
         root: str,

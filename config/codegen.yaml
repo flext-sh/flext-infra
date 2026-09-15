@@ -1900,11 +1900,6 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        - source: base/.envrc.local.j2
-          destination: .envrc.local
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: false
         - source: base/.github/workflows/docs.yml.j2
           destination: .github/workflows/docs.yml
         # O workflow chama `uv sync`; e esta projecao que instala o uv antes.
