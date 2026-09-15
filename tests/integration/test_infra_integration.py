@@ -19,28 +19,11 @@ if TYPE_CHECKING:
 import pytest
 from flext_tests import tm
 
-from flext_infra import m, r, u
+from flext_infra import m, r
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-from tests import TestsFlextInfraUtilities as tu
-
-
-def _flat_map_double(x: int) -> p.Result[int]:
-    return r[int].ok(x * 2)
-
-
-def _flat_map_add_five(x: int) -> p.Result[int]:
-    return r[int].ok(x + 5)
-
-
-def _flat_map_intentional_fail(_: int) -> p.Result[int]:
-    return r[int].fail("intentional error")
-
-
-def _flat_map_add_three(x: int) -> p.Result[int]:
-    return r[int].ok(x + 3)
-
+from tests import TestsFlextInfraUtilities as tu, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -50,6 +33,18 @@ pytestmark = [pytest.mark.integration]
 
 class TestsFlextInfraIntegrationInfraIntegration:
     """Integration tests for the public FlextInfra surface."""
+
+    def _flat_map_double(self, x: int) -> p.Result[int]:
+        return r[int].ok(x * 2)
+
+    def _flat_map_add_five(self, x: int) -> p.Result[int]:
+        return r[int].ok(x + 5)
+
+    def _flat_map_intentional_fail(self, _: int) -> p.Result[int]:
+        return r[int].fail("intentional error")
+
+    def _flat_map_add_three(self, x: int) -> p.Result[int]:
+        return r[int].ok(x + 3)
 
     @pytest.mark.integration
     def test_workspace_detector_and_orchestrator_share_state(
@@ -147,8 +142,8 @@ class TestsFlextInfraIntegrationInfraIntegration:
         result = (
             r[int]
             .ok(initial_value)
-            .flat_map(_flat_map_double)
-            .flat_map(_flat_map_add_five)
+            .flat_map(self._flat_map_double)
+            .flat_map(self._flat_map_add_five)
         )
         tm.ok(result)
         tm.that(result.value, eq=25)
@@ -166,9 +161,9 @@ class TestsFlextInfraIntegrationInfraIntegration:
         result = (
             r[int]
             .ok(initial_value)
-            .flat_map(_flat_map_double)
-            .flat_map(_flat_map_intentional_fail)
-            .flat_map(_flat_map_add_five)
+            .flat_map(self._flat_map_double)
+            .flat_map(self._flat_map_intentional_fail)
+            .flat_map(self._flat_map_add_five)
         )
         tm.fail(result)
         tm.that(result.error, is_=str)
@@ -188,7 +183,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
             r[int]
             .ok(initial_value)
             .map(lambda x: x * 2)
-            .flat_map(_flat_map_add_three)
+            .flat_map(self._flat_map_add_three)
             .map(lambda x: x * 2)
         )
         tm.ok(result)
@@ -245,3 +240,6 @@ class TestsFlextInfraIntegrationInfraIntegration:
         capture_result = u.Cli.capture(["python3", "-c", "print('infra-ok')"])
         tm.ok(capture_result)
         tm.that(capture_result.value, eq="infra-ok")
+
+
+__all__: list[str] = ["TestsFlextInfraIntegrationInfraIntegration"]

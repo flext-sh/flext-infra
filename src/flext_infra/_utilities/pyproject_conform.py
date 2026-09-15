@@ -123,7 +123,6 @@ class FlextInfraUtilitiesPyprojectConform:
         uv_link_mode: str | None = None,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
         namespace_scan_dirs: t.StrSequence | None = None,
-        gate_budgets: t.MappingKV[str, m.Infra.ProjectGateBudgetSpec] | None = None,
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and root workspace."""
         parsed = cls._parsed_pyproject(pyproject_content)
@@ -154,9 +153,6 @@ class FlextInfraUtilitiesPyprojectConform:
         namespace_scope = cls._sync_namespace_scope(source, namespace_scan_dirs)
         if namespace_scope.failure:
             return r[str].from_failure(namespace_scope)
-        budget_sync = cls._sync_budget_table(source, gate_budgets)
-        if budget_sync.failure:
-            return r[str].from_failure(budget_sync)
         sources_result = cls._sync_uv_sources(
             source,
             project_name=project_name,
@@ -579,31 +575,8 @@ class FlextInfraUtilitiesPyprojectConform:
         """
         if namespace_scan_dirs is None:
             return r[bool].ok(True)
-        namespace = u.Cli.toml_ensure_path(document, ("tool", "flext", "namespace"))
+        namespace = u.Cli.toml_ensure_path(document, c.Infra.CONFORM_NAMESPACE_TABLE)
         u.Cli.toml_sync_string_list(namespace, "scan_dirs", list(namespace_scan_dirs))
-        return r[bool].ok(True)
-
-    @staticmethod
-    def _sync_budget_table(
-        document: t.Cli.TomlDocument,
-        gate_budgets: t.MappingKV[str, m.Infra.ProjectGateBudgetSpec] | None,
-    ) -> p.Result[bool]:
-        """Sync the managed ``[tool.flext.project.budget]`` table from the SSOT.
-
-        ``None`` leaves the section untouched: only codegen configs that
-        declare per-gate budgets project the managed table.
-        """
-        if gate_budgets is None:
-            return r[bool].ok(True)
-        budget_table = u.Cli.toml_ensure_path(
-            document, ("tool", "flext", "project", "budget")
-        )
-        for gate_id, row in sorted(gate_budgets.items()):
-            budget_table[gate_id] = {
-                "time-seconds": row.time_seconds,
-                "memory-mb": row.memory_mb,
-                "tokens": row.tokens,
-            }
         return r[bool].ok(True)
 
     @staticmethod
@@ -750,10 +723,9 @@ class FlextInfraUtilitiesPyprojectConform:
             else:
                 u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
         member_paths = tuple(member.path.as_posix() for member in workspace.subprojects)
-        # A uv workspace with no members is not an empty workspace, it is a
-        # declaration: uv reads the table's presence, not its contents, so an
-        # empty one makes this project a *nested* workspace and refuses to set
-        # up any parent that lists it as a member.
+        # Only an actual multi-project owner declares a uv workspace. A leaf
+        # can also be a composed member; inserting an empty workspace there
+        # breaks execution from the parent with uv's nested-workspace error.
         if repository_root and member_paths:
             workspace_table = u.Cli.toml_table_child(uv, "workspace")
             if workspace_table is None:

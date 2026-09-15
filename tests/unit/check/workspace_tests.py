@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class TestFlextInfraWorkspaceChecker:
+class TestsFlextInfraWorkspaceChecker:
     """Test suite for FlextInfraWorkspaceChecker."""
 
     pytestmark = pytest.mark.usefixtures("_clear_make_ci_token")
@@ -151,3 +151,6 @@ class TestFlextInfraWorkspaceChecker:
         result = checker.format(tmp_path)
         tm.that(result, is_=r)
         tm.ok(result)
+
+
+__all__: list[str] = ["TestsFlextInfraWorkspaceChecker"]

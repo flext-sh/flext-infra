@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from tests import t
 
 
-class TestWorkspaceChecker:
+class TestsFlextInfraWorkspaceInit:
     """Declarative public-contract tests for workspace checker setup."""
 
     @pytest.mark.parametrize(
@@ -62,4 +62,4 @@ class TestWorkspaceChecker:
         tm.fail(result)
 
 
-__all__: t.StrSequence = []
+__all__: t.StrSequence = ["TestsFlextInfraWorkspaceInit"]

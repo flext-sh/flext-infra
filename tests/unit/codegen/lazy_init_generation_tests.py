@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from importlib import import_module
+from importlib.util import resolve_name
 from pathlib import Path
 from types import MappingProxyType
 
+import pytest
 from flext_tests import tm
 
 import flext_core
@@ -77,6 +79,21 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
 
+    def test_sibling_private_exports_use_relative_owners(self) -> None:
+        """Static and lazy imports resolve the same private sibling module."""
+        plan = self._plan(
+            "demo_pkg.servers._rfc",
+            ("BaseConstants",),
+            {"BaseConstants": ("demo_pkg.servers._base.constants", "BaseConstants")},
+        )
+
+        content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(content, "__init__.py", "exec")
+        tm.that(content, has="from .._base.constants import BaseConstants")
+        tm.that(content, has='".._base.constants": ("BaseConstants",)')
+        tm.that(content, lacks="from demo_pkg.servers._base.constants import")
+
     def test_generated_runtime_surfaces_import_without_bootstrap_cycles(self) -> None:
         lazy_parts = import_module("flext_core._lazy_parts")
         typings = import_module("flext_core._typings")
@@ -90,6 +107,37 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(
             infra_utilities.FlextInfraUtilitiesRopeCore.__name__,
             eq="FlextInfraUtilitiesRopeCore",
+        )
+
+    @pytest.mark.parametrize(
+        ("owner", "rendered_owner"),
+        [
+            ("demo_pkg.servers._base.constants", ".._base.constants"),
+            ("demo_pkg._shared.constants", "..._shared.constants"),
+            ("demo_pkg.servers", ".."),
+            ("demo_pkg", "..."),
+            ("demo_pkg.servers._rfc", "."),
+            ("demo_pkg.servers._rfc.constants", ".constants"),
+            (".._base.constants", ".._base.constants"),
+            ("upstream_pkg.constants", "upstream_pkg.constants"),
+        ],
+    )
+    def test_generated_imports_preserve_owner_resolution(
+        self, owner: str, rendered_owner: str
+    ) -> None:
+        """Static imports and lazy targets resolve to the same declared owner."""
+        package = "demo_pkg.servers._rfc"
+        plan = self._plan(
+            package, ("Demo",), MappingProxyType({"Demo": (owner, "Demo")})
+        )
+
+        content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(content, "__init__.py", "exec")
+        tm.that(content, contains=f"from {rendered_owner} import Demo")
+        tm.that(content, contains=f'"{rendered_owner}": ("Demo",)')
+        tm.that(
+            resolve_name(rendered_owner, package), eq=resolve_name(owner, package)
         )
 
     def test_root_initializer_contains_static_and_lazy_contracts(self) -> None:

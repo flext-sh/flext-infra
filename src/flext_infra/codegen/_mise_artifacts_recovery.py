@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
-from flext_infra import m
+from flext_infra import c, m
 
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 from ._mise_artifacts_journal import FlextInfraMiseArtifactsJournal as journal_io
@@ -116,12 +116,10 @@ class FlextInfraMiseRecovery:
             ):
                 operation = "noop"
             elif identity == desired:
-                operation = "noop" if entry.original_exists else "delete"
-            elif entry.original_exists:
-                operation = "restore"
+                operation = "restore" if entry.original_exists else "delete"
             else:
                 return result_type.fail(
-                    f"new generated file changed before recovery: {entry.path}"
+                    f"generated file has an unowned state before recovery: {entry.path}"
                 )
             actions.append(
                 m.Infra.CodegenRecoveryAction(
@@ -184,7 +182,7 @@ class FlextInfraMiseRecovery:
                 backup.error or f"generation recovery backup is absent: {entry.path}"
             )
         if (
-            backup.value.mode != files.JOURNAL_MODE
+            backup.value.mode != c.Infra.JOURNAL_MODE
             or files.digest(backup.value.content) != entry.original_sha256
         ):
             return r[m.Infra.CodegenStagedFile].fail(
@@ -211,7 +209,9 @@ class FlextInfraMiseRecovery:
                 f"generation restore candidate differs: {entry.path}"
             )
         project = next(
-            item.root for item in layout.projects if item.selector == entry.project
+            item.root
+            for item in files.transaction_participants(layout)
+            if item.selector == entry.project
         )
         return r[m.Infra.CodegenStagedFile].ok(
             m.Infra.CodegenStagedFile(
@@ -258,7 +258,9 @@ class FlextInfraMiseRecovery:
                     f"generation rollback candidate changed: {entry.path}"
                 )
             project = next(
-                item.root for item in layout.projects if item.selector == entry.project
+                item.root
+                for item in files.transaction_participants(layout)
+                if item.selector == entry.project
             )
             candidates.append(
                 m.Infra.CodegenStagedFile(

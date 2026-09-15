@@ -19,6 +19,8 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import Final
 
+from flext_infra import t
+
 
 class FlextInfraConstantsCodegenProject:
     """Manifest + naming constants for project creation (flat in ``c.Infra.*``)."""
@@ -120,9 +122,24 @@ class FlextInfraConstantsCodegenProject:
 
     BEADS_CONFIG_FILENAME: Final[str] = "beads.yaml"
     BEADS_DIRNAME: Final[str] = ".beads"
+    BEADS_DIRECTORY_MODE: Final[int] = 0o700
     BEADS_LOCAL_VERSION_FILENAME: Final[str] = ".local_version"
     BEADS_LAST_TOUCHED_FILENAME: Final[str] = "last-touched"
     BEADS_CONFIG_VERSION: Final = 1
+    CONFORM_NAMESPACE_TABLE: Final[t.VariadicTuple[str]] = (
+        "tool",
+        "flext",
+        "namespace",
+    )
+    """Table the conform pipeline writes from the project SSOT.
+
+    One owner for the path, consumed by the writer and by the managed-file
+    declaration that must be able to recover it from a merge conflict. They
+    drifted apart once, and the superproject merge then dead-ended on the
+    owner's own output. The dotted spelling is derived through
+    ``u.Cli.toml_dot_path``; it is never written a second time.
+    """
+
     WORKSPACE_MANIFEST_FILENAME: Final[str] = "workspace.yaml"
     WORKSPACE_MANIFEST_VERSION: Final[int] = 3
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
@@ -141,11 +158,6 @@ class FlextInfraConstantsCodegenProject:
     "Scaffold module-skeleton template (replaces the legacy f-string)."
     CODEGEN_CONFIG_FILENAME: Final[str] = "codegen.yaml"
     CODEGEN_OVERRIDES_FILENAME: Final[str] = "codegen-overrides.yaml"
-    CODEGEN_GEN_FILENAME: Final[str] = "codegen.gen.yaml"
-    CODEGEN_GEN_SUFFIX: Final[str] = ".gen.yaml"
-    "File suffix for generation requirements contract files managed by conform."
-    CODEGEN_CONFIG_DIR: Final[str] = "config"
-    "Directory name for flext-infra config files relative to package root."
 
     # One base catalog serves both profiles;
     # workspace topology is read only from each repository's own .gitmodules.

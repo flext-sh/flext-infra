@@ -92,6 +92,15 @@ Read those skills and root `AGENTS.md`; this file adds only FLEXT domain law.
 - Invoke the standard Make verbs directly. Mutating verbs mutate by default with zero variables;
   agents never add `WHAT=` or `PROJECT=` to setup, generation, repair,
   formatting, checking, or testing.
+- Provision and update dependency environments exclusively through `make setup`.
+  Correct its canonical generator when setup fails; never install or resolve
+  packages manually to make the next gate pass. The operator cutover removes
+  `APPLY`, `uv.lock` and `mise.lock` from producers and consumers, including
+  regeneration and required-input paths, not only version control.
+- Adopt concurrent work by fix-forward. Fetch each repository's integration
+  tip, absorb it with `git merge --no-ff`, and preserve all compatible work.
+  Publish through that integration branch and measure the remote merge SHA;
+  a local merge or an old gate receipt never proves integrated runtime.
 - Structural rewires run through `make mod`. Its canonical FLEXT engine
   composes `ast-grep` rewrites, Rope semantic refactors, and real
   `pyright-langserver` diagnostics before the fixed point is accepted.
@@ -141,3 +150,22 @@ Read those skills and root `AGENTS.md`; this file adds only FLEXT domain law.
   implementations.
 - Historical branches, archives, generated outputs, and other worktrees are
   evidence only. The active branch-matched canonical sources define behavior.
+
+## Recovering namespace and runtime work
+
+- Start from the repository's maintained execution handoff and ADR index before
+  rescanning the fleet. In flext-infra, `docs/guides/execution-context.md` points
+  to the current namespace/runtime handoff, its plan, measured revision and
+  canonical Beads. Resolve an absent ADR at its documented owner; do not invent
+  a missing record or load a parent runtime to compensate for missing context.
+- Compare namespace, codemod and runtime-census inventories by the contracts
+  they actually inspect. Zero codemod findings alone never proves namespace
+  conformance or working runtime. Record which transformations execute and
+  which findings remain before expanding a batch.
+- Preserve mutability, inheritance, expression dependencies and consumer
+  imports through the public transformation. Test-name preservation after a
+  merge is only an inventory check; execute the public runtime and collection
+  before claiming the combined code works.
+- Keep operator-approved acceptance exceptions attached to that execution's
+  handoff and Beads. A limited check acceptance does not change the fleet law,
+  suppress a diagnostic or close the remaining architecture defects.

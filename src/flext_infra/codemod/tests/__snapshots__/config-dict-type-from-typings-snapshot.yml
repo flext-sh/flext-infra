@@ -16,6 +16,21 @@ snapshots:
       start: 68
       end: 132
   ? |
+    from flext_cli import m, t
+    from typing import ClassVar
+    class F:
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
+  : fixed: |
+      from flext_cli import m, t
+      from typing import ClassVar
+      class F:
+          model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+    labels:
+    - source: 'model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)'
+      style: primary
+      start: 68
+      end: 132
+  ? |
     from flext_ldif import c, m, p
     from typing import ClassVar
     class D:

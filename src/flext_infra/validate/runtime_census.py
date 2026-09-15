@@ -13,7 +13,9 @@ from __future__ import annotations
 import importlib
 import inspect
 import pkgutil
+import re
 import sys
+from collections import defaultdict
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Annotated, override
 
@@ -150,12 +152,9 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             return r[m.Infra.ValidationReport].from_failure(projects_result)
         projects = self._filtered_projects(projects_result.unwrap())
         if not projects:
-            return r[m.Infra.ValidationReport].ok(
-                m.Infra.ValidationReport(
-                    passed=True,
-                    violations=(),
-                    summary="runtime census: no projects selected",
-                )
+            return r[m.Infra.ValidationReport].fail(
+                f"runtime census selected no projects: root={self.repository_root}, "
+                f"filter={self.project_filter!r}"
             )
         merged_violations: list[str] = []
         for project in projects:
@@ -195,9 +194,6 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         back to 'UNKNOWN' when a violation string carries no bracket) gives the
         operator a histogram and a per-rule file list in one read.
         """
-        import re
-        from collections import defaultdict
-
         rule_buckets: MutableMapping[str, list[str]] = defaultdict(list)
         for violation in report.violations:
             match = re.search(r"\[(ENFORCE-\d+)\]", violation)

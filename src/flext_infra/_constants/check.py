@@ -71,6 +71,10 @@ class FlextInfraConstantsCheck:
             "Flext Tier Whitelist Gate",
             "internal://flext-infra/tier-whitelist",
         ),
+        "index-declarations": (
+            "Flext Index Declarations Gate",
+            "internal://flext-infra/index-declarations",
+        ),
         "smells": ("Flext Code Smell Detector", "internal://flext-infra/smells"),
         "codemod": ("ast-grep", AST_GREP_DOCS_URL),
         "layout": ("Flext Project Layout Gate", "internal://flext-infra/layout"),
@@ -83,16 +87,9 @@ class FlextInfraConstantsCheck:
             "internal://flext-infra/direnv",
         ),
         "duplication": ("jscpd", "https://github.com/kucherenko/jscpd"),
-        "budget": ("Flext Execution Budget Gate", "internal://flext-infra/budget"),
     })
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
-    BUDGET_REQUIRED_FIELDS: Final[tuple[str, ...]] = (
-        "time-seconds",
-        "memory-mb",
-        "tokens",
-    )
-    "Per-gate budget fields required under [tool.flext.project.budget]."
     MUTATING_GATES: Final[frozenset[str]] = frozenset({FORMAT})
     "Gates that rewrite files: owned by `fmt`/`fix`, never a read-only `check` vocabulary."
     RUFF_FORMAT_FILE_RE: Final[t.RegexPattern] = re.compile(

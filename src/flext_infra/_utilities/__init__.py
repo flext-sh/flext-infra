@@ -24,7 +24,6 @@ if TYPE_CHECKING:
     from ._docs_scope_projects import FlextInfraUtilitiesDocsScopeProjectsMixin
     from ._docs_scope_selection import FlextInfraUtilitiesDocsScopeSelectionMixin
     from ._docs_scope_state import FlextInfraUtilitiesDocsScopeStateMixin
-    from ._gen_requirements import FlextInfraUtilitiesGenRequirements
     from ._git.attestation import FlextInfraUtilitiesGitAttestationMixin
     from ._git.remote import FlextInfraUtilitiesGitRemote
     from ._git.repo import FlextInfraUtilitiesGitRepo
@@ -66,6 +65,7 @@ if TYPE_CHECKING:
     from .codegen import FlextInfraUtilitiesCodegen
     from .codegen_facades import FlextInfraUtilitiesCodegenFacades
     from .codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
+    from .codegen_path_cutover import FlextInfraUtilitiesCodegenPathCutover
     from .codemod_rules import FlextInfraUtilitiesCodemodRules
     from .compatibility_alias_cst import FlextInfraUtilitiesCompatibilityAliasCst
     from .compatibility_alias_validation import (
@@ -82,6 +82,9 @@ if TYPE_CHECKING:
     from .docs_api import FlextInfraUtilitiesDocsApi
     from .docs_audit import FlextInfraUtilitiesDocsAudit
     from .docs_build import FlextInfraUtilitiesDocsBuild
+    from .docs_collection import FlextInfraUtilitiesDocsCollection
+    from .docs_collection_sources import FlextInfraUtilitiesDocsCollectionSources
+    from .docs_collection_verify import FlextInfraUtilitiesDocsCollectionVerify
     from .docs_contract import FlextInfraUtilitiesDocsContract
     from .docs_fix import FlextInfraUtilitiesDocsFix
     from .docs_generate import FlextInfraUtilitiesDocsGenerate
@@ -152,6 +155,7 @@ if TYPE_CHECKING:
     from .transformer_header_parser import FlextInfraUtilitiesTransformerHeaderParser
     from .versioning import FlextInfraUtilitiesVersioning
     from .workspace_fingerprint import FlextInfraUtilitiesWorkspaceFingerprint
+    from .workspace_manifest import FlextInfraUtilitiesWorkspaceManifest
     from .worktree_lifecycle import FlextInfraWorktreeLifecycle
     from .worktree_provisioning import FlextInfraWorktreeProvisioning
 __all__: tuple[str, ...] = (
@@ -165,6 +169,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesCodegenFacades",
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
+    "FlextInfraUtilitiesCodegenPathCutover",
     "FlextInfraUtilitiesCodemodRules",
     "FlextInfraUtilitiesCompatibilityAliasCst",
     "FlextInfraUtilitiesCompatibilityAliasValidation",
@@ -178,6 +183,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsAudit",
     "FlextInfraUtilitiesDocsAuditDetectorsMixin",
     "FlextInfraUtilitiesDocsBuild",
+    "FlextInfraUtilitiesDocsCollection",
+    "FlextInfraUtilitiesDocsCollectionSources",
+    "FlextInfraUtilitiesDocsCollectionVerify",
     "FlextInfraUtilitiesDocsCommandContractMixin",
     "FlextInfraUtilitiesDocsContract",
     "FlextInfraUtilitiesDocsFix",
@@ -197,7 +205,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsScopeSelectionMixin",
     "FlextInfraUtilitiesDocsScopeStateMixin",
     "FlextInfraUtilitiesDocsValidate",
-    "FlextInfraUtilitiesGenRequirements",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGitAttestationMixin",
     "FlextInfraUtilitiesGitRemote",
@@ -285,6 +292,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesTransformerHeaderParser",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraUtilitiesWorkspaceFingerprint",
+    "FlextInfraUtilitiesWorkspaceManifest",
     "FlextInfraWorktreeLifecycle",
     "FlextInfraWorktreeProvisioning",
     "MypyDarwinSupervisor",
@@ -310,7 +318,6 @@ _LAZY_IMPORTS = MappingProxyType(
             "._docs_scope_projects": ("FlextInfraUtilitiesDocsScopeProjectsMixin",),
             "._docs_scope_selection": ("FlextInfraUtilitiesDocsScopeSelectionMixin",),
             "._docs_scope_state": ("FlextInfraUtilitiesDocsScopeStateMixin",),
-            "._gen_requirements": ("FlextInfraUtilitiesGenRequirements",),
             "._git": ("_git",),
             "._git.attestation": ("FlextInfraUtilitiesGitAttestationMixin",),
             "._git.remote": ("FlextInfraUtilitiesGitRemote",),
@@ -362,6 +369,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen": ("FlextInfraUtilitiesCodegen",),
             ".codegen_facades": ("FlextInfraUtilitiesCodegenFacades",),
             ".codegen_file_plan": ("FlextInfraUtilitiesCodegenFilePlan",),
+            ".codegen_path_cutover": ("FlextInfraUtilitiesCodegenPathCutover",),
             ".codemod_rules": ("FlextInfraUtilitiesCodemodRules",),
             ".compatibility_alias_cst": ("FlextInfraUtilitiesCompatibilityAliasCst",),
             ".compatibility_alias_validation": (
@@ -380,6 +388,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".docs_api": ("FlextInfraUtilitiesDocsApi",),
             ".docs_audit": ("FlextInfraUtilitiesDocsAudit",),
             ".docs_build": ("FlextInfraUtilitiesDocsBuild",),
+            ".docs_collection": ("FlextInfraUtilitiesDocsCollection",),
+            ".docs_collection_sources": ("FlextInfraUtilitiesDocsCollectionSources",),
+            ".docs_collection_verify": ("FlextInfraUtilitiesDocsCollectionVerify",),
             ".docs_contract": ("FlextInfraUtilitiesDocsContract",),
             ".docs_fix": ("FlextInfraUtilitiesDocsFix",),
             ".docs_generate": ("FlextInfraUtilitiesDocsGenerate",),
@@ -456,6 +467,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".versioning": ("FlextInfraUtilitiesVersioning",),
             ".workspace_fingerprint": ("FlextInfraUtilitiesWorkspaceFingerprint",),
+            ".workspace_manifest": ("FlextInfraUtilitiesWorkspaceManifest",),
             ".worktree_lifecycle": ("FlextInfraWorktreeLifecycle",),
             ".worktree_provisioning": ("FlextInfraWorktreeProvisioning",),
         }),

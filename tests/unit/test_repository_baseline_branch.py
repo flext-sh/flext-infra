@@ -15,7 +15,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import u
-from tests import u as test_u
+from tests import t, u as test_u
 
 
 class TestsFlextInfraRepositoryBaselineBranch:
@@ -105,4 +105,4 @@ class TestsFlextInfraRepositoryBaselineBranch:
         tm.that(builtin.value, eq="dev")
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

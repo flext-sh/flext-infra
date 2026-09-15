@@ -7,19 +7,14 @@ call ``python -m flext_infra`` (never the retired audit scripts).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from flext_tests import tm
 
 from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 
-if TYPE_CHECKING:
-    from tests import t
-
 _V = FlextInfraManualCommandValidator
 
 
-class TestManualCommandValidator:
+class TestsFlextInfraManualCommand:
     def test_bare_ruff_blocked(self) -> None:
         tm.that(_V.command_blocked("ruff check src/"), eq=True)
 
@@ -85,4 +80,4 @@ class TestManualCommandValidator:
         tm.that("audit_banned_cli_libs.py" not in rendered, eq=True)
 
 
-__all__: t.StrSequence = []
+__all__: list[str] = ["TestsFlextInfraManualCommand"]

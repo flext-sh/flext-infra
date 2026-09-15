@@ -84,6 +84,13 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         assignments: t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeAssignment]
 
     @runtime_checkable
+    class RopeImportedName(RopePyName, Protocol):
+        """Import binding with its declaring module and original symbol."""
+
+        imported_module: FlextInfraProtocolsRopeRuntime.RopePyName
+        imported_name: str
+
+    @runtime_checkable
     class RopeScope(Protocol):
         """Rope semantic scope shape."""
 
@@ -225,6 +232,21 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Rope change set shape."""
 
         changes: list[p.AttributeProbe]
+
+    @runtime_checkable
+    class RopeChangeContents(Protocol):
+        """A planned Rope content replacement with no applied effect."""
+
+        resource: FlextInfraProtocolsRopeRuntime.RopeResource
+        new_contents: str
+
+    @runtime_checkable
+    class RopeRestructure(Protocol):
+        """Public semantic restructuring planner at the Rope runtime boundary."""
+
+        def get_changes(
+            self, *, resources: list[FlextInfraProtocolsRopeRuntime.RopeResource]
+        ) -> FlextInfraProtocolsRopeRuntime.RopeChangeSet: ...
 
     @runtime_checkable
     class RopeModuleImports(Protocol):

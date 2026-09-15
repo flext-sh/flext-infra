@@ -9,6 +9,7 @@ from flext_cli import cli
 
 from .. import FlextInfraServiceBase, m, p, r, t, u
 from . import FlextInfraCodemodSemanticApply, FlextInfraModGateEngine
+from .batch_replacements import FlextInfraModReplacements
 
 
 class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
@@ -49,19 +50,35 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
         cli.display_text("mod: preflight complete AST inventory")
         current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-        seen: dict[t.VariadicTuple[t.Quad[str, str, str, str | None]], int] = {}
+        seen: t.MutableMappingKV[
+            t.VariadicTuple[t.Quad[str, str, str, str | None]], int
+        ] = {}
         iteration = 0
-        while current.findings:
+        transaction_paths = FlextInfraCodemodSemanticApply.plan_transaction_paths(
+            root, current
+        )
+        while current.findings or transaction_paths:
             iteration += 1
             fingerprint = tuple(
                 sorted(
-                    (
-                        finding.rule_id,
-                        finding.file.as_posix(),
-                        finding.text,
-                        finding.replacement,
-                    )
-                    for finding in current.entries
+                    [
+                        (
+                            finding.rule_id,
+                            finding.file.as_posix(),
+                            finding.text,
+                            finding.replacement,
+                        )
+                        for finding in current.entries
+                    ]
+                    + [
+                        (
+                            "transaction-path-capability",
+                            edit.file_path.as_posix(),
+                            u.Cli.sha256_bytes(edit.original_source.encode()),
+                            u.Cli.sha256_bytes(edit.updated_source.encode()),
+                        )
+                        for edit in transaction_paths
+                    ]
                 )
             )
             if fingerprint in seen:
@@ -83,16 +100,33 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"{current.actionable} actionable, {current.detection_only} detection-only, "
                 f"{current.non_actionable_with_fix} non-actionable with fix"
             )
-            FlextInfraCodemodSemanticApply.apply(root, current)
-            # Fix!=match validation: verify semantic phase actually reduced findings
-            after_semantic = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-            if after_semantic.actionable:
+            # Validated mechanical rewrites are independent of later semantic
+            # ambiguity. Publish their complete batch before selecting that phase.
+            if current.actionable:
                 cli.display_text(f"mod: apply {len(rules)} ast-grep rule file(s)")
                 FlextInfraModGateEngine.scan(root, fix=True).unwrap()
-            # Fix!=match validation: check that ast-grep apply actually changed what was expected
-            after_apply = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-            FlextInfraCodemodBatchApply._validate_fix_match(current, after_apply)
-            current = after_apply
+            after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+            FlextInfraCodemodBatchApply._validate_fix_match(current, after_ast)
+            transaction_paths = FlextInfraCodemodSemanticApply.plan_transaction_paths(
+                root, after_ast
+            )
+            if transaction_paths:
+                FlextInfraCodemodSemanticApply.apply_transaction_paths(
+                    root, transaction_paths
+                )
+                current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+                transaction_paths = (
+                    FlextInfraCodemodSemanticApply.plan_transaction_paths(root, current)
+                )
+                continue
+            owned = FlextInfraModReplacements.require_authored(after_ast)
+            if owned.failure:
+                return r[t.Cli.ResultValue].from_failure(owned)
+            FlextInfraCodemodSemanticApply.apply(root, after_ast)
+            current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+            transaction_paths = FlextInfraCodemodSemanticApply.plan_transaction_paths(
+                root, current
+            )
         cli.display_text(
             "mod: require canonical formatting and zero Ruff, Pyrefly, and LSP diagnostics"
         )

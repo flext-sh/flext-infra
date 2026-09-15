@@ -28,7 +28,7 @@ _HOOK_TEMPLATE = (
 )
 
 
-class TestGitHookConformance:
+class TestsFlextInfraCodegenHookConformance:
     """Prove generated hook configs and installed shims converge together."""
 
     @staticmethod
@@ -247,4 +247,4 @@ class TestGitHookConformance:
         tm.that(target in retired, eq=True)
 
 
-__all__: list[str] = ["TestGitHookConformance"]
+__all__: list[str] = ["TestsFlextInfraCodegenHookConformance"]

@@ -9,11 +9,13 @@ from __future__ import annotations
 from functools import lru_cache
 from operator import attrgetter
 from pathlib import Path
+from typing import override
 
 from flext_cli import u
 
 from .. import c, config, m, t
 from . import FlextInfraUtilitiesGit, FlextInfraUtilitiesProjectDiscoveryCandidatesMixin
+from .workspace_manifest import FlextInfraUtilitiesWorkspaceManifest
 
 
 class FlextInfraUtilitiesProjectDiscovery(
@@ -24,57 +26,81 @@ class FlextInfraUtilitiesProjectDiscovery(
     @classmethod
     @lru_cache(maxsize=1)
     def load_refactor_config(cls, repository_root: Path) -> m.Infra.RefactorConfigSpec:
-        """Load refactor configuration from workspace.yaml with defaults fallback."""
-        manifest_path = (
+        """Load declared refactor configuration, propagating invalid manifests."""
+        manifest_path = FlextInfraUtilitiesWorkspaceManifest.workspace_manifest_path(
             repository_root
-            / c.Infra.CODEGEN_CONFIG_DIR
-            / c.Infra.WORKSPACE_MANIFEST_FILENAME
         )
         if not manifest_path.is_file():
             return m.Infra.RefactorConfigSpec()
-        loaded = u.Cli.config_load(manifest_path, expand_env=False)
-        if loaded.failure:
-            return m.Infra.RefactorConfigSpec()
-        try:
-            manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
-            return manifest.refactor or m.Infra.RefactorConfigSpec()
-        except c.ValidationError:
-            return m.Infra.RefactorConfigSpec()
+        loaded = u.Cli.config_load(manifest_path, expand_env=False).unwrap()
+        manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.data)
+        return manifest.refactor or m.Infra.RefactorConfigSpec()
 
     @classmethod
     @lru_cache(maxsize=1)
-    def manifest_excluded_names(cls, repository_root: Path) -> frozenset[str]:
-        """Return directory names the workspace manifest excludes from discovery.
+    def manifest_nonparticipant_paths(cls, repository_root: Path) -> frozenset[str]:
+        """Return every manifest-relative path that is not a generation participant.
 
-        Loaded exactly like ``load_refactor_config`` above, from the same
-        handwritten topology SSOT, and degraded to "no exclusions" on an absent
-        or unparseable manifest for the same reason: this only narrows
-        discovery, and the manifest's authoritative validation belongs to its
-        own owner, which fails loud.
+        One authority for project scope. The transaction derives its participants
+        from the workspace manifest, so discovery must derive its candidates from
+        exactly the same declaration or the two disagree and a plan is produced
+        for a directory the transaction cannot stage into.
+
+        Three manifest fields declare "not ours to generate", and the manifest
+        model itself already unions them for validation (`external_paths` in
+        `WorkspaceManifestSpec._validate_references`): `exclusions`,
+        `content_only` and `external_dependency_paths`. Honouring only
+        `exclusions` is what moved this defect from one directory to the next
+        instead of ending it.
+
+        Paths are manifest-relative POSIX strings, never leaf names: two
+        directories may share a leaf, and excluding by name would silently
+        exclude the wrong tree.
+
+        An absent manifest declares no exclusions. An unreadable or invalid
+        manifest fails before discovery can expand the declared scope.
         """
-        manifest_path = (
+        manifest_path = FlextInfraUtilitiesWorkspaceManifest.workspace_manifest_path(
             repository_root
-            / c.Infra.CODEGEN_CONFIG_DIR
-            / c.Infra.WORKSPACE_MANIFEST_FILENAME
         )
         if not manifest_path.is_file():
             return frozenset()
-        loaded = u.Cli.config_load(manifest_path, expand_env=False)
-        if loaded.failure:
-            return frozenset()
-        try:
-            manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
-        except c.ValidationError:
-            return frozenset()
-        # Candidates are compared by directory name, so a nested declaration
-        # such as "vendor/upstream" contributes the leaf it can match.
+        loaded = u.Cli.config_load(manifest_path, expand_env=False).unwrap()
+        manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.data)
+        declared = (
+            *(exclusion.path for exclusion in manifest.exclusions),
+            *manifest.content_only,
+            *manifest.external_dependency_paths,
+        )
         return frozenset(
-            name
-            for exclusion in manifest.exclusions
-            if (name := Path(exclusion.path).name)
+            posix
+            for path in declared
+            if (posix := Path(path).as_posix()) not in {".", ""}
         )
 
     @classmethod
+    def _is_nonparticipant(
+        cls, candidate: Path, repository_root: Path, nonparticipants: frozenset[str]
+    ) -> bool:
+        """Return whether one candidate lies at or under a declared non-participant."""
+        # "Is this candidate inside the root?" is a question, not a failure, so
+        # it is asked instead of caught. relative_to raised ValueError for the
+        # ordinary outside-the-root case, which made an except branch produce a
+        # value and hid any real path error behind the same sentinel.
+        resolved = candidate.resolve()
+        root = repository_root.resolve()
+        if not resolved.is_relative_to(root):
+            return False
+        posix = resolved.relative_to(root).as_posix()
+        if posix in {".", ""}:
+            return False
+        return any(
+            posix == declared or posix.startswith(f"{declared}/")
+            for declared in nonparticipants
+        )
+
+    @classmethod
+    @override
     def discover_project_candidates(
         cls, repository_root: Path, *, scan_dirs: frozenset[str] | None = None
     ) -> t.SequenceOf[Path]:
@@ -91,11 +117,13 @@ class FlextInfraUtilitiesProjectDiscovery(
         candidates = super().discover_project_candidates(
             repository_root, scan_dirs=scan_dirs
         )
-        excluded = cls.manifest_excluded_names(repository_root)
-        if not excluded:
+        nonparticipants = cls.manifest_nonparticipant_paths(repository_root)
+        if not nonparticipants:
             return candidates
         return tuple(
-            candidate for candidate in candidates if candidate.name not in excluded
+            candidate
+            for candidate in candidates
+            if not cls._is_nonparticipant(candidate, repository_root, nonparticipants)
         )
 
     @classmethod
@@ -147,15 +175,25 @@ class FlextInfraUtilitiesProjectDiscovery(
 
     @classmethod
     def discover_rope_project_roots(cls, repository_root: Path) -> t.SequenceOf[Path]:
-        """Return every direct Python project sharing one Rope workspace root."""
+        """Return every direct Python project sharing one Rope workspace root.
+
+        The raw child scan below is a second enumerator, so it must honour the
+        same manifest authority as ``discover_project_candidates``. Without that
+        filter every direct child holding a ``pyproject.toml`` re-entered the
+        scope the manifest had just excluded, and lazy-init planned files for a
+        directory the transaction has no participant for -- which aborts staging
+        after the phase root already exists on disk.
+        """
         resolved_root = repository_root.resolve()
         declared = cls.discover_project_candidates(resolved_root)
+        nonparticipants = cls.manifest_nonparticipant_paths(resolved_root)
         direct = tuple(
             child.resolve()
             for child in sorted(resolved_root.iterdir(), key=attrgetter("name"))
             if child.is_dir()
             and not child.name.startswith(".")
             and (child / c.Infra.PYPROJECT_FILENAME).is_file()
+            and not cls._is_nonparticipant(child, resolved_root, nonparticipants)
         )
         return tuple(sorted({*declared, *direct}, key=Path.as_posix))
 

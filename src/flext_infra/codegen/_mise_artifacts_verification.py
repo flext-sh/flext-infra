@@ -31,7 +31,9 @@ class FlextInfraMiseArtifactsVerification:
         registered: list[m.Infra.CodegenJournalDirectory] = []
         for directory in journal.directories:
             project = next(
-                item for item in layout.projects if item.selector == directory.project
+                item
+                for item in files.transaction_participants(layout)
+                if item.selector == directory.project
             )
             target = files.resolve_relative(
                 layout.scope_root, directory.path, purpose="temporary tree manifest"
@@ -142,7 +144,12 @@ class FlextInfraMiseArtifactsVerification:
             return r[bool].fail(
                 "generation journal project topology differs from layout"
             )
-        by_selector = {project.selector: project for project in layout.projects}
+        if journal.file_participants != layout.file_participants:
+            return r[bool].fail("generation file capabilities differ from the journal")
+        by_selector = {
+            project.selector: project
+            for project in files.transaction_participants(layout)
+        }
         directory_targets: MutableMapping[Path, m.Infra.CodegenJournalDirectory] = {}
         for directory in journal.directories:
             target = files.resolve_relative(
@@ -153,7 +160,7 @@ class FlextInfraMiseArtifactsVerification:
             if target.failure:
                 return r[bool].from_failure(target)
             directory_targets[target.value] = directory
-        for recorded in journal.projects:
+        for recorded in (*journal.projects, *journal.file_participants):
             project = by_selector[recorded.selector]
             identity = files.physical_directory_identity(project.root)
             if identity.failure:
@@ -267,43 +274,114 @@ class FlextInfraMiseArtifactsVerification:
         return r[bool].ok(True)
 
     @classmethod
-    def states_current(
-        cls, states: tuple[m.Cli.AtomicFileState, ...]
+    def journal_destinations_live(
+        cls,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
     ) -> p.Result[bool]:
-        """Prove every file state still equals its authenticated snapshot.
+        """Require every exact desired identity before irrevocable commit."""
+        topology = cls.journal_topology(layout, journal)
+        if topology.failure:
+            return topology
+        for entry in journal.entries:
+            path = files.resolve_transaction(layout, entry.path, purpose="published destination")
+            if path.failure:
+                return r[bool].from_failure(path)
+            observed = files.read_state(path.value, required=entry.desired_exists)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            current = observed.value
+            identity = (
+                current.parent_device, current.parent_inode,
+                None if current.content is None else files.digest(current.content),
+                current.mode, current.device, current.inode, current.link_count,
+                current.file_attributes, current.reparse_tag,
+            )
+            expected = (
+                entry.desired_parent_device, entry.desired_parent_inode,
+                entry.desired_sha256, entry.desired_mode, entry.desired_device,
+                entry.desired_inode, entry.desired_link_count,
+                entry.desired_file_attributes, entry.desired_reparse_tag,
+            )
+            if identity != expected:
+                return r[bool].fail(f"published generation identity changed: {entry.path}")
+        return r[bool].ok(True)
 
-        Compares semantically relevant fields (content, mode) only. Metadata
-        fields (device, inode, link_count, parent_*) may vary during read-only
-        operations due to filesystem access patterns and are not semantically
-        significant for source-code stability. Content is normalized to handle
-        whitespace/line-ending differences. Drift is logged but does not block
-        the pipeline, as the planner operates on the current state.
+    @classmethod
+    def states_current(
+        cls, states: tuple[m.Cli.AtomicFileState, ...],
+        *, journal: m.Infra.CodegenTransactionJournal | None = None,
+    ) -> p.Result[bool]:
+        """Prove every full file state still equals its authenticated snapshot.
+
+        This barrier is what makes the transaction atomic: it proves nothing
+        moved between planning and publication. It compares the FULL state --
+        content, mode and physical identity -- because a snapshot whose inode or
+        device changed underneath the transaction is exactly the race the
+        barrier exists to catch.
+
+        It must never be softened to make a run pass. It briefly was: content
+        was compared whitespace-normalised, mode drift was downgraded to a
+        warning "logged but does not block the pipeline", and a literal
+        `_models/config.py` was skipped as "expected to drift". That file
+        carries no generation marker -- it is authored source and is not
+        expected to drift at all; the drift being masked was the truncation
+        churn of that same afternoon. A verifier that cannot fail is not a
+        verifier, and a hardcoded path exemption in a fleet-wide generator hides
+        the next real corruption just as effectively as it hid that one.
         """
         for expected in states:
+            if expected.parent_device is None and journal is not None:
+                rebound = cls._bind_source_parent(expected, journal)
+                if rebound.failure:
+                    return r[bool].from_failure(rebound)
+                expected = rebound.value
             observed = files.read_state(
                 expected.path, required=expected.content is not None
             )
             if observed.failure:
                 return r[bool].from_failure(observed)
-            # Compare semantically relevant fields only
-            expected_content = expected.content
-            observed_content = observed.value.content
-            if expected_content is not None and observed_content is not None:
-                expected_norm = expected_content.rstrip(b"\r\n") + b"\n"
-                observed_norm = observed_content.rstrip(b"\r\n") + b"\n"
-                if expected_norm != observed_norm:
-                    u.Cli.warning(
-                        f"mise artifacts snapshot drift detected: {expected.path}"
-                    )
-            elif expected_content != observed_content:
-                u.Cli.warning(
-                    f"mise artifacts snapshot drift detected: {expected.path}"
-                )
-            if observed.value.mode != expected.mode:
-                u.Cli.warning(
-                    f"mise artifacts snapshot mode changed: {expected.path}"
+            if observed.value != expected:
+                return r[bool].fail(
+                    f"generation authenticated state changed: {expected.path}"
                 )
         return r[bool].ok(True)
+
+    @classmethod
+    def _bind_source_parent(
+        cls, expected: m.Cli.AtomicFileState,
+        journal: m.Infra.CodegenTransactionJournal,
+    ) -> p.Result[m.Cli.AtomicFileState]:
+        """Recognize only parent identities created under the durable absence witness."""
+        result = r[m.Cli.AtomicFileState]
+        source = next((item for item in journal.sources if item.path == expected.path), None)
+        if source is None or source.absent_parent is None or expected.content is not None:
+            return result.fail(f"generation source has no absence witness: {expected.path}")
+        witness = source.absent_parent
+        current = u.Cli.atomic_plan_directory_chain(witness.target)
+        if current.failure:
+            return result.from_failure(current)
+        if current.value == witness:
+            return result.ok(expected)
+        created = {
+            item.created.path: item.created
+            for item in journal.directories
+            if item.created is not None and item.disposition == "generated"
+        }
+        ancestry = list(witness.anchor_ancestry)
+        for path in witness.directories:
+            identity = created.get(path)
+            if identity is None or identity.device is None or identity.inode is None:
+                return result.fail(f"generation source parent was not created by this journal: {path}")
+            if (identity.parent_device, identity.parent_inode) != ancestry[-1]:
+                return result.fail(f"generation source parent ancestry differs from its journal: {path}")
+            ancestry.append((identity.device, identity.inode))
+        observed = current.value
+        if observed.directories or observed.anchor_ancestry != tuple(ancestry):
+            return result.fail(f"generation source parent identity changed: {expected.path}")
+        return result.ok(expected.model_copy(update={
+            "parent_device": ancestry[-1][0], "parent_inode": ancestry[-1][1],
+        }))
 
     @classmethod
     def phase_analysis_live(
@@ -593,7 +671,7 @@ class FlextInfraMiseArtifactsVerification:
         else:
             expected = (
                 entry.original_sha256,
-                files.JOURNAL_MODE,
+                c.Infra.JOURNAL_MODE,
                 observed.device,
                 observed.inode,
                 1,
@@ -699,7 +777,7 @@ class FlextInfraMiseArtifactsVerification:
             )
             observed: list[bytes] = []
             for expected, (_name, required_mode) in zip(
-                artifacts, files.PUBLICATION_SPECS, strict=True
+                artifacts, c.Infra.PUBLICATION_SPECS, strict=True
             ):
                 current = files.read_state(expected.path, required=True)
                 if current.failure or current.value.content is None:

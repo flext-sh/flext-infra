@@ -9,32 +9,18 @@ from flext_cli import m, u
 
 from flext_infra import t
 
-from ._defaults import immutable_empty_mapping
-
-
-def tool_version_field(description: str) -> object:
-    """Shared ``Annotated[t.NonEmptyStr, ...]`` metadata for one tool version.
-
-    Every native-toolchain version field in ``ToolchainSpec`` and its
-    ``ProjectRenderContext`` render mirror previously repeated an identical
-    ``m.Field(description=...)`` shape, differing only in the description
-    text -- a structural clone SonarCloud's duplication detector flags as one
-    family regardless of the literal string. One owned factory collapses
-    every call site to this single declaration (SSOT, DRY).
-    """
-    return m.Field(description=description)
-
-
-class _ConfigContract(m.ContractModel):
-    """Private declarative base for schema-loaded codegen records."""
-
-    model_config = m.ConfigDict(
-        strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
-    )
+from ._defaults import immutable_empty_mapping, tool_version_field
 
 
 class FlextInfraModelsMiseToolchain:
     """Mise toolchain and beads configuration models."""
+
+    class _ConfigContract(m.ContractModel):
+        """Private declarative base for schema-loaded codegen records."""
+
+        model_config = m.ConfigDict(
+            strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
+        )
 
     class MiseToolSpec(_ConfigContract):
         """One mise backend declared in ``codegen.yaml``, projected to ``.mise.toml``.
@@ -128,7 +114,7 @@ class FlextInfraModelsMiseToolchain:
         # operator-owned forks resolved as latest, so the default frees every
         # selector family and the vocabulary stays declared on this owner.
         suspended_mise_selector_patterns: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 default=(),
                 description=(
@@ -551,4 +537,4 @@ class FlextInfraModelsMiseToolchain:
             return self
 
 
-__all__: list[str] = ["FlextInfraModelsMiseToolchain", "tool_version_field"]
+__all__: list[str] = ["FlextInfraModelsMiseToolchain"]

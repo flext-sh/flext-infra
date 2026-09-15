@@ -88,4 +88,4 @@ class TestsFlextInfraRuffBlanketMaskIsUnrepresentable:
             _ = m.Infra.ProjectRuffConfig.model_validate(payload)
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

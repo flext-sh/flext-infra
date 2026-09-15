@@ -17,6 +17,7 @@ from flext_tests import tm
 
 import flext_infra
 from flext_infra import c, config
+from tests import t
 
 
 class TestsFlextInfraRootMakefileSingleOwner:
@@ -50,4 +51,4 @@ class TestsFlextInfraRootMakefileSingleOwner:
         tm.that(generic, lacks="workspace_custom.mk")
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

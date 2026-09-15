@@ -48,7 +48,7 @@ make fix
 make fmt
 make check
 make test
-make conform
+make gen
 ```
 
 Tests run only through the retained Testmon cache. Warnings, skips, empty

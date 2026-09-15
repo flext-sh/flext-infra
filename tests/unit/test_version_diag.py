@@ -10,9 +10,13 @@ import flext_infra as infra_pkg
 from flext_infra import u
 
 
-def test_version_diag() -> None:
-    project_root = Path(__file__).resolve().parents[2]
-    metadata_result = u.Infra.read_project_metadata_result(project_root)
+class TestsFlextInfraVersionDiag:
+    def test_version_diag(self) -> None:
+        project_root = Path(__file__).resolve().parents[2]
+        metadata_result = u.Infra.read_project_metadata_result(project_root)
 
-    tm.ok(metadata_result)
-    tm.that(infra_pkg.__version__, eq=metadata_result.value.project.version)
+        tm.ok(metadata_result)
+        tm.that(infra_pkg.__version__, eq=metadata_result.value.project.version)
+
+
+__all__: list[str] = ["TestsFlextInfraVersionDiag"]

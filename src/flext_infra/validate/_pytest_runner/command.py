@@ -21,8 +21,13 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     plugin, so the two never share a process).
     """
 
-    @staticmethod
-    def _plugin_policy_args() -> t.VariadicTuple[str]:
+    def ci_excluded_markers(self) -> t.StrTuple:
+        """Use the same CI token as generated workflows and pre-commit hooks."""
+        if self.ci_context:
+            return config.Infra.tooling.tools.pytest.ci_excluded_markers
+        return ()
+
+    def _plugin_policy_args(self) -> t.VariadicTuple[str]:
         """Apply the same configured plugin contract to collection and execution."""
         pytest = config.Infra.tooling.tools.pytest
         # External-token gates (SSOT external-gate-markers) are deselected in
@@ -36,7 +41,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             "-o",
             f"{c.Infra.ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE}={pytest.asyncio_default_fixture_loop_scope}",
             "-m",
-            pytest.external_gate_deselection,
+            f"not ({' or '.join((*pytest.external_gate_markers, *self.ci_excluded_markers()))})",
         )
 
     def build_selection_command(
@@ -147,6 +152,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             f"--timeout={pytest.case_timeout_seconds}",
             f"--maxfail={pytest.max_failures}",
             f"--junitxml={report_dir / 'junit.xml'}",
+            f"--report-log={report_dir / 'events.jsonl'}",
             *trailing,
             "-n",
             workers,

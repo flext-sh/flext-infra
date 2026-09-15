@@ -58,8 +58,15 @@ class FlextInfraPytestRunnerExecution(
             timeout=pytest.run_timeout_seconds,
             env=self._selection_env(),
         ).unwrap()
+        self._record_process_outcome(
+            report_dir, "inventory" if complete else "selection", outcome.outcome
+        )
         # Exit code 5 is pytest's "no tests ran": testmon selected nothing.
-        if outcome.outcome.raw_return_code not in {0, 5}:
+        if (
+            outcome.outcome.raw_return_code not in {0, 5}
+            or outcome.outcome.timed_out
+            or outcome.outcome.forwarded_signal is not None
+        ):
             detail = (outcome.stderr or outcome.stdout).strip()
             msg = f"testmon selection failed ({outcome.outcome.raw_return_code}): {detail}"
             raise RuntimeError(msg)
@@ -91,7 +98,7 @@ class FlextInfraPytestRunnerExecution(
             expires_at_monotonic=self.started_at_monotonic + pytest.run_timeout_seconds,
             termination_grace_seconds=pytest.termination_grace_seconds,
         )
-        return u.Cli.run_to_file(
+        outcome = u.Cli.run_to_file(
             command,
             report_dir / "pytest.log",
             cwd=self.root,
@@ -99,9 +106,35 @@ class FlextInfraPytestRunnerExecution(
             live=True,
             deadline=deadline,
         ).unwrap()
+        self._record_process_outcome(report_dir, "suite", outcome)
+        return outcome
+
+    @staticmethod
+    def _record_process_outcome(
+        report_dir: Path, phase: str, outcome: p.Cli.ProcessOutcome
+    ) -> None:
+        """Preserve the process owner's causal fields even when JUnit is absent."""
+        recorded = m.Cli.ProcessOutcome.model_validate(outcome, from_attributes=True)
+        receipt = report_dir / f"{phase}-outcome.json"
+        u.Cli.atomic_write_text_file(
+            receipt, recorded.model_dump_json(indent=2) + "\n"
+        ).unwrap()
+        if not u.Cli.process_succeeded(outcome):
+            sys.stderr.write(
+                f"pytest {phase}: raw_return_code={outcome.raw_return_code} "
+                f"timed_out={outcome.timed_out} "
+                f"forwarded_signal={outcome.forwarded_signal}; receipt={receipt}\n"
+            )
+        if outcome.raw_return_code == 0 and not u.Cli.process_succeeded(outcome):
+            msg = f"pytest {phase} reported zero after an interrupted lifecycle: {receipt}"
+            raise RuntimeError(msg)
 
     def _finalize(
-        self, report_dir: Path, *, cache_restored: bool = False
+        self,
+        report_dir: Path,
+        *,
+        cache_restored: bool = False,
+        raw_return_code: int = 0,
     ) -> p.Result[int]:
         """Reject incomplete evidence and publish one bounded summary."""
         accounting = self._accounting(
@@ -116,7 +149,7 @@ class FlextInfraPytestRunnerExecution(
             diagnostics.error_count,
             diagnostics.warning_count,
         ))
-        final_exit = 1 if rejected else 0
+        final_exit = raw_return_code or int(rejected)
         external_gates = ",".join(
             config.Infra.tooling.tools.pytest.external_gate_markers
         )
@@ -124,6 +157,7 @@ class FlextInfraPytestRunnerExecution(
             f"executed={accounting.executed_count}\n"
             f"deselected={accounting.deselected_count}\n"
             f"not_executed_external_gates={external_gates}\n"
+            f"not_executed_ci_markers={','.join(self.ci_excluded_markers())}\n"
             f"cache_restored={cache_restored}\n"
             f"failed={diagnostics.failed_count}\nerrors={diagnostics.error_count}\n"
             f"warnings={diagnostics.warning_count}\nskipped={diagnostics.skipped_count}\n"
@@ -159,16 +193,31 @@ class FlextInfraPytestRunnerExecution(
         outcome = self._run_suite(command, report_dir)
         cache_hit = (
             outcome.raw_return_code == pytest.ExitCode.NO_TESTS_COLLECTED
+            and not outcome.timed_out
+            and outcome.forwarded_signal is None
             and not selection
             and cache_restored
         )
-        if not u.Cli.process_succeeded(outcome) and not cache_hit:
+        completed_failure = (
+            outcome.raw_return_code == pytest.ExitCode.TESTS_FAILED
+            and not outcome.timed_out
+            and outcome.forwarded_signal is None
+        )
+        if (
+            not u.Cli.process_succeeded(outcome)
+            and not cache_hit
+            and not completed_failure
+        ):
             return r.ok(outcome.raw_return_code)
         state = self._inspect_cache(digest=pre_digest).unwrap()
         if not state.restored_accepted and not state.saveable:
             msg = f"testmon cache is unusable: {state.reason}"
             raise RuntimeError(msg)
-        return self._finalize(report_dir, cache_restored=cache_restored)
+        return self._finalize(
+            report_dir,
+            cache_restored=cache_restored,
+            raw_return_code=outcome.raw_return_code if completed_failure else 0,
+        )
 
     def execute_coverage(self) -> p.Result[int]:
         """Execute the whole suite under the coverage plugin (never testmon).

@@ -7,18 +7,18 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import c, m, u
+from flext_infra import c, m
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests.unit.workspace import WorktreeFixture
+from tests import t, u
 
 
-class TestsWorkspaceMemberLedgerIdentity:
+class TestsFlextInfraWorkspaceMemberLedgerIdentity:
     """Prove parent and member identities remain in their own coordinates."""
 
     @staticmethod
     def _member_ledger_identity(member: Path) -> m.Infra.WorkspaceSpec:
         """Rewrite the member's ledger input and self-load its typed identity."""
-        WorktreeFixture.write_beads_project(
+        u.Tests.WorktreeFixture.write_beads_project(
             member,
             workspace="member-workspace",
             database="member-database",
@@ -27,10 +27,10 @@ class TestsWorkspaceMemberLedgerIdentity:
         return tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
 
     @staticmethod
-    def _attach_member_to_workspace(tmp_path: Path) -> tuple[Path, Path]:
+    def _attach_member_to_workspace(tmp_path: Path) -> t.Pair[Path, Path]:
         """Create one governed, committed workspace/member checkout pair."""
         child_source = tmp_path / "child-source"
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             child_source,
             "fixture-member",
             workspace="member-workspace",
@@ -39,7 +39,7 @@ class TestsWorkspaceMemberLedgerIdentity:
             beads_owner=False,
         )
         parent = tmp_path / "workspace"
-        WorktreeFixture.initialize_governed_project(
+        u.Tests.WorktreeFixture.initialize_governed_project(
             parent,
             "fixture-workspace",
             workspace="root-workspace",
@@ -48,14 +48,14 @@ class TestsWorkspaceMemberLedgerIdentity:
         )
         member = parent / "apps" / "member"
         shutil.copytree(child_source, member)
-        WorktreeFixture.link_member_beads(
+        u.Tests.WorktreeFixture.link_member_beads(
             member,
             parent,
             workspace_name="root-workspace",
             database="root-database",
             issue_prefix="root-prefix",
         )
-        WorktreeFixture.attach_submodule(
+        u.Tests.WorktreeFixture.attach_submodule(
             parent, member, distribution="fixture-member", relative_path="apps/member"
         )
         return member, parent
@@ -138,7 +138,7 @@ class TestsWorkspaceMemberLedgerIdentity:
     ) -> None:
         """A linked member cannot self-authorize a second ledger."""
         member, _ = self._attach_member_to_workspace(tmp_path)
-        WorktreeFixture.write_beads_project(
+        u.Tests.WorktreeFixture.write_beads_project(
             member,
             workspace="rogue-workspace",
             database="rogue-database",
@@ -152,4 +152,4 @@ class TestsWorkspaceMemberLedgerIdentity:
         tm.that(str(workspace.error), has="rogue-workspace")
 
 
-__all__: tuple[str, ...] = ()
+__all__: t.VariadicTuple[str] = ()

@@ -15,7 +15,7 @@ from flext_tests import tm
 from flext_infra import c, m
 
 
-class TestsCiCustomSteps:
+class TestsFlextInfraCodegenCiCustomSteps:
     """The declared contract of the project-owned CI extension point."""
 
     def test_a_project_declaring_nothing_changes_nothing(self) -> None:
@@ -42,3 +42,6 @@ class TestsCiCustomSteps:
         tm.that(location.parts[0], eq=".github")
         tm.that("workflows" in location.parts, eq=False)
         tm.that(location.suffix, eq=".yml")
+
+
+__all__: list[str] = ["TestsFlextInfraCodegenCiCustomSteps"]

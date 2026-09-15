@@ -31,14 +31,21 @@ class FlextInfraModelsCheck:
                 alias="reports-dir", description="Directory used to write check reports"
             ),
         ] = f"{c.Infra.REPORTS_DIR_NAME}/check"
-        fix: Annotated[
-            bool, m.Field(False, description="Apply supported gate fixes before run")
-        ] = False
         check_only: Annotated[
             bool,
             m.Field(
                 alias="check-only",
                 description="Enable check-only mode for supported tools",
+            ),
+        ] = False
+        report_findings: Annotated[
+            bool,
+            m.Field(
+                alias="report-findings",
+                description=(
+                    "Emit additional context for findings left after applying; "
+                    "remaining findings still fail the command"
+                ),
             ),
         ] = False
         ruff_args: Annotated[
@@ -58,7 +65,7 @@ class FlextInfraModelsCheck:
             reports_dir = Path(self.reports_dir).expanduser()
             if reports_dir.is_absolute():
                 return reports_dir.resolve()
-            return (Path.cwd() / reports_dir).resolve()
+            return (self.repository_root / reports_dir).resolve()
 
     class CheckProjectTarget(m.ArbitraryTypesModel):
         """Resolved project target for workspace gate execution."""

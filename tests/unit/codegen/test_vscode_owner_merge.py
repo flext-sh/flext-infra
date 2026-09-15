@@ -11,7 +11,7 @@ from flext_infra.services.codegen import FlextInfraCodegen
 from tests import TestsFlextInfraUtilities as test_utilities
 
 
-class TestsVscodeOwnerMerge:
+class TestsFlextInfraVscodeOwnerMerge:
     """Prove the vscode owner merge renders canonical settings in conform."""
 
     def test_merge_marks_drift_and_renders_canonical_content(
@@ -77,3 +77,6 @@ class TestsVscodeOwnerMerge:
         tm.that(
             doc["files.exclude"], eq=dict(config.Infra.codegen.vscode_files_exclude_map)
         )
+
+
+__all__: list[str] = ["TestsFlextInfraVscodeOwnerMerge"]

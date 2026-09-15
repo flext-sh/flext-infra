@@ -12,7 +12,6 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
 from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:

@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+from tests import t
 
 _TEST_REPOSITORY_ROOT = Path(__file__).resolve().parent
 
@@ -36,7 +37,7 @@ class ExtraPathsTestSupport:
     @classmethod
     def workspace_with_dependency(
         cls, root: Path, *, uv_workspace: bool = True
-    ) -> tuple[Path, Path]:
+    ) -> t.Pair[Path, Path]:
         """Write one governed root and its ``flext-core`` dependency checkout."""
         (root / ".git").mkdir()
         (root / "src").mkdir()

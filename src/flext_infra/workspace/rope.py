@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import MutableMapping
+from keyword import iskeyword
 from pathlib import Path
 from time import perf_counter
 from types import TracebackType
@@ -370,7 +371,11 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             current_pkg=current_pkg,
             surface=current_pkg.split(".", maxsplit=1)[0] if current_pkg else "",
             generated_init=generated_init,
-            importable=bool(current_pkg),
+            importable=bool(current_pkg)
+            and all(
+                part.isidentifier() and not iskeyword(part)
+                for part in current_pkg.split(".")
+            ),
         )
         self._package_context_cache[cache_key] = context
         return context

@@ -23,32 +23,33 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-
-@pytest.fixture
-def gate_result(tmp_path: Path) -> Callable[..., m.Infra.GateResult]:
-    """Seed a package with the given modules and run the gate over it.
-
-    One owner for the whole arrange-act pair: every test differs only in which
-    modules it seeds, so repeating the package/context construction per test
-    would be a structural clone.
-    """
-
-    def run(*modules: tuple[str, str]) -> m.Infra.GateResult:
-        package = u.Tests.write_package_init(tmp_path / "src" / "pkg", "").parent
-        files = tf(base_dir=package)
-        for source, filename in modules:
-            files.create(source, filename)
-        context = m.Infra.GateContext(
-            repository_root=tmp_path, reports_dir=tmp_path / ".reports"
-        )
-        gate = FlextInfraTierWhitelistGate(repository_root=tmp_path)
-        return gate.check(tmp_path, context).result
-
-    return run
+    from tests import t
 
 
-class TestTierWhitelistGateReporting:
+class TestsFlextInfraTierWhitelistGateReporting:
     """Each violation reaches the report as its own issue."""
+
+    @pytest.fixture
+    def gate_result(self, tmp_path: Path) -> Callable[..., m.Infra.GateResult]:
+        """Seed a package with the given modules and run the gate over it.
+
+        One owner for the whole arrange-act pair: every test differs only in which
+        modules it seeds, so repeating the package/context construction per test
+        would be a structural clone.
+        """
+
+        def run(*modules: t.Pair[str, str]) -> m.Infra.GateResult:
+            package = u.Tests.write_package_init(tmp_path / "src" / "pkg", "").parent
+            files = tf(base_dir=package)
+            for source, filename in modules:
+                files.create(source, filename)
+            context = m.Infra.GateContext(
+                repository_root=tmp_path, reports_dir=tmp_path / ".reports"
+            )
+            gate = FlextInfraTierWhitelistGate(repository_root=tmp_path)
+            return gate.check(tmp_path, context).result
+
+        return run
 
     def test_clean_project_passes_without_errors(
         self, gate_result: Callable[..., m.Infra.GateResult]
@@ -80,8 +81,10 @@ class TestTierWhitelistGateReporting:
         # the summary "N violation(s)", so the gate emitted a single error that
         # named no file at all.
         result = gate_result(
-            ("from pydantic import BaseModel\n", "a.py"),
-            ("import structlog\n", "b.py"),
+            ("from pydantic import BaseModel\n", "a.py"), ("import structlog\n", "b.py")
         )
         tm.that(len(result.errors), eq=2)
         tm.that(" | ".join(result.errors), lacks="violation(s)")
+
+
+__all__: list[str] = ["TestsFlextInfraTierWhitelistGateReporting"]

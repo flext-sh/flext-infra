@@ -1,6 +1,3 @@
-<!-- AUTO-GENERATED FILE — regenerate through `make gen` from the workspace root. -->
-<!-- Source of truth: `docs/guides/using-flext-tests.md`; adjust that source, never this projection. -->
-
 # flext-infra - Using flext-tests
 
 > Project profile: `flext-infra`
@@ -61,8 +58,9 @@ fixtures above are not declared with `autouse=True`.
 ```python
 from __future__ import annotations
 
-from flext_core import FlextSettings
 from flext_tests import FlextTestsSettings
+
+from flext_core import FlextSettings
 
 
 def test_settings_isolation(settings: FlextTestsSettings) -> None:
@@ -70,26 +68,27 @@ def test_settings_isolation(settings: FlextTestsSettings) -> None:
     # The settings plugin resets runtime singletons between test functions.
     assert FlextSettings.fetch_global() is not settings
 ```
-
 ## Resetting singletons manually
 
 When a fixture is not enough:
 
 ```python
-from flext_core import FlextContainer, FlextSettings
 from flext_tests import FlextTestsSettings
+
+from flext_core import FlextContainer, FlextSettings
 
 FlextSettings.reset_for_testing()
 FlextTestsSettings.reset_for_testing()
 FlextContainer.reset_for_testing()
 ```
-
 ## Testing result flows
 
 Use the `r` alias instead of importing from `returns` directly:
 
 ```python
-from flext_tests import r
+from math import isclose
+
+from flext_tests import r, tm
 
 
 def safe_divide(a: float, b: float) -> r[float]:
@@ -101,7 +100,7 @@ def safe_divide(a: float, b: float) -> r[float]:
 def test_safe_divide() -> None:
     result = safe_divide(10, 2)
     assert result.success
-    assert result.unwrap() == 5.0
+    tm.that(isclose(result.unwrap(), 5.0), eq=True)
 
     failure = safe_divide(10, 0)
     assert failure.failure
@@ -122,7 +121,7 @@ workspace inventory.
 
 Repository conformance and the complete generated Makefile are owned solely by
 `flext-infra codegen conform`. Discover the current selector-free verbs through
-`make help` in the owning repository root. Mutating execution requires `APPLY=Y`;
+`make help` in the owning repository root. Each verb executes its operation directly;
 do not add a `WHAT` selector or duplicate the dispatcher in a test helper.
 
 Tests for this contract exercise the generated public commands and observable

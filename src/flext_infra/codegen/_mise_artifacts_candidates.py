@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import m, u
+from flext_infra import c, m, u
 
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 
@@ -27,11 +27,13 @@ def publication_plan(
             project.artifacts.windows_launcher,
         )
         for before, (name, mode) in zip(
-            before_states, files.PUBLICATION_SPECS, strict=True
+            before_states, c.Infra.PUBLICATION_SPECS, strict=True
         ):
             replacement = files.read_state(stage / name, required=True)
             if replacement.failure or replacement.value.content is None:
-                return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(replacement)
+                return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(
+                    replacement
+                )
             if replacement.value.mode != mode:
                 return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
                     f"staged Mise artifact mode differs: {stage / name}"

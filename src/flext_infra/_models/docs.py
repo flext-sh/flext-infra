@@ -10,12 +10,36 @@ from flext_infra import c, t
 
 from .config import FlextInfraConfigModels
 from .docs_generation import FlextInfraModelsDocsGeneration
+from .docs_collection import FlextInfraModelsDocsCollection
 
 
 # NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): docs transport
 # retains the exact metadata/config models and declares only analysis deltas.
 class _FlextInfraDocsContracts:
     """Field-only source and rendering contracts for documentation."""
+
+    class DocsTocToken(m.ContractModel):
+        """One rendered heading and its nested headings from Python-Markdown."""
+
+        level: Annotated[int, m.Field(description="Rendered heading level")]
+        id: Annotated[str, m.Field(description="Actual rendered heading ID")]
+        name: Annotated[str, m.Field(description="Sanitized heading label")]
+        html: Annotated[str, m.Field(description="Rendered inline heading HTML")]
+        data_toc_label: Annotated[
+            str, m.Field(alias="data-toc-label", description="Explicit TOC label")
+        ]
+        children: Annotated[
+            t.SequenceOf[_FlextInfraDocsContracts.DocsTocToken],
+            m.Field(description="Nested heading tokens"),
+        ]
+
+    class DocsRenderedToc(m.ContractModel):
+        """Validated output of Python-Markdown's registered TOC extension."""
+
+        toc_tokens: Annotated[
+            t.SequenceOf[_FlextInfraDocsContracts.DocsTocToken],
+            m.Field(description="Rendered table of contents tokens"),
+        ]
 
     class DocsExportBinding(m.ContractModel):
         """One public export bound to its defining module."""
@@ -47,8 +71,16 @@ class _FlextInfraDocsContracts:
         count: Annotated[t.NonNegativeInt, m.Field(description="Project count")]
 
 
-class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContracts):
+class FlextInfraModelsDocs(
+    FlextInfraModelsDocsGeneration, FlextInfraModelsDocsCollection, _FlextInfraDocsContracts
+):
     """Models for documentation services."""
+
+    class DocsCollectRequest(m.ContractModel):
+        """Fixed-effect collection command with repository-owned configuration."""
+
+        repository_root: Annotated[Path, m.Field(description="Repository owning the plans")]
+        configuration: Annotated[Path, m.Field(description="Versioned collection source associations")]
 
     class DocsGenerateRequest(m.ContractModel):
         """Canonical docs generation request payload.
@@ -67,7 +99,6 @@ class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContra
             Path | str | None,
             m.Field(description="Optional docs output directory override"),
         ] = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
-        apply: Annotated[bool, m.Field(description="Apply writes to disk")] = False
         # Why (X-47): conform's DECLARED scope excludes the workspace root
         # repository, so the docs generator must not render root as an output
         # scope either; standalone docs commands keep including it.

@@ -45,7 +45,7 @@ make gen
 make gen
 make check
 make test
-make conform
+make gen
 ```
 
 The second generation run must be a fixed point. Test validation retains the

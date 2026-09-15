@@ -49,36 +49,9 @@ UV_LINK_MODE := copy
 # End SECTION: project identity
 
 # === SECTION: public boundary (managed) ===
-# GNU Make built-ins are dot-prefixed; .SHELLSTATUS carries origin "override"
-# on Make >= 4.4, so they are excluded from caller-input detection.
-# Operator decision 2026-09-12 (option A): APPLY is a public input again.
-# Unset/empty APPLY mutates (today's default); APPLY=N selects the read-only
-# check recipe on every verb that declares one. An unknown command-line input
-# is now a hard error, never a warning-plus-mutation, so every declared public
-# input below MUST already be legitimate today or a live invocation breaks.
-# WHAT is the universal action selector (`make <verb> WHAT=<action>`): it
-# routes custom handlers in every project, and the generated `_dispatch` reads
-# it where script dispatch is active (cosmos-3flk9). `initialize` is the
-# hermetic bootstrap verb and derives GEN_INIT_ONLY above.
-PUBLIC_INPUTS := INDEX APPLY FAIL_FAST PR_TITLE ARGS GEN_INIT_ONLY UV PROJECT_INFRA_PYTHONPATH REPOSITORY_ROOT SETUP_BOOTSTRAP_ONLY WHAT CI
-COMMAND_LINE_INPUTS := $(foreach name,$(filter-out .%,$(.VARIABLES)),$(if $(filter command line override,$(origin $(name))),$(name)))
-UNKNOWN_INPUTS := $(filter-out $(PUBLIC_INPUTS),$(COMMAND_LINE_INPUTS))
-ifneq ($(strip $(UNKNOWN_INPUTS)),)
-$(error Unsupported Make input(s): $(UNKNOWN_INPUTS); declared public inputs are $(PUBLIC_INPUTS))
-endif
-# INDEX refines receipt-attested publication: Y uploads to the package index,
-# N publishes GitHub assets only.
-INDEX ?=
-ifneq ($(filter-out N,$(strip $(INDEX))),)
-$(error INDEX must be , N, or unset)
-endif
-# APPLY selects check mode on verbs that declare one (make.verbs[].check_mode);
-# CHECK_ONLY is the single selector every such verb's dispatch consumes below.
-APPLY ?=
-ifneq ($(filter-out N,$(strip $(APPLY))),)
-$(error APPLY must be N or unset)
-endif
-CHECK_ONLY := $(filter N,$(APPLY))
+# Operator law 2026-09-14: the Makefile validates no caller input. Every verb
+# always applies; a mistyped variable fails where the verb consumes it, and an
+# unconsumed variable is ignored.
 PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_PROCESS_TIMEOUT_SECONDS := 660
@@ -141,7 +114,7 @@ export TESTMON_DATAFILE
 # run inside MAKEFILE_ROOT: run from a foreign CWD they would report THAT
 # checkout's topology and redirect the verb to the wrong tree.
 ifeq ($(filter command line override,$(origin REPOSITORY_ROOT)),)
-ifneq ($(GEN_INIT_ONLY),)
+ifneq ($(filter standalone,$(MAKE_PROFILE))$(GEN_INIT_ONLY),)
 REPOSITORY_ROOT := $(MAKEFILE_ROOT)
 else
 REPOSITORY_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$(MAKEFILE_ROOT)"; fi)
@@ -150,23 +123,9 @@ endif
 # End SECTION: REPOSITORY_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary.
-PUBLIC_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen conform initialize mod waza duplication
-BUILTIN_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen conform initialize mod waza duplication
+PUBLIC_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication
+BUILTIN_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen initialize mod waza duplication
 SCRIPT_VERBS :=
-# CHECK_CAPABLE_VERBS is the declared subset of make.verbs that implements a
-# read-only recipe (config:make.verbs[].check_mode). APPLY=N on any other
-# verb (including every script-dispatch verb, which has no check_mode
-# concept) fails loud before dispatch instead of silently mutating or no-op.
-CHECK_CAPABLE_VERBS := deps fmt fix fix-enforcement docs gen mod
-# Why: this file re-parses from scratch in the recursive sub-make RUN_PUBLIC
-# spawns (`$(SELF_MAKE) "_builtin-$(1)"`), so MAKECMDGOALS there is the
-# internal `_builtin-<verb>` target, never the bare public verb name. Without
-# filtering those out, every check_mode verb failed its own APPLY=N dispatch
-# (e.g. `make deps APPLY=N` errored "_builtin-deps has no check mode" from
-# inside the very recursion APPLY=N was supposed to reach).
-ifneq ($(strip $(CHECK_ONLY)),)
-$(foreach goal,$(filter-out help,$(filter-out _%,$(MAKECMDGOALS))),$(if $(filter $(goal),$(CHECK_CAPABLE_VERBS)),,$(error $(goal) has no check mode; APPLY=N is not accepted for this verb)))
-endif
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
 CUSTOM_DECLARED_TARGETS :=
@@ -186,9 +145,8 @@ MYPY_PATHS := $(strip $(foreach d,src tests examples,$(if $(wildcard $(PROJECT_R
 # End SECTION: lint/type paths
 
 # === SECTION: project tool owner (managed) ===
-# Source: caller-selected uv command; make setup owns environment provisioning.
-UV ?= uv
-UV_REQUESTED := $(UV)
+# Source: the repository's declared Mise toolchain, provisioned by make setup.
+override UV := "$(SETUP_MISE)" -C "$(PROJECT_ROOT)" exec -- uv
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # End SECTION: project tool owner
@@ -196,10 +154,6 @@ CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # === SECTION: profile routing (managed) ===
 # Source: repository topology. workspace has .gitmodules; standalone does not.
 # Attached members share their Git superproject runtime; standalone owns itself.
-ifneq ($(filter $(MAKE_PROFILE),workspace standalone),$(MAKE_PROFILE))
-$(error Invalid MAKE_PROFILE '$(MAKE_PROFILE)')
-endif
-
 RUNTIME_ROOT := $(REPOSITORY_ROOT)
 # End SECTION: profile routing
 
@@ -235,21 +189,13 @@ ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV_BIN))
 SANITIZED_CALLER_PATH :=
 endif
 endif
-ifneq ($(filter Y,$(GEN_INIT_ONLY) $(SETUP_BOOTSTRAP_ONLY)),)
-RESOLVED_UV :=
-else
-RESOLVED_UV := $(shell PATH="$(SANITIZED_CALLER_PATH)" command -v "$(UV_REQUESTED)")
-ifneq ($(.SHELLSTATUS),0)
-$(error Required uv executable not found: $(UV_REQUESTED))
-endif
-endif
-override UV := $(if $(strip $(RESOLVED_UV)),$(RESOLVED_UV),$(UV_REQUESTED))
 override FLEXT_INFRA_PYTHON := $(FLEXT_INFRA_RUNTIME_PYTHON)
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
 override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
-export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
+unexport UV
+export FLEXT_INFRA_PYTHON UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 .PHONY: _bootstrap_setup_tools
 
@@ -319,7 +265,7 @@ if [ -z "$$mise_storage_root" ]; then \
 	case "$$project_root/" in \
 		"$$mise_storage_root/"*) printf 'ERROR: persistent Mise storage must not contain the checkout: %s\n' "$$mise_storage_root" >&2; exit 2 ;; \
 	esac; \
-	for persistent_path in "$$mise_storage_root" "$$mise_storage_root/cache" "$$mise_storage_root/state" "$$mise_storage_root/installs" "$$mise_storage_root/shims" "$$mise_storage_root/bootstrap"; do \
+	for persistent_path in "$$mise_storage_root" "$$mise_storage_root/cache" "$$mise_storage_root/state" "$$mise_storage_root/installs" "$$mise_storage_root/shims" "$$mise_storage_root/uv-cache" "$$mise_storage_root/bootstrap"; do \
 		if [ -L "$$persistent_path" ]; then \
 			printf 'ERROR: persistent Mise path must not be a symlink: %s\n' "$$persistent_path" >&2; exit 2; \
 		fi; \
@@ -406,6 +352,7 @@ mise_exec() { \
 "MISE_STATE_DIR=$$mise_storage_root/state" \
 "MISE_INSTALLS_DIR=$$mise_storage_root/installs" \
 "MISE_SHIMS_DIR=$$mise_storage_root/shims" \
+"UV_CACHE_DIR=$$mise_storage_root/uv-cache" \
 "GIT_CEILING_DIRECTORIES=$$project_parent" \
 			"MISE_CEILING_PATHS=$$project_parent" \
 			"MISE_TRUSTED_CONFIG_PATHS=$$project_root" \
@@ -430,7 +377,7 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 		else mise_status=$$?; cat "$$mise_log"; printf 'setup probe: failed stage=%s exit=%s\n' "$${mise_log##*/}" "$$mise_status" >&2; return "$$mise_status"; fi; \
 		cat "$$mise_log"; \
 		if grep -Fq 'mise WARN' "$$mise_log"; then \
-			printf 'ERROR: Mise emitted a warning\n' >&2; return 2; \
+			printf 'ERROR: Mise emitted a warning; setup stopped (see %s)\n' "$$mise_log" >&2; return 2; \
 		fi; \
 		printf 'setup probe: end stage=%s exit=0\n' "$${mise_log##*/}" >&2; \
 	}; \
@@ -440,7 +387,7 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 		else mise_status=$$?; cat "$$mise_stderr_log" >&2; cat "$$mise_stdout_log"; return "$$mise_status"; fi; \
 		cat "$$mise_stderr_log" >&2; cat "$$mise_stdout_log"; \
 		if grep -Fq 'mise WARN' "$$mise_stderr_log" || grep -Fq 'mise WARN' "$$mise_stdout_log"; then \
-			printf 'ERROR: Mise emitted a warning\n' >&2; return 2; \
+			printf 'ERROR: Mise emitted a warning; setup stopped (see %s)\n' "$$mise_stderr_log" >&2; return 2; \
 		fi; \
 	}; \
 	latest_mise="$$mise"; \
@@ -483,7 +430,7 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 printf '%s\n' "$$mise_storage_root/shims" >> "$$GITHUB_PATH"; \
 fi; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
-	mise_exec project "$$latest_mise" -C "$$project_root" exec -- env "SETUP_DIRENV=$$direnv_executable" "SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" "CI=$(CI)" "=$()" $(SELF_MAKE) _setup_lifecycle
+	mise_exec project "$$latest_mise" -C "$$project_root" exec -- env "SETUP_DIRENV=$$direnv_executable" "SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" "CI=$(CI)" $(SELF_MAKE) _setup_lifecycle
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
@@ -496,7 +443,7 @@ endif
 # Workspace-root gate verbs fan out across declared members through the generic
 # `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
 # from the constants SSOT, never hardcoded here). Members and standalone projects
-# run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
+# run the gate locally. Every member runs; the summary names every failure.
 # Provisioning is declared once and shared by every profile. Creating a missing
 # venv is provisioning; clearing a present one is destruction, so it never happens.
 # A symlinked RUNTIME_VENV is a BORROWED environment: a linked worktree (a
@@ -514,7 +461,12 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 		$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"; \
 	fi; \
 	XDG_DATA_HOME="$${SETUP_DIRENV_XDG_DATA_HOME:?missing persistent direnv data home}" \
-		"$${SETUP_DIRENV:?missing Mise-resolved direnv executable}" allow "$(PROJECT_ROOT)"
+		"$${SETUP_DIRENV:?missing Mise-resolved direnv executable}" allow "$(PROJECT_ROOT)"; \
+	for member in $(WORKSPACE_SUBPROJECTS); do \
+		if [ -f "$(PROJECT_ROOT)/$$member/.envrc" ]; then \
+			XDG_DATA_HOME="$$SETUP_DIRENV_XDG_DATA_HOME" "$$SETUP_DIRENV" allow "$(PROJECT_ROOT)/$$member"; \
+		fi; \
+	done
 
 # A delegated runtime lives in another checkout, so this project has no local
 # environment of its own. Generated tooling still addresses the environment by
@@ -539,13 +491,14 @@ DOCS_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project
 # PYTHONPATH would make `make test` in a linked worktree execute that primary
 # tree instead of this checkout. Prefer PROJECT_ROOT/src so the Makefile owner
 # always wins over the shared editable (terminus T4 / path-purity).
-# Preserve the Make-owned UV_PROJECT_ENVIRONMENT used by setup. --project alone
-# can select a parent uv workspace's default venv, even for a standalone member.
-UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u PROJECT_ROOT PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
+# Execute the interpreter provisioned by setup without discovering a project
+# workspace or creating a dependency-resolution file during a runtime command.
+UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u PROJECT_ROOT PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --no-project --python "$(RUNTIME_PYTHON)"
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
-PROJECT_FLEXT_INFRA := if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; fi; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
+PROJECT_INFRA_RUN := if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; fi; "$(SETUP_MISE)" -C "$(PROJECT_ROOT)" exec -- env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON)
+PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra
 # Scaffold dev tools live in the validated optional dev
-# profile; a fresh project must create its lock before later check-mode locks.
+# profile; setup resolves the declared dependency branches at their current tips.
 # Keyed on the environment's OWNER, not on the caller's profile. A member has
 # no local venv -- RUNTIME_VENV is RUNTIME_ROOT/.venv -- so every checkout that
 # provisions a shared environment must describe the same contents. A member
@@ -554,14 +507,11 @@ PROJECT_FLEXT_INFRA := if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: 
 # `uv sync --check` permanently divergent. A standalone project owns its venv
 # alone and has no workspace packages to include.
 SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(WORKSPACE_SUBPROJECTS)),1,))
-# CI must verify the committed lock against declared metadata before syncing;
-# --frozen bypasses that check and can omit newly declared runtime dependencies.
-# Locally, --refresh re-resolves branch-tracked git dependencies (flext-* pinned
-# to the integration branch are moving sources by declaration, flext-62fbu), so
-# `make setup` always provisions the current package tips. Deleting uv.lock is
-# never needed: setup reconciles the stale-git-ref case itself (operator
-# request 2026-09-10).
-UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups $(if $(CI),--locked ,--refresh)
+# No lock is committed, so there is nothing for `--locked` to honour: the fleet
+# resolves dependency floors from pyproject on every setup, in CI exactly as
+# locally. `--upgrade` advances existing local resolutions; `--refresh` re-reads
+# branch metadata instead of retaining a cached tip (operator 2026-09-14).
+UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups --upgrade --refresh
 
 ifeq ($(GEN_INIT_ONLY),)
 -include custom.mk
@@ -599,7 +549,7 @@ define _run_for_all_projects
 endef
 
 .PHONY: $(PUBLIC_VERBS) $(addprefix _builtin-,$(PUBLIC_VERBS))
-.PHONY: _builtin_gen_check _builtin_gen_init _builtin_gen_all _builtin_gen_apply
+.PHONY: _builtin_gen_init _builtin_gen_all
 
 
 help:
@@ -656,10 +606,7 @@ publication: _builtin_require_environment
 gen: _builtin_require_environment
 	$(call RUN_PUBLIC,gen)
 
-conform: _builtin_require_environment
-	$(call RUN_PUBLIC,conform)
-
-initialize:
+initialize: _builtin_require_environment
 	$(call RUN_PUBLIC,initialize)
 
 mod: _builtin_require_environment
@@ -734,8 +681,6 @@ _builtin-help:
 
 	@printf '  %-16s %s\n' 'gen' 'Regenerate every managed projection atomically.';
 
-	@printf '  %-16s %s\n' 'conform' 'Prove generated projections are at their fixed point.';
-
 	@printf '  %-16s %s\n' 'initialize' 'Materialize the declared package initializer graph.';
 
 	@printf '  %-16s %s\n' 'mod' 'Apply the declared structural codemods.';
@@ -744,7 +689,6 @@ _builtin-help:
 
 	@printf '  %-16s %s\n' 'duplication' 'Run the canonical jscpd duplicate-code gate.';
 
-	@printf '%s\n' 'Verbs mutate by default; pass APPLY=N to run a check-capable verb read-only.';
 
 # A project owns the sources declared by its manifest. The generated setup
 # reconciler validates every initialized checkout before mutation, initializes
@@ -913,9 +857,6 @@ _builtin_setup_environment: _builtin_setup_submodules
 endif
 # End SECTION: setup environment
 
-_builtin_deps_check: _builtin_require_environment
-	$(call _run_for_all_projects,--check)
-
 _builtin_deps_lock:
 	$(call _run_for_all_projects,)
 
@@ -952,24 +893,23 @@ _builtin-self-test: _builtin_require_environment
 
 _builtin-self-check: _builtin_require_environment
 	@set -eu; \
-		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication,budget"; \
+		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
 		if [ "$(strip $(CI))" = "Y" ]; then \
-			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication,budget"; \
-			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells codemod layout canonical-alias direnv duplication budget\n'; \
+			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
+			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist index-declarations smells codemod layout canonical-alias direnv duplication\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
 		printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
 		exit 2; \
 	fi; \
-	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects .
+	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects . --apply
 
 _builtin-self-fmt: _builtin_require_environment
 	@$(UV_RUN) ruff format --preview $(RUFF_PATHS)
 	@$(UV_RUN) ruff check --preview --fix --unsafe-fixes $(RUFF_PATHS)
 
 _builtin-self-fix: _builtin_require_environment
-	@$(UV_RUN) ruff check --preview --fix --unsafe-fixes $(RUFF_PATHS)
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,canonical-alias,smells" --projects . --apply
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,canonical-alias,smells" --projects . --apply --report-findings
 
 _builtin-self-build:
 	@$(UV) build --project "$(PROJECT_ROOT)"
@@ -982,24 +922,22 @@ _builtin-self-docs: _builtin_docs_all
 _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
 
-# `check` is read-only by contract: it never mutates the tree. Fixing is owned
-# by `make fix` and formatting by `make fmt`, both run BEFORE check. the fixer here
-# made the same tools run twice with conflicting intents,
-# so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
+# Local gates apply their declared repairs on every invocation.
+# Both check and fix fail while findings remain.
 # CI=Y keeps make.ci.check_gates, the strict complement of
 # make.ci.local_check_gates.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
-		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication,budget"; \
+		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
 		if [ "$(strip $(CI))" = "Y" ]; then \
-			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,codemod,layout,canonical-alias,direnv,duplication,budget"; \
-			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells codemod layout canonical-alias direnv duplication budget\n'; \
+			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
+			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist index-declarations smells codemod layout canonical-alias direnv duplication\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
 		printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
 		exit 2; \
 	fi; \
-	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects .
+	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects . --apply
 
 _builtin_test_all: _builtin_require_environment
 
@@ -1012,35 +950,20 @@ _builtin_test_all: _builtin_require_environment
 		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
 # Ruff is the style/autofix rule (make.ruff in codegen.yaml). Every
-# invocation uses --preview. fmt also runs check --fix --unsafe-fixes
-# --preview. Never weaken ruff to keep a file; change the code.
-_builtin_fmt_check: _builtin_require_environment
-	@$(UV_RUN) ruff format --preview --check $(RUFF_PATHS)
-
+# invocation uses --preview. Never weaken ruff to keep a file; change the code.
+# fmt and fix apply corrections and fail while diagnostics remain.
+# Their reports preserve the same verdict as the underlying quality gates.
 _builtin_fmt_all: _builtin_require_environment
 	@$(UV_RUN) ruff format --preview $(RUFF_PATHS)
 	@$(UV_RUN) ruff check --preview --fix --unsafe-fixes $(RUFF_PATHS)
 
-_builtin_fmt_apply: _builtin_fmt_all
-
-_builtin_fix_check: _builtin_require_environment
-	@$(UV_RUN) ruff check --preview --no-fix $(RUFF_PATHS)
-
 _builtin_fix_all: _builtin_require_environment
-	@$(UV_RUN) ruff check --preview --fix --unsafe-fixes $(RUFF_PATHS)
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,canonical-alias,smells" --projects . --apply
-
-_builtin_fix_apply: _builtin_fix_all
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,canonical-alias,smells" --projects . --apply --report-findings
 
 # Catalog-driven enforcement fixes: every ENFORCE rule whose fix action is
 # declared safe, applied through its registered adapter.
 _builtin_fix_enforcement: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check fix-enforcement --repository-root "$(PROJECT_ROOT)" --safe-only --apply
-
-# Omitting --apply is the owner's own dry-run contract (WriteMixin.apply
-# defaults False): the same catalog scan, no mutation.
-_builtin_fix_enforcement_check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check fix-enforcement --repository-root "$(PROJECT_ROOT)" --safe-only
 
 
 _builtin_run_default: _builtin_require_environment
@@ -1050,18 +973,16 @@ _builtin_status_diagnostics: _builtin_require_environment
 	@printf 'profile=%s\nproject=%s\nruntime=%s\n' \
 		'$(MAKE_PROFILE)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
 	@$(UV) --version
-	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
 		$(UV) pip check --python "$(RUNTIME_VENV)"; \
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
-# In-process fan-out (no per-project subprocess fork), so CHECK_ONLY branches
-# directly here in both profiles: APPLY=N never passes --apply for any action.
-_builtin_docs_all:
+_builtin_docs_all: _builtin_gen_all
 	@set -eu; \
 	for action in $(DOCS_ACTIONS); do \
-		case "$$action" in fix) mode=$(if $(CHECK_ONLY),,--apply) ;; *) mode= ;; esac; \
+		mode=; \
+		case "$$action" in fix) mode=--apply ;; esac; \
 		$(PROJECT_FLEXT_INFRA) docs "$$action" --repository-root "$(PROJECT_ROOT)" --output-dir ".reports/docs" $$mode $(DOCS_PROJECT_ARGS); \
 	done
 
@@ -1122,9 +1043,6 @@ _builtin_release_publish: _builtin_require_environment
 # journals ordinary, Mise, lazy-init, and documentation phases through one fixed
 # point. Dependency upgrades remain a separate explicit verb because they rewrite
 # lock floors; gen never runs another writer before or after conform's journal.
-_builtin_gen_check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
-
 _builtin_gen_init:
 	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --apply
 	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --check
@@ -1132,38 +1050,21 @@ _builtin_gen_init:
 _builtin_gen_all:
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
-_builtin_gen_apply: _builtin_gen_all
-
 # Structural rewrites have one selector-free public Make surface. The current
 # directory defines scope; callers never address ast-grep, Rope, or LSP directly.
 _builtin_mod_apply: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) refactor mod --apply
 
-# Omitting --apply is the owner's own scan-only contract
-# (FlextInfraCodemodBatchApply.effective_dry_run): prove the fixed point,
-# mutate nothing.
-_builtin_mod_check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor mod
-
-# Selector-free public verbs map one-to-one to their canonical implementation.
-# CHECK_ONLY routes deps/fmt/fix/fix-enforcement/gen/mod (config:make.verbs[]
-# .check_mode) to their read-only sibling target below; docs branches on
-# CHECK_ONLY inside its own recipe body instead (single command, one --apply
-# argument to flip). Every other mapping is unconditional because
-# CHECK_CAPABLE_VERBS already rejected APPLY=N on those verbs earlier.
-_builtin-deps: $(if $(CHECK_ONLY),_builtin_deps_check,_builtin_deps_upgrade)
+# Selector-free public verbs map one-to-one to their canonical implementation;
+# each implementation owns one fixed operation.
+_builtin-deps: _builtin_deps_upgrade
 _builtin-build: _builtin_build_artifacts
 _builtin-check: _builtin_check_all
 _builtin-test: _builtin_test_all
-_builtin-fmt: $(if $(CHECK_ONLY),_builtin_fmt_check,_builtin_fmt_all)
-_builtin-fix: $(if $(CHECK_ONLY),_builtin_fix_check,_builtin_fix_all)
-_builtin-fix-enforcement: $(if $(CHECK_ONLY),_builtin_fix_enforcement_check,_builtin_fix_enforcement)
+_builtin-fmt: _builtin_fmt_all
+_builtin-fix: _builtin_fix_all
+_builtin-fix-enforcement: _builtin_fix_enforcement
 _builtin-audit:
-	@if [ "$(MAKE_PROFILE)" = "workspace" ]; then \
-		$(UV) lock --project "$(PROJECT_ROOT)" --check; \
-	else \
-		printf '%s\n' "audit: dependency truth is owned by the fleet workspace lock (design B, flext-62fbu); run the audit at the fleet root."; \
-	fi
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 _builtin-status: _builtin_status_diagnostics
@@ -1174,13 +1075,11 @@ _builtin-release-version: _builtin_release_version
 _builtin-release-tag: _builtin_release_tag
 _builtin-release-build: _builtin_release_build
 _builtin-publication: _builtin_release_publish
-_builtin-gen: $(if $(CHECK_ONLY),_builtin_gen_check,_builtin_gen_all)
-_builtin-conform: _builtin_gen_check
+_builtin-gen: _builtin_gen_all
 _builtin-initialize: _builtin_gen_init
-_builtin-mod: $(if $(CHECK_ONLY),_builtin_mod_check,_builtin_mod_apply)
+_builtin-mod: _builtin_mod_apply
 _builtin-waza:
 	@cd "$(PROJECT_ROOT)" && "$(SETUP_MISE)" exec -- waza check --no-update-check
 _builtin-duplication:
 	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates duplication --projects .
-
 

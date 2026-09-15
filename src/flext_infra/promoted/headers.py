@@ -107,7 +107,7 @@ def require_bool(data: Mapping[str, t.JsonValue], key: str, path: Path) -> bool:
     return value
 
 
-def parse_aliases(value: t.JsonValue | None, path: Path) -> tuple[str, ...]:
+def parse_aliases(value: t.JsonValue | None, path: Path) -> t.VariadicTuple[str]:
     """Parse the aliases field from a command header.
 
     Returns:
@@ -118,7 +118,7 @@ def parse_aliases(value: t.JsonValue | None, path: Path) -> tuple[str, ...]:
     return parse_string_list(value, "aliases", path)
 
 
-def parse_alias_spec(alias: str, command: p.Infra.Promoted.Command) -> tuple[str, str]:
+def parse_alias_spec(alias: str, command: p.Infra.Promoted.Command) -> t.Pair[str, str]:
     """Parse one alias specification into alias name and target WHAT.
 
     Returns:
@@ -140,7 +140,7 @@ def parse_alias_spec(alias: str, command: p.Infra.Promoted.Command) -> tuple[str
 
 def parse_string_list(
     value: t.JsonValue | None, field: str, path: Path
-) -> tuple[str, ...]:
+) -> t.VariadicTuple[str]:
     """Parse a TOML list of strings.
 
     Returns:
