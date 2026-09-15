@@ -82,7 +82,17 @@ fi
 # End SECTION: virtual environment
 
 {% if gascity is not none %}
+# Repository policy permits this capability; the caller's explicit city
+# identity selects its runtime. Standalone activation owns no inherited ledger.
+if [[ -v {{ gascity.identity_var }} ]]; then
 {% include "_envrc_beads.j2" %}
+else
+{% for var in gascity.unset_vars -%}
+  unset {{ var }}
+{% endfor -%}
+  unset BEADS_DOLT_SERVER_HOST BEADS_DOLT_SERVER_PORT
+  unset BEADS_DOLT_SERVER_DATABASE BEADS_DOLT_SERVER_MODE
+fi
 {% endif %}
 
 # === SECTION: local overrides (managed) ===

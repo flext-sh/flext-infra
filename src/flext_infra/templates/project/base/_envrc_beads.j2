@@ -24,14 +24,14 @@ watch_file "$gas_city_root/{{ gascity.city_state_relpath }}"
 # managed Dolt server. Its runtime publication is the only port authority.
 export BEADS_DOLT_SERVER_HOST=127.0.0.1
 BEADS_DOLT_SERVER_PORT="$(
-  jq -r 'if .running == true and (.port | type == "number") and .port > 0 then
+  jq -er 'if .running == true and (.port | type == "number") and .port > 0 then
     .port
   else
     error("Gas City managed Dolt state is not healthy")
   end' "$gas_city_root/{{ gascity.city_state_relpath }}"
 )"
 BEADS_DOLT_SERVER_DATABASE="$(
-  jq -r 'if .dolt_database != null and .dolt_database != "" then
+  jq -er 'if (.dolt_database | type == "string") and (.dolt_database | length > 0) then
     .dolt_database
   else
     error("this workspace has no Beads dolt_database identity")
