@@ -107,9 +107,7 @@ class TestsFlextInfraGenRespectsInvocationScope:
         assert "CODEGEN_PROJECT_ARGS" not in text
 
         bodies = self._recipe_bodies()
-        expected_modes = {
-            "_builtin_gen_all": ("$(if $(filter N,$(APPLY)),check,apply)",)
-        }
+        expected_modes = {"_builtin_gen_all": ("apply",)}
         for target, modes in expected_modes.items():
             conform_lines = [
                 line for line in bodies[target] if "codegen conform" in line

@@ -34,17 +34,22 @@ defeitos customizados resolvidos nem autoriza desativar seus detectores.
 | Contexto para retomada imediata | Estado observado |
 | --- | --- |
 | Branch e PR de entrega | `fix/docs-renderer-contract`, [PR #732](https://github.com/flext-sh/flext-infra/pull/732), ainda Draft/WIP para `0.12.0-dev` |
+| Handoff e reparos publicados | `4cb1f038c0bc6988acb87bd0e5c84335ba38dba7`, push exit 0; inclui guia de contexto, mapa de ADRs, skill e reparos de escopo/ordem da automação |
 | Último checkpoint antes do merge | `a895de0c9`, preserva a projeção standalone após setup |
 | Base consultada | `origin/0.12.0-dev` em `a254c1f3f`; fetch exit 0; merge no-ff da base respondeu `Already up to date`, exit 0 |
 | Composição preservada | Merge no-ff `d0b32d7d6`, publicado com push exit 0, absorve `origin/bugfix/stabilize-0.12.0` em `8b03723cb`, que reúne os PRs #723, #724 e #730; os 80 arquivos conflitantes foram reconciliados |
 | Reconciliação | Fontes Python de `src`/`tests` parsearam; nenhum nome de teste dos dois lados conflitantes foi perdido; métodos da fixture antiga existem no novo responsável. Isso não substitui execução dos testes. |
 | Runtime medido antes do merge | `make status`: exit 0, perfil standalone no checkout; `make setup`: exit 0, 160 pacotes resolvidos, instalação local de `flext-infra==0.12.0`; recibo efetivo `uv 0.12.10` |
 | Outra contribuição a avaliar | [PR #733](https://github.com/flext-sh/flext-infra/pull/733), `flext-ro6mj.1`, inclui coletor, transação e alterações sobre os mesmos responsáveis de codemod/docs; ainda não incorporada neste merge |
+| Atualização remota posterior | Novo fetch exit 0: a branch do PR #731 avançou de `8b03723cb` para `de3c7811a`, com reparo de imports relativos e testes; esses quatro commits posteriores ainda não foram absorvidos |
 | Aceite ainda não obtido | Nenhuma rodada completa válida de Ruff/Mypy/Pyright/Pyrefly, testes, build e runtime após esta composição; nenhum merge deste PR na integração |
 | Nova rodada de check | `stabilize-merged-check.log`, exit 2, 608,43 s: Ruff/lint 0, Mypy 0, Pyright 0, Pyrefly 3; total 569, incluindo namespace 382, codemod 180, LOC 3 e censo 1. Os três erros Pyrefly foram corrigidos depois da medição, ainda sem novo aceite. |
 | Automação realmente exercitada | `stabilize-mod-local.log`, exit 2 às 23:30:07Z: publicou o aninhamento de `_models/mise_toolchain.py`; a segunda passagem teve zero alterações semânticas. Terminou por ausência de progresso com 16 findings de detecção (14 ambiente, 2 ancestry), sem falso verde. |
 | Causa de escopo e custo | Rope promovia a chamada do membro para o superprojeto: 632 diretórios/4.737 módulos, 115,81 s. Após retirar a promoção no responsável de descoberta, a nova execução abriu o próprio infra: 54 diretórios/921 módulos, 1,35 s. A publicação semântica concluiu; o comando permaneceu vermelho pelos findings de detecção. |
-| Próxima ação concreta | Renovar as quatro análises, testes, build e runtime sobre a transformação publicada; tratar os 16 findings no seu responsável, avaliar o WIP correlato e a geração antes da promoção |
+| Geração e build | `make build`: exit 0, wheel e sdist. `make gen`, após corrigir o contrato sem seletores no template: exit 0, com verificações de ponto fixo, lazy-init e docs |
+| Primeira barreira obrigatória | `make test`: exit 2; recibo `20260914T233654.583765Z-456708` informa `raw_return_code=-15`, `timed_out=true`. Houve falhas de contrato Make e timeouts de 60 s antes do limite de 600 s da suíte; nenhum aceite completo |
+| Tracker atual | Comentários anteriores foram gravados; nova leitura de `flext-5fxu6.4` falhou com `no beads database found`. `bd where` resolve `.beads` de flext, mas `bd doctor` declara modo embedded; não houve reinitialização nem banco substituto |
+| Próxima ação concreta | Concluir a rodada dos quatro analisadores em `stabilize-runtime-check.log`; corrigir custos de setup/conform que interrompem a suíte; reconciliar as contribuições posteriores antes de nova validação final, review e merge |
 
 Para recuperar contexto sem repetir a investigação: consulte o
 [guia de execução](../guides/execution-context.md), o
@@ -145,7 +150,11 @@ a `flext-la3z5`.
 Há divergências documentais que não podem ser ocultadas: ADR-005 §6 contém a
 proibição antiga de AST; ADR-010 §3b e a skill local descrevem o circuito
 AST/Rope/LSP. ADR-010 §2 ainda menciona `APPLY=Y`, enquanto o plano de 14/09
-determina retirar `APPLY`. O checkpoint compartilhado contém `APPLY=N`.
+determina retirar `APPLY`. O checkpoint compartilhado continha `APPLY=N`.
+Na retomada, essa divergência foi corrigida no template: os verbos executam
+sua operação fixa e `make gen` regenerou o Makefile com exit 0. A aceitação
+completa dos testes permanece pendente; o reparo não deve ser confundido com
+um aceite anterior que nunca existiu.
 Essas diferenças não autorizam reverter contribuições nem escolher uma regra
 silenciosamente. A retomada deve reconciliar a intenção vigente no responsável
 e seu bead, sem introduzir outra gramática de comandos.

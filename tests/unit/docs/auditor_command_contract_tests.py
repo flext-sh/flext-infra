@@ -100,10 +100,11 @@ make test PROJECT=flext-demo MATCH=unit
         tm.that(issues[0].message, has="invented Make selector")
 
     @staticmethod
-    def test_rejects_legacy_apply_flag_on_a_declared_verb() -> None:
+    @pytest.mark.parametrize("value", ["Y", "N", "", "invalid"])
+    def test_rejects_legacy_apply_flag_on_a_declared_verb(value: str) -> None:
         """The exterminated `APPLY` flag is rejected in documented commands."""
         verb = next(spec.name for spec in config.Infra.codegen.make.verbs)
-        content = f"```bash\nmake {verb} APPLY=Y\n```\n"
+        content = f"```bash\nmake {verb} APPLY={value}\n```\n"
 
         issues = u.Infra.docs_command_contract_content_issues(
             content,
@@ -113,20 +114,6 @@ make test PROJECT=flext-demo MATCH=unit
 
         tm.that(len(issues), eq=1)
         tm.that(issues[0].message, has="legacy `APPLY` flag is exterminated")
-
-    @staticmethod
-    def test_accepts_apply_n_on_a_declared_verb() -> None:
-        """The current operator contract permits explicit non-mutating review."""
-        verb = next(spec.name for spec in config.Infra.codegen.make.verbs)
-        content = f"```bash\nmake {verb} APPLY=N\n```\n"
-
-        issues = u.Infra.docs_command_contract_content_issues(
-            content,
-            relative_path="docs/guides/getting-started.md",
-            effective_verbs=config.Infra.codegen.make.verbs,
-        )
-
-        tm.that(issues, eq=[])
 
     @staticmethod
     def test_accepts_plain_declared_verbs() -> None:

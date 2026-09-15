@@ -911,14 +911,14 @@ _builtin-self-check: _builtin_require_environment
 		printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
 		exit 2; \
 	fi; \
-	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects . $(if $(filter N,$(APPLY)),,--apply)
+	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects . --apply
 
 _builtin-self-fmt: _builtin_require_environment
-	@$(UV_RUN) ruff format $(if $(filter N,$(APPLY)),--preview --check,--preview) $(RUFF_PATHS)
-	@$(UV_RUN) ruff check $(if $(filter N,$(APPLY)),--preview --no-fix,--preview --fix --unsafe-fixes) $(RUFF_PATHS)
+	@$(UV_RUN) ruff format --preview $(RUFF_PATHS)
+	@$(UV_RUN) ruff check --preview --fix --unsafe-fixes $(RUFF_PATHS)
 
 _builtin-self-fix: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,canonical-alias,smells" --projects . $(if $(filter N,$(APPLY)),,--apply) --report-findings
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,canonical-alias,smells" --projects . --apply --report-findings
 
 _builtin-self-build:
 	@$(UV) build --project "$(PROJECT_ROOT)"
@@ -931,7 +931,7 @@ _builtin-self-docs: _builtin_docs_all
 _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
 
-# Local gates apply repairs by default; APPLY=N requests non-mutating review.
+# Local gates apply their declared repairs on every invocation.
 # Both check and fix fail while findings remain.
 # CI=Y keeps make.ci.check_gates, the strict complement of
 # make.ci.local_check_gates.
@@ -946,7 +946,7 @@ _builtin_check_all: _builtin_require_environment
 		printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
 		exit 2; \
 	fi; \
-	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects . $(if $(filter N,$(APPLY)),,--apply)
+	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects . --apply
 
 _builtin_test_all: _builtin_require_environment
 
@@ -963,11 +963,11 @@ _builtin_test_all: _builtin_require_environment
 # fmt and fix apply corrections and fail while diagnostics remain.
 # Their reports preserve the same verdict as the underlying quality gates.
 _builtin_fmt_all: _builtin_require_environment
-	@$(UV_RUN) ruff format $(if $(filter N,$(APPLY)),--preview --check,--preview) $(RUFF_PATHS)
-	@$(UV_RUN) ruff check $(if $(filter N,$(APPLY)),--preview --no-fix,--preview --fix --unsafe-fixes) $(RUFF_PATHS)
+	@$(UV_RUN) ruff format --preview $(RUFF_PATHS)
+	@$(UV_RUN) ruff check --preview --fix --unsafe-fixes $(RUFF_PATHS)
 
 _builtin_fix_all: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,canonical-alias,smells" --projects . $(if $(filter N,$(APPLY)),,--apply) --report-findings
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,canonical-alias,smells" --projects . --apply --report-findings
 
 # Catalog-driven enforcement fixes: every ENFORCE rule whose fix action is
 # declared safe, applied through its registered adapter.
@@ -992,9 +992,7 @@ _builtin_docs_all: _builtin_gen_all
 	@set -eu; \
 	for action in $(DOCS_ACTIONS); do \
 		mode=; \
-		if [ "$(APPLY)" != "N" ]; then \
-			case "$$action" in fix) mode=--apply ;; esac; \
-		fi; \
+		case "$$action" in fix) mode=--apply ;; esac; \
 		$(PROJECT_FLEXT_INFRA) docs "$$action" --repository-root "$(PROJECT_ROOT)" --output-dir ".reports/docs" $$mode $(DOCS_PROJECT_ARGS); \
 	done
 
@@ -1060,15 +1058,15 @@ _builtin_gen_init:
 	@$(PROJECT_FLEXT_INFRA) codegen init --repository-root "$(PROJECT_ROOT)" --check
 
 _builtin_gen_all:
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode $(if $(filter N,$(APPLY)),check,apply)
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
 # Structural rewrites have one selector-free public Make surface. The current
 # directory defines scope; callers never address ast-grep, Rope, or LSP directly.
 _builtin_mod_apply: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor mod $(if $(filter N,$(APPLY)),,--apply)
+	@$(PROJECT_FLEXT_INFRA) refactor mod --apply
 
 # Selector-free public verbs map one-to-one to their canonical implementation;
-# local repair verbs apply by default and accept the explicit APPLY=N opt-out.
+# each implementation owns one fixed operation.
 _builtin-deps: _builtin_deps_upgrade
 _builtin-build: _builtin_build_artifacts
 _builtin-check: _builtin_check_all

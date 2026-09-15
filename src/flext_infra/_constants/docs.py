@@ -130,8 +130,8 @@ class FlextInfraConstantsDocs:
         re.IGNORECASE,
     )
     """Match selectors outside the canonical root Make grammar."""
-    DOCS_APPLY_RE: Final[t.RegexPattern] = re.compile(r"\bAPPLY=(?!N(?:\s|$))")
-    """Reject mutation selectors other than the explicit APPLY=N dry run."""
+    DOCS_APPLY_RE: Final[t.RegexPattern] = re.compile(r"\bAPPLY\s*=")
+    """Reject the removed mutation selector for every supplied value."""
     DOCS_COMMAND_CONTRACT_DIRNAMES: Final[frozenset[str]] = frozenset({
         "guides",
         "standards",

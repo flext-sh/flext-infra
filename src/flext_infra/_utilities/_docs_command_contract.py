@@ -82,8 +82,8 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
                     )
                     if legacy_apply:
                         issue = (
-                            "legacy `APPLY` flag is exterminated: verbs mutate "
-                            "by default; only APPLY=N opts out of mutation"
+                            "legacy `APPLY` flag is exterminated: verbs always "
+                            "execute their declared operation"
                         )
                     elif verb_spec is None:
                         issue = f"Make verb `{verb}` is not declared by the config SSOT"
