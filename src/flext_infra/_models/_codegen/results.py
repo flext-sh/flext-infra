@@ -8,8 +8,8 @@ from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m, u
 
-from .. import FlextInfraModelsMixins as mm
 from ... import t
+from .. import FlextInfraModelsMixins as mm
 from .census import FlextInfraModelsCodegenCensus
 
 
@@ -62,20 +62,20 @@ class FlextInfraModelsCodegenResults:
         """Result of auto-fixing namespace violations for a project."""
 
         @staticmethod
-        def _violations_default() -> list[
+        def _violations_default() -> t.SequenceOf[
             FlextInfraModelsCodegenCensus.CensusViolation
         ]:
             """Violations default."""
             return []
 
         violations_fixed: Annotated[
-            list[FlextInfraModelsCodegenCensus.CensusViolation],
+            t.SequenceOf[FlextInfraModelsCodegenCensus.CensusViolation],
             m.Field(
                 default_factory=_violations_default, description="Fixed violations"
             ),
         ]
         violations_skipped: Annotated[
-            list[FlextInfraModelsCodegenCensus.CensusViolation],
+            t.SequenceOf[FlextInfraModelsCodegenCensus.CensusViolation],
             m.Field(
                 default_factory=_violations_default,
                 description="Skipped violations (not auto-fixable)",
@@ -173,7 +173,7 @@ class FlextInfraModelsCodegenResults:
         """Cross-project duplicate group with consolidation metadata."""
 
         constant_name: t.NonEmptyStr = m.Field(description="Constant identifier")
-        definitions: list[
+        definitions: t.SequenceOf[
             FlextInfraModelsCodegenResults.ConstantDefinition
         ] = m.Field(
             description="Definitions across projects"

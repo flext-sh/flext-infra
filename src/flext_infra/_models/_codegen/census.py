@@ -6,8 +6,8 @@ from typing import Annotated
 
 from flext_cli import m
 
-from .. import FlextInfraModelsMixins as mm
 from ... import t
+from .. import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsCodegenCensus:
@@ -27,14 +27,14 @@ class FlextInfraModelsCodegenCensus:
         """Aggregated census report for a single project."""
 
         @staticmethod
-        def _violations_default() -> list[
+        def _violations_default() -> t.SequenceOf[
             FlextInfraModelsCodegenCensus.CensusViolation
         ]:
             """Violations default."""
             return []
 
         violations: Annotated[
-            list[FlextInfraModelsCodegenCensus.CensusViolation],
+            t.SequenceOf[FlextInfraModelsCodegenCensus.CensusViolation],
             m.Field(
                 default_factory=_violations_default, description="Detected violations"
             ),
