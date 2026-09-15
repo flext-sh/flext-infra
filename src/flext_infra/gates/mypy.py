@@ -203,7 +203,11 @@ class FlextInfraMypyGate(FlextInfraGate):
                     line=diagnostic.line,
                     column=diagnostic.column,
                     code=diagnostic.code or "",
-                    message=diagnostic.message,
+                    message=(
+                        f"{diagnostic.message}\n{diagnostic.hint}"
+                        if diagnostic.hint
+                        else diagnostic.message
+                    ),
                     severity=diagnostic.severity,
                 )
             )
