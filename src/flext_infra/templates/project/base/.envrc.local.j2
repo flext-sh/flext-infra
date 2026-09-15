@@ -3,6 +3,9 @@
 # Source: BeadsWorkspaceEnvironmentSpec and Gas City runtime publication.
 # The city owns the server; this repository retains its database identity.
 {% if gascity %}
+{% for source in gascity.environment_sources %}
+source_env_if_exists "{{ source }}"
+{% endfor %}
 {% for var in gascity.unset_vars %}
 unset {{ var }}
 {% endfor %}
