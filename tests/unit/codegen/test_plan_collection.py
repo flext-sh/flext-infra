@@ -78,9 +78,9 @@ class TestsPlanCollection:
     def test_private_inventory_never_publishes_session_contents(
         self, tmp_path: Path
     ) -> None:
-        secret_text = "Private session text must stay at its source."
+        private_text = "Private session text must stay at its source."
         session = tmp_path / "sessions" / "session.jsonl"
-        self._write(session, secret_text)
+        self._write(session, private_text)
         config = m.Infra.PlanCollectionConfig(
             canonical_dir=Path("docs/plans"),
             sources=(
@@ -104,7 +104,7 @@ class TestsPlanCollection:
         tm.that(bundle.revisions, eq=())
         tm.that(any(state.path == session for state in bundle.source_states), eq=False)
         for plan in bundle.files:
-            tm.that(secret_text.encode() not in (plan.desired_content or b""), eq=True)
+            tm.that(private_text.encode() not in (plan.desired_content or b""), eq=True)
 
     def test_missing_source_is_not_empty_coverage(self, tmp_path: Path) -> None:
         with pytest.raises(FileNotFoundError, match="input"):

@@ -151,11 +151,13 @@ class FlextInfraUtilitiesDocsCollectionSources:
             timestamp = updated
         elif isinstance(updated, date):
             return original, None
-        elif len(updated) == 10:
-            date.fromisoformat(updated)
-            return original, None
-        else:
+        elif isinstance(updated, str):
+            parsed_date = date.fromisoformat(updated)
+            if parsed_date.isoformat() == updated:
+                return original, None
             timestamp = datetime.fromisoformat(updated)
+        else:
+            timestamp = updated
         if timestamp.tzinfo is None:
             return original, None
         return original, timestamp.astimezone(UTC).isoformat().replace("+00:00", "Z")

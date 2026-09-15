@@ -342,7 +342,8 @@ class FlextInfraMiseArtifactsVerification:
         verifier, and a hardcoded path exemption in a fleet-wide generator hides
         the next real corruption just as effectively as it hid that one.
         """
-        for expected in states:
+        for original_expected in states:
+            expected = original_expected
             if expected.parent_device is None and journal is not None:
                 rebound = cls._bind_source_parent(expected, journal)
                 if rebound.failure:

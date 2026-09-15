@@ -384,9 +384,7 @@ class FlextInfraCodegenTransaction:
                 )
             )
         bound = state.bind_created_parents(
-            layout,
-            active_journal.directories,
-            (*ordinary_staged.value, *mise_staged.value),
+            active_journal.directories, (*ordinary_staged.value, *mise_staged.value)
         )
         if bound.failure:
             return result_type.from_failure(
@@ -524,9 +522,7 @@ class FlextInfraCodegenTransaction:
                     layout, staged.error or f"cannot stage {phase} phase"
                 )
             )
-        staged = state.bind_created_parents(
-            layout, session.journal.directories, staged.value
-        )
+        staged = state.bind_created_parents(session.journal.directories, staged.value)
         if staged.failure:
             return result_type.from_failure(
                 self._recover_failure(
