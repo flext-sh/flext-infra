@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraCodegenCensus:
-    def _parse_violation(self, violation: str) -> r[m.Infra.CensusViolation]:
+    def _parse_violation(self, violation: str) -> p.Result[m.Infra.CensusViolation]:
         parsed = u.Infra.parse_namespace_validation(
             r[m.Infra.ValidationReport].ok(
                 m.Infra.ValidationReport(passed=True, violations=[violation])

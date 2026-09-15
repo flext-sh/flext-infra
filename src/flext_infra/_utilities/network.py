@@ -12,7 +12,7 @@ class FlextInfraUtilitiesNetwork:
     """Decide once, before effects, whether an endpoint answers at all."""
 
     @staticmethod
-    def endpoint_reachable(url: str, *, timeout_seconds: float) -> r[bool]:
+    def endpoint_reachable(url: str, *, timeout_seconds: float) -> p.Result[bool]:
         """Return whether one HEAD request receives any HTTP answer in time.
 
         A server that answers with an error status (403 from a rate limit, 404)

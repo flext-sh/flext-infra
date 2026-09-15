@@ -209,7 +209,7 @@ class TestsFlextInfraRefactorMainCli:
     )
 
     @staticmethod
-    def _parse_source_ast(source: str) -> r[CodeType]:
+    def _parse_source_ast(source: str) -> p.Result[CodeType]:
         try:
             return r[CodeType].ok(compile(source, "<refactor-test-source>", "exec"))
         except SyntaxError as exc:
