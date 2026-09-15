@@ -16,12 +16,12 @@ from .render import FlextInfraCodegenConformRender
 
 class FlextInfraCodegenConform(
     FlextInfraCodegenConformGitignoreMixin,
-    s[m.Infra.CodegenResult],
     FlextInfraCodegenConformBootstrap,
     FlextInfraCodegenConformPlan,
     FlextInfraCodegenConformExecute,
     FlextInfraCodegenConformRender,
     FlextInfraCodegenConformMisc,
+    s[m.Infra.CodegenResult],
 ):
     """Plan every selected output, then atomically write only a clean plan."""
 
