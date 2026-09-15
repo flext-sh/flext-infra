@@ -523,7 +523,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenResult].from_failure(docs_plans)
             docs_changed = tuple(
                 file
-                for file in self._owned_docs_files(request, plan, docs_plans.value)
+                for file in self._owned_docs_files(request, docs_plans.value)
                 if u.Infra.codegen_file_requires_effect(file)
             )
             if docs_changed:
@@ -581,7 +581,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 with_directories.value, docs_plans.error or "docs planning failed"
             )
             return r[m.Infra.CodegenResult].from_failure(aborted)
-        owned_docs_files = self._owned_docs_files(request, plan, docs_plans.value)
+        owned_docs_files = self._owned_docs_files(request, docs_plans.value)
         docs_analysis = m.Infra.CodegenPhaseAnalysis(
             phase="docs", files=owned_docs_files, inputs=docs_bundle.value.source_states
         )
@@ -669,7 +669,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _owned_docs_files(
         cls,
         request: m.Infra.CodegenConformRequest,
-        plan: m.Infra.CodegenPlan,
         files: t.SequenceOf[m.Infra.CodegenFilePlan],
     ) -> tuple[m.Infra.CodegenFilePlan, ...]:
         """Keep only docs plans owned by the invoked repository's own scope.
@@ -1543,11 +1542,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                         f"template destination parent is not a directory: {parent}"
                     )
-        print("DBG contract.destinations:", contract.destinations)
-        print("DBG contract.delegates:", contract.delegates)
         for entry, destination in scaffold_entries:
-            if destination == ".beads/metadata.json":
-                print("DBG metadata entry reached scaffold render loop:", entry.delegate)
             if entry.delegate != "render":
                 continue
             if destination == c.Infra.PYPROJECT_FILENAME and not contract.pyproject:
@@ -1738,8 +1733,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if entry.destination == managed.path.as_posix()
                 and entry.delegate == "render"
             )
-            if managed.path.as_posix() == ".beads/metadata.json":
-                print("DBG existing-loop metadata: entries=", [(e.destination, e.delegate, e.profiles, e.overwrite) for e in entries], "profile=", profile, "exists=", (root / managed.path).is_file(), "contract.destinations=", contract.destinations)
             if not entries:
                 continue
             if len(entries) != 1:
