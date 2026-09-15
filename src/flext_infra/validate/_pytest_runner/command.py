@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import sys
+from functools import lru_cache
+from importlib.metadata import version
 from pathlib import Path
 from typing import Final
 
@@ -11,6 +14,28 @@ from flext_infra import c, config, t
 from .base import FlextInfraPytestRunnerBase
 
 _NO_COVERAGE: Final[t.VariadicTuple[str]] = ("--no-cov",)
+_TOOLCHAIN_PACKAGES: Final[t.StrTuple] = (
+    "flext-infra",
+    "flext-tests",
+    "pytest",
+    "pytest-testmon",
+)
+
+
+@lru_cache(maxsize=1)
+def _toolchain_testmon_environment() -> str:
+    """Return the toolchain-fingerprinted testmon environment name.
+
+    The environment name digests the exact runner toolchain versions, so a
+    runner or plugin upgrade can never read a database written by an older
+    toolchain as a hot cache: the new environment starts cold and the first
+    run executes the whole suite for real (no false green).
+    """
+    fingerprint = ";".join(
+        f"{package}={version(package)}" for package in _TOOLCHAIN_PACKAGES
+    )
+    digest = hashlib.sha256(fingerprint.encode()).hexdigest()[:12]
+    return f"toolchain-{digest}"
 
 
 class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
@@ -61,6 +86,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             str(self.target),
             "--testmon",
             "--testmon-nocollect",
+            "--testmon-env",
+            f"'{_toolchain_testmon_environment()}'",
             # Why: the external-gate deselection is a ``-m`` expression, and
             # testmon deactivates its selection whenever ``-m`` is present;
             # ``--testmon-forceselect`` is testmon's declared override for
@@ -104,6 +131,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             workers=workers,
             trailing=(
                 "--testmon",
+                "--testmon-env",
+                f"'{_toolchain_testmon_environment()}'",
                 *(("--testmon-noselect",) if selection else ("--testmon-forceselect",)),
                 *_NO_COVERAGE,
             ),

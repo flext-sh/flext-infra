@@ -37,8 +37,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
     ) -> str:
         """Resolve the repository override through one codegen authority."""
-        link_mode = repository.uv_link_mode or toolchain.uv_link_mode
-        return link_mode
+        return repository.uv_link_mode or toolchain.uv_link_mode
 
     @staticmethod
     def _dependency_cooldown_policy(
@@ -2962,14 +2961,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     @staticmethod
     def _absent_file_plan(root: Path, path: Path) -> p.Result[m.Infra.CodegenFilePlan]:
         """Plan the removal of one retired projection."""
-        result = u.Infra.planned_file(
+        return u.Infra.planned_file(
             root.expanduser().absolute(),
             path.expanduser().absolute(),
             required=True,
             desired_content=None,
             desired_mode=None,
         )
-        return result
 
     @classmethod
     def retired_projection_plans(

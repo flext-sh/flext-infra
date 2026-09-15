@@ -39,6 +39,35 @@ class TestsFlextInfraPytestRunner:
         for marker in config.Infra.tooling.tools.pytest.external_gate_markers:
             assert marker in expressions[0]
 
+    def test_testmon_commands_name_the_toolchain_environment(
+        self, cached_runner_project: Path
+    ) -> None:
+        """Every testmon argv names one stable toolchain-fingerprinted env."""
+        runner = self._runner_for(cached_runner_project)
+        report = (
+            cached_runner_project
+            / config.Infra.codegen.make.testmon_cache.reports_directory
+        )
+        suite_command = runner.build_command(report)
+        names = []
+        for command in (
+            runner.build_selection_command(),
+            runner.build_selection_command(complete=True),
+            suite_command,
+        ):
+            env_index = command.index("--testmon-env")
+            names.append(command[env_index + 1])
+        assert len(set(names)) == 1
+        (name,) = {name.strip("'") for name in names}
+        assert name.startswith("toolchain-")
+        assert len(name) == len("toolchain-") + 12
+        # The coverage verb owns no testmon plugin, so it never names one.
+        assert "--testmon-env" not in runner.build_coverage_command(report)
+        # Rebuilding any argv reuses the same cached fingerprint.
+        assert runner.build_command(report)[
+            suite_command.index("--testmon-env") + 1
+        ] == names[-1]
+
     @staticmethod
     def _runner_for(
         cached_runner_project: Path, *, ci_context: bool = False
