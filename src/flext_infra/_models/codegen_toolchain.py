@@ -53,7 +53,9 @@ class FlextInfraModelsCodegenToolchain:
 
         selector: Annotated[
             str,
-            m.Field(pattern=r"^@[a-z][a-z0-9-]*$", description="File capability identity"),
+            m.Field(
+                pattern=r"^@[a-z][a-z0-9-]*$", description="File capability identity"
+            ),
         ]
         root: Annotated[Path, m.Field(description="Exact authorized destination root")]
         device: Annotated[
@@ -102,7 +104,9 @@ class FlextInfraModelsCodegenToolchain:
             ),
         ] = None
         projects: Annotated[
-            t.VariadicTuple[FlextInfraModelsCodegenToolchain.MiseToolchainProjectLayout],
+            t.VariadicTuple[
+                FlextInfraModelsCodegenToolchain.MiseToolchainProjectLayout
+            ],
             m.Field(description="Ordered Mise workspace participants"),
         ]
         file_participants: Annotated[

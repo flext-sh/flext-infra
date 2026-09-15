@@ -165,12 +165,15 @@ class TestsFlextInfraUtilityFacadeProjection:
             "def assigned():\n    p = 0\n    return p.Sample.Unused\n",
         )
         facade = package / "protocols.py"
-        header = "    class Sample(\n        p,\n    ):\n" if multiline else (
-            "    class Sample(p):\n"
+        header = (
+            "    class Sample(\n        p,\n    ):\n"
+            if multiline
+            else ("    class Sample(p):\n")
         )
         original = (
             "from upstream import p\n\nclass FlextSampleProtocols(p):\n"
-            + header + "        preserved = 'unchanged'\n\np = FlextSampleProtocols\n"
+            + header
+            + "        preserved = 'unchanged'\n\np = FlextSampleProtocols\n"
         )
         self._write(facade, original)
 

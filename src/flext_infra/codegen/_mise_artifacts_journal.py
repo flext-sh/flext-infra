@@ -557,7 +557,9 @@ class FlextInfraMiseArtifactsJournal:
 
     @classmethod
     def _journal_source(
-        cls, phase: str, source: m.Cli.AtomicFileState,
+        cls,
+        phase: str,
+        source: m.Cli.AtomicFileState,
         previous: m.Infra.CodegenJournalSource | None = None,
     ) -> p.Result[m.Infra.CodegenJournalSource]:
         absent_parent = None
@@ -570,8 +572,10 @@ class FlextInfraMiseArtifactsJournal:
                     return r[m.Infra.CodegenJournalSource].from_failure(witness)
                 absent_parent = witness.value
         if source.content is not None and (
-            source.mode is None or source.device is None
-            or source.inode is None or source.link_count != 1
+            source.mode is None
+            or source.device is None
+            or source.inode is None
+            or source.link_count != 1
         ):
             return r[m.Infra.CodegenJournalSource].fail(
                 f"generation source identity is incomplete: {source.path}"
@@ -582,7 +586,9 @@ class FlextInfraMiseArtifactsJournal:
                 path=source.path,
                 parent_device=source.parent_device,
                 parent_inode=source.parent_inode,
-                sha256=files.digest(source.content) if source.content is not None else None,
+                sha256=files.digest(source.content)
+                if source.content is not None
+                else None,
                 mode=source.mode,
                 device=source.device,
                 inode=source.inode,
@@ -757,7 +763,9 @@ class FlextInfraMiseArtifactsJournal:
         """Use the same capability and physical topology proof as recovery."""
         from ._mise_artifacts_verification import FlextInfraMiseArtifactsVerification
 
-        return FlextInfraMiseArtifactsVerification.journal_topology(plan.layout, journal)
+        return FlextInfraMiseArtifactsVerification.journal_topology(
+            plan.layout, journal
+        )
 
 
 __all__: list[str] = ["FlextInfraMiseArtifactsJournal"]

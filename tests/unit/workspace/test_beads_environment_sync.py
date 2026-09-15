@@ -66,12 +66,13 @@ class TestsFlextInfraBeadsEnvironmentSync:
     ) -> None:
         """Selecting Beads retains Python activation and explicit server mode."""
         (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname = "beads-python"\nversion = "0.1.0"\n',
-            encoding="utf-8",
+            '[project]\nname = "beads-python"\nversion = "0.1.0"\n', encoding="utf-8"
         )
-        tm.ok(infra.sync_environment_files(
-            self.make_request(tmp_path, allow_direnv=False)
-        ))
+        tm.ok(
+            infra.sync_environment_files(
+                self.make_request(tmp_path, allow_direnv=False)
+            )
+        )
         content = (tmp_path / c.Infra.ENVRC_FILENAME).read_text(encoding="utf-8")
         tm.that(content, has='PROJECT_ROOT="$(find_up pyproject.toml)"')
         tm.that(content, has='export VIRTUAL_ENV="${VENV_DIR}"')

@@ -30,7 +30,8 @@ class FlextInfraUtilitiesCodegenPathCutover:
         owners = tuple(
             module.file_path.resolve()
             for module in rope_workspace.modules()
-            if module.module_name == owner_module and module.file_path.resolve() in sources
+            if module.module_name == owner_module
+            and module.file_path.resolve() in sources
         )
         if not owners:
             return ()
@@ -72,11 +73,7 @@ class FlextInfraUtilitiesCodegenPathCutover:
         )
         for pattern, goal in transformations:
             changes = FlextInfraUtilitiesRopeRuntimeRefactors.restructure_changes(
-                project,
-                pattern,
-                goal,
-                arguments={"files": owner},
-                resources=resources,
+                project, pattern, goal, arguments={"files": owner}, resources=resources
             )
             edits: list[m.Infra.SemanticMigrationEdit] = []
             for change in changes.changes:

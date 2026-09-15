@@ -162,7 +162,9 @@ class TestsFlextInfraDocsGeneratorPlan:
         )
         tm.that((workspace / ".reports").exists(), eq=False)
 
-    def test_generate_publishes_and_reaches_an_unchanged_second_run(self, tmp_path: Path) -> None:
+    def test_generate_publishes_and_reaches_an_unchanged_second_run(
+        self, tmp_path: Path
+    ) -> None:
         """The public fixed-effect command writes and converges without a mode flag."""
         workspace = u.Tests.create_docs_workspace(tmp_path)
         generator = FlextInfraDocGenerator(repository_root=workspace)

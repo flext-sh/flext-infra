@@ -111,11 +111,7 @@ class FlextInfraMiseWorkspacePlanner:
         return self._layout_from_identity(identity, (".",), transaction_id=None)
 
     def file_layout(
-        self,
-        scope_root: Path,
-        roots: t.MappingKV[str, Path],
-        *,
-        transaction_id: str,
+        self, scope_root: Path, roots: t.MappingKV[str, Path], *, transaction_id: str
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
         """Bind explicit file capabilities without reading any Mise declaration."""
         result_type = r[m.Infra.MiseToolchainWorkspaceLayout]

@@ -57,8 +57,11 @@ class FlextInfraUtilitiesCodegenFacades:
         additions: list[tuple[str, str]] = []
         for method in sorted(
             cls._required_methods(
-                pkg_dir, facade_path, nested_namespace=nested_namespace,
-                namespace=namespace.name, family=family,
+                pkg_dir,
+                facade_path,
+                nested_namespace=nested_namespace,
+                namespace=namespace.name,
+                family=family,
             )
         ):
             candidates = tuple(
@@ -91,8 +94,12 @@ class FlextInfraUtilitiesCodegenFacades:
 
     @staticmethod
     def _required_methods(
-        pkg_dir: Path, facade_path: Path, *, nested_namespace: bool,
-        namespace: str, family: Literal["u", "p"],
+        pkg_dir: Path,
+        facade_path: Path,
+        *,
+        nested_namespace: bool,
+        namespace: str,
+        family: Literal["u", "p"],
     ) -> frozenset[str]:
         methods: set[str] = set()
         with FlextInfraUtilitiesRopeCore.open_project(pkg_dir.parent) as project:
@@ -128,7 +135,9 @@ class FlextInfraUtilitiesCodegenFacades:
                         )
                     offset = sum(map(len, lines[: receiver.lineno - 1]))
                     prefix = lines[receiver.lineno - 1].encode(c.Cli.ENCODING_DEFAULT)
-                    offset += len(prefix[: receiver.col_offset].decode(c.Cli.ENCODING_DEFAULT))
+                    offset += len(
+                        prefix[: receiver.col_offset].decode(c.Cli.ENCODING_DEFAULT)
+                    )
                     binding = FlextInfraUtilitiesRopeRuntime.imported_name_at(
                         pymodule, offset
                     )
@@ -141,14 +150,18 @@ class FlextInfraUtilitiesCodegenFacades:
                     declared = FlextInfraUtilitiesRopeCore.resource_file_path(
                         project, origin
                     )
-                    if declared not in {pkg_dir, pkg_dir / c.Infra.INIT_PY, facade_path}:
+                    if declared not in {
+                        pkg_dir,
+                        pkg_dir / c.Infra.INIT_PY,
+                        facade_path,
+                    }:
                         continue
                     methods.add(reference.attr)
         return frozenset(method for method in methods if not method.startswith("_"))
 
     @staticmethod
     def _utility_owners(
-        owners_dir: Path, *, family: Literal["u", "p"],
+        owners_dir: Path, *, family: Literal["u", "p"]
     ) -> t.Pair[
         t.VariadicTuple[t.Triple[str, str, frozenset[str]]],
         t.MappingKV[str, frozenset[str]],
@@ -169,7 +182,8 @@ class FlextInfraUtilitiesCodegenFacades:
                     for member in node.body
                     if (
                         isinstance(member, ast.FunctionDef | ast.AsyncFunctionDef)
-                        if family == "u" else isinstance(member, ast.ClassDef)
+                        if family == "u"
+                        else isinstance(member, ast.ClassDef)
                     )
                     and not member.name.startswith("_")
                 )
@@ -261,13 +275,16 @@ class FlextInfraUtilitiesCodegenFacades:
         offset = sum(map(len, lines[: last_base.end_lineno - 1]))
         offset += last_base.end_col_offset
         separator = (
-            ", " if last_base.lineno == namespace.lineno
+            ", "
+            if last_base.lineno == namespace.lineno
             else ",\n" + " " * last_base.col_offset
         )
         inserted = "".join(separator + name for _module, name in additions)
         encoded = b"".join(lines)
         return (
-            encoded[:offset] + inserted.encode(c.Cli.ENCODING_DEFAULT) + encoded[offset:]
+            encoded[:offset]
+            + inserted.encode(c.Cli.ENCODING_DEFAULT)
+            + encoded[offset:]
         ).decode(c.Cli.ENCODING_DEFAULT)
 
 

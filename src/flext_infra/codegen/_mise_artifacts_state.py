@@ -85,7 +85,9 @@ class FlextInfraMiseArtifactsState:
                     f"Mise state is not on destination filesystem: {project.selector}"
                 )
             roots.append(transaction_root)
-        roots.extend(participant.transaction_root for participant in layout.file_participants)
+        roots.extend(
+            participant.transaction_root for participant in layout.file_participants
+        )
         temporary = cls.plan_directories(
             layout, phase="transaction", requested=tuple(roots), disposition="temporary"
         )
@@ -262,7 +264,9 @@ class FlextInfraMiseArtifactsState:
         result_type = r[m.Infra.CodegenJournalDirectory]
         if entry.created is not None or entry not in directories:
             return result_type.fail(f"invalid directory creation cursor: {entry.path}")
-        target = files.resolve_transaction(layout, entry.path, purpose="journaled generation directory")
+        target = files.resolve_transaction(
+            layout, entry.path, purpose="journaled generation directory"
+        )
         if target.failure:
             return result_type.from_failure(target)
         project = next(
@@ -524,7 +528,9 @@ class FlextInfraMiseArtifactsState:
             )
         )
         for entry in sorted(removable, key=cls._directory_cleanup_order, reverse=True):
-            target = files.resolve_transaction(layout, entry.path, purpose="journaled cleanup directory")
+            target = files.resolve_transaction(
+                layout, entry.path, purpose="journaled cleanup directory"
+            )
             if target.failure:
                 return r[bool].from_failure(target)
             if not target.value.exists() and not target.value.is_symlink():

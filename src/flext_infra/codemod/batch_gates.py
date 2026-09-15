@@ -345,12 +345,16 @@ class FlextInfraModGateEngine:
             resolved_file = (root / file_path).resolve()
             snapshot = source_states.get(resolved_file)
             if snapshot is None or snapshot.content is None:
-                return r[m.Infra.ModScanReport].fail(f"finding has no authenticated source snapshot: {resolved_file}")
+                return r[m.Infra.ModScanReport].fail(
+                    f"finding has no authenticated source snapshot: {resolved_file}"
+                )
             observed = u.Cli.atomic_read_binary_file_state(resolved_file, required=True)
             if observed.failure:
                 return r[m.Infra.ModScanReport].from_failure(observed)
             if observed.value != snapshot:
-                return r[m.Infra.ModScanReport].fail(f"finding source changed during scanning: {resolved_file}")
+                return r[m.Infra.ModScanReport].fail(
+                    f"finding source changed during scanning: {resolved_file}"
+                )
             source = snapshot.content.decode(c.Cli.ENCODING_DEFAULT)
             files.add(file_path)
             replacement = raw_replacement if isinstance(raw_replacement, str) else None
@@ -388,7 +392,9 @@ class FlextInfraModGateEngine:
                     rule_id=rule_id,
                     repository=repository,
                     file=file_path,
-                    source_owner="generator" if source.startswith(c.Infra.AUTOGEN_HEADERS) else "authored",
+                    source_owner="generator"
+                    if source.startswith(c.Infra.AUTOGEN_HEADERS)
+                    else "authored",
                     source_state=snapshot,
                     range=t.Cli.JSON_MAPPING_ADAPTER.validate_python(source_range),
                     text=text,
@@ -493,7 +499,9 @@ class FlextInfraModGateEngine:
                 else:
                     source_paths.add(path)
             source_states = {
-                path.resolve(): u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                path.resolve(): u.Cli.atomic_read_binary_file_state(
+                    path, required=True
+                ).unwrap()
                 for path in sorted(source_paths)
             }
             ruleset_files = {

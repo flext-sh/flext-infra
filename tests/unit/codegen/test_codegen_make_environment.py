@@ -170,7 +170,9 @@ class TestsFlextInfraCodegenMakeEnvironment:
             )
         else:
             tm.ok(
-                u.Cli.run_checked(["direnv", "allow", str(project_root)], cwd=project_root)
+                u.Cli.run_checked(
+                    ["direnv", "allow", str(project_root)], cwd=project_root
+                )
             )
         return project_root, repository_root
 

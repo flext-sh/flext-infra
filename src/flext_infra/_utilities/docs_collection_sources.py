@@ -15,7 +15,9 @@ class FlextInfraUtilitiesDocsCollectionSources:
     """Read explicitly associated sources without exporting private sessions."""
 
     @staticmethod
-    def collection_source_root(root: Path, source: m.Infra.PlanCollectionSource) -> Path:
+    def collection_source_root(
+        root: Path, source: m.Infra.PlanCollectionSource
+    ) -> Path:
         """Resolve a declared source without allowing lexical parent traversal."""
         selected = source.root.expanduser()
         if ".." in selected.parts:
@@ -25,7 +27,9 @@ class FlextInfraUtilitiesDocsCollectionSources:
 
     @classmethod
     def collection_source_files(
-        cls, root: Path, source: m.Infra.PlanCollectionSource,
+        cls,
+        root: Path,
+        source: m.Infra.PlanCollectionSource,
         excluded_outputs: tuple[Path, ...] = (),
     ) -> tuple[Path, ...]:
         """Inventory physical regular files, rejecting inaccessible sources."""
@@ -45,22 +49,32 @@ class FlextInfraUtilitiesDocsCollectionSources:
             ):
                 msg = f"selected plan source is a symlink: {entry.path}"
                 raise ValueError(msg)
-        candidates = tuple(sorted(
-            entry.path for entry in inventory.entries
-            if entry.kind == "file" and entry.path not in excluded_outputs and any(
-                entry.path.relative_to(selected).full_match(pattern)
-                for pattern in source.plan_globs
-            ) and not any(
-                entry.path.relative_to(selected).full_match(pattern)
-                for pattern in source.exclude_globs
+        candidates = tuple(
+            sorted(
+                entry.path
+                for entry in inventory.entries
+                if entry.kind == "file"
+                and entry.path not in excluded_outputs
+                and any(
+                    entry.path.relative_to(selected).full_match(pattern)
+                    for pattern in source.plan_globs
+                )
+                and not any(
+                    entry.path.relative_to(selected).full_match(pattern)
+                    for pattern in source.exclude_globs
+                )
             )
-        ))
+        )
         if not source.companion_directory or source.adapter != "files":
             return candidates
-        return tuple(path for path in candidates if not any(
-            path != parent and path.is_relative_to(parent.with_suffix(""))
-            for parent in candidates
-        ))
+        return tuple(
+            path
+            for path in candidates
+            if not any(
+                path != parent and path.is_relative_to(parent.with_suffix(""))
+                for parent in candidates
+            )
+        )
 
     @staticmethod
     def collection_read(path: Path) -> m.Cli.AtomicFileState:
@@ -86,7 +100,9 @@ class FlextInfraUtilitiesDocsCollectionSources:
 
     @classmethod
     def collection_artifacts(
-        cls, path: Path, source: m.Infra.PlanCollectionSource,
+        cls,
+        path: Path,
+        source: m.Infra.PlanCollectionSource,
         excluded_outputs: tuple[Path, ...] = (),
     ) -> tuple[m.Cli.AtomicFileState, ...]:
         """Read the plan and its same-basename companion directory."""
@@ -115,7 +131,9 @@ class FlextInfraUtilitiesDocsCollectionSources:
         lines = content.decode("utf-8-sig", errors="strict").splitlines()
         if not lines or lines[0] != "---":
             return None, None
-        closing = next((index for index, line in enumerate(lines[1:], 1) if line == "---"), None)
+        closing = next(
+            (index for index, line in enumerate(lines[1:], 1) if line == "---"), None
+        )
         if closing is None:
             msg = "plan frontmatter has no closing delimiter"
             raise ValueError(msg)
@@ -144,7 +162,9 @@ class FlextInfraUtilitiesDocsCollectionSources:
 
     @classmethod
     def collection_manifest(
-        cls, canonical: Path, projection: Path | None,
+        cls,
+        canonical: Path,
+        projection: Path | None,
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
     ) -> tuple[m.Infra.PlanCollectionManifest, tuple[Path, ...]]:
         """Exclude only outputs attested by the canonical generated manifest."""
@@ -170,14 +190,23 @@ class FlextInfraUtilitiesDocsCollectionSources:
             for root in roots:
                 candidate = root / path
                 state = cls.collection_capture(candidate, states)
-                if state.content is not None and sha256(state.content).hexdigest() == artifact.digest:
+                if (
+                    state.content is not None
+                    and sha256(state.content).hexdigest() == artifact.digest
+                ):
                     excluded.append(candidate)
                 elif candidate not in plans and root == canonical:
                     msg = f"immutable canonical artifact changed or disappeared: {candidate}"
                     raise ValueError(msg)
                 elif root == projection and state.content is not None:
-                    projected_plans = {root / plan.relative_to(canonical) for plan in plans}
-                    owners = tuple(plan for plan in projected_plans if candidate.is_relative_to(plan.with_suffix("")))
+                    projected_plans = {
+                        root / plan.relative_to(canonical) for plan in plans
+                    }
+                    owners = tuple(
+                        plan
+                        for plan in projected_plans
+                        if candidate.is_relative_to(plan.with_suffix(""))
+                    )
                     if candidate not in projected_plans and not owners:
                         msg = f"projected collection metadata was modified: {candidate}"
                         raise ValueError(msg)

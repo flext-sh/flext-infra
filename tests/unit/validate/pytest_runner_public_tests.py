@@ -64,9 +64,10 @@ class TestsFlextInfraPytestRunner:
         # The coverage verb owns no testmon plugin, so it never names one.
         assert "--testmon-env" not in runner.build_coverage_command(report)
         # Rebuilding any argv reuses the same cached fingerprint.
-        assert runner.build_command(report)[
-            suite_command.index("--testmon-env") + 1
-        ] == names[-1]
+        assert (
+            runner.build_command(report)[suite_command.index("--testmon-env") + 1]
+            == names[-1]
+        )
 
     @staticmethod
     def _runner_for(

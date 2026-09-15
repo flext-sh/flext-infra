@@ -148,9 +148,7 @@ class TestsFlextInfraDocsGeneratorInternals:
         _ = u.Tests.prepare_docs_bundle(generator)
 
         result = generator.generate(
-            m.Infra.DocsGenerateRequest(
-                repository_root=workspace, projects=["flext-a"]
-            )
+            m.Infra.DocsGenerateRequest(repository_root=workspace, projects=["flext-a"])
         )
 
         tm.ok(result)

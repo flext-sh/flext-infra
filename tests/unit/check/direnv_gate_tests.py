@@ -99,9 +99,7 @@ class TestsFlextInfraDirenvGate:
                 )
             )
             tm.that(len(violations), eq=1)
-            tm.that(
-                ".flext-infra-contract-absent-marker" in violations[0], eq=True
-            )
+            tm.that(".flext-infra-contract-absent-marker" in violations[0], eq=True)
             tm.that("/./" not in violations[0], eq=True)
 
     class TestsDirenvGate:

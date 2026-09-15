@@ -72,15 +72,21 @@ class _FlextInfraDocsContracts:
 
 
 class FlextInfraModelsDocs(
-    FlextInfraModelsDocsGeneration, FlextInfraModelsDocsCollection, _FlextInfraDocsContracts
+    FlextInfraModelsDocsGeneration,
+    FlextInfraModelsDocsCollection,
+    _FlextInfraDocsContracts,
 ):
     """Models for documentation services."""
 
     class DocsCollectRequest(m.ContractModel):
         """Fixed-effect collection command with repository-owned configuration."""
 
-        repository_root: Annotated[Path, m.Field(description="Repository owning the plans")]
-        configuration: Annotated[Path, m.Field(description="Versioned collection source associations")]
+        repository_root: Annotated[
+            Path, m.Field(description="Repository owning the plans")
+        ]
+        configuration: Annotated[
+            Path, m.Field(description="Versioned collection source associations")
+        ]
 
     class DocsGenerateRequest(m.ContractModel):
         """Canonical docs generation request payload.

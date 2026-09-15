@@ -22,16 +22,22 @@ class FlextInfraDocCollector:
         """Authenticate configuration, collect sources, and commit one file phase."""
         root = request.repository_root
         if not root.is_absolute() or ".." in root.parts or root.resolve() != root:
-            return r[bool].fail(f"plan collection repository root is not a physical absolute path: {root}")
+            return r[bool].fail(
+                f"plan collection repository root is not a physical absolute path: {root}"
+            )
         configuration_path = request.configuration
         if not configuration_path.is_absolute():
             configuration_path = root / configuration_path
-        captured = u.Cli.atomic_read_binary_file_state(configuration_path, required=True)
+        captured = u.Cli.atomic_read_binary_file_state(
+            configuration_path, required=True
+        )
         if captured.failure:
             return r[bool].from_failure(captured)
         snapshot = captured.value
         if snapshot.content is None:
-            return r[bool].fail(f"plan collection configuration is absent: {configuration_path}")
+            return r[bool].fail(
+                f"plan collection configuration is absent: {configuration_path}"
+            )
         parsed = u.Cli.yaml_parse(snapshot.content.decode("utf-8"))
         if parsed.failure:
             return r[bool].from_failure(parsed)
@@ -44,32 +50,57 @@ class FlextInfraDocCollector:
         )
 
         def publish(scope_root: Path) -> p.Result[bool]:
-            current = u.Cli.atomic_read_binary_file_state(configuration_path, required=True)
+            current = u.Cli.atomic_read_binary_file_state(
+                configuration_path, required=True
+            )
             if current.failure:
                 return r[bool].from_failure(current)
             if current.value != snapshot:
-                return r[bool].fail("plan collection configuration changed before collection")
+                return r[bool].fail(
+                    "plan collection configuration changed before collection"
+                )
             bundle = u.Infra.collect_plan_files(scope_root, configuration)
-            incomplete = tuple(item for item in bundle.coverage if item.adapter == "private-inventory")
+            incomplete = tuple(
+                item for item in bundle.coverage if item.adapter == "private-inventory"
+            )
             if incomplete:
-                pending = ", ".join(f"{item.source_id}:{item.status}:{item.files}" for item in incomplete)
-                return r[bool].fail(f"plan source extraction is incomplete; private inventories are not extracted plans: {pending}")
+                pending = ", ".join(
+                    f"{item.source_id}:{item.status}:{item.files}"
+                    for item in incomplete
+                )
+                return r[bool].fail(
+                    f"plan source extraction is incomplete; private inventories are not extracted plans: {pending}"
+                )
             u.Infra.verify_plan_collection_sources(scope_root, configuration, bundle)
             inputs = (snapshot, *bundle.source_states)
-            analysis = m.Infra.CodegenPhaseAnalysis(phase="docs", files=bundle.files, inputs=inputs)
+            analysis = m.Infra.CodegenPhaseAnalysis(
+                phase="docs", files=bundle.files, inputs=inputs
+            )
 
             def validate() -> p.Result[bool]:
-                final_configuration = u.Cli.atomic_read_binary_file_state(configuration_path, required=True)
+                final_configuration = u.Cli.atomic_read_binary_file_state(
+                    configuration_path, required=True
+                )
                 if final_configuration.failure:
                     return r[bool].from_failure(final_configuration)
                 if final_configuration.value != snapshot:
-                    return r[bool].fail("plan collection configuration changed during publication")
-                u.Infra.verify_plan_collection_publication(scope_root, configuration, bundle)
+                    return r[bool].fail(
+                        "plan collection configuration changed during publication"
+                    )
+                u.Infra.verify_plan_collection_publication(
+                    scope_root, configuration, bundle
+                )
                 return r[bool].ok(True)
 
             published = transaction.publish_file_phase_locked(
-                scope_root, roots, analysis,
-                tuple(path for path in bundle.required_directories if path not in roots.values()),
+                scope_root,
+                roots,
+                analysis,
+                tuple(
+                    path
+                    for path in bundle.required_directories
+                    if path not in roots.values()
+                ),
                 validate,
             )
             if published.failure:

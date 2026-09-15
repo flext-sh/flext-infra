@@ -179,41 +179,35 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if provider.failure:
                 return r[m.Infra.CodegenResult].from_failure(provider)
-            initialized = u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "init",
-                    "--initial-branch",
-                    provider.value.branch,
-                    str(root),
-                ]
-            )
+            initialized = u.Cli.run_checked([
+                c.Infra.GIT,
+                "init",
+                "--initial-branch",
+                provider.value.branch,
+                str(root),
+            ])
             if initialized.failure:
                 return r[m.Infra.CodegenResult].from_failure(initialized)
-            remote = u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "-C",
-                    str(root),
-                    "remote",
-                    "add",
-                    c.Infra.GIT_DEFAULT_REMOTE,
-                    initial_workspace.repository.url,
-                ]
-            )
+            remote = u.Cli.run_checked([
+                c.Infra.GIT,
+                "-C",
+                str(root),
+                "remote",
+                "add",
+                c.Infra.GIT_DEFAULT_REMOTE,
+                initial_workspace.repository.url,
+            ])
             if remote.failure:
                 return r[m.Infra.CodegenResult].from_failure(remote)
-            committed = u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "-C",
-                    str(root),
-                    "commit",
-                    "--allow-empty",
-                    "-m",
-                    "chore: initialize generated project",
-                ]
-            )
+            committed = u.Cli.run_checked([
+                c.Infra.GIT,
+                "-C",
+                str(root),
+                "commit",
+                "--allow-empty",
+                "-m",
+                "chore: initialize generated project",
+            ])
             if committed.failure:
                 return r[m.Infra.CodegenResult].from_failure(committed)
             initialized_git = True
@@ -762,14 +756,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         ``.beads/config.yaml`` and ``.beads/metadata.json`` are rendered into
         it by generation, never copied and never linked.
         """
-        allowed_entries = frozenset(
-            {
-                Path(c.Infra.BEADS_CONFIG_RELPATH).name,
-                Path(c.Infra.BEADS_METADATA_RELPATH).name,
-                c.Infra.BEADS_LOCAL_VERSION_FILENAME,
-                c.Infra.BEADS_LAST_TOUCHED_FILENAME,
-            }
-        )
+        allowed_entries = frozenset({
+            Path(c.Infra.BEADS_CONFIG_RELPATH).name,
+            Path(c.Infra.BEADS_METADATA_RELPATH).name,
+            c.Infra.BEADS_LOCAL_VERSION_FILENAME,
+            c.Infra.BEADS_LAST_TOUCHED_FILENAME,
+        })
         route = root / c.Infra.BEADS_DIRNAME
         if route.is_symlink():
             return r[bool].fail(
@@ -2197,12 +2189,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     gascity_enabled=target.gascity_enabled,
                     repository_branch=branch,
                     ci_trigger_branches=tuple(
-                        dict.fromkeys(
-                            (
-                                *codegen.branch_policy.ci_trigger_branches,
-                                branch,
-                            )
-                        )
+                        dict.fromkeys((
+                            *codegen.branch_policy.ci_trigger_branches,
+                            branch,
+                        ))
                     ),
                     python_version=codegen.toolchain.python_version,
                     state_directory_name=codegen.toolchain.state_directory_name,
@@ -2571,35 +2561,29 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if item.project == repository.distribution
         )
         if additions:
-            dependency_profile = m.Infra.ScaffoldDependencyProfileSpec.model_validate(
-                {
-                    **dependency_profile.model_dump(),
-                    "runtime": tuple(
-                        dict.fromkeys(
-                            (
-                                *dependency_profile.runtime,
-                                *(
-                                    requirement
-                                    for item in additions
-                                    for requirement in item.runtime
-                                ),
-                            )
-                        )
-                    ),
-                    "codegen": tuple(
-                        dict.fromkeys(
-                            (
-                                *dependency_profile.codegen,
-                                *(
-                                    requirement
-                                    for item in additions
-                                    for requirement in item.codegen
-                                ),
-                            )
-                        )
-                    ),
-                }
-            )
+            dependency_profile = m.Infra.ScaffoldDependencyProfileSpec.model_validate({
+                **dependency_profile.model_dump(),
+                "runtime": tuple(
+                    dict.fromkeys((
+                        *dependency_profile.runtime,
+                        *(
+                            requirement
+                            for item in additions
+                            for requirement in item.runtime
+                        ),
+                    ))
+                ),
+                "codegen": tuple(
+                    dict.fromkeys((
+                        *dependency_profile.codegen,
+                        *(
+                            requirement
+                            for item in additions
+                            for requirement in item.codegen
+                        ),
+                    ))
+                ),
+            })
         if project.license not in codegen.scaffold.project.supported_licenses:
             supported = ", ".join(codegen.scaffold.project.supported_licenses)
             return r[m.Infra.ProjectRenderContext].fail(

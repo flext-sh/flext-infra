@@ -11,7 +11,8 @@ from .docs_collection import FlextInfraUtilitiesDocsCollection
 
 
 class FlextInfraUtilitiesDocsGenerate(
-    FlextInfraUtilitiesDocsGenerateRootMixin, FlextInfraUtilitiesDocsGuidesMixin,
+    FlextInfraUtilitiesDocsGenerateRootMixin,
+    FlextInfraUtilitiesDocsGuidesMixin,
     FlextInfraUtilitiesDocsCollection,
 ):
     """Reusable generation helpers exposed through ``u.Infra``."""
