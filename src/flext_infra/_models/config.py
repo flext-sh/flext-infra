@@ -1736,6 +1736,10 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Dolt database from local config/beads.yaml"),
         ]
+        dolt_mode: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Storage mode from toolchain.beads.dolt_mode"),
+        ]
         project_id: Annotated[
             t.NonEmptyStr | None,
             m.Field(
@@ -3222,7 +3226,6 @@ class FlextInfraConfigModels:
         environment_root: Annotated[
             Path, m.Field(description="Project supplying the active .venv")
         ]
-        lock_path: Annotated[Path, m.Field(description="Required versioned uv.lock")]
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Mise/Python version selector")
         ]
@@ -3232,7 +3235,7 @@ class FlextInfraConfigModels:
         ]
         editable_repositories: Annotated[
             t.VariadicTuple[FlextInfraConfigModels.RepositoryRef],
-            m.Field(description="Local repositories overlaid after locked sync"),
+            m.Field(description="Local repositories installed by setup"),
         ] = ()
 
     class WorkspaceEnvironmentCliRequest(_ConfigContract):

@@ -172,8 +172,9 @@ class FlextInfraConstantsCodegen(
         ("MISE_STATE_DIR", "state"),
         ("MISE_INSTALLS_DIR", "installs"),
         ("MISE_SHIMS_DIR", "shims"),
+        ("UV_CACHE_DIR", "uv-cache"),
     )
-    "Mise paths rooted in the required caller-owned persistent directory."
+    "Tool and package caches rooted in the required persistent storage directory."
     MISE_BOOTSTRAP_EMPTY_FILES: Final[t.StrSequence] = (
         "global-config.toml",
         "system-config/config.toml",

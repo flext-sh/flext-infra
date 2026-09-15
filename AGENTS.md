@@ -54,7 +54,21 @@ how to keep this context useful without creating another tracker.
 
 ## Commands
 
+Correct runtime behavior is the authority. Exercise the real setup, generation
+and consumer paths first, then make tests verify that contract. Never alter the
+environment to preserve an obsolete fixture or treat a passing test as proof
+of integrated runtime behavior.
+
+Provisioning and dependency updates run exclusively through `make setup`.
+Fix its configuration/templates when the lifecycle is wrong; do not install,
+resolve or synchronize dependencies manually. The current operator contract
+removes `APPLY`, `uv.lock` and `mise.lock` throughout producers and consumers.
+Git dependencies follow each repository's declared integration branch tip.
+Publish the validated change through a merge-commit PR into that integration
+branch and verify the remote merge SHA before claiming delivery.
+
 ```bash
+make setup
 make check
 make test
 make build

@@ -2053,7 +2053,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.MarkdownLintRenderSpec(tooling=config.Infra.tooling)
             )
-        if destination == ".envrc":
+        if destination in {".envrc", ".envrc.local"}:
             return r[p.Model].ok(
                 m.Infra.EnvrcRenderSpec(
                     state_directory_name=codegen.toolchain.state_directory_name,
@@ -2113,6 +2113,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.BeadsMetadataRenderSpec(
                     database=target.beads.database,
+                    dolt_mode=codegen.toolchain.beads.dolt_mode,
                     project_id=self._beads_project_id(repository_root),
                 )
             )
