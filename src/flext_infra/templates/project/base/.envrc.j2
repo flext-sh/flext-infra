@@ -81,6 +81,10 @@ else
 fi
 # End SECTION: virtual environment
 
+{% if gascity is not none %}
+{% include "_envrc_beads.j2" %}
+{% endif %}
+
 # === SECTION: local overrides (managed) ===
 # Source: template. Repository-local, tracked overrides load last and win;
 # every other runtime value comes from the caller's environment.

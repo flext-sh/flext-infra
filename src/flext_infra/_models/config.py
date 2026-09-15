@@ -3269,8 +3269,8 @@ class FlextInfraConfigModels:
             m.Field(
                 exclude=True,
                 description=(
-                    "Programmatic-only selection of generated beads-workspace "
-                    ".envrc instead of the Python package environment"
+                    "Programmatic-only Beads activation, composed with Python "
+                    "when the repository owns a pyproject"
                 ),
             ),
         ] = None

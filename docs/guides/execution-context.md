@@ -21,6 +21,15 @@ o runtime por `make status`; o caminho de execução e a versão instalada preci
 corresponder ao código que será validado. Um log anterior ou uma instalação do
 workspace pai não certifica o checkout standalone.
 
+Trabalhe sobre a tip de integração recém-buscada em cada repositório envolvido,
+preservando as contribuições existentes e integrando divergências para frente.
+O contrato de `make setup` inclui aprovar o `.envrc` com `direnv allow`; os
+verbos operacionais do Make ativam esse ambiente antes dos handlers e hooks.
+A provisão inicial antecede essa ativação para permitir criar o ambiente.
+Confirme o funcionamento pelos comandos reais, sem exigir que o operador
+envolva cada chamada em `direnv exec`. Os testes verificam esse runtime;
+não definem nem substituem seu comportamento correto.
+
 Na execução de 14/09/2026, o operador selecionou o tracker do checkout `flext`
 explicitamente. O comando Beads precisa do diretório de trabalho dessa raiz,
 além do ambiente carregado por `direnv`. Isso é contexto autorizado dessa

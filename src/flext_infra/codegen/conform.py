@@ -1303,6 +1303,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
+            workspace_member=repository.path != Path(),
             uv_link_mode=FlextInfraCodegenConform._link_mode(
                 repository, codegen.toolchain
             ),

@@ -120,6 +120,7 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace_mode: c.Infra.MakeProfile,
         toolchain: p.Infra.ToolchainSpec,
         required_dev_dependencies: t.StrSequence,
+        workspace_member: bool = False,
         uv_link_mode: str | None = None,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
         namespace_scan_dirs: t.StrSequence | None = None,
@@ -162,6 +163,7 @@ class FlextInfraUtilitiesPyprojectConform:
             exclude_dependencies=uv_exclude_dependencies,
             uv_environments=toolchain.uv_environments,
             constraint_dependencies=toolchain.uv_constraint_dependencies,
+            workspace_member=workspace_member,
         )
         if sources_result.failure:
             return r[str].from_failure(sources_result)
@@ -637,6 +639,7 @@ class FlextInfraUtilitiesPyprojectConform:
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] | None = None,
         uv_environments: t.StrSequence | None = None,
+        workspace_member: bool = False,
     ) -> p.Result[bool]:
         """Keep managed uv sources only as the root local-workspace overlay."""
         repository_root = cls._is_workspace_context_root(
@@ -730,6 +733,7 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace_mode is c.Infra.MakeProfile.STANDALONE
             and project_name == workspace.repository.distribution
             and not member_paths
+            and not workspace_member
         )
         if (repository_root and member_paths) or standalone_root:
             workspace_table = u.Cli.toml_table_child(uv, "workspace")
