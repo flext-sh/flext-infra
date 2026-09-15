@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import u as cli_u
+
 from flext_infra import m
 
 from .docs_collection_sources import FlextInfraUtilitiesDocsCollectionSources
@@ -39,13 +40,15 @@ class FlextInfraUtilitiesDocsCollectionVerify(FlextInfraUtilitiesDocsCollectionS
     ) -> None:
         """Require original inputs and discovery topology before effects."""
         if cls._collection_topology(root, configuration, bundle.excluded_outputs) != bundle.inventories:
-            raise ValueError("plan collection source topology changed during publication")
+            msg = "plan collection source topology changed during publication"
+            raise ValueError(msg)
         for expected in bundle.source_states:
             current = cli_u.Cli.atomic_read_binary_file_state(
                 expected.path, required=False
             ).unwrap()
             if current != expected:
-                raise ValueError(f"plan collection source changed: {expected.path}")
+                msg = f"plan collection source changed: {expected.path}"
+                raise ValueError(msg)
 
     @classmethod
     def verify_plan_collection_publication(
@@ -59,13 +62,15 @@ class FlextInfraUtilitiesDocsCollectionVerify(FlextInfraUtilitiesDocsCollectionS
             set(bundle.excluded_outputs) | (set(outputs) - original_paths)
         ))
         if cls._collection_topology(root, configuration, exclusions) != bundle.inventories:
-            raise ValueError("plan collection source topology changed after publication")
+            msg = "plan collection source topology changed after publication"
+            raise ValueError(msg)
         for plan in bundle.files:
             current = cli_u.Cli.atomic_read_binary_file_state(
                 plan.path, required=False
             ).unwrap()
             if (current.content, current.mode) != (plan.desired_content, plan.desired_mode):
-                raise ValueError(f"collection publication differs from its plan: {plan.path}")
+                msg = f"collection publication differs from its plan: {plan.path}"
+                raise ValueError(msg)
         for expected in bundle.source_states:
             if expected.path in outputs:
                 continue
@@ -73,7 +78,8 @@ class FlextInfraUtilitiesDocsCollectionVerify(FlextInfraUtilitiesDocsCollectionS
                 expected.path, required=False
             ).unwrap()
             if current != expected:
-                raise ValueError(f"unmodified collection input changed: {expected.path}")
+                msg = f"unmodified collection input changed: {expected.path}"
+                raise ValueError(msg)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsCollectionVerify"]

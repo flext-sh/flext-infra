@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
-from datetime import UTC, datetime
 
-from flext_cli import u as cli_u
 from flext_infra import m, t
 
 from .docs_collection_verify import FlextInfraUtilitiesDocsCollectionVerify
@@ -24,7 +23,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         root = repository_root.absolute()
         relative = configuration.canonical_dir
         if relative.is_absolute() or not relative.parts or ".." in relative.parts:
-            raise ValueError(f"unsafe canonical collection directory: {relative}")
+            msg = f"unsafe canonical collection directory: {relative}"
+            raise ValueError(msg)
         canonical = root / relative
         projection = (
             configuration.projection_root.expanduser()
@@ -34,10 +34,12 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
             not projection.is_absolute() or ".." in projection.parts
             or projection == canonical
         ):
-            raise ValueError(f"unsafe collection projection association: {projection}")
+            msg = f"unsafe collection projection association: {projection}"
+            raise ValueError(msg)
         identifiers = tuple(source.id for source in configuration.sources)
         if len(set(identifiers)) != len(identifiers):
-            raise ValueError("collection source identities must be unique")
+            msg = "collection source identities must be unique"
+            raise ValueError(msg)
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState] = {}
         manifest, excluded_outputs = cls.collection_manifest(canonical, projection, states)
         history = list(manifest.revisions)
@@ -50,14 +52,16 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
             path = canonical / artifact.relative_path
             content = states[path].content
             if content is None:
-                raise ValueError(f"canonical collection artifact disappeared: {path}")
+                msg = f"canonical collection artifact disappeared: {path}"
+                raise ValueError(msg)
             desired[path] = content
         for source in configuration.sources:
             paths = cls.collection_source_files(root, source, excluded_outputs)
             source_paths = set(paths)
             if source.adapter == "private-inventory":
                 if source.publication != "private":
-                    raise ValueError(f"private source cannot publish: {source.id}")
+                    msg = f"private source cannot publish: {source.id}"
+                    raise ValueError(msg)
                 coverage.append(m.Infra.PlanCollectionCoverage(
                     source_id=source.id, provider=source.provider,
                     adapter=source.adapter, files=len(paths),
@@ -69,7 +73,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
                 ))
                 continue
             if source.publication != "plan-artifacts":
-                raise ValueError(f"file source requires publication approval: {source.id}")
+                msg = f"file source requires publication approval: {source.id}"
+                raise ValueError(msg)
             source_root = cls.collection_source_root(root, source)
             for path in paths:
                 artifacts = cls.collection_artifacts(path, source, excluded_outputs)
@@ -77,7 +82,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
                 for state in artifacts:
                     previous = states.get(state.path)
                     if previous is not None and previous != state:
-                        raise ValueError(f"collection source changed during read: {state.path}")
+                        msg = f"collection source changed during read: {state.path}"
+                        raise ValueError(msg)
                     states[state.path] = state
                 revision = cls._collect_revision(
                     canonical, source_root, source, path, artifacts, desired,
@@ -107,13 +113,10 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         ))
         lines = ["# Collected plans", "",
                  "Source order only; execution status and closure belong to Beads.", ""]
-        for revision in revisions:
-            lines.append(
-                f"- [{revision.identity}]({revision.canonical_path.name})"
+        lines.extend(f"- [{revision.identity}]({revision.canonical_path.name})"
                 f" — {revision.source_updated_at or 'source update unknown'}"
                 + (" (chronology unresolved: no timezone-aware instant)"
-                   if revision.source_updated_at_utc is None else "")
-            )
+                   if revision.source_updated_at_utc is None else "") for revision in revisions)
         index, _changed = FlextInfraUtilitiesDocsContract.docs_update_toc(
             "\n".join(lines) + "\n"
         )
@@ -137,13 +140,15 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         for path, content in sorted(desired.items()):
             owner = root if path.is_relative_to(canonical) else projection
             if owner is None:
-                raise ValueError(f"undeclared collection destination: {path}")
+                msg = f"undeclared collection destination: {path}"
+                raise ValueError(msg)
             planned = FlextInfraUtilitiesDocsContract.docs_file_plan(
                 owner, path, content, desired_mode=0o644, source_states=inputs,
             ).unwrap()
             expected = states.get(path)
             if expected is not None and planned.before != expected:
-                raise ValueError(f"collection target changed after source read: {path}")
+                msg = f"collection target changed after source read: {path}"
+                raise ValueError(msg)
             plans.append(planned)
         directories = tuple(sorted({path.parent for path in desired},
                                    key=lambda path: (len(path.parts), path.as_posix())))
@@ -169,7 +174,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         digest = sha256()
         for artifact in artifacts:
             if artifact.content is None:
-                raise ValueError(f"absent collected artifact: {artifact.path}")
+                msg = f"absent collected artifact: {artifact.path}"
+                raise ValueError(msg)
             name = artifact.path.relative_to(path.parent).as_posix().encode()
             digest.update(len(name).to_bytes(8, "big"))
             digest.update(name)
@@ -180,14 +186,16 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         incoming = target.with_suffix("") / "incoming" / digest.hexdigest()
         plan = artifacts[0].content
         if plan is None:
-            raise ValueError(f"plan content absent: {path}")
+            msg = f"plan content absent: {path}"
+            raise ValueError(msg)
         existing = cls.collection_capture(target, states)
         desired[target] = existing.content if existing.content is not None else plan
         desired[incoming / "plan.md"] = plan
         attachment_names: list[str] = []
         for attachment in artifacts[1:]:
             if attachment.content is None:
-                raise ValueError(f"attachment content absent: {attachment.path}")
+                msg = f"attachment content absent: {attachment.path}"
+                raise ValueError(msg)
             name = attachment.path.relative_to(path.with_suffix(""))
             desired[incoming / "attachments" / name] = attachment.content
             attachment_names.append(name.as_posix())
@@ -206,7 +214,8 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         if receipt.content is not None:
             recorded = m.Infra.PlanCollectionRevision.model_validate_json(receipt.content)
             if (recorded.identity, recorded.digest) != (revision.identity, revision.digest):
-                raise ValueError(f"incoming revision receipt identity changed: {receipt_path}")
+                msg = f"incoming revision receipt identity changed: {receipt_path}"
+                raise ValueError(msg)
             revision = recorded
         desired[receipt_path] = (
             receipt.content if receipt.content is not None

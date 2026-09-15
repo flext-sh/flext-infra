@@ -15,6 +15,7 @@ from __future__ import annotations
 import functools
 import re
 from bisect import bisect_right
+from collections.abc import Mapping
 from fnmatch import fnmatch
 from pathlib import Path
 
@@ -39,8 +40,12 @@ class FlextInfraModTextGateEngine:
             parsed = u.Cli.yaml_parse(source.read_text(encoding=c.Cli.ENCODING_DEFAULT))
             if parsed.failure:
                 return r[t.VariadicTuple[m.Infra.ModTextRule]].from_failure(parsed)
+            if not isinstance(parsed.value, Mapping):
+                return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(
+                    f"text rule file must be a YAML mapping: {source}"
+                )
             listing = parsed.value.get(c.Infra.CODEMOD_TEXT_RULES_KEY)
-            if listing is None:
+            if not isinstance(listing, list):
                 return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(
                     f"text rule file declares no rules list: {source}"
                 )

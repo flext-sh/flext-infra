@@ -9,8 +9,8 @@ from flext_core import m
 from flext_infra import c, t
 
 from .config import FlextInfraConfigModels
-from .docs_generation import FlextInfraModelsDocsGeneration
 from .docs_collection import FlextInfraModelsDocsCollection
+from .docs_generation import FlextInfraModelsDocsGeneration
 
 
 # NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): docs transport

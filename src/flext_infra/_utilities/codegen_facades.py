@@ -136,7 +136,8 @@ class FlextInfraUtilitiesCodegenFacades:
                         continue
                     imported, _line = binding.imported_module.get_definition_location()
                     if imported is None or (origin := imported.get_resource()) is None:
-                        raise ValueError(f"unresolved facade import {family} in {path}")
+                        msg = f"unresolved facade import {family} in {path}"
+                        raise ValueError(msg)
                     declared = FlextInfraUtilitiesRopeCore.resource_file_path(
                         project, origin
                     )

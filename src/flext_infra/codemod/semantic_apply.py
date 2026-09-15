@@ -20,7 +20,9 @@ class FlextInfraCodemodSemanticApply:
     ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
         """Return one immutable Rope callback for the mod loop's progress identity."""
         original = cls._source_inventory(root, preflight)
-        from .._utilities.codegen_path_cutover import FlextInfraUtilitiesCodegenPathCutover
+        from .._utilities.codegen_path_cutover import (
+            FlextInfraUtilitiesCodegenPathCutover,
+        )
 
         with infra.rope_workspace(root) as rope_workspace:
             return FlextInfraUtilitiesCodegenPathCutover.plan_transaction_path_cutover(

@@ -20,8 +20,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodemodSemanticApply",
     "FlextInfraCodemodSnapshotReconciler",
     "FlextInfraModGateEngine",
-    "FlextInfraModTextGateEngine",
     "FlextInfraModReplacements",
+    "FlextInfraModTextGateEngine",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
