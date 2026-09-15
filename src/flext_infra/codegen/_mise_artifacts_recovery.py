@@ -93,9 +93,7 @@ class FlextInfraMiseRecovery:
         result_type = r[tuple[m.Infra.CodegenRecoveryAction, ...]]
         actions: list[m.Infra.CodegenRecoveryAction] = []
         for entry in journal.entries:
-            target = files.resolve_relative(
-                layout.scope_root, entry.path, purpose="generated destination"
-            )
+            target = files.resolve_transaction(layout, entry.path, purpose="generated destination")
             if target.failure:
                 return result_type.from_failure(target)
             current = files.read_state(target.value, required=False)
@@ -139,11 +137,7 @@ class FlextInfraMiseRecovery:
             if not action.entry.original_exists or action.entry.original_backup is None:
                 candidates.append(None)
                 continue
-            backup_path = files.resolve_relative(
-                layout.scope_root,
-                action.entry.original_backup,
-                purpose="generation recovery backup",
-            )
+            backup_path = files.resolve_transaction(layout, action.entry.original_backup, purpose="generation recovery backup")
             if backup_path.failure:
                 return result_type.from_failure(backup_path)
             if not backup_path.value.exists():
@@ -169,11 +163,7 @@ class FlextInfraMiseRecovery:
             return r[m.Infra.CodegenStagedFile].fail(
                 f"generation recovery tuple is incomplete: {entry.path}"
             )
-        backup_path = files.resolve_relative(
-            layout.scope_root,
-            entry.original_backup,
-            purpose="generation recovery backup",
-        )
+        backup_path = files.resolve_transaction(layout, entry.original_backup, purpose="generation recovery backup")
         if backup_path.failure:
             return r[m.Infra.CodegenStagedFile].from_failure(backup_path)
         backup = files.read_state(backup_path.value, required=True)
@@ -238,11 +228,7 @@ class FlextInfraMiseRecovery:
                 return result_type.fail(
                     f"generation rollback backup is absent: {entry.path}"
                 )
-            backup = files.resolve_relative(
-                layout.scope_root,
-                entry.original_backup,
-                purpose="generation recovery backup",
-            )
+            backup = files.resolve_transaction(layout, entry.original_backup, purpose="generation recovery backup")
             if backup.failure:
                 return result_type.from_failure(backup)
             candidate = files.read_state(
@@ -299,9 +285,7 @@ class FlextInfraMiseRecovery:
     ) -> p.Result[bool]:
         by_path = {action.entry.path: action for action in actions}
         for entry in journal.entries:
-            target = files.resolve_relative(
-                layout.scope_root, entry.path, purpose="generated destination"
-            )
+            target = files.resolve_transaction(layout, entry.path, purpose="generated destination")
             if target.failure:
                 return r[bool].from_failure(target)
             current = files.read_state(target.value, required=False)

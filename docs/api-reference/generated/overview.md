@@ -1,8 +1,7 @@
 # flext-infra API Overview
 
 <!-- TOC START -->
-- [flext-infra API Overview](#flext-infra-api-overview)
-  - [Next Pages](#next-pages)
+- [Next Pages](#next-pages)
 <!-- TOC END -->
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
@@ -20,17 +19,17 @@
 - Main facades: `FlextInfra`, `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
   `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport`,
-  `FlextInfraCanonicalAliasGate`, `FlextInfraCensusImportDiscoveryVisitor` (+175
+  `FlextInfraCanonicalAliasGate`, `FlextInfraCensusImportDiscoveryVisitor` (+176
   more)
 - Alias exports: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
 - Public symbol exports: `CliDispatchService`, `CliRouteBase`,
   `CliRouteService`, `CodegenRoutes`, `FlextInfra`,
   `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
-  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+188 more)
+  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+189 more)
 - Exported module shortcuts: `check`, `codegen`, `codemod`, `deps`, `detectors`,
   `docs`, `fixers`, `gates` (+8 more)
-- Generated module pages: `203`
+- Generated module pages: `204`
 
 ## Next Pages
 

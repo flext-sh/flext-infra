@@ -90,9 +90,7 @@ class FlextInfraMiseArtifactsJournal:
         entries = list(journal.entries)
         recovery_roots: set[Path] = set()
         for offset, publication in enumerate(publications, start=len(entries)):
-            target = files.workspace_relative(
-                plan.layout.scope_root, publication.before.path
-            )
+            target = files.transaction_relative(plan.layout, publication.before.path)
             if target.failure:
                 return r[m.Infra.CodegenTransactionJournal].from_failure(target)
             if target.value in existing_paths:
@@ -645,7 +643,7 @@ class FlextInfraMiseArtifactsJournal:
             return r[m.Infra.CodegenJournalEntry].fail(
                 f"generation publication has no transaction participant: {before.path}"
             )
-        selector = files.workspace_relative(plan.layout.scope_root, before.path)
+        selector = files.transaction_relative(plan.layout, before.path)
         if selector.failure:
             return r[m.Infra.CodegenJournalEntry].from_failure(selector)
         backup_selector: str | None = None
@@ -684,7 +682,7 @@ class FlextInfraMiseArtifactsJournal:
             written = process.write_new(backup, before.content, c.Infra.JOURNAL_MODE)
             if written.failure:
                 return r[m.Infra.CodegenJournalEntry].from_failure(written)
-            relative_backup = files.workspace_relative(plan.layout.scope_root, backup)
+            relative_backup = files.transaction_relative(plan.layout, backup)
             if relative_backup.failure:
                 return r[m.Infra.CodegenJournalEntry].from_failure(relative_backup)
             backup_selector = relative_backup.value
@@ -704,9 +702,7 @@ class FlextInfraMiseArtifactsJournal:
             )
         desired_staging: str | None = None
         if replacement is not None:
-            relative_staging = files.workspace_relative(
-                plan.layout.scope_root, replacement.path
-            )
+            relative_staging = files.transaction_relative(plan.layout, replacement.path)
             if relative_staging.failure:
                 return r[m.Infra.CodegenJournalEntry].from_failure(relative_staging)
             desired_staging = relative_staging.value

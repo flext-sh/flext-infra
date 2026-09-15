@@ -35,9 +35,7 @@ class FlextInfraMiseArtifactsVerification:
                 for item in files.transaction_participants(layout)
                 if item.selector == directory.project
             )
-            target = files.resolve_relative(
-                layout.scope_root, directory.path, purpose="temporary tree manifest"
-            )
+            target = files.resolve_transaction(layout, directory.path, purpose="temporary tree manifest")
             if target.failure:
                 return result_type.from_failure(target)
             if (
@@ -152,11 +150,7 @@ class FlextInfraMiseArtifactsVerification:
         }
         directory_targets: MutableMapping[Path, m.Infra.CodegenJournalDirectory] = {}
         for directory in journal.directories:
-            target = files.resolve_relative(
-                layout.scope_root,
-                directory.path,
-                purpose="journaled generation directory",
-            )
+            target = files.resolve_transaction(layout, directory.path, purpose="journaled generation directory")
             if target.failure:
                 return r[bool].from_failure(target)
             directory_targets[target.value] = directory
@@ -224,9 +218,7 @@ class FlextInfraMiseArtifactsVerification:
                     )
         for entry in journal.entries:
             project = by_selector[entry.project]
-            target = files.resolve_relative(
-                layout.scope_root, entry.path, purpose="generated destination"
-            )
+            target = files.resolve_transaction(layout, entry.path, purpose="generated destination")
             if target.failure:
                 return r[bool].from_failure(target)
             if not target.value.is_relative_to(project.root):
@@ -246,9 +238,7 @@ class FlextInfraMiseArtifactsVerification:
                     "generation recovery layout has no transaction root"
                 )
             for role, selector in staging_paths:
-                staging = files.resolve_relative(
-                    layout.scope_root, selector, purpose=f"generation {role} staging"
-                )
+                staging = files.resolve_transaction(layout, selector, purpose=f"generation {role} staging")
                 if staging.failure:
                     return r[bool].from_failure(staging)
                 if transaction_root is None or not staging.value.is_relative_to(
@@ -258,11 +248,7 @@ class FlextInfraMiseArtifactsVerification:
                         f"generation {role} staging escapes transaction root: {entry.path}"
                     )
             if entry.original_backup is not None:
-                backup = files.resolve_relative(
-                    layout.scope_root,
-                    entry.original_backup,
-                    purpose="generation recovery backup",
-                )
+                backup = files.resolve_transaction(layout, entry.original_backup, purpose="generation recovery backup")
                 if backup.failure:
                     return r[bool].from_failure(backup)
                 if transaction_root is None or backup.value.parent != (
@@ -626,9 +612,7 @@ class FlextInfraMiseArtifactsVerification:
             for role, selector in selectors:
                 if selector is None:
                     continue
-                resolved = files.resolve_relative(
-                    layout.scope_root, selector, purpose=f"{role} staging file"
-                )
+                resolved = files.resolve_transaction(layout, selector, purpose=f"{role} staging file")
                 if resolved.failure:
                     return result_type.from_failure(resolved)
                 previous = specs.get(resolved.value)

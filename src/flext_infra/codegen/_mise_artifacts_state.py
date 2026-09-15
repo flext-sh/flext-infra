@@ -212,7 +212,7 @@ class FlextInfraMiseArtifactsState:
                     return result_type.fail(
                         f"{phase} directory has no project owner: {directory}"
                     )
-                relative = files.workspace_relative(layout.scope_root, directory)
+                relative = files.transaction_relative(layout, directory)
                 if relative.failure:
                     return result_type.from_failure(relative)
                 before: m.Cli.AtomicDirectoryState | None = None
@@ -262,9 +262,7 @@ class FlextInfraMiseArtifactsState:
         result_type = r[m.Infra.CodegenJournalDirectory]
         if entry.created is not None or entry not in directories:
             return result_type.fail(f"invalid directory creation cursor: {entry.path}")
-        target = files.resolve_relative(
-            layout.scope_root, entry.path, purpose="journaled generation directory"
-        )
+        target = files.resolve_transaction(layout, entry.path, purpose="journaled generation directory")
         if target.failure:
             return result_type.from_failure(target)
         project = next(
@@ -484,7 +482,7 @@ class FlextInfraMiseArtifactsState:
                 return r[bool].fail("Mise recovery layout has no transaction root")
             if not transaction_root.exists() and not transaction_root.is_symlink():
                 continue
-            relative = files.workspace_relative(layout.scope_root, transaction_root)
+            relative = files.transaction_relative(layout, transaction_root)
             if relative.failure:
                 return r[bool].from_failure(relative)
             entry = next(
@@ -526,9 +524,7 @@ class FlextInfraMiseArtifactsState:
             )
         )
         for entry in sorted(removable, key=cls._directory_cleanup_order, reverse=True):
-            target = files.resolve_relative(
-                layout.scope_root, entry.path, purpose="journaled cleanup directory"
-            )
+            target = files.resolve_transaction(layout, entry.path, purpose="journaled cleanup directory")
             if target.failure:
                 return r[bool].from_failure(target)
             if not target.value.exists() and not target.value.is_symlink():
@@ -568,7 +564,7 @@ class FlextInfraMiseArtifactsState:
                 return r[bool].from_failure(transaction)
             if transaction.value is False:
                 continue
-            relative = files.workspace_relative(layout.scope_root, transaction_root)
+            relative = files.transaction_relative(layout, transaction_root)
             if relative.failure:
                 return r[bool].from_failure(relative)
             recorded = next(

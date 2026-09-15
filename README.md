@@ -1,14 +1,13 @@
 # flext-infra
 
 <!-- TOC START -->
-- [flext-infra](#flext-infra)
-  - [Purpose](#purpose)
-  - [Module Map](#module-map)
-  - [Collection Rules](#collection-rules)
-  - [Operation Flow](#operation-flow)
-  - [Integration Points](#integration-points)
-  - [Quality Gates](#quality-gates)
-  - [Governance Pointer](#governance-pointer)
+- [Purpose](#purpose)
+- [Module Map](#module-map)
+- [Collection Rules](#collection-rules)
+- [Operation Flow](#operation-flow)
+- [Integration Points](#integration-points)
+- [Quality Gates](#quality-gates)
+- [Governance Pointer](#governance-pointer)
 <!-- TOC END -->
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
@@ -58,7 +57,7 @@ slot registry verification).
 - Public extensions exposed by this project: `FlextInfra`,
   `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
-  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+176 more).
+  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+178 more).
 - Library abstraction boundaries: see AGENTS.md §2.7.
 
 ## Quality Gates
