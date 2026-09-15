@@ -7,7 +7,7 @@ from typing import Annotated, Literal, Self
 
 from flext_core import m, t, u
 
-from ._defaults import immutable_empty_mapping, tool_version_field
+from ._defaults import immutable_empty_mapping
 
 
 class FlextInfraModelsMiseToolchain:
@@ -456,6 +456,24 @@ class FlextInfraModelsMiseToolchain:
         @property
         def python_selector(self) -> str:
             """Mise/pyenv-style selector for the configured Python minor line."""
+
+    # Force ToolchainSpec model resolution before defining MiseTomlRenderSpec
+    _toolchain_spec_fields = ToolchainSpec.model_fields
+
+    class MiseTomlRenderSpec(ToolchainSpec):
+        """Toolchain render context for ``.mise.toml`` plus per-project gates.
+
+        The template consumes flat toolchain field names, so the context is the
+        fleet ToolchainSpec narrowed by the per-project Gas City participation
+        resolved from the workspace manifest overlay.
+        """
+
+        gascity_enabled: Annotated[
+            bool,
+            m.Field(
+                description=("Whether the gc tool block is projected into .mise.toml.")
+            ),
+        ] = True
             return self.python_version
 
     class BeadsEndpointSpec(_ConfigContract):

@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from pydantic import ValidationError
 
 from flext_infra import m, t
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
@@ -139,7 +138,7 @@ class TestsFlextInfraDepsDetectionModels:
 
     def test_unsupported_type(self, tmp_path: Path) -> None:
         """Verify unsupported type."""
-        with pytest.raises(ValidationError):
+        with pytest.raises(m.ValidationError):
             _ = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(str(tmp_path))
 
     def test_list_with_none_item(self) -> None:
