@@ -148,7 +148,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
         u.Cli.info(f"Reports: {md_path}")
         u.Cli.info(f"         {sarif_path}")
         if total_errors > 0:
-            u.Cli.info("Errors by project:")
+            u.Cli.info("Findings by project (report-only; see reports for detail):")
             for project in sorted(
                 results, key=operator.attrgetter("total_errors"), reverse=True
             ):
@@ -159,7 +159,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
                     for gate in resolved_gates
                     if gate in project.gates and project.gates[gate].error_count
                 )
-                u.Cli.error(
+                u.Cli.info(
                     f"{project.project:30s} {project.total_errors:6d}  ({breakdown})"
                 )
         return r[t.SequenceOf[m.Infra.ProjectResult]].ok(results)

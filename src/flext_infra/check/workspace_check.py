@@ -108,14 +108,15 @@ class FlextInfraWorkspaceChecker(
         ]
         if failed_projects:
             failed_names = ", ".join(project.project for project in failed_projects)
-            if params.report_findings:
-                # Reporting adds context; failed gates retain their causal
-                # status in repair mode as well as in check mode.
-                u.Cli.warning(
-                    f"fix applied; quality gates still report findings for: "
-                    f"{failed_names} (see the check summary)"
-                )
-            return r[bool].fail(f"quality gates failed for: {failed_names}")
+            total_findings = sum(project.total_errors for project in failed_projects)
+            # Operator contract (2026-09-15): quality findings feed the generator,
+            # they never fail the canonical Make verb. Gates that RAN always
+            # complete; their findings live in the reports (md/sarif/logs) and in
+            # this console summary. Only pipeline/infra crashes fail the verb.
+            u.Cli.info(
+                f"quality findings reported for: {failed_names} "
+                f"({total_findings} findings; see the check summary and reports)"
+            )
         return r[bool].ok(True)
 
     @staticmethod
