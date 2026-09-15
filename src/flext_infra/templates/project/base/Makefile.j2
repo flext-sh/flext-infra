@@ -373,14 +373,26 @@ endef
    environment exists, and the omission made the generated Makefile contradict
    the contract its own consumers assert. -#}
 {% for verb in make.verbs if verb.name != "setup" %}
-{{ verb.name }}:{% if verb.name != "help" %} _builtin_require_environment{% endif %}
+{% if verb.name != "help" %}
+{{ verb.name }}:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-{{ verb.name }}
+
+.PHONY: _activated-{{ verb.name }}
+_activated-{{ verb.name }}: _builtin_require_environment
+{% else %}
+{{ verb.name }}:
+{% endif %}
 	$(call RUN_PUBLIC,{{ verb.name }})
 {% endfor %}
 
 # Repository-owned extra verbs dispatch exactly like canonical ones: the
 # project declares them (help, .PHONY) and must also be able to run them.
 {% for verb in extra_verbs %}
-{{ verb.name }}: _builtin_require_environment
+{{ verb.name }}:
+	+@direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-{{ verb.name }}
+
+.PHONY: _activated-{{ verb.name }}
+_activated-{{ verb.name }}: _builtin_require_environment
 	$(call RUN_PUBLIC,{{ verb.name }})
 {% endfor %}
 
@@ -396,6 +408,11 @@ _setup_lifecycle:
 		*" pre-setup "*) $(SELF_MAKE) pre-setup ;; \
 	esac
 	@$(SELF_MAKE) _builtin_setup_environment
+	+@XDG_DATA_HOME="$${SETUP_DIRENV_XDG_DATA_HOME:?missing persistent direnv data home}" \
+		"$${SETUP_DIRENV:?missing Mise-resolved direnv executable}" exec "$(PROJECT_ROOT)" $(SELF_MAKE) _setup_activated
+
+.PHONY: _setup_activated
+_setup_activated:
 	@set -eu; \
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" post-setup "*) $(SELF_MAKE) post-setup ;; \
