@@ -108,6 +108,7 @@ class FlextInfraCodegenConformExecute:
                 f"scaffold root rollback failed: {rollback.error}"
             )
         return result
+
     @override
     def execute(self) -> p.Result[m.Infra.CodegenResult]:
         """Run check or apply and require a verified fixed point."""

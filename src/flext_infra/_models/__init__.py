@@ -16,6 +16,18 @@ if TYPE_CHECKING:
     from ._codegen.pipeline import FlextInfraModelsCodegenPipelineModels
     from ._codegen.scaffold import FlextInfraModelsCodegenScaffoldModels
     from ._codegen.transaction import FlextInfraModelsCodegenTransactionModels
+    from ._config.artifact import FlextInfraConfigModelsArtifact
+    from ._config.beads import FlextInfraConfigModelsBeads
+    from ._config.contexts import FlextInfraConfigModelsContexts
+    from ._config.contract import FlextInfraConfigModelsContract
+    from ._config.make import FlextInfraConfigModelsMake
+    from ._config.provider import FlextInfraConfigModelsProvider
+    from ._config.release import FlextInfraConfigModelsRelease
+    from ._config.render import FlextInfraConfigModelsRender
+    from ._config.scaffold import FlextInfraConfigModelsScaffold
+    from ._config.static import FlextInfraConfigModelsStatic
+    from ._config.templates import FlextInfraConfigModelsTemplates
+    from ._config.workspace import FlextInfraConfigModelsWorkspace
     from ._defaults import (
         ImmutableEmptyMapping,
         immutable_empty_mapping,
@@ -67,6 +79,18 @@ if TYPE_CHECKING:
     from .worktree import FlextInfraModelsWorktree
 __all__: tuple[str, ...] = (
     "FlextInfraConfigModels",
+    "FlextInfraConfigModelsArtifact",
+    "FlextInfraConfigModelsBeads",
+    "FlextInfraConfigModelsContexts",
+    "FlextInfraConfigModelsContract",
+    "FlextInfraConfigModelsMake",
+    "FlextInfraConfigModelsProvider",
+    "FlextInfraConfigModelsRelease",
+    "FlextInfraConfigModelsRender",
+    "FlextInfraConfigModelsScaffold",
+    "FlextInfraConfigModelsStatic",
+    "FlextInfraConfigModelsTemplates",
+    "FlextInfraConfigModelsWorkspace",
     "FlextInfraModelsBase",
     "FlextInfraModelsCensus",
     "FlextInfraModelsCheck",
@@ -133,6 +157,18 @@ _LAZY_IMPORTS = MappingProxyType(
             "._codegen.scaffold": ("FlextInfraModelsCodegenScaffoldModels",),
             "._codegen.transaction": ("FlextInfraModelsCodegenTransactionModels",),
             "._config": ("_config",),
+            "._config.artifact": ("FlextInfraConfigModelsArtifact",),
+            "._config.beads": ("FlextInfraConfigModelsBeads",),
+            "._config.contexts": ("FlextInfraConfigModelsContexts",),
+            "._config.contract": ("FlextInfraConfigModelsContract",),
+            "._config.make": ("FlextInfraConfigModelsMake",),
+            "._config.provider": ("FlextInfraConfigModelsProvider",),
+            "._config.release": ("FlextInfraConfigModelsRelease",),
+            "._config.render": ("FlextInfraConfigModelsRender",),
+            "._config.scaffold": ("FlextInfraConfigModelsScaffold",),
+            "._config.static": ("FlextInfraConfigModelsStatic",),
+            "._config.templates": ("FlextInfraConfigModelsTemplates",),
+            "._config.workspace": ("FlextInfraConfigModelsWorkspace",),
             "._defaults": (
                 "ImmutableEmptyMapping",
                 "immutable_empty_mapping",

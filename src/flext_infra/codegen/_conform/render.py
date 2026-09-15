@@ -6,7 +6,7 @@ import re
 import time
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import Annotated, Literal, override
+from typing import TYPE_CHECKING, Annotated, Literal, override
 
 from ... import c, config, m, p, r, s, t, u
 from ...deps import FlextInfraEnsureRuffConfigPhase, FlextInfraPyprojectModernizer
@@ -19,6 +19,9 @@ from .. import (
     FlextInfraCodegenTransaction,
 )
 from .._conform_gitignore import FlextInfraCodegenConformGitignoreMixin
+
+if TYPE_CHECKING:
+    from .base import FlextInfraCodegenConform
 
 
 
@@ -64,13 +67,13 @@ class FlextInfraCodegenConformRender:
                     else c.Infra.MakeProfile.STANDALONE
                 )
                 excludes = (
-                    FlextInfraCodegenConformMisc._routed_uv_exclude_dependencies(
+                    FlextInfraCodegenConform._routed_uv_exclude_dependencies(
                         repository=repository, target=target, codegen=codegen
                     )
                     if target is not None
                     else ()
                 )
-                conformed = FlextInfraCodegenConformMisc._conformed_pyproject_source(
+                conformed = FlextInfraCodegenConform._conformed_pyproject_source(
                     rendered,
                     repository=repository,
                     workspace=workspace,
@@ -221,7 +224,7 @@ class FlextInfraCodegenConformRender:
                         codegen.toolchain.environment_path_prepends
                     ),
                     mise_bootstrap=(
-                        FlextInfraCodegenConformBootstrap._mise_bootstrap_environment()
+                        FlextInfraCodegenConform._mise_bootstrap_environment()
                     ),
                     gascity=(
                         m.Infra.BeadsWorkspaceEnvironmentSpec()
@@ -317,7 +320,7 @@ class FlextInfraCodegenConformRender:
                     checkout_submodules=codegen.checkout_submodules_overrides.get(
                         dist, codegen.checkout_submodules
                     ),
-                    custom_steps=FlextInfraCodegenConformRender._custom_ci_steps(
+                    custom_steps=FlextInfraCodegenConform._custom_ci_steps(
                         repository_root
                     ),
                     private_submodules=codegen.ci_private_submodules.get(dist),
@@ -370,7 +373,7 @@ class FlextInfraCodegenConformRender:
                     infra_cli=config.Infra.name,
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                    repository_root_rel=FlextInfraCodegenConformPlan._repository_root_rel(
+                    repository_root_rel=FlextInfraCodegenConform._repository_root_rel(
                         workspace
                     ),
                     workspace_subprojects=tuple(
@@ -378,18 +381,18 @@ class FlextInfraCodegenConformRender:
                     ),
                     workspace_repositories=subprojects,
                     workspace_gitlinks=gitlinks.value,
-                    uv_link_mode=FlextInfraCodegenConformBootstrap._link_mode(
+                    uv_link_mode=FlextInfraCodegenConform._link_mode(
                         repository, codegen.toolchain
                     ),
                     uv_version=codegen.toolchain.uv_version,
                     make=codegen.make,
                     extra_verbs=(
-                        FlextInfraCodegenConformBootstrap._merge_extra_verbs(
+                        FlextInfraCodegenConform._merge_extra_verbs(
                             repository.extra_verbs,
                             (
                                 ()
                                 if repository.script_dispatch is None
-                                else FlextInfraCodegenConformBootstrap._discover_script_verbs(
+                                else FlextInfraCodegenConform._discover_script_verbs(
                                     repository_root
                                 )
                             ),
@@ -415,7 +418,7 @@ class FlextInfraCodegenConformRender:
             # Existing repositories project custom routes from the same typed
             # Make contract as Makefile; they do not require scaffold-only
             # project metadata.
-            make_context = FlextInfraCodegenConformRender.make_render_context(
+            make_context = FlextInfraCodegenConform.make_render_context(
                 repository,
                 target,
                 workspace,
@@ -465,27 +468,27 @@ class FlextInfraCodegenConformRender:
             if profile is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
-        gitlinks = FlextInfraCodegenConformRender._managed_gitlinks(workspace, codegen)
+        gitlinks = FlextInfraCodegenConform._managed_gitlinks(workspace, codegen)
         if gitlinks.failure:
             return r[m.Infra.MakeRenderContext].from_failure(gitlinks)
         cooldown_exclusions, cooldown_overrides = (
-            FlextInfraCodegenConformBootstrap._dependency_cooldown_policy(
+            FlextInfraCodegenConform._dependency_cooldown_policy(
                 repository, codegen.toolchain
             )
         )
-        extra_verbs = FlextInfraCodegenConformBootstrap._merge_extra_verbs(
+        extra_verbs = FlextInfraCodegenConform._merge_extra_verbs(
             repository.extra_verbs,
             (
                 ()
                 if repository.script_dispatch is None
-                else FlextInfraCodegenConformBootstrap._discover_script_verbs(repository_root)
+                else FlextInfraCodegenConform._discover_script_verbs(repository_root)
             ),
             frozenset(verb.name for verb in codegen.make.verbs),
         )
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=config.Infra.tooling.tools.pytest,
-                mise_bootstrap=(FlextInfraCodegenConformBootstrap._mise_bootstrap_environment()),
+                mise_bootstrap=(FlextInfraCodegenConform._mise_bootstrap_environment()),
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
@@ -499,7 +502,7 @@ class FlextInfraCodegenConformRender:
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,
                 python_version=codegen.toolchain.python_version,
-                uv_link_mode=FlextInfraCodegenConformBootstrap._link_mode(
+                uv_link_mode=FlextInfraCodegenConform._link_mode(
                     repository, codegen.toolchain
                 ),
                 # ProjectRenderContext replaces this with the composed map.
@@ -508,7 +511,7 @@ class FlextInfraCodegenConformRender:
                 ruff_per_file_ignores={},
                 make_profile=profile,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
-                repository_root_rel=FlextInfraCodegenConformPlan._repository_root_rel(
+                repository_root_rel=FlextInfraCodegenConform._repository_root_rel(
                     workspace
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
@@ -639,7 +642,7 @@ class FlextInfraCodegenConformRender:
             # identity from the live project metadata instead of failing, so
             # conforming a governed repository never depends on scaffold-only
             # declarations.
-            derived = FlextInfraCodegenConformRender._project_spec_from_existing(
+            derived = FlextInfraCodegenConform._project_spec_from_existing(
                 repository, repository_root, codegen
             )
             if derived.failure:
@@ -695,7 +698,7 @@ class FlextInfraCodegenConformRender:
                 f"supported licenses: {supported}"
             )
         profile = target.make_profile
-        make_context = FlextInfraCodegenConformRender.make_render_context(
+        make_context = FlextInfraCodegenConform.make_render_context(
             repository,
             target,
             workspace,
@@ -705,7 +708,7 @@ class FlextInfraCodegenConformRender:
         )
         if make_context.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(make_context)
-        repository_provider = FlextInfraCodegenConformPlan._repository_provider(
+        repository_provider = FlextInfraCodegenConform._repository_provider(
             repository, codegen
         )
         if repository_provider.failure:
@@ -756,7 +759,7 @@ class FlextInfraCodegenConformRender:
                     exclude={"mise_bootstrap", "ruff_per_file_ignores"},
                     exclude_computed_fields=True,
                 ),
-                mise_bootstrap=FlextInfraCodegenConformBootstrap._mise_bootstrap_environment(),
+                mise_bootstrap=FlextInfraCodegenConform._mise_bootstrap_environment(),
                 scaffold=codegen.scaffold,
                 gitignore_sections=self._gitignore_sections(
                     codegen,

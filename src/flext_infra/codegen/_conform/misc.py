@@ -6,7 +6,7 @@ import re
 import time
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import Annotated, Literal, override
+from typing import TYPE_CHECKING, Annotated, Literal, override
 
 from ... import c, config, m, p, r, s, t, u
 from ...deps import FlextInfraEnsureRuffConfigPhase, FlextInfraPyprojectModernizer
@@ -19,6 +19,9 @@ from .. import (
     FlextInfraCodegenTransaction,
 )
 from .._conform_gitignore import FlextInfraCodegenConformGitignoreMixin
+
+if TYPE_CHECKING:
+    from .base import FlextInfraCodegenConform
 
 
 
@@ -105,7 +108,7 @@ class FlextInfraCodegenConformMisc:
         if owner.is_dir():
             owner.chmod(c.Infra.BEADS_DIRECTORY_MODE)
         for repository in workspace.subprojects:
-            state = FlextInfraCodegenConformMisc._beads_route_state(
+            state = FlextInfraCodegenConform._beads_route_state(
                 (root / repository.path).resolve()
             )
             if state.failure:
@@ -147,7 +150,7 @@ class FlextInfraCodegenConformMisc:
             entry.name
             for entry in route.iterdir()
             if entry.name not in allowed_entries
-            and not FlextInfraCodegenConformExecute._is_dry_run_config_backup(entry.name)
+            and not FlextInfraCodegenConform._is_dry_run_config_backup(entry.name)
         )
         if unexpected:
             return r[bool].fail(
@@ -216,7 +219,7 @@ class FlextInfraCodegenConformMisc:
             workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
-            uv_link_mode=FlextInfraCodegenConformBootstrap._link_mode(
+            uv_link_mode=FlextInfraCodegenConform._link_mode(
                 repository, codegen.toolchain
             ),
             uv_exclude_dependencies=uv_exclude_dependencies,

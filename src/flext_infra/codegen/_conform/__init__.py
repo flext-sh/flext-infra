@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Flext Infra. Codegen. Conform package."""
+"""Flext Infra.codegen. Conform package."""
 
 from __future__ import annotations
 
@@ -10,11 +10,30 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from .base import FlextInfraCodegenConform
-__all__: tuple[str, ...] = ("FlextInfraCodegenConform",)
+    from .bootstrap import FlextInfraCodegenConformBootstrap
+    from .execute import FlextInfraCodegenConformExecute
+    from .misc import FlextInfraCodegenConformMisc
+    from .plan import FlextInfraCodegenConformPlan
+    from .render import FlextInfraCodegenConformRender
+__all__: tuple[str, ...] = (
+    "FlextInfraCodegenConform",
+    "FlextInfraCodegenConformBootstrap",
+    "FlextInfraCodegenConformExecute",
+    "FlextInfraCodegenConformMisc",
+    "FlextInfraCodegenConformPlan",
+    "FlextInfraCodegenConformRender",
+)
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
-        MappingProxyType({".base": ("FlextInfraCodegenConform",)}),
+        MappingProxyType({
+            ".base": ("FlextInfraCodegenConform",),
+            ".bootstrap": ("FlextInfraCodegenConformBootstrap",),
+            ".execute": ("FlextInfraCodegenConformExecute",),
+            ".misc": ("FlextInfraCodegenConformMisc",),
+            ".plan": ("FlextInfraCodegenConformPlan",),
+            ".render": ("FlextInfraCodegenConformRender",),
+        }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,
     )

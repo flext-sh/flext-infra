@@ -6,7 +6,7 @@ import re
 import time
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import Annotated, Literal, override
+from typing import TYPE_CHECKING, Annotated, Literal, override
 
 from ... import c, config, m, p, r, s, t, u
 from ...deps import FlextInfraEnsureRuffConfigPhase, FlextInfraPyprojectModernizer
@@ -19,6 +19,9 @@ from .. import (
     FlextInfraCodegenTransaction,
 )
 from .._conform_gitignore import FlextInfraCodegenConformGitignoreMixin
+
+if TYPE_CHECKING:
+    from .base import FlextInfraCodegenConform
 
 
 
@@ -751,7 +754,7 @@ class FlextInfraCodegenConformPlan:
                 if merged.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(merged)
                 if merged.value != current:
-                    merged_plan = FlextInfraCodegenConformMisc._file_plan(
+                    merged_plan = FlextInfraCodegenConform._file_plan(
                         root, relative.as_posix(), merged.value, mode=governed.mode
                     )
                     if merged_plan.failure:
@@ -764,7 +767,7 @@ class FlextInfraCodegenConformPlan:
                         )
                     )
                     continue
-            current_plan = FlextInfraCodegenConformMisc._file_plan(
+            current_plan = FlextInfraCodegenConform._file_plan(
                 root, relative.as_posix(), current, mode=governed.mode
             )
             if current_plan.failure:

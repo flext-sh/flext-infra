@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from . import _conform
     from ._codegen_generation_file import FlextInfraCodegenGenerationFileMixin
     from ._codegen_generation_imports import FlextInfraCodegenGenerationImportsMixin
     from ._codegen_generation_lazy_entries import (
@@ -21,6 +22,11 @@ if TYPE_CHECKING:
         FlextInfraCodegenGenerationTypeCheckingMixin,
     )
     from ._codegen_staging import stage_file_plans
+    from ._conform.bootstrap import FlextInfraCodegenConformBootstrap
+    from ._conform.execute import FlextInfraCodegenConformExecute
+    from ._conform.misc import FlextInfraCodegenConformMisc
+    from ._conform.plan import FlextInfraCodegenConformPlan
+    from ._conform.render import FlextInfraCodegenConformRender
     from ._consolidator_steps import FlextInfraCodegenConsolidatorStepsMixin
     from ._fixer_passes import FlextInfraCodegenFixerPassesMixin
     from ._fixer_results import FlextInfraCodegenFixerResultsMixin
@@ -70,6 +76,11 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConform",
+    "FlextInfraCodegenConformBootstrap",
+    "FlextInfraCodegenConformExecute",
+    "FlextInfraCodegenConformMisc",
+    "FlextInfraCodegenConformPlan",
+    "FlextInfraCodegenConformRender",
     "FlextInfraCodegenConsolidator",
     "FlextInfraCodegenConsolidatorStepsMixin",
     "FlextInfraCodegenFixer",
@@ -113,6 +124,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraMiseRecovery",
     "FlextInfraMiseStaging",
     "FlextInfraMiseWorkspacePlanner",
+    "_conform",
     "publication_plan",
     "publish",
     "publish_file_plan",
@@ -140,6 +152,12 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraCodegenGenerationTypeCheckingMixin",
             ),
             "._codegen_staging": ("stage_file_plans",),
+            "._conform": ("_conform",),
+            "._conform.bootstrap": ("FlextInfraCodegenConformBootstrap",),
+            "._conform.execute": ("FlextInfraCodegenConformExecute",),
+            "._conform.misc": ("FlextInfraCodegenConformMisc",),
+            "._conform.plan": ("FlextInfraCodegenConformPlan",),
+            "._conform.render": ("FlextInfraCodegenConformRender",),
             "._consolidator_steps": ("FlextInfraCodegenConsolidatorStepsMixin",),
             "._fixer_passes": ("FlextInfraCodegenFixerPassesMixin",),
             "._fixer_results": ("FlextInfraCodegenFixerResultsMixin",),
