@@ -31,12 +31,13 @@ BEADS_DOLT_SERVER_PORT="$(
   end' "$gas_city_root/{{ gascity.city_state_relpath }}"
 )"
 BEADS_DOLT_SERVER_DATABASE="$(
-  jq -er 'if (.dolt_database | type == "string") and (.dolt_database | length > 0) then
+  jq -er 'if .dolt_mode == "server" and (.dolt_database | type == "string") and (.dolt_database | length > 0) then
     .dolt_database
   else
-    error("this workspace has no Beads dolt_database identity")
+    error("Gas City must register this repository with a server database identity")
   end' "$checkout_root/{{ gascity.beads_metadata_relpath }}"
 )"
 export BEADS_DOLT_SERVER_PORT BEADS_DOLT_SERVER_DATABASE
 export BEADS_DOLT_SERVER_MODE=1
+export BEADS_DOLT_AUTO_START=0
 # End SECTION: beads dolt server

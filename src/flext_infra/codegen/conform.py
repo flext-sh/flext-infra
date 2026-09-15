@@ -2053,7 +2053,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.MarkdownLintRenderSpec(tooling=config.Infra.tooling)
             )
-        if destination in {".envrc", ".envrc.local"}:
+        if destination == ".envrc":
             return r[p.Model].ok(
                 m.Infra.EnvrcRenderSpec(
                     state_directory_name=codegen.toolchain.state_directory_name,
