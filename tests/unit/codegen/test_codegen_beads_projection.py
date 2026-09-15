@@ -77,10 +77,13 @@ class TestsFlextInfraCodegenBeadsProjection:
         # its own key on first write and left every governed checkout dirty.
         tm.that(rendered_config, has='issue_prefix: "project-prefix"')
         tm.that(rendered_config, lacks="issue-prefix:")
-        tm.that(rendered_config, lacks="gc.endpoint_origin:")
-        tm.that(rendered_config, lacks="gc.endpoint_status:")
-        tm.that(rendered_config, lacks="types.custom:")
-        tm.that(rendered_config, lacks="dolt.auto-start:")
+        # A checkout with no workspace manifest declares city participation by
+        # fleet default (True): the endpoint keys mirror the inherited city and
+        # `types.custom` stays generator-owned.
+        tm.that(rendered_config, has="gc.endpoint_origin:")
+        tm.that(rendered_config, has="gc.endpoint_status:")
+        tm.that(rendered_config, has="types.custom:")
+        tm.that(rendered_config, has="dolt.auto-start:")
         # Beads owns and mints metadata at first use. Codegen must not create
         # that runtime artifact in a fresh checkout.
         tm.that(rendered_metadata, none=True)
@@ -115,6 +118,36 @@ class TestsFlextInfraCodegenBeadsProjection:
             pytest.fail("standalone identity must produce the managed Mise manifest")
         tm.that(rendered_mise, lacks="gascity")
         tm.that(rendered_mise, has='[tools."github:marlon-costa-dc/beads"]')
+
+    def test_gascity_enabled_sources_activate_conditionally(
+        self, tmp_path: Path
+    ) -> None:
+        """Generated envrc sources host files only when they exist.
+
+        Isolated CI checkouts render the same Gas City participation as a
+        city-connected host, but they carry no host environment files: a hard
+        ``source_env`` there breaks direnv activation and the contract gate.
+        """
+        root = self._project(
+            tmp_path / "project",
+            database="project_database",
+            issue_prefix="project-prefix",
+        )
+        u.Tests.write_standalone_workspace_manifest(
+            root, "fixture-project", gascity_enabled=True
+        )
+
+        plan = self._plan(root)
+        rendered_envrc = self._rendered(plan, ".envrc")
+
+        if rendered_envrc is None:
+            pytest.fail("city participation must produce the managed .envrc")
+        tm.that(rendered_envrc, has='source_env_if_exists "$HOME/.config/')
+        tm.that(
+            rendered_envrc,
+            lacks='source_env "$HOME/.config/environment.d/projects/agent-tools.envrc"',
+        )
+        tm.that(rendered_envrc, has="AGENTS_GAS_CITY_ROOT must name the canonical")
 
     def test_metadata_projection_preserves_a_minted_ledger_identity(
         self, tmp_path: Path
