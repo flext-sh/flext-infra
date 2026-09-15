@@ -9,16 +9,16 @@ from pathlib import Path
 from typing import Annotated, Literal, override
 
 from ... import c, config, m, p, r, s, t, u
-from ..deps import FlextInfraEnsureRuffConfigPhase, FlextInfraPyprojectModernizer
-from ..docs import FlextInfraDocGenerator
-from ..services.codegen import FlextInfraCodegen
-from ..workspace import FlextInfraWorkspaceDetector
+from ...deps import FlextInfraEnsureRuffConfigPhase, FlextInfraPyprojectModernizer
+from ...docs import FlextInfraDocGenerator
+from ...services.codegen import FlextInfraCodegen
+from ...workspace import FlextInfraWorkspaceDetector
 from .. import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
-from ._conform_gitignore import FlextInfraCodegenConformGitignoreMixin
+from .._conform_gitignore import FlextInfraCodegenConformGitignoreMixin
 
 
 
