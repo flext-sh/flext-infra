@@ -17,6 +17,7 @@ class TestsPlanCollection:
     def _write(path: Path, text: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         tm.ok(u.Cli.atomic_write_text_file(path, text))
+        path.chmod(0o644)
 
     @staticmethod
     def _config() -> m.Infra.PlanCollectionConfig:
