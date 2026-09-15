@@ -72,8 +72,8 @@ class TestsFlextInfraWorkspaceManifest:
         self, tmp_path: Path
     ) -> None:
         """An invalid declared scope fails before discovery can widen it."""
-        self._config_dir(tmp_path)
-        u.Infra.workspace_manifest_path(tmp_path).write_text(
+        manifest = u.Tests.write_standalone_workspace_manifest(tmp_path, _PROBE)
+        manifest.write_text(
             "{}\n", encoding=c.Cli.ENCODING_DEFAULT
         )
 
@@ -84,8 +84,8 @@ class TestsFlextInfraWorkspaceManifest:
         self, tmp_path: Path
     ) -> None:
         """A present invalid manifest is never treated as undeclared settings."""
-        self._config_dir(tmp_path)
-        u.Infra.workspace_manifest_path(tmp_path).write_text(
+        manifest = u.Tests.write_standalone_workspace_manifest(tmp_path, _PROBE)
+        manifest.write_text(
             "{}\n", encoding=c.Cli.ENCODING_DEFAULT
         )
 
