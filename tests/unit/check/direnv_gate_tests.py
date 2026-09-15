@@ -83,6 +83,27 @@ class TestsFlextInfraDirenvGate:
             )
             tm.that(violations, eq=())
 
+        def test_home_targets_resolve_against_the_real_home(
+            self, tmp_path: Path
+        ) -> None:
+            """resolve_home=True substitutes the real home for the prefix.
+
+            Regression: the prefix used to be stripped without substitution,
+            probing a bogus absolute path (``/.``) that never exists.
+            """
+            violations = (
+                FlextInfraWorkspaceEnvironmentContracts.envrc_contract_violations(
+                    'source_env "$HOME"\n'
+                    'watch_file "$HOME/.flext-infra-contract-absent-marker"\n',
+                    root=tmp_path,
+                )
+            )
+            tm.that(len(violations), eq=1)
+            tm.that(
+                ".flext-infra-contract-absent-marker" in violations[0], eq=True
+            )
+            tm.that("/./" not in violations[0], eq=True)
+
     class TestsDirenvGate:
         """Fail-closed gate behavior over the two enforcement stages."""
 

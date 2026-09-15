@@ -29,7 +29,13 @@ class FlextInfraWorkspaceEnvironmentContracts:
     def _resolve_env_target(
         cls, raw: str, root: Path, *, resolve_home: bool
     ) -> Path | None:
-        """Resolve one quoted target to a concrete path, or None when dynamic."""
+        """Resolve one quoted target to a concrete path, or None when dynamic.
+
+        A ``$HOME``/``~`` target describes machine state: it is skipped at
+        generation time and, when resolved at check time, the REAL home is
+        substituted for the prefix — stripping the prefix without substituting
+        would probe a bogus absolute path (``/.config/...``) that never exists.
+        """
         home_match = _HOME_PREFIX.match(raw)
         candidate = home_match.group(1) if home_match is not None else raw
         if candidate.startswith("~"):
@@ -38,8 +44,10 @@ class FlextInfraWorkspaceEnvironmentContracts:
             candidate = home_match.group(1) if home_match is not None else candidate
         if "$" in candidate:
             return None
-        if home_match is not None and not resolve_home:
-            return None
+        if home_match is not None:
+            if not resolve_home:
+                return None
+            return Path.home() / candidate.lstrip("/")
         resolved = Path(candidate)
         if not resolved.is_absolute():
             resolved = root / resolved
