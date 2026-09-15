@@ -269,16 +269,16 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = ()
         kubectl_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact kubectl version, e.g. '1.32.0'")
+            t.NonEmptyStr, m.Field(description="Exact kubectl version, e.g. '1.32.0'")
         ]
         helm_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Helm version, e.g. '3.19.4'")
+            t.NonEmptyStr, m.Field(description="Exact Helm version, e.g. '3.19.4'")
         ]
         kind_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact kind version, e.g. '0.31.0'")
+            t.NonEmptyStr, m.Field(description="Exact kind version, e.g. '0.31.0'")
         ]
         direnv_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible direnv major.minor line")
+            t.NonEmptyStr, m.Field(description="Compatible direnv major.minor line")
         ]
         environment_path_prepends: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
@@ -293,7 +293,7 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = ()
         uv_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible uv major.minor line")
+            t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
         ]
         mise_lockfile: Annotated[
             bool,
@@ -326,10 +326,10 @@ class FlextInfraModelsMiseToolchain:
         ]
         qlty_version: Annotated[
             t.NonEmptyStr,
-            tool_version_field("Moving qlty release selector, e.g. 'latest'"),
+            m.Field(description="Moving qlty release selector, e.g. 'latest'"),
         ]
         node_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible Node.js major.minor line")
+            t.NonEmptyStr, m.Field(description="Compatible Node.js major.minor line")
         ]
         jscpd_selector: Annotated[
             t.NonEmptyStr,
@@ -342,7 +342,7 @@ class FlextInfraModelsMiseToolchain:
         ]
         jscpd_version: Annotated[
             t.NonEmptyStr,
-            tool_version_field("Moving jscpd release selector, e.g. 'latest'"),
+            m.Field(description="Moving jscpd release selector, e.g. 'latest'"),
         ]
         waza_selector: Annotated[
             t.NonEmptyStr,
@@ -355,16 +355,16 @@ class FlextInfraModelsMiseToolchain:
         ]
         waza_version: Annotated[
             t.NonEmptyStr,
-            tool_version_field("Moving Waza release selector, e.g. 'latest'"),
+            m.Field(description="Moving Waza release selector, e.g. 'latest'"),
         ]
         taplo_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Taplo formatter version")
+            t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
         ]
         ast_grep_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact ast-grep analyzer version")
+            t.NonEmptyStr, m.Field(description="Exact ast-grep analyzer version")
         ]
         gitleaks_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Gitleaks scanner version")
+            t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
         ]
         scc_selector: Annotated[
             t.NonEmptyStr,
@@ -376,15 +376,17 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         scc_version: Annotated[
-            t.NonEmptyStr, tool_version_field("scc release selector (latest)")
+            t.NonEmptyStr, m.Field(description="scc release selector (latest)")
         ]
         kubeconform_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible kubeconform minor line")
+            t.NonEmptyStr, m.Field(description="Compatible kubeconform minor line")
         ]
         go_version: Annotated[
             t.NonEmptyStr,
-            tool_version_field(
-                "Go runtime selector; mise resolves the go backend through it"
+            m.Field(
+                description=(
+                    "Go runtime selector; mise resolves the go backend through it"
+                )
             ),
         ]
         beads: Annotated[
