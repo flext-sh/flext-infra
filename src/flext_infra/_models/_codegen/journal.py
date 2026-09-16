@@ -599,9 +599,7 @@ class FlextInfraModelsCodegenJournal:
             m.Field(description="Durable publication transition state"),
         ]
         projects: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsCodegenJournal.CodegenJournalProject
-            ],
+            t.VariadicTuple[FlextInfraModelsCodegenJournal.CodegenJournalProject],
             m.Field(description="Ordered project selectors owned by this transaction"),
         ]
         file_participants: Annotated[
@@ -609,15 +607,11 @@ class FlextInfraModelsCodegenJournal:
             m.Field(description="Exact physical file publication capabilities"),
         ] = ()
         sources: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsCodegenJournal.CodegenJournalSource
-            ],
+            t.VariadicTuple[FlextInfraModelsCodegenJournal.CodegenJournalSource],
             m.Field(description="Source identities used by staging"),
         ]
         directories: Annotated[
-            t.VariadicTuple[
-                FlextInfraModelsCodegenJournal.CodegenJournalDirectory
-            ],
+            t.VariadicTuple[FlextInfraModelsCodegenJournal.CodegenJournalDirectory],
             m.Field(description="Directories whose prior absence authorizes creation"),
         ]
         entries: Annotated[

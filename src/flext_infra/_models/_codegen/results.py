@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import MutableSet
-from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m, u
@@ -29,7 +28,6 @@ class FlextInfraModelsCodegenResults:
         files_skipped: t.StrSequence = m.Field(
             default_factory=tuple, description="Skipped (already existing) file paths"
         )
-
 
     class AutoFixResult(mm.ProjectNameMixin, m.ArbitraryTypesModel):
         """Result of auto-fixing namespace violations for a project."""
@@ -86,9 +84,7 @@ class FlextInfraModelsCodegenResults:
             t.NonNegativeInt, m.Field(description="Total files reverted")
         ] = 0
         files: Annotated[
-            t.SequenceOf[
-                FlextInfraModelsCodegenResults.ConsolidatorFileResult
-            ],
+            t.SequenceOf[FlextInfraModelsCodegenResults.ConsolidatorFileResult],
             m.Field(default_factory=tuple, description="Per-file processing results"),
         ]
 
@@ -130,9 +126,7 @@ class FlextInfraModelsCodegenResults:
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Item identifier")]
 
-    class ConstantDefinition(
-        mm.ProjectNameMixin, mm.NestedClassPathMixin, BulkFixItem
-    ):
+    class ConstantDefinition(mm.ProjectNameMixin, mm.NestedClassPathMixin, BulkFixItem):
         """A single constant extracted from a constants.py file."""
 
         value_repr: Annotated[
@@ -146,10 +140,8 @@ class FlextInfraModelsCodegenResults:
         """Cross-project duplicate group with consolidation metadata."""
 
         constant_name: t.NonEmptyStr = m.Field(description="Constant identifier")
-        definitions: t.SequenceOf[
-            FlextInfraModelsCodegenResults.ConstantDefinition
-        ] = m.Field(
-            description="Definitions across projects"
+        definitions: t.SequenceOf[FlextInfraModelsCodegenResults.ConstantDefinition] = (
+            m.Field(description="Definitions across projects")
         )
         is_value_identical: bool = m.Field(description="Whether all values match")
         canonical_ref: Annotated[

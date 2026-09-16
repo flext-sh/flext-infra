@@ -185,7 +185,9 @@ class FlextInfraUtilitiesCodegenFacades:
                     )
                 else:
                     members = tuple(
-                        member for member in node.body if isinstance(member, ast.ClassDef)
+                        member
+                        for member in node.body
+                        if isinstance(member, ast.ClassDef)
                     )
                 methods = frozenset(
                     member.name for member in members if not member.name.startswith("_")

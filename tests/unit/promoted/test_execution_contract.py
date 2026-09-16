@@ -8,11 +8,11 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import m
+from flext_infra._models.settings import FlextInfraSettingsModels
+from flext_infra._settings import _FlextInfraSettings
 from flext_infra.promoted.dispatcher import dispatch
 from flext_infra.promoted.invocation import validate_command_contract
 from flext_infra.promoted.registry import Registry
-from flext_infra._settings import _FlextInfraSettings
-from flext_infra._models.settings import FlextInfraSettingsModels
 from tests import t, u
 
 
@@ -70,14 +70,12 @@ class TestsFlextInfraPromotedExecutionContract:
             registry, marker = self._write_registry(tmp_path)
             # Create a settings instance with the desired WHAT value (public constructor path)
             test_settings = _FlextInfraSettings(
-                Infra=FlextInfraSettingsModels.Infra.model_validate(
-                    {"WHAT": "all"}
-                )
+                Infra=FlextInfraSettingsModels.Infra.model_validate({"WHAT": "all"})
             )
             # Temporarily override the module-level settings singleton
-            import flext_infra.promoted.dispatcher as dispatcher_module
-            import flext_infra.promoted.base as base_module
             import flext_infra._settings as settings_module
+            import flext_infra.promoted.base as base_module
+            import flext_infra.promoted.dispatcher as dispatcher_module
 
             original_settings = settings_module.settings
             original_dispatcher_settings = dispatcher_module.settings
@@ -92,7 +90,8 @@ class TestsFlextInfraPromotedExecutionContract:
                 if ambient_value is not None:
                     environment["UNDECLARED_INPUT"] = ambient_value
                 with tm.scope(
-                    env=environment, remove_env_keys=("HELP", "OPTIONS", "UNDECLARED_INPUT")
+                    env=environment,
+                    remove_env_keys=("HELP", "OPTIONS", "UNDECLARED_INPUT"),
                 ):
                     exit_code = dispatch(registry, "probe")
                     assert exit_code == 0

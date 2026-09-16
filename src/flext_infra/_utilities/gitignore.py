@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_cli import u as cli_u
 
-from flext_infra import config, m, p, r, t
+from flext_infra import m, p, r, t
 from flext_infra.constants import c
 
 

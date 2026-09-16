@@ -14,7 +14,6 @@ from ..rope_core import FlextInfraUtilitiesRopeCore
 from ..rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
-
     from flext_infra.protocols import p
 
 from .asthelpers import FlextInfraUtilitiesRopeAnalysisAstHelpers
@@ -108,7 +107,9 @@ class FlextInfraUtilitiesRopeAnalysisExports:
             resolved_export_options.allow_functions,
             resolved_export_options.require_explicit_all,
         )
-        cached = FlextInfraUtilitiesRopeAnalysisExports._EXPORT_NAMES_CACHE.get(cache_key)
+        cached = FlextInfraUtilitiesRopeAnalysisExports._EXPORT_NAMES_CACHE.get(
+            cache_key
+        )
         export_names: t.StrSequence
         if cached is not None:
             export_names = cached
@@ -283,7 +284,9 @@ class FlextInfraUtilitiesRopeAnalysisExports:
                 and name.startswith("__")
                 and name.endswith("__")
                 and FlextInfraUtilitiesRopeRuntime.is_assigned_name(pyname)
-                and FlextInfraUtilitiesRopeAnalysisAstHelpers.local_name(pyname, resource)
+                and FlextInfraUtilitiesRopeAnalysisAstHelpers.local_name(
+                    pyname, resource
+                )
             )
         )
 
@@ -302,7 +305,9 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         ):
             return None
         assigned_all: t.Infra.RopeAssignedName = explicit_all_name
-        if not FlextInfraUtilitiesRopeAnalysisAstHelpers.local_name(assigned_all, resource):
+        if not FlextInfraUtilitiesRopeAnalysisAstHelpers.local_name(
+            assigned_all, resource
+        ):
             return None
         return FlextInfraUtilitiesRopeAnalysisExports._explicit_all_names(
             assigned_all, pymodule
@@ -317,12 +322,16 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         pymodule: t.Infra.RopePyModule,
     ) -> t.StrSequence:
         """Return implicit export names accepted by the export options."""
-        guard_spans = FlextInfraUtilitiesRopeAnalysisExports._script_guard_spans(pymodule)
+        guard_spans = FlextInfraUtilitiesRopeAnalysisExports._script_guard_spans(
+            pymodule
+        )
         names: t.MutableSequenceOf[str] = []
         for name, pyname in attributes.items():
             if name == c.Infra.DUNDER_ALL:
                 continue
-            if not FlextInfraUtilitiesRopeAnalysisAstHelpers.local_name(pyname, resource):
+            if not FlextInfraUtilitiesRopeAnalysisAstHelpers.local_name(
+                pyname, resource
+            ):
                 continue
             if FlextInfraUtilitiesRopeAnalysisExports._is_export_name(
                 export_options=export_options,
@@ -423,8 +432,10 @@ class FlextInfraUtilitiesRopeAnalysisExports:
     @staticmethod
     def public_export_names_source(source: str) -> t.StrSequence:
         """Return the explicit public ABI declared by one module source."""
-        return FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings_source(
-            source, c.Infra.DUNDER_ALL
+        return (
+            FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings_source(
+                source, c.Infra.DUNDER_ALL
+            )
         )
 
     @staticmethod
@@ -475,14 +486,17 @@ class FlextInfraUtilitiesRopeAnalysisExports:
             kind = FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(statement)
             if kind in {"Assign", "AnnAssign", "TypeAlias"}:
                 previous_targets = (
-                    FlextInfraUtilitiesRopeAnalysisAstHelpers.statement_target_names(statement)
+                    FlextInfraUtilitiesRopeAnalysisAstHelpers.statement_target_names(
+                        statement
+                    )
                 )
                 continue
             if kind == "Expr" and previous_targets:
                 value = getattr(statement, "value", None)
                 if (
                     value is not None
-                    and FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(value) == "Constant"
+                    and FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(value)
+                    == "Constant"
                     and isinstance(getattr(value, "value", None), str)
                 ):
                     names.extend(previous_targets)
