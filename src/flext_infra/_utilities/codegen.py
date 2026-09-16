@@ -9,12 +9,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_core import r
-from flext_infra import config
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+from flext_infra import c, config, m, p, r, t
 
 from .codegen_facades import FlextInfraUtilitiesCodegenFacades
 from .codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
@@ -288,13 +283,15 @@ class FlextInfraUtilitiesCodegen(
             match = c.Infra.DETECTION_FINAL_DECL_RE.match(line)
             if match is None:
                 continue
-            parsed.append((
-                match.group("name"),
-                match.group("ann"),
-                match.group("value").strip(),
-                ".".join(name for name, _ in class_stack),
-                line_number,
-            ))
+            parsed.append(
+                (
+                    match.group("name"),
+                    match.group("ann"),
+                    match.group("value").strip(),
+                    ".".join(name for name, _ in class_stack),
+                    line_number,
+                )
+            )
         return tuple(parsed)
 
     @staticmethod
