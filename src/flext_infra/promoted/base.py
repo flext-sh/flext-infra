@@ -78,10 +78,16 @@ def local_python_cmd(spec: p.Infra.Promoted.WorkspaceSpec) -> Path:
 
 
 def find_owner_root(start: Path) -> Path | None:
-    """Return the nearest ancestor of ``start`` owning ``scripts/`` + ``pyproject.toml``."""
-    for parent in start.resolve().parents:
-        if parent.name == "scripts" and (parent.parent / "pyproject.toml").is_file():
-            return parent.parent
+    """Return ``start`` or its nearest ancestor owning ``scripts/`` + ``pyproject.toml``.
+
+    ``start`` itself is a candidate: a project root is its own owner, so
+    discovery from the repository working directory resolves instead of
+    walking past it.
+    """
+    resolved = start.resolve()
+    for candidate in (resolved, *resolved.parents):
+        if (candidate / "scripts").is_dir() and (candidate / "pyproject.toml").is_file():
+            return candidate
     return None
 
 

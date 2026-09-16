@@ -8,6 +8,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import m
+from flext_infra.promoted.base import discovered_workspace_spec
 from flext_infra.promoted.dispatcher import dispatch
 from flext_infra.promoted.invocation import validate_command_contract
 from flext_infra.promoted.registry import Registry
@@ -75,6 +76,23 @@ class TestsFlextInfraPromotedExecutionContract:
                 exit_code = dispatch(registry, "probe")
                 assert exit_code == 0
                 assert marker.exists()
+
+    class TestsFlextInfraPromotedWorkspaceDiscovery:
+        """The owning workspace resolves from its root and from any descendant."""
+
+        @pytest.mark.parametrize("relative_cwd", [".", "scripts/probe"])
+        def test_discovered_spec_resolves_owner_from_working_directory(
+            self, tmp_path: Path, relative_cwd: str
+        ) -> None:
+            """Discovery never walks past the project that owns ``scripts/``."""
+            (tmp_path / "pyproject.toml").write_text(
+                "[project]\nname = 'probe'\n", encoding="utf-8"
+            )
+            (tmp_path / "scripts" / "probe").mkdir(parents=True)
+            with tm.scope(cwd=tmp_path / relative_cwd):
+                spec = discovered_workspace_spec()
+            assert spec.root == tmp_path.resolve()
+            assert spec.scripts == tmp_path.resolve() / "scripts"
 
 
 __all__: list[str] = ["TestsFlextInfraPromotedExecutionContract"]
