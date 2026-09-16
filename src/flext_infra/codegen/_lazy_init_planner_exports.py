@@ -45,8 +45,30 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         if self._is_private_test_fixture_package(context.pkg_dir, context.surface):
             return {}
         package_entry = self._package_entry(context.pkg_dir)
-        if package_entry is None:
-            return {}
+        # Operator init law (2026-09-16): every package with public children —
+        # underscore internals included — carries a light lazy-init export
+        # surface. When the rope index does not track the package, enumerate
+        # direct children from the filesystem instead of rendering an empty
+        # init; emptiness here is a defect, never canonical.
+        module_entries = (
+            [
+                (entry.file_path, entry.module_name)
+                for entry in package_entry.modules
+            ]
+            if package_entry is not None
+            else []
+        )
+        if not module_entries:
+            module_entries = [
+                (
+                    child,
+                    f"{context.current_pkg}.{child.stem}"
+                    if context.current_pkg
+                    else child.stem,
+                )
+                for child in sorted(context.pkg_dir.glob("*.py"))
+                if child.name != c.Infra.INIT_PY
+            ]
         index: t.MutableLazyAliasMap = {}
         # flext-i6nq.10: Generated support modules are output, never public input.
         # conftest.py is pytest-private: its hook variables (pytest_plugins) are
@@ -58,8 +80,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             self._version_module_name,
             *c.Infra.OBSOLETE_GENERATED_INIT_FILES,
         }
-        for module_entry in package_entry.modules:
-            py_file = module_entry.file_path
+        for py_file, module_name in module_entries:
             # Operator ruling (2026-09-16, universal, no exceptions): a light
             # package init exports ONLY its direct children. Subdirectory
             # symbols stay in the subpackage's own init — never re-exported
@@ -91,6 +112,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 py_file, rel_path=py_file.relative_to(context.pkg_dir)
             )
             policy = convention.module_policy
+            module_path = convention.module_name
             root_private_contract = (
                 py_file.parent == context.pkg_dir
                 and py_file.stem in {"_config", "_settings"}
@@ -109,7 +131,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             )
             if (
                 not policy.include_in_lazy_init and not root_private_contract
-            ) or not module_entry.module_name:
+            ) or not module_name:
                 continue
             # In public src packages, public submodules (without expected_alias) derive
             # from their explicit __all__; non-public/private subpackages auto-discover.
@@ -124,7 +146,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             )
             targets = self._module_exports(
                 py_file,
-                convention.module_name,
+                module_path,
                 export_options=m.Infra.ExportOptions(
                     allow_main=True,
                     allow_assignments=True,
@@ -139,7 +161,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             ):
                 targets.setdefault(
                     policy.expected_alias,
-                    (module_entry.module_name, policy.expected_alias),
+                    (module_path, policy.expected_alias),
                 )
             for name, target in targets.items():
                 self._add(index, name, target)
