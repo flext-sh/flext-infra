@@ -228,12 +228,6 @@ class FlextInfraConfigModelsContexts:
                 )
             ),
         ] = ""
-        uv_exclude_newer: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description="uv [tool.uv] exclude-newer cutoff rendered into pyproject.toml"
-            ),
-        ]
         dependency_cooldown_exclusions: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(

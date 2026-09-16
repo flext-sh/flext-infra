@@ -402,12 +402,6 @@ class FlextInfraModelsMiseToolchain:
                 description="Toolchain field names protected from alternate distributions",
             ),
         ]
-        uv_exclude_newer: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description="uv [tool.uv] exclude-newer cutoff (exterminated fleet-wide, rendered then conform-stripped)"
-            ),
-        ]
         dependency_cooldown_exclusions: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
