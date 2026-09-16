@@ -135,7 +135,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         caller_report.parent.mkdir(parents=True)
         caller_report.write_text("Caller report must survive.\n", encoding="utf-8")
 
-        with tm.scope(cwd=caller):
+        with tm.scope(cwd=str(caller)):
             exit_code = main(arguments)
 
         tm.that(exit_code, eq=0)

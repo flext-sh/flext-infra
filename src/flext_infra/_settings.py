@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os as _os
 from typing import ClassVar
 
 from flext_core import FlextSettings
@@ -40,4 +41,17 @@ class _FlextInfraSettings(FlextSettings):
 settings: _FlextInfraSettings = _FlextInfraSettings()
 """Pre-instantiated project settings singleton — ``from flext_infra import settings``."""
 
-__all__: list[str] = ["settings"]
+
+def env_lookup(name: str) -> str | None:
+    """Return one raw environment value through the settings boundary.
+
+    The only sanctioned raw-environment read in the package: keys that are
+    dynamic by contract (caller-named CLI parameters, CI passthrough
+    variables, subprocess environment merges). Static values must be typed
+    ``settings.Infra.*`` fields instead; ambient ``os.environ`` reads
+    elsewhere are banned by the ``ban-ambient-environ-read`` rule.
+    """
+    return _os.environ.get(name)
+
+
+__all__: list[str] = ["env_lookup", "settings"]

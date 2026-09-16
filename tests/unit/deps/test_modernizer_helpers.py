@@ -10,7 +10,6 @@ from flext_tests import tm
 from tests import c, u
 
 if TYPE_CHECKING:
-
     from tests import t
 
 

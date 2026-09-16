@@ -9,14 +9,16 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.promoted.base import (
+from flext_infra import u
+from flext_infra.promoted.invocation import param_value
+
+from .base import (
     RegistryError,
     find_owner_root,
     local_python_cmd,
     workspace_python,
     workspace_venv,
 )
-from flext_infra.promoted.invocation import param_value
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -149,7 +151,8 @@ def ensure_local_python(spec: p.Infra.Promoted.WorkspaceSpec) -> None:
 
 def env_value(name: str, default: str = "") -> str:
     """Return a stripped environment value used by promoted Python commands."""
-    return os.environ.get(name, default).strip()
+    value = u.Infra.env_lookup(name)
+    return default.strip() if value is None else value.strip()
 
 
 def require_env(name: str, usage: str | None = None) -> str:

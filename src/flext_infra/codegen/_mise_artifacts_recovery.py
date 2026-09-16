@@ -29,7 +29,13 @@ type _FileIdentity = tuple[
 ]
 
 type _FileOwnershipIdentity = tuple[
-    bool, int | None, int | None, str | None, int | None, int | None, int | None
+    bool | None,
+    int | None,
+    int | None,
+    str | None,
+    int | None,
+    int | None,
+    int | None,
 ]
 
 

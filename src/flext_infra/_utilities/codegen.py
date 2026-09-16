@@ -18,11 +18,14 @@ from flext_infra.typings import t
 
 from .codegen_facades import FlextInfraUtilitiesCodegenFacades
 from .codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
+from .gitignore import FlextInfraUtilitiesGitignore
 from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
 
 
 class FlextInfraUtilitiesCodegen(
-    FlextInfraUtilitiesCodegenFacades, FlextInfraUtilitiesCodegenFilePlan
+    FlextInfraUtilitiesCodegenFacades,
+    FlextInfraUtilitiesCodegenFilePlan,
+    FlextInfraUtilitiesGitignore,
 ):
     """Compose all codegen utility concerns for ``u.Infra``."""
 
@@ -166,7 +169,7 @@ class FlextInfraUtilitiesCodegen(
             physical_project
         ):
             return r[Path].fail(
-                f"persistent Mise storage must be outside the checkout: {physical_root}"
+                f"persistent Mise storage must not contain the checkout: {physical_root}"
             )
         if physical_project.is_relative_to(physical_root):
             return r[Path].fail(

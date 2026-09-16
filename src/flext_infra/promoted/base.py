@@ -8,10 +8,11 @@ an import of workspace-local paths.
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from flext_infra import c, settings, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -42,7 +43,7 @@ class MissingHeaderError(RegistryError):
 
 def workspace_python_cmd() -> Path | None:
     """Return the active workspace interpreter from ``VIRTUAL_ENV`` when set."""
-    venv = os.environ.get("VIRTUAL_ENV")
+    venv = settings.Infra.virtual_env
     if not venv:
         return None
     candidate = Path(sys.executable)
@@ -58,7 +59,7 @@ def workspace_venv() -> Path:
     of which project owns it. When no ``VIRTUAL_ENV`` is active, the
     interpreter already running the dispatcher is authoritative.
     """
-    venv = os.environ.get("VIRTUAL_ENV")
+    venv = settings.Infra.virtual_env
     if venv and Path(sys.executable).is_file():
         return Path(venv)
     return Path(sys.prefix)
@@ -78,16 +79,24 @@ def local_python_cmd(spec: p.Infra.Promoted.WorkspaceSpec) -> Path:
 
 
 def find_owner_root(start: Path) -> Path | None:
-    """Return the nearest ancestor of ``start`` owning ``scripts/`` + ``pyproject.toml``."""
-    for parent in start.resolve().parents:
-        if parent.name == "scripts" and (parent.parent / "pyproject.toml").is_file():
-            return parent.parent
+    """Return ``start`` or its nearest ancestor owning ``scripts/`` + ``pyproject.toml``.
+
+    ``start`` itself is a candidate: a project root is its own owner, so
+    discovery from the repository working directory resolves instead of
+    walking past it.
+    """
+    resolved = start.resolve()
+    for candidate in (resolved, *resolved.parents):
+        if (candidate / c.Infra.DIR_SCRIPTS).is_dir() and (
+            candidate / c.Infra.PYPROJECT_FILENAME
+        ).is_file():
+            return candidate
     return None
 
 
 def env_enabled(name: str) -> bool:
     """Return whether an environment flag is enabled."""
-    return os.environ.get(name, "N").upper() in {"1", "Y", "YES", "TRUE"}
+    return (u.Infra.env_lookup(name) or "N").upper() in {"1", "Y", "YES", "TRUE"}
 
 
 def resolve_workspace_spec(root: Path) -> p.Infra.Promoted.WorkspaceSpec:
@@ -102,7 +111,7 @@ def resolve_workspace_spec(root: Path) -> p.Infra.Promoted.WorkspaceSpec:
 
     return m.Infra.Promoted.WorkspaceSpec(
         root=root,
-        scripts=root / "scripts",
+        scripts=root / c.Infra.DIR_SCRIPTS,
         local_python=root / ".venv" / "bin" / "python",
     )
 

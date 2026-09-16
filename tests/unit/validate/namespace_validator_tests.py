@@ -3,66 +3,65 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 from flext_tests import tm
 
 from flext_infra import config
-from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
+from flext_infra.validate import FlextInfraNamespaceValidator
 from tests import c, m, t, u
-
-_FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
-
-
-def _read_fixture(name: str) -> str:
-    fixture_name = name.replace(".py", ".pysrc") if name.endswith(".py") else name
-    return (_FIXTURES_DIR / fixture_name).read_text(encoding="utf-8")
-
-
-def _make_project_with_module(
-    tmp_path: Path, *, module_source: str, module_name: str
-) -> Path:
-    project_root = tmp_path / "project"
-    package_dir = project_root / "src" / "flext_test"
-    package_dir.mkdir(parents=True)
-    _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-    # The validator grades the whole package, so the fixture is a package.
-    u.Tests.write_canonical_package_layout(package_dir)
-    _ = (package_dir / module_name).write_text(module_source, encoding="utf-8")
-    u.Tests.initialize_git_repo(project_root)
-    return project_root
-
-
-def _make_project_with_module_path(
-    tmp_path: Path, *, module_source: str, module_path: str
-) -> t.Pair[Path, Path]:
-    project_root = tmp_path / "project"
-    package_dir = project_root / "src" / "flext_test"
-    package_dir.mkdir(parents=True)
-    _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-    u.Tests.write_canonical_package_layout(package_dir)
-    relative = Path(module_path)
-    target = (
-        project_root / relative
-        if relative.parts[0] == c.Infra.DIR_TESTS
-        else package_dir / relative
-    )
-    target.parent.mkdir(parents=True, exist_ok=True)
-    _ = target.write_text(module_source, encoding="utf-8")
-    u.Tests.initialize_git_repo(project_root)
-    return project_root, target
 
 
 class TestsFlextInfraNamespaceValidator:
     """Test suite for namespace validator rules 0-3."""
 
+    _FIXTURES_DIR: ClassVar[Path] = (
+        Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
+    )
+
+    @classmethod
+    def _read_fixture(cls, name: str) -> str:
+        fixture_name = name.replace(".py", ".pysrc") if name.endswith(".py") else name
+        return (cls._FIXTURES_DIR / fixture_name).read_text(encoding="utf-8")
+
+    @classmethod
+    def _make_project_with_module(
+        cls, tmp_path: Path, *, module_source: str, module_name: str
+    ) -> Path:
+        root, _ = cls._make_project_with_module_path(
+            tmp_path, module_source=module_source, module_path=module_name
+        )
+        return root
+
+    @staticmethod
+    def _make_project_with_module_path(
+        tmp_path: Path, *, module_source: str, module_path: str
+    ) -> t.Pair[Path, Path]:
+        project_root = tmp_path / "project"
+        package_dir = project_root / "src" / "flext_test"
+        package_dir.mkdir(parents=True)
+        _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        # The validator grades the whole package, so the fixture is a package.
+        u.Tests.write_canonical_package_layout(package_dir)
+        relative = Path(module_path)
+        target = (
+            project_root / relative
+            if relative.parts[0] == c.Infra.DIR_TESTS
+            else package_dir / relative
+        )
+        target.parent.mkdir(parents=True, exist_ok=True)
+        _ = target.write_text(module_source, encoding="utf-8")
+        u.Tests.initialize_git_repo(project_root)
+        return project_root, target
+
     @pytest.mark.parametrize("family", tuple(c.Infra.FAMILY_SUFFIXES))
     def test_required_public_facade_alias_passes(
         self, tmp_path: Path, family: str
     ) -> None:
-        root = _make_project_with_module(
+        root = self._make_project_with_module(
             tmp_path,
-            module_source=_read_fixture("rule0_valid.py"),
+            module_source=self._read_fixture("rule0_valid.py"),
             module_name="models.py",
         )
         layout = tm.not_none(u.Infra.layout(root))
@@ -100,10 +99,10 @@ class TestsFlextInfraNamespaceValidator:
     def test_noncanonical_facade_assignments_still_fail(
         self, tmp_path: Path, module_path: str, assignment: str
     ) -> None:
-        source = _read_fixture("rule0_valid.py").replace(
+        source = self._read_fixture("rule0_valid.py").replace(
             "m = FlextTestModels", assignment
         )
-        root, target = _make_project_with_module_path(
+        root, target = self._make_project_with_module_path(
             tmp_path, module_source=source, module_path=module_path
         )
 
@@ -120,12 +119,14 @@ class TestsFlextInfraNamespaceValidator:
         )
 
     def test_facade_alias_before_class_is_not_canonical(self, tmp_path: Path) -> None:
-        source = _read_fixture("rule0_valid.py").replace("m = FlextTestModels", "")
+        source = self._read_fixture("rule0_valid.py").replace(
+            "m = FlextTestModels", ""
+        )
         source = source.replace(
             "class FlextTestModels(m):",
             "m = FlextTestModels\n\nclass FlextTestModels(m):",
         )
-        root = _make_project_with_module(
+        root = self._make_project_with_module(
             tmp_path, module_source=source, module_name="models.py"
         )
 
@@ -138,171 +139,32 @@ class TestsFlextInfraNamespaceValidator:
         )
 
     @pytest.mark.parametrize(
-        ("imports", "body", "legacy"),
+        ("fixture_name", "legacy"),
         [
-            (
-                "from collections.abc import Callable\n",
-                (
-                    "    def execute(self, validator: Callable[[], None]) -> None:\n"
-                    "        validator()\n"
-                ),
-                False,
-            ),
-            (
-                (
-                    "from collections.abc import Callable\n"
-                    "from pydantic import validator\n"
-                ),
-                (
-                    "    def execute(self, validator: Callable[[], None]) -> None:\n"
-                    "        validator()\n"
-                ),
-                False,
-            ),
-            (
-                (
-                    "from collections.abc import Callable\n"
-                    "from pydantic import root_validator as validate\n"
-                ),
-                (
-                    "    def execute(self, validate: Callable[[], None]) -> None:\n"
-                    "        validate()\n"
-                ),
-                False,
-            ),
-            (
-                (
-                    "from collections.abc import Callable\n"
-                    "from pydantic import validator\n"
-                ),
-                (
-                    "    def execute(self, callback: Callable[[], None]) -> None:\n"
-                    "        validator = callback\n"
-                    "        validator()\n"
-                ),
-                False,
-            ),
-            (
-                "from pydantic import validator\n",
-                (
-                    "    def execute(self) -> None:\n"
-                    "        def validator() -> None:\n"
-                    "            pass\n"
-                    "        validator()\n"
-                ),
-                False,
-            ),
-            (
-                "from unrelated import validator\n",
-                (
-                    "    @validator('value')\n"
-                    "    def validate(cls, value: str) -> str:\n"
-                    "        return value\n"
-                ),
-                False,
-            ),
-            (
-                "import unrelated as pd\n",
-                (
-                    "    @pd.root_validator()\n"
-                    "    def validate(cls, value: str) -> str:\n"
-                    "        return value\n"
-                ),
-                False,
-            ),
-            (
-                "from pydantic import validator\n",
-                (
-                    "    @validator('value')\n"
-                    "    def validate(cls, value: str) -> str:\n"
-                    "        return value\n"
-                ),
-                True,
-            ),
-            (
-                "from pydantic import validator as validate_field\n",
-                (
-                    "    @validate_field('value')\n"
-                    "    def validate(cls, value: str) -> str:\n"
-                    "        return value\n"
-                ),
-                True,
-            ),
-            (
-                "from pydantic.v1 import root_validator as validate_root\n",
-                (
-                    "    @validate_root()\n"
-                    "    def validate(cls, value: str) -> str:\n"
-                    "        return value\n"
-                ),
-                True,
-            ),
-            (
-                "from pydantic import root_validator as validate_root\n",
-                (
-                    "    @validate_root\n"
-                    "    def validate(cls, value: str) -> str:\n"
-                    "        return value\n"
-                ),
-                True,
-            ),
-            (
-                "import pydantic as pd\n",
-                (
-                    "    @pd.validator('value')\n"
-                    "    def validate(cls, value: str) -> str:\n"
-                    "        return value\n"
-                ),
-                True,
-            ),
-            (
-                "import pydantic.v1 as pd\n",
-                (
-                    "    @pd.root_validator()\n"
-                    "    def validate(cls, value: str) -> str:\n"
-                    "        return value\n"
-                ),
-                True,
-            ),
-            (
-                "",
-                (
-                    "    def execute(self) -> None:\n"
-                    "        from pydantic.v1 import validator as validate\n"
-                    "        validate('value')\n"
-                ),
-                True,
-            ),
-            (
-                "from pydantic import validator as validate\n",
-                (
-                    "    def execute(self) -> None:\n"
-                    "        label = 'caf\u00e9'; validate('value')\n"
-                ),
-                True,
-            ),
-            (
-                "from pydantic import field_validator as validator\n",
-                (
-                    "    @validator('value')\n"
-                    "    def validate(cls, value: str) -> str:\n"
-                    "        return value\n"
-                ),
-                False,
-            ),
+            ("pydantic_binding_callable_param_unimported.py", False),
+            ("pydantic_binding_param_shadows_import.py", False),
+            ("pydantic_binding_param_shadows_alias.py", False),
+            ("pydantic_binding_local_assignment_shadows_import.py", False),
+            ("pydantic_binding_nested_def_shadows_import.py", False),
+            ("pydantic_binding_unrelated_decorator.py", False),
+            ("pydantic_binding_unrelated_module_alias.py", False),
+            ("pydantic_binding_validator_decorator.py", True),
+            ("pydantic_binding_validator_alias_decorator.py", True),
+            ("pydantic_binding_v1_root_validator_alias_call.py", True),
+            ("pydantic_binding_root_validator_alias_bare.py", True),
+            ("pydantic_binding_module_alias_validator.py", True),
+            ("pydantic_binding_v1_module_alias_root_validator.py", True),
+            ("pydantic_binding_local_import_call.py", True),
+            ("pydantic_binding_unicode_line_call.py", True),
+            ("pydantic_binding_field_validator_alias.py", False),
         ],
     )
     def test_pydantic_decorator_binding_provenance(
-        self, tmp_path: Path, imports: str, body: str, *, legacy: bool
+        self, tmp_path: Path, fixture_name: str, *, legacy: bool
     ) -> None:
-        root = _make_project_with_module(
+        root = self._make_project_with_module(
             tmp_path,
-            module_source=(
-                "from __future__ import annotations\n"
-                + imports
-                + "\nclass FlextTestValidation:\n"
-                + body
-            ),
+            module_source=self._read_fixture(fixture_name),
             module_name="validation.py",
         )
 
@@ -326,7 +188,7 @@ class TestsFlextInfraNamespaceValidator:
     def test_pydantic_method_detection_requires_unambiguous_member(
         self, tmp_path: Path, call: str, *, legacy: bool
     ) -> None:
-        root = _make_project_with_module(
+        root = self._make_project_with_module(
             tmp_path,
             module_source=(
                 "from __future__ import annotations\n\n"
@@ -357,9 +219,9 @@ class TestsFlextInfraNamespaceValidator:
 
     def test_rule0_valid_module_passes(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
-        root = _make_project_with_module(
+        root = self._make_project_with_module(
             tmp_path,
-            module_source=_read_fixture("rule0_valid.py"),
+            module_source=self._read_fixture("rule0_valid.py"),
             module_name="models.py",
         )
         result = validator.validate_project(root)
@@ -375,7 +237,9 @@ class TestsFlextInfraNamespaceValidator:
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
         u.Tests.write_canonical_package_layout(package_dir)
         tracked_module = package_dir / "models.py"
-        tracked_module.write_text(_read_fixture("rule0_valid.py"), encoding="utf-8")
+        tracked_module.write_text(
+            self._read_fixture("rule0_valid.py"), encoding="utf-8"
+        )
 
         init_result = u.Cli.run_raw(["git", "init"], cwd=project_root)
         tm.ok(init_result)
@@ -414,10 +278,10 @@ class TestsFlextInfraNamespaceValidator:
         assignments = "\n".join(
             f"        attr_{index} = {index}" for index in range(cap + 1)
         )
-        module_source = _read_fixture("rule0_valid.py").replace(
+        module_source = self._read_fixture("rule0_valid.py").replace(
             "        pass\n", f"        pass\n{assignments}\n"
         )
-        project_root = _make_project_with_module(
+        project_root = self._make_project_with_module(
             tmp_path, module_source=module_source, module_name="models.py"
         )
 
@@ -507,8 +371,10 @@ class TestsFlextInfraNamespaceValidator:
     ) -> None:
         """Each namespace-rule fixture fails the project with its own message."""
         validator = FlextInfraNamespaceValidator()
-        root = _make_project_with_module(
-            tmp_path, module_source=_read_fixture(fixture_name), module_name=module_name
+        root = self._make_project_with_module(
+            tmp_path,
+            module_source=self._read_fixture(fixture_name),
+            module_name=module_name,
         )
         result = validator.validate_project(root)
         tm.that(result.success, eq=True)
@@ -523,17 +389,10 @@ class TestsFlextInfraNamespaceValidator:
 
     def test_rule1_valid_constants_passes(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
-        module_source = (
-            "from __future__ import annotations\n\n"
-            "from flext_core import c\n\n"
-            "from flext_test._constants.base import FlextTestConstantsBase\n"
-            "from flext_test._constants.domain import FlextTestConstantsDomain\n\n\n"
-            "class FlextTestConstants(c):\n"
-            "    class Test(FlextTestConstantsBase, FlextTestConstantsDomain):\n"
-            "        pass\n"
-        )
-        root = _make_project_with_module(
-            tmp_path, module_source=module_source, module_name="constants.py"
+        root = self._make_project_with_module(
+            tmp_path,
+            module_source=self._read_fixture("rule1_valid_constants.py"),
+            module_name="constants.py",
         )
         result = validator.validate_project(root)
         tm.that(result.success, eq=True)
@@ -541,42 +400,25 @@ class TestsFlextInfraNamespaceValidator:
 
     def test_rule2_valid_types_passes(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
-        module_source = (
-            "from __future__ import annotations\n\n"
-            "from flext_core import t\n\n"
-            "from flext_test._typings.base import FlextTestTypesBase\n"
-            "from flext_test._typings.domain import FlextTestTypesDomain\n\n\n"
-            "class FlextTestTypes(t):\n"
-            "    class Test(FlextTestTypesBase, FlextTestTypesDomain):\n"
-            "        pass\n"
-        )
-        root = _make_project_with_module(
-            tmp_path, module_source=module_source, module_name="typings.py"
+        root = self._make_project_with_module(
+            tmp_path,
+            module_source=self._read_fixture("rule2_valid_types.py"),
+            module_name="typings.py",
         )
         result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(result.value.passed, eq=True)
 
     @pytest.mark.parametrize(
-        ("module_source", "module_name", "expected_violation_substr"),
+        ("fixture_name", "module_name", "expected_violation_substr"),
         [
             (
-                (
-                    "from __future__ import annotations\n"
-                    "from flext_test import u\n\n"
-                    "class FlextTestModels(Models):\n"
-                    "    pass\n"
-                ),
+                "rule3_reverse_runtime_import.py",
                 "models.py",
                 "reverse runtime import; later layers are TYPE_CHECKING-only: u",
             ),
             (
-                (
-                    "from __future__ import annotations\n"
-                    "from flext_test._models.base import FlextTestModelsDeps\n\n"
-                    "class FlextTestDetector:\n"
-                    "    pass\n"
-                ),
+                "rule3_private_module_import.py",
                 "detector.py",
                 "import through the public facade, not 'flext_test._models.base'",
             ),
@@ -585,13 +427,15 @@ class TestsFlextInfraNamespaceValidator:
     def test_rule3_direct_runtime_import_detected(
         self,
         tmp_path: Path,
-        module_source: str,
+        fixture_name: str,
         module_name: str,
         expected_violation_substr: str,
     ) -> None:
         validator = FlextInfraNamespaceValidator()
-        root = _make_project_with_module(
-            tmp_path, module_source=module_source, module_name=module_name
+        root = self._make_project_with_module(
+            tmp_path,
+            module_source=self._read_fixture(fixture_name),
+            module_name=module_name,
         )
         result = validator.validate_project(root)
         tm.ok(result)
@@ -608,16 +452,10 @@ class TestsFlextInfraNamespaceValidator:
         self, tmp_path: Path
     ) -> None:
         validator = FlextInfraNamespaceValidator()
-        module_source = (
-            "from __future__ import annotations\n\n"
-            "from flext_cli import u\n"
-            "from flext_test import FlextTestUtilitiesCodegen\n\n"
-            "class FlextTestUtilities(u):\n"
-            "    class Test(FlextTestUtilitiesCodegen, FlextTestUtilitiesBase):\n"
-            "        pass\n"
-        )
-        root = _make_project_with_module(
-            tmp_path, module_source=module_source, module_name="utilities.py"
+        root = self._make_project_with_module(
+            tmp_path,
+            module_source=self._read_fixture("rule3_utilities_facade_import.py"),
+            module_name="utilities.py",
         )
 
         result = validator.validate_project(root)
@@ -627,16 +465,10 @@ class TestsFlextInfraNamespaceValidator:
 
     def test_rule3_models_facade_import_remains_allowed(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
-        module_source = (
-            "from __future__ import annotations\n"
-            "from flext_cli import m\n"
-            "from flext_test import FlextTestModelsDeps\n\n"
-            "class FlextTestModels(m):\n"
-            "    class Test(FlextTestModelsDeps, FlextTestModelsBase):\n"
-            "        pass\n"
-        )
-        root = _make_project_with_module(
-            tmp_path, module_source=module_source, module_name="models.py"
+        root = self._make_project_with_module(
+            tmp_path,
+            module_source=self._read_fixture("rule3_models_facade_import.py"),
+            module_name="models.py",
         )
 
         result = validator.validate_project(root)
@@ -655,19 +487,10 @@ class TestsFlextInfraNamespaceValidator:
         (flext-auth/_settings.py, flext-api/_settings.py) depends on this.
         """
         validator = FlextInfraNamespaceValidator()
-        module_source = (
-            "from __future__ import annotations\n\n"
-            "from flext_test import m, t, u\n\n"
-            "class FlextTestSettings(FlextTestSettingsBase):\n"
-            "    class _Test(m.BaseModel):\n"
-            "        bag: t.MappingKV[str, str] = m.Field(default_factory=dict)\n"
-            "    @u.model_validator(mode='before')\n"
-            "    @classmethod\n"
-            "    def _lift(cls, data: t.JsonValue) -> t.JsonValue:\n"
-            "        return data\n"
-        )
-        root = _make_project_with_module(
-            tmp_path, module_source=module_source, module_name="_settings.py"
+        root = self._make_project_with_module(
+            tmp_path,
+            module_source=self._read_fixture("rule3_settings_owner_facade_imports.py"),
+            module_name="_settings.py",
         )
 
         result = validator.validate_project(root)
@@ -678,14 +501,10 @@ class TestsFlextInfraNamespaceValidator:
     def test_rule3_settings_owner_c_import_still_flagged(self, tmp_path: Path) -> None:
         """D1 is bounded: ``c`` and operational facades are not covered."""
         validator = FlextInfraNamespaceValidator()
-        module_source = (
-            "from __future__ import annotations\n\n"
-            "from flext_test import c\n\n"
-            "class FlextTestSettings(FlextTestSettingsBase):\n"
-            "    pass\n"
-        )
-        root = _make_project_with_module(
-            tmp_path, module_source=module_source, module_name="_settings.py"
+        root = self._make_project_with_module(
+            tmp_path,
+            module_source=self._read_fixture("rule3_settings_owner_c_import.py"),
+            module_name="_settings.py",
         )
 
         result = validator.validate_project(root)
@@ -712,16 +531,10 @@ class TestsFlextInfraNamespaceValidator:
         so NS-CONTRACT must not flag it.
         """
         validator = FlextInfraNamespaceValidator()
-        module_source = (
-            "from __future__ import annotations\n\n"
-            "import typing\n\n"
-            "from flext_test import m, t\n\n"
-            "class FlextTestSettings:\n"
-            "    default_headers: typing.Annotated["
-            "t.MappingKV[str, str], m.Field(default_factory=dict)] = None\n"
-        )
-        root = _make_project_with_module(
-            tmp_path, module_source=module_source, module_name="_settings.py"
+        root = self._make_project_with_module(
+            tmp_path,
+            module_source=self._read_fixture("rule4_annotated_field_factory.py"),
+            module_name="_settings.py",
         )
 
         result = validator.validate_project(root)
@@ -736,14 +549,10 @@ class TestsFlextInfraNamespaceValidator:
     def test_rule4_banned_annotation_still_flagged(self, tmp_path: Path) -> None:
         """D1-precision non-regression: genuine banned annotations are flagged."""
         validator = FlextInfraNamespaceValidator()
-        module_source = (
-            "from __future__ import annotations\n\n"
-            "class FlextTestServices:\n"
-            "    def transform(self, data: dict) -> object:\n"
-            "        return data\n"
-        )
-        root = _make_project_with_module(
-            tmp_path, module_source=module_source, module_name="services.py"
+        root = self._make_project_with_module(
+            tmp_path,
+            module_source=self._read_fixture("rule4_banned_annotation.py"),
+            module_name="services.py",
         )
 
         result = validator.validate_project(root)
@@ -768,16 +577,10 @@ class TestsFlextInfraNamespaceValidator:
         declaration is still forbidden; only a docstring or ``__all__`` may follow.
         """
         validator = FlextInfraNamespaceValidator()
-        module_source = (
-            "from __future__ import annotations\n\n"
-            "class FlextTest:\n"
-            "    pass\n\n"
-            "api: FlextTest = FlextTest.fetch_global()\n"
-            '"""Global FlextTest facade instance."""\n'
-            '__all__: list[str] = ["FlextTest", "api"]\n'
-        )
-        root = _make_project_with_module(
-            tmp_path, module_source=module_source, module_name="api.py"
+        root = self._make_project_with_module(
+            tmp_path,
+            module_source=self._read_fixture("rule4_singleton_trailing_docstring.py"),
+            module_name="api.py",
         )
 
         result = validator.validate_project(root)
@@ -795,14 +598,10 @@ class TestsFlextInfraNamespaceValidator:
         self, tmp_path: Path
     ) -> None:
         validator = FlextInfraNamespaceValidator()
-        module_source = (
-            "from __future__ import annotations\n\n"
-            "VALUE = 1\n\n"
-            "def helper() -> int:\n"
-            "    return VALUE\n"
-        )
-        root = _make_project_with_module(
-            tmp_path, module_source=module_source, module_name="api.py"
+        root = self._make_project_with_module(
+            tmp_path,
+            module_source=self._read_fixture("rule0_non_namespace_runtime_module.py"),
+            module_name="api.py",
         )
 
         result = validator.validate_project(root)
@@ -817,7 +616,7 @@ class TestsFlextInfraNamespaceValidator:
 
     def test_rule2_typevar_runtime_module_detected(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
-        root = _make_project_with_module(
+        root = self._make_project_with_module(
             tmp_path,
             module_source='from typing import TypeVar\n\nT = TypeVar("T")\n',
             module_name="base.py",
@@ -841,10 +640,10 @@ class TestsFlextInfraNamespaceValidator:
         package_dir = project_root / "src" / "flext_test"
         package_dir.mkdir(parents=True)
         _ = (package_dir / "__init__.py").write_text(
-            _read_fixture("rule0_no_class.py"), encoding="utf-8"
+            self._read_fixture("rule0_no_class.py"), encoding="utf-8"
         )
         _ = (package_dir / "__version__.py").write_text(
-            _read_fixture("rule0_no_class.py"), encoding="utf-8"
+            self._read_fixture("rule0_no_class.py"), encoding="utf-8"
         )
         u.Tests.write_canonical_package_layout(package_dir)
         u.Tests.initialize_git_repo(project_root)
@@ -863,9 +662,9 @@ class TestsFlextInfraNamespaceValidator:
 
     def test_validate_returns_report(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
-        root = _make_project_with_module(
+        root = self._make_project_with_module(
             tmp_path,
-            module_source=_read_fixture("rule0_valid.py"),
+            module_source=self._read_fixture("rule0_valid.py"),
             module_name="constants.py",
         )
         result = validator.validate_project(root)
@@ -875,9 +674,9 @@ class TestsFlextInfraNamespaceValidator:
 
     def test_violation_message_format(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
-        root = _make_project_with_module(
+        root = self._make_project_with_module(
             tmp_path,
-            module_source=_read_fixture("rule0_no_class.py"),
+            module_source=self._read_fixture("rule0_no_class.py"),
             module_name="models.py",
         )
         result = validator.validate_project(root)
@@ -888,35 +687,30 @@ class TestsFlextInfraNamespaceValidator:
         tm.that(first, has="] src/flext_test/models.py:1 — ")
 
     @pytest.mark.parametrize(
-        ("module_source", "forbidden_violation_substr"),
+        ("fixture_id", "forbidden_violation_substr"),
         [
-            pytest.param(
-                "from __future__ import annotations\n"
-                "from typing import TYPE_CHECKING\n\n"
-                "if TYPE_CHECKING:\n"
-                "    from collections.abc import Sequence\n\n"
-                "class FlextTestModels(Models):\n"
-                "    pass\n",
-                "Disallowed top-level statement: If",
-                id="rule0-allows-type-checking-block",
-            ),
-            pytest.param(
-                "from __future__ import annotations\n\n"
-                "class FlextTestModels(Models):\n"
-                "    pass\n\n"
-                '__all__: list[str] = ["FlextTestModels"]\n',
-                "Disallowed top-level statement: AnnAssign",
-                id="rule0-allows-annotated-dunder-assign",
-            ),
+            pytest.param(case_id, substr, id=case_id)
+            for case_id, substr in (
+                (
+                    "rule0-allows-type-checking-block",
+                    "Disallowed top-level statement: If",
+                ),
+                (
+                    "rule0-allows-annotated-dunder-assign",
+                    "Disallowed top-level statement: AnnAssign",
+                ),
+            )
         ],
     )
     def test_rule0_allows_top_level_statement(
-        self, tmp_path: Path, module_source: str, forbidden_violation_substr: str
+        self, tmp_path: Path, fixture_id: str, forbidden_violation_substr: str
     ) -> None:
         """Rule 0 never rejects the top-level statements a namespace may carry."""
         validator = FlextInfraNamespaceValidator()
-        root = _make_project_with_module(
-            tmp_path, module_source=module_source, module_name="models.py"
+        root = self._make_project_with_module(
+            tmp_path,
+            module_source=self._read_fixture(f"{fixture_id}.py"),
+            module_name="models.py",
         )
 
         result = validator.validate_project(root)
@@ -932,164 +726,121 @@ class TestsFlextInfraNamespaceValidator:
 
     @pytest.mark.parametrize(
         (
+            "fixture_id",
             "module_path",
-            "module_source",
             "violation_substr",
             "expect_violation",
             "expect_passed",
         ),
         [
-            pytest.param(
-                "_constants/sample.py",
-                "from __future__ import annotations\n"
-                "from enum import Enum\n\n"
-                "class FlextTestModelsConstants:\n"
-                "    class Status(Enum):\n"
-                '        OK = "ok"\n',
-                "Loose Enum 'Status' belongs in constants.py",
-                False,
-                None,
-                id="rule1-skips-enum-inside-private-constants-dir",
-            ),
-            pytest.param(
-                "_typings/typeadapters.py",
-                "from __future__ import annotations\n\ntype LocalAlias = str | int\n",
-                "PEP 695 TypeAlias 'LocalAlias' belongs in typings.py",
-                False,
-                None,
-                id="rule2-skips-typealias-inside-private-typings-dir",
-            ),
-            pytest.param(
-                "_utilities/private_runtime.py",
-                "from __future__ import annotations\n"
-                "from flext_test import FlextTestModelsSomething\n\n"
-                "class FlextTestModelsThing(Models):\n"
-                "    pass\n",
-                "instead of direct import 'FlextTestModelsSomething'",
-                False,
-                None,
-                id="rule3-skips-direct-imports-inside-private-dirs",
-            ),
-            pytest.param(
-                "tests/constants.py",
-                "from tests import m\n\nclass TestsFlextTestConstants:\n    pass\n",
-                "facade must inherit canonical 'c'",
-                True,
-                False,
-                id="rule3-test-constants-facade-shape-required",
-            ),
-            pytest.param(
-                "tests/_typings/domain.py",
-                "from tests import u\n\nclass TestsFlextTestTypesDomain:\n    pass\n",
-                "facade must inherit canonical",
-                False,
-                True,
-                id="rule3-test-private-typings-nonfacade-passes",
-            ),
-            pytest.param(
-                "tests/typings.py",
-                "from typing import TYPE_CHECKING\n\n"
-                "if TYPE_CHECKING:\n"
-                "    from tests import u\n\n"
-                "class TestsFlextTestTypes(t):\n"
-                "    class TestsFlextTest(TestsFlextTestTypesBase, "
-                "TestsFlextTestTypesDomain):\n"
-                "        pass\n",
-                "runtime namespace import",
-                False,
-                True,
-                id="rule3-test-type-checking-reverse-import-allowed",
-            ),
-            pytest.param(
-                "tests/models.py",
-                "from tests import helper\n\nclass TestsFlextTestModels:\n    pass\n",
-                "facade must inherit canonical 'm'",
-                True,
-                False,
-                id="rule3-test-facade-imports-tests-package",
-            ),
-            pytest.param(
-                "tests/models.py",
-                "from tests.conftest import helper\n\n"
-                "class TestsFlextTestModels:\n"
-                "    pass\n",
-                "facade must inherit canonical 'm'",
-                True,
-                False,
-                id="rule3-test-facade-imports-conftest",
-            ),
-            pytest.param(
-                "tests/models.py",
-                "from tests.fixtures import helper\n\n"
-                "class TestsFlextTestModels:\n"
-                "    pass\n",
-                "facade must inherit canonical 'm'",
-                True,
-                False,
-                id="rule3-test-facade-imports-fixtures",
-            ),
-            pytest.param(
-                "tests/models.py",
-                "from tests.unit.test_service import helper\n\n"
-                "class TestsFlextTestModels:\n"
-                "    pass\n",
-                "facade must inherit canonical 'm'",
-                True,
-                False,
-                id="rule3-test-facade-imports-test-module",
-            ),
-            pytest.param(
-                "tests/models.py",
-                "from tests import c, t, p, m\n\n"
-                "class TestsFlextTestModels(m):\n"
-                "    class TestsFlextTest(c, t, p):\n"
-                "        pass\n",
-                "facade must inherit canonical",
-                False,
-                True,
-                id="rule3-test-models-forward-owner-assembly-allowed",
-            ),
-            pytest.param(
-                "tests/utilities.py",
-                "from tests import c, t, p, m, u\n\n"
-                "class TestsFlextTestUtilities(u):\n"
-                "    class TestsFlextTest(c, t, p):\n"
-                "        pass\n",
-                "facade must inherit canonical",
-                False,
-                True,
-                id="rule3-test-utilities-forward-owner-assembly-allowed",
-            ),
-            pytest.param(
-                "tests/models.py",
-                "from tests import m\n"
-                "from tests._models.domain import TestsFlextTestModelsDomain\n\n"
-                "class TestsFlextTestModels(m):\n"
-                "    class TestsFlextTest(TestsFlextTestModelsDomain, "
-                "TestsFlextTestModelsBase):\n"
-                "        pass\n",
-                "test support module",
-                False,
-                True,
-                id="rule3-test-matching-private-family-assembly-allowed",
-            ),
-            pytest.param(
-                "tests/_typings/domain.py",
-                "from tests._utilities.domain import TestsFlextTestUtilitiesDomain\n\n"
-                "class TestsFlextTestTypesDomain:\n"
-                "    pass\n",
-                "facade must inherit canonical",
-                False,
-                True,
-                id="rule3-test-private-family-cross-import-passes",
-            ),
+            pytest.param(*row, id=row[0])
+            for row in (
+                (
+                    "rule1-skips-enum-inside-private-constants-dir",
+                    "_constants/sample.py",
+                    "Loose Enum 'Status' belongs in constants.py",
+                    False,
+                    None,
+                ),
+                (
+                    "rule2-skips-typealias-inside-private-typings-dir",
+                    "_typings/typeadapters.py",
+                    "PEP 695 TypeAlias 'LocalAlias' belongs in typings.py",
+                    False,
+                    None,
+                ),
+                (
+                    "rule3-skips-direct-imports-inside-private-dirs",
+                    "_utilities/private_runtime.py",
+                    "instead of direct import 'FlextTestModelsSomething'",
+                    False,
+                    None,
+                ),
+                (
+                    "rule3-test-constants-facade-shape-required",
+                    "tests/constants.py",
+                    "facade must inherit canonical 'c'",
+                    True,
+                    False,
+                ),
+                (
+                    "rule3-test-private-typings-nonfacade-passes",
+                    "tests/_typings/domain.py",
+                    "facade must inherit canonical",
+                    False,
+                    True,
+                ),
+                (
+                    "rule3-test-type-checking-reverse-import-allowed",
+                    "tests/typings.py",
+                    "runtime namespace import",
+                    False,
+                    True,
+                ),
+                (
+                    "rule3-test-facade-imports-tests-package",
+                    "tests/models.py",
+                    "facade must inherit canonical 'm'",
+                    True,
+                    False,
+                ),
+                (
+                    "rule3-test-facade-imports-conftest",
+                    "tests/models.py",
+                    "facade must inherit canonical 'm'",
+                    True,
+                    False,
+                ),
+                (
+                    "rule3-test-facade-imports-fixtures",
+                    "tests/models.py",
+                    "facade must inherit canonical 'm'",
+                    True,
+                    False,
+                ),
+                (
+                    "rule3-test-facade-imports-test-module",
+                    "tests/models.py",
+                    "facade must inherit canonical 'm'",
+                    True,
+                    False,
+                ),
+                (
+                    "rule3-test-models-forward-owner-assembly-allowed",
+                    "tests/models.py",
+                    "facade must inherit canonical",
+                    False,
+                    True,
+                ),
+                (
+                    "rule3-test-utilities-forward-owner-assembly-allowed",
+                    "tests/utilities.py",
+                    "facade must inherit canonical",
+                    False,
+                    True,
+                ),
+                (
+                    "rule3-test-matching-private-family-assembly-allowed",
+                    "tests/models.py",
+                    "test support module",
+                    False,
+                    True,
+                ),
+                (
+                    "rule3-test-private-family-cross-import-passes",
+                    "tests/_typings/domain.py",
+                    "facade must inherit canonical",
+                    False,
+                    True,
+                ),
+            )
         ],
     )
     def test_module_path_violation_presence(
         self,
         tmp_path: Path,
+        fixture_id: str,
         module_path: str,
-        module_source: str,
         violation_substr: str,
         *,
         expect_violation: bool,
@@ -1097,8 +848,10 @@ class TestsFlextInfraNamespaceValidator:
     ) -> None:
         """Namespace rules key on the module path a project actually declares."""
         validator = FlextInfraNamespaceValidator()
-        root, target = _make_project_with_module_path(
-            tmp_path, module_source=module_source, module_path=module_path
+        root, target = self._make_project_with_module_path(
+            tmp_path,
+            module_source=self._read_fixture(f"{fixture_id}.py"),
+            module_path=module_path,
         )
         files = u.Infra.iter_python_files(
             m.Infra.SourceScanRequest(project_roots=(root,))

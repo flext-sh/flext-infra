@@ -72,6 +72,62 @@ class FlextInfraSettingsModels:
                 description="GitHub Actions ref name for dependency sync.",
             ),
         ]
+        uv_executable: Annotated[
+            str | None,
+            m.Field(
+                default=None,
+                validation_alias="UV",
+                description="uv launcher path resolved for dependency orchestration.",
+            ),
+        ]
+        virtual_env: Annotated[
+            str | None,
+            m.Field(
+                default=None,
+                validation_alias="VIRTUAL_ENV",
+                description="Active virtualenv root for promoted Python commands.",
+            ),
+        ]
+        dispatch_what: Annotated[
+            str | None,
+            m.Field(
+                default=None,
+                validation_alias="WHAT",
+                description="Make-dispatch WHAT verb for promoted commands.",
+            ),
+        ]
+        cosmos_command_dispatched: Annotated[
+            str | None,
+            m.Field(
+                default=None,
+                validation_alias="COSMOS_COMMAND_DISPATCHED",
+                description="Gas City command-dispatch marker for promoted verbs.",
+            ),
+        ]
+        cosmos_command_path: Annotated[
+            str | None,
+            m.Field(
+                default=None,
+                validation_alias="COSMOS_COMMAND_PATH",
+                description="Gas City command path for promoted verb dispatch.",
+            ),
+        ]
+        system_path: Annotated[
+            str | None,
+            m.Field(
+                default=None,
+                validation_alias="PATH",
+                description="Process PATH captured for isolated subprocess builds.",
+            ),
+        ]
+        mise_github_credential_command: Annotated[
+            str | None,
+            m.Field(
+                default=None,
+                validation_alias="MISE_GITHUB_CREDENTIAL_COMMAND",
+                description="Mise credential command forwarded to isolated builds.",
+            ),
+        ]
 
 
 __all__: list[str] = ["FlextInfraSettingsModels"]

@@ -128,8 +128,10 @@ class TestsFlextInfraReleaseDag:
             )
             result = u.Tests.run_release_build(workspace, project_name)
             tm.that(result, ne=0)
-            tm.that(u.Tests.release_build_log_text(workspace, project_name),
-                    has="internal dependency version unknown")
+            tm.that(
+                u.Tests.release_build_log_text(workspace, project_name),
+                has="internal dependency version unknown",
+            )
 
         @staticmethod
         def test_missing_hatch_config_fails_before_artifact_build(

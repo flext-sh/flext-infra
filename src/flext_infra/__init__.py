@@ -70,6 +70,7 @@ if TYPE_CHECKING:
     from .codegen.py_typed import FlextInfraCodegenPyTyped
     from .codegen.scaffolder import FlextInfraCodegenScaffolder
     from .codegen.version_file import FlextInfraCodegenVersionFile
+    from .codemod.ast_scan import FlextInfraCodemodAstScan
     from .codemod.batch_apply import FlextInfraCodemodBatchApply
     from .codemod.batch_gates import FlextInfraModGateEngine
     from .codemod.batch_replacements import FlextInfraModReplacements
@@ -309,6 +310,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenScaffolder",
     "FlextInfraCodegenTransaction",
     "FlextInfraCodegenVersionFile",
+    "FlextInfraCodemodAstScan",
     "FlextInfraCodemodBatchApply",
     "FlextInfraCodemodSedApply",
     "FlextInfraCodemodSemanticApply",
@@ -549,6 +551,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen.scaffolder": ("FlextInfraCodegenScaffolder",),
             ".codegen.version_file": ("FlextInfraCodegenVersionFile",),
             ".codemod": ("codemod",),
+            ".codemod.ast_scan": ("FlextInfraCodemodAstScan",),
             ".codemod.batch_apply": ("FlextInfraCodemodBatchApply",),
             ".codemod.batch_gates": ("FlextInfraModGateEngine",),
             ".codemod.batch_replacements": ("FlextInfraModReplacements",),

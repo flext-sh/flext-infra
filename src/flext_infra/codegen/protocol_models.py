@@ -12,10 +12,10 @@ from typing import TypeAliasType, get_args, override
 from flext_cli import cli
 
 from .. import FlextInfraServiceBase, m, p, r, t
-from . import _protocol_model_annotations as _annotations
+from ._protocol_model_annotations import FlextInfraCodegenProtocolModelAnnotations
 from ._protocol_model_render import FlextInfraCodegenProtocolModelRender
 
-_Target = _annotations.FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget
+_Target = FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget
 
 
 class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):

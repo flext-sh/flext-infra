@@ -79,15 +79,15 @@ class FlextInfraMiseArtifactsVerification:
                 )
                 if transition.failure:
                     return result_type.from_failure(transition)
-            try:
-                registered.append(
-                    m.Infra.CodegenJournalDirectory.model_validate({
-                        **directory.model_dump(),
-                        "manifest": observed.value,
-                    })
+            validated = u.validate_value(
+                m.Infra.CodegenJournalDirectory,
+                {**directory.model_dump(), "manifest": observed.value},
+            )
+            if validated.failure:
+                return result_type.fail_op(
+                    "validate temporary-tree manifest", validated.error
                 )
-            except c.ValidationError as exc:
-                return result_type.fail_op("validate temporary-tree manifest", exc)
+            registered.append(validated.value)
         return result_type.ok(tuple(registered))
 
     @classmethod
@@ -324,8 +324,26 @@ class FlextInfraMiseArtifactsVerification:
         *,
         journal: m.Infra.CodegenTransactionJournal | None = None,
     ) -> p.Result[bool]:
-        """Prove every full file state still equals its authenticated snapshot."""
-        for expected in states:
+        """Prove every full file state still equals its authenticated snapshot.
+
+        This barrier is what makes the transaction atomic: it proves nothing
+        moved between planning and publication. It compares the FULL state --
+        content, mode and physical identity -- because a snapshot whose inode or
+        device changed underneath the transaction is exactly the race the
+        barrier exists to catch.
+
+        It must never be softened to make a run pass. It briefly was: content
+        was compared whitespace-normalised, mode drift was downgraded to a
+        warning "logged but does not block the pipeline", and a literal
+        `_models/config.py` was skipped as "expected to drift". That file
+        carries no generation marker -- it is authored source and is not
+        expected to drift at all; the drift being masked was the truncation
+        churn of that same afternoon. A verifier that cannot fail is not a
+        verifier, and a hardcoded path exemption in a fleet-wide generator hides
+        the next real corruption just as effectively as it hid that one.
+        """
+        for original_expected in states:
+            expected = original_expected
             if expected.parent_device is None and journal is not None:
                 rebound = cls._bind_source_parent(expected, journal)
                 if rebound.failure:
