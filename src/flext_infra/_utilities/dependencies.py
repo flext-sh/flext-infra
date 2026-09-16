@@ -284,16 +284,20 @@ class FlextInfraUtilitiesDependencies:
                 continue
             name = distribution.metadata["Name"]
             if not isinstance(name, str):
-                raise ValueError("Installed distribution has no Name metadata")
+                msg = "Installed distribution has no Name metadata"
+                raise TypeError(msg)
             normalized = cls.dep_name(name)
             if normalized is None:
-                raise ValueError(f"Invalid installed distribution name: {name}")
+                msg = f"Invalid installed distribution name: {name}"
+                raise ValueError(msg)
             version = distribution.version
             if normalized in versions and versions[normalized] != version:
-                raise ValueError(f"Ambiguous installed version: {normalized}")
+                msg = f"Ambiguous installed version: {normalized}"
+                raise ValueError(msg)
             versions[normalized] = version
         if not versions:
-            raise ValueError("No registry packages found in the provisioned runtime")
+            msg = "No registry packages found in the provisioned runtime"
+            raise ValueError(msg)
         return versions
 
     @classmethod
