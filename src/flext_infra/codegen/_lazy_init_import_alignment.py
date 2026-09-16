@@ -343,6 +343,12 @@ class FlextInfraCodegenLazyInitImportAlignmentMixin:
             except (UnicodeDecodeError, OSError):
                 continue
             source_module = entry.module_name
+            # Operator law (2026-09-16, universal): import alignment rewrites
+            # modules INSIDE the project package only. Tests, scripts, and any
+            # out-of-package module are not package ABI; relativizing their
+            # imports crosses the package boundary and never converges.
+            if not source_module.startswith(f"{project_package}."):
+                continue
             visitor = _ImportAlignmentVisitor(
                 source_module=source_module,
                 project_package=project_package,
