@@ -45,6 +45,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         if self._is_private_test_fixture_package(context.pkg_dir, context.surface):
             return {}
         package_entry = self._package_entry(context.pkg_dir)
+        package_entry = self._package_entry(context.pkg_dir)
         if package_entry is None:
             return {}
         index: t.MutableLazyAliasMap = {}
@@ -91,6 +92,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 py_file, rel_path=py_file.relative_to(context.pkg_dir)
             )
             policy = convention.module_policy
+            module_path = convention.module_name
             root_private_contract = (
                 py_file.parent == context.pkg_dir
                 and py_file.stem in {"_config", "_settings"}
@@ -109,7 +111,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             )
             if (
                 not policy.include_in_lazy_init and not root_private_contract
-            ) or not module_entry.module_name:
+            ) or not module_path:
                 continue
             # In public src packages, public submodules (without expected_alias) derive
             # from their explicit __all__; non-public/private subpackages auto-discover.
@@ -124,7 +126,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             )
             targets = self._module_exports(
                 py_file,
-                convention.module_name,
+                module_path,
                 export_options=m.Infra.ExportOptions(
                     allow_main=True,
                     allow_assignments=True,
@@ -139,7 +141,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             ):
                 targets.setdefault(
                     policy.expected_alias,
-                    (module_entry.module_name, policy.expected_alias),
+                    (module_path, policy.expected_alias),
                 )
             for name, target in targets.items():
                 self._add(index, name, target)
