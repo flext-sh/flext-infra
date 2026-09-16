@@ -6,6 +6,7 @@ import functools
 from typing import ClassVar
 
 from flext_infra import m, t
+from flext_infra.codemod.ast_scan import FlextInfraCodemodAstScan
 from flext_infra.codegen.protocol_models import FlextInfraCodegenProtocolModels
 from flext_infra.codemod.batch_apply import FlextInfraCodemodBatchApply
 from flext_infra.refactor.accessor_migration import (
@@ -103,6 +104,16 @@ class RefactorRoutes(CliRouteBase):
             ),
             model_cls=FlextInfraCodemodBatchApply,
             handler=FlextInfraCodemodBatchApply.execute_command,
+        ),
+        m.Cli.ResultCommandRoute(
+            name="ast",
+            help_text=(
+                "Run the ast engine standalone: ast-grep cascade plus "
+                "sed-by-list cascade (scan report; --apply reaches the "
+                "mechanical fixed point)"
+            ),
+            model_cls=FlextInfraCodemodAstScan,
+            handler=FlextInfraCodemodAstScan.execute_command,
         ),
     )
 

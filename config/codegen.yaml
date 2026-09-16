@@ -895,6 +895,10 @@ Infra:
         owner: codegen
         policy: full
         mode: 493 # 0o755
+      - path: .github/scripts/flext-law-loop.sh
+        owner: codegen
+        policy: full
+        mode: 493 # 0o755
       - path: tests/fixtures/ci/docker/alpine.Dockerfile
         owner: codegen
         policy: full
@@ -920,6 +924,18 @@ Infra:
         owner: codegen
         policy: full
       - path: .github/workflows/release.yml
+        owner: codegen
+        policy: full
+      - path: .github/workflows/_fragments/cross_repo_dependency_credential
+        owner: codegen
+        policy: full
+      - path: .github/workflows/_fragments/private_dependency_auth
+        owner: codegen
+        policy: full
+      - path: .github/workflows/_fragments/private_submodules_init
+        owner: codegen
+        policy: full
+      - path: .github/workflows/_fragments/testmon_cache
         owner: codegen
         policy: full
       - path: .beads/config.yaml
@@ -1810,6 +1826,11 @@ Infra:
           profiles: [workspace]
           delegate: render
           overwrite: false
+        - source: base/.github/scripts/flext-law-loop.sh.j2
+          destination: .github/scripts/flext-law-loop.sh
+          profiles: [workspace]
+          delegate: render
+          overwrite: false
       # Multi-environment CI base: reusable ci-matrix workflow + per-distro
       # clean-machine images validating bootstrap and make verbs everywhere.
         - source: base/.github/workflows/ci-matrix.yml.j2
@@ -1914,6 +1935,26 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: true
+        - source: base/.github/workflows/_fragments/cross_repo_dependency_credential.j2
+          destination: .github/workflows/_fragments/cross_repo_dependency_credential
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/.github/workflows/_fragments/private_dependency_auth.j2
+          destination: .github/workflows/_fragments/private_dependency_auth
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/.github/workflows/_fragments/private_submodules_init.j2
+          destination: .github/workflows/_fragments/private_submodules_init
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/.github/workflows/_fragments/testmon_cache.j2
+          destination: .github/workflows/_fragments/testmon_cache
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: false
         - source: base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2
           destination: tests/fixtures/ci/docker/ubuntu.Dockerfile
           profiles: [workspace, standalone]

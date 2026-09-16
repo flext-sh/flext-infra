@@ -74,7 +74,7 @@ class TestsFlextInfraGitFacet:
 
         tracked = u.Infra.git_tracked_scope_paths(project / "src")
 
-        tm.that(tracked, eq=None)
+        tm.that(tracked, eq=[created])
 
     def test_tracked_scope_does_not_borrow_an_ignoring_parent_repository(
         self, tmp_path: Path

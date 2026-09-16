@@ -39,7 +39,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         return cls(
             repository_root=Path.cwd(),
             started_at_monotonic=started_at_monotonic,
-            ci_context=os.environ.get(ci.variable, "").strip() == ci.value,
+            ci_context=(u.Infra.env_lookup(ci.variable) or "").strip() == ci.value,
             target=Path(cls._environment_value(c.Infra.PYTEST_ENV_TARGET)),
             reports=Path(cls._environment_value(c.Infra.PYTEST_ENV_REPORTS)),
             testmon_db=Path(

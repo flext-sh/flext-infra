@@ -887,7 +887,7 @@ class FlextInfraCodegenConformPlan:
     @staticmethod
     def _package_root() -> Path:
         """Return the installed flext-infra package root."""
-        return Path(__file__).resolve().parent.parent
+        return Path(__file__).resolve().parent.parent.parent
 
     @staticmethod
     def _repository_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:

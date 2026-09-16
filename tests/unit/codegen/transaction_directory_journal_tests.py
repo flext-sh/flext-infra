@@ -101,7 +101,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
             assert failed.error_data is not None
             tm.that(
                 failed.error_data["recovery_error"],
-                has="new generated file changed before recovery",
+                has="generated file has an unowned state before recovery",
             )
             tm.that(target.read_bytes(), eq=b"foreign content\n")
         else:
