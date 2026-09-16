@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -78,9 +79,13 @@ class TestsFlextInfraCodegenPyprojectConform:
             )
         )
         (root / "pyproject.toml").write_text(rendered, encoding="utf-8")
-        tm.ok(u.Cli.run_checked(["uv", "lock", "--offline"], cwd=parent))
+        tm.ok(u.Cli.run_checked(
+            ["uv", "pip", "install", "--dry-run", "--offline", "--python",
+             sys.executable, "-r", str(root / "pyproject.toml")],
+            cwd=parent,
+        ))
         tm.that((root / "uv.lock").exists(), eq=False)
-        tm.that((parent / "uv.lock").is_file(), eq=True)
+        tm.that((parent / "uv.lock").exists(), eq=False)
 
     @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
     def test_global_constraints_apply_without_direct_runtime_requirements(

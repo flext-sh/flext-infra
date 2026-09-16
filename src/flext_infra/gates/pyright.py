@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, e, m, u
 
 from .base_gate import FlextInfraGate
 
@@ -87,9 +87,10 @@ class FlextInfraPyrightGate(FlextInfraGate):
                 result.stdout, strict=True
             )
         except c.ValidationError as exc:
+            failed = e.fail_validation(error=exc)
             return False, (
                 self._malformed_report_issue(
-                    exc, tool=c.Infra.PYRIGHT, file=str(project_dir)
+                    str(failed.error), tool=c.Infra.PYRIGHT, file=str(project_dir)
                 ),
             )
         issues: t.MutableSequenceOf[m.Infra.Issue] = [

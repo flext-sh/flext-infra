@@ -1,4 +1,4 @@
-"""Lock-derived dependency floors written back to the codegen SSOT (flext-gzfd2)."""
+"""Runtime-derived dependency floors written back to the codegen SSOT (flext-gzfd2)."""
 
 from __future__ import annotations
 
@@ -11,11 +11,11 @@ if TYPE_CHECKING:
 
 
 class FlextInfraDepsFloorProfileWriter:
-    """Rewrite dependency_profiles floors from the resolved uv.lock state."""
+    """Rewrite dependency_profiles floors from the provisioned runtime."""
 
     @classmethod
-    def rewrite_profiles_from_lock(
-        cls, *, locked_versions: t.MappingKV[str, str], internal_names: t.StrSequence
+    def rewrite_profiles_from_resolution(
+        cls, *, resolved_versions: t.MappingKV[str, str], internal_names: t.StrSequence
     ) -> t.StrSequence:
         """Update dependency_profiles in config/codegen.yaml with raised floors.
 
@@ -76,7 +76,7 @@ class FlextInfraDepsFloorProfileWriter:
                         continue
                     rewritten = u.Infra.rewrite_requirement_constraint(
                         req,
-                        locked_versions=locked_versions,
+                        resolved_versions=resolved_versions,
                         internal_names=internal_names,
                     )
                     if rewritten is not None and rewritten != req:
