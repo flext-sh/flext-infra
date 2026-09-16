@@ -87,6 +87,52 @@ class TestsFlextInfraBeadsEnvironmentSync:
         tm.ok(result)
         tm.that((tmp_path / c.Infra.ENVRC_FILENAME).exists(), eq=False)
 
+    def test_local_backend_for_standalone_beads_identity(self, tmp_path: Path) -> None:
+        """A governed identity without city participation renders the local base."""
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            tmp_path,
+            "local-project",
+            workspace="local-workspace",
+            database="local_database",
+            issue_prefix="local-prefix",
+        )
+        u.Tests.write_standalone_workspace_manifest(
+            tmp_path, "local-project", gascity_enabled=False
+        )
+        result = infra.sync_environment_files(
+            m.Infra.WorkspaceEnvironmentSyncRequest(
+                repository_root=tmp_path, allow_direnv=False
+            )
+        )
+        tm.ok(result)
+        content = (tmp_path / c.Infra.ENVRC_FILENAME).read_text(encoding="utf-8")
+        tm.that(content, lacks="AGENTS_GAS_CITY_ROOT")
+        tm.that(content, lacks="dolt-state.json")
+        tm.that(content, lacks="jq -er")
+        tm.that(content, has='watch_file "$checkout_root/.beads/metadata.json"')
+        tm.that(content, has="unset BEADS_DOLT_SERVER_HOST BEADS_DOLT_SERVER_PORT")
+        tm.that(content, has="unset BEADS_DOLT_AUTO_START")
+        tm.that(content, has="source_env_if_exists .envrc.local")
+
+    def test_none_backend_without_beads_identity(self, tmp_path: Path) -> None:
+        """A repository with no Beads identity renders only the unset chain."""
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "bare"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        result = infra.sync_environment_files(
+            m.Infra.WorkspaceEnvironmentSyncRequest(
+                repository_root=tmp_path, allow_direnv=False
+            )
+        )
+        tm.ok(result)
+        content = (tmp_path / c.Infra.ENVRC_FILENAME).read_text(encoding="utf-8")
+        tm.that(content, lacks="AGENTS_GAS_CITY_ROOT")
+        tm.that(content, lacks=".beads/metadata.json")
+        tm.that(content, lacks="dolt-state.json")
+        tm.that(content, has="unset BEADS_DOLT_SERVER_HOST BEADS_DOLT_SERVER_PORT")
+        tm.that(content, has="unset GT_ROOT")
+        tm.that(content, has="unset BEADS_DOLT_AUTO_START")
+
     def test_custom_envrc_preserved_without_force(self, tmp_path: Path) -> None:
         """Custom content is never clobbered; direnv allow still heals."""
         custom = tmp_path / c.Infra.ENVRC_FILENAME

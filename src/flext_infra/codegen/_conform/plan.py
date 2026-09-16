@@ -11,6 +11,7 @@ from ... import c, config, m, p, r, t, u
 from ...deps import FlextInfraPyprojectModernizer
 from ...services.codegen import FlextInfraCodegen
 from ...workspace import FlextInfraWorkspaceDetector
+from ...workspace.environment_contracts import FlextInfraWorkspaceEnvironmentContracts
 from .misc import FlextInfraCodegenConformMisc
 
 
@@ -764,6 +765,64 @@ class FlextInfraCodegenConformPlan:
                         )
                     )
                     continue
+            if (
+                governed.policy == "merge"
+                and relative.as_posix() == c.Infra.ENVRC_LOCAL_RELPATH
+            ):
+                # Local overrides never carry generated content: the merge
+                # strips stale generated sections and deletes the file when
+                # nothing custom remains, so `.envrc` stays the single
+                # beads activation owner.
+                normalized = (
+                    FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized(
+                        current
+                    )
+                )
+                if normalized == current:
+                    current_plan = FlextInfraCodegenConformMisc.file_plan(
+                        root, relative.as_posix(), current, mode=governed.mode
+                    )
+                    if current_plan.failure:
+                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                            current_plan
+                        )
+                    completed.append(
+                        current_plan.value.model_copy(
+                            update={"owner": governed.owner, "policy": governed.policy}
+                        )
+                    )
+                    continue
+                if not normalized:
+                    before = u.Cli.atomic_read_binary_file_state(path, required=False)
+                    if before.failure:
+                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                            before
+                        )
+                    completed.append(
+                        m.Infra.CodegenFilePlan(
+                            project=root,
+                            path=path,
+                            before=before.value,
+                            desired_content=None,
+                            desired_mode=None,
+                            owner=governed.owner,
+                            policy=governed.policy,
+                        )
+                    )
+                    continue
+                merged_plan = FlextInfraCodegenConformMisc.file_plan(
+                    root, relative.as_posix(), normalized, mode=governed.mode
+                )
+                if merged_plan.failure:
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                        merged_plan
+                    )
+                completed.append(
+                    merged_plan.value.model_copy(
+                        update={"owner": governed.owner, "policy": governed.policy}
+                    )
+                )
+                continue
             current_plan = FlextInfraCodegenConformMisc.file_plan(
                 root, relative.as_posix(), current, mode=governed.mode
             )

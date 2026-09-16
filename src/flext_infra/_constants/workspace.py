@@ -129,6 +129,7 @@ class FlextInfraConstantsWorkspace:
     # Workspace environment sync owns .envrc only. Conform is the sole writer
     # of .mise.toml; the old marker remains readable for migration evidence.
     ENVRC_FILENAME: Final[str] = ".envrc"
+    ENVRC_LOCAL_RELPATH: Final[str] = ".envrc.local"
     MISE_TOML_FILENAME: Final[str] = ".mise.toml"
     WORKSPACE_ENV_FILES: Final[t.StrSequence] = (ENVRC_FILENAME,)
     WORKSPACE_ENV_GENERATED_MARKERS: Final[t.StrSequence] = (
