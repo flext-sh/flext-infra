@@ -7,8 +7,6 @@ from typing import Annotated, Literal, Self
 
 from flext_core import m, t, u
 
-from ._defaults import immutable_empty_mapping
-
 
 class FlextInfraModelsMiseToolchain:
     """Mise toolchain and beads configuration models."""
@@ -400,32 +398,6 @@ class FlextInfraModelsMiseToolchain:
             m.Field(
                 min_length=1,
                 description="Toolchain field names protected from alternate distributions",
-            ),
-        ]
-        uv_exclude_newer: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description="uv [tool.uv] exclude-newer cutoff (exterminated fleet-wide, rendered then conform-stripped)"
-            ),
-        ]
-        dependency_cooldown_exclusions: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                default=(),
-                description=(
-                    "Package distributions frozen at their current floor by the "
-                    "fleet-wide dependency cooldown policy; absent frees all packages"
-                ),
-            ),
-        ] = ()
-        dependency_cooldown_overrides: Annotated[
-            t.MappingKV[str, str],
-            m.Field(
-                default_factory=immutable_empty_mapping,
-                description=(
-                    "Per-package cooldown cutoff dates overriding the fleet default; "
-                    "maps distribution name to a PEP 440 version cutoff string"
-                ),
             ),
         ]
 
