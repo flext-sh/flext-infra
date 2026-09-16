@@ -140,8 +140,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 and u.Infra.matches_root_namespace_file(py_file.name)
             ):
                 targets.setdefault(
-                    policy.expected_alias,
-                    (module_path, policy.expected_alias),
+                    policy.expected_alias, (module_path, policy.expected_alias)
                 )
             for name, target in targets.items():
                 self._add(index, name, target)
