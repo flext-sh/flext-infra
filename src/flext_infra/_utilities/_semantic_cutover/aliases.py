@@ -19,7 +19,6 @@ from .alias_cst import FlextInfraUtilitiesSemanticCutoverAliasCst
 from .edits import FlextInfraUtilitiesSemanticCutoverEdits
 
 if TYPE_CHECKING:
-
     from flext_infra.protocols import p
 
 

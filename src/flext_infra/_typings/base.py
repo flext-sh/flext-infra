@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast as _ast
-
 from collections.abc import Callable, Container as _Container, MutableMapping
 from datetime import date, datetime
 from pathlib import Path as _Path
