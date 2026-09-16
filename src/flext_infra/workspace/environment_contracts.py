@@ -21,28 +21,29 @@ _QUOTED_ENV_TARGET: Final[re.Pattern[str]] = re.compile(
     r'^(?:source_env|watch_file)\s+"([^"]+)"\s*$'
 )
 _HOME_PREFIX: Final[re.Pattern[str]] = re.compile(r"^\$\{?HOME\}?(.*)$")
-_MANAGED_SECTION_START: Final[re.Pattern[str]] = re.compile(
-    r"^# === SECTION: .* \(managed\) ===$"
-)
-_MANAGED_SECTION_END: Final[re.Pattern[str]] = re.compile(r"^# End SECTION: .*$")
-_ENVRC_LOCAL_GENERATED_MARKERS: Final[t.StrSequence] = (
-    *c.Infra.WORKSPACE_ENV_GENERATED_MARKERS,
-    *c.Infra.TEMPLATE_GENERATED_MARKERS,
-)
-# Local overrides carry operator customization only. Beads activation is a
-# generated property of `.envrc`; any residue here is a second activation
-# owner whose drift already diverged (historical jq conditions differed).
-_ENVRC_LOCAL_FORBIDDEN_VARS: Final[t.StrSequence] = (
-    "AGENTS_GAS_CITY_ROOT",
-    "GT_ROOT",
-    "GT_TOWN_ROOT",
-    "BEADS_DIR",
-    "BEADS_DOLT_",
-)
 
 
 class FlextInfraWorkspaceEnvironmentContracts:
     """Static contract lint for one managed direnv environment file."""
+
+    _MANAGED_SECTION_START: Final[re.Pattern[str]] = re.compile(
+        r"^# === SECTION: .* \(managed\) ===$"
+    )
+    _MANAGED_SECTION_END: Final[re.Pattern[str]] = re.compile(r"^# End SECTION: .*$")
+    _ENVRC_LOCAL_GENERATED_MARKERS: Final[t.StrSequence] = (
+        *c.Infra.WORKSPACE_ENV_GENERATED_MARKERS,
+        *c.Infra.TEMPLATE_GENERATED_MARKERS,
+    )
+    # Local overrides carry operator customization only. Beads activation is a
+    # generated property of `.envrc`; any residue here is a second activation
+    # owner whose drift already diverged (historical jq conditions differed).
+    _ENVRC_LOCAL_FORBIDDEN_VARS: Final[t.StrSequence] = (
+        "AGENTS_GAS_CITY_ROOT",
+        "GT_ROOT",
+        "GT_TOWN_ROOT",
+        "BEADS_DIR",
+        "BEADS_DOLT_",
+    )
 
     @classmethod
     def _resolve_env_target(
@@ -132,15 +133,15 @@ class FlextInfraWorkspaceEnvironmentContracts:
         for line in content.splitlines():
             stripped = line.strip()
             if skipping:
-                if _MANAGED_SECTION_END.match(stripped):
+                if cls._MANAGED_SECTION_END.match(stripped):
                     skipping = False
                 continue
-            if _MANAGED_SECTION_START.match(stripped):
+            if cls._MANAGED_SECTION_START.match(stripped):
                 skipping = True
                 continue
             if stripped and any(
                 stripped.startswith(marker)
-                for marker in _ENVRC_LOCAL_GENERATED_MARKERS
+                for marker in cls._ENVRC_LOCAL_GENERATED_MARKERS
             ):
                 continue
             kept.append(line)
@@ -148,9 +149,7 @@ class FlextInfraWorkspaceEnvironmentContracts:
         return f"{normalized}\n" if normalized else ""
 
     @classmethod
-    def envrc_local_contract_violations(
-        cls, content: str
-    ) -> t.VariadicTuple[str]:
+    def envrc_local_contract_violations(cls, content: str) -> t.VariadicTuple[str]:
         """Return one message per generated-activation residue in ``.envrc.local``.
 
         Local overrides never activate Beads: managed section markers,
@@ -162,10 +161,9 @@ class FlextInfraWorkspaceEnvironmentContracts:
             stripped = line.strip()
             if not stripped:
                 continue
-            if (
-                _MANAGED_SECTION_START.match(stripped)
-                or _MANAGED_SECTION_END.match(stripped)
-            ):
+            if cls._MANAGED_SECTION_START.match(
+                stripped
+            ) or cls._MANAGED_SECTION_END.match(stripped):
                 violations.append(
                     f"line {line_number}: managed section marker in local "
                     f"overrides: {stripped!r}"
@@ -173,14 +171,14 @@ class FlextInfraWorkspaceEnvironmentContracts:
                 continue
             if any(
                 stripped.startswith(marker)
-                for marker in _ENVRC_LOCAL_GENERATED_MARKERS
+                for marker in cls._ENVRC_LOCAL_GENERATED_MARKERS
             ):
                 violations.append(
                     f"line {line_number}: generated ownership marker in "
                     f"local overrides: {stripped!r}"
                 )
                 continue
-            for token in _ENVRC_LOCAL_FORBIDDEN_VARS:
+            for token in cls._ENVRC_LOCAL_FORBIDDEN_VARS:
                 if token in stripped:
                     violations.append(
                         f"line {line_number}: Beads activation variable in "

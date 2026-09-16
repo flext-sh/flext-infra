@@ -87,9 +87,7 @@ class TestsFlextInfraBeadsEnvironmentSync:
         tm.ok(result)
         tm.that((tmp_path / c.Infra.ENVRC_FILENAME).exists(), eq=False)
 
-    def test_local_backend_for_standalone_beads_identity(
-        self, tmp_path: Path
-    ) -> None:
+    def test_local_backend_for_standalone_beads_identity(self, tmp_path: Path) -> None:
         """A governed identity without city participation renders the local base."""
         u.Tests.WorktreeFixture.initialize_governed_project(
             tmp_path,

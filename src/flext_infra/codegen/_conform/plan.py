@@ -783,9 +783,9 @@ class FlextInfraCodegenConformPlan:
                         root, relative.as_posix(), current, mode=governed.mode
                     )
                     if current_plan.failure:
-                        return r[
-                            t.SequenceOf[m.Infra.CodegenFilePlan]
-                        ].from_failure(current_plan)
+                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                            current_plan
+                        )
                     completed.append(
                         current_plan.value.model_copy(
                             update={"owner": governed.owner, "policy": governed.policy}
@@ -793,13 +793,11 @@ class FlextInfraCodegenConformPlan:
                     )
                     continue
                 if not normalized:
-                    before = u.Cli.atomic_read_binary_file_state(
-                        path, required=False
-                    )
+                    before = u.Cli.atomic_read_binary_file_state(path, required=False)
                     if before.failure:
-                        return r[
-                            t.SequenceOf[m.Infra.CodegenFilePlan]
-                        ].from_failure(before)
+                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                            before
+                        )
                     completed.append(
                         m.Infra.CodegenFilePlan(
                             project=root,

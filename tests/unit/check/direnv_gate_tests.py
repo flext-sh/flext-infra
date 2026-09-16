@@ -114,39 +114,31 @@ class TestsFlextInfraDirenvGate:
 
         def test_normalizer_keeps_custom_and_strips_generated(self) -> None:
             """Custom operator content survives; generated content is removed."""
-            normalized = (
-                FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized(
-                    self.stale_section + "export CUSTOM_OVERRIDE=1\n"
-                )
+            normalized = FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized(
+                self.stale_section + "export CUSTOM_OVERRIDE=1\n"
             )
             tm.that(normalized, eq="export CUSTOM_OVERRIDE=1\n")
 
         def test_normalizer_removes_residue_only_file(self) -> None:
             """A file carrying only generated residue normalizes to empty."""
-            normalized = (
-                FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized(
-                    self.stale_section
-                )
+            normalized = FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized(
+                self.stale_section
             )
             tm.that(normalized, eq="")
 
         def test_normalizer_removes_unterminated_section(self) -> None:
             """A truncated managed section never leaks its body."""
-            normalized = (
-                FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized(
-                    "# === SECTION: Gas City Beads activation (managed) ===\n"
-                    "unset GT_ROOT\n"
-                    "export CUSTOM_OVERRIDE=1\n"
-                )
+            normalized = FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized(
+                "# === SECTION: Gas City Beads activation (managed) ===\n"
+                "unset GT_ROOT\n"
+                "export CUSTOM_OVERRIDE=1\n"
             )
             tm.that(normalized, eq="")
 
         def test_normalizer_keeps_clean_content_verbatim(self) -> None:
             """Already-clean overrides round-trip unchanged."""
-            normalized = (
-                FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized(
-                    "export CUSTOM_OVERRIDE=1\nPATH_add bin\n"
-                )
+            normalized = FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized(
+                "export CUSTOM_OVERRIDE=1\nPATH_add bin\n"
             )
             tm.that(normalized, eq="export CUSTOM_OVERRIDE=1\nPATH_add bin\n")
 

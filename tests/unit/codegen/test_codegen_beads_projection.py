@@ -44,8 +44,7 @@ class TestsFlextInfraCodegenBeadsProjection:
                 not facade.is_file()
             ):
                 facade.write_text(
-                    f"class FixtureProject{family.capitalize()}Facade:\n"
-                    "    pass\n",
+                    f"class FixtureProject{family.capitalize()}Facade:\n    pass\n",
                     encoding="utf-8",
                 )
         result = FlextInfraCodegenConform(repository_root=root).plan(
@@ -137,9 +136,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.that(rendered_mise, lacks="gascity")
         tm.that(rendered_mise, has='[tools."github:marlon-costa-dc/beads"]')
 
-    def test_gascity_disabled_renders_local_envrc_tier(
-        self, tmp_path: Path
-    ) -> None:
+    def test_gascity_disabled_renders_local_envrc_tier(self, tmp_path: Path) -> None:
         """A disabled city renders the repository-local bd activation tier."""
         root = self._project(
             tmp_path / "project",
@@ -158,19 +155,13 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.that(rendered_envrc, lacks="AGENTS_GAS_CITY_ROOT")
         tm.that(rendered_envrc, lacks="dolt-state.json")
         tm.that(rendered_envrc, lacks="jq -er")
+        tm.that(rendered_envrc, has='watch_file "$checkout_root/.beads/metadata.json"')
         tm.that(
-            rendered_envrc,
-            has='watch_file "$checkout_root/.beads/metadata.json"',
-        )
-        tm.that(
-            rendered_envrc,
-            has="unset BEADS_DOLT_SERVER_HOST BEADS_DOLT_SERVER_PORT",
+            rendered_envrc, has="unset BEADS_DOLT_SERVER_HOST BEADS_DOLT_SERVER_PORT"
         )
         tm.that(rendered_envrc, has="unset BEADS_DOLT_AUTO_START")
 
-    def test_envrc_local_generated_residue_is_normalized(
-        self, tmp_path: Path
-    ) -> None:
+    def test_envrc_local_generated_residue_is_normalized(self, tmp_path: Path) -> None:
         """The merge keeps custom overrides and strips stale generated sections.
 
         Every member checkout carries a historical generated ``Gas City Beads
