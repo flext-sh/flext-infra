@@ -142,19 +142,24 @@ class FlextInfraModTextGateEngine:
         files: set[Path] = set()
         actionable = 0
         for target in targets:
-            if not target.endswith(c.Infra.EXT_PYTHON):
-                continue
-            path = root / target
-            source = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            updated, target_entries, target_actionable = cls._rewrite_source(
-                source, target, rules
+            candidate = root / target
+            paths = (
+                tuple(sorted(candidate.rglob(f"*{c.Infra.EXT_PYTHON}")))
+                if candidate.is_dir()
+                else (candidate,)
             )
-            entries.extend(target_entries)
-            actionable += target_actionable
-            if target_entries:
-                files.add(Path(target))
-            if fix and updated != source:
-                path.write_text(updated, encoding=c.Cli.ENCODING_DEFAULT)
+            for path in paths:
+                relative = path.relative_to(root).as_posix()
+                source = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                updated, target_entries, target_actionable = cls._rewrite_source(
+                    source, relative, rules
+                )
+                entries.extend(target_entries)
+                actionable += target_actionable
+                if target_entries:
+                    files.add(Path(relative))
+                if fix and updated != source:
+                    path.write_text(updated, encoding=c.Cli.ENCODING_DEFAULT)
         report = m.Infra.ModTextReport(
             findings=len(entries),
             actionable=actionable,
