@@ -15,7 +15,6 @@ from ..rope_core import FlextInfraUtilitiesRopeCore
 from ..rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
-
     from flext_infra.protocols import p
 
 from .asthelpers import FlextInfraUtilitiesRopeAnalysisAstHelpers
@@ -82,14 +81,18 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         cache_key = FlextInfraUtilitiesRopeAnalysisAstHelpers.resource_cache_key(
             rope_project, resource
         )
-        cached = FlextInfraUtilitiesRopeAnalysisImportState._SEMANTIC_STATE_CACHE.get(cache_key)
+        cached = FlextInfraUtilitiesRopeAnalysisImportState._SEMANTIC_STATE_CACHE.get(
+            cache_key
+        )
         if cached is not None:
             return cached
         pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
         state = FlextInfraUtilitiesRopeAnalysisImportState._module_semantic_state_from_pymodule(
             rope_project=rope_project, resource=resource, pymodule=pymodule
         )
-        FlextInfraUtilitiesRopeAnalysisImportState._SEMANTIC_STATE_CACHE[cache_key] = state
+        FlextInfraUtilitiesRopeAnalysisImportState._SEMANTIC_STATE_CACHE[cache_key] = (
+            state
+        )
         return state
 
     @staticmethod
@@ -107,8 +110,10 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         pymodule: t.Infra.RopePyModule,
     ) -> m.Infra.ModuleSemanticState:
         """Build semantic state from one resolved Rope module."""
-        current_package = FlextInfraUtilitiesRopeAnalysisImportState._package_name_for_module(
-            pymodule.get_name(), resource
+        current_package = (
+            FlextInfraUtilitiesRopeAnalysisImportState._package_name_for_module(
+                pymodule.get_name(), resource
+            )
         )
         declared_imports, semantic_imports = (
             FlextInfraUtilitiesRopeAnalysisImportState._module_import_maps(
@@ -140,7 +145,9 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             )
         }
         for name, pyname in pymodule.get_attributes().items():
-            if not FlextInfraUtilitiesRopeAnalysisAstHelpers.local_name(pyname, resource):
+            if not FlextInfraUtilitiesRopeAnalysisAstHelpers.local_name(
+                pyname, resource
+            ):
                 continue
             obj = pyname.get_object()
             if not FlextInfraUtilitiesRopeRuntime.is_abstract_class(obj):
@@ -151,7 +158,8 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
                 base_name
                 for superclass in obj.get_superclasses()
                 if (
-                    base_name := FlextInfraUtilitiesRopeAnalysisImportState._superclass_name(
+                    base_name
+                    := FlextInfraUtilitiesRopeAnalysisImportState._superclass_name(
                         superclass
                     )
                 )
@@ -231,10 +239,12 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         """Merge one Rope import statement into the import maps."""
         info = import_stmt.import_info
         module_name = getattr(info, "module_name", "") or ""
-        resolved_module = FlextInfraUtilitiesRopeAnalysisImportState._resolved_import_module(
-            current_package=current_package,
-            module_name=module_name,
-            level=getattr(info, "level", 0) or 0,
+        resolved_module = (
+            FlextInfraUtilitiesRopeAnalysisImportState._resolved_import_module(
+                current_package=current_package,
+                module_name=module_name,
+                level=getattr(info, "level", 0) or 0,
+            )
         )
         for alias_name, alias_as in info.names_and_aliases or ():
             FlextInfraUtilitiesRopeAnalysisImportState._merge_import_alias(
@@ -292,8 +302,10 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         """Return offset of symbol's definition via semantic analysis."""
         source = resource.read()
         pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-        return FlextInfraUtilitiesRopeAnalysisImportState._definition_offset_from_pymodule(
-            pymodule=pymodule, source=source, symbol=symbol
+        return (
+            FlextInfraUtilitiesRopeAnalysisImportState._definition_offset_from_pymodule(
+                pymodule=pymodule, source=source, symbol=symbol
+            )
         )
 
     @staticmethod
@@ -387,7 +399,9 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         class_body = FlextInfraUtilitiesRopeAnalysisAstHelpers.class_body_nodes(
             tree, class_name=class_name
         )
-        return len(FlextInfraUtilitiesRopeAnalysisAstHelpers.class_symbol_names(class_body))
+        return len(
+            FlextInfraUtilitiesRopeAnalysisAstHelpers.class_symbol_names(class_body)
+        )
 
     @staticmethod
     def get_class_bases(

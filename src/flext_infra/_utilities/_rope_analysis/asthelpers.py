@@ -13,7 +13,6 @@ from ..rope_core import FlextInfraUtilitiesRopeCore
 from ..rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
-
     from flext_infra.protocols import p
 
 
@@ -39,9 +38,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return (str(project_root), resource.path, mtime_ns)
 
     @staticmethod
-    def local_name(
-        pyname: t.Infra.RopePyName, resource: t.Infra.RopeResource
-    ) -> bool:
+    def local_name(pyname: t.Infra.RopePyName, resource: t.Infra.RopeResource) -> bool:
         """Return whether one Rope name is defined in ``resource``."""
         # NOTE (multi-agent, flext-f8vk / kimi): p.Infra declares
         # get_definition_location() as tuple-always (every other caller
@@ -277,9 +274,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return tuple(names)
 
     @staticmethod
-    def class_symbol_names(
-        class_body: t.SequenceOf[p.AttributeProbe],
-    ) -> t.StrSequence:
+    def class_symbol_names(class_body: t.SequenceOf[p.AttributeProbe]) -> t.StrSequence:
         """Return direct method, nested-class and attribute symbols for a class body."""
         names: set[str] = set()
         for node in class_body:
@@ -289,7 +284,9 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
                 if isinstance(node_name, str) and node_name:
                     names.add(node_name)
                 continue
-            names.update(FlextInfraUtilitiesRopeAnalysisAstHelpers._assignment_target_names(node))
+            names.update(
+                FlextInfraUtilitiesRopeAnalysisAstHelpers._assignment_target_names(node)
+            )
         return tuple(sorted(names))
 
     @staticmethod
@@ -303,7 +300,8 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
             class_info
             for node in body
             if (
-                class_info := FlextInfraUtilitiesRopeAnalysisAstHelpers._class_info_from_ast(node)
+                class_info
+                := FlextInfraUtilitiesRopeAnalysisAstHelpers._class_info_from_ast(node)
             )
             is not None
         )
@@ -326,7 +324,10 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
             bases=tuple(
                 base_name
                 for base in raw_bases
-                if (base_name := FlextInfraUtilitiesRopeAnalysisAstHelpers._class_base_name(base))
+                if (
+                    base_name
+                    := FlextInfraUtilitiesRopeAnalysisAstHelpers._class_base_name(base)
+                )
             ),
         )
 
@@ -344,5 +345,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
                 return value
         subscript_value = getattr(node, "value", None)
         if subscript_value is not None:
-            return FlextInfraUtilitiesRopeAnalysisAstHelpers._class_base_name(subscript_value)
+            return FlextInfraUtilitiesRopeAnalysisAstHelpers._class_base_name(
+                subscript_value
+            )
         return ""

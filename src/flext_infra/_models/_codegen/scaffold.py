@@ -85,9 +85,7 @@ class FlextInfraModelsCodegenScaffoldModels:
             str | None,
             m.Field(
                 default=None,
-                description=(
-                    "Project module name woven into generated test skeletons"
-                ),
+                description=("Project module name woven into generated test skeletons"),
             ),
         ]
         test_module: Annotated[

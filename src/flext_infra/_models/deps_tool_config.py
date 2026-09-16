@@ -710,8 +710,7 @@ class FlextInfraModelsDepsToolSettings(
             alias="lazy-init", description="Declarative lazy-init generation policy."
         )
         mod: ModConfig = m.Field(
-            default_factory=ModConfig,
-            description="Declarative make-mod phase policy.",
+            default_factory=ModConfig, description="Declarative make-mod phase policy."
         )
 
     class ToolingScalarSetting(m.ArbitraryTypesModel):
