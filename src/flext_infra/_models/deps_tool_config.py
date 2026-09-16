@@ -14,6 +14,28 @@ from .deps_tool_config_linters import FlextInfraModelsDepsToolConfigLinters
 from .deps_tool_config_type_checkers import FlextInfraModelsDepsToolConfigTypeCheckers
 
 
+class ModPhasesConfig(m.ArbitraryTypesModel):
+    """Component selection for ``make mod`` phases (toggles are data)."""
+
+    import_alignment: Annotated[
+        bool,
+        m.Field(
+            alias="import-alignment",
+            default=True,
+            description=("Run the rope-native import-alignment phase of make mod."),
+        ),
+    ] = True
+
+
+class ModConfig(m.ArbitraryTypesModel):
+    """Declarative policy for the unified modernize verb ``mod``."""
+
+    phases: ModPhasesConfig = m.Field(
+        default_factory=ModPhasesConfig,
+        description="Phase toggles read from config/tooling.yaml.",
+    )
+
+
 class FlextInfraModelsDepsToolSettings(
     FlextInfraModelsDepsToolConfigLinters, FlextInfraModelsDepsToolConfigTypeCheckers
 ):
@@ -686,6 +708,10 @@ class FlextInfraModelsDepsToolSettings(
         )
         lazy_init: FlextInfraModelsDepsToolSettings.LazyInitConfig = m.Field(
             alias="lazy-init", description="Declarative lazy-init generation policy."
+        )
+        mod: ModConfig = m.Field(
+            default_factory=ModConfig,
+            description="Declarative make-mod phase policy.",
         )
 
     class ToolingScalarSetting(m.ArbitraryTypesModel):
