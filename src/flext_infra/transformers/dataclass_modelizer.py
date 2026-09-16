@@ -268,19 +268,21 @@ class FlextInfraRefactorDataclassModelizer(FlextInfraRopeTransformer):
             added in sorted position. Returns whether a rewiring was planned.
             """
             for match in re.finditer(
-                r"^from\s+([A-Za-z_][\w.]*)\s+import\s+(.+)$", module_source, re.MULTILINE
+                r"^from\s+([A-Za-z_][\w.]*)\s+import\s+(.+)$",
+                module_source,
+                re.MULTILINE,
             ):
                 package, names_text = match.group(1), match.group(2)
                 if "." in package:
                     continue
                 names = [
-                    fragment.strip()
-                    for fragment in names_text.rstrip(")").split(",")
+                    fragment.strip() for fragment in names_text.rstrip(")").split(",")
                 ]
                 plain = [name for name in names if name.isidentifier()]
-                if not any(
-                    len(name) == 1 and name in "ctpmurs" for name in plain
-                ) or "m" in plain:
+                if (
+                    not any(len(name) == 1 and name in "ctpmurs" for name in plain)
+                    or "m" in plain
+                ):
                     continue
                 merged = sorted({*plain, "m"})
                 new_names_text = ", ".join(merged)

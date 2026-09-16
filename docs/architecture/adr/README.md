@@ -23,7 +23,7 @@ documentou a correção para ADR-005 e os docstrings de `_settings.py`/`_config.
 A propagação restante está ligada a `flext-la3z5`.
 
 ADR-005 §6 contém uma proibição histórica de AST, enquanto ADR-010 §3b e a skill
-`flext-law` descrevem o circuito AST/Rope/LSP. ADR-010 §2 contém `APPLY=Y`,
+`flext-law` descrevem o circuito AST/Rope/LSP. ADR-010 §2 contém,
 enquanto o plano de reconciliação de 14/09/2026 determina verbos sem seletores.
 Essas divergências estão documentadas no
 [handoff](../../roadmap/namespace-automation-handoff-2026-09-14.md), com as

@@ -200,9 +200,7 @@ class FlextInfraCodegenLazyInit(
                 config=config.Infra.tooling.lazy_init,
             )
             if aligned.failure:
-                return r[m.Infra.CodegenPhaseAnalysis].from_failure(
-                    aligned
-                )
+                return r[m.Infra.CodegenPhaseAnalysis].from_failure(aligned)
             alignment_plans = aligned.value
         file_plans = self._build_file_plans(
             package_plans, index=workspace_index, snapshots=snapshots.value

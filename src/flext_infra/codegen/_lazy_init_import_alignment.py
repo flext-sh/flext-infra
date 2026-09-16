@@ -183,7 +183,8 @@ class _ImportAlignmentVisitor(cst.CSTVisitor):
             result.extend(
                 dotted_name(elt.value.name)
                 for elt in names.elements
-                if isinstance(elt, cst.Element) and isinstance(elt.value, cst.ImportAlias)
+                if isinstance(elt, cst.Element)
+                and isinstance(elt.value, cst.ImportAlias)
             )
             return result
         result.extend(
@@ -225,8 +226,6 @@ def _alias_text(alias: cst.ImportAlias) -> str:
 
 
 def _format_import_names(node: ImportFrom) -> str:
-    if node.names is None:
-        return ""
     if isinstance(node.names, cst.ImportStar):
         return "*"
     if isinstance(node.names, cst.ImportAlias):
@@ -238,11 +237,7 @@ def _format_import_names(node: ImportFrom) -> str:
             if isinstance(elt, cst.Element) and isinstance(elt.value, cst.ImportAlias)
         ]
     else:
-        aliases = [
-            _alias_text(alias)
-            for alias in node.names
-            if isinstance(alias, cst.ImportAlias)
-        ]
+        aliases = [_alias_text(alias) for alias in node.names]
     return " " + ", ".join(aliases) if aliases else ""
 
 
@@ -286,10 +281,8 @@ def _rewrite_import(
     downs = tgt_parts[common:]
     relative = "." * ups + ".".join(downs) if ups or downs else "."
 
-    if isinstance(node, ImportFrom):
-        names = _format_import_names(node)
-        return _render_from(relative=relative, names=names)
-    return None
+    names = _format_import_names(node)
+    return _render_from(relative=relative, names=names)
 
 
 def _render_from(*, relative: str, names: str) -> str:
