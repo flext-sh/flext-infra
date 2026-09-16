@@ -5,12 +5,13 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
-from flext_infra.promoted.base import RegistryError
 from flext_infra.promoted.headers import parse_alias_spec
 from flext_infra.promoted.invocation import (
     validate_all_choices,
     validate_command_contract,
 )
+
+from .base import RegistryError
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

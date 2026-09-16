@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.base import FlextInfraServiceBase
 
+from ..base import FlextInfraServiceBase
 from ._pyrefly_fix_steps import FlextInfraConfigFixerSteps
 
 logger = u.fetch_logger(__name__)

@@ -203,7 +203,7 @@ jobs:
       - name: Release plan and guard
         env:
           PR_TITLE: {% raw %}${{ github.event.pull_request.title }}{% endraw %}
-        run: make release-plan 
+        run: make release-plan
   # End SECTION: release-plan job
 
   # === SECTION: merge-guard job (managed) ===

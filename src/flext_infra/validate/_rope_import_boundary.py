@@ -16,7 +16,8 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.base import s
+
+from ..base import s
 
 if TYPE_CHECKING:
     from pathlib import Path
