@@ -9,7 +9,7 @@ from flext_cli import m
 
 from ... import t
 from ..._constants import FlextInfraConstantsCodegenProject
-from .. import FlextInfraModelsDepsToolSettings
+from ..deps_tool_config import FlextInfraModelsDepsToolConfig
 from .._defaults import tool_version_field
 from .beads import FlextInfraConfigModelsBeads
 from .contract import FlextInfraConfigModelsContract
@@ -27,7 +27,7 @@ class FlextInfraConfigModelsContexts:
             t.NonEmptyStr, m.Field(description="Installed infrastructure CLI command")
         ]
         pytest: Annotated[
-            FlextInfraModelsDepsToolSettings.PytestConfig,
+            FlextInfraModelsDepsToolConfig.PytestConfig,
             m.Field(description="Typed pytest execution policy"),
         ]
 
@@ -163,7 +163,7 @@ class FlextInfraConfigModelsContexts:
             int, m.Field(gt=0, description="Forced-termination grace period")
         ]
         tooling_runtime: Annotated[
-            FlextInfraModelsDepsToolSettings.ToolingRuntimeContext,
+            FlextInfraModelsDepsToolConfig.ToolingRuntimeContext,
             m.Field(description="Resolved project/workspace tooling values"),
         ]
 
@@ -228,24 +228,6 @@ class FlextInfraConfigModelsContexts:
                 )
             ),
         ] = ""
-        dependency_cooldown_exclusions: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Fleet-wide package distributions frozen at their current floor "
-                    "by the dependency cooldown policy"
-                )
-            ),
-        ] = ()
-        dependency_cooldown_overrides: Annotated[
-            t.MappingKV[str, str],
-            m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
-                description=(
-                    "Per-package cooldown cutoff dates overriding the fleet default"
-                ),
-            ),
-        ]
 
     class ProjectRenderContext(MakeRenderContext):
         """Complete typed input consumed by project scaffold templates."""
@@ -287,7 +269,7 @@ class FlextInfraConfigModelsContexts:
             m.Field(description="Resolved upstream dependency profile"),
         ]
         tooling: Annotated[
-            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
+            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
             m.Field(description="Canonical validated tooling policy"),
         ]
         environment_path_prepends: Annotated[
@@ -668,26 +650,6 @@ class FlextInfraConfigModelsContexts:
                 )
             ),
         ] = None
-        dependency_cooldown_exclusions: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                default=(),
-                description=(
-                    "Repository-specific package distributions frozen at their "
-                    "current floor by the dependency cooldown policy"
-                ),
-            ),
-        ] = ()
-        dependency_cooldown_overrides: Annotated[
-            t.MappingKV[str, str],
-            m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
-                description=(
-                    "Repository-specific per-package cooldown override cutoff dates; "
-                    "maps distribution name to a PEP 440 version cutoff string"
-                ),
-            ),
-        ]
 
     class RepositoryConformTarget(FlextInfraConfigModelsContract.ConfigContract):
         """Runtime-derived conformance identity for one repository."""

@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, e, m, u
+from flext_infra import c, m, u
 
 from .base_gate import FlextInfraGate
 
@@ -82,17 +82,16 @@ class FlextInfraPyrightGate(FlextInfraGate):
                     column=0,
                 ),
             )
-        try:
-            report = m.Infra.PyrightReport.model_validate_json(
-                result.stdout, strict=True
-            )
-        except c.ValidationError as exc:
-            failed = e.fail_validation(error=exc)
+        validated = u.validate_value(
+            m.Infra.PyrightReport, result.stdout, from_json=True, strict=True
+        )
+        if validated.failure:
             return False, (
                 self._malformed_report_issue(
-                    str(failed.error), tool=c.Infra.PYRIGHT, file=str(project_dir)
+                    str(validated.error), tool=c.Infra.PYRIGHT, file=str(project_dir)
                 ),
             )
+        report = validated.value
         issues: t.MutableSequenceOf[m.Infra.Issue] = [
             m.Infra.Issue(
                 file=diag.file,

@@ -49,25 +49,26 @@ class FlextInfraMiseArtifactsJournal:
         encoded_sources = cls._merge_sources((), sources)
         if encoded_sources.failure:
             return r[m.Infra.CodegenTransactionJournal].from_failure(encoded_sources)
-        try:
-            return r[m.Infra.CodegenTransactionJournal].ok(
-                m.Infra.CodegenTransactionJournal(
-                    version=8,
-                    transaction_id=transaction_id,
-                    scope_device=physical_scope.value[0],
-                    scope_inode=physical_scope.value[1],
-                    state="staging",
-                    projects=tuple(projects),
-                    file_participants=plan.layout.file_participants,
-                    sources=encoded_sources.value,
-                    directories=directories,
-                    entries=(),
-                )
-            )
-        except c.ValidationError as exc:
+        validated = u.validate_value(
+            m.Infra.CodegenTransactionJournal,
+            {
+                "version": 8,
+                "transaction_id": transaction_id,
+                "scope_device": physical_scope.value[0],
+                "scope_inode": physical_scope.value[1],
+                "state": "staging",
+                "projects": tuple(projects),
+                "file_participants": plan.layout.file_participants,
+                "sources": encoded_sources.value,
+                "directories": directories,
+                "entries": (),
+            },
+        )
+        if validated.failure:
             return r[m.Infra.CodegenTransactionJournal].fail_op(
-                "validate staging codegen journal", exc
+                "validate staging codegen journal", validated.error
             )
+        return r[m.Infra.CodegenTransactionJournal].ok(validated.value)
 
     @classmethod
     def append_prepared(
@@ -107,25 +108,26 @@ class FlextInfraMiseArtifactsJournal:
         encoded_sources = cls._merge_sources(journal.sources, sources)
         if encoded_sources.failure:
             return r[m.Infra.CodegenTransactionJournal].from_failure(encoded_sources)
-        try:
-            return r[m.Infra.CodegenTransactionJournal].ok(
-                m.Infra.CodegenTransactionJournal(
-                    version=8,
-                    transaction_id=journal.transaction_id,
-                    scope_device=journal.scope_device,
-                    scope_inode=journal.scope_inode,
-                    state="prepared",
-                    projects=journal.projects,
-                    file_participants=journal.file_participants,
-                    sources=encoded_sources.value,
-                    directories=journal.directories,
-                    entries=tuple(entries),
-                )
-            )
-        except c.ValidationError as exc:
+        validated = u.validate_value(
+            m.Infra.CodegenTransactionJournal,
+            {
+                "version": 8,
+                "transaction_id": journal.transaction_id,
+                "scope_device": journal.scope_device,
+                "scope_inode": journal.scope_inode,
+                "state": "prepared",
+                "projects": journal.projects,
+                "file_participants": journal.file_participants,
+                "sources": encoded_sources.value,
+                "directories": journal.directories,
+                "entries": tuple(entries),
+            },
+        )
+        if validated.failure:
             return r[m.Infra.CodegenTransactionJournal].fail_op(
-                "validate prepared codegen journal", exc
+                "validate prepared codegen journal", validated.error
             )
+        return r[m.Infra.CodegenTransactionJournal].ok(validated.value)
 
     @classmethod
     def append_directories(
@@ -147,25 +149,26 @@ class FlextInfraMiseArtifactsJournal:
             return r[m.Infra.CodegenTransactionJournal].fail(
                 f"generation directory already has an owner: {duplicate}"
             )
-        try:
-            return r[m.Infra.CodegenTransactionJournal].ok(
-                m.Infra.CodegenTransactionJournal(
-                    version=8,
-                    transaction_id=journal.transaction_id,
-                    scope_device=journal.scope_device,
-                    scope_inode=journal.scope_inode,
-                    state=journal.state,
-                    projects=journal.projects,
-                    file_participants=journal.file_participants,
-                    sources=journal.sources,
-                    directories=(*journal.directories, *directories),
-                    entries=journal.entries,
-                )
-            )
-        except c.ValidationError as exc:
+        validated = u.validate_value(
+            m.Infra.CodegenTransactionJournal,
+            {
+                "version": 8,
+                "transaction_id": journal.transaction_id,
+                "scope_device": journal.scope_device,
+                "scope_inode": journal.scope_inode,
+                "state": journal.state,
+                "projects": journal.projects,
+                "file_participants": journal.file_participants,
+                "sources": journal.sources,
+                "directories": (*journal.directories, *directories),
+                "entries": journal.entries,
+            },
+        )
+        if validated.failure:
             return r[m.Infra.CodegenTransactionJournal].fail_op(
-                "validate extended codegen directory journal", exc
+                "validate extended codegen directory journal", validated.error
             )
+        return r[m.Infra.CodegenTransactionJournal].ok(validated.value)
 
     @classmethod
     def record_directories(
@@ -206,23 +209,26 @@ class FlextInfraMiseArtifactsJournal:
                 return result_type.fail(
                     f"recorded directory manifest disappeared: {previous.path}"
                 )
-        try:
-            return result_type.ok(
-                m.Infra.CodegenTransactionJournal(
-                    version=8,
-                    transaction_id=journal.transaction_id,
-                    scope_device=journal.scope_device,
-                    scope_inode=journal.scope_inode,
-                    state=journal.state,
-                    projects=journal.projects,
-                    file_participants=journal.file_participants,
-                    sources=journal.sources,
-                    directories=directories,
-                    entries=journal.entries,
-                )
+        validated = u.validate_value(
+            m.Infra.CodegenTransactionJournal,
+            {
+                "version": 8,
+                "transaction_id": journal.transaction_id,
+                "scope_device": journal.scope_device,
+                "scope_inode": journal.scope_inode,
+                "state": journal.state,
+                "projects": journal.projects,
+                "file_participants": journal.file_participants,
+                "sources": journal.sources,
+                "directories": directories,
+                "entries": journal.entries,
+            },
+        )
+        if validated.failure:
+            return result_type.fail_op(
+                "validate recorded directory evidence", validated.error
             )
-        except c.ValidationError as exc:
-            return result_type.fail_op("validate recorded directory evidence", exc)
+        return result_type.ok(validated.value)
 
     @classmethod
     def commit(
@@ -233,25 +239,26 @@ class FlextInfraMiseArtifactsJournal:
             return r[m.Infra.CodegenTransactionJournal].fail(
                 "only a prepared codegen journal can be committed"
             )
-        try:
-            return r[m.Infra.CodegenTransactionJournal].ok(
-                m.Infra.CodegenTransactionJournal(
-                    version=8,
-                    transaction_id=journal.transaction_id,
-                    scope_device=journal.scope_device,
-                    scope_inode=journal.scope_inode,
-                    state="committed",
-                    projects=journal.projects,
-                    file_participants=journal.file_participants,
-                    sources=journal.sources,
-                    directories=journal.directories,
-                    entries=journal.entries,
-                )
-            )
-        except c.ValidationError as exc:
+        validated = u.validate_value(
+            m.Infra.CodegenTransactionJournal,
+            {
+                "version": 8,
+                "transaction_id": journal.transaction_id,
+                "scope_device": journal.scope_device,
+                "scope_inode": journal.scope_inode,
+                "state": "committed",
+                "projects": journal.projects,
+                "file_participants": journal.file_participants,
+                "sources": journal.sources,
+                "directories": journal.directories,
+                "entries": journal.entries,
+            },
+        )
+        if validated.failure:
             return r[m.Infra.CodegenTransactionJournal].fail_op(
-                "validate committed codegen journal", exc
+                "validate committed codegen journal", validated.error
             )
+        return r[m.Infra.CodegenTransactionJournal].ok(validated.value)
 
     @classmethod
     def begin_recovery(
@@ -305,31 +312,32 @@ class FlextInfraMiseArtifactsJournal:
                     else Path(entry.original_backup).with_suffix(".restore").as_posix()
                 ),
             })
-            try:
-                entries.append(m.Infra.CodegenJournalEntry.model_validate(entry_data))
-            except c.ValidationError as exc:
+            validated_entry = u.validate_value(m.Infra.CodegenJournalEntry, entry_data)
+            if validated_entry.failure:
                 return r[m.Infra.CodegenTransactionJournal].fail_op(
-                    "validate recovering codegen journal entry", exc
+                    "validate recovering codegen journal entry", validated_entry.error
                 )
-        try:
-            return r[m.Infra.CodegenTransactionJournal].ok(
-                m.Infra.CodegenTransactionJournal(
-                    version=8,
-                    transaction_id=journal.transaction_id,
-                    scope_device=journal.scope_device,
-                    scope_inode=journal.scope_inode,
-                    state="recovering",
-                    projects=journal.projects,
-                    file_participants=journal.file_participants,
-                    sources=journal.sources,
-                    directories=journal.directories,
-                    entries=tuple(entries),
-                )
-            )
-        except c.ValidationError as exc:
+            entries.append(validated_entry.value)
+        validated = u.validate_value(
+            m.Infra.CodegenTransactionJournal,
+            {
+                "version": 8,
+                "transaction_id": journal.transaction_id,
+                "scope_device": journal.scope_device,
+                "scope_inode": journal.scope_inode,
+                "state": "recovering",
+                "projects": journal.projects,
+                "file_participants": journal.file_participants,
+                "sources": journal.sources,
+                "directories": journal.directories,
+                "entries": tuple(entries),
+            },
+        )
+        if validated.failure:
             return r[m.Infra.CodegenTransactionJournal].fail_op(
-                "validate recovering codegen journal", exc
+                "validate recovering codegen journal", validated.error
             )
+        return r[m.Infra.CodegenTransactionJournal].ok(validated.value)
 
     @classmethod
     def write(
@@ -381,13 +389,16 @@ class FlextInfraMiseArtifactsJournal:
             return result_type.fail("codegen transaction journal is absent")
         if journal_snapshot.mode != c.Infra.JOURNAL_MODE:
             return result_type.fail("codegen transaction journal mode is not 0600")
-        try:
-            journal = m.Infra.CodegenTransactionJournal.model_validate_json(
-                journal_snapshot.content
+        validated = u.validate_value(
+            m.Infra.CodegenTransactionJournal,
+            journal_snapshot.content,
+            from_json=True,
+        )
+        if validated.failure:
+            return result_type.fail_op(
+                "validate codegen transaction journal", validated.error
             )
-        except c.ValidationError as exc:
-            return result_type.fail_op("validate codegen transaction journal", exc)
-        relocated = cls._relocate_journal(layout, journal)
+        relocated = cls._relocate_journal(layout, validated.value)
         if relocated.failure:
             return result_type.from_failure(relocated)
         return result_type.ok((relocated.value, journal_snapshot))
@@ -464,27 +475,31 @@ class FlextInfraMiseArtifactsJournal:
                 if relocated_manifest.failure:
                     return result_type.from_failure(relocated_manifest)
                 manifest = relocated_manifest.value
-            try:
-                directories.append(
-                    m.Infra.CodegenJournalDirectory.model_validate({
-                        **directory.model_dump(),
-                        "before": before,
-                        "created": created,
-                        "manifest": manifest,
-                    })
-                )
-            except c.ValidationError as exc:
-                return result_type.fail_op("relocate generation directory", exc)
-        try:
-            return result_type.ok(
-                m.Infra.CodegenTransactionJournal.model_validate({
-                    **journal.model_dump(),
-                    "sources": tuple(sources),
-                    "directories": tuple(directories),
-                })
+            validated_directory = u.validate_value(
+                m.Infra.CodegenJournalDirectory,
+                {
+                    **directory.model_dump(),
+                    "before": before,
+                    "created": created,
+                    "manifest": manifest,
+                },
             )
-        except c.ValidationError as exc:
-            return result_type.fail_op("relocate generation journal", exc)
+            if validated_directory.failure:
+                return result_type.fail_op(
+                    "relocate generation directory", validated_directory.error
+                )
+            directories.append(validated_directory.value)
+        validated = u.validate_value(
+            m.Infra.CodegenTransactionJournal,
+            {
+                **journal.model_dump(),
+                "sources": tuple(sources),
+                "directories": tuple(directories),
+            },
+        )
+        if validated.failure:
+            return result_type.fail_op("relocate generation journal", validated.error)
+        return result_type.ok(validated.value)
 
     @classmethod
     def _recorded_scope_root(
@@ -546,14 +561,15 @@ class FlextInfraMiseArtifactsJournal:
             if rebound.failure:
                 return result_type.from_failure(rebound)
             relocated.append(entry.model_copy(update={"path": rebound.value}))
-        try:
-            return result_type.ok(
-                m.Cli.AtomicPhysicalTreeManifest(
-                    root=relocated[0], entries=tuple(relocated[1:])
-                )
+        validated = u.validate_value(
+            m.Cli.AtomicPhysicalTreeManifest,
+            {"root": relocated[0], "entries": tuple(relocated[1:])},
+        )
+        if validated.failure:
+            return result_type.fail_op(
+                "relocate generation tree manifest", validated.error
             )
-        except c.ValidationError as exc:
-            return result_type.fail_op("relocate generation tree manifest", exc)
+        return result_type.ok(validated.value)
 
     @classmethod
     def _journal_source(
@@ -592,7 +608,7 @@ class FlextInfraMiseArtifactsJournal:
                 mode=source.mode,
                 device=source.device,
                 inode=source.inode,
-                link_count=source.link_count,
+                link_count=cast("Literal[1] | None", source.link_count),
                 file_attributes=source.file_attributes,
                 reparse_tag=source.reparse_tag,
                 absent_parent=absent_parent,

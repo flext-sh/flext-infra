@@ -24,21 +24,6 @@ class FlextInfraCodegenConformBootstrap:
         return repository.uv_link_mode or toolchain.uv_link_mode
 
     @staticmethod
-    def _dependency_cooldown_policy(
-        repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
-    ) -> tuple[tuple[str, ...], MutableMapping[str, str]]:
-        """Compose fleet defaults with the repository's narrower policy."""
-        exclusions = dict.fromkeys(toolchain.dependency_cooldown_exclusions)
-        overrides = dict(toolchain.dependency_cooldown_overrides)
-        for package in repository.dependency_cooldown_exclusions:
-            overrides.pop(package, None)
-            exclusions[package] = None
-        for package, cutoff in repository.dependency_cooldown_overrides.items():
-            exclusions.pop(package, None)
-            overrides[package] = cutoff
-        return tuple(exclusions), overrides
-
-    @staticmethod
     def _discover_script_verbs(
         repository_root: Path,
     ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]:
@@ -47,7 +32,7 @@ class FlextInfraCodegenConformBootstrap:
         The filesystem is the SSOT: a verb is emitted only when its all.sh
         entrypoint exists. No manual list is required.
         """
-        scripts_dir = repository_root / "scripts"
+        scripts_dir = repository_root / c.Infra.DIR_SCRIPTS
         if not scripts_dir.is_dir():
             return ()
         discovered = [
@@ -119,3 +104,6 @@ class FlextInfraCodegenConformBootstrap:
             case _:
                 msg = f"Unsupported codegen conform surface: {surface}"
                 raise ValueError(msg)
+
+
+__all__: list[str] = ["FlextInfraCodegenConformBootstrap"]

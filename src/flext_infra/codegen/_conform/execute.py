@@ -252,7 +252,7 @@ class FlextInfraCodegenConformExecute:
     _SOURCE_RACE_CYCLES: Final[int] = 3
     """Bounded convergence attempts after a mid-cycle source mutation."""
 
-    _SOURCE_RACE_MARKERS: Final[tuple[str, ...]] = (
+    _SOURCE_RACE_MARKERS: Final[t.VariadicTuple[str]] = (
         "atomic source changed",
         "atomic destination parent is missing",
         "atomic source has conflicting snapshots",
@@ -368,8 +368,22 @@ class FlextInfraCodegenConformExecute:
                 session.value, lazy_analysis.error or "lazy-init planning failed"
             )
             return r[m.Infra.CodegenResult].from_failure(aborted)
+        # A path already planned by conform has exactly one publication owner
+        # in the transaction: the lazy-init phase keeps only the paths conform
+        # does not plan, and that same filtered receipt is published and
+        # verified at the fixed point.
+        conform_paths = frozenset(file.path for file in plan.files)
+        owned_lazy_analysis = m.Infra.CodegenPhaseAnalysis(
+            phase=lazy_analysis.value.phase,
+            files=tuple(
+                file
+                for file in lazy_analysis.value.files
+                if file.path not in conform_paths
+            ),
+            inputs=lazy_analysis.value.inputs,
+        )
         extended = transaction.append_phase_locked(
-            session.value, lazy_analysis.value.phase, lazy_analysis.value.files
+            session.value, owned_lazy_analysis.phase, owned_lazy_analysis.files
         )
         if extended.failure:
             return r[m.Infra.CodegenResult].from_failure(extended)
@@ -420,7 +434,7 @@ class FlextInfraCodegenConformExecute:
                 request,
                 with_docs.value,
                 transaction,
-                lazy_analysis.value,
+                owned_lazy_analysis,
                 docs_analysis,
             ),
         )
@@ -447,7 +461,7 @@ class FlextInfraCodegenConformExecute:
             c.Infra.CodegenConformMode(request.mode)
             is not c.Infra.CodegenConformMode.APPLY
         ):
-            return r[tuple[m.Cli.AtomicDirectoryState, ...]].ok(())
+            return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].ok(())
         scaffolding = self.initial_workspace
         workspace = scaffolding
         if workspace is None:
@@ -455,7 +469,7 @@ class FlextInfraCodegenConformExecute:
                 request.root.expanduser().resolve()
             )
             if workspace_result.failure:
-                return r[tuple[m.Cli.AtomicDirectoryState, ...]].from_failure(
+                return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].from_failure(
                     workspace_result
                 )
             workspace = workspace_result.value
@@ -468,10 +482,10 @@ class FlextInfraCodegenConformExecute:
             # made `make gen` unusable in every repository without its
             # own manifest.
             if scaffolding is not None:
-                return r[tuple[m.Cli.AtomicDirectoryState, ...]].fail(
+                return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].fail(
                     "scaffold workspace has no project metadata"
                 )
-            return r[tuple[m.Cli.AtomicDirectoryState, ...]].ok(())
+            return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].ok(())
         profile = workspace.repository.role
         root = request.root.expanduser().resolve()
         directories = {root, root / c.Infra.MISE_LAUNCHER_DIRECTORY}
@@ -483,7 +497,7 @@ class FlextInfraCodegenConformExecute:
             )
             relative = Path(destination)
             if relative.is_absolute() or ".." in relative.parts:
-                return r[tuple[m.Cli.AtomicDirectoryState, ...]].fail(
+                return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].fail(
                     f"template destination escapes repository root: {destination}"
                 )
             directories.add((root / relative).parent)
@@ -493,30 +507,32 @@ class FlextInfraCodegenConformExecute:
             if planned.failure:
                 rollback = self._rollback_scaffold_directories(tuple(created))
                 if rollback.failure:
-                    return r[tuple[m.Cli.AtomicDirectoryState, ...]].fail(
+                    return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].fail(
                         f"{planned.error}; scaffold directory rollback failed: "
                         f"{rollback.error}"
                     )
-                return r[tuple[m.Cli.AtomicDirectoryState, ...]].from_failure(planned)
+                return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].from_failure(
+                    planned
+                )
             materialized = u.Cli.atomic_create_directory_chain_guarded(
                 planned.value, permission_mode=0o755
             )
             if materialized.failure:
                 rollback = self._rollback_scaffold_directories(tuple(created))
                 if rollback.failure:
-                    return r[tuple[m.Cli.AtomicDirectoryState, ...]].fail(
+                    return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].fail(
                         f"{materialized.error}; scaffold directory rollback failed: "
                         f"{rollback.error}"
                     )
-                return r[tuple[m.Cli.AtomicDirectoryState, ...]].from_failure(
+                return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].from_failure(
                     materialized
                 )
             created.extend(materialized.value)
-        return r[tuple[m.Cli.AtomicDirectoryState, ...]].ok(tuple(created))
+        return r[t.VariadicTuple[m.Cli.AtomicDirectoryState]].ok(tuple(created))
 
     @staticmethod
     def _rollback_scaffold_directories(
-        created: tuple[m.Cli.AtomicDirectoryState, ...],
+        created: t.VariadicTuple[m.Cli.AtomicDirectoryState],
     ) -> p.Result[bool]:
         """Remove only directories created by this locked scaffold attempt."""
         for state in reversed(created):
@@ -605,15 +621,5 @@ class FlextInfraCodegenConformExecute:
                 return r[bool].from_failure(validated)
         return r[bool].ok(True)
 
-    @staticmethod
-    def is_dry_run_config_backup(name: str) -> bool:
-        """Return whether ``name`` is a dry-run ``config.yaml`` backup snapshot.
 
-        Why (cosmos-3flk9): the bd client rewrites ``last-touched`` on every
-        write, and a dry-run ``make gen`` leaves ``config.yaml.<ts>.bak``
-        snapshots behind — both are ephemeral tooling state, not unmerged
-        ledger state, so they must not fail the composed-project verify.
-        """
-        return name.startswith(
-            f"{Path(c.Infra.BEADS_CONFIG_RELPATH).name}."
-        ) and name.endswith(".bak")
+__all__: list[str] = ["FlextInfraCodegenConformExecute"]

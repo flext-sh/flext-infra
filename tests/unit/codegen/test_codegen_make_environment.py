@@ -200,9 +200,9 @@ class TestsFlextInfraCodegenMakeEnvironment:
             )
         return project_root, repository_root
 
-    @pytest.mark.parametrize("invalid_envrc", [False, True])
+    @pytest.mark.parametrize("failure_return", [None, 37])
     def test_public_dispatch_activates_once_before_hooks(
-        self, tmp_path: Path, *, invalid_envrc: bool
+        self, tmp_path: Path, *, failure_return: int | None
     ) -> None:
         """Real direnv evaluates before dispatch and stops an invalid environment."""
         project_root, _ = self._render_makefile(
@@ -217,7 +217,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
         (project_root / ".envrc.local").write_text(
             "printf 'activated\\n' >> activation.log\n"
             'export MAKE_ACTIVATION_PROOF="$PROJECT_ROOT"\n'
-            + ("return 37\n" if invalid_envrc else ""),
+            + (f"return {failure_return}\n" if failure_return is not None else ""),
             encoding="utf-8",
         )
         (project_root / "custom.mk").write_text(
@@ -236,7 +236,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
             )
         )
         tm.that((project_root / "activation.log").read_text(), eq="activated\n")
-        if invalid_envrc:
+        if failure_return is not None:
             tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
             tm.that((project_root / "dispatch.log").exists(), eq=False)
         else:
@@ -430,8 +430,11 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 ["--no-print-directory", "setup"], cwd=project_root, env=ci_env
             )
         )
-        tm.that(u.Cli.process_succeeded(stale.outcome), eq=True,
-                msg=stale.stdout + stale.stderr)
+        tm.that(
+            u.Cli.process_succeeded(stale.outcome),
+            eq=True,
+            msg=stale.stdout + stale.stderr,
+        )
         tm.that(stale.stdout, has="ci-runtime-provisioned")
         tm.that(lock_path.exists(), eq=False)
 

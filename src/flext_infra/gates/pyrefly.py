@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, e, m, u
+from flext_infra import c, m, u
 
 from .base_gate import FlextInfraGate
 
@@ -82,17 +82,19 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                     result, tool=c.Infra.PYREFLY, file=str(json_file), line=0, column=0
                 ),
             )
-        try:
-            report = m.Infra.PyreflyReport.model_validate_json(
-                json_file.read_text(encoding="utf-8"), strict=True
-            )
-        except c.ValidationError as exc:
-            failed = e.fail_validation(error=exc)
+        validated = u.validate_value(
+            m.Infra.PyreflyReport,
+            json_file.read_text(encoding="utf-8"),
+            from_json=True,
+            strict=True,
+        )
+        if validated.failure:
             return False, (
                 self._malformed_report_issue(
-                    str(failed.error), tool=c.Infra.PYREFLY, file=str(json_file)
+                    str(validated.error), tool=c.Infra.PYREFLY, file=str(json_file)
                 ),
             )
+        report = validated.value
         issues: t.MutableSequenceOf[m.Infra.Issue] = [
             m.Infra.Issue(
                 file=diag.path,

@@ -10,11 +10,11 @@ from flext_infra import t
 
 from ._defaults import immutable_empty_mapping
 from .deps_toml import FlextInfraModelsDepsToml
-from .deps_tool_config import FlextInfraModelsDepsToolSettings
+from .deps_tool_config import FlextInfraModelsDepsToolConfig
 from .mixins import FlextInfraModelsMixins as mm
 
 
-class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDepsToml):
+class FlextInfraModelsDeps(FlextInfraModelsDepsToolConfig, FlextInfraModelsDepsToml):
     """Models for dependency detection and modernization reporting."""
 
     class DetectCommand(mm.WriteMixin, m.ContractModel):
