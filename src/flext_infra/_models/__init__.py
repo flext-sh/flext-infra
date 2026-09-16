@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from ._codegen.scaffold import FlextInfraModelsCodegenScaffoldModels
     from ._codegen.transaction import FlextInfraModelsCodegenTransactionModels
     from ._config.artifact import FlextInfraConfigModelsArtifact
+    from ._config.base import FlextInfraConfigModelsBase
     from ._config.beads import FlextInfraConfigModelsBeads
     from ._config.contexts import FlextInfraConfigModelsContexts
     from ._config.contract import FlextInfraConfigModelsContract
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
     from ._config.provider import FlextInfraConfigModelsProvider
     from ._config.release import FlextInfraConfigModelsRelease
     from ._config.render import FlextInfraConfigModelsRender
+    from ._config.root import FlextInfraConfigModelsRoot
     from ._config.scaffold import FlextInfraConfigModelsScaffold
     from ._config.static import FlextInfraConfigModelsStatic
     from ._config.templates import FlextInfraConfigModelsTemplates
@@ -44,7 +46,7 @@ if TYPE_CHECKING:
     from .config import FlextInfraConfigModels
     from .deps import FlextInfraModelsDeps
     from .deps_toml import FlextInfraModelsDepsToml
-    from .deps_tool_config import FlextInfraModelsDepsToolSettings
+    from .deps_tool_config import FlextInfraModelsDepsToolConfig
     from .deps_tool_config_linters import FlextInfraModelsDepsToolConfigLinters
     from .deps_tool_config_project import FlextInfraModelsDepsToolConfigProject
     from .deps_tool_config_project_artifacts import (
@@ -88,6 +90,7 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraConfigModels",
     "FlextInfraConfigModelsArtifact",
+    "FlextInfraConfigModelsBase",
     "FlextInfraConfigModelsBeads",
     "FlextInfraConfigModelsContexts",
     "FlextInfraConfigModelsContract",
@@ -95,6 +98,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraConfigModelsProvider",
     "FlextInfraConfigModelsRelease",
     "FlextInfraConfigModelsRender",
+    "FlextInfraConfigModelsRoot",
     "FlextInfraConfigModelsScaffold",
     "FlextInfraConfigModelsStatic",
     "FlextInfraConfigModelsTemplates",
@@ -115,6 +119,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsCore",
     "FlextInfraModelsDeps",
     "FlextInfraModelsDepsToml",
+    "FlextInfraModelsDepsToolConfig",
     "FlextInfraModelsDepsToolConfigLinters",
     "FlextInfraModelsDepsToolConfigProject",
     "FlextInfraModelsDepsToolConfigProjectArtifacts",
@@ -122,7 +127,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsDepsToolConfigProjectMise",
     "FlextInfraModelsDepsToolConfigProjectRuff",
     "FlextInfraModelsDepsToolConfigTypeCheckers",
-    "FlextInfraModelsDepsToolSettings",
     "FlextInfraModelsDocs",
     "FlextInfraModelsDocsCollection",
     "FlextInfraModelsDocsGeneration",
@@ -170,6 +174,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._codegen.transaction": ("FlextInfraModelsCodegenTransactionModels",),
             "._config": ("_config",),
             "._config.artifact": ("FlextInfraConfigModelsArtifact",),
+            "._config.base": ("FlextInfraConfigModelsBase",),
             "._config.beads": ("FlextInfraConfigModelsBeads",),
             "._config.contexts": ("FlextInfraConfigModelsContexts",),
             "._config.contract": ("FlextInfraConfigModelsContract",),
@@ -177,6 +182,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._config.provider": ("FlextInfraConfigModelsProvider",),
             "._config.release": ("FlextInfraConfigModelsRelease",),
             "._config.render": ("FlextInfraConfigModelsRender",),
+            "._config.root": ("FlextInfraConfigModelsRoot",),
             "._config.scaffold": ("FlextInfraConfigModelsScaffold",),
             "._config.static": ("FlextInfraConfigModelsStatic",),
             "._config.templates": ("FlextInfraConfigModelsTemplates",),
@@ -198,7 +204,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".config": ("FlextInfraConfigModels",),
             ".deps": ("FlextInfraModelsDeps",),
             ".deps_toml": ("FlextInfraModelsDepsToml",),
-            ".deps_tool_config": ("FlextInfraModelsDepsToolSettings",),
+            ".deps_tool_config": ("FlextInfraModelsDepsToolConfig",),
             ".deps_tool_config_linters": ("FlextInfraModelsDepsToolConfigLinters",),
             ".deps_tool_config_project": ("FlextInfraModelsDepsToolConfigProject",),
             ".deps_tool_config_project_artifacts": (

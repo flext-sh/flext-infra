@@ -51,21 +51,13 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
     )
     from ._project_discovery_shape import FlextInfraUtilitiesProjectDiscoveryShapeMixin
-    from ._rope.analysis import FlextInfraUtilitiesRopeAnalysisAnalysis
-    from ._rope.ast import FlextInfraUtilitiesRopeAnalysisAst
-    from ._rope.base import FlextInfraUtilitiesRopeAnalysisBase
-    from ._rope.imports import FlextInfraUtilitiesRopeAnalysisImports
-    from ._rope.nodes import FlextInfraUtilitiesRopeAnalysisNodes
     from ._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
     from ._rope.project import FlextInfraRopeProject
-    from ._rope.scope import FlextInfraUtilitiesRopeAnalysisScope
-    from ._rope.source import FlextInfraUtilitiesRopeAnalysisSource
-    from ._rope_analysis.base import (
-        FlextInfraUtilitiesRopeAnalysisAstHelpers,
-        FlextInfraUtilitiesRopeAnalysisExports,
-        FlextInfraUtilitiesRopeAnalysisImportState,
-        FlextInfraUtilitiesRopeAnalysisSourceScan,
-    )
+    from ._rope_analysis.asthelpers import FlextInfraUtilitiesRopeAnalysisAstHelpers
+    from ._rope_analysis.base import FlextInfraUtilitiesRopeAnalysisBase
+    from ._rope_analysis.exports import FlextInfraUtilitiesRopeAnalysisExports
+    from ._rope_analysis.importstate import FlextInfraUtilitiesRopeAnalysisImportState
+    from ._rope_analysis.sourcescan import FlextInfraUtilitiesRopeAnalysisSourceScan
     from ._rope_bracket_balance import FlextInfraUtilitiesRopeBracketBalanceMixin
     from ._rope_core_pymodule import FlextInfraUtilitiesRopeCorePyModuleMixin
     from ._rope_core_resources import FlextInfraUtilitiesRopeCoreResourcesMixin
@@ -279,17 +271,11 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRepository",
     "FlextInfraUtilitiesResourceLimits",
     "FlextInfraUtilitiesRopeAnalysis",
-    "FlextInfraUtilitiesRopeAnalysisAnalysis",
-    "FlextInfraUtilitiesRopeAnalysisAst",
     "FlextInfraUtilitiesRopeAnalysisAstHelpers",
     "FlextInfraUtilitiesRopeAnalysisBase",
     "FlextInfraUtilitiesRopeAnalysisExports",
     "FlextInfraUtilitiesRopeAnalysisImportState",
-    "FlextInfraUtilitiesRopeAnalysisImports",
     "FlextInfraUtilitiesRopeAnalysisIntrospection",
-    "FlextInfraUtilitiesRopeAnalysisNodes",
-    "FlextInfraUtilitiesRopeAnalysisScope",
-    "FlextInfraUtilitiesRopeAnalysisSource",
     "FlextInfraUtilitiesRopeAnalysisSourceScan",
     "FlextInfraUtilitiesRopeAnalysisWorkspace",
     "FlextInfraUtilitiesRopeBracketBalanceMixin",
@@ -382,20 +368,18 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraUtilitiesProjectDiscoveryShapeMixin",
             ),
             "._rope": ("_rope",),
-            "._rope.analysis": ("FlextInfraUtilitiesRopeAnalysisAnalysis",),
-            "._rope.ast": ("FlextInfraUtilitiesRopeAnalysisAst",),
-            "._rope.base": ("FlextInfraUtilitiesRopeAnalysisBase",),
-            "._rope.imports": ("FlextInfraUtilitiesRopeAnalysisImports",),
-            "._rope.nodes": ("FlextInfraUtilitiesRopeAnalysisNodes",),
             "._rope.pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
             "._rope.project": ("FlextInfraRopeProject",),
-            "._rope.scope": ("FlextInfraUtilitiesRopeAnalysisScope",),
-            "._rope.source": ("FlextInfraUtilitiesRopeAnalysisSource",),
             "._rope_analysis": ("_rope_analysis",),
-            "._rope_analysis.base": (
+            "._rope_analysis.asthelpers": (
                 "FlextInfraUtilitiesRopeAnalysisAstHelpers",
-                "FlextInfraUtilitiesRopeAnalysisExports",
+            ),
+            "._rope_analysis.base": ("FlextInfraUtilitiesRopeAnalysisBase",),
+            "._rope_analysis.exports": ("FlextInfraUtilitiesRopeAnalysisExports",),
+            "._rope_analysis.importstate": (
                 "FlextInfraUtilitiesRopeAnalysisImportState",
+            ),
+            "._rope_analysis.sourcescan": (
                 "FlextInfraUtilitiesRopeAnalysisSourceScan",
             ),
             "._rope_bracket_balance": ("FlextInfraUtilitiesRopeBracketBalanceMixin",),

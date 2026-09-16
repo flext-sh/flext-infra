@@ -9,30 +9,51 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from .base import FlextInfraCodegenConform
+    from .artifact_render import FlextInfraCodegenConformArtifactRender
+    from .base import FlextInfraCodegenConformBase
+    from .beads_routes import FlextInfraCodegenConformBeadsRoutes
     from .bootstrap import FlextInfraCodegenConformBootstrap
+    from .context_render import FlextInfraCodegenConformContextRender
+    from .docs_ownership import FlextInfraCodegenConformDocsOwnership
     from .execute import FlextInfraCodegenConformExecute
-    from .misc import FlextInfraCodegenConformMisc
+    from .existing_plan import FlextInfraCodegenConformExistingPlan
+    from .file_plans import FlextInfraCodegenConformFilePlans
+    from .gitignore import FlextInfraCodegenConformGitignore
     from .plan import FlextInfraCodegenConformPlan
-    from .render import FlextInfraCodegenConformRender
+    from .pyproject_policy import FlextInfraCodegenConformPyprojectPolicy
+    from .scaffold_plan import FlextInfraCodegenConformScaffoldPlan
 __all__: tuple[str, ...] = (
-    "FlextInfraCodegenConform",
+    "FlextInfraCodegenConformArtifactRender",
+    "FlextInfraCodegenConformBase",
+    "FlextInfraCodegenConformBeadsRoutes",
     "FlextInfraCodegenConformBootstrap",
+    "FlextInfraCodegenConformContextRender",
+    "FlextInfraCodegenConformDocsOwnership",
     "FlextInfraCodegenConformExecute",
-    "FlextInfraCodegenConformMisc",
+    "FlextInfraCodegenConformExistingPlan",
+    "FlextInfraCodegenConformFilePlans",
+    "FlextInfraCodegenConformGitignore",
     "FlextInfraCodegenConformPlan",
-    "FlextInfraCodegenConformRender",
+    "FlextInfraCodegenConformPyprojectPolicy",
+    "FlextInfraCodegenConformScaffoldPlan",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
-            ".base": ("FlextInfraCodegenConform",),
+            ".artifact_render": ("FlextInfraCodegenConformArtifactRender",),
+            ".base": ("FlextInfraCodegenConformBase",),
+            ".beads_routes": ("FlextInfraCodegenConformBeadsRoutes",),
             ".bootstrap": ("FlextInfraCodegenConformBootstrap",),
+            ".context_render": ("FlextInfraCodegenConformContextRender",),
+            ".docs_ownership": ("FlextInfraCodegenConformDocsOwnership",),
             ".execute": ("FlextInfraCodegenConformExecute",),
-            ".misc": ("FlextInfraCodegenConformMisc",),
+            ".existing_plan": ("FlextInfraCodegenConformExistingPlan",),
+            ".file_plans": ("FlextInfraCodegenConformFilePlans",),
+            ".gitignore": ("FlextInfraCodegenConformGitignore",),
             ".plan": ("FlextInfraCodegenConformPlan",),
-            ".render": ("FlextInfraCodegenConformRender",),
+            ".pyproject_policy": ("FlextInfraCodegenConformPyprojectPolicy",),
+            ".scaffold_plan": ("FlextInfraCodegenConformScaffoldPlan",),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,
