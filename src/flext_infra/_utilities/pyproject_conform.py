@@ -970,9 +970,9 @@ class FlextInfraUtilitiesPyprojectConform:
                         custom = t.Infra.STR_SEQ_ADAPTER.validate_python(
                             live_project[key], strict=True
                         )
-                        except c.ValidationError as exc:
-                            failed = e.fail_validation("validate runtime dependencies", error=exc)
-                            return r[str].fail(str(failed.error))
+                    except c.ValidationError as exc:
+                        failed = e.fail_validation("validate runtime dependencies", error=exc)
+                        return r[str].fail(str(failed.error))
                     owned_names = {
                         FlextInfraUtilitiesDependencies.dep_name(item)
                         for item in required
