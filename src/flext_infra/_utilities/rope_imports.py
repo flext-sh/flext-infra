@@ -950,7 +950,11 @@ class FlextInfraUtilitiesRopeImports:
             if source_part != target_part:
                 break
             common += 1
-        level = max(len(src_parts) - 1 - common, 1)
+        # Dots climb from the source module to the common ancestor: one dot
+        # is the containing package itself, so the level is the full source
+        # depth minus the shared prefix length (flext_a.b.c -> flext_a.t is
+        # two dots; the package __init__ flext_a.b -> flext_a.t is one).
+        level = max(len(src_parts) - common, 1)
         tail = ".".join(tgt_parts[common:])
         return (level, tail)
 
