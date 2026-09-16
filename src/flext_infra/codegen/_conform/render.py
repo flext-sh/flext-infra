@@ -496,7 +496,6 @@ class FlextInfraCodegenConformRender:
                 workspace_gitlinks=gitlinks.value,
                 extra_verbs=extra_verbs,
                 script_dispatch=repository.script_dispatch,
-                uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
                 dependency_cooldown_exclusions=cooldown_exclusions,
                 dependency_cooldown_overrides=cooldown_overrides,
             )
