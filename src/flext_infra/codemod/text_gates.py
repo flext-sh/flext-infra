@@ -2,9 +2,10 @@
 
 Capability imported from the flext-infra ``0.20.0-dev`` line and namespaced
 into this makemod cascade beside the ast-grep fixed point: every rule is one
-list entry in ``text_rules.yml``, one rewrite is a list-driven regex
-replacement with an exact expected-count receipt, and the phase reaches a
-verified rewrite fixed point before the canonical validate gate runs.
+list entry in ``config/rules/mod/sed.yaml`` (package policy in the rules
+tree; projects override at their own root), one rewrite is a list-driven
+regex replacement with an exact expected-count receipt, and the phase reaches
+a verified rewrite fixed point before the canonical validate gate runs.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -28,9 +29,12 @@ class FlextInfraModTextGateEngine:
     @classmethod
     def load_rules(cls, root: Path) -> p.Result[t.VariadicTuple[m.Infra.ModTextRule]]:
         """Load package and workspace text rules into one validated tuple."""
+        package_root = Path(__file__).resolve().parents[1]
+        relpath = c.Infra.CODEMOD_TEXT_RULES_RELPATH
         sources = (
-            Path(__file__).parent / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
-            root / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+            package_root.parent.parent / relpath,
+            package_root / relpath,
+            root / relpath,
         )
         rules: list[m.Infra.ModTextRule] = []
         seen: set[str] = set()

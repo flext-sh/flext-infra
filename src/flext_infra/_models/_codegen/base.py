@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from ..codegen_journal import FlextInfraModelsCodegenJournal
 from ..codegen_render import FlextInfraModelsCodegenRender
 from ..codegen_toolchain import FlextInfraModelsCodegenToolchain
 from .fix import FlextInfraModelsCodegenFixModels
@@ -16,7 +15,6 @@ from .transaction import FlextInfraModelsCodegenTransactionModels
 class FlextInfraModelsCodegen(
     FlextInfraModelsCodegenRender,
     FlextInfraModelsCodegenToolchain,
-    FlextInfraModelsCodegenJournal,
     FlextInfraModelsCodegenJournalModels,
     FlextInfraModelsCodegenTransactionModels,
     FlextInfraModelsCodegenScaffoldModels,

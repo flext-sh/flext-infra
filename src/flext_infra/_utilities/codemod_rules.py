@@ -216,10 +216,14 @@ class FlextInfraUtilitiesCodemodRules:
         roots = tuple(Path(path) for path in spec.submodule_search_locations or ())
         if not roots and spec.origin is not None:
             roots = (Path(spec.origin).parent,)
+        relpath = c.Infra.CODEMOD_CONFIG_RELPATH
+        # Ordered anchors: package root (wheel force-include layout) first,
+        # then the repository checkout root (editable layout, src/<pkg>).
         configs = {
-            root / c.Infra.CODEMOD_CONFIG_RELPATH
+            (anchor / relpath).resolve()
             for root in roots
-            if (root / c.Infra.CODEMOD_CONFIG_RELPATH).is_file()
+            for anchor in (root, root.parent.parent)
+            if (anchor / relpath).is_file()
         }
         if len(configs) > 1:
             return r[t.SequenceOf[Path]].fail(
@@ -231,16 +235,23 @@ class FlextInfraUtilitiesCodemodRules:
     def _local_package_configs(
         cls, root: Path, root_name: str
     ) -> p.Result[t.SequenceOf[t.Pair[str, Path]]]:
-        configs = tuple(sorted((root / "src").glob("*/codemod/sgconfig.yml")))
-        for config in configs:
+        relpath = c.Infra.CODEMOD_CONFIG_RELPATH.as_posix()
+        candidates = [root / c.Infra.CODEMOD_CONFIG_RELPATH]
+        candidates.extend(sorted((root / "src").glob(f"*/{relpath}")))
+        configs: list[tuple[str, Path]] = []
+        for config in candidates:
+            if not config.is_file():
+                continue
             scope = cls._config_scope(config)
             if scope.failure:
                 return r[t.SequenceOf[t.Pair[str, Path]]].from_failure(scope)
-        return r[t.SequenceOf[t.Pair[str, Path]]].ok(
-            tuple(
-                (f"{root_name}:{config.parents[1].name}", config) for config in configs
+            label = (
+                f"{root_name}:ast"
+                if config == candidates[0]
+                else f"{root_name}:{config.parents[3].name}"
             )
-        )
+            configs.append((label, config))
+        return r[t.SequenceOf[t.Pair[str, Path]]].ok(tuple(configs))
 
     @staticmethod
     def _config_scope(config: Path) -> p.Result[str]:

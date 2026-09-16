@@ -456,6 +456,7 @@ class FlextInfraModelsMiseToolchain:
         @property
         def python_selector(self) -> str:
             """Mise/pyenv-style selector for the configured Python minor line."""
+            return self.python_version
 
     class BeadsEndpointSpec(_ConfigContract):
         """Static network endpoint projected into Beads configuration."""
@@ -469,6 +470,21 @@ class FlextInfraModelsMiseToolchain:
                 description="Beads server TCP port declared by deployment",
             ),
         ]
+
+    class MiseTomlRenderSpec(ToolchainSpec):
+        """Toolchain render context for ``.mise.toml`` plus per-project gates.
+
+        The template consumes flat toolchain field names, so the context is the
+        fleet ToolchainSpec narrowed by the per-project Gas City participation
+        resolved from the workspace manifest overlay.
+        """
+
+        gascity_enabled: Annotated[
+            bool,
+            m.Field(
+                description=("Whether the gc tool block is projected into .mise.toml.")
+            ),
+        ] = True
 
     class MiseBootstrapEnvironmentSpec(_ConfigContract):
         """Validated environment contract rendered into generated Mise setup."""

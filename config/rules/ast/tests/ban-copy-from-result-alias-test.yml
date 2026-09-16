@@ -1,0 +1,7 @@
+id: ban-copy-from-result-alias
+valid:
+  - "outcome = r[int].from_result(other)"
+  - "outcome = FlextResult.from_result(source)"
+invalid:
+  - "outcome = r[int].copy_from_result(other)"
+  - "outcome = FlextResult.copy_from_result(source)"

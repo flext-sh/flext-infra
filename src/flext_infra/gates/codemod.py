@@ -104,16 +104,6 @@ class FlextInfraCodemodGate(FlextInfraGate):
         cmd.append(str(project_dir))
         return tuple(cmd)
 
-    @staticmethod
-    def _rules(project_dir: Path) -> t.SequenceOf[Path]:
-        """Resolve inherited rules through the public dependency utility."""
-        return u.Infra.project_dependency_resource_files(
-            project_dir,
-            resource_parts=(c.Infra.CODEMOD_RESOURCE_DIRNAME, c.Cli.RULES_DIR_NAME),
-            distribution_prefix=c.Infra.PKG_PREFIX_HYPHEN,
-            suffix=c.Infra.CODEMOD_RULE_SUFFIX,
-        )
-
     def _issues_from_scan(
         self, scan: p.Cli.CommandOutput, provider: str
     ) -> t.SequenceOf[m.Infra.Issue]:
@@ -145,13 +135,20 @@ class FlextInfraCodemodGate(FlextInfraGate):
             if line.strip()
         )
 
+    def _rule_paths(self, project_dir: Path) -> t.SequenceOf[Path]:
+        """Resolve the composed ast-grep rule files for one project."""
+        planned = u.Infra.codemod_rule_plan(project_dir)
+        if planned.failure:
+            return ()
+        return tuple(dict.fromkeys(rule.resource for rule in planned.value.rules))
+
     @override
     def _build_check_command(
         self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Per-rule scans are issued by check(); expose the first rule command."""
         _ = ctx, check_dirs
-        rules = self._rules(project_dir)
+        rules = self._rule_paths(project_dir)
         if not rules:
             return (c.Infra.SG, c.Infra.SCAN, ".")
         return u.Infra.ast_grep_scan_command(rules[0])
@@ -162,7 +159,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
     ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse a single ast-grep scan result into issues."""
         _ = ctx
-        rules = self._rules(project_dir)
+        rules = self._rule_paths(project_dir)
         rule_path = rules[0] if rules else project_dir
         issues = self._issues_from_scan(result, rule_path.name)
         return not issues, issues

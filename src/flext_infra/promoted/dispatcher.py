@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
 
+from flext_infra import settings
 from flext_infra.promoted.base import (
     RegistryError,
     discovered_workspace_spec,
@@ -70,7 +70,7 @@ def run_dispatch(
     if args and args[0] == "--validate":
         return 0
     if not args or args[0] in {"help", "--help", "-h"}:
-        requested = os.environ.get("WHAT", "").strip()
+        requested = (settings.Infra.dispatch_what or "").strip()
         sys.stdout.write(render_requested_help(registry, requested) + "\n")
         return 0
     return dispatch(registry, args[0])
@@ -85,7 +85,7 @@ def dispatch(registry: Registry, requested_verb: str) -> int:
     """
     alias_target = registry.alias_target(requested_verb)
     verb = registry.resolve_verb(requested_verb)
-    requested_what = os.environ.get("WHAT", "").strip()
+    requested_what = (settings.Infra.dispatch_what or "").strip()
     if requested_what == "help":
         sys.stdout.write(render_verb_help(registry, requested_verb) + "\n")
         return 0
@@ -122,8 +122,8 @@ def require_dispatched(path: Path) -> None:
     """
     expected = str(path.resolve())
     if (
-        os.environ.get("COSMOS_COMMAND_DISPATCHED") == "Y"
-        and os.environ.get("COSMOS_COMMAND_PATH") == expected
+        settings.Infra.cosmos_command_dispatched == "Y"
+        and settings.Infra.cosmos_command_path == expected
     ):
         return
     sys.stderr.write(

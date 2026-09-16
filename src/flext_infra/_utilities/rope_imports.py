@@ -901,5 +901,139 @@ class FlextInfraUtilitiesRopeImports:
                     raise RuntimeError(msg)
             _ = updated
 
+    # ------------------------------------------------------------------
+    # Layer alignment (ADR-014 §3b/ADR-017; rope-native, replaces the
+    # retired libcst draft — cross-layer from-imports take relative form)
+    # ------------------------------------------------------------------
+
+    _DEFAULT_IMPORT_LAYER_ORDER: t.StrSequence = (
+        "settings",
+        "config",
+        "c",
+        "t",
+        "p",
+        "m",
+        "u",
+        "base",
+        "services",
+        "api",
+        "cli",
+    )
+
+    @classmethod
+    def layer_of_module(cls, module_name: str, order: t.StrSequence) -> str | None:
+        """Return the canonical layer of a project module path."""
+        for segment in reversed(module_name.split(".")):
+            for layer in order:
+                if segment in {layer, f"_{layer}"}:
+                    return layer
+        return None
+
+    @staticmethod
+    def _absolute_from_import(source_module: str, module_name: str, level: int) -> str:
+        """Resolve one from-import target to its absolute module name."""
+        if level == 0:
+            return module_name
+        parts = source_module.split(".")
+        base = parts[: max(len(parts) - level, 0)]
+        return ".".join(part for part in (*base, module_name) if part)
+
+    @staticmethod
+    def _relative_from_import(
+        source_module: str, target_module: str
+    ) -> tuple[int, str]:
+        """Return the (level, tail) relative form from one module to another."""
+        src_parts = source_module.split(".")
+        tgt_parts = target_module.split(".")
+        common = 0
+        for source_part, target_part in zip(src_parts[:-1], tgt_parts, strict=False):
+            if source_part != target_part:
+                break
+            common += 1
+        level = max(len(src_parts) - 1 - common, 1)
+        tail = ".".join(tgt_parts[common:])
+        return (level, tail)
+
+    @classmethod
+    def align_module_imports(
+        cls,
+        *,
+        rope_project: t.Infra.RopeProject,
+        repository_root: Path,
+        index: m.Infra.RopeWorkspaceIndex,
+        project_package: str,
+        config: m.Infra.LazyInitConfig | None = None,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Plan relative-form rewrites for cross-layer project from-imports."""
+        order: t.StrSequence = (
+            tuple(config.import_layer_order)
+            if config is not None
+            else cls._DEFAULT_IMPORT_LAYER_ORDER
+        )
+        file_plans: list[m.Infra.CodegenFilePlan] = []
+        for entry in sorted(
+            index.modules_by_path.values(), key=lambda item: str(item.file_path)
+        ):
+            if entry.is_package_init or not entry.module_name:
+                continue
+            file_path = entry.file_path
+            if not file_path.is_file():
+                continue
+            source_module = entry.module_name
+            source_layer = cls.layer_of_module(source_module, order)
+            if source_layer is None:
+                continue
+            resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
+                rope_project, file_path
+            )
+            if resource is None:
+                continue
+            module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
+                rope_project, resource
+            )
+            changed = False
+            for import_stmt in cls.import_statements(module_imports):
+                import_info = import_stmt.import_info
+                if not FlextInfraUtilitiesRopeRuntime.is_from_import(import_info):
+                    continue
+                module_name = import_info.module_name or ""
+                absolute = cls._absolute_from_import(
+                    source_module, module_name, import_info.level or 0
+                )
+                if not absolute or not (
+                    absolute == project_package
+                    or absolute.startswith(project_package + ".")
+                ):
+                    continue
+                target_layer = cls.layer_of_module(absolute, order)
+                if target_layer is None or target_layer == source_layer:
+                    continue
+                level, tail = cls._relative_from_import(source_module, absolute)
+                if (import_info.level or 0) == level and module_name == tail:
+                    continue
+                import_stmt.import_info = FlextInfraUtilitiesRopeRuntime.from_import(
+                    tail, level, list(import_info.names_and_aliases)
+                )
+                changed = True
+            if not changed:
+                continue
+            updated_source = module_imports.get_changed_source()
+            original_source = resource.read()
+            if updated_source is None or updated_source == original_source:
+                continue
+            before = u.Cli.atomic_read_binary_file_state(file_path, required=False)
+            if before.failure:
+                return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(before)
+            file_plans.append(
+                m.Infra.CodegenFilePlan(
+                    project=repository_root,
+                    path=file_path.resolve(),
+                    before=before.value,
+                    desired_content=updated_source.encode("utf-8"),
+                    desired_mode=0o644,
+                )
+            )
+        return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(tuple(file_plans))
+
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeImports"]

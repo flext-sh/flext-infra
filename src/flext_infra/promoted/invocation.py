@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
+from flext_infra import u
 from flext_infra.promoted.base import INCIDENT_MUTATION_REQUIRED_PARAMS, RegistryError
 
 if TYPE_CHECKING:
@@ -113,5 +113,5 @@ def param_value(
     """Return one parameter value from environment or default."""
     if param.name == "WHAT":
         return command.what
-    value = os.environ.get(param.name)
+    value = u.Infra.env_lookup(param.name)
     return param.default.strip() if value is None else value.strip()

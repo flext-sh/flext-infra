@@ -1,0 +1,15 @@
+# Ban the exterminated FlextResult.copy_from_result alias (program C1 guard).
+#
+# FLEXT law: the facade factory lives in the owning mixin and the canonical
+# name is the name the fleet consumes (root law 2). `copy_from_result` was
+# exterminated in favor of `from_result` on FlextResultConstruction; the
+# cutover is complete and any reintroduction is old+new coexistence.
+#
+# Detection-only: consumers must call `from_result` (or the `r[...].from_result`
+# facade surface) at the owner in the same change.
+
+id: ban-copy-from-result-alias
+language: Python
+severity: error
+rule:
+  pattern: $RECEIVER.copy_from_result($$$ARGS)

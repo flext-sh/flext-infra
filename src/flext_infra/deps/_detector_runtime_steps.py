@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, p, t, u
+from flext_infra import c, p, settings, t, u
 
 if TYPE_CHECKING:
     from flext_infra import m
@@ -140,7 +139,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         # Inherit Make's UV_PROJECT_ENVIRONMENT; never rebind a parent's runtime.
         run_outcome = detector.runner.run_raw(
             [
-                os.environ.get("UV", c.Infra.UV),
+                settings.Infra.uv_executable or c.Infra.UV,
                 "add",
                 "--project",
                 str(project_path),

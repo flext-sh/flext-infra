@@ -17,18 +17,13 @@ from typing import TYPE_CHECKING, override
 from .. import c, config, m, r, s, u
 from ..workspace.rope import FlextInfraRopeWorkspace
 from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
-from ._lazy_init_import_alignment import FlextInfraCodegenLazyInitImportAlignmentMixin
 from .lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 
 if TYPE_CHECKING:
     from .. import p, t
 
 
-class FlextInfraCodegenLazyInit(
-    s[bool],
-    FlextInfraCodegenLazyInitGenerationMixin,
-    FlextInfraCodegenLazyInitImportAlignmentMixin,
-):
+class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixin):
     """Plan ``__init__.py`` artifacts with PEP 562 lazy imports.
 
     Scans sibling ``.py`` files in each package directory, discovers their
@@ -192,17 +187,15 @@ class FlextInfraCodegenLazyInit(
         )
         alignment_plans: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
         if project_package is not None:
-            aligned = self.align_imports(
-                rope_workspace=rope,
+            aligned = u.Infra.align_module_imports(
+                rope_project=rope.rope_project,
+                repository_root=resolved_repository_root,
                 index=workspace_index,
                 project_package=project_package,
-                package_dirs=package_dirs,
                 config=config.Infra.tooling.lazy_init,
             )
             if aligned.failure:
-                return r[m.Infra.CodegenPhaseAnalysis].from_failure(
-                    aligned
-                )
+                return r[m.Infra.CodegenPhaseAnalysis].from_failure(aligned)
             alignment_plans = aligned.value
         file_plans = self._build_file_plans(
             package_plans, index=workspace_index, snapshots=snapshots.value

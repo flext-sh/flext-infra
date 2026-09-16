@@ -20,7 +20,7 @@ class TestsFlextInfraModTextGateEngine:
         """One list entry rewrites its match once and reaches a fixed point."""
         tm.ok(
             u.Cli.atomic_write_text_file(
-                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
                 (
                     "rules:\n"
                     "  - id: rewrite-serialization-lock-call\n"
@@ -61,7 +61,7 @@ class TestsFlextInfraModTextGateEngine:
         """A wrong expected-count receipt fails the scan loudly."""
         tm.ok(
             u.Cli.atomic_write_text_file(
-                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
                 (
                     "rules:\n"
                     "  - id: rewrite-serialization-lock-call\n"
@@ -82,7 +82,7 @@ class TestsFlextInfraModTextGateEngine:
         """Declarative list entries must be exact and unique."""
         tm.ok(
             u.Cli.atomic_write_text_file(
-                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
                 (
                     "rules:\n"
                     "  - id: first\n"
@@ -99,7 +99,7 @@ class TestsFlextInfraModTextGateEngine:
 
         tm.ok(
             u.Cli.atomic_write_text_file(
-                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
                 "rules:\n  - id: first\n    find: 'alpha'\n  - id: first\n    find: 'beta'\n",
             )
         )
@@ -109,7 +109,7 @@ class TestsFlextInfraModTextGateEngine:
 
         tm.ok(
             u.Cli.atomic_write_text_file(
-                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
                 "rules:\n  - id: first\n    find: 'alpha'\n  - id: second\n    find: 'beta'\n",
             )
         )
@@ -129,7 +129,7 @@ class TestsFlextInfraModTextGateEngine:
         )
         tm.ok(
             u.Cli.atomic_write_text_file(
-                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
                 (
                     "rules:\n"
                     "  - id: rewrite-frozen-pin\n"
@@ -151,7 +151,7 @@ class TestsFlextInfraModTextGateEngine:
 
         tm.ok(
             u.Cli.atomic_write_text_file(
-                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
                 (
                     "rules:\n"
                     "  - id: rewrite-frozen-pin\n"
