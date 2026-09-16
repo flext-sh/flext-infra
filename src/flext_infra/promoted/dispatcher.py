@@ -69,15 +69,18 @@ def run_dispatch(
     registry = discover(script_roots=script_roots, spec=resolved_spec)
     if args and args[0] == "--validate":
         return 0
+    requested_what = (settings.Infra.dispatch_what or "").strip()
     if not args or args[0] in {"help", "--help", "-h"}:
-        requested = (settings.Infra.dispatch_what or "").strip()
-        sys.stdout.write(render_requested_help(registry, requested) + "\n")
+        sys.stdout.write(render_requested_help(registry, requested_what) + "\n")
         return 0
-    return dispatch(registry, args[0])
+    return dispatch(registry, args[0], requested_what)
 
 
-def dispatch(registry: Registry, requested_verb: str) -> int:
+def dispatch(registry: Registry, requested_verb: str, requested_what: str) -> int:
     """Dispatch one requested verb to its selected promoted command.
+
+    ``requested_what`` is resolved once at the CLI boundary and passed
+    explicitly, so dispatch never reads ambient settings.
 
     Returns:
         The executed command's exit code, or zero for rendered help.
@@ -85,7 +88,6 @@ def dispatch(registry: Registry, requested_verb: str) -> int:
     """
     alias_target = registry.alias_target(requested_verb)
     verb = registry.resolve_verb(requested_verb)
-    requested_what = (settings.Infra.dispatch_what or "").strip()
     if requested_what == "help":
         sys.stdout.write(render_verb_help(registry, requested_verb) + "\n")
         return 0

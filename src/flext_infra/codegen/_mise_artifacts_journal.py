@@ -161,7 +161,9 @@ class FlextInfraMiseArtifactsJournal:
                 )
             )
         except c.ValidationError as exc:
-            failed = e.fail_validation("validate extended codegen directory journal", error=exc)
+            failed = e.fail_validation(
+                "validate extended codegen directory journal", error=exc
+            )
             return r[m.Infra.CodegenTransactionJournal].fail(str(failed.error))
 
     @classmethod
@@ -219,7 +221,9 @@ class FlextInfraMiseArtifactsJournal:
                 )
             )
         except c.ValidationError as exc:
-            failed = e.fail_validation("validate recorded directory evidence", error=exc)
+            failed = e.fail_validation(
+                "validate recorded directory evidence", error=exc
+            )
             return result_type.fail(str(failed.error))
 
     @classmethod
@@ -305,7 +309,9 @@ class FlextInfraMiseArtifactsJournal:
             try:
                 entries.append(m.Infra.CodegenJournalEntry.model_validate(entry_data))
             except c.ValidationError as exc:
-                failed = e.fail_validation("validate recovering codegen journal entry", error=exc)
+                failed = e.fail_validation(
+                    "validate recovering codegen journal entry", error=exc
+                )
                 return r[m.Infra.CodegenTransactionJournal].fail(str(failed.error))
         try:
             return r[m.Infra.CodegenTransactionJournal].ok(
@@ -381,7 +387,9 @@ class FlextInfraMiseArtifactsJournal:
                 journal_snapshot.content
             )
         except c.ValidationError as exc:
-            failed = e.fail_validation("validate codegen transaction journal", error=exc)
+            failed = e.fail_validation(
+                "validate codegen transaction journal", error=exc
+            )
             return result_type.fail(str(failed.error))
         relocated = cls._relocate_journal(layout, journal)
         if relocated.failure:

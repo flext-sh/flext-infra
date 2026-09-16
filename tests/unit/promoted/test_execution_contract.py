@@ -8,8 +8,6 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import m
-from flext_infra._models.settings import FlextInfraSettingsModels
-from flext_infra._settings import _FlextInfraSettings
 from flext_infra.promoted.dispatcher import dispatch
 from flext_infra.promoted.invocation import validate_command_contract
 from flext_infra.promoted.registry import Registry
@@ -68,38 +66,15 @@ class TestsFlextInfraPromotedExecutionContract:
         ) -> None:
             """Unrelated ambient input never changes the declared operation."""
             registry, marker = self._write_registry(tmp_path)
-            # Create a settings instance with the desired WHAT value (public constructor path)
-            test_settings = _FlextInfraSettings(
-                Infra=FlextInfraSettingsModels.Infra.model_validate({"WHAT": "all"})
+            environment = (
+                {} if ambient_value is None else {"UNDECLARED_INPUT": ambient_value}
             )
-            # Temporarily override the module-level settings singleton
-            import flext_infra._settings as settings_module
-            import flext_infra.promoted.base as base_module
-            import flext_infra.promoted.dispatcher as dispatcher_module
-
-            original_settings = settings_module.settings
-            original_dispatcher_settings = dispatcher_module.settings
-            original_base_settings = base_module.settings
-
-            try:
-                settings_module.settings = test_settings
-                dispatcher_module.settings = test_settings
-                base_module.settings = test_settings
-
-                environment = {"WHAT": "all"}
-                if ambient_value is not None:
-                    environment["UNDECLARED_INPUT"] = ambient_value
-                with tm.scope(
-                    env=environment,
-                    remove_env_keys=("HELP", "OPTIONS", "UNDECLARED_INPUT"),
-                ):
-                    exit_code = dispatch(registry, "probe")
-                    assert exit_code == 0
-                    assert marker.exists()
-            finally:
-                settings_module.settings = original_settings
-                dispatcher_module.settings = original_dispatcher_settings
-                base_module.settings = original_base_settings
+            with tm.scope(
+                env=environment, remove_env_keys=("HELP", "OPTIONS", "UNDECLARED_INPUT")
+            ):
+                exit_code = dispatch(registry, "probe", "all")
+            tm.that(exit_code, eq=0)
+            tm.that(marker.exists(), eq=True)
 
 
 __all__: list[str] = ["TestsFlextInfraPromotedExecutionContract"]

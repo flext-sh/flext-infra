@@ -812,7 +812,9 @@ class FlextInfraUtilitiesPyprojectConform:
                 uv_workspace.get("members"), strict=True
             )
         except c.ValidationError as exc:
-            failed = e.fail_validation("validate root uv workspace package entries", error=exc)
+            failed = e.fail_validation(
+                "validate root uv workspace package entries", error=exc
+            )
             return r[bool].fail(str(failed.error))
         expected_members = tuple(
             member.path.as_posix() for member in workspace.subprojects
@@ -971,7 +973,9 @@ class FlextInfraUtilitiesPyprojectConform:
                             live_project[key], strict=True
                         )
                     except c.ValidationError as exc:
-                        failed = e.fail_validation("validate runtime dependencies", error=exc)
+                        failed = e.fail_validation(
+                            "validate runtime dependencies", error=exc
+                        )
                         return r[str].fail(str(failed.error))
                     owned_names = {
                         FlextInfraUtilitiesDependencies.dep_name(item)

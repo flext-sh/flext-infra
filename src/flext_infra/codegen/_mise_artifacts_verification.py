@@ -87,7 +87,9 @@ class FlextInfraMiseArtifactsVerification:
                     })
                 )
             except c.ValidationError as exc:
-                failed = e.fail_validation("validate temporary-tree manifest", error=exc)
+                failed = e.fail_validation(
+                    "validate temporary-tree manifest", error=exc
+                )
                 return result_type.fail(str(failed.error))
         return result_type.ok(tuple(registered))
 

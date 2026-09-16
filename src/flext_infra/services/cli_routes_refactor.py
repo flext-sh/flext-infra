@@ -6,8 +6,8 @@ import functools
 from typing import ClassVar
 
 from flext_infra import m, t
-from flext_infra.codemod.ast_scan import FlextInfraCodemodAstScan
 from flext_infra.codegen.protocol_models import FlextInfraCodegenProtocolModels
+from flext_infra.codemod.ast_scan import FlextInfraCodemodAstScan
 from flext_infra.codemod.batch_apply import FlextInfraCodemodBatchApply
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,

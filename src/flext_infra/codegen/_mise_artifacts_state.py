@@ -335,8 +335,7 @@ class FlextInfraMiseArtifactsState:
             rolled_back = u.Cli.atomic_delete_empty_directory_guarded(created.value)
             if rolled_back.failure:
                 return result_type.fail(
-                    f"{failed.error}; "
-                    f"compensation failed: {rolled_back.error}"
+                    f"{failed.error}; compensation failed: {rolled_back.error}"
                 )
             return result_type.fail(str(failed.error))
 

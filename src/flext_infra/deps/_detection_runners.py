@@ -80,7 +80,9 @@ class FlextInfraDependencyDetectionRunnersMixin:
                 return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].from_failure(
                     loaded_result
                 )
-            validation_error: c.ValidationError | None = None
+            validation_failure: (
+                p.Result[t.Pair[t.SequenceOf[t.JsonMapping], int]] | None
+            ) = None
             if isinstance(loaded_result.value, list):
                 normalized_issues: t.MutableSequenceOf[t.JsonMapping] = []
                 for item in loaded_result.value:
@@ -89,7 +91,10 @@ class FlextInfraDependencyDetectionRunnersMixin:
                     try:
                         typed_item = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(item)
                     except c.ValidationError as exc:
-                        validation_error = exc
+                        failed = e.fail_validation(error=exc)
+                        validation_failure = r[
+                            t.Pair[t.SequenceOf[t.JsonMapping], int]
+                        ].fail(str(failed.error), exception=failed.exception)
                         break
                     converted_issue = self._to_toml_config(typed_item)
                     if len(converted_issue) == len(typed_item):
@@ -102,11 +107,8 @@ class FlextInfraDependencyDetectionRunnersMixin:
                     return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail(
                         f"failed to cleanup deptry temp output: {exc}", exception=exc
                     )
-            if validation_error is not None:
-                failed = e.fail_validation(error=validation_error)
-                return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail(
-                    str(failed.error), exception=failed.exception
-                )
+            if validation_failure is not None:
+                return validation_failure
         cmd_result: p.Cli.CommandOutput = result.value
         return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].ok((
             issues,

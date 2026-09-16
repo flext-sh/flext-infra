@@ -79,11 +79,22 @@ class TestsFlextInfraCodegenPyprojectConform:
             )
         )
         (root / "pyproject.toml").write_text(rendered, encoding="utf-8")
-        tm.ok(u.Cli.run_checked(
-            ["uv", "pip", "install", "--dry-run", "--offline", "--python",
-             sys.executable, "-r", str(root / "pyproject.toml")],
-            cwd=parent,
-        ))
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    "uv",
+                    "pip",
+                    "install",
+                    "--dry-run",
+                    "--offline",
+                    "--python",
+                    sys.executable,
+                    "-r",
+                    str(root / "pyproject.toml"),
+                ],
+                cwd=parent,
+            )
+        )
         tm.that((root / "uv.lock").exists(), eq=False)
         tm.that((parent / "uv.lock").exists(), eq=False)
 

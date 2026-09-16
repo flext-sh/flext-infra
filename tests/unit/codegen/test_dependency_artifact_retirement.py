@@ -20,9 +20,11 @@ class TestsDependencyArtifactRetirement:
             (tmp_path / filename).write_text("obsolete dependency state\n")
         journal_lock = tmp_path / "generation.journal.lock"
         journal_lock.write_text("active lease\n")
-        plans = tm.ok(FlextInfraCodegenConform.retired_projection_plans(
-            tmp_path, c.Infra.MakeProfile.WORKSPACE
-        ))
+        plans = tm.ok(
+            FlextInfraCodegenConform.retired_projection_plans(
+                tmp_path, c.Infra.MakeProfile.WORKSPACE
+            )
+        )
         tm.that({plan.path.name for plan in plans}, eq=set(retired))
         tm.that(all(plan.desired_content is None for plan in plans), eq=True)
         tm.that(journal_lock.read_text(), eq="active lease\n")

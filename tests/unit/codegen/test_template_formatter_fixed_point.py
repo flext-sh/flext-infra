@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ... import m, tm, u
-
+from ... import tm, u
 from ._support import CodegenTestSupport
 
 

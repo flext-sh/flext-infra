@@ -117,7 +117,9 @@ class FlextInfraWorkspaceDetector(
         try:
             validated = m.Infra.BeadsProjectSpec.model_validate(loaded.value.data)
         except c.ValidationError as exc:
-            failed = e.fail_validation("Beads configuration model validation", error=exc)
+            failed = e.fail_validation(
+                "Beads configuration model validation", error=exc
+            )
             return r[m.Infra.BeadsProjectSpec].fail(str(failed.error))
         return r[m.Infra.BeadsProjectSpec].ok(validated)
 
