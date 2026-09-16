@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import settings, u
+from flext_infra import c, settings, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -79,10 +79,18 @@ def local_python_cmd(spec: p.Infra.Promoted.WorkspaceSpec) -> Path:
 
 
 def find_owner_root(start: Path) -> Path | None:
-    """Return the nearest ancestor of ``start`` owning ``scripts/`` + ``pyproject.toml``."""
-    for parent in start.resolve().parents:
-        if parent.name == "scripts" and (parent.parent / "pyproject.toml").is_file():
-            return parent.parent
+    """Return ``start`` or its nearest ancestor owning ``scripts/`` + ``pyproject.toml``.
+
+    ``start`` itself is a candidate: a project root is its own owner, so
+    discovery from the repository working directory resolves instead of
+    walking past it.
+    """
+    resolved = start.resolve()
+    for candidate in (resolved, *resolved.parents):
+        if (candidate / c.Infra.DIR_SCRIPTS).is_dir() and (
+            candidate / c.Infra.PYPROJECT_FILENAME
+        ).is_file():
+            return candidate
     return None
 
 
