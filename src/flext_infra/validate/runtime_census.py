@@ -145,12 +145,14 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         # a census violation to report, never a verb crash.
         try:
             module_names = self._walk_modules(package_name)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return m.Infra.ValidationReport(
                 passed=False,
                 violations=(
-                    f"{package_name}: package import failed: "
-                    f"{type(exc).__name__}: {exc}",
+                    (
+                        f"{package_name}: package import failed: "
+                        f"{type(exc).__name__}: {exc}"
+                    ),
                 ),
                 summary=f"{project.name}: package import failed",
             )
@@ -176,13 +178,15 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             # findings feed the generator, the Make verb completes.
             try:
                 all_reports.extend(self._check_module(module_name))
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 all_reports.append(
                     m.Infra.ValidationReport(
                         passed=False,
                         violations=(
-                            f"{module_name}: import failed: "
-                            f"{type(exc).__name__}: {exc}",
+                            (
+                                f"{module_name}: import failed: "
+                                f"{type(exc).__name__}: {exc}"
+                            ),
                         ),
                         summary=f"{module_name}: import failed",
                     )

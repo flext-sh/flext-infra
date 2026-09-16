@@ -66,6 +66,7 @@ if TYPE_CHECKING:
     from .codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
     from .codegen.pipeline import FlextInfraCodegenPipeline
     from .codegen.project_new import FlextInfraCodegenProjectNew
+    from .codegen.protocol_models import FlextInfraCodegenProtocolModels
     from .codegen.py_typed import FlextInfraCodegenPyTyped
     from .codegen.scaffolder import FlextInfraCodegenScaffolder
     from .codegen.version_file import FlextInfraCodegenVersionFile
@@ -302,6 +303,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenMiseArtifacts",
     "FlextInfraCodegenPipeline",
     "FlextInfraCodegenProjectNew",
+    "FlextInfraCodegenProtocolModels",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenQualityGate",
     "FlextInfraCodegenScaffolder",
@@ -542,6 +544,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen.mise_artifacts_workspace": ("FlextInfraMiseWorkspacePlanner",),
             ".codegen.pipeline": ("FlextInfraCodegenPipeline",),
             ".codegen.project_new": ("FlextInfraCodegenProjectNew",),
+            ".codegen.protocol_models": ("FlextInfraCodegenProtocolModels",),
             ".codegen.py_typed": ("FlextInfraCodegenPyTyped",),
             ".codegen.scaffolder": ("FlextInfraCodegenScaffolder",),
             ".codegen.version_file": ("FlextInfraCodegenVersionFile",),

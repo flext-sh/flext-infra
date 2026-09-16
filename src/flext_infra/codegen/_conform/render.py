@@ -199,11 +199,17 @@ class FlextInfraCodegenConformRender:
                 m.Infra.MarkdownLintRenderSpec(tooling=config.Infra.tooling)
             )
         if destination == ".envrc":
+            # Conform targets always own a governed Beads identity, so the
+            # rendered tier is binary here: city server wiring when the
+            # repository declares city participation, the repository-local
+            # bd base otherwise.
             return r[p.Model].ok(
                 m.Infra.EnvrcRenderSpec(
                     state_directory_name=codegen.toolchain.state_directory_name,
                     scratch_namespace=codegen.toolchain.scratch_namespace,
-                    scratch_home_relative=codegen.toolchain.scratch_home_relative,
+                    scratch_home_relative=(
+                        codegen.toolchain.scratch_home_relative
+                    ),
                     pycache_namespace=codegen.toolchain.pycache_namespace,
                     environment_path_prepends=(
                         codegen.toolchain.environment_path_prepends
@@ -212,7 +218,7 @@ class FlextInfraCodegenConformRender:
                     gascity=(
                         m.Infra.BeadsWorkspaceEnvironmentSpec()
                         if target.gascity_enabled
-                        else None
+                        else m.Infra.BeadsWorkspaceEnvironmentSpec(backend="local")
                     ),
                 )
             )

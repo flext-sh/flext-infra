@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 from typing import Final
 
-from flext_infra import t
+from flext_infra import c, t
 
 _UNGUARDED_DIRENV_DIR: Final[re.Pattern[str]] = re.compile(
     r"\$\{?DIRENV_DIR(?![\s]*[:\-])"
@@ -21,6 +21,24 @@ _QUOTED_ENV_TARGET: Final[re.Pattern[str]] = re.compile(
     r'^(?:source_env|watch_file)\s+"([^"]+)"\s*$'
 )
 _HOME_PREFIX: Final[re.Pattern[str]] = re.compile(r"^\$\{?HOME\}?(.*)$")
+_MANAGED_SECTION_START: Final[re.Pattern[str]] = re.compile(
+    r"^# === SECTION: .* \(managed\) ===$"
+)
+_MANAGED_SECTION_END: Final[re.Pattern[str]] = re.compile(r"^# End SECTION: .*$")
+_ENVRC_LOCAL_GENERATED_MARKERS: Final[t.StrSequence] = (
+    *c.Infra.WORKSPACE_ENV_GENERATED_MARKERS,
+    *c.Infra.TEMPLATE_GENERATED_MARKERS,
+)
+# Local overrides carry operator customization only. Beads activation is a
+# generated property of `.envrc`; any residue here is a second activation
+# owner whose drift already diverged (historical jq conditions differed).
+_ENVRC_LOCAL_FORBIDDEN_VARS: Final[t.StrSequence] = (
+    "AGENTS_GAS_CITY_ROOT",
+    "GT_ROOT",
+    "GT_TOWN_ROOT",
+    "BEADS_DIR",
+    "BEADS_DOLT_",
+)
 
 
 class FlextInfraWorkspaceEnvironmentContracts:
@@ -97,6 +115,78 @@ class FlextInfraWorkspaceEnvironmentContracts:
                 violations.append(
                     f"line {line_number}: environment target does not exist: {resolved}"
                 )
+        return tuple(violations)
+
+    @classmethod
+    def envrc_local_normalized(cls, content: str) -> str:
+        """Strip generated residue from one ``.envrc.local`` body.
+
+        Removes historical managed sections (from a ``# === SECTION: ...
+        (managed) ===`` opener through its ``# End SECTION:`` closer,
+        unterminated sections included) and generated ownership marker
+        lines. Custom operator content is preserved verbatim; an empty
+        remainder means the file must not exist.
+        """
+        kept: list[str] = []
+        skipping = False
+        for line in content.splitlines():
+            stripped = line.strip()
+            if skipping:
+                if _MANAGED_SECTION_END.match(stripped):
+                    skipping = False
+                continue
+            if _MANAGED_SECTION_START.match(stripped):
+                skipping = True
+                continue
+            if stripped and any(
+                stripped.startswith(marker)
+                for marker in _ENVRC_LOCAL_GENERATED_MARKERS
+            ):
+                continue
+            kept.append(line)
+        normalized = "\n".join(kept).strip("\n")
+        return f"{normalized}\n" if normalized else ""
+
+    @classmethod
+    def envrc_local_contract_violations(
+        cls, content: str
+    ) -> t.VariadicTuple[str]:
+        """Return one message per generated-activation residue in ``.envrc.local``.
+
+        Local overrides never activate Beads: managed section markers,
+        generated ownership markers, and inherited orchestration or Beads
+        endpoint variables are all residue of a second activation owner.
+        """
+        violations: list[str] = []
+        for line_number, line in enumerate(content.splitlines(), start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if (
+                _MANAGED_SECTION_START.match(stripped)
+                or _MANAGED_SECTION_END.match(stripped)
+            ):
+                violations.append(
+                    f"line {line_number}: managed section marker in local "
+                    f"overrides: {stripped!r}"
+                )
+                continue
+            if any(
+                stripped.startswith(marker)
+                for marker in _ENVRC_LOCAL_GENERATED_MARKERS
+            ):
+                violations.append(
+                    f"line {line_number}: generated ownership marker in "
+                    f"local overrides: {stripped!r}"
+                )
+                continue
+            for token in _ENVRC_LOCAL_FORBIDDEN_VARS:
+                if token in stripped:
+                    violations.append(
+                        f"line {line_number}: Beads activation variable in "
+                        f"local overrides: {token}"
+                    )
+                    break
         return tuple(violations)
 
 

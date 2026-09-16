@@ -1,18 +1,3 @@
-# Pydantic 2 boundary truths from the removal catalog that the corpus did not
-# carry yet. Each document cites its prose law
-# (``~/.agents/rules/python/pydantic.md``, ADR-0008) and follows the corpus
-# provenance doctrine (see ban-pydantic-v1-model-api.yml): a rewrite ships only
-# when the receiver or call shape proves the Pydantic context.
-#
-# Deliberately absent here (already ruled elsewhere):
-#   - parse_obj/parse_raw/from_orm/schema_json, class Config, __fields__:
-#     ban-pydantic-v1-model-api.yml / ban-pydantic-v1-config-class.yml own them
-#     as detection-only (receiver not provable from syntax).
-#   - .dict()/.json()/.schema(): ban-pydantic-v1-api.yml ruled generic method
-#     names unprovable for both detection and fix.
-#   - import-level v1 (pydantic.v1, validator/root_validator):
-#     ban-pydantic-v1-api.yml.
----
 # ``model_construct`` builds an instance without running validation, moving the
 # failure from the boundary to a downstream AttributeError or bad state. The
 # removal catalog allows it only behind a documented owner justification, and
