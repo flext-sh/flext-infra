@@ -83,14 +83,14 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         payload_source = u.Cli.toml_mapping_from_text(original_rendered)
         if payload_source is None:
             return r[m.Infra.PyprojectDocumentState].fail(f"invalid TOML: {path}")
-        try:
-            payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
-                payload_source
-            )
-        except c.ValidationError as exc:
+        validated = u.validate_value(
+            t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER, payload_source
+        )
+        if validated.failure:
             return r[m.Infra.PyprojectDocumentState].fail_op(
-                "TOML payload validation", exc
+                "TOML payload validation", validated.error
             )
+        payload = validated.value
         return r[m.Infra.PyprojectDocumentState].ok(
             m.Infra.PyprojectDocumentState(
                 pyproject_path=path,

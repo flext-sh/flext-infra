@@ -162,16 +162,20 @@ class FlextInfraDocGeneratorBundleMixin:
         )
         if stable.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(stable)
-        try:
-            bundle = m.Infra.DocsGenerationBundle(
-                scopes=tuple(normalized_scopes),
-                source_states=sources.value,
-                repository_root=repository_root,
-            )
-        except c.ValidationError as exc:
+        validated_bundle = u.validate_value(
+            m.Infra.DocsGenerationBundle,
+            {
+                "scopes": tuple(normalized_scopes),
+                "source_states": sources.value,
+                "repository_root": repository_root,
+            },
+        )
+        if validated_bundle.failure:
             return r[m.Infra.DocsGenerationBundle].fail_op(
-                "docs generation bundle validation", exc
+                "docs generation bundle validation",
+                validated_bundle.error,
             )
+        bundle = validated_bundle.value
         return r[m.Infra.DocsGenerationBundle].ok(bundle)
 
 

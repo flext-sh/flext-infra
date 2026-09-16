@@ -59,18 +59,22 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, FlextInfraServiceBase[bo
         tool_data = doc_data.get(c.Infra.TOOL)
         if not isinstance(tool_data, Mapping):
             return r[t.StrSequence].ok(())
-        typed_tool_data: MutableMapping[str, t.Infra.InfraValue] = (
-            t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(tool_data)
+        typed_tool_data = u.validate_value(
+            t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER, tool_data
         )
-        pyrefly_data = typed_tool_data.get(c.Infra.PYREFLY)
+        if typed_tool_data.failure:
+            return r[t.StrSequence].fail_op(
+                f"validate {path} [tool]", typed_tool_data.error
+            )
+        pyrefly_data = typed_tool_data.value
         if not isinstance(pyrefly_data, Mapping):
             return r[t.StrSequence].ok(())
-        try:
-            pyrefly: MutableMapping[str, t.Infra.InfraValue] = (
-                t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(pyrefly_data)
-            )
-        except c.ValidationError as err:
-            return r[t.StrSequence].fail_op(f"validate {path} [tool.pyrefly]", err)
+        validated = u.validate_value(
+            t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER, pyrefly_data
+        )
+        if validated.failure:
+            return r[t.StrSequence].fail_op(f"validate {path} [tool.pyrefly]", validated.error)
+        pyrefly = validated.value
         original_pyrefly: t.JsonMapping = dict(pyrefly)
         all_fixes: t.MutableSequenceOf[str] = []
         project_dir = path.parent

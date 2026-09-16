@@ -193,16 +193,17 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         flext = u.Cli.json_as_mapping(tool).get("flext", {})
         project = u.Cli.json_as_mapping(flext).get("project", {})
         duplication = u.Cli.json_as_mapping(project).get("duplication", {})
-        try:
-            return r[m.Infra.ProjectDuplicationOverrides].ok(
-                m.Infra.ProjectDuplicationOverrides.model_validate(
-                    u.Cli.json_as_mapping(duplication)
-                )
-            )
-        except c.ValidationError as exc:
+        validated_overrides = u.validate_value(
+            m.Infra.ProjectDuplicationOverrides, u.Cli.json_as_mapping(duplication)
+        )
+        if validated_overrides.failure:
             return r[m.Infra.ProjectDuplicationOverrides].fail_op(
-                f"[tool.flext.project.duplication] validation ({pyproject_path})", exc
+                f"[tool.flext.project.duplication] validation ({pyproject_path})",
+                validated_overrides.error,
             )
+        return r[m.Infra.ProjectDuplicationOverrides].ok(
+            validated_overrides.value
+        )
 
     def _declared_duplication_trees(self) -> p.Result[t.StrSequence]:
         """Read ``repository.duplication_trees`` from the governed manifest."""
@@ -214,12 +215,13 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             return r[t.StrSequence].fail(
                 f"invalid workspace manifest ({manifest_path}): {loaded.error}"
             )
-        try:
-            manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
-        except c.ValidationError as exc:
+        validated = u.validate_value(m.Infra.WorkspaceManifestSpec, loaded.value.data)
+        if validated.failure:
             return r[t.StrSequence].fail_op(
-                f"workspace manifest model validation ({manifest_path})", exc
+                f"workspace manifest model validation ({manifest_path})",
+                validated.error,
             )
+        manifest = validated.value
         return r[t.StrSequence].ok(tuple(manifest.repository.duplication_trees))
 
     def _scope_paths(self) -> t.StrSequence:

@@ -322,22 +322,22 @@ class FlextInfraMiseArtifactsState:
         )
         if created.failure:
             return result_type.from_failure(created)
-        try:
-            return result_type.ok(
-                m.Infra.CodegenJournalDirectory.model_validate({
-                    **entry.model_dump(),
-                    "before": before,
-                    "created": created.value,
-                })
-            )
-        except c.ValidationError as exc:
+        validated = u.validate_value(
+            m.Infra.CodegenJournalDirectory,
+            {**entry.model_dump(), "before": before, "created": created.value},
+        )
+        if validated.failure:
             rolled_back = u.Cli.atomic_delete_empty_directory_guarded(created.value)
             if rolled_back.failure:
                 return result_type.fail(
-                    f"validate created directory identity failed: {exc}; "
+                    f"validate created directory identity failed: {validated.error}; "
                     f"compensation failed: {rolled_back.error}"
                 )
-            return result_type.fail_op("validate created directory identity", exc)
+            return result_type.fail_op(
+                "validate created directory identity", validated.error
+            )
+        directory = validated.value
+        return result_type.ok(directory)
 
     @classmethod
     def compensate_created_directory(
@@ -500,14 +500,13 @@ class FlextInfraMiseArtifactsState:
                 observed = u.Cli.atomic_inventory_physical_tree(transaction_root)
                 if observed.failure:
                     return r[bool].from_failure(observed)
-                try:
-                    m.Infra.CodegenJournalDirectory.model_validate({
-                        **entry.model_dump(),
-                        "manifest": observed.value,
-                    })
-                except c.ValidationError as exc:
+                validated = u.validate_value(
+                    m.Infra.CodegenJournalDirectory,
+                    {**entry.model_dump(), "manifest": observed.value},
+                )
+                if validated.failure:
                     return r[bool].fail_op(
-                        "validate recovery temporary-tree manifest", exc
+                        "validate recovery temporary-tree manifest", validated.error
                     )
                 removed = u.Cli.atomic_cleanup_physical_tree_guarded(observed.value)
             else:

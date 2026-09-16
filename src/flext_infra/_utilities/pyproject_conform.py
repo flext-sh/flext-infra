@@ -317,10 +317,12 @@ class FlextInfraUtilitiesPyprojectConform:
         if raw_value is None:
             return r[bool].ok(True)
         raw_items = u.Cli.json_as_sequence(raw_value)
-        try:
-            items = t.Infra.STR_SEQ_ADAPTER.validate_python(raw_items, strict=True)
-        except c.ValidationError as exc:
-            return r[bool].fail_op(f"validate dependency group {key}", exc)
+        validated_items = u.validate_value(
+            t.Infra.STR_SEQ_ADAPTER, raw_items, strict=True
+        )
+        if validated_items.failure:
+            return r[bool].fail_op(f"validate dependency group {key}", validated_items.error)
+        items = validated_items.value
         normalized_items: t.MutableSequenceOf[str] = []
         for item in items:
             normalized = cls._canonical_requirement(
@@ -806,12 +808,17 @@ class FlextInfraUtilitiesPyprojectConform:
         uv_workspace = uv.get("workspace")
         if not isinstance(uv_workspace, Mapping):
             return r[bool].fail("root pyproject must define [tool.uv.workspace]")
-        try:
-            members = t.Infra.STR_SEQ_ADAPTER.validate_python(
-                uv_workspace.get("members"), strict=True
+        validated_members = u.validate_value(
+            t.Infra.STR_SEQ_ADAPTER,
+            uv_workspace.get("members"),
+            strict=True,
+        )
+        if validated_members.failure:
+            return r[bool].fail_op(
+                "validate root uv workspace package entries",
+                validated_members.error,
             )
-        except c.ValidationError as exc:
-            return r[bool].fail_op("validate root uv workspace package entries", exc)
+        members = validated_members.value
         expected_members = tuple(
             member.path.as_posix() for member in workspace.subprojects
         )
@@ -961,15 +968,28 @@ class FlextInfraUtilitiesPyprojectConform:
         for key in project_keys:
             if key in live_project:
                 if key == c.Infra.DEPENDENCIES:
-                    try:
-                        required = t.Infra.STR_SEQ_ADAPTER.validate_python(
-                            project.get(key, []), strict=True
+                    validated_runtime = u.validate_value(
+                        t.Infra.STR_SEQ_ADAPTER,
+                        project.get(key, []),
+                        strict=True,
+                    )
+                    validated_custom = u.validate_value(
+                        t.Infra.STR_SEQ_ADAPTER,
+                        live_project[key],
+                        strict=True,
+                    )
+                    if validated_runtime.failure:
+                        return r[str].fail_op(
+                            "validate runtime dependencies",
+                            validated_runtime.error,
                         )
-                        custom = t.Infra.STR_SEQ_ADAPTER.validate_python(
-                            live_project[key], strict=True
+                    if validated_custom.failure:
+                        return r[str].fail_op(
+                            "validate runtime dependencies",
+                            validated_custom.error,
                         )
-                    except c.ValidationError as exc:
-                        return r[str].fail_op("validate runtime dependencies", exc)
+                    required = validated_runtime.value
+                    custom = validated_custom.value
                     owned_names = {
                         FlextInfraUtilitiesDependencies.dep_name(item)
                         for item in required

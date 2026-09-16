@@ -28,15 +28,16 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
     ) -> None:
         """Initialize with rule order settings and optional change callback."""
         super().__init__(on_change=on_change)
-        try:
-            typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
-                order_config
-            )
-            self._order_config: t.SequenceOf[m.Infra.MethodOrderRule] = [
-                m.Infra.MethodOrderRule.model_validate(item) for item in typed_items
-            ]
-        except c.ValidationError:
+        validated = u.validate_value(
+            t.Infra.CONTAINER_DICT_SEQ_ADAPTER, order_config
+        )
+        if validated.failure:
             self._order_config = list[m.Infra.MethodOrderRule]()
+        else:
+            self._order_config: t.SequenceOf[m.Infra.MethodOrderRule] = [
+                m.Infra.MethodOrderRule.model_validate(item)
+                for item in validated.value
+            ]
 
     @override
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:

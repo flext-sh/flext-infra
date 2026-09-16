@@ -85,10 +85,12 @@ class FlextInfraDependencyDetectionRunnersMixin:
                 for item in loaded_result.value:
                     if not isinstance(item, Mapping):
                         continue
-                    try:
-                        typed_item = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(item)
-                    except c.ValidationError:
+                    validated = u.validate_value(
+                        t.Infra.INFRA_MAPPING_ADAPTER, item
+                    )
+                    if validated.failure:
                         continue
+                    typed_item = validated.value
                     converted_issue = self._to_toml_config(typed_item)
                     if len(converted_issue) == len(typed_item):
                         normalized_issues.append(converted_issue)

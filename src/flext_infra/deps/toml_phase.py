@@ -43,7 +43,11 @@ class FlextInfraTomlPhaseService(
         cls, doc: t.Cli.TomlDocument, *phases: m.Infra.Deps.Toml.PhaseConfig
     ) -> t.StrSequence:
         """Apply a declarative phase set to one TOML document."""
-        result: t.StrSequence = cls.model_construct(doc=doc, phases=phases).apply()
+        validated = u.validate_value(cls, {"doc": doc, "phases": phases})
+        if validated.failure:
+            msg = f"invalid phase config: {validated.error}"
+            raise ValueError(msg)
+        result: t.StrSequence = validated.value.apply()
         return result
 
     @classmethod

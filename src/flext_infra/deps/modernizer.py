@@ -82,15 +82,21 @@ class FlextInfraPyprojectModernizer(
         payload_source = u.Cli.toml_mapping_from_text(source)
         if payload_source is None:
             return r[str].fail(f"invalid TOML: {path}")
-        try:
-            payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
-                payload_source
+        validated_payload = u.validate_value(
+            t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER, payload_source
+        )
+        if validated_payload.failure:
+            return r[str].fail_op("pyproject model validation", validated_payload.error)
+        payload = validated_payload.value
+        canonical_dev_result = u.validate_value(
+            t.Infra.STR_SEQ_ADAPTER,
+            u.Infra.canonical_dev_dependencies_from_payload(payload),
+        )
+        if canonical_dev_result.failure:
+            return r[str].fail_op(
+                "canonical dev dependencies validation", canonical_dev_result.error
             )
-            canonical_dev = t.Infra.STR_SEQ_ADAPTER.validate_python(
-                u.Infra.canonical_dev_dependencies_from_payload(payload)
-            )
-        except c.ValidationError as exc:
-            return r[str].fail_op("pyproject model validation", exc)
+        canonical_dev = canonical_dev_result.value
         state = m.Infra.PyprojectDocumentState(
             pyproject_path=path, original_rendered=source, payload=payload
         )
@@ -298,9 +304,10 @@ class FlextInfraPyprojectModernizer(
             if classified.failure:
                 return r[m.Infra.ToolingRuntimeContext].from_failure(classified)
             resolved_project_kind = classified.value
-        try:
-            environments = self._tooling_pyright_environments(raw_environments)
-            runtime = m.Infra.ToolingRuntimeContext.model_validate({
+        environments = self._tooling_pyright_environments(raw_environments)
+        validated = u.validate_value(
+            m.Infra.ToolingRuntimeContext,
+            {
                 "project_kind": resolved_project_kind,
                 "coverage_fail_under": coverage.get("fail_under"),
                 "first_party": ruff_isort.get("known-first-party"),
@@ -344,11 +351,13 @@ class FlextInfraPyprojectModernizer(
                 "ruff_src": ruff.get("src"),
                 "ruff_exclude": ruff.get(c.Infra.EXCLUDE),
                 "ruff_ignore": ruff_lint.get(c.Infra.IGNORE),
-            })
-        except c.ValidationError as exc:
+            },
+        )
+        if validated.failure:
             return r[m.Infra.ToolingRuntimeContext].fail_op(
-                "tooling runtime context validation", exc
+                "tooling runtime context validation", validated.error
             )
+        runtime = validated.value
         return r[m.Infra.ToolingRuntimeContext].ok(runtime)
 
     @staticmethod
