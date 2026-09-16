@@ -30,33 +30,6 @@ class FlextInfraModelsCodegenResults:
             default_factory=tuple, description="Skipped (already existing) file paths"
         )
 
-    class ScaffoldDirRequest(m.ArbitraryTypesModel):
-        """Directory-level scaffold request and accumulation state."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            arbitrary_types_allowed=True, revalidate_instances="never"
-        )
-
-        target_dir: Annotated[Path, m.Field(description="Directory to scaffold")]
-        prefix: Annotated[str, m.Field(description="Generated class name prefix")]
-        modules: Annotated[
-            t.VariadicTuple[t.Quad[str, str, str, str]],
-            m.Field(description="Module skeleton definitions"),
-        ]
-        test_prefix: Annotated[str, m.Field(description="Generated test class prefix")]
-        base_module: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Explicit module owning every generated base class"),
-        ]
-        dry_run: Annotated[
-            bool, m.Field(description="Whether to report creations without writing")
-        ]
-        files_created: Annotated[
-            t.MutableSequenceOf[str], m.Field(description="Created file accumulator")
-        ]
-        files_skipped: Annotated[
-            t.MutableSequenceOf[str], m.Field(description="Skipped file accumulator")
-        ]
 
     class AutoFixResult(mm.ProjectNameMixin, m.ArbitraryTypesModel):
         """Result of auto-fixing namespace violations for a project."""
