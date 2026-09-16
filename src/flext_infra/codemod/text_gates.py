@@ -2,10 +2,9 @@
 
 Capability imported from the flext-infra ``0.20.0-dev`` line and namespaced
 into this makemod cascade beside the ast-grep fixed point: every rule is one
-list entry in ``config/rules/mod/sed.yaml`` (package policy in the rules
-tree; projects override at their own root), one rewrite is a list-driven
-regex replacement with an exact expected-count receipt, and the phase reaches
-a verified rewrite fixed point before the canonical validate gate runs.
+list entry in ``text_rules.yml``, one rewrite is a list-driven regex
+replacement with an exact expected-count receipt, and the phase reaches a
+verified rewrite fixed point before the canonical validate gate runs.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -16,6 +15,7 @@ from __future__ import annotations
 import functools
 import re
 from bisect import bisect_right
+from collections.abc import Mapping
 from fnmatch import fnmatch
 from pathlib import Path
 
@@ -28,12 +28,9 @@ class FlextInfraModTextGateEngine:
     @classmethod
     def load_rules(cls, root: Path) -> p.Result[t.VariadicTuple[m.Infra.ModTextRule]]:
         """Load package and workspace text rules into one validated tuple."""
-        package_root = Path(__file__).resolve().parents[1]
-        relpath = c.Infra.CODEMOD_TEXT_RULES_RELPATH
         sources = (
-            package_root.parent.parent / relpath,
-            package_root / relpath,
-            root / relpath,
+            Path(__file__).parent / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+            root / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
         )
         rules: list[m.Infra.ModTextRule] = []
         seen: set[str] = set()
@@ -43,6 +40,10 @@ class FlextInfraModTextGateEngine:
             parsed = u.Cli.yaml_parse(source.read_text(encoding=c.Cli.ENCODING_DEFAULT))
             if parsed.failure:
                 return r[t.VariadicTuple[m.Infra.ModTextRule]].from_failure(parsed)
+            if not isinstance(parsed.value, Mapping):
+                return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(
+                    f"text rule file must be a YAML mapping: {source}"
+                )
             listing = parsed.value.get(c.Infra.CODEMOD_TEXT_RULES_KEY)
             if not isinstance(listing, list):
                 return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(

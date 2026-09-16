@@ -91,23 +91,15 @@ class FlextInfraConstantsRefactor:
     RK_ALIAS_TO_SUBMODULE: Final[str] = "alias_to_submodule"
     RK_ALLOW_ALIASES: Final[str] = "allow_aliases"
     RK_ALLOW_TARGET_SUFFIXES: Final[str] = "allow_target_suffixes"
+    CODEMOD_RESOURCE_DIRNAME: Final[str] = "codemod"
     CODEMOD_RULE_SUFFIX: Final[str] = ".yml"
     CODEMOD_DOCUMENT_SEPARATOR_RE: Final[t.RegexPattern] = re.compile(
         r"^---\s*$", re.MULTILINE
     )
     CODEMOD_CONFIG_FILENAME: Final[str] = "sgconfig.yml"
-    # Rules-as-data tree (ADR-017): repo-root config/rules is the SSOT; the
-    # wheel force-include maps the tree into the package as distribution data.
-    RULES_TREE_CONFIG_DIRNAME: Final[str] = "config"
-    RULES_TREE_DIRNAME: Final[str] = "rules"
-    RULES_ENGINE_AST_DIRNAME: Final[str] = "ast"
-    RULES_ENGINE_ROPE_DIRNAME: Final[str] = "rope"
-    RULES_MOD_DIRNAME: Final[str] = "mod"
-    CODEMOD_CONFIG_RELPATH: Final[Path] = (
-        Path(RULES_TREE_CONFIG_DIRNAME)
-        / RULES_TREE_DIRNAME
-        / RULES_ENGINE_AST_DIRNAME
-        / CODEMOD_CONFIG_FILENAME
+    # Why: restored — deleted declaration with consumers left behind in codemod_rules.py
+    CODEMOD_CONFIG_RELPATH: Final[Path] = Path(CODEMOD_RESOURCE_DIRNAME) / (
+        CODEMOD_CONFIG_FILENAME
     )
     CODEMOD_RULE_DIRS_KEY: Final[str] = "ruleDirs"
     CODEMOD_UTIL_DIRS_KEY: Final[str] = "utilDirs"
@@ -118,14 +110,7 @@ class FlextInfraConstantsRefactor:
     CODEMOD_SCOPE_RUNTIME: Final[str] = "runtime"
     # Declarative sed-by-list rules: one list entry drives one regex rewrite
     # across the governed scan surface with an exact expected-count receipt.
-    # Package policy lives in the rules tree; projects override at their own
-    # <root>/config/rules/mod/sed.yaml.
-    CODEMOD_TEXT_RULES_RELPATH: Final[Path] = (
-        Path(RULES_TREE_CONFIG_DIRNAME)
-        / RULES_TREE_DIRNAME
-        / RULES_MOD_DIRNAME
-        / "sed.yaml"
-    )
+    CODEMOD_TEXT_RULES_FILENAME: Final[str] = "text_rules.yml"
     CODEMOD_TEXT_RULES_KEY: Final[str] = "rules"
     CODEMOD_TEXT_KEY_ID: Final[str] = "id"
     CODEMOD_TEXT_KEY_DESCRIPTION: Final[str] = "description"
