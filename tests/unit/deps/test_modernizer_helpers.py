@@ -235,33 +235,11 @@ class TestsFlextInfraDepsModernizerHelpers:
         tm.that(result, has="flext-infra")
         tm.that(result, has="flext-tests")
 
-    def test_locked_dependency_versions_skips_non_registry_sources(
-        self, tmp_path: Path
-    ) -> None:
-        """Verify locked dependency versions skips non registry sources."""
-        locked_version = c.Tests.RELEASE_VERSION_TARGET
-        lock_path = tmp_path / "uv.lock"
-        lock_path.write_text(
-            (
-                "version = 1\n"
-                "[manifest]\n"
-                'members = ["flext-core"]\n'
-                "[[package]]\n"
-                'name = "requests"\n'
-                f'version = "{locked_version}"\n'
-                'source = { registry = "https://pypi.org/simple" }\n'
-                "[[package]]\n"
-                'name = "flext-core"\n'
-                'version = "0.12.0-dev"\n'
-                'source = { editable = "." }\n'
-            ),
-            encoding="utf-8",
-        )
-
-        tm.that(
-            u.Infra.locked_dependency_versions(lock_path),
-            eq={"requests": locked_version},
-        )
+    def test_resolved_dependency_versions_excludes_editable_distribution(self) -> None:
+        """Registry versions exclude editable source distributions."""
+        versions = u.Infra.resolved_dependency_versions()
+        tm.that(bool(versions), eq=True)
+        tm.that("flext-infra" in versions, eq=False)
 
     def test_rewrite_requirement_constraint_preserves_extras_and_markers(self) -> None:
         """Verify rewrite requirement constraint preserves extras and markers."""
@@ -269,7 +247,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         tm.that(
             u.Infra.rewrite_requirement_constraint(
                 "httpx[socks]>=0.1; python_version < '3.14'",
-                locked_versions={"httpx": locked_version},
+                resolved_versions={"httpx": locked_version},
             ),
             eq=f"httpx[socks]>={locked_version}; python_version < '3.14'",
         )

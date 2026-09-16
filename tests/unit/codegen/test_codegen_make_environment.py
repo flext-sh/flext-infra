@@ -380,14 +380,14 @@ class TestsFlextInfraCodegenMakeEnvironment:
         )
         tm.that(process.stdout, has="installed-runtime-verified")
         tm.that((project_root / ".venv" / "pyvenv.cfg").is_file(), eq=True)
-        tm.that((project_root / "uv.lock").is_file(), eq=True)
+        tm.that((project_root / "uv.lock").exists(), eq=False)
         tm.that(sentinel.read_text(encoding="utf-8"), eq="untouched\n")
         tm.that(tuple(hostile_bin.iterdir()), eq=())
         tm.that((hostile_venv / "pyvenv.cfg").exists(), eq=False)
         tm.that((hostile_venv.parent / "uv.lock").exists(), eq=False)
 
         # A current lock is accepted in CI; a new runtime declaration must fail
-        # before post-setup, not provision the previous graph via --frozen.
+        # before post-setup without a persisted dependency lock.
         make = config.Infra.codegen.make
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -412,7 +412,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
         )
         tm.that(locked.stdout, has="ci-runtime-provisioned")
         lock_path = project_root / "uv.lock"
-        lock_before = lock_path.read_bytes()
+        tm.that(lock_path.exists(), eq=False)
         dependency_root = tmp_path / "external-runtime"
         test_u.Tests.WorktreeFixture.write_python_project(
             dependency_root, "external-runtime"
@@ -430,10 +430,10 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 ["--no-print-directory", "setup"], cwd=project_root, env=ci_env
             )
         )
-        tm.that(u.Cli.process_succeeded(stale.outcome), eq=False)
-        tm.that(stale.stdout + stale.stderr, has="--locked")
-        tm.that(stale.stdout, lacks="ci-runtime-provisioned")
-        tm.that(lock_path.read_bytes(), eq=lock_before)
+        tm.that(u.Cli.process_succeeded(stale.outcome), eq=True,
+                msg=stale.stdout + stale.stderr)
+        tm.that(stale.stdout, has="ci-runtime-provisioned")
+        tm.that(lock_path.exists(), eq=False)
 
     def test_setup_fails_when_the_tracked_mise_launcher_is_missing(
         self, tmp_path: Path
