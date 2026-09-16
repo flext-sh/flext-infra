@@ -8,7 +8,7 @@ from pathlib import Path
 
 from flext_cli import u as cli_u
 
-from flext_infra import c, m, t
+from flext_infra import m, t
 
 
 class FlextInfraUtilitiesDocsCollectionSources:
@@ -151,11 +151,10 @@ class FlextInfraUtilitiesDocsCollectionSources:
             timestamp = updated
         elif isinstance(updated, date):
             return original, None
-        elif len(updated) == c.Infra.ISO_DATE_STRING_LENGTH:
-            date.fromisoformat(updated)
+        parsed_date = date.fromisoformat(updated)
+        if parsed_date.isoformat() == updated:
             return original, None
-        else:
-            timestamp = datetime.fromisoformat(updated)
+        timestamp = datetime.fromisoformat(updated)
         if timestamp.tzinfo is None:
             return original, None
         return original, timestamp.astimezone(UTC).isoformat().replace("+00:00", "Z")

@@ -13,6 +13,7 @@ from pathlib import Path
 from flext_cli import u as cli_u
 
 from flext_infra.constants import c
+from .._settings import env_lookup as _settings_env_lookup
 from flext_infra.typings import t
 
 from .._settings import env_lookup as _settings_env_lookup
