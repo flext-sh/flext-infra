@@ -449,9 +449,6 @@ class FlextInfraCodegenConformRender:
         gitlinks = self._managed_gitlinks(workspace, codegen)
         if gitlinks.failure:
             return r[m.Infra.MakeRenderContext].from_failure(gitlinks)
-        cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
-            repository, codegen.toolchain
-        )
         extra_verbs = self._merge_extra_verbs(
             repository.extra_verbs,
             (
@@ -496,8 +493,6 @@ class FlextInfraCodegenConformRender:
                 workspace_gitlinks=gitlinks.value,
                 extra_verbs=extra_verbs,
                 script_dispatch=repository.script_dispatch,
-                dependency_cooldown_exclusions=cooldown_exclusions,
-                dependency_cooldown_overrides=cooldown_overrides,
             )
         )
 

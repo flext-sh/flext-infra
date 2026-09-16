@@ -57,7 +57,7 @@ slot registry verification).
 - Public extensions exposed by this project: `FlextInfra`,
   `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
-  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+179 more).
+  `FlextInfraBooleanLogicFixer`, `FlextInfraBudgetGate` (+181 more).
 - Library abstraction boundaries: see AGENTS.md §2.7.
 
 ## Quality Gates
