@@ -177,13 +177,6 @@ class FlextInfraCodegenLazyInitPlanner(
                     if name not in c.Infra.ALIAS_NAMES
                     or lazy_map.get(name) != (root_pkg_name, name)
                 }
-        if is_public_project_root:
-            package_alias = u.Infra.package_alias(package_name=context.current_pkg)
-            if (
-                package_alias not in export_names
-                and (context.pkg_dir / c.Infra.API_PY).is_file()
-            ):
-                export_names.add(package_alias)
         if is_facade_root:
             # flext-pulj (codex) + ulw follow-up: __all__ is the one public
             # contract (dir()/star-import/docs already respect it). Do NOT

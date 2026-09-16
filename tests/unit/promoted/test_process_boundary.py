@@ -39,11 +39,10 @@ class TestsFlextInfraPromotedProcessBoundary:
 import sys
 from pathlib import Path
 
-from flext_infra import m
-from flext_infra.promoted import run
+from flext_infra import m, u
 
 raise SystemExit(
-    run(
+    u.Infra.promoted_run(
         m.Infra.Promoted.Command(
             verb="probe",
             what="probe",

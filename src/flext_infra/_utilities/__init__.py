@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import _git, _rope, _rope_analysis, _semantic_cutover
+    from . import _git, _promoted, _rope, _rope_analysis, _semantic_cutover
     from ._docs_audit_detectors import FlextInfraUtilitiesDocsAuditDetectorsMixin
     from ._docs_command_contract import FlextInfraUtilitiesDocsCommandContractMixin
     from ._docs_generate_plan import FlextInfraUtilitiesDocsGeneratePlanMixin
@@ -51,6 +51,11 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
     )
     from ._project_discovery_shape import FlextInfraUtilitiesProjectDiscoveryShapeMixin
+    from ._promoted.commands import FlextInfraUtilitiesPromotedCommands
+    from ._promoted.execution import FlextInfraUtilitiesPromotedExecution
+    from ._promoted.invocation import FlextInfraUtilitiesPromotedInvocation
+    from ._promoted.rendering import FlextInfraUtilitiesPromotedRendering
+    from ._promoted.workspace import FlextInfraUtilitiesPromotedWorkspace
     from ._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
     from ._rope.project import FlextInfraRopeProject
     from ._rope_analysis.asthelpers import FlextInfraUtilitiesRopeAnalysisAstHelpers
@@ -130,6 +135,7 @@ if TYPE_CHECKING:
     from .process import FlextInfraUtilitiesProcess
     from .project_discovery import FlextInfraUtilitiesProjectDiscovery
     from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+    from .promoted import FlextInfraUtilitiesPromoted
     from .protected_edit import FlextInfraUtilitiesProtectedEdit
     from .protected_edit_apply import FlextInfraUtilitiesProtectedEditApply
     from .protected_edit_linting import FlextInfraUtilitiesProtectedEditLinting
@@ -255,6 +261,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
     "FlextInfraUtilitiesProjectDiscoveryShapeMixin",
     "FlextInfraUtilitiesProjectManagedArtifacts",
+    "FlextInfraUtilitiesPromoted",
+    "FlextInfraUtilitiesPromotedCommands",
+    "FlextInfraUtilitiesPromotedExecution",
+    "FlextInfraUtilitiesPromotedInvocation",
+    "FlextInfraUtilitiesPromotedRendering",
+    "FlextInfraUtilitiesPromotedWorkspace",
     "FlextInfraUtilitiesProtectedEdit",
     "FlextInfraUtilitiesProtectedEditApply",
     "FlextInfraUtilitiesProtectedEditLinting",
@@ -323,6 +335,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorktreeProvisioning",
     "MypyDarwinSupervisor",
     "_git",
+    "_promoted",
     "_rope",
     "_rope_analysis",
     "_semantic_cutover",
@@ -382,6 +395,12 @@ _LAZY_IMPORTS = MappingProxyType(
             "._project_discovery_shape": (
                 "FlextInfraUtilitiesProjectDiscoveryShapeMixin",
             ),
+            "._promoted": ("_promoted",),
+            "._promoted.commands": ("FlextInfraUtilitiesPromotedCommands",),
+            "._promoted.execution": ("FlextInfraUtilitiesPromotedExecution",),
+            "._promoted.invocation": ("FlextInfraUtilitiesPromotedInvocation",),
+            "._promoted.rendering": ("FlextInfraUtilitiesPromotedRendering",),
+            "._promoted.workspace": ("FlextInfraUtilitiesPromotedWorkspace",),
             "._rope": ("_rope",),
             "._rope.pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
             "._rope.project": ("FlextInfraRopeProject",),
@@ -482,6 +501,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".project_managed_artifacts": (
                 "FlextInfraUtilitiesProjectManagedArtifacts",
             ),
+            ".promoted": ("FlextInfraUtilitiesPromoted",),
             ".protected_edit": ("FlextInfraUtilitiesProtectedEdit",),
             ".protected_edit_apply": ("FlextInfraUtilitiesProtectedEditApply",),
             ".protected_edit_linting": ("FlextInfraUtilitiesProtectedEditLinting",),
