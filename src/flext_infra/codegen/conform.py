@@ -2205,6 +2205,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     pytest=config.Infra.tooling.tools.pytest,
+                    uv_install_projects=self._uv_install_projects(
+                        repository_root, workspace
+                    ),
                     mise_bootstrap=self._mise_bootstrap_environment(),
                     dist=dist,
                     state_directory_name=codegen.toolchain.state_directory_name,
@@ -2855,6 +2858,38 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
 
     @staticmethod
+    def _uv_install_projects(
+        repository_root: Path,
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> t.VariadicTuple[m.Infra.UvInstallProject]:
+        """Select declared manifests for the shared environment owner."""
+        workspace_root = repository_root.resolve()
+        runtime_workspace = workspace
+        if (workspace_root / ".git").exists():
+            superproject = u.Infra.git_superproject_working_tree(
+                m.Infra.GitRepoRequest(repo_root=workspace_root)
+            )
+            if superproject.failure:
+                raise ValueError(superproject.error)
+            superproject_path = superproject.value.text.strip()
+            if superproject_path:
+                workspace_root = Path(superproject_path).resolve()
+                declared = FlextInfraWorkspaceDetector.load_workspace_spec(workspace_root)
+                if declared.failure:
+                    raise ValueError(declared.error)
+                runtime_workspace = declared.value
+        return tuple(
+            m.Infra.UvInstallProject(
+                path=repository.path,
+                package=repository.package,
+                editable=repository.editable,
+            )
+            for repository in (
+                runtime_workspace.repository, *runtime_workspace.subprojects
+            )
+        )
+
+    @staticmethod
     def _uv_environment_plan(
         *,
         root: Path,
@@ -2902,6 +2937,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Plan removal of generated projections excluded from this profile."""
         codegen = config.Infra.codegen
         planned: list[m.Infra.CodegenFilePlan] = []
+        for filename in codegen.toolchain.retired_dependency_artifacts:
+            path = root / filename
+            if not path.exists() and not path.is_symlink():
+                continue
+            if path.is_symlink() or not path.is_file():
+                raise ValueError(f"Refusing non-file retired dependency artifact: {path}")
+            absent = cls._absent_file_plan(root, path)
+            if absent.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(absent)
+            planned.append(absent.value)
         for entry in codegen.templates.entries:
             if profile in entry.profiles or "{" in entry.destination:
                 continue

@@ -1556,12 +1556,23 @@ class FlextInfraConfigModels:
             m.Field(description="Declared gitlink branch (. follows the superproject)"),
         ]
 
+    class UvInstallProject(_ConfigContract):
+        """Declared package inputs for the setup environment."""
+
+        path: Annotated[Path, m.Field(description="Path relative to runtime root")]
+        package: Annotated[bool, m.Field(description="Manifest declares an installable package")]
+        editable: Annotated[bool, m.Field(description="Install package as editable")]
+
     class MakeCommandContext(_ConfigContract):
         """Shared command identity required by every generated Make surface."""
 
         infra_cli: Annotated[
             t.NonEmptyStr, m.Field(description="Installed infrastructure CLI command")
         ]
+        uv_install_projects: Annotated[
+            t.VariadicTuple[FlextInfraConfigModels.UvInstallProject],
+            m.Field(description="Complete manifest inputs owned by runtime"),
+        ] = ()
         pytest: Annotated[
             FlextInfraModelsDepsToolSettings.PytestConfig,
             m.Field(description="Typed pytest execution policy"),

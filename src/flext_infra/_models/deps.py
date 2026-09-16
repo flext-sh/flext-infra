@@ -100,7 +100,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
             bool,
             m.Field(
                 alias="rewrite-constraints",
-                description="Rewrite dependency constraints from uv.lock",
+                description="Rewrite dependency constraints from the provisioned runtime",
             ),
         ] = False
 
