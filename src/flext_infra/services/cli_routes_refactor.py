@@ -6,6 +6,7 @@ import functools
 from typing import ClassVar
 
 from flext_infra import m, t
+from flext_infra.codegen.protocol_models import FlextInfraCodegenProtocolModels
 from flext_infra.codemod.batch_apply import FlextInfraCodemodBatchApply
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
@@ -84,6 +85,15 @@ class RefactorRoutes(CliRouteBase):
                 transformer_factory=FlextInfraRefactorDataclassModelizer,
                 description="dataclass modelizer",
             ),
+        ),
+        m.Cli.ResultCommandRoute(
+            name="protocol-models",
+            help_text=(
+                "Assemble the member's generated structural protocols from "
+                "its validated models; dry-run reports drift"
+            ),
+            model_cls=FlextInfraCodegenProtocolModels,
+            handler=FlextInfraCodegenProtocolModels.execute_command,
         ),
         m.Cli.ResultCommandRoute(
             name="mod",
