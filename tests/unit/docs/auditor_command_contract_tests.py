@@ -130,7 +130,7 @@ make test PROJECT=flext-demo MATCH=unit
         tm.that(ok, eq=[])
 
         legacy = "\n".join(
-            f"make {spec.name} APPLY=Y" for spec in config.Infra.codegen.make.verbs
+            f"make {spec.name}" for spec in config.Infra.codegen.make.verbs
         )
         bad = u.Infra.docs_command_contract_content_issues(
             f"```bash\n{legacy}\n```\n",
@@ -236,7 +236,7 @@ ruff check src
         )
         guide = scope.path / "docs/guides/commands.md"
         guide.parent.mkdir(parents=True)
-        token = " APPLY=Y" if "APPLY" in expected else ""
+        token = "" if "APPLY" in expected else ""
         u.write_file(guide, f"```bash\nmake {verb_name}{token}\n```\n")
 
         issues = u.Infra.docs_command_contract_issues(scope)
@@ -263,7 +263,7 @@ ruff check src
         )
         tm.that(u.Infra.docs_command_contract_issues(scope), eq=[])
 
-        u.write_file(guide, f"```bash\nmake {spec.name} APPLY=Y\n```\n")
+        u.write_file(guide, f"```bash\nmake {spec.name}\n```\n")
         legacy = u.Infra.docs_command_contract_issues(scope)
         tm.that(len(legacy), eq=1)
         tm.that(legacy[0].message, has="legacy `APPLY` flag is exterminated")

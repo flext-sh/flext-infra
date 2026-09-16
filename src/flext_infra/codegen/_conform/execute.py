@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import override
+from typing import Final, override
 
 from ... import c, config, m, p, r, t, u
 from ...docs import FlextInfraDocGenerator
@@ -213,11 +213,32 @@ class FlextInfraCodegenConformExecute:
         scope_root: Path,
         transaction: FlextInfraCodegenTransaction,
     ) -> p.Result[m.Infra.CodegenResult]:
-        """Materialize scaffold parents, then run one locked generation cycle."""
+        """Materialize scaffold parents, then run one locked generation cycle.
+
+        A mid-cycle source mutation by another actor surfaces as the atomic
+        CAS signature. The cycle re-plans from the current tree (bounded),
+        converging with concurrent writers instead of aborting the whole
+        fleet generation; anything else fails through unchanged.
+        """
         prepared = self._prepare_scaffold_directories(request)
         if prepared.failure:
             return r[m.Infra.CodegenResult].from_failure(prepared)
-        result = self._execute_managed_locked_prepared(request, scope_root, transaction)
+        attempts = 0
+        result = r[m.Infra.CodegenResult].fail("unreached")
+        while attempts < self._SOURCE_RACE_CYCLES:
+            attempts += 1
+            result = self._execute_managed_locked_prepared(
+                request, scope_root, transaction
+            )
+            if result.success:
+                return result
+            if not self._is_source_race(result.error):
+                break
+            u.Cli.info(
+                "stage=publish mode=converge "
+                f"attempt={attempts}/{self._SOURCE_RACE_CYCLES} "
+                "reason=atomic source changed; re-planning from current tree"
+            )
         if result.success:
             return result
         rollback = self._rollback_scaffold_directories(prepared.value)
@@ -227,6 +248,22 @@ class FlextInfraCodegenConformExecute:
                 f"scaffold directory rollback failed: {rollback.error}"
             )
         return result
+
+    _SOURCE_RACE_CYCLES: Final[int] = 3
+    """Bounded convergence attempts after a mid-cycle source mutation."""
+
+    _SOURCE_RACE_MARKERS: Final[tuple[str, ...]] = (
+        "atomic source changed",
+        "atomic destination parent is missing",
+        "atomic source has conflicting snapshots",
+    )
+    """Failure signatures meaning the tree mutated under one locked cycle."""
+
+    @classmethod
+    def _is_source_race(cls, error: str | None) -> bool:
+        """Return whether one failure signature is a mid-cycle source mutation."""
+        message = error or ""
+        return any(marker in message for marker in cls._SOURCE_RACE_MARKERS)
 
     def _lazy_phase(
         self, request: m.Infra.CodegenConformRequest

@@ -35,7 +35,7 @@ defeitos customizados resolvidos nem autoriza desativar seus detectores.
 nas branches de integração, comprovar geração/runtime também em `ai-hub` e
 `cosmos-main`, e exterminar o contrato `APPLY` em todos os projetos. A exceção
 de simulação encontrada nas orientações desses consumidores está superada;
-nenhuma forma `APPLY=N` ou `APPLY=Y` deve permanecer como interface suportada.
+nenhuma forma ou deve permanecer como interface suportada.
 A autorização administrativa é registrada como autorização do operador, não
 como aprovação independente nem como evidência de testes aprovados.
 
@@ -190,8 +190,8 @@ a `flext-la3z5`.
 
 Há divergências documentais que não podem ser ocultadas: ADR-005 §6 contém a
 proibição antiga de AST; ADR-010 §3b e a skill local descrevem o circuito
-AST/Rope/LSP. ADR-010 §2 ainda menciona `APPLY=Y`, enquanto o plano de 14/09
-determina retirar `APPLY`. O checkpoint compartilhado continha `APPLY=N`.
+AST/Rope/LSP. ADR-010 §2 ainda menciona, enquanto o plano de 14/09
+determina retirar `APPLY`. O checkpoint compartilhado continha.
 Na retomada, essa divergência foi corrigida no template: os verbos executam
 sua operação fixa e `make gen` regenerou o Makefile com exit 0. A aceitação
 completa dos testes permanece pendente; o reparo não deve ser confundido com

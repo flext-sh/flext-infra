@@ -60,6 +60,12 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         }
         for module_entry in package_entry.modules:
             py_file = module_entry.file_path
+            # Operator ruling (2026-09-16, universal, no exceptions): a light
+            # package init exports ONLY its direct children. Subdirectory
+            # symbols stay in the subpackage's own init — never re-exported
+            # upward, in the root or anywhere else.
+            if py_file.parent != context.pkg_dir:
+                continue
             child_dir = py_file.parent / py_file.stem
             child_entry = self._package_entry(child_dir)
             # flext-pulj: test artifacts never enter an installable package ABI.
