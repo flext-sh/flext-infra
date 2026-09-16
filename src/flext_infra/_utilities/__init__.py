@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import _git, _rope, _rope_analysis
+    from . import _git, _pyproject, _rope, _rope_analysis
     from ._docs_audit_detectors import FlextInfraUtilitiesDocsAuditDetectorsMixin
     from ._docs_command_contract import FlextInfraUtilitiesDocsCommandContractMixin
     from ._docs_generate_plan import FlextInfraUtilitiesDocsGeneratePlanMixin
@@ -51,6 +51,12 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
     )
     from ._project_discovery_shape import FlextInfraUtilitiesProjectDiscoveryShapeMixin
+    from ._pyproject.base import FlextInfraUtilitiesPyprojectConformBase
+    from ._pyproject.document import FlextInfraUtilitiesPyprojectDocument
+    from ._pyproject.overlay import FlextInfraUtilitiesPyprojectOverlay
+    from ._pyproject.requirements import FlextInfraUtilitiesPyprojectRequirements
+    from ._pyproject.toml_phases import FlextInfraUtilitiesPyprojectTomlPhases
+    from ._pyproject.uv_sources import FlextInfraUtilitiesPyprojectUvSources
     from ._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
     from ._rope.project import FlextInfraRopeProject
     from ._rope_analysis.asthelpers import FlextInfraUtilitiesRopeAnalysisAstHelpers
@@ -258,6 +264,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesProtectedEditWrites",
     "FlextInfraUtilitiesPyproject",
     "FlextInfraUtilitiesPyprojectConform",
+    "FlextInfraUtilitiesPyprojectConformBase",
+    "FlextInfraUtilitiesPyprojectDocument",
+    "FlextInfraUtilitiesPyprojectOverlay",
+    "FlextInfraUtilitiesPyprojectRequirements",
+    "FlextInfraUtilitiesPyprojectTomlPhases",
+    "FlextInfraUtilitiesPyprojectUvSources",
     "FlextInfraUtilitiesPyrefly",
     "FlextInfraUtilitiesQualifiedNames",
     "FlextInfraUtilitiesRefactor",
@@ -309,6 +321,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorktreeProvisioning",
     "MypyDarwinSupervisor",
     "_git",
+    "_pyproject",
     "_rope",
     "_rope_analysis",
     "git_stdin",
@@ -367,6 +380,13 @@ _LAZY_IMPORTS = MappingProxyType(
             "._project_discovery_shape": (
                 "FlextInfraUtilitiesProjectDiscoveryShapeMixin",
             ),
+            "._pyproject": ("_pyproject",),
+            "._pyproject.base": ("FlextInfraUtilitiesPyprojectConformBase",),
+            "._pyproject.document": ("FlextInfraUtilitiesPyprojectDocument",),
+            "._pyproject.overlay": ("FlextInfraUtilitiesPyprojectOverlay",),
+            "._pyproject.requirements": ("FlextInfraUtilitiesPyprojectRequirements",),
+            "._pyproject.toml_phases": ("FlextInfraUtilitiesPyprojectTomlPhases",),
+            "._pyproject.uv_sources": ("FlextInfraUtilitiesPyprojectUvSources",),
             "._rope": ("_rope",),
             "._rope.pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
             "._rope.project": ("FlextInfraRopeProject",),

@@ -634,8 +634,8 @@ class FlextInfraModelsDepsToolConfig(
         platform: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = m.Field(
             description="Platform overrides"
         )
-        integration: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = (
-            m.Field(description="Integration overrides")
+        integration: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = m.Field(
+            description="Integration overrides"
         )
         app: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = m.Field(
             description="App overrides"
@@ -739,6 +739,69 @@ class FlextInfraModelsDepsToolConfig(
         settings: Annotated[
             t.VariadicTuple[FlextInfraModelsDepsToolConfig.ToolingScalarSetting],
             m.Field(description="Resolved environment diagnostics"),
+        ]
+
+    class ToolingConformedTools(m.FlexibleModel):
+        """Typed view of the ``[tool]`` tables one conformed pyproject carries."""
+
+        coverage_fail_under: Annotated[
+            int,
+            m.Field(
+                validation_alias=m.AliasPath("coverage", "report", "fail_under"),
+                description="Conformed coverage threshold",
+            ),
+        ]
+        deptry: Annotated[t.JsonMapping, m.Field(description="Conformed deptry table")]
+        mypy: Annotated[t.JsonMapping, m.Field(description="Conformed mypy table")]
+        mypy_path: Annotated[
+            t.StrTuple,
+            m.Field(
+                validation_alias=m.AliasPath("mypy", "mypy_path"),
+                description="Synced Mypy search paths, absent before the first sync",
+            ),
+        ] = ()
+        pyrefly: Annotated[
+            t.JsonMapping, m.Field(description="Conformed pyrefly table")
+        ]
+        pyrefly_search_path: Annotated[
+            t.StrTuple,
+            m.Field(
+                validation_alias=m.AliasPath("pyrefly", "search-path"),
+                description="Synced Pyrefly search paths, absent before the first sync",
+            ),
+        ] = ()
+        pyright: Annotated[
+            t.JsonMapping, m.Field(description="Conformed pyright table")
+        ]
+        first_party: Annotated[
+            t.StrTuple,
+            m.Field(
+                validation_alias=m.AliasPath(
+                    "ruff", "lint", "isort", "known-first-party"
+                ),
+                description="Conformed first-party namespaces",
+            ),
+        ]
+        ruff_src: Annotated[
+            t.StrTuple,
+            m.Field(
+                validation_alias=m.AliasPath("ruff", "src"),
+                description="Conformed Ruff source roots",
+            ),
+        ]
+        ruff_exclude: Annotated[
+            t.StrTuple,
+            m.Field(
+                validation_alias=m.AliasPath("ruff", "exclude"),
+                description="Conformed Ruff exclusions",
+            ),
+        ]
+        ruff_ignore: Annotated[
+            t.StrTuple,
+            m.Field(
+                validation_alias=m.AliasPath("ruff", "lint", "ignore"),
+                description="Conformed Ruff ignores",
+            ),
         ]
 
     # flext-j47u (codex): explicit runtime-only values keep the Jinja structure full.
