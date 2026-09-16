@@ -32,7 +32,7 @@ class FlextInfraCodegenConformBootstrap:
         The filesystem is the SSOT: a verb is emitted only when its all.sh
         entrypoint exists. No manual list is required.
         """
-        scripts_dir = repository_root / "scripts"
+        scripts_dir = repository_root / c.Infra.DIR_SCRIPTS
         if not scripts_dir.is_dir():
             return ()
         discovered = [
@@ -104,3 +104,6 @@ class FlextInfraCodegenConformBootstrap:
             case _:
                 msg = f"Unsupported codegen conform surface: {surface}"
                 raise ValueError(msg)
+
+
+__all__: list[str] = ["FlextInfraCodegenConformBootstrap"]

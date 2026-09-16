@@ -14,7 +14,6 @@ from pathlib import Path
 
 from flext_cli import r, u
 
-from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
@@ -37,11 +36,11 @@ class FlextInfraUtilitiesRefactor:
             return []
         if isinstance(value, str):
             return [value]
-        try:
-            return list(t.Infra.STR_SEQ_ADAPTER.validate_python(value))
-        except (TypeError, c.ValidationError) as exc:
-            msg = "expected list value"
-            raise TypeError(msg) from exc
+        validated = u.validate_value(t.Infra.STR_SEQ_ADAPTER, value)
+        if validated.failure:
+            msg = f"expected list value: {validated.error}"
+            raise TypeError(msg) from validated.exception
+        return list(validated.value)
 
     @staticmethod
     def normalize_module_path(path_value: str | Path) -> str:

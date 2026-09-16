@@ -6,7 +6,7 @@ import tarfile
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, e, m, u
+from flext_infra import c, m, u
 
 from ._release_artifact_metadata import FlextInfraReleaseArtifactMetadataMixin
 
@@ -114,14 +114,15 @@ class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixi
             return r[m.Infra.SourceSnapshot].fail(
                 f"extract committed release source failed: {exc}", exception=exc
             )
-        try:
-            snapshot = m.Infra.SourceSnapshot(
-                commit_oid=oid, source_date_epoch=int(source_date_epoch)
+        validated = u.validate_value(
+            m.Infra.SourceSnapshot,
+            {"commit_oid": oid, "source_date_epoch": int(source_date_epoch)},
+        )
+        if validated.failure:
+            return r[m.Infra.SourceSnapshot].fail_op(
+                "validate committed release source identity", validated.error
             )
-        except c.ValidationError as exc:
-            failed = e.fail_validation(error=exc)
-            return r[m.Infra.SourceSnapshot].fail(str(failed.error))
-        return r[m.Infra.SourceSnapshot].ok(snapshot)
+        return r[m.Infra.SourceSnapshot].ok(validated.value)
 
     @staticmethod
     def _write_release_text(path: Path, content: str) -> p.Result[bool]:

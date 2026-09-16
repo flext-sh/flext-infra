@@ -9,7 +9,7 @@ from flext_cli import m
 
 from ... import t
 from ..._constants import FlextInfraConstantsCodegenProject
-from .. import FlextInfraModelsDepsToolSettings
+from ..deps_tool_config import FlextInfraModelsDepsToolConfig
 from .._defaults import tool_version_field
 from .beads import FlextInfraConfigModelsBeads
 from .contract import FlextInfraConfigModelsContract
@@ -27,7 +27,7 @@ class FlextInfraConfigModelsContexts:
             t.NonEmptyStr, m.Field(description="Installed infrastructure CLI command")
         ]
         pytest: Annotated[
-            FlextInfraModelsDepsToolSettings.PytestConfig,
+            FlextInfraModelsDepsToolConfig.PytestConfig,
             m.Field(description="Typed pytest execution policy"),
         ]
 
@@ -163,7 +163,7 @@ class FlextInfraConfigModelsContexts:
             int, m.Field(gt=0, description="Forced-termination grace period")
         ]
         tooling_runtime: Annotated[
-            FlextInfraModelsDepsToolSettings.ToolingRuntimeContext,
+            FlextInfraModelsDepsToolConfig.ToolingRuntimeContext,
             m.Field(description="Resolved project/workspace tooling values"),
         ]
 
@@ -269,7 +269,7 @@ class FlextInfraConfigModelsContexts:
             m.Field(description="Resolved upstream dependency profile"),
         ]
         tooling: Annotated[
-            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
+            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
             m.Field(description="Canonical validated tooling policy"),
         ]
         environment_path_prepends: Annotated[

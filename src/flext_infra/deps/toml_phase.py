@@ -60,14 +60,7 @@ class FlextInfraTomlPhaseService(
     @override
     def execute(self) -> p.Result[t.StrSequence]:
         """Apply all phases and return one flat change list."""
-        return r[t.StrSequence].create_from_callable(
-            lambda: tuple(
-                change
-                for phase in self.phases
-                for change in self._apply_phase(phase, parent_path=())
-            ),
-            error_code="toml_phase_execute",
-        )
+        return r[t.StrSequence].ok(self.apply())
 
     def apply(self) -> t.StrSequence:
         """Apply phases and return one flat change list."""

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 
@@ -147,14 +147,14 @@ class FlextInfraUtilitiesDocsCollectionSources:
         if updated is None:
             return None, None
         original = updated if isinstance(updated, str) else updated.isoformat()
-        if isinstance(updated, datetime):
+        if isinstance(updated, str):
+            timestamp = datetime.fromisoformat(updated)
+            if timestamp.date().isoformat() == updated:
+                return original, None
+        elif isinstance(updated, datetime):
             timestamp = updated
-        elif isinstance(updated, date):
+        else:
             return original, None
-        parsed_date = date.fromisoformat(updated)
-        if parsed_date.isoformat() == updated:
-            return original, None
-        timestamp = datetime.fromisoformat(updated)
         if timestamp.tzinfo is None:
             return original, None
         return original, timestamp.astimezone(UTC).isoformat().replace("+00:00", "Z")

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, e, m, t, u
+from flext_infra import c, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -162,16 +162,19 @@ class FlextInfraDocGeneratorBundleMixin:
         )
         if stable.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(stable)
-        try:
-            bundle = m.Infra.DocsGenerationBundle(
-                scopes=tuple(normalized_scopes),
-                source_states=sources.value,
-                repository_root=repository_root,
+        validated_bundle = u.validate_value(
+            m.Infra.DocsGenerationBundle,
+            {
+                "scopes": tuple(normalized_scopes),
+                "source_states": sources.value,
+                "repository_root": repository_root,
+            },
+        )
+        if validated_bundle.failure:
+            return r[m.Infra.DocsGenerationBundle].fail_op(
+                "docs generation bundle validation", validated_bundle.error
             )
-        except c.ValidationError as exc:
-            failed = e.fail_validation("docs generation bundle validation", error=exc)
-            return r[m.Infra.DocsGenerationBundle].fail(str(failed.error))
-        return r[m.Infra.DocsGenerationBundle].ok(bundle)
+        return r[m.Infra.DocsGenerationBundle].ok(validated_bundle.value)
 
 
 __all__: list[str] = ["FlextInfraDocGeneratorBundleMixin"]

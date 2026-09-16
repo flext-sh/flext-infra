@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, e, t, u
+from flext_infra import c, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -88,14 +88,13 @@ class FlextInfraDependencyDetectionRunnersMixin:
                 for item in loaded_result.value:
                     if not isinstance(item, Mapping):
                         continue
-                    try:
-                        typed_item = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(item)
-                    except c.ValidationError as exc:
-                        failed = e.fail_validation(error=exc)
+                    validated = u.validate_value(t.Infra.INFRA_MAPPING_ADAPTER, item)
+                    if validated.failure:
                         validation_failure = r[
                             t.Pair[t.SequenceOf[t.JsonMapping], int]
-                        ].fail(str(failed.error), exception=failed.exception)
+                        ].fail_op("validate deptry issue", validated.error)
                         break
+                    typed_item = validated.value
                     converted_issue = self._to_toml_config(typed_item)
                     if len(converted_issue) == len(typed_item):
                         normalized_issues.append(converted_issue)

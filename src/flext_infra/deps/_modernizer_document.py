@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, config, e, m, t, u
+from flext_infra import c, config, m, t, u
 from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
 
 from .extra_paths import FlextInfraExtraPathsManager
@@ -83,18 +83,18 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         payload_source = u.Cli.toml_mapping_from_text(original_rendered)
         if payload_source is None:
             return r[m.Infra.PyprojectDocumentState].fail(f"invalid TOML: {path}")
-        try:
-            payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
-                payload_source
+        validated = u.validate_value(
+            t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER, payload_source
+        )
+        if validated.failure:
+            return r[m.Infra.PyprojectDocumentState].fail_op(
+                "TOML payload validation", validated.error
             )
-        except c.ValidationError as exc:
-            failed = e.fail_validation("TOML payload validation", error=exc)
-            return r[m.Infra.PyprojectDocumentState].fail(str(failed.error))
         return r[m.Infra.PyprojectDocumentState].ok(
             m.Infra.PyprojectDocumentState(
                 pyproject_path=path,
                 original_rendered=original_rendered,
-                payload=payload,
+                payload=validated.value,
             )
         )
 

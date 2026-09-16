@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
-from flext_infra import c, e, m, u
+from flext_infra import c, m, u
 
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 
@@ -79,18 +79,15 @@ class FlextInfraMiseArtifactsVerification:
                 )
                 if transition.failure:
                     return result_type.from_failure(transition)
-            try:
-                registered.append(
-                    m.Infra.CodegenJournalDirectory.model_validate({
-                        **directory.model_dump(),
-                        "manifest": observed.value,
-                    })
+            validated = u.validate_value(
+                m.Infra.CodegenJournalDirectory,
+                {**directory.model_dump(), "manifest": observed.value},
+            )
+            if validated.failure:
+                return result_type.fail_op(
+                    "validate temporary-tree manifest", validated.error
                 )
-            except c.ValidationError as exc:
-                failed = e.fail_validation(
-                    "validate temporary-tree manifest", error=exc
-                )
-                return result_type.fail(str(failed.error))
+            registered.append(validated.value)
         return result_type.ok(tuple(registered))
 
     @classmethod

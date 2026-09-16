@@ -13,7 +13,7 @@ from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
 from flext_core import r
-from flext_infra import c, e, t, u
+from flext_infra import c, t, u
 
 from ._release_artifact_archive import FlextInfraReleaseArtifactArchiveMixin
 
@@ -86,13 +86,12 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
         if raw_value is None:
             return r[bool].ok(True)
         raw_items = u.Cli.json_as_sequence(raw_value)
-        try:
-            requirements = t.Infra.STR_SEQ_ADAPTER.validate_python(
-                raw_items, strict=True
+        validated = u.validate_value(t.Infra.STR_SEQ_ADAPTER, raw_items, strict=True)
+        if validated.failure:
+            return r[bool].fail_op(
+                f"validate release dependency group {key}", validated.error
             )
-        except c.ValidationError as exc:
-            failed = e.fail_validation(error=exc)
-            return r[bool].fail(str(failed.error))
+        requirements = validated.value
         rewritten: t.MutableSequenceOf[str] = []
         for requirement in requirements:
             result = cls._release_requirement(requirement, versions)
@@ -183,13 +182,14 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
         if targets is None or wheel is None:
             return r[bool].fail("release pyproject must define a Hatch wheel target")
         raw_packages = u.Cli.toml_value(wheel, "packages")
-        try:
-            packages = t.Infra.STR_SEQ_ADAPTER.validate_python(
-                u.Cli.json_as_sequence(raw_packages), strict=True
-            )
-        except c.ValidationError as exc:
-            failed = e.fail_validation(error=exc)
-            return r[bool].fail(str(failed.error))
+        validated = u.validate_value(
+            t.Infra.STR_SEQ_ADAPTER,
+            u.Cli.json_as_sequence(raw_packages),
+            strict=True,
+        )
+        if validated.failure:
+            return r[bool].fail_op("validate Hatch wheel packages", validated.error)
+        packages = validated.value
         if not packages:
             return r[bool].fail("Hatch wheel target must declare packages")
         force_include = u.Cli.toml_table_child(wheel, "force-include")

@@ -1,25 +1,37 @@
-"""Codegen conformance facade: joins the mixin modules via MRO."""
+"""Codegen conformance base: joins every responsibility family via MRO."""
 
 from __future__ import annotations
 
 from typing import Annotated
 
 from ... import m, s
-from .._conform_gitignore import FlextInfraCodegenConformGitignoreMixin
+from .artifact_render import FlextInfraCodegenConformArtifactRender
+from .beads_routes import FlextInfraCodegenConformBeadsRoutes
 from .bootstrap import FlextInfraCodegenConformBootstrap
+from .context_render import FlextInfraCodegenConformContextRender
+from .docs_ownership import FlextInfraCodegenConformDocsOwnership
 from .execute import FlextInfraCodegenConformExecute
-from .misc import FlextInfraCodegenConformMisc
+from .existing_plan import FlextInfraCodegenConformExistingPlan
+from .file_plans import FlextInfraCodegenConformFilePlans
+from .gitignore import FlextInfraCodegenConformGitignore
 from .plan import FlextInfraCodegenConformPlan
-from .render import FlextInfraCodegenConformRender
+from .pyproject_policy import FlextInfraCodegenConformPyprojectPolicy
+from .scaffold_plan import FlextInfraCodegenConformScaffoldPlan
 
 
-class FlextInfraCodegenConform(
-    FlextInfraCodegenConformGitignoreMixin,
-    FlextInfraCodegenConformBootstrap,
-    FlextInfraCodegenConformPlan,
+class FlextInfraCodegenConformBase(
     FlextInfraCodegenConformExecute,
-    FlextInfraCodegenConformRender,
-    FlextInfraCodegenConformMisc,
+    FlextInfraCodegenConformPlan,
+    FlextInfraCodegenConformScaffoldPlan,
+    FlextInfraCodegenConformExistingPlan,
+    FlextInfraCodegenConformArtifactRender,
+    FlextInfraCodegenConformContextRender,
+    FlextInfraCodegenConformBeadsRoutes,
+    FlextInfraCodegenConformDocsOwnership,
+    FlextInfraCodegenConformFilePlans,
+    FlextInfraCodegenConformPyprojectPolicy,
+    FlextInfraCodegenConformGitignore,
+    FlextInfraCodegenConformBootstrap,
     s[m.Infra.CodegenResult],
 ):
     """Plan every selected output, then atomically write only a clean plan."""
@@ -42,4 +54,4 @@ class FlextInfraCodegenConform(
     ] = None
 
 
-__all__: list[str] = ["FlextInfraCodegenConform"]
+__all__: list[str] = ["FlextInfraCodegenConformBase"]

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
-from flext_infra import c, e, m, u
+from flext_infra import c, m, u
 
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 from ._mise_artifacts_verification import FlextInfraMiseArtifactsVerification as verify
@@ -322,22 +322,21 @@ class FlextInfraMiseArtifactsState:
         )
         if created.failure:
             return result_type.from_failure(created)
-        try:
-            return result_type.ok(
-                m.Infra.CodegenJournalDirectory.model_validate({
-                    **entry.model_dump(),
-                    "before": before,
-                    "created": created.value,
-                })
-            )
-        except c.ValidationError as exc:
-            failed = e.fail_validation("validate created directory identity", error=exc)
+        validated = u.validate_value(
+            m.Infra.CodegenJournalDirectory,
+            {**entry.model_dump(), "before": before, "created": created.value},
+        )
+        if validated.failure:
             rolled_back = u.Cli.atomic_delete_empty_directory_guarded(created.value)
             if rolled_back.failure:
                 return result_type.fail(
-                    f"{failed.error}; compensation failed: {rolled_back.error}"
+                    f"validate created directory identity failed: {validated.error}; "
+                    f"compensation failed: {rolled_back.error}"
                 )
-            return result_type.fail(str(failed.error))
+            return result_type.fail_op(
+                "validate created directory identity", validated.error
+            )
+        return result_type.ok(validated.value)
 
     @classmethod
     def compensate_created_directory(
@@ -500,16 +499,15 @@ class FlextInfraMiseArtifactsState:
                 observed = u.Cli.atomic_inventory_physical_tree(transaction_root)
                 if observed.failure:
                     return r[bool].from_failure(observed)
-                try:
-                    m.Infra.CodegenJournalDirectory.model_validate({
-                        **entry.model_dump(),
-                        "manifest": observed.value,
-                    })
-                except c.ValidationError as exc:
-                    failed = e.fail_validation(
-                        "validate recovery temporary-tree manifest", error=exc
+                validated_manifest = u.validate_value(
+                    m.Infra.CodegenJournalDirectory,
+                    {**entry.model_dump(), "manifest": observed.value},
+                )
+                if validated_manifest.failure:
+                    return r[bool].fail_op(
+                        "validate recovery temporary-tree manifest",
+                        validated_manifest.error,
                     )
-                    return r[bool].fail(str(failed.error))
                 removed = u.Cli.atomic_cleanup_physical_tree_guarded(observed.value)
             else:
                 observed = verify.authorized_cleanup_manifest(layout, journal, entry)
