@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, t, u
-from flext_infra.api import infra
+
+from ..api import infra
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping

@@ -38,7 +38,6 @@ if TYPE_CHECKING:
     from .census import FlextInfraModelsCensus
     from .check import FlextInfraModelsCheck
     from .codegen import FlextInfraModelsCodegen
-    from .codegen_journal import FlextInfraModelsCodegenJournal
     from .codegen_render import FlextInfraModelsCodegenRender
     from .codegen_toolchain import FlextInfraModelsCodegenToolchain
     from .codemod import FlextInfraModelsCodemod
@@ -48,6 +47,14 @@ if TYPE_CHECKING:
     from .deps_tool_config import FlextInfraModelsDepsToolSettings
     from .deps_tool_config_linters import FlextInfraModelsDepsToolConfigLinters
     from .deps_tool_config_project import FlextInfraModelsDepsToolConfigProject
+    from .deps_tool_config_project_artifacts import (
+        FlextInfraModelsDepsToolConfigProjectArtifacts,
+    )
+    from .deps_tool_config_project_gitignore import (
+        FlextInfraModelsDepsToolConfigProjectGitignore,
+    )
+    from .deps_tool_config_project_mise import FlextInfraModelsDepsToolConfigProjectMise
+    from .deps_tool_config_project_ruff import FlextInfraModelsDepsToolConfigProjectRuff
     from .deps_tool_config_type_checkers import (
         FlextInfraModelsDepsToolConfigTypeCheckers,
     )
@@ -60,6 +67,7 @@ if TYPE_CHECKING:
     from .git import FlextInfraModelsGit
     from .layout import FlextInfraModelsLayout
     from .mise_toolchain import FlextInfraModelsMiseToolchain
+    from .mise_toolchain_base import FlextInfraModelsMiseToolchainBase
     from .mixins import FlextInfraModelsMixins
     from .promoted import FlextInfraModelsPromoted
     from .refactor import FlextInfraModelsRefactor
@@ -96,7 +104,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsCheck",
     "FlextInfraModelsCodegen",
     "FlextInfraModelsCodegenFixModels",
-    "FlextInfraModelsCodegenJournal",
     "FlextInfraModelsCodegenJournalModels",
     "FlextInfraModelsCodegenLazyInitModels",
     "FlextInfraModelsCodegenPipelineModels",
@@ -110,6 +117,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsDepsToml",
     "FlextInfraModelsDepsToolConfigLinters",
     "FlextInfraModelsDepsToolConfigProject",
+    "FlextInfraModelsDepsToolConfigProjectArtifacts",
+    "FlextInfraModelsDepsToolConfigProjectGitignore",
+    "FlextInfraModelsDepsToolConfigProjectMise",
+    "FlextInfraModelsDepsToolConfigProjectRuff",
     "FlextInfraModelsDepsToolConfigTypeCheckers",
     "FlextInfraModelsDepsToolSettings",
     "FlextInfraModelsDocs",
@@ -144,6 +155,7 @@ __all__: tuple[str, ...] = (
     "_config",
     "_git",
     "immutable_empty_mapping",
+    "tool_version_field",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -156,7 +168,6 @@ _LAZY_IMPORTS = MappingProxyType(
             "._codegen.pipeline": ("FlextInfraModelsCodegenPipelineModels",),
             "._codegen.scaffold": ("FlextInfraModelsCodegenScaffoldModels",),
             "._codegen.transaction": ("FlextInfraModelsCodegenTransactionModels",),
-            ".mise_toolchain": ("FlextInfraModelsMiseToolchain",),
             "._config": ("_config",),
             "._config.artifact": ("FlextInfraConfigModelsArtifact",),
             "._config.beads": ("FlextInfraConfigModelsBeads",),
@@ -181,7 +192,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".census": ("FlextInfraModelsCensus",),
             ".check": ("FlextInfraModelsCheck",),
             ".codegen": ("FlextInfraModelsCodegen",),
-            ".codegen_journal": ("FlextInfraModelsCodegenJournal",),
             ".codegen_render": ("FlextInfraModelsCodegenRender",),
             ".codegen_toolchain": ("FlextInfraModelsCodegenToolchain",),
             ".codemod": ("FlextInfraModelsCodemod",),
@@ -191,6 +201,18 @@ _LAZY_IMPORTS = MappingProxyType(
             ".deps_tool_config": ("FlextInfraModelsDepsToolSettings",),
             ".deps_tool_config_linters": ("FlextInfraModelsDepsToolConfigLinters",),
             ".deps_tool_config_project": ("FlextInfraModelsDepsToolConfigProject",),
+            ".deps_tool_config_project_artifacts": (
+                "FlextInfraModelsDepsToolConfigProjectArtifacts",
+            ),
+            ".deps_tool_config_project_gitignore": (
+                "FlextInfraModelsDepsToolConfigProjectGitignore",
+            ),
+            ".deps_tool_config_project_mise": (
+                "FlextInfraModelsDepsToolConfigProjectMise",
+            ),
+            ".deps_tool_config_project_ruff": (
+                "FlextInfraModelsDepsToolConfigProjectRuff",
+            ),
             ".deps_tool_config_type_checkers": (
                 "FlextInfraModelsDepsToolConfigTypeCheckers",
             ),
@@ -202,6 +224,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates": ("FlextInfraModelsGates",),
             ".git": ("FlextInfraModelsGit",),
             ".layout": ("FlextInfraModelsLayout",),
+            ".mise_toolchain": ("FlextInfraModelsMiseToolchain",),
+            ".mise_toolchain_base": ("FlextInfraModelsMiseToolchainBase",),
             ".mixins": ("FlextInfraModelsMixins",),
             ".promoted": ("FlextInfraModelsPromoted",),
             ".refactor": ("FlextInfraModelsRefactor",),

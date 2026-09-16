@@ -714,6 +714,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".transformers.compatibility_alias": (
                 "FlextInfraRefactorCompatibilityAlias",
             ),
+            ".transformers.dataclass_modelizer": (
+                "FlextInfraRefactorDataclassModelizer",
+            ),
             ".transformers.deprecated_remover": (
                 "FlextInfraRefactorDeprecatedRemover",
             ),
@@ -729,9 +732,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".transformers.pattern": ("FlextInfraRefactorPatternTransformer",),
             ".transformers.pydantic_modernizer": (
                 "FlextInfraRefactorPydanticModernizer",
-            ),
-            ".transformers.dataclass_modelizer": (
-                "FlextInfraRefactorDataclassModelizer",
             ),
             ".transformers.signature_propagator": (
                 "FlextInfraRefactorSignaturePropagator",

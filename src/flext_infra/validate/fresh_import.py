@@ -19,7 +19,8 @@ import sys
 from typing import Annotated, override
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.base import FlextInfraServiceBase
+
+from ..base import FlextInfraServiceBase
 
 
 class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):

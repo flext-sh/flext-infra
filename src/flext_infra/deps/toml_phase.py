@@ -14,8 +14,8 @@ from collections.abc import MutableMapping
 from typing import Annotated, override
 
 from flext_infra import m, p, r, t, u
-from flext_infra.base import FlextInfraServiceBase
 
+from ..base import FlextInfraServiceBase
 from ._toml_phase_ops import FlextInfraTomlPhaseOps
 
 

@@ -23,7 +23,7 @@ from .transformer_fixer import FlextInfraTransformerFixerAdapter
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.fixers.base import FlextInfraFixerAdapter
+    from base import FlextInfraFixerAdapter
 
 
 class FlextInfraEnforcementFixerOrchestrator(

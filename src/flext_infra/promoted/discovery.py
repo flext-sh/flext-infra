@@ -6,14 +6,6 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.promoted.base import (
-    COMMAND_SUFFIXES,
-    IGNORED_DIRS,
-    PACKAGE_MARKERS,
-    MissingHeaderError,
-    RegistryError,
-    discovered_workspace_spec,
-)
 from flext_infra.promoted.headers import (
     header_data,
     parse_aliases,
@@ -22,6 +14,15 @@ from flext_infra.promoted.headers import (
     require_string,
 )
 from flext_infra.promoted.registry import Registry
+
+from .base import (
+    COMMAND_SUFFIXES,
+    IGNORED_DIRS,
+    PACKAGE_MARKERS,
+    MissingHeaderError,
+    RegistryError,
+    discovered_workspace_spec,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

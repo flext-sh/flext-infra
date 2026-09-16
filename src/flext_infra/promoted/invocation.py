@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-from flext_infra.promoted.base import INCIDENT_MUTATION_REQUIRED_PARAMS, RegistryError
+from .base import INCIDENT_MUTATION_REQUIRED_PARAMS, RegistryError
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping

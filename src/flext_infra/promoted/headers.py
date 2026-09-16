@@ -5,12 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.promoted.base import (
-    HEADER_END,
-    HEADER_START,
-    MissingHeaderError,
-    RegistryError,
-)
+from .base import HEADER_END, HEADER_START, MissingHeaderError, RegistryError
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

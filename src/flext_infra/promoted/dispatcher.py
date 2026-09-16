@@ -7,11 +7,6 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
 
-from flext_infra.promoted.base import (
-    RegistryError,
-    discovered_workspace_spec,
-    env_enabled,
-)
 from flext_infra.promoted.discovery import discover
 from flext_infra.promoted.executor import ensure_local_python, run
 from flext_infra.promoted.invocation import validate_invocation
@@ -21,6 +16,8 @@ from flext_infra.promoted.rendering import (
     render_requested_help,
     render_verb_help,
 )
+
+from .base import RegistryError, discovered_workspace_spec, env_enabled
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
