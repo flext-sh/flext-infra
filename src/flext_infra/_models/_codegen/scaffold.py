@@ -81,20 +81,6 @@ class FlextInfraModelsCodegenScaffoldModels:
         dry_run: Annotated[
             bool, m.Field(description="Whether to report creations without writing")
         ]
-        project_module: Annotated[
-            str | None,
-            m.Field(
-                default=None,
-                description=("Project module name woven into generated test skeletons"),
-            ),
-        ]
-        test_module: Annotated[
-            bool,
-            m.Field(
-                default=False,
-                description="Whether this directory scaffolds test modules",
-            ),
-        ]
         files_created: Annotated[
             t.MutableSequenceOf[str], m.Field(description="Created file accumulator")
         ]

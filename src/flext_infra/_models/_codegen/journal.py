@@ -1,4 +1,4 @@
-"""Journal identity models for the codegen transaction domain."""
+"""Staging and journal models for the codegen publication pipeline."""
 
 from __future__ import annotations
 
@@ -9,11 +9,10 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m, u
 
 from ... import t
-from ..codegen_toolchain import FlextInfraModelsCodegenToolchain
 
 
-class FlextInfraModelsCodegenJournal:
-    """Private codegen journal model domain partial."""
+class FlextInfraModelsCodegenJournalModels:
+    """Staging and journal models for the codegen publication pipeline."""
 
     class CodegenStagedFile(m.ArbitraryTypesModel):
         """One destination state and its optional destination-local replacement."""
@@ -215,8 +214,7 @@ class FlextInfraModelsCodegenJournal:
             int | None, m.Field(gt=0, strict=True, description="Source inode identity")
         ]
         link_count: Annotated[
-            int | None,
-            m.Field(ge=1, strict=True, description="Unique physical source link count"),
+            Literal[1] | None, m.Field(description="Unique physical source link count")
         ]
         absent_parent: Annotated[
             m.Cli.AtomicDirectoryChainPlan | None,
@@ -345,10 +343,8 @@ class FlextInfraModelsCodegenJournal:
             m.Field(gt=0, strict=True, description="Original inode identity"),
         ] = None
         original_link_count: Annotated[
-            int | None,
-            m.Field(
-                ge=1, strict=True, description="Original unique physical link count"
-            ),
+            Literal[1] | None,
+            m.Field(description="Original unique physical link count"),
         ] = None
         original_file_attributes: Annotated[
             int | None,
@@ -388,10 +384,8 @@ class FlextInfraModelsCodegenJournal:
             m.Field(gt=0, strict=True, description="Staged replacement inode"),
         ] = None
         desired_link_count: Annotated[
-            int | None,
-            m.Field(
-                ge=1, strict=True, description="Staged replacement unique link count"
-            ),
+            Literal[1] | None,
+            m.Field(description="Staged replacement unique link count"),
         ] = None
         desired_file_attributes: Annotated[
             int | None, m.Field(ge=0, strict=True, description="Staged host attributes")
@@ -429,8 +423,7 @@ class FlextInfraModelsCodegenJournal:
             int | None, m.Field(gt=0, strict=True, description="Rollback staged inode")
         ] = None
         rollback_link_count: Annotated[
-            int | None,
-            m.Field(ge=1, strict=True, description="Rollback staged unique link count"),
+            Literal[1] | None, m.Field(description="Rollback staged unique link count")
         ] = None
         rollback_file_attributes: Annotated[
             int | None,
@@ -561,7 +554,7 @@ class FlextInfraModelsCodegenJournal:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         entry: Annotated[
-            FlextInfraModelsCodegenJournal.CodegenJournalEntry,
+            FlextInfraModelsCodegenJournalModels.CodegenJournalEntry,
             m.Field(description="Journal entry owning the recovery decision"),
         ]
         current: Annotated[
@@ -572,110 +565,3 @@ class FlextInfraModelsCodegenJournal:
             Literal["noop", "delete", "restore"],
             m.Field(description="Only authorized recovery effect for the target"),
         ]
-
-    class CodegenTransactionJournal(m.ArbitraryTypesModel):
-        """Persisted recovery contract for one workspace-wide generation."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-
-        version: Annotated[
-            Literal[8], m.Field(description="Exact journal schema version")
-        ]
-        transaction_id: Annotated[
-            str,
-            m.Field(
-                pattern=r"^[0-9a-f]{32}$",
-                description="Unpredictable generation transaction identity",
-            ),
-        ]
-        scope_device: Annotated[
-            int, m.Field(ge=0, strict=True, description="Scope directory device")
-        ]
-        scope_inode: Annotated[
-            int, m.Field(gt=0, strict=True, description="Scope directory inode")
-        ]
-        state: Annotated[
-            Literal["staging", "prepared", "recovering", "committed"],
-            m.Field(description="Durable publication transition state"),
-        ]
-        projects: Annotated[
-            t.VariadicTuple[FlextInfraModelsCodegenJournal.CodegenJournalProject],
-            m.Field(description="Ordered project selectors owned by this transaction"),
-        ]
-        file_participants: Annotated[
-            t.VariadicTuple[FlextInfraModelsCodegenToolchain.CodegenFileParticipant],
-            m.Field(description="Exact physical file publication capabilities"),
-        ] = ()
-        sources: Annotated[
-            t.VariadicTuple[FlextInfraModelsCodegenJournal.CodegenJournalSource],
-            m.Field(description="Source identities used by staging"),
-        ]
-        directories: Annotated[
-            t.VariadicTuple[FlextInfraModelsCodegenJournal.CodegenJournalDirectory],
-            m.Field(description="Directories whose prior absence authorizes creation"),
-        ]
-        entries: Annotated[
-            t.VariadicTuple[FlextInfraModelsCodegenJournal.CodegenJournalEntry],
-            m.Field(description="Recoverable artifact transitions"),
-        ]
-
-        @u.model_validator(mode="after")
-        def _validate_lifecycle(self) -> Self:
-            """Bind staging and publication payloads to one safe project set."""
-            selectors = tuple(
-                project.selector
-                for project in (*self.projects, *self.file_participants)
-            )
-            if not selectors:
-                msg = "generation journal requires an explicit participant"
-                raise ValueError(msg)
-            if selectors[0] != "." and "." in selectors:
-                msg = "Mise root selector must be first when present"
-                raise ValueError(msg)
-            if len(set(selectors)) != len(selectors):
-                msg = "Mise journal project selectors must be unique"
-                raise ValueError(msg)
-            if self.state == "staging" and self.entries:
-                msg = "staging codegen journal must not authorize live transitions"
-                raise ValueError(msg)
-            if self.state == "staging" and any(
-                directory.disposition == "generated"
-                and directory.phase == "transaction"
-                for directory in self.directories
-            ):
-                # A staging journal authorizes no live transition — that is the
-                # `entries` rule above. It must still authorize the destination
-                # directory of a file phase: staging snapshots the live target,
-                # which requires a physical parent, so a generated destination
-                # can never be recorded after the entries it makes possible.
-                # Rollback removes them with the temporary roots
-                # (`include_generated` for any non-committed journal). Only the
-                # transaction's own roots stay restricted to `temporary`.
-                msg = "staging codegen journal cannot generate a transaction root"
-                raise ValueError(msg)
-            entry_paths = tuple(entry.path for entry in self.entries)
-            if len(set(entry_paths)) != len(entry_paths):
-                msg = "codegen journal destination paths must be unique"
-                raise ValueError(msg)
-            if any(entry.project not in selectors for entry in self.entries):
-                msg = "codegen journal entry has no project participant"
-                raise ValueError(msg)
-            directory_paths = tuple(directory.path for directory in self.directories)
-            if len(set(directory_paths)) != len(directory_paths):
-                msg = "codegen journal directory paths must be unique"
-                raise ValueError(msg)
-            if any(
-                directory.project not in selectors for directory in self.directories
-            ):
-                msg = "codegen journal directory has no project participant"
-                raise ValueError(msg)
-            recovery_declared = tuple(
-                entry.rollback_exists is not None for entry in self.entries
-            )
-            if self.state == "recovering" and not all(recovery_declared):
-                msg = "recovering codegen journal lacks rollback identities"
-                raise ValueError(msg)
-            if self.state != "recovering" and any(recovery_declared):
-                msg = "non-recovering codegen journal contains rollback identities"
-                raise ValueError(msg)
-            return self

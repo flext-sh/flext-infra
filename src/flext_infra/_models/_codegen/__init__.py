@@ -9,43 +9,33 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from .base import (
-        FlextInfraModelsCodegenCensus,
-        FlextInfraModelsCodegenFixModels,
-        FlextInfraModelsCodegenJournal,
-        FlextInfraModelsCodegenLazyInitModels,
-        FlextInfraModelsCodegenPipelineModels,
-        FlextInfraModelsCodegenPolicy,
-        FlextInfraModelsCodegenResults,
-        FlextInfraModelsCodegenScaffoldModels,
-        FlextInfraModelsCodegenSession,
-    )
+    from .base import FlextInfraModelsCodegen
+    from .fix import FlextInfraModelsCodegenFixModels
+    from .journal import FlextInfraModelsCodegenJournalModels
+    from .lazy_init import FlextInfraModelsCodegenLazyInitModels
+    from .pipeline import FlextInfraModelsCodegenPipelineModels
+    from .scaffold import FlextInfraModelsCodegenScaffoldModels
+    from .transaction import FlextInfraModelsCodegenTransactionModels
 __all__: tuple[str, ...] = (
-    "FlextInfraModelsCodegenCensus",
+    "FlextInfraModelsCodegen",
     "FlextInfraModelsCodegenFixModels",
-    "FlextInfraModelsCodegenJournal",
+    "FlextInfraModelsCodegenJournalModels",
     "FlextInfraModelsCodegenLazyInitModels",
     "FlextInfraModelsCodegenPipelineModels",
-    "FlextInfraModelsCodegenPolicy",
-    "FlextInfraModelsCodegenResults",
     "FlextInfraModelsCodegenScaffoldModels",
-    "FlextInfraModelsCodegenSession",
+    "FlextInfraModelsCodegenTransactionModels",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
-            ".base": (
-                "FlextInfraModelsCodegenCensus",
-                "FlextInfraModelsCodegenFixModels",
-                "FlextInfraModelsCodegenJournal",
-                "FlextInfraModelsCodegenLazyInitModels",
-                "FlextInfraModelsCodegenPipelineModels",
-                "FlextInfraModelsCodegenPolicy",
-                "FlextInfraModelsCodegenResults",
-                "FlextInfraModelsCodegenScaffoldModels",
-                "FlextInfraModelsCodegenSession",
-            )
+            ".base": ("FlextInfraModelsCodegen",),
+            ".fix": ("FlextInfraModelsCodegenFixModels",),
+            ".journal": ("FlextInfraModelsCodegenJournalModels",),
+            ".lazy_init": ("FlextInfraModelsCodegenLazyInitModels",),
+            ".pipeline": ("FlextInfraModelsCodegenPipelineModels",),
+            ".scaffold": ("FlextInfraModelsCodegenScaffoldModels",),
+            ".transaction": ("FlextInfraModelsCodegenTransactionModels",),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

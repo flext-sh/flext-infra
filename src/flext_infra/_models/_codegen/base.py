@@ -1,25 +1,25 @@
-"""Aggregated codegen model domain partials composed by the public facade."""
+"""Codegen models facade: joins the family modules via MRO."""
 
 from __future__ import annotations
 
-from .census import FlextInfraModelsCodegenCensus
+from ..codegen_render import FlextInfraModelsCodegenRender
+from ..codegen_toolchain import FlextInfraModelsCodegenToolchain
 from .fix import FlextInfraModelsCodegenFixModels
-from .journal import FlextInfraModelsCodegenJournal
+from .journal import FlextInfraModelsCodegenJournalModels
 from .lazy_init import FlextInfraModelsCodegenLazyInitModels
 from .pipeline import FlextInfraModelsCodegenPipelineModels
-from .policy import FlextInfraModelsCodegenPolicy
-from .results import FlextInfraModelsCodegenResults
 from .scaffold import FlextInfraModelsCodegenScaffoldModels
-from .session import FlextInfraModelsCodegenSession
+from .transaction import FlextInfraModelsCodegenTransactionModels
 
-__all__: tuple[str, ...] = (
-    "FlextInfraModelsCodegenCensus",
-    "FlextInfraModelsCodegenFixModels",
-    "FlextInfraModelsCodegenJournal",
-    "FlextInfraModelsCodegenLazyInitModels",
-    "FlextInfraModelsCodegenPipelineModels",
-    "FlextInfraModelsCodegenPolicy",
-    "FlextInfraModelsCodegenResults",
-    "FlextInfraModelsCodegenScaffoldModels",
-    "FlextInfraModelsCodegenSession",
-)
+
+class FlextInfraModelsCodegen(
+    FlextInfraModelsCodegenRender,
+    FlextInfraModelsCodegenToolchain,
+    FlextInfraModelsCodegenJournalModels,
+    FlextInfraModelsCodegenTransactionModels,
+    FlextInfraModelsCodegenScaffoldModels,
+    FlextInfraModelsCodegenFixModels,
+    FlextInfraModelsCodegenLazyInitModels,
+    FlextInfraModelsCodegenPipelineModels,
+):
+    """Models for codegen census, scaffold, and auto-fix pipelines."""
