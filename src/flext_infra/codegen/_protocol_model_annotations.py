@@ -28,7 +28,7 @@ from flext_infra import m, t
 class FlextInfraCodegenProtocolModelAnnotations:
     """Map validated runtime model types to public protocol-facade types."""
 
-    _ORIGINS: ClassVar[t.MappingKV[type, str]] = {
+    _ORIGINS: ClassVar[t.MappingKV[object, str]] = {
         list: "list",
         tuple: "tuple",
         dict: "dict",
@@ -97,7 +97,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
         arguments = get_args(annotation)
         if origin is Annotated:
             return cls.render(arguments[0], target)
-        if origin in {UnionType, type(int | str)}:
+        if origin is UnionType or origin is type:
             return " | ".join(cls.render(argument, target) for argument in arguments)
         if origin is Literal:
             return f"Literal[{', '.join(repr(argument) for argument in arguments)}]"

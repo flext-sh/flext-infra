@@ -10,9 +10,8 @@ from inspect import getattr_static
 from types import FunctionType
 
 from flext_infra import m, t
-from flext_infra.codegen._protocol_model_annotations import (
-    FlextInfraCodegenProtocolModelAnnotations,
-)
+
+from ._protocol_model_annotations import FlextInfraCodegenProtocolModelAnnotations
 
 Target = FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget
 LineBudget = 170
@@ -52,7 +51,7 @@ class FlextInfraCodegenProtocolModelRender:
     ) -> t.SequenceOf[str]:
         """Split one owner's protocol bodies under the line budget."""
         chunks: list[str] = []
-        current: list[str] = ""
+        current = ""
         for model in models:
             body = cls._render_protocol(model, target)
             if current and current.count("\n") + body.count("\n") > LineBudget:
@@ -97,7 +96,9 @@ class FlextInfraCodegenProtocolModelRender:
         return "\n".join(lines) + "\n\n"
 
     @classmethod
-    def _render_annotation(cls, name: str, annotation: object, target: Target) -> str:
+    def _render_annotation(
+        cls, name: str, annotation: t.TypeHintSpecifier | None, target: Target
+    ) -> str:
         """Render one pydantic field annotation through the facade mapper."""
         if annotation is None:
             msg = f"field {name!r} has no annotation; close it at the model owner"
@@ -123,7 +124,10 @@ class FlextInfraCodegenProtocolModelRender:
         if getter is None:
             msg = f"owned member {name!r} has no getter on {model.__name__}"
             raise TypeError(msg)
-        annotation = getattr(getter, "__annotations__", {}).get("return")
+        annotations: dict[str, t.TypeHintSpecifier | None] = getattr(
+            getter, "__annotations__", {}
+        )
+        annotation = annotations.get("return")
         if annotation is None:
             msg = f"property {name!r} on {model.__name__} lacks a return annotation"
             raise TypeError(msg)

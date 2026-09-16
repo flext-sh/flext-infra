@@ -156,10 +156,10 @@ def test_apply_generates_runtime_checkable_contracts(member_root: Path) -> None:
         encoding="utf-8"
     )
     module = _load_module(part)
-    from demo_member.models import Order
+    models = importlib.import_module("demo_member.models")
 
     generated = module.ModelsProtocolsGeneratedPart01
-    assert isinstance(Order(sku="a"), generated.Order)
+    assert isinstance(models.Order(sku="a"), generated.Order)
 
 
 def test_apply_is_idempotent(member_root: Path) -> None:

@@ -46,13 +46,3 @@ class FlextInfraConfigModelsContract:
                 description=("Whether the gc tool block is projected into .mise.toml.")
             ),
         ] = True
-
-
-# Rebuild MiseTomlRenderSpec after all imports are resolved.
-# This must happen at module level after FlextInfraModelsMiseToolchain
-# and its nested classes are fully loaded by the lazy import mechanism.
-# Per FLEXT strict rules, model_rebuild is normally avoided, but this is
-# a documented Pydantic limitation with cross-module nested class inheritance
-# under lazy loading. The rebuild happens at module import time, before any
-# runtime use, so it does not affect correctness or introduce shims.
-FlextInfraConfigModelsContract.MiseTomlRenderSpec.model_rebuild()

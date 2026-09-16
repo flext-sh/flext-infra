@@ -85,7 +85,7 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
             facade = import_module(f"{target.package_name}.models")
         except ImportError as exc:
             return r[t.SequenceOf[type[m.BaseModel]]].fail(
-                f"member models facade not importable: {exc}"
+                f"member models facade not importable: {exc}", exception=exc
             )
         container = getattr(facade, f"{target.facade_container}Models", None)
         if container is None:
