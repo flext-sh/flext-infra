@@ -202,6 +202,14 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         )
         if file_plans.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(file_plans)
+        # Template-rendered destinations are owned by their template (the
+        # SSOT of that content): alignment never rewrites what the render
+        # phase publishes, or the journal would see two phases claiming one
+        # destination and the rendered imports would drift from the template.
+        rendered_destinations = {plan.path for plan in file_plans.value}
+        alignment_plans = tuple(
+            plan for plan in alignment_plans if plan.path not in rendered_destinations
+        )
         all_plans = file_plans.value + alignment_plans
         stable = self._verify_snapshots(snapshots.value)
         if stable.failure:
