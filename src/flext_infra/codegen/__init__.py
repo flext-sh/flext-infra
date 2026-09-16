@@ -56,6 +56,8 @@ if TYPE_CHECKING:
     from ._mise_artifacts_state import FlextInfraMiseArtifactsState
     from ._mise_artifacts_verification import FlextInfraMiseArtifactsVerification
     from ._pipeline_stages import FlextInfraCodegenPipelineStagesMixin
+    from ._protocol_model_annotations import FlextInfraCodegenProtocolModelAnnotations
+    from ._protocol_model_render import FlextInfraCodegenProtocolModelRender
     from .census import FlextInfraCodegenCensus
     from .codegen_generation import FlextInfraCodegenGeneration
     from .codegen_transaction import FlextInfraCodegenTransaction
@@ -71,6 +73,7 @@ if TYPE_CHECKING:
     from .mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
     from .pipeline import FlextInfraCodegenPipeline
     from .project_new import FlextInfraCodegenProjectNew
+    from .protocol_models import FlextInfraCodegenProtocolModels
     from .py_typed import FlextInfraCodegenPyTyped
     from .scaffolder import FlextInfraCodegenScaffolder
     from .version_file import FlextInfraCodegenVersionFile
@@ -113,6 +116,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenPipeline",
     "FlextInfraCodegenPipelineStagesMixin",
     "FlextInfraCodegenProjectNew",
+    "FlextInfraCodegenProtocolModelAnnotations",
+    "FlextInfraCodegenProtocolModelRender",
+    "FlextInfraCodegenProtocolModels",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenQualityGate",
     "FlextInfraCodegenScaffolder",
@@ -189,6 +195,10 @@ _LAZY_IMPORTS = MappingProxyType(
             "._mise_artifacts_state": ("FlextInfraMiseArtifactsState",),
             "._mise_artifacts_verification": ("FlextInfraMiseArtifactsVerification",),
             "._pipeline_stages": ("FlextInfraCodegenPipelineStagesMixin",),
+            "._protocol_model_annotations": (
+                "FlextInfraCodegenProtocolModelAnnotations",
+            ),
+            "._protocol_model_render": ("FlextInfraCodegenProtocolModelRender",),
             ".census": ("FlextInfraCodegenCensus",),
             ".codegen_generation": ("FlextInfraCodegenGeneration",),
             ".codegen_transaction": ("FlextInfraCodegenTransaction",),
@@ -204,6 +214,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".mise_artifacts_workspace": ("FlextInfraMiseWorkspacePlanner",),
             ".pipeline": ("FlextInfraCodegenPipeline",),
             ".project_new": ("FlextInfraCodegenProjectNew",),
+            ".protocol_models": ("FlextInfraCodegenProtocolModels",),
             ".py_typed": ("FlextInfraCodegenPyTyped",),
             ".scaffolder": ("FlextInfraCodegenScaffolder",),
             ".version_file": ("FlextInfraCodegenVersionFile",),
