@@ -279,7 +279,14 @@ def _rewrite_import(
             break
     ups = source_depth - common
     downs = tgt_parts[common:]
-    relative = "." * ups + ".".join(downs) if ups or downs else "."
+    # Same-package targets (ups == 0) still require the current-package dot:
+    # "downs" alone renders a bare absolute import that does not resolve
+    # (ai_hub/api.py importing ai_hub.services must become .services).
+    relative = (
+        "." * ups + ("." + ".".join(downs) if downs else "")
+        if ups or downs
+        else "."
+    )
 
     names = _format_import_names(node)
     return _render_from(relative=relative, names=names)
