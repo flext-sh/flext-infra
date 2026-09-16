@@ -105,6 +105,7 @@ if TYPE_CHECKING:
     from .docs_scope import FlextInfraUtilitiesDocsScope
     from .docs_validate import FlextInfraUtilitiesDocsValidate
     from .git import FlextInfraUtilitiesGit
+    from .gitignore import FlextInfraUtilitiesGitignore
     from .iteration import FlextInfraUtilitiesIteration
     from .iteration_directory import FlextInfraUtilitiesIterationDirectory
     from .iteration_matching import FlextInfraUtilitiesIterationMatching
@@ -238,6 +239,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitWorktreeRemovalMixin",
     "FlextInfraUtilitiesGitWorktreeRootsMixin",
     "FlextInfraUtilitiesGitWorktreeStatusMixin",
+    "FlextInfraUtilitiesGitignore",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesIterationDirectory",
     "FlextInfraUtilitiesIterationMatching",
@@ -437,6 +439,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".docs_scope": ("FlextInfraUtilitiesDocsScope",),
             ".docs_validate": ("FlextInfraUtilitiesDocsValidate",),
             ".git": ("FlextInfraUtilitiesGit",),
+            ".gitignore": ("FlextInfraUtilitiesGitignore",),
             ".iteration": ("FlextInfraUtilitiesIteration",),
             ".iteration_directory": ("FlextInfraUtilitiesIterationDirectory",),
             ".iteration_matching": ("FlextInfraUtilitiesIterationMatching",),
