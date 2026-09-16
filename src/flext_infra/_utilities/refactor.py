@@ -39,10 +39,7 @@ class FlextInfraUtilitiesRefactor:
             return [value]
         try:
             return list(t.Infra.STR_SEQ_ADAPTER.validate_python(value))
-        except TypeError as exc:
-            msg = "expected list value"
-            raise TypeError(msg) from exc
-        except c.ValidationError as exc:
+        except (TypeError, c.ValidationError) as exc:
             msg = "expected list value"
             raise TypeError(msg) from exc
 

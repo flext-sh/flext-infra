@@ -26,7 +26,7 @@ class FlextInfraMiseArtifactsProcess:
         def directory_key(path: Path) -> t.Pair[int, str]:
             return len(path.parts), path.as_posix()
 
-        if not os.environ.get("PATH"):
+        if not u.Cli.env_read("PATH", u.Cli.process_env()).value:
             return r[bool].fail("PATH is required for isolated Mise execution")
         if scratch.exists() or scratch.is_symlink():
             return r[bool].fail(f"isolated Mise runtime already exists: {scratch}")
@@ -87,12 +87,10 @@ class FlextInfraMiseArtifactsProcess:
             "MISE_TRUSTED_CONFIG_PATHS": str(scratch),
             "MISE_INSTALL_PATH": str(install_path.value),
         })
+        host_env = u.Cli.process_env()
         for name in contract.passthrough_environment:
-            if value := os.environ.get(name):
+            if value := u.Cli.env_read(name, host_env).value:
                 isolated[name] = value
-        credential_command = os.environ.get("MISE_GITHUB_CREDENTIAL_COMMAND")
-        if credential_command:
-            isolated["MISE_GITHUB_CREDENTIAL_COMMAND"] = credential_command
         return r[MutableMapping[str, str]].ok(isolated)
 
     @classmethod

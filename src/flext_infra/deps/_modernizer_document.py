@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, e, m, t, u
 from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
 
 from .extra_paths import FlextInfraExtraPathsManager
@@ -88,9 +88,8 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 payload_source
             )
         except c.ValidationError as exc:
-            return r[m.Infra.PyprojectDocumentState].fail_op(
-                "TOML payload validation", exc
-            )
+            failed = e.fail_validation("TOML payload validation", error=exc)
+            return r[m.Infra.PyprojectDocumentState].fail(str(failed.error))
         return r[m.Infra.PyprojectDocumentState].ok(
             m.Infra.PyprojectDocumentState(
                 pyproject_path=path,

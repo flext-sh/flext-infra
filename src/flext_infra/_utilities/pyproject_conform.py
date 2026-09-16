@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import r, u
 
-from flext_infra import m
+from flext_infra import e, m
 from flext_infra.constants import c
 from flext_infra.typings import t
 
@@ -320,7 +320,8 @@ class FlextInfraUtilitiesPyprojectConform:
         try:
             items = t.Infra.STR_SEQ_ADAPTER.validate_python(raw_items, strict=True)
         except c.ValidationError as exc:
-            return r[bool].fail_op(f"validate dependency group {key}", exc)
+            failed = e.fail_validation(f"validate dependency group {key}", error=exc)
+            return r[bool].fail(str(failed.error))
         normalized_items: t.MutableSequenceOf[str] = []
         for item in items:
             normalized = cls._canonical_requirement(
@@ -811,7 +812,8 @@ class FlextInfraUtilitiesPyprojectConform:
                 uv_workspace.get("members"), strict=True
             )
         except c.ValidationError as exc:
-            return r[bool].fail_op("validate root uv workspace package entries", exc)
+            failed = e.fail_validation("validate root uv workspace package entries", error=exc)
+            return r[bool].fail(str(failed.error))
         expected_members = tuple(
             member.path.as_posix() for member in workspace.subprojects
         )
@@ -968,8 +970,9 @@ class FlextInfraUtilitiesPyprojectConform:
                         custom = t.Infra.STR_SEQ_ADAPTER.validate_python(
                             live_project[key], strict=True
                         )
-                    except c.ValidationError as exc:
-                        return r[str].fail_op("validate runtime dependencies", exc)
+                        except c.ValidationError as exc:
+                            failed = e.fail_validation("validate runtime dependencies", error=exc)
+                            return r[str].fail(str(failed.error))
                     owned_names = {
                         FlextInfraUtilitiesDependencies.dep_name(item)
                         for item in required

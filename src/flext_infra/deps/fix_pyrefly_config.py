@@ -10,7 +10,7 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, e, m, p, r, t, u
 
 from ..base import FlextInfraServiceBase
 from ._pyrefly_fix_steps import FlextInfraConfigFixerSteps
@@ -70,7 +70,8 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, FlextInfraServiceBase[bo
                 t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(pyrefly_data)
             )
         except c.ValidationError as err:
-            return r[t.StrSequence].fail_op(f"validate {path} [tool.pyrefly]", err)
+            failed = e.fail_validation(f"validate {path} [tool.pyrefly]", error=err)
+            return r[t.StrSequence].fail(str(failed.error))
         original_pyrefly: t.JsonMapping = dict(pyrefly)
         all_fixes: t.MutableSequenceOf[str] = []
         project_dir = path.parent

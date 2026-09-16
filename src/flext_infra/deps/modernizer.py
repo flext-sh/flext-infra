@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, e, m, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 
 from ._modernizer_document import FlextInfraPyprojectModernizerDocumentMixin
@@ -90,7 +90,8 @@ class FlextInfraPyprojectModernizer(
                 u.Infra.canonical_dev_dependencies_from_payload(payload)
             )
         except c.ValidationError as exc:
-            return r[str].fail_op("pyproject model validation", exc)
+            failed = e.fail_validation("pyproject model validation", error=exc)
+            return r[str].fail(str(failed.error))
         state = m.Infra.PyprojectDocumentState(
             pyproject_path=path, original_rendered=source, payload=payload
         )
@@ -346,9 +347,8 @@ class FlextInfraPyprojectModernizer(
                 "ruff_ignore": ruff_lint.get(c.Infra.IGNORE),
             })
         except c.ValidationError as exc:
-            return r[m.Infra.ToolingRuntimeContext].fail_op(
-                "tooling runtime context validation", exc
-            )
+            failed = e.fail_validation("tooling runtime context validation", error=exc)
+            return r[m.Infra.ToolingRuntimeContext].fail(str(failed.error))
         return r[m.Infra.ToolingRuntimeContext].ok(runtime)
 
     @staticmethod

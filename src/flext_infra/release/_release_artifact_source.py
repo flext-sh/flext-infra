@@ -6,7 +6,7 @@ import tarfile
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, e, m, u
 
 from ._release_artifact_metadata import FlextInfraReleaseArtifactMetadataMixin
 
@@ -119,9 +119,8 @@ class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixi
                 commit_oid=oid, source_date_epoch=int(source_date_epoch)
             )
         except c.ValidationError as exc:
-            return r[m.Infra.SourceSnapshot].fail_op(
-                "validate committed release source identity", exc
-            )
+            failed = e.fail_validation(error=exc)
+            return r[m.Infra.SourceSnapshot].fail(str(failed.error))
         return r[m.Infra.SourceSnapshot].ok(snapshot)
 
     @staticmethod

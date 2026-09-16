@@ -35,8 +35,8 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             self._order_config: t.SequenceOf[m.Infra.MethodOrderRule] = [
                 m.Infra.MethodOrderRule.model_validate(item) for item in typed_items
             ]
-        except c.ValidationError:
-            self._order_config = list[m.Infra.MethodOrderRule]()
+        except c.ValidationError as exc:
+            raise ValueError(f"validate order config failed: {exc}") from exc
 
     @override
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:

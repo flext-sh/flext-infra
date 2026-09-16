@@ -13,7 +13,7 @@ from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
 from flext_core import r
-from flext_infra import c, t, u
+from flext_infra import c, e, t, u
 
 from ._release_artifact_archive import FlextInfraReleaseArtifactArchiveMixin
 
@@ -91,7 +91,8 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
                 raw_items, strict=True
             )
         except c.ValidationError as exc:
-            return r[bool].fail_op(f"validate release dependency group {key}", exc)
+            failed = e.fail_validation(error=exc)
+            return r[bool].fail(str(failed.error))
         rewritten: t.MutableSequenceOf[str] = []
         for requirement in requirements:
             result = cls._release_requirement(requirement, versions)
@@ -187,7 +188,8 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
                 u.Cli.json_as_sequence(raw_packages), strict=True
             )
         except c.ValidationError as exc:
-            return r[bool].fail_op("validate Hatch wheel packages", exc)
+            failed = e.fail_validation(error=exc)
+            return r[bool].fail(str(failed.error))
         if not packages:
             return r[bool].fail("Hatch wheel target must declare packages")
         force_include = u.Cli.toml_table_child(wheel, "force-include")

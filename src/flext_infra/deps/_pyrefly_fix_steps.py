@@ -10,7 +10,7 @@ from collections.abc import Mapping, MutableMapping
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, config, t, u
+from flext_infra import c, config, e, t, u
 
 from .extra_paths import FlextInfraExtraPathsManager
 
@@ -41,7 +41,8 @@ class FlextInfraConfigFixerSteps:
                 list(search_raw)
             )
         except c.ValidationError as err:
-            return r[t.StrSequence].fail_op("validate-search-path", err)
+            failed = e.fail_validation("validate-search-path", error=err)
+            return r[t.StrSequence].fail(str(failed.error))
         current_search = [
             path_item for path_item in current_paths if isinstance(path_item, str)
         ]
@@ -69,7 +70,8 @@ class FlextInfraConfigFixerSteps:
                 list(includes_raw)
             )
         except c.ValidationError as err:
-            return r[t.StrSequence].fail_op("validate-project-includes", err)
+            failed = e.fail_validation("validate-project-includes", error=err)
+            return r[t.StrSequence].fail(str(failed.error))
         current_includes = [
             path_item for path_item in current_items if isinstance(path_item, str)
         ]
@@ -95,7 +97,8 @@ class FlextInfraConfigFixerSteps:
                 t.Infra.INFRA_SEQ_ADAPTER.validate_python(sub_configs)
             )
         except c.ValidationError as err:
-            return r[tuple[t.StrSequence, bool]].fail_op("validate-sub-configs", err)
+            failed = e.fail_validation("validate-sub-configs", error=err)
+            return r[tuple[t.StrSequence, bool]].fail(str(failed.error))
         fixes: t.MutableSequenceOf[str] = []
         removed_ignore = False
         new_configs: t.MutableSequenceOf[t.Infra.InfraValue] = []
@@ -106,9 +109,8 @@ class FlextInfraConfigFixerSteps:
                     conf_map = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(conf)
                     conf_out = dict(conf_map)
                 except c.ValidationError as err:
-                    return r[tuple[t.StrSequence, bool]].fail_op(
-                        "validate-pyrefly-sub-config", err
-                    )
+                    failed = e.fail_validation("validate-pyrefly-sub-config", error=err)
+                    return r[tuple[t.StrSequence, bool]].fail(str(failed.error))
             else:
                 new_configs.append(conf_out)
                 continue
@@ -136,7 +138,8 @@ class FlextInfraConfigFixerSteps:
                     *excludes
                 ])
             except c.ValidationError as err:
-                return r[t.StrSequence].fail_op("validate-project-excludes", err)
+                failed = e.fail_validation("validate-project-excludes", error=err)
+                return r[t.StrSequence].fail(str(failed.error))
             current_excludes = [str(value) for value in exclude_items]
         expected_excludes = sorted(
             set(config.Infra.tooling.tools.pyrefly.project_exclude_globs)

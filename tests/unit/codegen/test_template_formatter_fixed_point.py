@@ -6,6 +6,8 @@ from pathlib import Path
 
 from ... import m, tm, u
 
+from ._support import CodegenTestSupport
+
 
 class TestsFlextInfraTemplateFormatterFixedPoint:
     """Verify generated template formatter fixed-point contracts."""
@@ -28,11 +30,16 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
         tm.that(template, lacks="[tool.uv.workspace]")
 
     def test_dependabot_render_has_one_terminal_newline(self) -> None:
+        from flext_infra import c
+
         empty = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo", workspace_repositories=()
+                CodegenTestSupport.Ci.workflow_spec(
+                    dist="demo",
+                    make_profile=c.Infra.MakeProfile.STANDALONE,
+                    repository_branch="main",
+                    ci_trigger_branches=CodegenTestSupport.Ci.CI_TRIGGER_BASELINE_BRANCHES,
                 ),
             )
         )
@@ -40,8 +47,12 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
         populated = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo", workspace_repositories=(repository,)
+                CodegenTestSupport.Ci.workflow_spec(
+                    dist="demo",
+                    make_profile=c.Infra.MakeProfile.STANDALONE,
+                    repository_branch="main",
+                    ci_trigger_branches=CodegenTestSupport.Ci.CI_TRIGGER_BASELINE_BRANCHES,
+                    workspace_repositories=(repository,),
                 ),
             )
         )
@@ -50,24 +61,29 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
             tm.that(rendered.endswith("\n") and not rendered.endswith("\n\n"), eq=True)
 
     def test_dependabot_projects_devcontainers_only_when_one_exists(self) -> None:
+        from flext_infra import c
+
         without = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                m.Infra.GithubWorkflowRenderSpec.model_construct(
+                CodegenTestSupport.Ci.workflow_spec(
                     dist="demo",
-                    workspace_repositories=(),
+                    make_profile=c.Infra.MakeProfile.STANDALONE,
+                    repository_branch="main",
+                    ci_trigger_branches=CodegenTestSupport.Ci.CI_TRIGGER_BASELINE_BRANCHES,
                     has_devcontainer=False,
-                    # `model_construct` fills nothing beyond the declared
-                    # fields, so the context reads the same SSOT the renderer
-                    # reads instead of freezing today's values.
                 ),
             )
         )
         with_devcontainer = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo", workspace_repositories=(), has_devcontainer=True
+                CodegenTestSupport.Ci.workflow_spec(
+                    dist="demo",
+                    make_profile=c.Infra.MakeProfile.STANDALONE,
+                    repository_branch="main",
+                    ci_trigger_branches=CodegenTestSupport.Ci.CI_TRIGGER_BASELINE_BRANCHES,
+                    has_devcontainer=True,
                 ),
             )
         )

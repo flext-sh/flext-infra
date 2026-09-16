@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, e, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -169,9 +169,8 @@ class FlextInfraDocGeneratorBundleMixin:
                 repository_root=repository_root,
             )
         except c.ValidationError as exc:
-            return r[m.Infra.DocsGenerationBundle].fail_op(
-                "docs generation bundle validation", exc
-            )
+            failed = e.fail_validation("docs generation bundle validation", error=exc)
+            return r[m.Infra.DocsGenerationBundle].fail(str(failed.error))
         return r[m.Infra.DocsGenerationBundle].ok(bundle)
 
 

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, e, m, u
 
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 from ._mise_artifacts_verification import FlextInfraMiseArtifactsVerification as verify
@@ -331,13 +331,14 @@ class FlextInfraMiseArtifactsState:
                 })
             )
         except c.ValidationError as exc:
+            failed = e.fail_validation("validate created directory identity", error=exc)
             rolled_back = u.Cli.atomic_delete_empty_directory_guarded(created.value)
             if rolled_back.failure:
                 return result_type.fail(
-                    f"validate created directory identity failed: {exc}; "
+                    f"{failed.error}; "
                     f"compensation failed: {rolled_back.error}"
                 )
-            return result_type.fail_op("validate created directory identity", exc)
+            return result_type.fail(str(failed.error))
 
     @classmethod
     def compensate_created_directory(
@@ -506,9 +507,10 @@ class FlextInfraMiseArtifactsState:
                         "manifest": observed.value,
                     })
                 except c.ValidationError as exc:
-                    return r[bool].fail_op(
-                        "validate recovery temporary-tree manifest", exc
+                    failed = e.fail_validation(
+                        "validate recovery temporary-tree manifest", error=exc
                     )
+                    return r[bool].fail(str(failed.error))
                 removed = u.Cli.atomic_cleanup_physical_tree_guarded(observed.value)
             else:
                 observed = verify.authorized_cleanup_manifest(layout, journal, entry)

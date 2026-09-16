@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal, cast
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, e, m, u
 
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 from ._mise_artifacts_process import FlextInfraMiseArtifactsProcess as process
@@ -65,9 +65,8 @@ class FlextInfraMiseArtifactsJournal:
                 )
             )
         except c.ValidationError as exc:
-            return r[m.Infra.CodegenTransactionJournal].fail_op(
-                "validate staging codegen journal", exc
-            )
+            failed = e.fail_validation("validate staging codegen journal", error=exc)
+            return r[m.Infra.CodegenTransactionJournal].fail(str(failed.error))
 
     @classmethod
     def append_prepared(
@@ -123,9 +122,8 @@ class FlextInfraMiseArtifactsJournal:
                 )
             )
         except c.ValidationError as exc:
-            return r[m.Infra.CodegenTransactionJournal].fail_op(
-                "validate prepared codegen journal", exc
-            )
+            failed = e.fail_validation("validate prepared codegen journal", error=exc)
+            return r[m.Infra.CodegenTransactionJournal].fail(str(failed.error))
 
     @classmethod
     def append_directories(
@@ -163,9 +161,8 @@ class FlextInfraMiseArtifactsJournal:
                 )
             )
         except c.ValidationError as exc:
-            return r[m.Infra.CodegenTransactionJournal].fail_op(
-                "validate extended codegen directory journal", exc
-            )
+            failed = e.fail_validation("validate extended codegen directory journal", error=exc)
+            return r[m.Infra.CodegenTransactionJournal].fail(str(failed.error))
 
     @classmethod
     def record_directories(
@@ -222,7 +219,8 @@ class FlextInfraMiseArtifactsJournal:
                 )
             )
         except c.ValidationError as exc:
-            return result_type.fail_op("validate recorded directory evidence", exc)
+            failed = e.fail_validation("validate recorded directory evidence", error=exc)
+            return result_type.fail(str(failed.error))
 
     @classmethod
     def commit(
@@ -249,9 +247,8 @@ class FlextInfraMiseArtifactsJournal:
                 )
             )
         except c.ValidationError as exc:
-            return r[m.Infra.CodegenTransactionJournal].fail_op(
-                "validate committed codegen journal", exc
-            )
+            failed = e.fail_validation("validate committed codegen journal", error=exc)
+            return r[m.Infra.CodegenTransactionJournal].fail(str(failed.error))
 
     @classmethod
     def begin_recovery(
@@ -308,9 +305,8 @@ class FlextInfraMiseArtifactsJournal:
             try:
                 entries.append(m.Infra.CodegenJournalEntry.model_validate(entry_data))
             except c.ValidationError as exc:
-                return r[m.Infra.CodegenTransactionJournal].fail_op(
-                    "validate recovering codegen journal entry", exc
-                )
+                failed = e.fail_validation("validate recovering codegen journal entry", error=exc)
+                return r[m.Infra.CodegenTransactionJournal].fail(str(failed.error))
         try:
             return r[m.Infra.CodegenTransactionJournal].ok(
                 m.Infra.CodegenTransactionJournal(
@@ -327,9 +323,8 @@ class FlextInfraMiseArtifactsJournal:
                 )
             )
         except c.ValidationError as exc:
-            return r[m.Infra.CodegenTransactionJournal].fail_op(
-                "validate recovering codegen journal", exc
-            )
+            failed = e.fail_validation("validate recovering codegen journal", error=exc)
+            return r[m.Infra.CodegenTransactionJournal].fail(str(failed.error))
 
     @classmethod
     def write(
@@ -386,7 +381,8 @@ class FlextInfraMiseArtifactsJournal:
                 journal_snapshot.content
             )
         except c.ValidationError as exc:
-            return result_type.fail_op("validate codegen transaction journal", exc)
+            failed = e.fail_validation("validate codegen transaction journal", error=exc)
+            return result_type.fail(str(failed.error))
         relocated = cls._relocate_journal(layout, journal)
         if relocated.failure:
             return result_type.from_failure(relocated)
@@ -474,7 +470,8 @@ class FlextInfraMiseArtifactsJournal:
                     })
                 )
             except c.ValidationError as exc:
-                return result_type.fail_op("relocate generation directory", exc)
+                failed = e.fail_validation("relocate generation directory", error=exc)
+                return result_type.fail(str(failed.error))
         try:
             return result_type.ok(
                 m.Infra.CodegenTransactionJournal.model_validate({
@@ -484,7 +481,8 @@ class FlextInfraMiseArtifactsJournal:
                 })
             )
         except c.ValidationError as exc:
-            return result_type.fail_op("relocate generation journal", exc)
+            failed = e.fail_validation("relocate generation journal", error=exc)
+            return result_type.fail(str(failed.error))
 
     @classmethod
     def _recorded_scope_root(
@@ -553,7 +551,8 @@ class FlextInfraMiseArtifactsJournal:
                 )
             )
         except c.ValidationError as exc:
-            return result_type.fail_op("relocate generation tree manifest", exc)
+            failed = e.fail_validation("relocate generation tree manifest", error=exc)
+            return result_type.fail(str(failed.error))
 
     @classmethod
     def _journal_source(
@@ -592,7 +591,7 @@ class FlextInfraMiseArtifactsJournal:
                 mode=source.mode,
                 device=source.device,
                 inode=source.inode,
-                link_count=source.link_count,
+                link_count=cast("Literal[1] | None", source.link_count),
                 file_attributes=source.file_attributes,
                 reparse_tag=source.reparse_tag,
                 absent_parent=absent_parent,

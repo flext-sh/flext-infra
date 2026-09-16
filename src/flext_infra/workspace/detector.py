@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, e, m, t, u
 
 from ..base import s
 from ._governance import FlextInfraWorkspaceGovernanceMixin
@@ -117,9 +117,8 @@ class FlextInfraWorkspaceDetector(
         try:
             validated = m.Infra.BeadsProjectSpec.model_validate(loaded.value.data)
         except c.ValidationError as exc:
-            return r[m.Infra.BeadsProjectSpec].fail_op(
-                f"Beads configuration model validation ({beads_path})", exc
-            )
+            failed = e.fail_validation("Beads configuration model validation", error=exc)
+            return r[m.Infra.BeadsProjectSpec].fail(str(failed.error))
         return r[m.Infra.BeadsProjectSpec].ok(validated)
 
     @staticmethod
@@ -233,9 +232,10 @@ class FlextInfraWorkspaceDetector(
         try:
             manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
         except c.ValidationError as exc:
+            failed = e.fail_validation("workspace manifest model validation", error=exc)
             return r[
                 tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
-            ].fail_op(f"workspace manifest model validation ({manifest_path})", exc)
+            ].fail(str(failed.error))
         declared = manifest.repository
         contradictions = cls._manifest_git_contradictions(declared, observed)
         if contradictions:

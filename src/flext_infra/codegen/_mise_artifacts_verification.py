@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, e, m, u
 
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 
@@ -87,7 +87,8 @@ class FlextInfraMiseArtifactsVerification:
                     })
                 )
             except c.ValidationError as exc:
-                return result_type.fail_op("validate temporary-tree manifest", exc)
+                failed = e.fail_validation("validate temporary-tree manifest", error=exc)
+                return result_type.fail(str(failed.error))
         return result_type.ok(tuple(registered))
 
     @classmethod

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, config, m, u
+from flext_infra import c, config, e, m, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -64,7 +64,8 @@ class FlextInfraReleaseOrchestratorPublishMixin:
         try:
             report = m.Infra.BuildReport.model_validate_json(content.value)
         except c.ValidationError as exc:
-            return r[m.Infra.BuildReport].fail_op("validate release receipt", exc)
+            failed = e.fail_validation(error=exc)
+            return r[m.Infra.BuildReport].fail(str(failed.error))
         if report.dry_run or report.failures or report.version != ctx.version:
             return r[m.Infra.BuildReport].fail(
                 f"release receipt is not publishable for {ctx.version}: {report_path}"
