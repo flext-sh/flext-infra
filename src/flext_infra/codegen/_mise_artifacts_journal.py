@@ -390,9 +390,7 @@ class FlextInfraMiseArtifactsJournal:
         if journal_snapshot.mode != c.Infra.JOURNAL_MODE:
             return result_type.fail("codegen transaction journal mode is not 0600")
         validated = u.validate_value(
-            m.Infra.CodegenTransactionJournal,
-            journal_snapshot.content,
-            from_json=True,
+            m.Infra.CodegenTransactionJournal, journal_snapshot.content, from_json=True
         )
         if validated.failure:
             return result_type.fail_op(

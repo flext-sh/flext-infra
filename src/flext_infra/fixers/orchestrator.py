@@ -231,67 +231,6 @@ class FlextInfraEnforcementFixerOrchestrator(
         evaluation = self._engine().collect_project(project_dir, rules)
         return evaluation.violations, evaluation.failures
 
-    def _collect_tests_validator_violations(
-        self, project_dir: Path, rule: m.EnforcementRuleSpec
-    ) -> tuple[
-        list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
-    ]:
-        """Run the flext-tests validator method for ``rule``."""
-        return self._engine().collect_tests_validator(project_dir, rule)
-
-    def _collect_python_file_violations(
-        self, project_dir: Path, rule: m.EnforcementRuleSpec
-    ) -> tuple[
-        list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
-    ]:
-        """Return one probe per Python file for transformer-backed detector rules.
-
-        Runtime detector rules backed by a deterministic source
-        transformer are applied project-wide; the transformer itself decides
-        whether each file needs a change. This keeps the orchestrator from
-        silently skipping rules whose detectors do not emit per-file probes.
-        """
-        return self._engine().collect_python_file_probes(project_dir, rule)
-
-    def _collect_declarative_violations(
-        self, project_dir: Path, rules: t.SequenceOf[m.EnforcementRuleSpec]
-    ) -> tuple[
-        list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
-    ]:
-        """Return concrete probes by running the declarative engine per file.
-
-        Unlike the generic per-file probe, this asks the declarative engine
-        to actually inspect each file and emit violation probes with line
-        numbers and metadata. All ``rules`` are evaluated inside a single rope
-        project to avoid repeated project open/close overhead.
-        """
-        return self._engine().collect_declarative(project_dir, rules)
-
-    @staticmethod
-    def _stub_file_paths(project_dir: Path) -> t.VariadicTuple[Path]:
-        """Return source stub files while respecting canonical excluded dirs."""
-        return FlextInfraEnforcementEngine.stub_file_paths(project_dir)
-
-    def _collect_project_violations(
-        self, project_dir: Path, rule: m.EnforcementRuleSpec
-    ) -> list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]]:
-        """Return one project-level probe for gate-backed fixes."""
-        return FlextInfraEnforcementEngine.collect_project_probe(project_dir, rule)
-
-    @staticmethod
-    def _probe_for_path(path: Path) -> p.AttributeProbe:
-        """Build the minimal structural probe consumed by fixer adapters."""
-        return FlextInfraEnforcementEngine.probe_for_path(path)
-
-    @staticmethod
-    def _collection_failure(
-        project_dir: Path, rule: m.EnforcementRuleSpec, message: str
-    ) -> m.Infra.FailedFix:
-        """Build a failed-fix record for collection/routing errors."""
-        return FlextInfraEnforcementEngine.collection_failure(
-            project_dir, rule, message
-        )
-
     def _command_ctx(self) -> m.Infra.FixEnforcementCommand:
         """Build a command context for adapters from the service fields.
 

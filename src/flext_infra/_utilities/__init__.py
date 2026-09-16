@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import _git, _rope, _rope_analysis
+    from . import _git, _rope, _rope_analysis, _semantic_cutover
     from ._docs_audit_detectors import FlextInfraUtilitiesDocsAuditDetectorsMixin
     from ._docs_command_contract import FlextInfraUtilitiesDocsCommandContractMixin
     from ._docs_generate_plan import FlextInfraUtilitiesDocsGeneratePlanMixin
@@ -62,21 +62,33 @@ if TYPE_CHECKING:
     from ._rope_core_pymodule import FlextInfraUtilitiesRopeCorePyModuleMixin
     from ._rope_core_resources import FlextInfraUtilitiesRopeCoreResourcesMixin
     from ._rope_method_order import FlextInfraUtilitiesRopeMethodOrderMixin
+    from ._semantic_cutover.alias_cst import FlextInfraUtilitiesSemanticCutoverAliasCst
+    from ._semantic_cutover.aliases import FlextInfraUtilitiesSemanticCutoverAliases
+    from ._semantic_cutover.base import FlextInfraUtilitiesSemanticCutoverBase
+    from ._semantic_cutover.edits import FlextInfraUtilitiesSemanticCutoverEdits
+    from ._semantic_cutover.nesting import FlextInfraUtilitiesSemanticCutoverNesting
+    from ._semantic_cutover.nesting_cst import (
+        FlextInfraUtilitiesSemanticCutoverNestingCst,
+    )
+    from ._semantic_cutover.nesting_references import (
+        FlextInfraUtilitiesSemanticCutoverNestingReferences,
+    )
+    from ._semantic_cutover.private_import_cst import (
+        FlextInfraUtilitiesSemanticCutoverPrivateImportCst,
+    )
+    from ._semantic_cutover.private_imports import (
+        FlextInfraUtilitiesSemanticCutoverPrivateImports,
+    )
     from .base import FlextInfraUtilitiesBase
     from .census import FlextInfraUtilitiesRefactorCensus
-    from .class_nesting import FlextInfraUtilitiesClassNesting
-    from .class_nesting_cst import FlextInfraUtilitiesClassNestingCst
-    from .class_nesting_references import FlextInfraUtilitiesClassNestingReferences
     from .codegen import FlextInfraUtilitiesCodegen
     from .codegen_facades import FlextInfraUtilitiesCodegenFacades
     from .codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
     from .codegen_path_cutover import FlextInfraUtilitiesCodegenPathCutover
     from .codemod_rules import FlextInfraUtilitiesCodemodRules
-    from .compatibility_alias_cst import FlextInfraUtilitiesCompatibilityAliasCst
     from .compatibility_alias_validation import (
         FlextInfraUtilitiesCompatibilityAliasValidation,
     )
-    from .compatibility_aliases import FlextInfraUtilitiesCompatibilityAliases
     from .deferred_self_reference_ast import FlextInfraUtilitiesDeferredSelfReference
     from .deferred_self_reference_rewrite import (
         FlextInfraUtilitiesDeferredSelfReferenceRewrite,
@@ -113,10 +125,8 @@ if TYPE_CHECKING:
     from .namespace_moves import FlextInfraUtilitiesRefactorNamespaceMoves
     from .network import FlextInfraUtilitiesNetwork
     from .private_import_ancestry import FlextInfraUtilitiesPrivateImportAncestry
-    from .private_import_cst import FlextInfraUtilitiesPrivateImportCst
     from .private_import_facades import FlextInfraUtilitiesPrivateImportFacades
     from .private_import_validation import FlextInfraUtilitiesPrivateImportValidation
-    from .private_imports import FlextInfraUtilitiesPrivateImports
     from .process import FlextInfraUtilitiesProcess
     from .project_discovery import FlextInfraUtilitiesProjectDiscovery
     from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
@@ -153,6 +163,7 @@ if TYPE_CHECKING:
     from .rope_source import FlextInfraUtilitiesRopeSource
     from .rope_structure import FlextInfraUtilitiesRopeStructure
     from .safety import FlextInfraUtilitiesSafety
+    from .semantic_cutover import FlextInfraUtilitiesSemanticCutover
     from .silent_failure_ast import FlextInfraUtilitiesSilentFailureAst
     from .silent_failure_ast_base import FlextInfraUtilitiesSilentFailureAstBase
     from .silent_failure_ast_rules import FlextInfraUtilitiesSilentFailureAstRules
@@ -168,18 +179,13 @@ __all__: tuple[str, ...] = (
     "FlextInfraChangeTrackingTransformer",
     "FlextInfraRopeProject",
     "FlextInfraUtilitiesBase",
-    "FlextInfraUtilitiesClassNesting",
-    "FlextInfraUtilitiesClassNestingCst",
-    "FlextInfraUtilitiesClassNestingReferences",
     "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenFacades",
     "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
     "FlextInfraUtilitiesCodegenPathCutover",
     "FlextInfraUtilitiesCodemodRules",
-    "FlextInfraUtilitiesCompatibilityAliasCst",
     "FlextInfraUtilitiesCompatibilityAliasValidation",
-    "FlextInfraUtilitiesCompatibilityAliases",
     "FlextInfraUtilitiesDeferredSelfReference",
     "FlextInfraUtilitiesDeferredSelfReferenceRewrite",
     "FlextInfraUtilitiesDependencies",
@@ -242,10 +248,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesNamespaceConfig",
     "FlextInfraUtilitiesNetwork",
     "FlextInfraUtilitiesPrivateImportAncestry",
-    "FlextInfraUtilitiesPrivateImportCst",
     "FlextInfraUtilitiesPrivateImportFacades",
     "FlextInfraUtilitiesPrivateImportValidation",
-    "FlextInfraUtilitiesPrivateImports",
     "FlextInfraUtilitiesProcess",
     "FlextInfraUtilitiesProjectDiscovery",
     "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
@@ -297,6 +301,16 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesRopeStructure",
     "FlextInfraUtilitiesSafety",
+    "FlextInfraUtilitiesSemanticCutover",
+    "FlextInfraUtilitiesSemanticCutoverAliasCst",
+    "FlextInfraUtilitiesSemanticCutoverAliases",
+    "FlextInfraUtilitiesSemanticCutoverBase",
+    "FlextInfraUtilitiesSemanticCutoverEdits",
+    "FlextInfraUtilitiesSemanticCutoverNesting",
+    "FlextInfraUtilitiesSemanticCutoverNestingCst",
+    "FlextInfraUtilitiesSemanticCutoverNestingReferences",
+    "FlextInfraUtilitiesSemanticCutoverPrivateImportCst",
+    "FlextInfraUtilitiesSemanticCutoverPrivateImports",
     "FlextInfraUtilitiesSilentFailureAst",
     "FlextInfraUtilitiesSilentFailureAstBase",
     "FlextInfraUtilitiesSilentFailureAstRules",
@@ -311,6 +325,7 @@ __all__: tuple[str, ...] = (
     "_git",
     "_rope",
     "_rope_analysis",
+    "_semantic_cutover",
     "git_stdin",
 )
 
@@ -386,21 +401,40 @@ _LAZY_IMPORTS = MappingProxyType(
             "._rope_core_pymodule": ("FlextInfraUtilitiesRopeCorePyModuleMixin",),
             "._rope_core_resources": ("FlextInfraUtilitiesRopeCoreResourcesMixin",),
             "._rope_method_order": ("FlextInfraUtilitiesRopeMethodOrderMixin",),
+            "._semantic_cutover": ("_semantic_cutover",),
+            "._semantic_cutover.alias_cst": (
+                "FlextInfraUtilitiesSemanticCutoverAliasCst",
+            ),
+            "._semantic_cutover.aliases": (
+                "FlextInfraUtilitiesSemanticCutoverAliases",
+            ),
+            "._semantic_cutover.base": ("FlextInfraUtilitiesSemanticCutoverBase",),
+            "._semantic_cutover.edits": ("FlextInfraUtilitiesSemanticCutoverEdits",),
+            "._semantic_cutover.nesting": (
+                "FlextInfraUtilitiesSemanticCutoverNesting",
+            ),
+            "._semantic_cutover.nesting_cst": (
+                "FlextInfraUtilitiesSemanticCutoverNestingCst",
+            ),
+            "._semantic_cutover.nesting_references": (
+                "FlextInfraUtilitiesSemanticCutoverNestingReferences",
+            ),
+            "._semantic_cutover.private_import_cst": (
+                "FlextInfraUtilitiesSemanticCutoverPrivateImportCst",
+            ),
+            "._semantic_cutover.private_imports": (
+                "FlextInfraUtilitiesSemanticCutoverPrivateImports",
+            ),
             ".base": ("FlextInfraUtilitiesBase",),
             ".census": ("FlextInfraUtilitiesRefactorCensus",),
-            ".class_nesting": ("FlextInfraUtilitiesClassNesting",),
-            ".class_nesting_cst": ("FlextInfraUtilitiesClassNestingCst",),
-            ".class_nesting_references": ("FlextInfraUtilitiesClassNestingReferences",),
             ".codegen": ("FlextInfraUtilitiesCodegen",),
             ".codegen_facades": ("FlextInfraUtilitiesCodegenFacades",),
             ".codegen_file_plan": ("FlextInfraUtilitiesCodegenFilePlan",),
             ".codegen_path_cutover": ("FlextInfraUtilitiesCodegenPathCutover",),
             ".codemod_rules": ("FlextInfraUtilitiesCodemodRules",),
-            ".compatibility_alias_cst": ("FlextInfraUtilitiesCompatibilityAliasCst",),
             ".compatibility_alias_validation": (
                 "FlextInfraUtilitiesCompatibilityAliasValidation",
             ),
-            ".compatibility_aliases": ("FlextInfraUtilitiesCompatibilityAliases",),
             ".deferred_self_reference_ast": (
                 "FlextInfraUtilitiesDeferredSelfReference",
             ),
@@ -439,12 +473,10 @@ _LAZY_IMPORTS = MappingProxyType(
             ".namespace_moves": ("FlextInfraUtilitiesRefactorNamespaceMoves",),
             ".network": ("FlextInfraUtilitiesNetwork",),
             ".private_import_ancestry": ("FlextInfraUtilitiesPrivateImportAncestry",),
-            ".private_import_cst": ("FlextInfraUtilitiesPrivateImportCst",),
             ".private_import_facades": ("FlextInfraUtilitiesPrivateImportFacades",),
             ".private_import_validation": (
                 "FlextInfraUtilitiesPrivateImportValidation",
             ),
-            ".private_imports": ("FlextInfraUtilitiesPrivateImports",),
             ".process": ("FlextInfraUtilitiesProcess",),
             ".project_discovery": ("FlextInfraUtilitiesProjectDiscovery",),
             ".project_managed_artifacts": (
@@ -483,6 +515,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".rope_source": ("FlextInfraUtilitiesRopeSource",),
             ".rope_structure": ("FlextInfraUtilitiesRopeStructure",),
             ".safety": ("FlextInfraUtilitiesSafety",),
+            ".semantic_cutover": ("FlextInfraUtilitiesSemanticCutover",),
             ".silent_failure_ast": ("FlextInfraUtilitiesSilentFailureAst",),
             ".silent_failure_ast_base": ("FlextInfraUtilitiesSilentFailureAstBase",),
             ".silent_failure_ast_rules": ("FlextInfraUtilitiesSilentFailureAstRules",),

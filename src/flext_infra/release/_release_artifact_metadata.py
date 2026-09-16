@@ -183,9 +183,7 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
             return r[bool].fail("release pyproject must define a Hatch wheel target")
         raw_packages = u.Cli.toml_value(wheel, "packages")
         validated = u.validate_value(
-            t.Infra.STR_SEQ_ADAPTER,
-            u.Cli.json_as_sequence(raw_packages),
-            strict=True,
+            t.Infra.STR_SEQ_ADAPTER, u.Cli.json_as_sequence(raw_packages), strict=True
         )
         if validated.failure:
             return r[bool].fail_op("validate Hatch wheel packages", validated.error)

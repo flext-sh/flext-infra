@@ -134,7 +134,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             owned = FlextInfraModReplacements.require_authored(after_ast)
             if owned.failure:
                 return r[t.Cli.ResultValue].from_failure(owned)
-            FlextInfraCodemodSemanticApply.apply(root, after_ast)
+            semantic = FlextInfraCodemodSemanticApply.apply(root, after_ast)
+            if semantic.failure:
+                return r[t.Cli.ResultValue].from_failure(semantic)
             current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
         current_text = FlextInfraModTextGateEngine.scan(
             root, fix=False, validate_receipts=True

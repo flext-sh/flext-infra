@@ -14,11 +14,9 @@ from flext_cli import u as cli_u
 from ._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
 from ._utilities.base import FlextInfraUtilitiesBase
 from ._utilities.census import FlextInfraUtilitiesRefactorCensus
-from ._utilities.class_nesting import FlextInfraUtilitiesClassNesting
 from ._utilities.codegen import FlextInfraUtilitiesCodegen
 from ._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
 from ._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
-from ._utilities.compatibility_aliases import FlextInfraUtilitiesCompatibilityAliases
 from ._utilities.deferred_self_reference_ast import (
     FlextInfraUtilitiesDeferredSelfReference,
 )
@@ -44,7 +42,6 @@ from ._utilities.namespace_common import FlextInfraUtilitiesRefactorNamespaceCom
 from ._utilities.namespace_facades import FlextInfraUtilitiesRefactorNamespaceFacades
 from ._utilities.namespace_moves import FlextInfraUtilitiesRefactorNamespaceMoves
 from ._utilities.network import FlextInfraUtilitiesNetwork
-from ._utilities.private_imports import FlextInfraUtilitiesPrivateImports
 from ._utilities.process import FlextInfraUtilitiesProcess
 from ._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
@@ -71,6 +68,7 @@ from ._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from ._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from ._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
 from ._utilities.safety import FlextInfraUtilitiesSafety
+from ._utilities.semantic_cutover import FlextInfraUtilitiesSemanticCutover
 from ._utilities.silent_failure_ast import FlextInfraUtilitiesSilentFailureAst
 from ._utilities.transformer_header import FlextInfraUtilitiesTransformerHeader
 from ._utilities.versioning import FlextInfraUtilitiesVersioning
@@ -95,13 +93,11 @@ class FlextInfraUtilities(cli_u):
 
     class Infra(
         FlextInfraUtilitiesBase,
-        FlextInfraUtilitiesClassNesting,
         FlextInfraUtilitiesProcess,
         FlextInfraUtilitiesNetwork,
         FlextInfraUtilitiesResourceLimits,
         FlextInfraUtilitiesCodegen,
         FlextInfraUtilitiesCodegenFilePlan,
-        FlextInfraUtilitiesCompatibilityAliases,
         FlextInfraUtilitiesCodegenNamespace,
         FlextInfraUtilitiesPyprojectConform,
         FlextInfraUtilitiesPyrefly,
@@ -138,7 +134,7 @@ class FlextInfraUtilities(cli_u):
         FlextInfraUtilitiesIteration,
         FlextInfraUtilitiesLogParser,
         FlextInfraUtilitiesManagedConflicts,
-        FlextInfraUtilitiesPrivateImports,
+        FlextInfraUtilitiesSemanticCutover,
         FlextInfraUtilitiesProtectedEdit,
         FlextInfraUtilitiesRefactor,
         FlextInfraUtilitiesRefactorCensus,

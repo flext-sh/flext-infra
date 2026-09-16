@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast as _ast
+
 from collections.abc import Callable, Container as _Container, MutableMapping
 from datetime import date, datetime
 from pathlib import Path as _Path
@@ -116,6 +118,14 @@ class FlextInfraTypesBase:
 
     type TransformResult = t.StrSequencePair
     "Canonical (new_source, change_descriptions) from any source transformer."
+    type PrivateImportSpec = t.Quint[str, str, str, str, str]
+    "(private module, symbol, qualified name, owner package, target reference)."
+    type PrivateImportReferences = tuple[
+        t.MappingKV[_Path, t.SequenceOf[PrivateImportSpec]],
+        t.MappingKV[_Path, t.MappingKV[str, t.StrPair]],
+        t.MappingKV[str, t.VariadicTuple[t.Quad[_ast.Module, str, str, str]]],
+    ]
+    "Resolved private-import specs, declared re-export targets, and facade owners."
     type EditResult = tuple[bool, t.StrSequence]
     "Validated edit outcome: (success, report_lines)."
     type EditResultWithDescs = tuple[bool, t.StrSequence, t.StrSequence]

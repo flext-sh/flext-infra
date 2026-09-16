@@ -179,7 +179,6 @@ if TYPE_CHECKING:
     )
     from .refactor.accessor_migration import FlextInfraAccessorMigrationOrchestrator
     from .refactor.census import FlextInfraRefactorCensus
-    from .refactor.class_nesting_analyzer import FlextInfraRefactorClassNestingAnalyzer
     from .refactor.classvar_constant_autofix import (
         FlextInfraRefactorClassvarConstantAutofix,
     )
@@ -190,7 +189,6 @@ if TYPE_CHECKING:
     )
     from .refactor.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
     from .refactor.project_classifier import FlextInfraProjectClassifier
-    from .refactor.violation_analyzer import FlextInfraRefactorViolationAnalyzer
     from .refactor.wrapper_root_namespace import FlextInfraWrapperRootNamespaceRefactor
     from .release.orchestrator import FlextInfraReleaseOrchestrator
     from .release.orchestrator_phases import FlextInfraReleaseOrchestratorPhases
@@ -204,10 +202,6 @@ if TYPE_CHECKING:
     from .services.cli_routes_validate_commands import ValidationCommandRoutes
     from .services.cli_routes_workspace import WorkspaceRoutes
     from .services.codegen import FlextInfraCodegen
-    from .transformers.census_visitors import (
-        FlextInfraCensusImportDiscoveryVisitor,
-        FlextInfraCensusUsageCollector,
-    )
     from .transformers.class_reconstructor import FlextInfraRefactorClassReconstructor
     from .transformers.compatibility_alias import FlextInfraRefactorCompatibilityAlias
     from .transformers.dataclass_modelizer import FlextInfraRefactorDataclassModelizer
@@ -227,9 +221,7 @@ if TYPE_CHECKING:
     from .transformers.smells.base import FlextInfraSmellFixer
     from .transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
     from .transformers.symbol_propagator import FlextInfraRefactorSymbolPropagator
-    from .transformers.tier0_import_fixer import FlextInfraTransformerTier0ImportFixer
     from .transformers.typing_unifier import FlextInfraRefactorTypingUnifier
-    from .transformers.violation_census_visitor import FlextInfraViolationCensusVisitor
     from .typings import FlextInfraTypes, FlextInfraTypes as t
     from .utilities import FlextInfraUtilities, FlextInfraUtilities as u
     from .validate.cprofile_report import FlextInfraCProfileReport
@@ -286,8 +278,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraBooleanLogicFixer",
     "FlextInfraCProfileReport",
     "FlextInfraCanonicalAliasGate",
-    "FlextInfraCensusImportDiscoveryVisitor",
-    "FlextInfraCensusUsageCollector",
     "FlextInfraClassPlacementDetector",
     "FlextInfraCleanService",
     "FlextInfraCli",
@@ -404,7 +394,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraPytestRunner",
     "FlextInfraPythonVersionEnforcer",
     "FlextInfraRefactorCensus",
-    "FlextInfraRefactorClassNestingAnalyzer",
     "FlextInfraRefactorClassReconstructor",
     "FlextInfraRefactorClassvarConstantAutofix",
     "FlextInfraRefactorCompatibilityAlias",
@@ -423,7 +412,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorSignaturePropagator",
     "FlextInfraRefactorSymbolPropagator",
     "FlextInfraRefactorTypingUnifier",
-    "FlextInfraRefactorViolationAnalyzer",
     "FlextInfraReleaseOrchestrator",
     "FlextInfraReleaseOrchestratorPhases",
     "FlextInfraReleasePolicyRender",
@@ -448,7 +436,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraTierWhitelistGate",
     "FlextInfraTomlPhaseService",
     "FlextInfraTransformerFixerAdapter",
-    "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraTypes",
     "FlextInfraUtilities",
     "FlextInfraValidateFreshImport",
@@ -456,7 +443,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraValidateLazyMapFreshness",
     "FlextInfraValidateMetadataDiscipline",
     "FlextInfraValidateTierWhitelist",
-    "FlextInfraViolationCensusVisitor",
     "FlextInfraWorkspaceBeadsEnvironmentMixin",
     "FlextInfraWorkspaceCheckGatesMixin",
     "FlextInfraWorkspaceChecker",
@@ -676,9 +662,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraAccessorMigrationOrchestrator",
             ),
             ".refactor.census": ("FlextInfraRefactorCensus",),
-            ".refactor.class_nesting_analyzer": (
-                "FlextInfraRefactorClassNestingAnalyzer",
-            ),
             ".refactor.classvar_constant_autofix": (
                 "FlextInfraRefactorClassvarConstantAutofix",
             ),
@@ -691,7 +674,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraRefactorProjectAliasMigrator",
             ),
             ".refactor.project_classifier": ("FlextInfraProjectClassifier",),
-            ".refactor.violation_analyzer": ("FlextInfraRefactorViolationAnalyzer",),
             ".refactor.wrapper_root_namespace": (
                 "FlextInfraWrapperRootNamespaceRefactor",
             ),
@@ -710,10 +692,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".services.cli_routes_workspace": ("WorkspaceRoutes",),
             ".services.codegen": ("FlextInfraCodegen",),
             ".transformers": ("transformers",),
-            ".transformers.census_visitors": (
-                "FlextInfraCensusImportDiscoveryVisitor",
-                "FlextInfraCensusUsageCollector",
-            ),
             ".transformers.class_reconstructor": (
                 "FlextInfraRefactorClassReconstructor",
             ),
@@ -745,13 +723,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".transformers.smells.base": ("FlextInfraSmellFixer",),
             ".transformers.smells.boolean_logic": ("FlextInfraBooleanLogicFixer",),
             ".transformers.symbol_propagator": ("FlextInfraRefactorSymbolPropagator",),
-            ".transformers.tier0_import_fixer": (
-                "FlextInfraTransformerTier0ImportFixer",
-            ),
             ".transformers.typing_unifier": ("FlextInfraRefactorTypingUnifier",),
-            ".transformers.violation_census_visitor": (
-                "FlextInfraViolationCensusVisitor",
-            ),
             ".typings": ("FlextInfraTypes", "t"),
             ".utilities": ("FlextInfraUtilities", "u"),
             ".validate": ("validate",),

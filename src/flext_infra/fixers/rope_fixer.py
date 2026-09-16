@@ -157,13 +157,6 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         return f"{package_name}.{file_path.stem}" if package_name else ""
 
     @staticmethod
-    def _module_file_for_name(module_name: str, *, project_root: Path) -> Path:
-        """Return the source file path for an importable module name."""
-        src_dir: str = c.Infra.DEFAULT_SRC_DIR
-        module_path = Path(*module_name.split(".")).with_suffix(".py")
-        return project_root / src_dir / module_path
-
-    @staticmethod
     def _constants_module_for_file(
         file_path: Path, *, module_name: str, project_root: Path
     ) -> str:

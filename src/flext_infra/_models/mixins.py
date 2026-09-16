@@ -207,11 +207,6 @@ class FlextInfraModelsMixins:
 
         detail: Annotated[str, m.Field(description="Error detail")] = ""
 
-    class ConfidenceLevelMixin:
-        """Shared confidence field for refactor diagnostics."""
-
-        confidence: Annotated[str, m.Field(description="Confidence level")] = "low"
-
     # ═══════════════════ PROJECT NAME / PATH VARIANTS ═══════════════════
 
     class ProjectNameMixin:
@@ -223,11 +218,6 @@ class FlextInfraModelsMixins:
         """Shared required project entry name field."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Project name")]
-
-    class ProjectNameFieldMixin:
-        """Shared required project_name field."""
-
-        project_name: Annotated[t.NonEmptyStr, m.Field(description="Project name")]
 
     class RepositoryRootPathMixin:
         """Shared repository root path field."""

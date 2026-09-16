@@ -349,15 +349,10 @@ class FlextInfraUtilitiesCodegenNamespace:
             and len(resolved_rel_path.parts) == 1
             and package_depth <= 1
         )
+        # The alias is declared by the module (``__all__``/family directory) or
+        # owned by a sanctioned runtime singleton; it is never synthesized from
+        # the package name, which would invent a phantom API alias.
         resolved_alias = expected_alias or runtime_singleton_export
-        if (
-            resolved_alias is None
-            and is_root_namespace
-            and resolved_rel_path.name == c.Infra.API_PY
-        ):
-            resolved_alias = cls.package_alias(
-                package_name=".".join(package_parts) if package_parts else ""
-            )
         return (
             is_fixture_module,
             is_family_module,
