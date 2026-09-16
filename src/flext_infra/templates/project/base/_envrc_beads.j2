@@ -1,8 +1,9 @@
 # === SECTION: beads watched inputs (managed) ===
-# Source: template (direnv stdlib contract)
+# Source: typed BeadsWorkspaceEnvironmentSpec shared by both direnv profiles.
+# Environment sources are host-provided and optional: isolated CI must still
+# activate while a city-connected host keeps their exports.
 {% for source in gascity.environment_sources -%}
-watch_file "{{ source }}"
-source_env "{{ source }}"
+source_env_if_exists "{{ source }}"
 {% endfor -%}
 # End SECTION: beads watched inputs
 

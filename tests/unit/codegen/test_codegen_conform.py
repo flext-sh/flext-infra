@@ -621,8 +621,7 @@ class TestsFlextInfraCodegenConform:
             repository_root=tmp_path,
         )
         rendered = tm.ok(context)
-        tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)
-        tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
+        tm.that(type(rendered), eq=m.Infra.MakeRenderContext)
         tm.that(rendered.repository_root_rel, eq=".")
 
     # Why (suite budget): parametrized over both conform modes, each running a
