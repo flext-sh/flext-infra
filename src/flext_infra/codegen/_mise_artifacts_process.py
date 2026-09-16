@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, m, settings, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -26,7 +26,7 @@ class FlextInfraMiseArtifactsProcess:
         def directory_key(path: Path) -> t.Pair[int, str]:
             return len(path.parts), path.as_posix()
 
-        if not os.environ.get("PATH"):
+        if not settings.Infra.system_path:
             return r[bool].fail("PATH is required for isolated Mise execution")
         if scratch.exists() or scratch.is_symlink():
             return r[bool].fail(f"isolated Mise runtime already exists: {scratch}")
@@ -88,9 +88,9 @@ class FlextInfraMiseArtifactsProcess:
             "MISE_INSTALL_PATH": str(install_path.value),
         })
         for name in contract.passthrough_environment:
-            if value := os.environ.get(name):
+            if value := u.Infra.env_lookup(name):
                 isolated[name] = value
-        credential_command = os.environ.get("MISE_GITHUB_CREDENTIAL_COMMAND")
+        credential_command = settings.Infra.mise_github_credential_command
         if credential_command:
             isolated["MISE_GITHUB_CREDENTIAL_COMMAND"] = credential_command
         return r[MutableMapping[str, str]].ok(isolated)
