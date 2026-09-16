@@ -7,13 +7,15 @@ snapshots:
         model = fallback
   : labels:
     - source: |-
-        try:
-            model = Model.model_validate(raw)
         except ValidationError as exc:
             model = fallback
       style: primary
-      start: 0
+      start: 43
       end: 94
+    - source: ValidationError
+      style: secondary
+      start: 50
+      end: 65
   ? |
     try:
         model = Model.model_validate(raw)
@@ -21,13 +23,15 @@ snapshots:
         model = None
   : labels:
     - source: |-
-        try:
-            model = Model.model_validate(raw)
         except ValidationError:
             model = None
       style: primary
-      start: 0
+      start: 43
       end: 83
+    - source: ValidationError
+      style: secondary
+      start: 50
+      end: 65
   ? |
     try:
         model = Model.model_validate(raw)
@@ -35,10 +39,12 @@ snapshots:
         pass
   : labels:
     - source: |-
-        try:
-            model = Model.model_validate(raw)
         except pydantic.ValidationError:
             pass
       style: primary
-      start: 0
+      start: 43
       end: 84
+    - source: ValidationError
+      style: secondary
+      start: 59
+      end: 74

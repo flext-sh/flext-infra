@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, e, m, t, u
 
 from .base_gate import FlextInfraGate
 
@@ -200,8 +200,10 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 )
             )
         except c.ValidationError as exc:
+            failed = e.fail_validation(error=exc)
             return r[m.Infra.ProjectDuplicationOverrides].fail_op(
-                f"[tool.flext.project.duplication] validation ({pyproject_path})", exc
+                f"[tool.flext.project.duplication] validation ({pyproject_path})",
+                failed.error,
             )
 
     def _declared_duplication_trees(self) -> p.Result[t.StrSequence]:
@@ -217,8 +219,9 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         try:
             manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
         except c.ValidationError as exc:
+            failed = e.fail_validation(error=exc)
             return r[t.StrSequence].fail_op(
-                f"workspace manifest model validation ({manifest_path})", exc
+                f"workspace manifest model validation ({manifest_path})", failed.error
             )
         return r[t.StrSequence].ok(tuple(manifest.repository.duplication_trees))
 
