@@ -252,10 +252,18 @@ class FlextInfraCodegenConformExecute:
     _SOURCE_RACE_CYCLES: Final[int] = 3
     """Bounded convergence attempts after a mid-cycle source mutation."""
 
-    @staticmethod
-    def _is_source_race(error: str | None) -> bool:
+    _SOURCE_RACE_MARKERS: Final[tuple[str, ...]] = (
+        "atomic source changed",
+        "atomic destination parent is missing",
+        "atomic source has conflicting snapshots",
+    )
+    """Failure signatures meaning the tree mutated under one locked cycle."""
+
+    @classmethod
+    def _is_source_race(cls, error: str | None) -> bool:
         """Return whether one failure signature is a mid-cycle source mutation."""
-        return "atomic source changed" in (error or "")
+        message = error or ""
+        return any(marker in message for marker in cls._SOURCE_RACE_MARKERS)
 
     def _lazy_phase(
         self, request: m.Infra.CodegenConformRequest
