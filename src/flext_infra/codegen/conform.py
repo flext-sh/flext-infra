@@ -26,6 +26,9 @@ from flext_infra.models import m
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.typings import t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace.environment_contracts import (
+    FlextInfraWorkspaceEnvironmentContracts,
+)
 
 
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
@@ -1099,6 +1102,62 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         )
                     )
                     continue
+            if (
+                governed.policy == "merge"
+                and relative.as_posix() == c.Infra.ENVRC_LOCAL_RELPATH
+            ):
+                # Local overrides never carry generated content: the merge
+                # strips stale generated sections and deletes the file when
+                # nothing custom remains, so `.envrc` stays the single
+                # beads activation owner. Mirrors the `_conform` family owner.
+                normalized = FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized(
+                    current
+                )
+                if normalized == current:
+                    current_plan = FlextInfraCodegenConform._file_plan(
+                        root, relative.as_posix(), current, mode=governed.mode
+                    )
+                    if current_plan.failure:
+                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                            current_plan
+                        )
+                    completed.append(
+                        current_plan.value.model_copy(
+                            update={"owner": governed.owner, "policy": governed.policy}
+                        )
+                    )
+                    continue
+                if not normalized:
+                    before = u.Cli.atomic_read_binary_file_state(path, required=False)
+                    if before.failure:
+                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                            before
+                        )
+                    completed.append(
+                        m.Infra.CodegenFilePlan(
+                            project=root,
+                            path=path,
+                            before=before.value,
+                            desired_content=None,
+                            desired_mode=None,
+                            owner=governed.owner,
+                            policy=governed.policy,
+                        )
+                    )
+                    continue
+                merged_plan = FlextInfraCodegenConform._file_plan(
+                    root, relative.as_posix(), normalized, mode=governed.mode
+                )
+                if merged_plan.failure:
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                        merged_plan
+                    )
+                completed.append(
+                    merged_plan.value.model_copy(
+                        update={"owner": governed.owner, "policy": governed.policy}
+                    )
+                )
+                continue
             current_plan = FlextInfraCodegenConform._file_plan(
                 root, relative.as_posix(), current, mode=governed.mode
             )
@@ -2054,6 +2113,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.MarkdownLintRenderSpec(tooling=config.Infra.tooling)
             )
         if destination in {".envrc", ".envrc.local"}:
+            # Declarative tier resolution mirrors the `_conform` family owner:
+            # conform targets own a governed Beads identity, so the rendered
+            # tier is city wiring when the repository declares participation,
+            # the repository-local bd base otherwise.
             return r[p.Model].ok(
                 m.Infra.EnvrcRenderSpec(
                     state_directory_name=codegen.toolchain.state_directory_name,
@@ -2069,7 +2132,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     gascity=(
                         m.Infra.BeadsWorkspaceEnvironmentSpec()
                         if target.gascity_enabled
-                        else None
+                        else m.Infra.BeadsWorkspaceEnvironmentSpec(backend="local")
                     ),
                 )
             )
@@ -2363,7 +2426,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 workspace_gitlinks=gitlinks.value,
                 extra_verbs=extra_verbs,
                 script_dispatch=repository.script_dispatch,
-                uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
                 dependency_cooldown_exclusions=cooldown_exclusions,
                 dependency_cooldown_overrides=cooldown_overrides,
             )

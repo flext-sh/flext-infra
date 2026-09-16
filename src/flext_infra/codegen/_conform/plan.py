@@ -532,16 +532,16 @@ class FlextInfraCodegenConformPlan:
                     f"managed destination escapes repository root: {entry.destination}"
                 )
             path = (root / relative).resolve()
-            # Why (flext-l2296 → superseded): the ledger metadata used to be
-            # minted by Beads at first use, so a fresh clone lacked it and
-            # planning an absent artifact failed the check gate. The generated
-            # .envrc Gas City activation contract changed that reality: it is
-            # rendered for every managed repository and fail-loudly reads this
-            # marker at direnv load whenever the host carries the city
-            # identity. Skipping the marker made every make verb die on jq for
-            # a fresh checkout on such a host. The marker is therefore always
-            # planned; a fresh render carries a mintable identity
-            # (project_id=None) and Beads still owns the first mint.
+            # Why (flext-l2296): the ledger metadata is minted by Beads at
+            # first use, so a fresh clone legitimately lacks it. Planning an
+            # absent runtime artifact made the gen check gate fail on every
+            # clean checkout. When the file exists, the identity-preserving
+            # refresh below still applies.
+            if (
+                entry.destination == c.Infra.BEADS_METADATA_RELPATH
+                and not path.is_file()
+            ):
+                continue
             try:
                 path.relative_to(root.resolve())
             except ValueError:
