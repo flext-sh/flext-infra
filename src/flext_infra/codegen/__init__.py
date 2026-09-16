@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from ._conform.misc import FlextInfraCodegenConformMisc
     from ._conform.plan import FlextInfraCodegenConformPlan
     from ._conform.render import FlextInfraCodegenConformRender
+    from ._conform_gitignore import FlextInfraCodegenConformGitignoreMixin
     from ._consolidator_steps import FlextInfraCodegenConsolidatorStepsMixin
     from ._fixer_passes import FlextInfraCodegenFixerPassesMixin
     from ._fixer_results import FlextInfraCodegenFixerResultsMixin
@@ -42,10 +43,6 @@ if TYPE_CHECKING:
     from ._lazy_init_generation_registry import (
         FlextInfraCodegenLazyInitGenerationRegistryMixin,
     )
-    from ._lazy_init_import_alignment import (
-        FlextInfraCodegenLazyInitImportAlignmentMixin,
-    )
-    from ._lazy_init_import_layers import layer_rank, relative_import_dots, unknown_rank
     from ._lazy_init_planner_public_root import (
         FlextInfraCodegenLazyInitPlannerPublicRootMixin,
     )
@@ -85,6 +82,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenConform",
     "FlextInfraCodegenConformBootstrap",
     "FlextInfraCodegenConformExecute",
+    "FlextInfraCodegenConformGitignoreMixin",
     "FlextInfraCodegenConformMisc",
     "FlextInfraCodegenConformPlan",
     "FlextInfraCodegenConformRender",
@@ -111,7 +109,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenLazyInitGenerationFilePlanMixin",
     "FlextInfraCodegenLazyInitGenerationMixin",
     "FlextInfraCodegenLazyInitGenerationRegistryMixin",
-    "FlextInfraCodegenLazyInitImportAlignmentMixin",
     "FlextInfraCodegenLazyInitPlanner",
     "FlextInfraCodegenLazyInitPlannerPublicRootMixin",
     "FlextInfraCodegenMakeBootstrap",
@@ -136,13 +133,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraMiseStaging",
     "FlextInfraMiseWorkspacePlanner",
     "_conform",
-    "layer_rank",
     "publication_plan",
     "publish",
     "publish_file_plan",
-    "relative_import_dots",
     "stage_file_plans",
-    "unknown_rank",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -172,6 +166,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._conform.misc": ("FlextInfraCodegenConformMisc",),
             "._conform.plan": ("FlextInfraCodegenConformPlan",),
             "._conform.render": ("FlextInfraCodegenConformRender",),
+            "._conform_gitignore": ("FlextInfraCodegenConformGitignoreMixin",),
             "._consolidator_steps": ("FlextInfraCodegenConsolidatorStepsMixin",),
             "._fixer_passes": ("FlextInfraCodegenFixerPassesMixin",),
             "._fixer_results": ("FlextInfraCodegenFixerResultsMixin",),
@@ -186,14 +181,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             "._lazy_init_generation_registry": (
                 "FlextInfraCodegenLazyInitGenerationRegistryMixin",
-            ),
-            "._lazy_init_import_alignment": (
-                "FlextInfraCodegenLazyInitImportAlignmentMixin",
-            ),
-            "._lazy_init_import_layers": (
-                "layer_rank",
-                "relative_import_dots",
-                "unknown_rank",
             ),
             "._lazy_init_planner_public_root": (
                 "FlextInfraCodegenLazyInitPlannerPublicRootMixin",

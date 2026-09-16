@@ -95,8 +95,11 @@ class TestsFlextInfraDepsModernizerMainExtra:
     ) -> None:
         """Rewriting does not require a persisted dependency resolution."""
         modernizer = FlextInfraPyprojectModernizer(
-            repository_root=modernizer_workspace, apply_changes=True,
-            rewrite_constraints=True, skip_comments=True, skip_check=True,
+            repository_root=modernizer_workspace,
+            apply_changes=True,
+            rewrite_constraints=True,
+            skip_comments=True,
+            skip_check=True,
         )
         tm.that(modernizer.run(), eq=0)
         tm.that((modernizer_workspace / "uv.lock").exists(), eq=False)

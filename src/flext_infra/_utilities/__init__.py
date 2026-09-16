@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import _git, _rope
+    from . import _git, _rope, _rope_analysis
     from ._docs_audit_detectors import FlextInfraUtilitiesDocsAuditDetectorsMixin
     from ._docs_command_contract import FlextInfraUtilitiesDocsCommandContractMixin
     from ._docs_generate_plan import FlextInfraUtilitiesDocsGeneratePlanMixin
@@ -60,6 +60,12 @@ if TYPE_CHECKING:
     from ._rope.project import FlextInfraRopeProject
     from ._rope.scope import FlextInfraUtilitiesRopeAnalysisScope
     from ._rope.source import FlextInfraUtilitiesRopeAnalysisSource
+    from ._rope_analysis.base import (
+        FlextInfraUtilitiesRopeAnalysisAstHelpers,
+        FlextInfraUtilitiesRopeAnalysisExports,
+        FlextInfraUtilitiesRopeAnalysisImportState,
+        FlextInfraUtilitiesRopeAnalysisSourceScan,
+    )
     from ._rope_bracket_balance import FlextInfraUtilitiesRopeBracketBalanceMixin
     from ._rope_core_pymodule import FlextInfraUtilitiesRopeCorePyModuleMixin
     from ._rope_core_resources import FlextInfraUtilitiesRopeCoreResourcesMixin
@@ -99,6 +105,7 @@ if TYPE_CHECKING:
     from .docs_scope import FlextInfraUtilitiesDocsScope
     from .docs_validate import FlextInfraUtilitiesDocsValidate
     from .git import FlextInfraUtilitiesGit
+    from .gitignore import FlextInfraUtilitiesGitignore
     from .iteration import FlextInfraUtilitiesIteration
     from .iteration_directory import FlextInfraUtilitiesIterationDirectory
     from .iteration_matching import FlextInfraUtilitiesIterationMatching
@@ -232,6 +239,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitWorktreeRemovalMixin",
     "FlextInfraUtilitiesGitWorktreeRootsMixin",
     "FlextInfraUtilitiesGitWorktreeStatusMixin",
+    "FlextInfraUtilitiesGitignore",
     "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesIterationDirectory",
     "FlextInfraUtilitiesIterationMatching",
@@ -273,12 +281,16 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeAnalysis",
     "FlextInfraUtilitiesRopeAnalysisAnalysis",
     "FlextInfraUtilitiesRopeAnalysisAst",
+    "FlextInfraUtilitiesRopeAnalysisAstHelpers",
     "FlextInfraUtilitiesRopeAnalysisBase",
+    "FlextInfraUtilitiesRopeAnalysisExports",
+    "FlextInfraUtilitiesRopeAnalysisImportState",
     "FlextInfraUtilitiesRopeAnalysisImports",
     "FlextInfraUtilitiesRopeAnalysisIntrospection",
     "FlextInfraUtilitiesRopeAnalysisNodes",
     "FlextInfraUtilitiesRopeAnalysisScope",
     "FlextInfraUtilitiesRopeAnalysisSource",
+    "FlextInfraUtilitiesRopeAnalysisSourceScan",
     "FlextInfraUtilitiesRopeAnalysisWorkspace",
     "FlextInfraUtilitiesRopeBracketBalanceMixin",
     "FlextInfraUtilitiesRopeClassMove",
@@ -312,6 +324,7 @@ __all__: tuple[str, ...] = (
     "MypyDarwinSupervisor",
     "_git",
     "_rope",
+    "_rope_analysis",
     "git_stdin",
 )
 
@@ -378,6 +391,13 @@ _LAZY_IMPORTS = MappingProxyType(
             "._rope.project": ("FlextInfraRopeProject",),
             "._rope.scope": ("FlextInfraUtilitiesRopeAnalysisScope",),
             "._rope.source": ("FlextInfraUtilitiesRopeAnalysisSource",),
+            "._rope_analysis": ("_rope_analysis",),
+            "._rope_analysis.base": (
+                "FlextInfraUtilitiesRopeAnalysisAstHelpers",
+                "FlextInfraUtilitiesRopeAnalysisExports",
+                "FlextInfraUtilitiesRopeAnalysisImportState",
+                "FlextInfraUtilitiesRopeAnalysisSourceScan",
+            ),
             "._rope_bracket_balance": ("FlextInfraUtilitiesRopeBracketBalanceMixin",),
             "._rope_core_pymodule": ("FlextInfraUtilitiesRopeCorePyModuleMixin",),
             "._rope_core_resources": ("FlextInfraUtilitiesRopeCoreResourcesMixin",),
@@ -419,6 +439,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".docs_scope": ("FlextInfraUtilitiesDocsScope",),
             ".docs_validate": ("FlextInfraUtilitiesDocsValidate",),
             ".git": ("FlextInfraUtilitiesGit",),
+            ".gitignore": ("FlextInfraUtilitiesGitignore",),
             ".iteration": ("FlextInfraUtilitiesIteration",),
             ".iteration_directory": ("FlextInfraUtilitiesIterationDirectory",),
             ".iteration_matching": ("FlextInfraUtilitiesIterationMatching",),

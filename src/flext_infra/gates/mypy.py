@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, e, m, t, u
+from flext_infra import c, m, t, u
 
 from .base_gate import FlextInfraGate
 
@@ -187,17 +187,16 @@ class FlextInfraMypyGate(FlextInfraGate):
         for raw_line in result.stdout.splitlines():
             if not raw_line.strip():
                 continue
-            try:
-                diagnostic = m.Infra.MypyDiagnostic.model_validate_json(
-                    raw_line, strict=True
-                )
-            except c.ValidationError as exc:
-                failed = e.fail_validation(error=exc)
+            validated = u.validate_value(
+                m.Infra.MypyDiagnostic, raw_line, from_json=True, strict=True
+            )
+            if validated.failure:
                 return False, (
                     self._malformed_report_issue(
-                        str(failed.error), tool=c.Infra.MYPY, file=str(project_dir)
+                        str(validated.error), tool=c.Infra.MYPY, file=str(project_dir)
                     ),
                 )
+            diagnostic = validated.value
             issues.append(
                 m.Infra.Issue(
                     file=diagnostic.file,

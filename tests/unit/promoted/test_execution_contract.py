@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import m
+from flext_infra import c, m
+from flext_infra.promoted.base import discovered_workspace_spec
 from flext_infra.promoted.dispatcher import dispatch
 from flext_infra.promoted.invocation import validate_command_contract
 from flext_infra.promoted.registry import Registry
@@ -66,15 +67,32 @@ class TestsFlextInfraPromotedExecutionContract:
         ) -> None:
             """Unrelated ambient input never changes the declared operation."""
             registry, marker = self._write_registry(tmp_path)
-            environment = {"WHAT": "all"}
-            if ambient_value is not None:
-                environment["UNDECLARED_INPUT"] = ambient_value
+            environment = (
+                {} if ambient_value is None else {"UNDECLARED_INPUT": ambient_value}
+            )
             with tm.scope(
                 env=environment, remove_env_keys=("HELP", "OPTIONS", "UNDECLARED_INPUT")
             ):
-                exit_code = dispatch(registry, "probe")
-                assert exit_code == 0
-                assert marker.exists()
+                exit_code = dispatch(registry, "probe", "all")
+            tm.that(exit_code, eq=0)
+            tm.that(marker.exists(), eq=True)
+
+    class TestsFlextInfraPromotedWorkspaceDiscovery:
+        """Workspace discovery resolves the owner from any working directory."""
+
+        @pytest.mark.parametrize("relative_cwd", [".", "scripts/probe"])
+        def test_discovered_spec_resolves_owner_from_working_directory(
+            self, tmp_path: Path, relative_cwd: str
+        ) -> None:
+            """A project root and a script directory both resolve the same owner."""
+            (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+                "[project]\nname = 'probe'\n", encoding="utf-8"
+            )
+            (tmp_path / c.Infra.DIR_SCRIPTS / "probe").mkdir(parents=True)
+            with tm.scope(cwd=tmp_path / relative_cwd):
+                spec = discovered_workspace_spec()
+            tm.that(spec.root, eq=tmp_path.resolve())
+            tm.that(spec.scripts, eq=tmp_path.resolve() / c.Infra.DIR_SCRIPTS)
 
 
 __all__: list[str] = ["TestsFlextInfraPromotedExecutionContract"]

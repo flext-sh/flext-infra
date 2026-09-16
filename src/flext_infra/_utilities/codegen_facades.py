@@ -177,15 +177,20 @@ class FlextInfraUtilitiesCodegenFacades:
             for node in tree.body:
                 if not isinstance(node, ast.ClassDef):
                     continue
-                methods = frozenset(
-                    member.name
-                    for member in node.body
-                    if (
-                        isinstance(member, ast.FunctionDef | ast.AsyncFunctionDef)
-                        if family == "u"
-                        else isinstance(member, ast.ClassDef)
+                if family == "u":
+                    members = tuple(
+                        member
+                        for member in node.body
+                        if isinstance(member, ast.FunctionDef | ast.AsyncFunctionDef)
                     )
-                    and not member.name.startswith("_")
+                else:
+                    members = tuple(
+                        member
+                        for member in node.body
+                        if isinstance(member, ast.ClassDef)
+                    )
+                methods = frozenset(
+                    member.name for member in members if not member.name.startswith("_")
                 )
                 owners.append((path.stem, node.name, methods))
                 ancestors[node.name] = frozenset(

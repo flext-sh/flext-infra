@@ -756,3 +756,8 @@ ManagedArtifacts:
       # and raises when rope changes its internals), so this exemption covers the
       # ruff rule alone. Removing it reports exactly 12 SLF001, all under _rope/.
       src/flext_infra/_utilities/_rope/**/*.py: [private-member-access]
+
+mod:
+  phases:
+    # Component toggles for make mod (rule: toggles are data, not flags).
+    import-alignment: true
