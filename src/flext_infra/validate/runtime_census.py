@@ -140,7 +140,20 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                 violations=(),
                 summary=f"{project.name}: no importable package found",
             )
-        module_names = self._walk_modules(package_name)
+        module_names: t.SequenceOf[str]
+        # Operator stability contract (2026-09-16): an unimportable package is
+        # a census violation to report, never a verb crash.
+        try:
+            module_names = self._walk_modules(package_name)
+        except Exception as exc:  # noqa: BLE001
+            return m.Infra.ValidationReport(
+                passed=False,
+                violations=(
+                    f"{package_name}: package import failed: "
+                    f"{type(exc).__name__}: {exc}",
+                ),
+                summary=f"{project.name}: package import failed",
+            )
         real_modules = list(module_names)
         if self.target_module is not None:
             real_modules = [
@@ -158,7 +171,22 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         ]
         all_reports: list[m.Infra.ValidationReport] = []
         for module_name in real_modules:
-            all_reports.extend(self._check_module(module_name))
+            # Operator stability contract (2026-09-16): a module that cannot
+            # import is a census violation to report, never a verb crash —
+            # findings feed the generator, the Make verb completes.
+            try:
+                all_reports.extend(self._check_module(module_name))
+            except Exception as exc:  # noqa: BLE001
+                all_reports.append(
+                    m.Infra.ValidationReport(
+                        passed=False,
+                        violations=(
+                            f"{module_name}: import failed: "
+                            f"{type(exc).__name__}: {exc}",
+                        ),
+                        summary=f"{module_name}: import failed",
+                    )
+                )
         merged_violations = tuple(
             violation for report in all_reports for violation in report.violations
         )
