@@ -111,7 +111,7 @@ def resolve_workspace_spec(root: Path) -> p.Infra.Promoted.WorkspaceSpec:
 
     return m.Infra.Promoted.WorkspaceSpec(
         root=root,
-        scripts=root / "scripts",
+        scripts=root / c.Infra.DIR_SCRIPTS,
         local_python=root / ".venv" / "bin" / "python",
     )
 
