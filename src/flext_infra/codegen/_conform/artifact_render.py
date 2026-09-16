@@ -54,13 +54,15 @@ class FlextInfraCodegenConformArtifactRender:
                     if target is not None
                     else ()
                 )
-                conformed = FlextInfraCodegenConformPyprojectPolicy.conformed_pyproject_source(
-                    rendered,
-                    repository=repository,
-                    workspace=workspace,
-                    codegen=codegen,
-                    workspace_mode=profile,
-                    uv_exclude_dependencies=excludes,
+                conformed = (
+                    FlextInfraCodegenConformPyprojectPolicy.conformed_pyproject_source(
+                        rendered,
+                        repository=repository,
+                        workspace=workspace,
+                        codegen=codegen,
+                        workspace_mode=profile,
+                        uv_exclude_dependencies=excludes,
+                    )
                 )
                 if conformed.failure:
                     return r[m.Infra.CodegenArtifactComposition].from_failure(conformed)
@@ -218,10 +220,7 @@ class FlextInfraCodegenConformArtifactRender:
                     ),
                 )
             )
-        if destination in {
-            c.Infra.MISE_TOML_FILENAME,
-            c.Infra.PYTHON_VERSION_FILENAME,
-        }:
+        if destination in {c.Infra.MISE_TOML_FILENAME, c.Infra.PYTHON_VERSION_FILENAME}:
             # Computed toolchain fields are projections, not inputs: filter the
             # dump to the render spec's declared fields before construction.
             toolchain_data = {

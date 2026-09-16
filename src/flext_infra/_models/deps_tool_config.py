@@ -634,8 +634,8 @@ class FlextInfraModelsDepsToolConfig(
         platform: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = m.Field(
             description="Platform overrides"
         )
-        integration: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = (
-            m.Field(description="Integration overrides")
+        integration: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = m.Field(
+            description="Integration overrides"
         )
         app: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = m.Field(
             description="App overrides"

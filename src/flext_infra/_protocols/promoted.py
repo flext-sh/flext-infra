@@ -7,7 +7,10 @@ code annotates with these protocols, never with the concrete models.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 @runtime_checkable
@@ -120,6 +123,44 @@ class FlextInfraProtocolsPromoted(Protocol):
             @property
             def consumer_scripts_root(self) -> Path | None:
                 """Consuming workspace scripts root when vendored as a submodule."""
+
+        class Registry(Protocol):
+            """In-memory promoted command registry discovered from script headers."""
+
+            def add(
+                self, command: FlextInfraProtocolsPromoted.Promoted.Command
+            ) -> None:
+                """Add one command and its aliases."""
+
+            def validate(self) -> None:
+                """Validate registry invariants after discovery."""
+
+            def resolve_verb(self, verb: str) -> str:
+                """Resolve a public verb or alias to the canonical verb."""
+
+            def alias_target(
+                self, verb: str
+            ) -> FlextInfraProtocolsPromoted.Promoted.AliasTarget | None:
+                """Return the alias target for a requested verb, if any."""
+
+            def commands(
+                self, verb: str
+            ) -> t.MappingKV[str, FlextInfraProtocolsPromoted.Promoted.Command]:
+                """Return commands registered for a verb or alias."""
+
+            def command(
+                self, verb: str, what: str
+            ) -> FlextInfraProtocolsPromoted.Promoted.Command:
+                """Return one command by verb and WHAT."""
+
+            def verbs(self) -> t.StrSequence:
+                """Return registered verbs in display order."""
+
+            def aliases_for(self, verb: str) -> t.StrSequence:
+                """Return aliases that point to one canonical verb."""
+
+            def has(self, verb: str, what: str) -> bool:
+                """Return whether a (verb, WHAT) command is registered."""
 
 
 __all__: list[str] = ["FlextInfraProtocolsPromoted"]

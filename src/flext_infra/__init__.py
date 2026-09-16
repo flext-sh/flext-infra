@@ -32,7 +32,6 @@ if TYPE_CHECKING:
         fixers,
         gates,
         maintenance,
-        promoted,
         refactor,
         release,
         services,
@@ -172,6 +171,7 @@ if TYPE_CHECKING:
     from .maintenance.clean import FlextInfraCleanService
     from .maintenance.python_version import FlextInfraPythonVersionEnforcer
     from .models import FlextInfraModels, FlextInfraModels as m
+    from .promoted import FlextInfraPromoted
     from .protocols import (
         FlextInfraProtocols,
         FlextInfraProtocols as p,
@@ -395,6 +395,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraPrivateImportBypassDetector",
     "FlextInfraProjectClassifier",
     "FlextInfraProjectSelectionServiceBase",
+    "FlextInfraPromoted",
     "FlextInfraProtocols",
     "FlextInfraProtocolsBase",
     "FlextInfraPyprojectModernizer",
@@ -500,7 +501,6 @@ __all__: tuple[str, ...] = (
     "main",
     "maintenance",
     "p",
-    "promoted",
     "r",
     "refactor",
     "release",
@@ -669,7 +669,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".maintenance.clean": ("FlextInfraCleanService",),
             ".maintenance.python_version": ("FlextInfraPythonVersionEnforcer",),
             ".models": ("FlextInfraModels", "m"),
-            ".promoted": ("promoted",),
+            ".promoted": ("FlextInfraPromoted",),
             ".protocols": ("FlextInfraProtocols", "FlextInfraProtocolsBase", "p"),
             ".refactor": ("refactor",),
             ".refactor.accessor_migration": (

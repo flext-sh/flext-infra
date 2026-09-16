@@ -21,6 +21,8 @@ from ._constants.detectors import FlextInfraConstantsDetectors
 from ._constants.docs import FlextInfraConstantsDocs
 from ._constants.git import FlextInfraConstantsGit
 from ._constants.namespace import FlextInfraConstantsNamespace
+from ._constants.promoted import FlextInfraConstantsPromoted
+from ._constants.promoted_messages import FlextInfraConstantsPromotedMessages
 from ._constants.refactor import FlextInfraConstantsRefactor
 from ._constants.release import FlextInfraConstantsRelease
 from ._constants.rope import FlextInfraConstantsRope
@@ -44,6 +46,8 @@ class FlextInfraConstants(c):
         FlextInfraConstantsDocs,
         FlextInfraConstantsGit,
         FlextInfraConstantsNamespace,
+        FlextInfraConstantsPromoted,
+        FlextInfraConstantsPromotedMessages,
         FlextInfraConstantsSourceCode,
         FlextInfraConstantsRefactor,
         FlextInfraConstantsRelease,

@@ -117,8 +117,7 @@ class FlextInfraWorkspaceDetector(
         validated = u.validate_value(m.Infra.BeadsProjectSpec, loaded.value.data)
         if validated.failure:
             return r[m.Infra.BeadsProjectSpec].fail_op(
-                f"Beads configuration model validation ({beads_path})",
-                validated.error,
+                f"Beads configuration model validation ({beads_path})", validated.error
             )
         return r[m.Infra.BeadsProjectSpec].ok(validated.value)
 

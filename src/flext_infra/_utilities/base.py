@@ -39,6 +39,16 @@ class FlextInfraUtilitiesBase:
         return _settings_env_lookup(name)
 
     @staticmethod
+    def env_value(name: str, default: str = "") -> str:
+        """Return one stripped dynamic environment value, or the stripped default.
+
+        Only an unset variable falls back to ``default``; a set but blank value
+        stays blank so callers can reject it explicitly.
+        """
+        value = _settings_env_lookup(name)
+        return default.strip() if value is None else value.strip()
+
+    @staticmethod
     def resolve_repository_root_or_cwd(repository_root: Path | None = None) -> Path:
         """Resolve the root a verb operates on from its invocation point.
 
