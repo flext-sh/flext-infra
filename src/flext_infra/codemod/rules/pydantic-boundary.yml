@@ -1,0 +1,182 @@
+# Pydantic 2 boundary truths from the removal catalog that the corpus did not
+# carry yet. Each document cites its prose law
+# (``~/.agents/rules/python/pydantic.md``, ADR-0008) and follows the corpus
+# provenance doctrine (see ban-pydantic-v1-model-api.yml): a rewrite ships only
+# when the receiver or call shape proves the Pydantic context.
+#
+# Deliberately absent here (already ruled elsewhere):
+#   - parse_obj/parse_raw/from_orm/schema_json, class Config, __fields__:
+#     ban-pydantic-v1-model-api.yml / ban-pydantic-v1-config-class.yml own them
+#     as detection-only (receiver not provable from syntax).
+#   - .dict()/.json()/.schema(): ban-pydantic-v1-api.yml ruled generic method
+#     names unprovable for both detection and fix.
+#   - import-level v1 (pydantic.v1, validator/root_validator):
+#     ban-pydantic-v1-api.yml.
+---
+# ``model_construct`` builds an instance without running validation, moving the
+# failure from the boundary to a downstream AttributeError or bad state. The
+# removal catalog allows it only behind a documented owner justification, and
+# the framework owner (flext-core) is the only authorized tree.
+id: ban-model-construct
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+  - "**/flext_core/**"
+rule:
+  pattern: $RECEIVER.model_construct($$$ARGS)
+message: >-
+  `model_construct()` skips validation; the removal catalog allows it only with
+  a documented owner justification at flext-core. Build through
+  `Model.model_validate(...)` (or the constructor) so the boundary stays loud.
+---
+# `SkipValidation[...]` and `PlainValidator(...)` switch validation off for
+# their target. The removal catalog permits them only behind a documented owner
+# justification; real constraints (or a missing `t`/`m` alias to close at the
+# owner) are the conforming replacement.
+id: ban-skip-validation
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+  - "**/flext_core/**"
+rule:
+  any:
+    - pattern: SkipValidation[$T]
+    - pattern: "$$$N: SkipValidation[$T]"
+    - pattern: PlainValidator($$$ARGS)
+message: >-
+  `SkipValidation`/`PlainValidator` remove real validation; the removal catalog
+  allows them only behind a documented owner justification at flext-core.
+  Declare the real constraint as a `t` alias or close the missing member at its
+  facade owner.
+---
+# A `TypeAdapter` constructed inside a function rebuilds its Rust core on every
+# call. The parse-once law: non-model JSON/validation goes through the cached
+# `t.TypeAdapters` factory (one adapter per type, module-level owner).
+id: ban-local-typeadapter
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+  - "**/flext_core/**"
+rule:
+  pattern: TypeAdapter($$$ARGS)
+  inside:
+    stopBy: end
+    kind: function_definition
+message: >-
+  A local `TypeAdapter(...)` rebuilds validators per call. Reuse the cached
+  `t.TypeAdapters` factory (one adapter per type) or hoist the adapter to its
+  module owner.
+---
+# A caught ValidationError must leave through the single authorized result
+# boundary (`e.fail_validation` / `u.model.validate_value`, both flext-core).
+# Catching it to return a default, retry, or normalize erases the boundary
+# failure; flext-core is the only tree that owns the conversion point.
+id: ban-validation-error-catch
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+  - "**/flext_core/**"
+rule:
+  any:
+    - pattern: "try:\n    $$$BODY\nexcept ValidationError:\n    $$$HANDLER"
+    - pattern: "try:\n    $$$BODY\nexcept ValidationError as $ERR:\n    $$$HANDLER"
+    - pattern: "try:\n    $$$BODY\nexcept $MOD.ValidationError:\n    $$$HANDLER"
+    - pattern: "try:\n    $$$BODY\nexcept $MOD.ValidationError as $ERR:\n    $$$HANDLER"
+message: >-
+  Catching ValidationError to normalize/default is a violation; the first
+  validation failure escapes through the single authorized conversion point
+  (`e.fail_validation` / `u.model.validate_value`, owned by flext-core).
+---
+# Pydantic surface is reachable only through the facades (`m`/`t`/`p`/`u`/`r`).
+# flext-core is the sole owner of the `pydantic`/`pydantic_settings` imports;
+# every other tree routes through its package facade, and a missing member is
+# closed at flext-core, never imported directly. The v1 import forms are
+# already owned by ban-pydantic-v1-api.yml and may double-report here.
+id: ban-direct-pydantic-import
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+  - "**/flext_core/**"
+rule:
+  any:
+    - pattern: import pydantic
+    - pattern: import pydantic.settings
+    - pattern: import pydantic_settings
+    - pattern: from pydantic import $$$NAMES
+    - pattern: from pydantic_settings import $$$NAMES
+message: >-
+  Pydantic is import-only through the facades; flext-core owns the pydantic and
+  pydantic_settings imports. Route through the package facade (`m`/`t`/`p`/`u`)
+  and close a missing member at flext-core instead of importing directly.
+---
+# Graduation of the provable subset of `ban-json-loads-paired-validate` to an
+# automatic rewrite. The outer `.model_validate` is a Pydantic-v2-exclusive
+# method, so the receiver is provably a v2 model; with exactly one positional
+# argument, `json.loads($RAW)` and `model_validate_json($RAW)` are equivalent
+# for the accepted str/bytes inputs. Multi-argument `json.loads(...)` keeps its
+# detection-only finding (no mechanical equivalent).
+id: fix-json-loads-paired-validate
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+rule:
+  pattern: $$$MODEL.model_validate(json.loads($RAW))
+fix: $$$MODEL.model_validate_json($RAW)
+message: >-
+  `json.loads` paired with `model_validate` double-parses; with a single
+  argument the mechanical equivalent is `model_validate_json($RAW)` (one
+  Rust-side pass).
