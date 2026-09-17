@@ -15,7 +15,11 @@ from ...workspace.environment_contracts import FlextInfraWorkspaceEnvironmentCon
 from .misc import FlextInfraCodegenConformMisc
 
 
-class FlextInfraCodegenConformPlan:
+class _ConformPlanRoles:
+    initial_workspace: m.Infra.WorkspaceSpec | None = None
+
+
+class FlextInfraCodegenConformPlan(_ConformPlanRoles):
     """Conformance planning across scaffold and existing repositories."""
 
     def plan(

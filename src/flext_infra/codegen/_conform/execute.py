@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Final, override
+from typing import Final
 
 from ... import c, config, m, p, r, t, u
 from ...docs import FlextInfraDocGenerator
@@ -15,7 +15,13 @@ from .. import (
 )
 
 
-class FlextInfraCodegenConformExecute:
+class _ConformExecuteRoles:
+    request: m.Infra.CodegenConformRequest | None = None
+    repository_root: Path = Path()
+    initial_workspace: m.Infra.WorkspaceSpec | None = None
+
+
+class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
     """Transactional execution of conformance plans."""
 
     @classmethod
@@ -103,7 +109,6 @@ class FlextInfraCodegenConformExecute:
             )
         return result
 
-    @override
     def execute(self) -> p.Result[m.Infra.CodegenResult]:
         """Run check or apply and require a verified fixed point."""
         request = self.request or m.Infra.CodegenConformRequest(
