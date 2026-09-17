@@ -6,9 +6,9 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import main as infra_main
+from flext_infra import c, main as infra_main
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, u
+from tests import t, u
 
 
 class TestsFlextInfraWorkspaceMain:
@@ -45,7 +45,7 @@ class TestsFlextInfraWorkspaceMain:
         u.Tests.WorktreeFixture.write_gitmodules(repository_root, ("demo-a",))
 
     @staticmethod
-    def _workspace_main(argv: list[str] | None = None) -> int:
+    def _workspace_main(argv: t.SequenceOf[str] | None = None) -> int:
         args = ["workspace"]
         if argv is not None:
             args.extend(argv)
@@ -93,6 +93,10 @@ class TestsFlextInfraWorkspaceMain:
     def test_workspace_main_orchestrate_returns_failure_for_unknown_verb(self) -> None:
         """The public command rejects an undeclared operation."""
         tm.that(self._workspace_main(["orchestrate", "--verb", "legacy-check"]), eq=1)
+
+    def test_workspace_orchestrator_declares_enforcement_fix(self) -> None:
+        """The generated workspace Make handler has a matching public allowlist."""
+        tm.that(c.Infra.ORCHESTRATED_VERBS, has="fix-enforcement")
 
     def test_workspace_main_without_command_returns_failure(self) -> None:
         tm.that(self._workspace_main([]), eq=1)

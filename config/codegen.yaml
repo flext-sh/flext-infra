@@ -401,6 +401,7 @@ Infra:
         root_files:
           - .coverage
           - .testmondata
+          - flext-infra-codegen-transaction-journal.json.lock
         trace_globs:
           - "*.pstats"
       # Branch shapes and PR state that let a push skip the pre-push gate, and
@@ -933,12 +934,6 @@ Infra:
         owner: codegen
         policy: full
       - path: .github/workflows/_fragments/cross_repo_dependency_credential
-        owner: codegen
-        policy: full
-      - path: .github/workflows/_fragments/private_dependency_auth
-        owner: codegen
-        policy: full
-      - path: .github/workflows/_fragments/private_submodules_init
         owner: codegen
         policy: full
       - path: .github/workflows/_fragments/testmon_cache
@@ -1944,16 +1939,6 @@ Infra:
           requires_release_protocol: true
         - source: base/.github/workflows/_fragments/cross_repo_dependency_credential.j2
           destination: .github/workflows/_fragments/cross_repo_dependency_credential
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/.github/workflows/_fragments/private_dependency_auth.j2
-          destination: .github/workflows/_fragments/private_dependency_auth
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/.github/workflows/_fragments/private_submodules_init.j2
-          destination: .github/workflows/_fragments/private_submodules_init
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false

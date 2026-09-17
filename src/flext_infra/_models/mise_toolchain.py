@@ -292,7 +292,7 @@ class FlextInfraModelsMiseToolchain:
             t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
         ]
         retired_dependency_artifacts: Annotated[
-            tuple[Literal["uv.lock", "mise.lock", ".mise.lock"], ...],
+            t.VariadicTuple[Literal["uv.lock", "mise.lock", ".mise.lock"]],
             m.Field(description="Exact dependency artifacts retired by generation"),
         ]
         mise_lockfile: Annotated[

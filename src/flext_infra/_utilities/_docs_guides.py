@@ -19,6 +19,9 @@ from ._docs_generate_plan import (
 if TYPE_CHECKING:
     from flext_infra import p, t
 
+_OWNED_HEADER_LINES = 2
+"Lines an owned member guide carries before its generated body: marker + source."
+
 
 class FlextInfraUtilitiesDocsGuidesMixin:
     """Project guide projections derived from root ``docs/guides`` sources."""
@@ -106,6 +109,25 @@ class FlextInfraUtilitiesDocsGuidesMixin:
                 destinations[path] = content
         owned: set[Path] = set()
         for path, content in destinations.items():
+            lines = content.splitlines()
+            generated = (
+                "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
+                "from the workspace root. -->"
+            )
+            source_headers = {
+                (
+                    f"<!-- Source of truth: `docs/guides/{path.name}`; "
+                    "adjust that source, never this projection. -->"
+                ),
+                (
+                    f"<!-- Source of truth: `<workspace-root>/docs/guides/{path.name}`; "
+                    "adjust that workspace source, never this member projection. -->"
+                ),
+            }
+            if (
+                len(lines) >= _OWNED_HEADER_LINES
+                and lines[0] == generated
+                and lines[1] in source_headers
             ownership = FlextInfraUtilitiesDocsGuidesMixin.docs_project_guide_content(
                 "", scope.name, path.name
             ).partition("\n\n")[0]

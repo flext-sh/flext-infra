@@ -19,7 +19,6 @@ PYPROJECT = '[project]\nname = "demo-member"\nversion = "0.1.0"\n'
 MODELS = '''\
 """Demo member models."""
 
-from __future__ import annotations
 
 from flext_core import m
 

@@ -95,11 +95,20 @@ class FlextInfraCodegenTransaction:
                 ):
                     if participant.root in self._file_leases:
                         continue
-                    lease_path = participant.root / c.Infra.JOURNAL_NAME
+                    # The lease is regenerable transaction state: it lives in
+                    # the root's ignored state directory, never beside tracked
+                    # content where it would surface as an untracked entry.
+                    lease_directory = (
+                        participant.root / c.Infra.TRANSACTION_STATE_DIRNAME
+                    )
+                    if lease_directory.is_symlink() or lease_directory.exists():
+                        files.physical_directory_identity(lease_directory).unwrap()
+                    lease_path = lease_directory / c.Infra.JOURNAL_NAME
                     u.Cli.atomic_read_binary_file_state(
                         lease_path.with_name(f"{lease_path.name}.lock"), required=False
                     ).unwrap()
                     stack.enter_context(u.Infra.codegen_transaction_lease(lease_path))
+                    files.physical_directory_identity(lease_directory).unwrap()
                     acquired.add(participant.root)
                     self._file_leases[participant.root] = participant
                     physical = files.physical_directory_identity(
@@ -117,7 +126,7 @@ class FlextInfraCodegenTransaction:
         self,
         scope_root: Path,
         roots: t.MappingKV[str, Path],
-        inputs: tuple[m.Cli.AtomicFileState, ...],
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Create a durable file-only cursor using the existing journal lifecycle."""
         result_type = r[m.Infra.CodegenTransactionSession]
@@ -197,9 +206,9 @@ class FlextInfraCodegenTransaction:
         scope_root: Path,
         roots: t.MappingKV[str, Path],
         analysis: m.Infra.CodegenPhaseAnalysis,
-        directories: tuple[Path, ...],
+        directories: t.VariadicTuple[Path],
         validator: Callable[[], p.Result[bool]],
-    ) -> p.Result[tuple[Path, ...]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Compose file publication through the same durable phase lifecycle."""
         result_type = r[tuple[Path, ...]]
         started = self.begin_files_locked(scope_root, roots, analysis.inputs)
@@ -828,6 +837,56 @@ class FlextInfraCodegenTransaction:
     ) -> p.Result[bool]:
         """Recover the complete prepared transaction and preserve the cause."""
         return self._recover_failure(session.plan.layout, failure)
+
+    def publish_prepared_locked[T](
+        self,
+        session: m.Infra.CodegenTransactionSession,
+        operation: Callable[[m.Infra.CodegenTransactionSession], p.Result[T]],
+    ) -> p.Result[T]:
+        """Run every phase after ``begin_locked`` without stranding its journal.
+
+        A phase that fails or raises after the journal was prepared recovers
+        that journal here, while the lease is still held, and keeps the cause:
+        a failure is returned unchanged and an exception escapes unchanged.
+        A failure whose owner already attempted recovery (it carries
+        ``recovery_error``) is returned as-is, never recovered twice.
+        """
+        layout = session.plan.layout
+        try:
+            outcome = operation(session)
+        except Exception as exc:
+            recovered = self._recover_prepared(layout)
+            if recovered.failure:
+                exc.add_note(f"generation recovery failed: {recovered.error}")
+            raise
+        if outcome.success or (
+            outcome.error_data is not None and "recovery_error" in outcome.error_data
+        ):
+            return outcome
+        recovered = self._recover_prepared(layout)
+        if recovered.failure:
+            return r[T].fail(
+                outcome.error or "generation phase failed",
+                error_data={
+                    **(outcome.error_data or {}),
+                    "recovery_error": recovered.error,
+                },
+            )
+        return outcome
+
+    def _recover_prepared(
+        self, layout: m.Infra.MiseToolchainWorkspaceLayout
+    ) -> p.Result[bool]:
+        """Recover a journal that is still on disk; an absent journal owns nothing."""
+        observed = state.journal_state(layout)
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        snapshot = state.journal_snapshot(observed.value)
+        if snapshot is None:
+            return r[bool].fail("generation journal state is unavailable")
+        if snapshot.content is None:
+            return r[bool].ok(False)
+        return self._recover(layout)
 
     @staticmethod
     def _phase_sources(

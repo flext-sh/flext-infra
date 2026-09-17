@@ -141,6 +141,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         iteration = 0
         while current_text.findings:
             iteration += 1
+            fingerprint: tuple[tuple[str, str, int, str], ...] = (
+                FlextInfraCodemodBatchApply._text_fingerprint(current_text.entries
             text_fp: tuple[tuple[str, str, int, str], ...] = (
                 FlextInfraCodemodBatchApply._text_fingerprint(current_text.entries)
             )
@@ -182,8 +184,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
 
     @staticmethod
     def _text_fingerprint(
-        entries: tuple[m.Infra.ModTextFinding, ...],
-    ) -> tuple[tuple[str, str, int, str], ...]:
+        entries: t.VariadicTuple[m.Infra.ModTextFinding],
+    ) -> t.VariadicTuple[t.Quad[str, str, int, str]]:
         """Build a sorted fingerprint of all text findings."""
         result: list[tuple[str, str, int, str]] = []
         for entry in entries:
@@ -220,6 +222,26 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"findings in rules {sorted(rule_ids)} across files {sorted(files)}"
             )
             raise RuntimeError(msg)
+<<<<<<< HEAD
+=======
+        # A completed rule may enable a later rule in the declared cascade.
+        # Those later-rule findings are consumed by the next fixed-point iteration.
+        new_actionable = after_apply_actionable - before_actionable
+        prior_rule_ids = {rule_id for rule_id, _, _, _ in before_actionable}
+        unexpected = {
+            finding
+            for finding in new_actionable
+            if finding[0] in prior_rule_ids
+        }
+        if unexpected:
+            rule_ids = {r for r, _, _, _ in unexpected}
+            files = {p for _, p, _, _ in unexpected}
+            msg = (
+                f"fix!=match: ast-grep apply introduced {len(unexpected)} new actionable "
+                f"findings in rules {sorted(rule_ids)} across files {sorted(files)}"
+            )
+            raise RuntimeError(msg)
+>>>>>>> refs/remotes/origin/0.12.0-dev
 
 
 __all__: list[str] = ["FlextInfraCodemodBatchApply"]
