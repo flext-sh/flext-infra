@@ -40,6 +40,7 @@ class FlextInfraConfigModelsStatic:
         """Reject one member imported from a configured module."""
 
         operator: Literal["import_member"] = m.Field(description="Import source module")
+        module: t.NonEmptyStr = m.Field(description="Configured import source module")
         member: t.NonEmptyStr = m.Field(description="Rejected imported member")
 
     class StaticAttributeRule(StaticRule):

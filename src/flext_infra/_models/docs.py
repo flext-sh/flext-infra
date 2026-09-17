@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import c, t
 
-from .config import FlextInfraConfigModels
+from ._config import FlextInfraConfigModels
 from .docs_collection import FlextInfraModelsDocsCollection
 from .docs_generation import FlextInfraModelsDocsGeneration
 

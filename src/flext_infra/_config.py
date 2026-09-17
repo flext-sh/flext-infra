@@ -11,7 +11,7 @@ from typing import ClassVar
 
 from flext_cli.config import FlextCliConfig
 
-from ._models.config import FlextInfraConfigModels
+from ._models._config import FlextInfraConfigModels
 
 
 class _FlextInfraConfig(FlextCliConfig):
