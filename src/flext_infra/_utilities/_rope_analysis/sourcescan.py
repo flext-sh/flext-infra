@@ -34,7 +34,8 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     def ensure_ast_node(obj: object) -> t.Infra.RopeAstNode:
         """Ensure an object is an AST node (has `_fields`), narrowing the type."""
         if not FlextInfraUtilitiesRopeAnalysisSourceScan.is_ast_node(obj):
-            raise TypeError(f"Expected AST node with _fields, got {type(obj).__name__}")
+            msg = f"Expected AST node with _fields, got {type(obj).__name__}"
+            raise TypeError(msg)
         return obj
 
     @staticmethod
@@ -719,7 +720,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         target_map: MutableMapping[str, str] = dict.fromkeys(export_names, package_name)
         pymodule = FlextInfraUtilitiesRopeAnalysisAstHelpers.parse_string_module(source)
         # Why: rope exposes an untyped AST; validate it at this public boundary.
-        module_ast = FlextInfraUtilitiesRopeAnalysisSourceScan._ensure_ast_node(
+        module_ast = FlextInfraUtilitiesRopeAnalysisSourceScan.ensure_ast_node(
             pymodule.get_ast()
         )
         for node in FlextInfraUtilitiesRopeAnalysisAstHelpers.walk_ast_nodes(

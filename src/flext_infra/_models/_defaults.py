@@ -54,4 +54,6 @@ class FlextInfraModelsDefaults:
         return m.Field(description=description)
 
 
-__all__: list[str] = ["FlextInfraModelsDefaults"]
+__all__: list[str] = [
+    "FlextInfraModelsDefaults",
+]

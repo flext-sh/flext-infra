@@ -7,15 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra import FlextInfraConfig, config, m
 from flext_infra._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
-
-if TYPE_CHECKING:
-    import re
 
 
 class TestsFlextInfraUtilitiesDocsGithubLinks:
