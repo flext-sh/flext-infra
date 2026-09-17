@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config, r, u
+from flext_core import r
+from flext_infra import config, u
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from tests import c, m, p, t

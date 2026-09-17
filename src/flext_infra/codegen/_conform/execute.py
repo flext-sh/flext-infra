@@ -93,11 +93,11 @@ class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
             if committed.failure:
                 return r[m.Infra.CodegenResult].from_failure(committed)
             initialized_git = True
-        service = cls.model_validate({
-            "repository_root": root,
-            "request": request,
-            "initial_workspace": initial_workspace,
-        })
+        service = cls(
+            repository_root=root,
+            request=request,
+            initial_workspace=initial_workspace,
+        )
         result = service.execute()
         if result.success:
             return result

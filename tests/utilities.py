@@ -6,7 +6,8 @@ from pathlib import Path
 
 from flext_tests import FlextTestsUtilities, tm
 
-from flext_infra import r, u
+from flext_core import r
+from flext_infra import u
 from tests import c, m, p, t
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
 from tests.utilities_deps import TestsFlextInfraUtilitiesDepsMixin

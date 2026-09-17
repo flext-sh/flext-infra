@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import p, r, t
+from flext_core import r
+from flext_infra import p, t
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from tests import TestsFlextInfraUtilities as u
 
