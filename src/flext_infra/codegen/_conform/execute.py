@@ -16,6 +16,9 @@ from .. import (
     FlextInfraCodegenTransaction,
 )
 
+if TYPE_CHECKING:
+    from .base import FlextInfraCodegenConform
+
 
 class _ConformExecuteRoles:
     if TYPE_CHECKING:
@@ -34,26 +37,9 @@ class _ConformExecuteRoles:
 class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
     """Transactional execution of conformance plans."""
 
-    request: Annotated[
-        m.Infra.CodegenConformRequest | None,
-        m.Field(default=None, exclude=True, description="Validated conform request"),
-    ] = None
-    repository_root: Annotated[
-        Path,
-        m.Field(default=Path(), exclude=True, description="Conform repository root"),
-    ] = Path()
-    initial_workspace: Annotated[
-        m.Infra.WorkspaceSpec | None,
-        m.Field(
-            default=None,
-            exclude=True,
-            description="Validated scaffold specification included in the atomic plan",
-        ),
-    ] = None
-
     @classmethod
     def execute_request(
-        cls,
+        cls: "type[FlextInfraCodegenConform]",
         request: m.Infra.CodegenConformRequest,
         initial_workspace: m.Infra.WorkspaceSpec | None = None,
     ) -> p.Result[m.Infra.CodegenResult]:
