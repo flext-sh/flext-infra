@@ -6,6 +6,7 @@
 > Project profile: `flext-infra`
 
 <!-- TOC START -->
+
 - [Test design](#test-design)
 - [Canonical execution](#canonical-execution)
 - [Generated documentation](#generated-documentation)

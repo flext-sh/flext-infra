@@ -1,11 +1,11 @@
 ---
 paths:
-- commands/*.md
-- config/governance.json
-- evals/**
-- rules/**/*.md
-- skills/**
-- skills.lock.json
+  - commands/*.md
+  - config/governance.json
+  - evals/**
+  - rules/**/*.md
+  - skills/**
+  - skills.lock.json
 ---
 
 # Compose governance through one owner per behavior
