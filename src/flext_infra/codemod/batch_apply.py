@@ -183,20 +183,16 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
     @staticmethod
     def _text_fingerprint(
         entries: tuple[m.Infra.ModTextFinding, ...],
-    ) -> tuple[tuple[str, str, int, str, str], ...]:
+    ) -> tuple[tuple[str, str, int, str], ...]:
         """Build a sorted fingerprint of all text findings."""
-        items: list[tuple[str, str, int, str, str]] = []
+        result: list[tuple[str, str, int, str]] = []
         for entry in entries:
-            items.append(
-                (
-                    entry.rule_id,
-                    entry.file.as_posix(),
-                    entry.line,
-                    entry.text,
-                    entry.replacement,
-                )
-            )
-        return tuple(sorted(items))
+            rule_id: str = entry.rule_id
+            file_path: str = entry.file.as_posix()
+            line_no: int = entry.line
+            text_val: str = entry.text
+            result.append((rule_id, file_path, line_no, text_val))
+        return tuple(sorted(result))
 
     @staticmethod
     def _validate_fix_match(
