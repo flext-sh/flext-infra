@@ -137,11 +137,13 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         current_text = FlextInfraModTextGateEngine.scan(
             root, fix=False, validate_receipts=True
         ).unwrap()
-        seen_text: dict[tuple[tuple[str, str, int, str, str | None], ...], int] = {}
+        seen_text: dict[tuple[tuple[str, str, int, str], ...], int] = {}
         iteration = 0
         while current_text.findings:
             iteration += 1
-            fingerprint = self._text_fingerprint(current_text.entries)
+            fingerprint: tuple[tuple[str, str, int, str], ...] = FlextInfraCodemodBatchApply._text_fingerprint(
+                current_text.entries,
+            )
             if fingerprint in seen_text:
                 prev_iter = seen_text[fingerprint]
                 stalled = {
@@ -180,11 +182,12 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
 
     @staticmethod
     def _text_fingerprint(
-        entries: t.ModScanEntrySequence,
-    ) -> tuple[tuple[str, str, int, str, str | None], ...]:
+        entries: tuple[m.Infra.ModTextFinding, ...],
+    ) -> tuple[tuple[str, str, int, str, str], ...]:
         """Build a sorted fingerprint of all text findings."""
-        return tuple(
-            sorted(
+        items: list[tuple[str, str, int, str, str]] = []
+        for entry in entries:
+            items.append(
                 (
                     entry.rule_id,
                     entry.file.as_posix(),
@@ -192,9 +195,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     entry.text,
                     entry.replacement,
                 )
-                for entry in entries
             )
-        )
+        return tuple(sorted(items))
 
     @staticmethod
     def _validate_fix_match(

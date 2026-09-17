@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import typing
-
 from flext_tests import tm
 
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
