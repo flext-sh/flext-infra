@@ -124,8 +124,6 @@ class FlextInfraUtilitiesDocsGuidesMixin:
                     "adjust that workspace source, never this member projection. -->"
                 ),
             }
-<<<<<<< HEAD
-=======
             if (
                 len(lines) >= _OWNED_HEADER_LINES
                 and lines[0] == generated
@@ -133,7 +131,6 @@ class FlextInfraUtilitiesDocsGuidesMixin:
             ):
                 owned.add(path)
                 continue
->>>>>>> origin/0.12.0-dev
             ownership = FlextInfraUtilitiesDocsGuidesMixin.docs_project_guide_content(
                 "", scope.name, path.name
             ).partition("\n\n")[0]

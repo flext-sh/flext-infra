@@ -12,11 +12,7 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 
 from .. import t
-<<<<<<< HEAD
-from ._defaults import FlextInfraModelsDefaults
-=======
 from . import FlextInfraModelsDefaults
->>>>>>> origin/0.12.0-dev
 
 
 class FlextInfraModelsTransformers:
