@@ -48,7 +48,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return line is not None and origin is not None and origin.path == resource.path
 
     @staticmethod
-    def statement_target_names(statement: object) -> list[str]:
+    def statement_target_names(statement: t.Infra.RopePyObject) -> list[str]:
         """Extract target names from an Assign/AnnAssign/PEP-695 TypeAlias."""
         kind = FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(statement)
         if kind == "AnnAssign":
@@ -101,7 +101,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return cached
 
     @staticmethod
-    def decorator_names(pyfunction: object) -> t.StrSequence:
+    def decorator_names(pyfunction: t.Infra.RopePyObject) -> t.StrSequence:
         """Extract decorator names from a rope ``PyFunction`` (no ast import)."""
         decorators = getattr(pyfunction, "decorators", None) or ()
         names: list[str] = []
@@ -117,7 +117,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return names
 
     @staticmethod
-    def first_decorator_line(pyfunction: object, *, default_line: int) -> int:
+    def first_decorator_line(pyfunction: t.Infra.RopePyObject, *, default_line: int) -> int:
         """Return the lowest line number among ``pyfunction``'s decorators."""
         decorators = getattr(pyfunction, "decorators", None) or ()
         candidate_lines = [
@@ -128,20 +128,20 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return min(candidate_lines) if candidate_lines else default_line
 
     @staticmethod
-    def node_kind(node: object) -> str:
+    def node_kind(node: t.Infra.RopePyObject) -> str:
         """Return an AST node's class name (e.g. ``"AnnAssign"``) without importing ast."""
         return type(node).__name__
 
     @staticmethod
-    def walk_ast_nodes(root: object) -> t.SequenceOf[object]:
+    def walk_ast_nodes(root: t.Infra.RopePyObject) -> t.SequenceOf[t.Infra.RopePyObject]:
         """Recursively yield every AST node reachable from ``root`` via ``_fields``.
 
         Equivalent to ``ast.walk`` but uses only public attribute access on
         rope-provided AST objects, so no ``import ast`` is needed at the
         consumer layer.
         """
-        collected: list[object] = []
-        stack: list[object] = [root]
+        collected: list[t.Infra.RopePyObject] = []
+        stack: list[t.Infra.RopePyObject] = [root]
         while stack:
             node = stack.pop()
             collected.append(node)
@@ -198,7 +198,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
             current = parent
 
     @staticmethod
-    def name_of(node: object) -> str:
+    def name_of(node: t.Infra.RopePyObject) -> str:
         """Return ``node.id`` (Name) or ``node.attr`` (Attribute) or ``""``."""
         identifier = getattr(node, "id", None)
         if isinstance(identifier, str) and identifier:
@@ -209,7 +209,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return ""
 
     @staticmethod
-    def line_col_range(node: object) -> t.Quad[int, int, int, int] | None:
+    def line_col_range(node: t.Infra.RopePyObject) -> t.Quad[int, int, int, int] | None:
         """Return ``(lineno, col_offset, end_lineno, end_col_offset)`` for an AST node."""
         lineno = getattr(node, "lineno", None)
         col_offset = getattr(node, "col_offset", None)
@@ -307,7 +307,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         )
 
     @staticmethod
-    def _class_info_from_ast(node: object) -> m.Infra.ClassInfo | None:
+    def _class_info_from_ast(node: t.Infra.RopePyObject) -> m.Infra.ClassInfo | None:
         """Return ClassInfo for one top-level ClassDef AST node."""
         if FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(node) != "ClassDef":
             return None
@@ -332,12 +332,12 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         )
 
     @staticmethod
-    def class_base_name(node: object) -> str:
+    def class_base_name(node: t.Infra.RopePyObject) -> str:
         """Return terminal base name from an AST base expression."""
         return FlextInfraUtilitiesRopeAnalysisAstHelpers._class_base_name(node)
 
     @staticmethod
-    def _class_base_name(node: object) -> str:
+    def _class_base_name(node: t.Infra.RopePyObject) -> str:
         """Return terminal base name from an AST base expression."""
         for attr_name in ("id", "attr", "name"):
             value = getattr(node, attr_name, "")

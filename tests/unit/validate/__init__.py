@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from .main_tests import TestsFlextInfraValidateMain
     from .manual_command_tests import TestsFlextInfraManualCommand
     from .metadata_discipline_tests import TestsFlextInfraMetadataDiscipline
-    from .namespace_validator_tests import TestsFlextInfraNamespaceValidator
     from .pytest_diag_tests import TestsFlextInfraPytestDiag
     from .scanner_helpers_tests import TestsFlextInfraScannerHelpers
     from .scanner_tests import TestsFlextInfraScanner
@@ -52,7 +51,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraLocDelta",
     "TestsFlextInfraManualCommand",
     "TestsFlextInfraMetadataDiscipline",
-    "TestsFlextInfraNamespaceValidator",
     "TestsFlextInfraPytestDiag",
     "TestsFlextInfraScanner",
     "TestsFlextInfraScannerHelpers",
@@ -102,7 +100,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".main_tests": ("TestsFlextInfraValidateMain",),
             ".manual_command_tests": ("TestsFlextInfraManualCommand",),
             ".metadata_discipline_tests": ("TestsFlextInfraMetadataDiscipline",),
-            ".namespace_validator_tests": ("TestsFlextInfraNamespaceValidator",),
             ".pytest_diag_tests": ("TestsFlextInfraPytestDiag",),
             ".scanner_helpers_tests": ("TestsFlextInfraScannerHelpers",),
             ".scanner_tests": ("TestsFlextInfraScanner",),

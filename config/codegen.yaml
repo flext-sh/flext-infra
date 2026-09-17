@@ -73,6 +73,12 @@ Infra:
       scc_selector: aqua:boyter/scc
       scc_version: latest
       go_version: latest
+      # NOTE (root cause R1): generated .mise.toml must declare make as a managed
+      # mise tool so direnv exec resolves a real installed binary instead of a
+      # stale host shim (e.g. a conda-carried make). Every project invokes make
+      # through the lifecycle; make is the one tool the Makefile cannot resolve
+      # from itself, so mise must provision it.
+      make_version: latest
       protected_mise_tools:
         - beads
         - gascity
@@ -1923,13 +1929,14 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: true
-      # Every repository releases itself through the protocol; the workspace
-      # root additionally publishes its members to the package index.
+      # Release automation is opt-in per distribution. Repositories without an
+      # explicit declaration have this generated workflow retired by conform.
         - source: base/.github/workflows/release.yml.j2
           destination: .github/workflows/release.yml
           profiles: [workspace, standalone]
           delegate: render
           overwrite: true
+          requires_release_protocol: true
         - source: base/.github/workflows/_fragments/cross_repo_dependency_credential.j2
           destination: .github/workflows/_fragments/cross_repo_dependency_credential
           profiles: [workspace, standalone]

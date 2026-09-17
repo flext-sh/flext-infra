@@ -16,19 +16,18 @@ from .._constants import (
 from . import (
     FlextInfraModelsDepsToolSettings,
     FlextInfraModelsLayout,
-    immutable_empty_mapping,
 )
 from ._config import (
     FlextInfraConfigModelsArtifact,
     FlextInfraConfigModelsBeads,
     FlextInfraConfigModelsRender,
 )
-from ._defaults import tool_version_field
+from ._defaults import FlextInfraModelsDefaults
 from .mise_toolchain import FlextInfraModelsMiseToolchain
 
 
 class FlextInfraConfigModels:
-    immutable_empty_mapping = immutable_empty_mapping
+    immutable_empty_mapping = FlextInfraModelsDefaults.immutable_empty_mapping
 
     """Field-only models for config loading and codegen plans."""
 
@@ -1174,6 +1173,16 @@ class FlextInfraConfigModels:
         overwrite: Annotated[
             bool, m.Field(description="Whether the template owns existing content")
         ] = False
+        requires_release_protocol: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description=(
+                    "Whether this projection requires the repository's explicit "
+                    "release-protocol opt-in"
+                ),
+            ),
+        ] = False
 
     class TemplatesSpec(_ConfigContract):
         """New-project scaffold root and its complete ordered manifest."""
@@ -1382,6 +1391,16 @@ class FlextInfraConfigModels:
         package: Annotated[
             bool, m.Field(description="Repository publishes a Python package")
         ]
+        publishes_release: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description=(
+                    "Whether this distribution explicitly opts into the generated "
+                    "release protocol"
+                ),
+            ),
+        ] = False
         editable: Annotated[
             bool, m.Field(description="Overlay repository as an editable dependency")
         ]
@@ -2152,6 +2171,9 @@ class FlextInfraConfigModels:
         ]
         go_version: Annotated[
             t.NonEmptyStr, tool_version_field("Exact Go runtime version")
+        ]
+        make_version: Annotated[
+            t.NonEmptyStr, tool_version_field("Moving Make release selector, e.g. 'latest'")
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")

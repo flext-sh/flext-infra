@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import t
 
-from ._defaults import immutable_empty_mapping
+from ._defaults import FlextInfraModelsDefaults
 from .mixins import FlextInfraModelsMixins as mm
 
 
@@ -38,13 +38,14 @@ class FlextInfraModelsRefactorViolations:
             t.NonNegativeInt, m.Field(description="Total violations")
         ]
         confidence_counts: t.IntMapping = m.Field(
-            default_factory=immutable_empty_mapping, description="Confidence histogram"
+            default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
+            description="Confidence histogram",
         )
         violations: t.VariadicTuple[
             FlextInfraModelsRefactorViolations.ClassNestingViolation
         ] = m.Field(default_factory=tuple, description="Violation details")
         per_file_counts: t.IntMapping = m.Field(
-            default_factory=immutable_empty_mapping,
+            default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
             description="Violation counts per file",
         )
 
@@ -72,7 +73,8 @@ class FlextInfraModelsRefactorViolations:
         """Aggregated helper-function classification payload."""
 
         totals: t.IntMapping = m.Field(
-            default_factory=immutable_empty_mapping, description="Category totals"
+            default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
+            description="Category totals",
         )
         suggestions: t.VariadicTuple[
             FlextInfraModelsRefactorViolations.HelperClassification

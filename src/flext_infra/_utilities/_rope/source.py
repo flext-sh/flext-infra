@@ -1022,7 +1022,7 @@ class FlextInfraUtilitiesRopeAnalysisSource(FlextInfraUtilitiesRopeAnalysisScope
         return ""
 
     @staticmethod
-    def _statement_target_names(statement: object) -> list[str]:
+    def _statement_target_names(statement: t.Infra.RopePyObject) -> list[str]:
         """Extract target names from an Assign/AnnAssign/PEP-695 TypeAlias."""
         kind = FlextInfraUtilitiesRopeAnalysisNodes.node_kind(statement)
         if kind == "AnnAssign":

@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import t
 
-from ._defaults import immutable_empty_mapping
+from ._defaults import FlextInfraModelsDefaults
 from .deps_toml import FlextInfraModelsDepsToml
 from .deps_tool_config import FlextInfraModelsDepsToolSettings
 from .mixins import FlextInfraModelsMixins as mm
