@@ -13,7 +13,7 @@ from flext_cli import m
 
 from .. import c, p, t
 from . import (
-    FlextInfraModelsCodegen,
+    FlextInfraCodegen,
     FlextInfraModelsMixins as mm,
 )
 from ._defaults import ImmutableEmptyMapping
@@ -335,11 +335,11 @@ class FlextInfraModelsRope:
             m.Field(description="Resolved package directory containing the module"),
         ]
         package_context: Annotated[
-            FlextInfraModelsCodegen.LazyInitPackageContext,
+            FlextInfraCodegen.LazyInitPackageContext,
             m.Field(description="Resolved lazy-init package context for the module"),
         ]
         module_policy: Annotated[
-            FlextInfraModelsCodegen.NamespaceModulePolicy,
+            FlextInfraCodegen.NamespaceModulePolicy,
             m.Field(description="Canonical module policy derived for the module"),
         ]
         project_layout: Annotated[

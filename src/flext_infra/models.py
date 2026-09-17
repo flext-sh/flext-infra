@@ -16,7 +16,7 @@ from flext_core import m
 from ._models.base import FlextInfraModelsBase
 from ._models.census import FlextInfraModelsCensus
 from ._models.check import FlextInfraModelsCheck
-from ._models.codegen import FlextInfraModelsCodegen
+from ._models.codegen import FlextInfraCodegen
 from ._models.codemod import FlextInfraModelsCodemod
 from ._models.config import FlextInfraConfigModels
 from ._models.deps import FlextInfraModelsDeps
@@ -53,7 +53,7 @@ class FlextInfraModels(m):
         # isolated from the active detector work in _models/codegen.py while
         # remaining exposed through the single public m.Infra facade.
         FlextInfraConfigModels,
-        FlextInfraModelsCodegen,
+        FlextInfraCodegen,
         FlextInfraModelsCodemod,
         FlextInfraModelsDeps,
         FlextInfraModelsDocs,

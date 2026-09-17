@@ -32,4 +32,8 @@ class FlextInfraConfig(FlextCliConfig):
         return cls._config_dir()
 
 
-__all__: list[str] = ["FlextInfraConfig"]
+config: FlextInfraConfig = FlextInfraConfig.fetch_global()
+"""Pre-instantiated frozen config singleton declared for root lazy export."""
+
+
+__all__: list[str] = ["FlextInfraConfig", "config"]
