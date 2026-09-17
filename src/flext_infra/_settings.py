@@ -13,9 +13,9 @@ import os as _os
 from typing import ClassVar
 
 from flext_core import FlextSettings
-from flext_infra import m
 
 from ._models.settings import FlextInfraSettingsModels
+from .models import FlextInfraModels as m
 
 
 class FlextInfraSettings(FlextSettings):
@@ -47,4 +47,6 @@ class FlextInfraSettings(FlextSettings):
         return _os.environ.get(name)
 
 
-__all__: list[str] = ["FlextInfraSettings"]
+settings = FlextInfraSettings()
+
+__all__: list[str] = ["FlextInfraSettings", "settings"]

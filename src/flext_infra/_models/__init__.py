@@ -28,11 +28,7 @@ if TYPE_CHECKING:
     from ._config.static import FlextInfraConfigModelsStatic
     from ._config.templates import FlextInfraConfigModelsTemplates
     from ._config.workspace import FlextInfraConfigModelsWorkspace
-    from ._defaults import (
-        ImmutableEmptyMapping,
-        immutable_empty_mapping,
-        tool_version_field,
-    )
+    from ._defaults import FlextInfraModelsDefaults
     from ._git.identity import FlextInfraModelsGitIdentity
     from .base import FlextInfraModelsBase
     from .census import FlextInfraModelsCensus
@@ -113,6 +109,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsCodegenTransactionModels",
     "FlextInfraModelsCodemod",
     "FlextInfraModelsCore",
+    "FlextInfraModelsDefaults",
     "FlextInfraModelsDeps",
     "FlextInfraModelsDepsToml",
     "FlextInfraModelsDepsToolConfigLinters",
@@ -150,12 +147,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsWorkspace",
     "FlextInfraModelsWorktree",
     "FlextInfraSettingsModels",
-    "ImmutableEmptyMapping",
     "_codegen",
     "_config",
     "_git",
-    "immutable_empty_mapping",
-    "tool_version_field",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -181,11 +175,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._config.static": ("FlextInfraConfigModelsStatic",),
             "._config.templates": ("FlextInfraConfigModelsTemplates",),
             "._config.workspace": ("FlextInfraConfigModelsWorkspace",),
-            "._defaults": (
-                "ImmutableEmptyMapping",
-                "immutable_empty_mapping",
-                "tool_version_field",
-            ),
+            "._defaults": ("FlextInfraModelsDefaults",),
             "._git": ("_git",),
             "._git.identity": ("FlextInfraModelsGitIdentity",),
             ".base": ("FlextInfraModelsBase",),

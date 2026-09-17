@@ -8,12 +8,10 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 
 from .. import c, t
-from . import (
-    FlextInfraConfigModels,
-    FlextInfraModelsMixins as mm,
-    ImmutableEmptyMapping,
-)
-from ._git import FlextInfraModelsGitIdentity
+from ._defaults import FlextInfraModelsDefaults
+from .config import FlextInfraConfigModels
+from ._git.identity import FlextInfraModelsGitIdentity
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsWorkspace:
@@ -128,10 +126,10 @@ class FlextInfraModelsWorkspace:
         pyproject_path: Annotated[Path, m.Field(description="Resolved pyproject path")]
         payload: Annotated[
             t.JsonMapping, m.Field(description="Parsed pyproject payload")
-        ] = m.Field(default_factory=ImmutableEmptyMapping)
+        ] = m.Field(default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping)
         docs_meta: Annotated[
             t.JsonMapping, m.Field(description="Parsed tool.flext.docs payload")
-        ] = m.Field(default_factory=ImmutableEmptyMapping)
+        ] = m.Field(default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping)
         project_name: Annotated[str, m.Field(description="Declared project name")] = ""
         package_name: Annotated[str, m.Field(description="Primary package name")] = ""
         dependency_names: Annotated[

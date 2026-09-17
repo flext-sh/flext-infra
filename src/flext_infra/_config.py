@@ -32,4 +32,6 @@ class FlextInfraConfig(FlextCliConfig):
         return cls._config_dir()
 
 
-__all__: list[str] = ["FlextInfraConfig"]
+config = FlextInfraConfig()
+
+__all__: list[str] = ["FlextInfraConfig", "config"]

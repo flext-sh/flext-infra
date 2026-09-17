@@ -40,8 +40,8 @@ if TYPE_CHECKING:
         validate,
         workspace,
     )
-    from ._config import config
-    from ._settings import settings
+    from ._config import FlextInfraConfig, config
+    from ._settings import FlextInfraSettings, settings
     from .api import FlextInfra, infra
     from .base import FlextInfraServiceBase, FlextInfraServiceBase as s
     from .base_selection import FlextInfraProjectSelectionServiceBase
@@ -316,6 +316,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodemodSemanticApply",
     "FlextInfraCodemodSnapshotReconciler",
     "FlextInfraCompatibilityAliasDetector",
+    "FlextInfraConfig",
     "FlextInfraConfigFixer",
     "FlextInfraConsolidateGroupsPhase",
     "FlextInfraConstants",
@@ -436,6 +437,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRuntimeDevDependencyDetector",
     "FlextInfraScannerGateMixin",
     "FlextInfraServiceBase",
+    "FlextInfraSettings",
     "FlextInfraSilentFailureDetector",
     "FlextInfraSilentFailureGate",
     "FlextInfraSilentFailureValidator",
@@ -518,8 +520,8 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
-            "._config": ("config",),
-            "._settings": ("settings",),
+            "._config": ("FlextInfraConfig", "config"),
+            "._settings": ("FlextInfraSettings", "settings"),
             ".api": ("FlextInfra", "infra"),
             ".base": ("FlextInfraServiceBase", "s"),
             ".base_selection": ("FlextInfraProjectSelectionServiceBase",),

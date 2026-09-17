@@ -109,7 +109,6 @@ class FlextInfraUtilitiesDocsGuidesMixin:
                 destinations[path] = content
         owned: set[Path] = set()
         for path, content in destinations.items():
-<<<<<<< HEAD
             lines = content.splitlines()
             generated = (
                 "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
@@ -129,24 +128,6 @@ class FlextInfraUtilitiesDocsGuidesMixin:
                 len(lines) >= _OWNED_HEADER_LINES
                 and lines[0] == generated
                 and lines[1] in source_headers
-=======
-            ownership = FlextInfraUtilitiesDocsGuidesMixin.docs_project_guide_content(
-                "", scope.name, path.name
-            ).partition("\n\n")[0]
-            previous_ownership = ownership.replace("`<workspace-root>/", "`")
-            legacy_ownership = (
-                "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
-                "from the workspace root. -->\n"
-                f"<!-- Source of truth: `docs/guides/{path.name}`; "
-                "adjust that source, never this projection. -->"
-            )
-            if content.startswith(
-                (
-                    ownership + "\n\n",
-                    previous_ownership + "\n\n",
-                    legacy_ownership + "\n\n",
-                )
->>>>>>> origin/0.12.0-dev
             ):
                 owned.add(path)
         artifacts: list[DocsRenderedArtifactTuple] = []
