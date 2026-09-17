@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, Self
 
 from flext_core import r
 
@@ -25,6 +25,7 @@ class _ConformExecuteRoles:
         request: m.Infra.CodegenConformRequest | None
         repository_root: Path
         initial_workspace: m.Infra.WorkspaceSpec | None
+
         def plan(self, request: m.Infra.CodegenConformRequest) -> p.Result[m.Infra.CodegenPlan]: ...
         def _mise_config_plans(self, plan: m.Infra.CodegenPlan) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
         def _conform_workspace_beads_routes(self, request: m.Infra.CodegenConformRequest) -> p.Result[bool]: ...
@@ -39,7 +40,7 @@ class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
 
     @classmethod
     def execute_request(
-        cls: "type[FlextInfraCodegenConform]",
+        cls: type[Self],
         request: m.Infra.CodegenConformRequest,
         initial_workspace: m.Infra.WorkspaceSpec | None = None,
     ) -> p.Result[m.Infra.CodegenResult]:

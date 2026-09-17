@@ -11,16 +11,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_core import r, s
+from flext_core import r
 
 from .. import c, m, u
 from ._mise_artifacts_publication import publish_file_plan
+from ._execution import FlextInfraCodegenExecutionBase
 
 if TYPE_CHECKING:
     from .. import p, t
 
 
-class FlextInfraCodegenScaffolder(s[str]):
+class FlextInfraCodegenScaffolder(FlextInfraCodegenExecutionBase[str]):
     """Generates missing base modules in src/ and tests/ directories."""
 
     @override

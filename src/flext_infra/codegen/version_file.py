@@ -17,17 +17,18 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_core import r, s
+from flext_core import r
 from flext_core.__version__ import FlextVersion
 
 from .. import c, u
 from ._mise_artifacts_publication import publish_file_plan
+from ._execution import FlextInfraCodegenExecutionBase
 
 if TYPE_CHECKING:
     from .. import p
 
 
-class FlextInfraCodegenVersionFile(s[bool]):
+class FlextInfraCodegenVersionFile(FlextInfraCodegenExecutionBase[bool]):
     """Generate ``__version__.py`` for every workspace project.
 
     Projects whose derived version class name equals ``FlextVersion``

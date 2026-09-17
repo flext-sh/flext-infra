@@ -8,7 +8,8 @@ from flext_cli import cli
 
 from flext_core import r
 
-from .. import FlextInfraServiceBase, c, m, p, t, u
+from .. import c, m, p, t, u
+from ._execution import FlextInfraCodegenExecutionBase
 from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles
 from ._mise_artifacts_publication import publish_file_plan
@@ -22,7 +23,7 @@ _log = u.fetch_logger(__name__)
 
 
 class FlextInfraCodegenPipeline(
-    FlextInfraCodegenPipelineStagesMixin, FlextInfraServiceBase[str]
+    FlextInfraCodegenPipelineStagesMixin, FlextInfraCodegenExecutionBase[str]
 ):
     """Run the full codegen pipeline directly from the validated CLI model."""
 
