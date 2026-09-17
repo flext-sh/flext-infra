@@ -496,6 +496,7 @@ class FlextInfraCodegenConformRender(_ConformRenderRoles):
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,
                 python_version=codegen.toolchain.python_version,
+                make_version=codegen.toolchain.make_version,
                 uv_link_mode=FlextInfraCodegenConformBootstrap.link_mode(
                     repository, codegen.toolchain
                 ),
@@ -818,7 +819,6 @@ class FlextInfraCodegenConformRender(_ConformRenderRoles):
                 scc_version=codegen.toolchain.scc_version,
                 kubeconform_version=codegen.toolchain.kubeconform_version,
                 go_version=codegen.toolchain.go_version,
-                make_version=codegen.toolchain.make_version,
                 author_name=project.author_name,
                 author_email=project.author_email,
                 repository=project.homepage,

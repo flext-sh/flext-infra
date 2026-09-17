@@ -67,6 +67,9 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         for alias_name, local_stem in letter_module.items():
             if (pkg_dir / f"{local_stem}.py").is_file():
                 lazy_map[alias_name] = (f"{current_pkg}.{local_stem}", alias_name)
+        for alias_name, local_stem in (("config", "_config"), ("settings", "_settings")):
+            if (pkg_dir / f"{local_stem}.py").is_file():
+                lazy_map[alias_name] = (f"{current_pkg}.{local_stem}", alias_name)
 
     def _declared_parent_aliases(self, package_name: str) -> t.StrSequence:
         package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(

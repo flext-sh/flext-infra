@@ -316,7 +316,7 @@ class FlextInfraCodegenConformPlan(_ConformPlanRoles):
             for entry in codegen.templates.entries
             if profile in entry.profiles
             and (
-                not entry.requires_release_protocol or repository.publishes_release
+                not entry.requires_release_protocol or target.publishes_release
             )
             and (
                 contract.destinations is None
@@ -572,7 +572,7 @@ class FlextInfraCodegenConformPlan(_ConformPlanRoles):
                     f"managed destination escapes repository root: {entry.destination}"
                 )
             if profile not in entry.profiles or (
-                entry.requires_release_protocol and not repository.publishes_release
+                entry.requires_release_protocol and not target.publishes_release
             ):
                 # Profile- and capability-excluded workflows must not keep firing.
                 # Conform, rather than a user, retires the generated orphan.

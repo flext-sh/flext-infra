@@ -1177,11 +1177,7 @@ class FlextInfraConfigModels:
         requires_release_protocol: Annotated[
             bool,
             m.Field(
-                default=False,
-                description=(
-                    "Whether this projection requires the repository's explicit "
-                    "release-protocol opt-in"
-                ),
+                description="Whether rendering requires the configured release protocol"
             ),
         ] = False
 
@@ -1392,16 +1388,6 @@ class FlextInfraConfigModels:
         package: Annotated[
             bool, m.Field(description="Repository publishes a Python package")
         ]
-        publishes_release: Annotated[
-            bool,
-            m.Field(
-                default=False,
-                description=(
-                    "Whether this distribution explicitly opts into the generated "
-                    "release protocol"
-                ),
-            ),
-        ] = False
         editable: Annotated[
             bool, m.Field(description="Overlay repository as an editable dependency")
         ]
@@ -1513,6 +1499,13 @@ class FlextInfraConfigModels:
         ci_enabled: Annotated[
             bool, m.Field(description="Whether conform owns the CI projection")
         ]
+        publishes_release: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description="Whether conform renders release-protocol artifacts",
+            ),
+        ] = False
         gascity_enabled: Annotated[
             bool,
             m.Field(
@@ -1933,6 +1926,10 @@ class FlextInfraConfigModels:
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor tool value")
         ]
+        make_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Resolved Make toolchain version for generated commands"),
+        ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
         ]
@@ -2172,9 +2169,6 @@ class FlextInfraConfigModels:
         ]
         go_version: Annotated[
             t.NonEmptyStr, tool_version_field("Exact Go runtime version")
-        ]
-        make_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Moving Make release selector, e.g. 'latest'")
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")

@@ -675,7 +675,7 @@ class FlextInfraMiseArtifactsJournal:
                 mode=source.mode,
                 device=source.device,
                 inode=source.inode,
-                link_count=source.link_count,
+                link_count=1 if source.link_count == 1 else None,
                 file_attributes=source.file_attributes,
                 reparse_tag=source.reparse_tag,
                 absent_parent=absent_parent,

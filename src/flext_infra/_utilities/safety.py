@@ -109,8 +109,8 @@ class FlextInfraUtilitiesSafety:
     @staticmethod
     def execute_safely(
         files: t.SequenceOf[Path],
-        transform: Callable[[t.SequenceOf[Path]], r[t.SequenceOf[Path]]],
-        validate: Callable[[t.SequenceOf[Path]], r[bool]],
+        transform: Callable[[t.SequenceOf[Path]], p.Result[t.SequenceOf[Path]]],
+        validate: Callable[[t.SequenceOf[Path]], p.Result[bool]],
         *,
         mode: c.Infra.ExecutionMode = c.Infra.ExecutionMode.APPLY_SAFE,
     ) -> m.Infra.SafeExecutionResult:
