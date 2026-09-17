@@ -21,7 +21,8 @@ projection root; it transactionally deletes only paths authenticated by the
 existing generated manifest, then removes the resulting owned empty
 directories. A repository may enable collection only with an explicitly
 approved, versioned source inventory. Ignored `.kilo` session plans are not a
-publication source.
+publication source by default; they become one only when the operator explicitly
+authorizes them and the repository lists that exact root and glob inventory.
 
 ## Source revisions
 
