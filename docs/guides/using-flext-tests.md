@@ -61,8 +61,9 @@ fixtures above are not declared with `autouse=True`.
 ```python
 from __future__ import annotations
 
-from flext_core import FlextSettings
 from flext_tests import FlextTestsSettings
+
+from flext_core import FlextSettings
 
 
 def test_settings_isolation(settings: FlextTestsSettings) -> None:
@@ -70,20 +71,19 @@ def test_settings_isolation(settings: FlextTestsSettings) -> None:
     # The settings plugin resets runtime singletons between test functions.
     assert FlextSettings.fetch_global() is not settings
 ```
-
 ## Resetting singletons manually
 
 When a fixture is not enough:
 
 ```python
-from flext_core import FlextContainer, FlextSettings
 from flext_tests import FlextTestsSettings
+
+from flext_core import FlextContainer, FlextSettings
 
 FlextSettings.reset_for_testing()
 FlextTestsSettings.reset_for_testing()
 FlextContainer.reset_for_testing()
 ```
-
 ## Testing result flows
 
 Use the `r` alias instead of importing from `returns` directly:
