@@ -155,10 +155,12 @@ class FlextInfraUtilitiesDocsCollectionSources:
             return updated.isoformat(), None
         # updated is str
         original = updated
-        parsed_date = date.fromisoformat(updated)
-        if parsed_date.isoformat() == updated:
+        try:
+            date.fromisoformat(updated)
+        except ValueError:
+            timestamp = datetime.fromisoformat(updated)
+        else:
             return original, None
-        timestamp = datetime.fromisoformat(updated)
         if timestamp.tzinfo is None:
             return original, None
         return original, timestamp.astimezone(UTC).isoformat().replace("+00:00", "Z")
