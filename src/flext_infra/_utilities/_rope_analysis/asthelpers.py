@@ -19,16 +19,15 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
     _parse_project: ClassVar[t.Infra.RopeProject | None] = None
 
     @staticmethod
-    def _is_ast_node(obj: object) -> TypeGuard[t.Infra.RopeAstNode]:
+    def is_ast_node(obj: object) -> TypeGuard[t.Infra.RopeAstNode]:
         """Type guard to narrow to RopeAstNode via structural `_fields` check."""
         return hasattr(obj, "_fields")
 
     @staticmethod
-    def _ensure_ast_node(obj: object) -> t.Infra.RopeAstNode:
+    def ensure_ast_node(obj: object) -> t.Infra.RopeAstNode:
         """Ensure an object is an AST node (has `_fields`), narrowing the type."""
-        if not FlextInfraUtilitiesRopeAnalysisAstHelpers._is_ast_node(obj):
-            msg = f"Expected AST node with _fields, got {type(obj).__name__}"
-            raise TypeError(msg)
+        if not FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(obj):
+            raise TypeError(f"Expected AST node with _fields, got {type(obj).__name__}")
         return obj
 
     @staticmethod
@@ -144,7 +143,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         """Return an AST node's class name (e.g. ``"AnnAssign"``) without importing ast."""
         return type(node).__name__
 
-    @staticmethod
+@staticmethod
     def walk_ast_nodes(root: t.Infra.RopeAstNode) -> t.SequenceOf[t.Infra.RopeAstNode]:
         """Recursively yield every AST node reachable from ``root`` via ``_fields``.
 
@@ -163,9 +162,9 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
                     stack.extend(
                         item
                         for item in value
-                        if FlextInfraUtilitiesRopeAnalysisAstHelpers._is_ast_node(item)
+                        if FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(item)
                     )
-                elif FlextInfraUtilitiesRopeAnalysisAstHelpers._is_ast_node(value):
+                elif FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(value):
                     stack.append(value)
         return collected
 
@@ -186,10 +185,10 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
                 value = getattr(parent, field_name, None)
                 if isinstance(value, list):
                     for child in value:
-                        if FlextInfraUtilitiesRopeAnalysisAstHelpers._is_ast_node(child):
+                        if FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(child):
                             parent_map[id(child)] = parent
                             stack.append(child)
-                elif FlextInfraUtilitiesRopeAnalysisAstHelpers._is_ast_node(value):
+                elif FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(value):
                     parent_map[id(value)] = parent
                     stack.append(value)
         return parent_map
