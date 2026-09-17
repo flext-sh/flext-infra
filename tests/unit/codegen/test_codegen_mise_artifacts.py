@@ -220,10 +220,7 @@ class TestsFlextInfraCodegenMiseArtifacts:
         )
         tools = test_u.Tests.toml_mapping(plan["tools"])
 
-        tm.that(
-            tools.get(toolchain.jscpd_selector),
-            eq=toolchain.jscpd_version,
-        )
+        tm.that(tools.get(toolchain.jscpd_selector), eq=toolchain.jscpd_version)
         tm.that("npm:jscpd" in tools, eq=False)
 
     def test_unix_launcher_requires_executable_mode(self, tmp_path: Path) -> None:
