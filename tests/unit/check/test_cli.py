@@ -131,7 +131,8 @@ class TestsFlextInfraWorkspaceCheckCli:
         caller = tmp_path / "caller"
         caller.mkdir()
         relative_reports = reports_directory or f"{c.Infra.REPORTS_DIR_NAME}/check"
-        caller_report = caller / relative_reports / "check-report.md"
+        report_name = c.Infra.CHECK_REPORT_MARKDOWN_FILENAME
+        caller_report = caller / relative_reports / report_name
         caller_report.parent.mkdir(parents=True)
         caller_report.write_text("Caller report must survive.\n", encoding="utf-8")
 
@@ -139,7 +140,7 @@ class TestsFlextInfraWorkspaceCheckCli:
             exit_code = main(arguments)
 
         tm.that(exit_code, eq=0)
-        report = (workspace / relative_reports / "check-report.md").read_text(
+        report = (workspace / relative_reports / report_name).read_text(
             encoding="utf-8"
         )
         tm.that(report, has=["proj1", "proj2"])
@@ -180,7 +181,7 @@ class TestsFlextInfraWorkspaceCheckCli:
     def test_run_cli_check_contract_fails_on_remaining_findings(
         self, tmp_path: Path
     ) -> None:
-        """Apply alone (the `make check` contract) still fails on findings."""
+        """Apply without ``--report-findings`` still fails on remaining findings."""
         workspace = self._create_workspace(tmp_path)
         module_path = self._write_module(workspace, "flext-core", "def broken(:\n")
 

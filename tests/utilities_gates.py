@@ -11,7 +11,7 @@ from flext_tests import tm
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-from tests import m, p, t
+from tests import m, t
 
 if TYPE_CHECKING:
     from flext_infra.gates.base_gate import FlextInfraGate
@@ -78,12 +78,11 @@ class TestsFlextInfraUtilitiesGatesMixin:
         tmp_path: Path,
         project_dir: Path,
         *,
-        runner: p.Cli.CommandRunner | None,
         passed: bool,
         issues_len: int,
     ) -> m.Infra.GateExecution:
         """Check one gate once, asserting its pass state and issue count."""
-        gate = gate_class(tmp_path, runner=runner)
+        gate = gate_class(tmp_path)
         result = gate.check(
             project_dir, TestsFlextInfraUtilitiesGatesMixin.gate_context(tmp_path)
         )
@@ -160,10 +159,9 @@ class TestsFlextInfraUtilitiesGatesMixin:
         *,
         ctx: m.Infra.GateContext | None = None,
         reports_dir: Path | None = None,
-        runner: p.Cli.CommandRunner | None = None,
     ) -> m.Infra.GateExecution:
         """Provide the typed test helper `run_gate_check`."""
-        gate = gate_class(repository_root, runner=runner)
+        gate = gate_class(repository_root)
         return gate.check(
             project_dir,
             ctx

@@ -5,9 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from ... import c, config, m, p, r, t, u
+from .beads_routes import FlextInfraCodegenConformBeadsRoutes
 
 
-class FlextInfraCodegenConformFilePlans:
+class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
     """Desired-state file, environment, and retirement plans."""
 
     @staticmethod

@@ -5,9 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from ... import c, m, p, u
+from .bootstrap import FlextInfraCodegenConformBootstrap
 
 
-class FlextInfraCodegenConformGitignore:
+class FlextInfraCodegenConformGitignore(FlextInfraCodegenConformBootstrap):
     """Public ``.gitignore`` rendering seam of the conform facade."""
 
     @staticmethod

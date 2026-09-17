@@ -7,10 +7,10 @@ from pathlib import Path
 
 from ... import c, config, m, p, r, t, u
 from ...deps import FlextInfraEnsureRuffConfigPhase
-from .bootstrap import FlextInfraCodegenConformBootstrap
+from .pyproject_policy import FlextInfraCodegenConformPyprojectPolicy
 
 
-class FlextInfraCodegenConformContextRender:
+class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPolicy):
     """Typed Make and project render context projection."""
 
     def make_render_context(
@@ -45,7 +45,7 @@ class FlextInfraCodegenConformContextRender:
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=config.Infra.tooling.tools.pytest,
-                mise_bootstrap=(self._mise_bootstrap_environment()),
+                mise_bootstrap=u.Infra.mise_bootstrap_environment(),
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
@@ -59,9 +59,7 @@ class FlextInfraCodegenConformContextRender:
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,
                 python_version=codegen.toolchain.python_version,
-                uv_link_mode=FlextInfraCodegenConformBootstrap.link_mode(
-                    repository, codegen.toolchain
-                ),
+                uv_link_mode=self.link_mode(repository, codegen.toolchain),
                 # ProjectRenderContext replaces this with the composed map.
                 # Pass the neutral value explicitly so Pydantic never deep-copies
                 # the MappingProxyType model default while building the base.
@@ -262,7 +260,9 @@ class FlextInfraCodegenConformContextRender:
         )
         if make_context.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(make_context)
-        repository_provider = self._repository_provider(repository, codegen)
+        repository_provider = u.Infra.repository_provider(
+            repository, codegen.providers
+        )
         if repository_provider.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(repository_provider)
         flext_provider = repository_provider.value
@@ -311,7 +311,7 @@ class FlextInfraCodegenConformContextRender:
                     exclude={"mise_bootstrap", "ruff_per_file_ignores"},
                     exclude_computed_fields=True,
                 ),
-                mise_bootstrap=self._mise_bootstrap_environment(),
+                mise_bootstrap=u.Infra.mise_bootstrap_environment(),
                 scaffold=codegen.scaffold,
                 gitignore_sections=u.Infra.gitignore_sections(
                     codegen,
@@ -397,14 +397,14 @@ class FlextInfraCodegenConformContextRender:
             )
         )
 
-    @classmethod
+    @staticmethod
     def _managed_gitlinks(
-        cls, workspace: m.Infra.WorkspaceSpec, codegen: m.Infra.CodegenConfigSpec
+        workspace: m.Infra.WorkspaceSpec, codegen: m.Infra.CodegenConfigSpec
     ) -> p.Result[t.VariadicTuple[m.Infra.ManagedGitlinkSpec]]:
         """Resolve provider baselines only for mutable governed subprojects."""
         resolved: list[m.Infra.ManagedGitlinkSpec] = []
         for repository in workspace.subprojects:
-            provider = cls._repository_provider(repository, codegen)
+            provider = u.Infra.repository_provider(repository, codegen.providers)
             if provider.failure:
                 return r[t.VariadicTuple[m.Infra.ManagedGitlinkSpec]].from_failure(
                     provider
@@ -418,6 +418,14 @@ class FlextInfraCodegenConformContextRender:
                 )
             )
         return r[t.VariadicTuple[m.Infra.ManagedGitlinkSpec]].ok(tuple(resolved))
+
+    @staticmethod
+    def _repository_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:
+        """Return the environment root owned by the inferred target."""
+        if workspace.project is not None:
+            project_root_rel: str = workspace.project.repository_root_rel
+            return project_root_rel
+        return "."
 
     @staticmethod
     def _beads_project_id(repository_root: Path) -> str | None:

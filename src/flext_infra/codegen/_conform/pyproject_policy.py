@@ -6,10 +6,10 @@ import re
 from pathlib import Path
 
 from ... import c, config, m, p, r, t, u
-from .bootstrap import FlextInfraCodegenConformBootstrap
+from .file_plans import FlextInfraCodegenConformFilePlans
 
 
-class FlextInfraCodegenConformPyprojectPolicy:
+class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans):
     """Pyproject, tooling-root, and custom Make policy projections."""
 
     @staticmethod
@@ -32,8 +32,9 @@ class FlextInfraCodegenConformPyprojectPolicy:
             if directory in generated_roots
         )
 
-    @staticmethod
+    @classmethod
     def conformed_pyproject_source(
+        cls,
         source: str,
         *,
         repository: m.Infra.RepositoryRef,
@@ -52,9 +53,7 @@ class FlextInfraCodegenConformPyprojectPolicy:
             workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
-            uv_link_mode=FlextInfraCodegenConformBootstrap.link_mode(
-                repository, codegen.toolchain
-            ),
+            uv_link_mode=cls.link_mode(repository, codegen.toolchain),
             uv_exclude_dependencies=uv_exclude_dependencies,
             namespace_scan_dirs=(
                 workspace.project.namespace_scan_dirs

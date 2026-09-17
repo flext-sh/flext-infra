@@ -185,22 +185,12 @@ class FlextInfraConfigModelsRender:
             m.Field(description="Strict Mise environment projected into containers"),
         ]
 
-    class EnvrcRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class EnvrcRenderSpec(FlextInfraConfigModelsContexts.ScratchRootContext):
         """Typed input consumed only by the generated project ``.envrc``."""
 
-        state_directory_name: Annotated[
-            t.NonEmptyStr, m.Field(description="External runtime state directory")
-        ]
-        scratch_namespace: Annotated[
-            t.NonEmptyStr, m.Field(description="External scratch namespace")
-        ]
-        scratch_home_relative: Annotated[
-            t.NonEmptyStr, m.Field(description="Home-relative scratch root")
-        ]
         pycache_namespace: Annotated[
             t.NonEmptyStr, m.Field(description="External bytecode cache namespace")
         ]
-
         environment_path_prepends: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Project-relative executable paths"),

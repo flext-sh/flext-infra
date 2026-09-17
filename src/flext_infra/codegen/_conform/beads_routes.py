@@ -6,9 +6,10 @@ from pathlib import Path
 
 from ... import c, m, p, r
 from ...workspace import FlextInfraWorkspaceDetector
+from .docs_ownership import FlextInfraCodegenConformDocsOwnership
 
 
-class FlextInfraCodegenConformBeadsRoutes:
+class FlextInfraCodegenConformBeadsRoutes(FlextInfraCodegenConformDocsOwnership):
     """Beads ledger route reconciliation for composed repositories."""
 
     def _conform_workspace_beads_routes(

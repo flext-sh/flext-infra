@@ -5,15 +5,15 @@ from __future__ import annotations
 from pathlib import Path
 
 from ... import c, config, m, p, r, t, u
-from .bootstrap import FlextInfraCodegenConformBootstrap
-from .pyproject_policy import FlextInfraCodegenConformPyprojectPolicy
+from .context_render import FlextInfraCodegenConformContextRender
 
 
-class FlextInfraCodegenConformArtifactRender:
+class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRender):
     """Governed artifact rendering and project overlay composition."""
 
-    @staticmethod
+    @classmethod
     def compose_project_artifact(
+        cls,
         repository_root: Path,
         destination: str,
         rendered: str,
@@ -48,21 +48,19 @@ class FlextInfraCodegenConformArtifactRender:
                     else c.Infra.MakeProfile.STANDALONE
                 )
                 excludes = (
-                    FlextInfraCodegenConformPyprojectPolicy.routed_uv_exclude_dependencies(
+                    cls.routed_uv_exclude_dependencies(
                         repository=repository, target=target, codegen=codegen
                     )
                     if target is not None
                     else ()
                 )
-                conformed = (
-                    FlextInfraCodegenConformPyprojectPolicy.conformed_pyproject_source(
-                        rendered,
-                        repository=repository,
-                        workspace=workspace,
-                        codegen=codegen,
-                        workspace_mode=profile,
-                        uv_exclude_dependencies=excludes,
-                    )
+                conformed = cls.conformed_pyproject_source(
+                    rendered,
+                    repository=repository,
+                    workspace=workspace,
+                    codegen=codegen,
+                    workspace_mode=profile,
+                    uv_exclude_dependencies=excludes,
                 )
                 if conformed.failure:
                     return r[m.Infra.CodegenArtifactComposition].from_failure(conformed)
@@ -212,7 +210,7 @@ class FlextInfraCodegenConformArtifactRender:
                     environment_path_prepends=(
                         codegen.toolchain.environment_path_prepends
                     ),
-                    mise_bootstrap=(self._mise_bootstrap_environment()),
+                    mise_bootstrap=u.Infra.mise_bootstrap_environment(),
                     gascity=(
                         m.Infra.BeadsWorkspaceEnvironmentSpec()
                         if target.gascity_enabled
@@ -265,7 +263,7 @@ class FlextInfraCodegenConformArtifactRender:
                 )
             )
         if destination.startswith(".github/"):
-            provider = self._repository_provider(repository, codegen)
+            provider = u.Infra.repository_provider(repository, codegen.providers)
             if provider.failure:
                 return r[p.Model].from_failure(provider)
             workspace_repositories = (
@@ -325,7 +323,7 @@ class FlextInfraCodegenConformArtifactRender:
                     package_name=dist.replace("-", "_"),
                     python_version=codegen.toolchain.python_version,
                     make=codegen.make,
-                    mise_bootstrap=self._mise_bootstrap_environment(),
+                    mise_bootstrap=u.Infra.mise_bootstrap_environment(),
                 )
             )
         if destination == c.Infra.RELEASE_GITLEAKS_CONFIG_PATH:
@@ -350,7 +348,7 @@ class FlextInfraCodegenConformArtifactRender:
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     pytest=config.Infra.tooling.tools.pytest,
-                    mise_bootstrap=self._mise_bootstrap_environment(),
+                    mise_bootstrap=u.Infra.mise_bootstrap_environment(),
                     dist=dist,
                     state_directory_name=codegen.toolchain.state_directory_name,
                     scratch_namespace=codegen.toolchain.scratch_namespace,
@@ -364,9 +362,7 @@ class FlextInfraCodegenConformArtifactRender:
                     ),
                     workspace_repositories=subprojects,
                     workspace_gitlinks=gitlinks.value,
-                    uv_link_mode=FlextInfraCodegenConformBootstrap.link_mode(
-                        repository, codegen.toolchain
-                    ),
+                    uv_link_mode=self.link_mode(repository, codegen.toolchain),
                     uv_version=codegen.toolchain.uv_version,
                     make=codegen.make,
                     extra_verbs=(

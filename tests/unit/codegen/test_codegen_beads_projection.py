@@ -156,6 +156,9 @@ class TestsFlextInfraCodegenBeadsProjection:
             rendered_envrc, has="unset BEADS_DOLT_SERVER_HOST BEADS_DOLT_SERVER_PORT"
         )
         tm.that(rendered_envrc, has="unset BEADS_DOLT_AUTO_START")
+        # Caller-owned Beads routing survives activation so bd resolves the
+        # selected ledger inside a linked worktree.
+        tm.that(rendered_envrc, lacks="unset BEADS_DIR")
 
     def test_envrc_local_generated_residue_is_normalized(self, tmp_path: Path) -> None:
         """The merge keeps custom overrides and strips stale generated sections.
@@ -256,6 +259,7 @@ class TestsFlextInfraCodegenBeadsProjection:
             lacks='source_env "$HOME/.config/environment.d/projects/agent-tools.envrc"',
         )
         tm.that(rendered_envrc, has="AGENTS_GAS_CITY_ROOT must name the canonical")
+        tm.that(rendered_envrc, lacks="unset BEADS_DIR")
 
     def test_metadata_projection_preserves_a_minted_ledger_identity(
         self, tmp_path: Path

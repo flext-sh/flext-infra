@@ -140,6 +140,15 @@ class FlextInfraConstantsCodegenProject:
     ``u.Cli.toml_dot_path``; it is never written a second time.
     """
 
+    CONFORM_SOURCE_RACE_CYCLES: Final[int] = 3
+    "Bounded conform convergence attempts after a mid-cycle source mutation."
+    CONFORM_SOURCE_RACE_MARKERS: Final[t.VariadicTuple[str]] = (
+        "atomic source changed",
+        "atomic destination parent is missing",
+        "atomic source has conflicting snapshots",
+    )
+    "Failure signatures meaning the tree mutated under one locked conform cycle."
+
     WORKSPACE_MANIFEST_FILENAME: Final[str] = "workspace.yaml"
     WORKSPACE_MANIFEST_VERSION: Final[int] = 3
     UV_LOCK_FILENAME: Final[str] = "uv.lock"

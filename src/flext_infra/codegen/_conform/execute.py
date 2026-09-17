@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Final, override
+from typing import override
 
 from ... import c, config, m, p, r, t, u
 from ...docs import FlextInfraDocGenerator
@@ -13,9 +13,10 @@ from .. import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
+from .plan import FlextInfraCodegenConformPlan
 
 
-class FlextInfraCodegenConformExecute:
+class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     """Transactional execution of conformance plans."""
 
     @classmethod
@@ -39,8 +40,8 @@ class FlextInfraCodegenConformExecute:
                 return r[m.Infra.CodegenResult].from_failure(created)
             bootstrap = tuple(created.value)
         if initial_workspace is not None and not (root / c.Infra.GIT_DIR).exists():
-            provider = cls._repository_provider(
-                initial_workspace.repository, config.Infra.codegen
+            provider = u.Infra.repository_provider(
+                initial_workspace.repository, config.Infra.codegen.providers
             )
             if provider.failure:
                 return r[m.Infra.CodegenResult].from_failure(provider)
@@ -225,7 +226,7 @@ class FlextInfraCodegenConformExecute:
             return r[m.Infra.CodegenResult].from_failure(prepared)
         attempts = 0
         result = r[m.Infra.CodegenResult].fail("unreached")
-        while attempts < self._SOURCE_RACE_CYCLES:
+        while attempts < c.Infra.CONFORM_SOURCE_RACE_CYCLES:
             attempts += 1
             result = self._execute_managed_locked_prepared(
                 request, scope_root, transaction
@@ -236,7 +237,7 @@ class FlextInfraCodegenConformExecute:
                 break
             u.Cli.info(
                 "stage=publish mode=converge "
-                f"attempt={attempts}/{self._SOURCE_RACE_CYCLES} "
+                f"attempt={attempts}/{c.Infra.CONFORM_SOURCE_RACE_CYCLES} "
                 "reason=atomic source changed; re-planning from current tree"
             )
         if result.success:
@@ -249,21 +250,13 @@ class FlextInfraCodegenConformExecute:
             )
         return result
 
-    _SOURCE_RACE_CYCLES: Final[int] = 3
-    """Bounded convergence attempts after a mid-cycle source mutation."""
-
-    _SOURCE_RACE_MARKERS: Final[t.VariadicTuple[str]] = (
-        "atomic source changed",
-        "atomic destination parent is missing",
-        "atomic source has conflicting snapshots",
-    )
-    """Failure signatures meaning the tree mutated under one locked cycle."""
-
-    @classmethod
-    def _is_source_race(cls, error: str | None) -> bool:
+    @staticmethod
+    def _is_source_race(error: str | None) -> bool:
         """Return whether one failure signature is a mid-cycle source mutation."""
         message = error or ""
-        return any(marker in message for marker in cls._SOURCE_RACE_MARKERS)
+        return any(
+            marker in message for marker in c.Infra.CONFORM_SOURCE_RACE_MARKERS
+        )
 
     def _lazy_phase(
         self, request: m.Infra.CodegenConformRequest
@@ -615,8 +608,8 @@ class FlextInfraCodegenConformExecute:
         mise = FlextInfraCodegenMiseArtifacts(
             repository_root=request.root, apply_changes=False, check_only=True
         )
-        for project in session.plan.projects:
-            validated = mise.validate_artifacts(project.layout.root)
+        for project in session.plan.layout.projects:
+            validated = mise.validate_artifacts(project.root)
             if validated.failure:
                 return r[bool].from_failure(validated)
         return r[bool].ok(True)

@@ -532,6 +532,9 @@ Infra:
       - {name: .cache, source_scan_ignore: true}
     # mro-j47u: agent worktrees are duplicate repositories, never production input.
       - {name: .claude, source_scan_ignore: true}
+    # flext-5fxu6.4.10: the local code-review-graph index is machine state;
+    # without this entry every gen stripped it from consumer .gitignore files.
+      - {name: .code-review-graph, source_scan_ignore: true}
     # mro-jnm1.2: gitignore-only entries absorbed from the removed
     # REQUIRED_GITIGNORE_ENTRIES constant; .direnv keeps the legacy vscode/
     # watch/source-scan projections (order-sensitive, after .claude).

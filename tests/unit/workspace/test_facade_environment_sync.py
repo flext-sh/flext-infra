@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import c, infra, m
+from flext_infra import c, config, infra, m, t, u
 
 
 class TestsFlextInfraFacadeEnvironmentSync:
@@ -19,6 +19,75 @@ class TestsFlextInfraFacadeEnvironmentSync:
             '[project]\nname = "workspace"\nversion = "0.1.0"\nrequires-python = ">=3.13"\n',
             encoding="utf-8",
         )
+
+    @staticmethod
+    def _activated_value(
+        workspace: Path, home: Path, name: str, env: t.StrMapping
+    ) -> str:
+        """Return one variable as the real direnv activation of ``workspace`` sees it.
+
+        ``HOME`` is isolated so the activation creates its scratch root under the
+        test tree instead of the operator's home.
+        """
+        activation_env = {"HOME": str(home), **env}
+        tm.ok(
+            u.Cli.run_checked(
+                ["direnv", "allow", str(workspace)],
+                cwd=workspace,
+                env=activation_env,
+            )
+        )
+        return tm.ok(
+            u.Cli.capture(
+                ["direnv", "exec", str(workspace), "printenv", name],
+                cwd=workspace,
+                env=activation_env,
+            )
+        )
+
+    def test_scratch_root_never_mirrors_a_vcs_directory(self, tmp_path: Path) -> None:
+        """A checkout nested in a VCS directory activates a VCS-free scratch root."""
+        home = tmp_path / "home"
+        home.mkdir()
+        for segment, alias in c.Infra.SCRATCH_IDENTITY_SEGMENT_ALIASES:
+            workspace = tmp_path / "superproject" / segment / "modules" / "member"
+            self._write_pyproject(workspace)
+            tm.ok(
+                infra.sync_environment_files(
+                    m.Infra.WorkspaceEnvironmentSyncRequest(
+                        repository_root=workspace, allow_direnv=False
+                    )
+                )
+            )
+            toolchain = config.Infra.codegen.toolchain
+            scratch = Path(self._activated_value(workspace, home, "TMPDIR", {}))
+            scratch_home = (
+                home / toolchain.scratch_home_relative / toolchain.state_directory_name
+            )
+            tm.that(scratch.is_relative_to(scratch_home), eq=True)
+            tm.that(scratch.name, eq=toolchain.scratch_namespace)
+            tm.that(segment in scratch.parts, eq=False)
+            tm.that(alias in scratch.parts, eq=True)
+            tm.that(scratch.is_dir(), eq=True)
+
+    def test_activation_preserves_caller_beads_routing(self, tmp_path: Path) -> None:
+        """A caller-selected Beads ledger survives activation (linked worktrees)."""
+        home = tmp_path / "home"
+        home.mkdir()
+        workspace = tmp_path / "workspace"
+        self._write_pyproject(workspace)
+        tm.ok(
+            infra.sync_environment_files(
+                m.Infra.WorkspaceEnvironmentSyncRequest(
+                    repository_root=workspace, allow_direnv=False
+                )
+            )
+        )
+        ledger = tmp_path / "main-checkout" / c.Infra.BEADS_DIRNAME
+        routed = self._activated_value(
+            workspace, home, "BEADS_DIR", {"BEADS_DIR": str(ledger)}
+        )
+        tm.that(routed, eq=str(ledger))
 
     def test_sync_creates_envrc_without_creating_mise(self, tmp_path: Path) -> None:
         workspace = tmp_path / "workspace"

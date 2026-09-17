@@ -20,8 +20,18 @@ VENV_DIR="${PROJECT_ROOT}/.venv"
 PROJECT_STATE_ROOT="${PROJECT_ROOT%/*}/{{ state_directory_name }}/${PROJECT_ROOT##*/}"
 # Scratch never lives inside a versioned tree: the home scratch root mirrors
 # the absolute checkout path so a sandbox is never a tracked scope of any
-# enclosing repository (workspace or linked worktree).
-PROJECT_SCRATCH="${HOME}/{{ scratch_home_relative }}/{{ state_directory_name }}${PROJECT_ROOT}/{{ scratch_namespace }}"
+# enclosing repository (workspace or linked worktree). Checkouts nested in a
+# VCS directory rename that segment, so the mirror never contains one.
+PROJECT_SCRATCH_IDENTITY="${PROJECT_ROOT}/"
+{% for segment, alias in scratch_identity_segment_aliases -%}
+scratch_segment="/{{ segment }}/"
+scratch_alias="/{{ alias }}/"
+while [[ "${PROJECT_SCRATCH_IDENTITY}" == *"${scratch_segment}"* ]]; do
+  PROJECT_SCRATCH_IDENTITY="${PROJECT_SCRATCH_IDENTITY//"${scratch_segment}"/"${scratch_alias}"}"
+done
+{% endfor -%}
+PROJECT_SCRATCH_IDENTITY="${PROJECT_SCRATCH_IDENTITY%/}"
+PROJECT_SCRATCH="${HOME}/{{ scratch_home_relative }}/{{ state_directory_name }}${PROJECT_SCRATCH_IDENTITY}/{{ scratch_namespace }}"
 mkdir -p "${PROJECT_SCRATCH}"
 if command -v chattr >/dev/null 2>&1 && [[ "$(stat -f -c %T "${PROJECT_SCRATCH}")" == "btrfs" ]]; then
   chattr +C "${PROJECT_SCRATCH}"

@@ -14,9 +14,10 @@ class FlextInfraUtilitiesGitignore:
     """Gitignore rendering utilities."""
 
     @staticmethod
-    def _package_root() -> Path:
-        """Return the installed flext-infra package root."""
-        return Path(__file__).resolve().parent.parent
+    def codegen_templates_root(codegen: m.Infra.CodegenConfigSpec) -> Path:
+        """Return the resolved template root of the installed flext-infra package."""
+        package_root = Path(__file__).resolve().parent.parent
+        return (package_root / "templates" / codegen.templates.root).resolve()
 
     @staticmethod
     def render_project_gitignore(
@@ -44,11 +45,7 @@ class FlextInfraUtilitiesGitignore:
             return r[str].fail(
                 "gitignore template is missing from codegen configuration"
             )
-        templates_root = (
-            FlextInfraUtilitiesGitignore._package_root()
-            / "templates"
-            / codegen.templates.root
-        ).resolve()
+        templates_root = FlextInfraUtilitiesGitignore.codegen_templates_root(codegen)
         project_patterns: t.StrSequence = ()
         if project_dir is not None:
             from .project_managed_artifacts import (

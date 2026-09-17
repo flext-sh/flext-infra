@@ -5,9 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from ... import m, t
+from .gitignore import FlextInfraCodegenConformGitignore
 
 
-class FlextInfraCodegenConformDocsOwnership:
+class FlextInfraCodegenConformDocsOwnership(FlextInfraCodegenConformGitignore):
     """Docs publication ownership scoped to the invoked repository."""
 
     @staticmethod

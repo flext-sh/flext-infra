@@ -7,9 +7,10 @@ from pathlib import Path
 
 from ... import c, config, m, p, r, t, u
 from ...workspace import FlextInfraWorkspaceDetector
+from .scaffold_plan import FlextInfraCodegenConformScaffoldPlan
 
 
-class FlextInfraCodegenConformPlan:
+class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     """Conformance plan selection and repository topology resolution."""
 
     def plan(
@@ -250,29 +251,6 @@ class FlextInfraCodegenConformPlan:
                 f"{repository.path.as_posix()}"
             )
         return r[Path].ok(resolved)
-
-    @staticmethod
-    def _package_root() -> Path:
-        """Return the installed flext-infra package root."""
-        return Path(__file__).resolve().parent.parent.parent
-
-    @staticmethod
-    def _repository_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:
-        """Return the environment root owned by the inferred target."""
-        if workspace.project is not None:
-            project_root_rel: str = workspace.project.repository_root_rel
-            return project_root_rel
-        return "."
-
-    @staticmethod
-    def _repository_provider(
-        repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec
-    ) -> p.Result[m.Infra.ProviderSpec]:
-        """Resolve one repository to exactly one provider-owned policy."""
-        resolved: p.Result[m.Infra.ProviderSpec] = u.Infra.repository_provider(
-            repository, codegen.providers
-        )
-        return resolved
 
 
 __all__: list[str] = ["FlextInfraCodegenConformPlan"]

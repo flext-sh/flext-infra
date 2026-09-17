@@ -6,10 +6,10 @@ from pathlib import Path
 
 from ... import c, m, p, r, t, u
 from ...deps import FlextInfraPyprojectModernizer
-from .file_plans import FlextInfraCodegenConformFilePlans
+from .existing_plan import FlextInfraCodegenConformExistingPlan
 
 
-class FlextInfraCodegenConformScaffoldPlan:
+class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan):
     """Complete scaffold planning for ``codegen new``."""
 
     def _plan_scaffold_repository(
@@ -80,9 +80,7 @@ class FlextInfraCodegenConformScaffoldPlan:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(context_result)
         context = context_result.value
         planned: list[m.Infra.CodegenFilePlan] = []
-        templates_root = (
-            self._package_root() / "templates" / codegen.templates.root
-        ).resolve()
+        templates_root = u.Infra.codegen_templates_root(codegen)
         seen_destinations: set[str] = set()
         # One selection and one formatted path govern validation and planning.
         scaffold_entries = tuple(
@@ -175,7 +173,7 @@ class FlextInfraCodegenConformScaffoldPlan:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
                     rendered_content
                 )
-            file_plan = FlextInfraCodegenConformFilePlans.file_plan(
+            file_plan = self.file_plan(
                 root,
                 destination,
                 rendered_content.value.rendered,

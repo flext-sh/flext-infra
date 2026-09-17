@@ -12,7 +12,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests import u
+from tests import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -36,7 +36,10 @@ class TestsFlextInfraRunProjects:
         tm.ok(result)
         tm.that(result.value, eq=())
 
-    @pytest.mark.parametrize("report_name", ["check-report.md", "check-report.sarif"])
+    @pytest.mark.parametrize(
+        "report_name",
+        [c.Infra.CHECK_REPORT_MARKDOWN_FILENAME, c.Infra.CHECK_REPORT_SARIF_FILENAME],
+    )
     def test_run_projects_creates_reports(
         self, tmp_path: Path, report_name: str
     ) -> None:

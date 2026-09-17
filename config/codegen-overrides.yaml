@@ -95,6 +95,7 @@ Infra:
             - UNIVERSAL_CORE.md
             - ECOSYSTEM.md
             - CATALOG.md
+            - GEMINI.md
             - config.yaml
             - schema.json
             - version.json

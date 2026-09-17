@@ -29,23 +29,28 @@ class FlextInfraPromotedDispatch(FlextInfraPromotedDiscovery):
     ) -> int:
         """Run the promoted command dispatcher."""
         args = tuple(sys.argv[1:] if argv is None else argv)
+        verb = args[0] if args else c.Infra.PromotedSelector.HELP
+        requested_what = (settings.Infra.dispatch_what or "").strip()
         try:
             workspace = spec or u.Infra.promoted_discovered_workspace_spec()
             u.Infra.promoted_ensure_local_python(workspace)
             registry = cls.discover(script_roots=script_roots, spec=workspace)
-            if args[:1] == (c.Infra.PromotedSelector.VALIDATE,):
-                return c.Infra.ScriptExitCode.PASS
-            requested_what = (settings.Infra.dispatch_what or "").strip()
-            if args and args[0] not in c.Infra.PROMOTED_HELP_ARGS:
-                return cls.dispatch(registry, args[0], requested_what)
-            sys.stdout.write(
+            help_text = (
                 u.Infra.promoted_render_help(registry, requested_what)
-                + c.Infra.PromotedJoin.LINES
+                if verb in c.Infra.PROMOTED_HELP_ARGS
+                else None
             )
-            return c.Infra.ScriptExitCode.PASS
+            status = (
+                c.Infra.ScriptExitCode.PASS
+                if help_text is not None or verb == c.Infra.PromotedSelector.VALIDATE
+                else cls.dispatch(registry, verb, requested_what)
+            )
         except c.Infra.PromotedRegistryError as exc:
             u.Cli.error(exc.message)
             return c.Infra.ScriptExitCode.USAGE
+        if help_text is not None:
+            sys.stdout.write(help_text + c.Infra.PromotedJoin.LINES)
+        return status
 
     @staticmethod
     def dispatch(
