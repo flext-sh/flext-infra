@@ -78,6 +78,7 @@ if TYPE_CHECKING:
     from .test_codegen_runtime_profiles import TestsFlextInfraCodegenRuntimeProfiles
     from .test_codegen_setup_submodules import TestsFlextInfraCodegenSetupSubmodules
     from .test_codegen_version_file import TestsFlextInfraCodegenVersionFile
+    from .test_file_participant_recovery import TestsFlextInfraFileParticipantRecovery
     from .test_gen_respects_invocation_scope import (
         TestsFlextInfraGenRespectsInvocationScope,
     )
@@ -86,7 +87,10 @@ if TYPE_CHECKING:
         TestsFlextInfraManagedMaintenanceHeaders,
     )
     from .test_mise_runtime_storage import TestsFlextInfraMiseRuntimeStorage
-    from .test_plan_collection import TestsPlanCollection
+    from .test_plan_collection import TestsFlextInfraPlanCollection
+    from .test_release_checkout_credentials import (
+        TestsFlextInfraReleaseCheckoutCredentials,
+    )
     from .test_root_artifact_ownership import TestsFlextInfraRootArtifactOwnership
     from .test_setup_never_destroys import TestsFlextInfraSetupNeverDestroys
     from .test_template_formatter_fixed_point import (
@@ -102,11 +106,13 @@ if TYPE_CHECKING:
         TestsFlextInfraToolchainBeadsDistribution,
     )
     from .toolchain_go_backend_tests import TestsFlextInfraToolchainGoBackend
+    from .toolchain_make_tests import TestsFlextInfraToolchainMake
     from .toolchain_requirement_tests import TestsFlextInfraToolchainRequirement
     from .transaction_directory_journal_tests import (
         TestsFlextInfraTransactionDirectoryJournal,
     )
     from .transaction_lease_tests import TestsFlextInfraTransactionLease
+    from .workflow_comment_spacing_tests import TestsFlextInfraWorkflowCommentSpacing
     from .workflow_orphan_guard_tests import TestsFlextInfraWorkflowOrphanGuard
 __all__: tuple[str, ...] = (
     "CodegenTestSupport",
@@ -150,6 +156,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCodegenSetupSubmodules",
     "TestsFlextInfraCodegenVersionFile",
     "TestsFlextInfraCodegenViolationKey",
+    "TestsFlextInfraFileParticipantRecovery",
     "TestsFlextInfraGenRespectsInvocationScope",
     "TestsFlextInfraLazyInitAliasInheritance",
     "TestsFlextInfraLazyInitBootstrapPackage",
@@ -159,20 +166,23 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraManagedConflictRecovery",
     "TestsFlextInfraManagedMaintenanceHeaders",
     "TestsFlextInfraMiseRuntimeStorage",
+    "TestsFlextInfraPlanCollection",
+    "TestsFlextInfraReleaseCheckoutCredentials",
     "TestsFlextInfraRootArtifactOwnership",
     "TestsFlextInfraSetupNeverDestroys",
     "TestsFlextInfraSubmoduleRecipeShell",
     "TestsFlextInfraTemplateFormatterFixedPoint",
     "TestsFlextInfraToolchainBeadsDistribution",
     "TestsFlextInfraToolchainGoBackend",
+    "TestsFlextInfraToolchainMake",
     "TestsFlextInfraToolchainRequirement",
     "TestsFlextInfraTransactionDirectoryJournal",
     "TestsFlextInfraTransactionLease",
     "TestsFlextInfraUtilityFacadeProjection",
     "TestsFlextInfraVscodeOwnerMerge",
+    "TestsFlextInfraWorkflowCommentSpacing",
     "TestsFlextInfraWorkflowOrphanGuard",
     "TestsFlextInfraWorkspaceRootSetupSubmodules",
-    "TestsPlanCollection",
     "archive_root",
     "build_loose_project",
     "c",
@@ -282,6 +292,9 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraCodegenSetupSubmodules",
             ),
             ".test_codegen_version_file": ("TestsFlextInfraCodegenVersionFile",),
+            ".test_file_participant_recovery": (
+                "TestsFlextInfraFileParticipantRecovery",
+            ),
             ".test_gen_respects_invocation_scope": (
                 "TestsFlextInfraGenRespectsInvocationScope",
             ),
@@ -290,7 +303,10 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraManagedMaintenanceHeaders",
             ),
             ".test_mise_runtime_storage": ("TestsFlextInfraMiseRuntimeStorage",),
-            ".test_plan_collection": ("TestsPlanCollection",),
+            ".test_plan_collection": ("TestsFlextInfraPlanCollection",),
+            ".test_release_checkout_credentials": (
+                "TestsFlextInfraReleaseCheckoutCredentials",
+            ),
             ".test_root_artifact_ownership": ("TestsFlextInfraRootArtifactOwnership",),
             ".test_setup_never_destroys": ("TestsFlextInfraSetupNeverDestroys",),
             ".test_template_formatter_fixed_point": (
@@ -308,11 +324,15 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraToolchainBeadsDistribution",
             ),
             ".toolchain_go_backend_tests": ("TestsFlextInfraToolchainGoBackend",),
+            ".toolchain_make_tests": ("TestsFlextInfraToolchainMake",),
             ".toolchain_requirement_tests": ("TestsFlextInfraToolchainRequirement",),
             ".transaction_directory_journal_tests": (
                 "TestsFlextInfraTransactionDirectoryJournal",
             ),
             ".transaction_lease_tests": ("TestsFlextInfraTransactionLease",),
+            ".workflow_comment_spacing_tests": (
+                "TestsFlextInfraWorkflowCommentSpacing",
+            ),
             ".workflow_orphan_guard_tests": ("TestsFlextInfraWorkflowOrphanGuard",),
             "flext_tests": (
                 "c",

@@ -30,8 +30,8 @@ class FlextInfraUtilitiesDocsCollectionSources:
         cls,
         root: Path,
         source: m.Infra.PlanCollectionSource,
-        excluded_outputs: tuple[Path, ...] = (),
-    ) -> tuple[Path, ...]:
+        excluded_outputs: t.VariadicTuple[Path] = (),
+    ) -> t.VariadicTuple[Path]:
         """Inventory physical regular files, rejecting inaccessible sources."""
         selected = cls.collection_source_root(root, source)
         chain = cli_u.Cli.atomic_plan_directory_chain(selected).unwrap()
@@ -103,8 +103,8 @@ class FlextInfraUtilitiesDocsCollectionSources:
         cls,
         path: Path,
         source: m.Infra.PlanCollectionSource,
-        excluded_outputs: tuple[Path, ...] = (),
-    ) -> tuple[m.Cli.AtomicFileState, ...]:
+        excluded_outputs: t.VariadicTuple[Path] = (),
+    ) -> t.VariadicTuple[m.Cli.AtomicFileState]:
         """Read the plan and its same-basename companion directory."""
         states = [cls.collection_read(path)]
         if source.companion_directory:
@@ -125,8 +125,8 @@ class FlextInfraUtilitiesDocsCollectionSources:
 
     @staticmethod
     def collection_source_updated(
-        content: bytes, fields: tuple[str, ...]
-    ) -> tuple[str | None, str | None]:
+        content: bytes, fields: t.VariadicTuple[str]
+    ) -> t.Pair[str | None, str | None]:
         """Retain explicit source precision; never promote filesystem time."""
         lines = content.decode("utf-8-sig", errors="strict").splitlines()
         if not lines or lines[0] != "---":
@@ -165,7 +165,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
         canonical: Path,
         projection: Path | None,
         states: t.MutableMappingKV[Path, m.Cli.AtomicFileState],
-    ) -> tuple[m.Infra.PlanCollectionManifest, tuple[Path, ...]]:
+    ) -> t.Pair[m.Infra.PlanCollectionManifest, t.VariadicTuple[Path]]:
         """Exclude only outputs attested by the canonical generated manifest."""
         manifest_path = canonical / "collection-manifest.json"
         before = cls.collection_capture(manifest_path, states)
@@ -195,8 +195,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
                 ):
                     excluded.append(candidate)
                 elif candidate not in plans and root == canonical:
-                    msg = f"immutable canonical artifact changed or disappeared: {candidate}"
-                    raise ValueError(msg)
+                    continue
                 elif root == projection and state.content is not None:
                     projected_plans = {
                         root / plan.relative_to(canonical) for plan in plans

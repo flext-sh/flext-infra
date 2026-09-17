@@ -301,9 +301,13 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         return any(cls.name_of(target) == "__all__" for target in targets)
 
     @classmethod
-    def _module_docstring(cls, node: object) -> bool:
+    def _module_docstring(cls, node: t.Infra.RopeAstNode) -> bool:
         """Return whether an expression is a module docstring."""
-        value = getattr(node, "value", None)
+        value: t.Infra.RopeAstNode | None = getattr(node, "value", None)
+        # NOTE (multi-agent, flext-n6ge5): statements such as definitions and
+        # ``pass`` have no expression value; keep node_kind strict for real nodes.
+        if value is None:
+            return False
         return cls.kind(value) == "Constant" and isinstance(
             getattr(value, "value", None), str
         )

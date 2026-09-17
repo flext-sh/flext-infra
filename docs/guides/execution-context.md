@@ -13,6 +13,18 @@ Ele reconcilia pedidos, plano reconstruído, mudanças, críticas, ADRs e Beads.
 O Beads continua sendo o responsável pelo estado de execução; o handoff contém
 evidência e instruções de retomada, sem criar uma fila paralela de tarefas.
 
+**Estado corrente (2026-09-17):** a tip ativa é `flext-infra@0.12.0-dev@a2bd0a726`
+(superprojeto `676ae7aa3c`). Nenhum SHA citado no handoff de 14/09 é ancestral dela. O CRG citado
+não existe no checkout atual — o único válido é da worktree `rope-modernize`, construído em
+`469b26b4e`, ancestral da tip. O defeito `_lazy_analysis` em
+`src/flext_infra/codegen/_conform/execute.py:376/598` permanece e os god modules estão inalterados.
+Gas City task `flext-itpd1.2` mantém o cursor da convergência documental e
+`flext-5fxu6.4` continua sendo o proprietário técnico da modernização. O handoff
+versionado deste repositório é a rota standalone; planos locais do superprojeto
+preservam contexto de sessão, mas não são links portáveis nem substituem o
+tracker. As fases 3 e 8 ainda não têm prova verde. Esta correção substitui
+somente os SHA, fases e proprietários caducos do handoff.
+
 ## Começar pela decisão pendente
 
 O runtime correto define o comportamento; os testes verificam esse contrato.
@@ -101,10 +113,10 @@ lote. Refatorações estruturais continuam passando pelo `make mod`.
 ## Diferenciar checkpoint de conclusão
 
 Um WIP publicado preserva o trabalho e permite revisão. Conclusão exige os
-critérios vigentes, integração e runtime medido no SHA integrado. Nesta
-estabilização o operador limitou o aceite de `check` a Ruff, Mypy, Pyright e
-Pyrefly; o resultado dos gates customizados continua visível. Essa exceção
-pertence à execução e não enfraquece a política geral nem fecha seus defeitos.
+critérios do Bead ativo, integração e runtime medido no SHA integrado. Exceções
+registradas em handoffs históricos, incluindo aceite temporário com gates
+customizados vermelhos, não transferem para uma revisão ou Bead posterior. O
+contrato atual exige os verbos canônicos sem warnings ou findings residuais.
 
 O handoff final relaciona PRs, commits de merge e prova após integração aos
 Beads. Se algo permanece pendente, o texto deve nomeá-lo e oferecer a próxima

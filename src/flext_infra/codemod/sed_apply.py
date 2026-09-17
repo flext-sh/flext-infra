@@ -119,7 +119,7 @@ class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             combined |= flag_map[name]
         return combined
 
-    def _scan_pattern(self, pattern_spec: m.Infra.SedPatternSpec) -> tuple[int, int]:
+    def _scan_pattern(self, pattern_spec: m.Infra.SedPatternSpec) -> t.Pair[int, int]:
         """Scan for matches without applying. Returns (file_count, change_count)."""
         flags = self._compile_flags(pattern_spec.flags)
         compiled = re.compile(pattern_spec.pattern, flags)

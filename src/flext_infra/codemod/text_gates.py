@@ -28,8 +28,8 @@ class FlextInfraModTextGateEngine:
     def load_rules(cls, root: Path) -> p.Result[t.VariadicTuple[m.Infra.ModTextRule]]:
         """Load package and workspace text rules into one validated tuple."""
         sources = (
-            Path(__file__).parent / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
-            root / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+            Path(__file__).parent / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
+            root / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
         )
         rules: list[m.Infra.ModTextRule] = []
         seen: set[str] = set()

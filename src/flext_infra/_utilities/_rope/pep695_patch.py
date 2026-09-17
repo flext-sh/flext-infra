@@ -217,7 +217,4 @@ class FlextInfraUtilitiesRopePep695Patch:
         cls._applied = True
 
 
-FlextInfraUtilitiesRopePep695Patch.apply()
-
-
 __all__: list[str] = ["FlextInfraUtilitiesRopePep695Patch"]

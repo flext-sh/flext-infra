@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from ._git.worktree import FlextInfraUtilitiesGitWorktreeMixin
     from ._git.worktree_checkpoint import FlextInfraUtilitiesGitWorktreeCheckpointMixin
     from ._git.worktree_discovery import FlextInfraUtilitiesGitWorktreeDiscoveryMixin
-    from ._git.worktree_io import git_stdin
+    from ._git.worktree_io import FlextInfraUtilitiesGitWorktreeIO
     from ._git.worktree_materialization import (
         FlextInfraUtilitiesGitWorktreeMaterializationMixin,
     )
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from ._git.worktree_removal import FlextInfraUtilitiesGitWorktreeRemovalMixin
     from ._git.worktree_roots import FlextInfraUtilitiesGitWorktreeRootsMixin
     from ._git.worktree_status import FlextInfraUtilitiesGitWorktreeStatusMixin
-    from ._mypy_supervisor import MypyDarwinSupervisor
+    from ._mypy_supervisor import FlextInfraMypyDarwinSupervisor
     from ._project_discovery_candidates import (
         FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
     )
@@ -172,6 +172,7 @@ if TYPE_CHECKING:
     from .worktree_provisioning import FlextInfraWorktreeProvisioning
 __all__: tuple[str, ...] = (
     "FlextInfraChangeTrackingTransformer",
+    "FlextInfraMypyDarwinSupervisor",
     "FlextInfraRopeProject",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesClassNesting",
@@ -231,6 +232,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitSemanticWorktreeMixin",
     "FlextInfraUtilitiesGitWorktreeCheckpointMixin",
     "FlextInfraUtilitiesGitWorktreeDiscoveryMixin",
+    "FlextInfraUtilitiesGitWorktreeIO",
     "FlextInfraUtilitiesGitWorktreeMaterializationMixin",
     "FlextInfraUtilitiesGitWorktreeMixin",
     "FlextInfraUtilitiesGitWorktreePatchMixin",
@@ -319,12 +321,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesWorkspaceManifest",
     "FlextInfraWorktreeLifecycle",
     "FlextInfraWorktreeProvisioning",
-    "MypyDarwinSupervisor",
     "_git",
     "_promoted",
     "_rope",
     "_rope_analysis",
-    "git_stdin",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -365,7 +365,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._git.worktree_discovery": (
                 "FlextInfraUtilitiesGitWorktreeDiscoveryMixin",
             ),
-            "._git.worktree_io": ("git_stdin",),
+            "._git.worktree_io": ("FlextInfraUtilitiesGitWorktreeIO",),
             "._git.worktree_materialization": (
                 "FlextInfraUtilitiesGitWorktreeMaterializationMixin",
             ),
@@ -373,7 +373,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._git.worktree_removal": ("FlextInfraUtilitiesGitWorktreeRemovalMixin",),
             "._git.worktree_roots": ("FlextInfraUtilitiesGitWorktreeRootsMixin",),
             "._git.worktree_status": ("FlextInfraUtilitiesGitWorktreeStatusMixin",),
-            "._mypy_supervisor": ("MypyDarwinSupervisor",),
+            "._mypy_supervisor": ("FlextInfraMypyDarwinSupervisor",),
             "._project_discovery_candidates": (
                 "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
             ),

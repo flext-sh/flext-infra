@@ -14,7 +14,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .. import c
+from flext_cli import u
+
+from .. import c, m
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -32,12 +34,16 @@ class FlextInfraUtilitiesWorkspaceManifest:
     def is_fleet_umbrella(cls, repository_root: Path) -> bool:
         """Whether this checkout declares itself a fleet umbrella.
 
-        The handwritten workspace manifest is the only signal. A Beads override
-        is explicitly not one: every project carries ``config/beads.yaml``,
-        standalone or not, so reading it here classified every project as an
-        umbrella and collapsed its docs scope onto an identical root scope.
+        The typed role in the handwritten workspace manifest is the only signal.
+        Every governed standalone project also carries this manifest, so file
+        existence alone would collapse its docs scope onto an aggregate root.
         """
-        return cls.workspace_manifest_path(repository_root).is_file()
+        manifest_path = cls.workspace_manifest_path(repository_root)
+        if not manifest_path.is_file():
+            return False
+        loaded = u.Cli.config_load(manifest_path, expand_env=False).unwrap()
+        manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.data)
+        return manifest.repository.role is c.Infra.MakeProfile.WORKSPACE
 
 
 __all__: list[str] = ["FlextInfraUtilitiesWorkspaceManifest"]

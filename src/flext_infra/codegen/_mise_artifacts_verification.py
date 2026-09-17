@@ -25,9 +25,23 @@ class FlextInfraMiseArtifactsVerification:
         cls,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
+        *,
+        created: t.VariadicTuple[
+            m.Cli.AtomicFileState | m.Cli.AtomicDirectoryState
+        ] = (),
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenJournalDirectory]]:
         """Register exact transaction trees after validating any prior authority."""
         result_type = r[tuple[m.Infra.CodegenJournalDirectory, ...]]
+        for receipt in created:
+            if not any(
+                project.transaction_root is not None
+                and receipt.path != project.transaction_root
+                and receipt.path.is_relative_to(project.transaction_root)
+                for project in files.transaction_participants(layout)
+            ):
+                return result_type.fail(
+                    f"created staging receipt escapes transaction topology: {receipt.path}"
+                )
         registered: list[m.Infra.CodegenJournalDirectory] = []
         for directory in journal.directories:
             project = next(
@@ -76,6 +90,7 @@ class FlextInfraMiseArtifactsVerification:
                     directory.manifest,
                     observed.value,
                     allow_registered_additions=True,
+                    created=created,
                 )
                 if transition.failure:
                     return result_type.from_failure(transition)
@@ -583,6 +598,9 @@ class FlextInfraMiseArtifactsVerification:
         observed: m.Cli.AtomicPhysicalTreeManifest,
         *,
         allow_registered_additions: bool,
+        created: t.VariadicTuple[
+            m.Cli.AtomicFileState | m.Cli.AtomicDirectoryState
+        ] = (),
     ) -> p.Result[bool]:
         """Accept only stable objects and explicitly journaled file transitions."""
         if not cls._same_directory_identity(authorized.root, observed.root):
@@ -622,7 +640,22 @@ class FlextInfraMiseArtifactsVerification:
                 f"unregistered temporary-tree entry exists: {additions[0].path}"
             )
         authorized_files = set(file_specs.value)
+        created_by_path = {receipt.path: receipt for receipt in created}
+        for path in created_by_path:
+            if path.is_relative_to(authorized.root.path) and (
+                path in expected or path not in current
+            ):
+                return r[bool].fail(
+                    f"created temporary-tree entry is not a new present artifact: {path}"
+                )
         for entry in additions:
+            receipt = created_by_path.get(entry.path)
+            if receipt is not None:
+                if not cls._matches_created_entry(entry, receipt):
+                    return r[bool].fail(
+                        f"created temporary-tree identity changed: {entry.path}"
+                    )
+                continue
             if entry.kind == "directory":
                 if not any(entry.path in path.parents for path in authorized_files):
                     return r[bool].fail(
@@ -635,6 +668,42 @@ class FlextInfraMiseArtifactsVerification:
                     f"unregistered temporary-tree file exists: {entry.path}"
                 )
         return r[bool].ok(True)
+
+    @classmethod
+    def _matches_created_entry(
+        cls,
+        entry: m.Cli.AtomicPhysicalTreeEntry,
+        receipt: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryState,
+    ) -> bool:
+        """Authenticate additions from invocation receipts, never their inventory."""
+        if (
+            entry.path,
+            entry.parent_device,
+            entry.parent_inode,
+            entry.mode,
+            entry.device,
+            entry.inode,
+            entry.file_attributes,
+            entry.reparse_tag,
+        ) != (
+            receipt.path,
+            receipt.parent_device,
+            receipt.parent_inode,
+            receipt.mode,
+            receipt.device,
+            receipt.inode,
+            receipt.file_attributes,
+            receipt.reparse_tag,
+        ):
+            return False
+        if isinstance(receipt, m.Cli.AtomicFileState):
+            return (
+                entry.kind == "file"
+                and receipt.content is not None
+                and entry.sha256 == files.digest(receipt.content)
+                and entry.link_count == receipt.link_count
+            )
+        return entry.kind == "directory" and receipt.exists
 
     @classmethod
     def _journal_file_specs(

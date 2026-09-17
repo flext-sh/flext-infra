@@ -42,7 +42,8 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
             return None
         working_tree_dir = opened.value.working_tree_dir
         if working_tree_dir is None:
-            return None
+            msg = f"opened Git repository has no worktree: {scope_root}"
+            raise RuntimeError(msg)
         return str(Path(working_tree_dir).resolve())
 
     @classmethod

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
@@ -12,7 +12,7 @@ from ..._constants import (
     FlextInfraConstantsCodegenProject,
     FlextInfraConstantsWorkspace,
 )
-from .._defaults import tool_version_field
+from .. import FlextInfraModelsDefaults
 from ..deps_tool_config import FlextInfraModelsDepsToolConfig
 from .beads import FlextInfraConfigModelsBeads
 from .contract import FlextInfraConfigModelsContract
@@ -22,6 +22,27 @@ from .scaffold import FlextInfraConfigModelsScaffold
 
 class FlextInfraConfigModelsContexts:
     """Render context and repository reference models."""
+
+    @staticmethod
+    def _validated_hatch_build_hook_path(value: Path | None) -> Path | None:
+        """Return one normalized project-relative Hatch hook declaration."""
+        if value is None:
+            return None
+        raw = str(value)
+        not_project_relative = (
+            value.is_absolute()
+            or not value.parts
+            or value.as_posix() in {"", "."}
+        )
+        unsafe_segments = (
+            ".." in value.parts
+            or "\\" in raw
+            or bool(PureWindowsPath(raw).drive)
+        )
+        if not_project_relative or unsafe_segments:
+            msg = f"hatch_build_hook_path must be a safe project-relative path: {raw}"
+            raise ValueError(msg)
+        return value
 
     class MakeCommandContext(FlextInfraConfigModelsContract.ConfigContract):
         """Shared command identity required by every generated Make surface."""
@@ -194,7 +215,7 @@ class FlextInfraConfigModelsContexts:
         ruff_per_file_ignores: Annotated[
             t.MappingKV[str, t.StrSequence],
             m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description=(
                     "Effective Ruff exemptions: fleet policy composed with this "
                     "repository's own ManagedArtifacts overlay"
@@ -248,6 +269,12 @@ class FlextInfraConfigModelsContexts:
     class ProjectRenderContext(MakeRenderContext):
         """Complete typed input consumed by project scaffold templates."""
 
+        # NOTE (multi-agent, flext-get3j): this render field is the exact
+        # projection of ProjectSpec; templates must not infer or default a hook.
+        hatch_build_hook_path: Annotated[
+            Path | None,
+            m.Field(description="Project-relative Hatch custom build hook module"),
+        ] = None
         namespace_scan_dirs: Annotated[
             t.StrSequence,
             m.Field(
@@ -383,52 +410,94 @@ class FlextInfraConfigModelsContexts:
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]
         kubectl_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact kubectl toolchain version")
+            t.NonEmptyStr,
+            FlextInfraModelsDefaults.tool_version_field(
+                "Exact kubectl toolchain version"
+            ),
         ]
         helm_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Helm toolchain version")
+            t.NonEmptyStr,
+            FlextInfraModelsDefaults.tool_version_field("Exact Helm toolchain version"),
         ]
         kind_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact kind toolchain version")
+            t.NonEmptyStr,
+            FlextInfraModelsDefaults.tool_version_field("Exact kind toolchain version"),
         ]
         direnv_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible direnv major.minor line")
+            t.NonEmptyStr,
+            FlextInfraModelsDefaults.tool_version_field(
+                "Compatible direnv major.minor line"
+            ),
         ]
         uv_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible uv major.minor line")
+            t.NonEmptyStr,
+            FlextInfraModelsDefaults.tool_version_field(
+                "Compatible uv major.minor line"
+            ),
         ]
         qlty_version: Annotated[
             t.NonEmptyStr,
-            tool_version_field("Moving qlty release selector, e.g. 'latest'"),
+            FlextInfraModelsDefaults.tool_version_field(
+                "Moving qlty release selector, e.g. 'latest'"
+            ),
         ]
         node_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible Node.js major.minor line")
+            t.NonEmptyStr,
+            FlextInfraModelsDefaults.tool_version_field(
+                "Compatible Node.js major.minor line"
+            ),
         ]
         jscpd_version: Annotated[
             t.NonEmptyStr,
-            tool_version_field("Moving jscpd release selector, e.g. 'latest'"),
+            FlextInfraModelsDefaults.tool_version_field(
+                "Moving jscpd release selector, e.g. 'latest'"
+            ),
         ]
         waza_version: Annotated[
             t.NonEmptyStr,
-            tool_version_field("Moving Waza release selector, e.g. 'latest'"),
+            FlextInfraModelsDefaults.tool_version_field(
+                "Moving Waza release selector, e.g. 'latest'"
+            ),
         ]
         taplo_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Taplo formatter version")
+            t.NonEmptyStr,
+            FlextInfraModelsDefaults.tool_version_field(
+                "Exact Taplo formatter version"
+            ),
         ]
         ast_grep_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact ast-grep analyzer version")
+            t.NonEmptyStr,
+            FlextInfraModelsDefaults.tool_version_field(
+                "Exact ast-grep analyzer version"
+            ),
         ]
         gitleaks_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Gitleaks scanner version")
+            t.NonEmptyStr,
+            FlextInfraModelsDefaults.tool_version_field(
+                "Exact Gitleaks scanner version"
+            ),
         ]
         scc_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact scc code-counter version")
+            t.NonEmptyStr,
+            FlextInfraModelsDefaults.tool_version_field(
+                "Exact scc code-counter version"
+            ),
         ]
         kubeconform_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible kubeconform minor line")
+            t.NonEmptyStr,
+            FlextInfraModelsDefaults.tool_version_field(
+                "Compatible kubeconform minor line"
+            ),
         ]
         go_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Go runtime version")
+            t.NonEmptyStr,
+            FlextInfraModelsDefaults.tool_version_field("Exact Go runtime version"),
+        ]
+        make_version: Annotated[
+            t.NonEmptyStr,
+            FlextInfraModelsDefaults.tool_version_field(
+                "Moving Make release selector, e.g. 'latest'"
+            ),
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")
@@ -458,9 +527,20 @@ class FlextInfraConfigModelsContexts:
         ]
         year: Annotated[int, m.Field(description="Copyright year")]
 
+        @m.field_validator("hatch_build_hook_path")
+        @classmethod
+        def _validate_hatch_build_hook_path(cls, value: Path | None) -> Path | None:
+            return FlextInfraConfigModelsContexts._validated_hatch_build_hook_path(value)
+
     class ProjectSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
 
+        # NOTE (multi-agent, flext-get3j): ProjectSpec is the sole declaration
+        # owner; absence is meaningful and must never select a conventional hook.
+        hatch_build_hook_path: Annotated[
+            Path | None,
+            m.Field(description="Project-relative Hatch custom build hook module"),
+        ] = None
         package_name: Annotated[
             t.NonEmptyStr, m.Field(description="Import package name")
         ]
@@ -564,6 +644,11 @@ class FlextInfraConfigModelsContexts:
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
 
+        @m.field_validator("hatch_build_hook_path")
+        @classmethod
+        def _validate_hatch_build_hook_path(cls, value: Path | None) -> Path | None:
+            return FlextInfraConfigModelsContexts._validated_hatch_build_hook_path(value)
+
     class RepositoryRef(FlextInfraConfigModelsContract.ConfigContract):
         """One declared repository and its immutable Git origin contract."""
 
@@ -623,6 +708,16 @@ class FlextInfraConfigModelsContexts:
         package: Annotated[
             bool, m.Field(description="Repository publishes a Python package")
         ]
+        publishes_release: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description=(
+                    "Whether this distribution explicitly opts into the generated "
+                    "release protocol"
+                ),
+            ),
+        ] = False
         editable: Annotated[
             bool, m.Field(description="Overlay repository as an editable dependency")
         ]

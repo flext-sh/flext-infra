@@ -9,7 +9,7 @@ from flext_cli import m, u
 
 from flext_infra import t
 
-from ._defaults import ImmutableEmptyMapping
+from . import FlextInfraModelsDefaults
 from .deps_tool_config_linters import FlextInfraModelsDepsToolConfigLinters
 from .deps_tool_config_type_checkers import FlextInfraModelsDepsToolConfigTypeCheckers
 
@@ -620,7 +620,7 @@ class FlextInfraModelsDepsToolConfig(
         pyright: Annotated[
             t.StrMapping,
             m.Field(description="Pyright override settings for this project type."),
-        ] = m.Field(default_factory=ImmutableEmptyMapping)
+        ] = m.Field(default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping)
 
     class ProjectTypeOverridesConfig(m.ArbitraryTypesModel):
         """Project-type-specific override matrix from ``config/tooling.yaml``."""

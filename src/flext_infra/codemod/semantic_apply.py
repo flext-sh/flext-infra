@@ -17,7 +17,7 @@ class FlextInfraCodemodSemanticApply:
     @classmethod
     def plan_transaction_paths(
         cls, root: Path, preflight: m.Infra.ModScanReport
-    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Return one immutable Rope callback for the mod loop's progress identity."""
         original = cls._source_inventory(root, preflight)
         from .._utilities.codegen_path_cutover import (
@@ -51,7 +51,7 @@ class FlextInfraCodemodSemanticApply:
         # Phase 0: Import alignment (rope-native; toggle in tooling.yaml).
         # Runs first so rope plans against disk truth that still equals the
         # in-memory working map.
-        alignment_files: tuple[Path, ...] = ()
+        alignment_files: t.VariadicTuple[Path] = ()
         if config.Infra.tooling.mod.phases.import_alignment:
             with infra.rope_workspace(root) as rope_workspace:
                 project_package = (

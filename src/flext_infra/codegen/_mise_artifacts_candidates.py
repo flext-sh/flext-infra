@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, m
 
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 
@@ -18,7 +18,7 @@ def publication_plan(
     projects: t.VariadicTuple[m.Infra.MiseToolchainProjectState],
     stages: t.VariadicTuple[Path],
 ) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]:
-    """Bind each staged artifact to its exact pre-lock destination state."""
+    """Retain every staged artifact receipt, including unchanged destinations."""
     publications: list[m.Infra.CodegenStagedFile] = []
     for project, stage in zip(projects, stages, strict=True):
         before_states = (
@@ -38,12 +38,6 @@ def publication_plan(
                 return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
                     f"staged Mise artifact mode differs: {stage / name}"
                 )
-            if not u.Infra.atomic_file_state_differs(
-                before,
-                desired_content=replacement.value.content,
-                desired_mode=replacement.value.mode,
-            ):
-                continue
             publications.append(
                 m.Infra.CodegenStagedFile(
                     phase="mise",

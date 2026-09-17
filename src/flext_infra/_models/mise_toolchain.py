@@ -292,7 +292,7 @@ class FlextInfraModelsMiseToolchain:
             t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
         ]
         retired_dependency_artifacts: Annotated[
-            tuple[Literal["uv.lock", "mise.lock", ".mise.lock"], ...],
+            t.VariadicTuple[Literal["uv.lock", "mise.lock", ".mise.lock"]],
             m.Field(description="Exact dependency artifacts retired by generation"),
         ]
         mise_lockfile: Annotated[
@@ -386,6 +386,16 @@ class FlextInfraModelsMiseToolchain:
             m.Field(
                 description=(
                     "Go runtime selector; mise resolves the go backend through it"
+                )
+            ),
+        ]
+        make_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Moving Make release selector (latest); mise provisions make "
+                    "so direnv always resolves a real binary rather than a stale "
+                    "host shim. Override toolchain.make_version; never pin."
                 )
             ),
         ]

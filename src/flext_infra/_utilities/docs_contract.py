@@ -27,7 +27,7 @@ class FlextInfraUtilitiesDocsContract:
     """Contract helpers for docs services."""
 
     @staticmethod
-    def _docs_body_start(lines: list[str]) -> int:
+    def _docs_contract_body_start(lines: list[str]) -> int:
         """Return the first body line index, skipping YAML frontmatter when present."""
         if not lines or lines[0].strip() != "---":
             return 0
@@ -37,7 +37,7 @@ class FlextInfraUtilitiesDocsContract:
         return 0
 
     @staticmethod
-    def _docs_strip_invented_toc_before_frontmatter(content: str) -> str:
+    def _docs_contract_strip_invented_toc_before_frontmatter(content: str) -> str:
         """Undo H1+TOC wrongly prepended ahead of YAML frontmatter."""
         if not content.startswith("# Documentation"):
             return content
@@ -52,20 +52,18 @@ class FlextInfraUtilitiesDocsContract:
         return after_toc
 
     @staticmethod
-    def docs_update_toc(content: str) -> t.StrIntPair:
+    def docs_contract_update_toc(content: str) -> t.StrIntPair:
         """Normalize the managed table of contents in Markdown content."""
         original = content
-        content = (
-            FlextInfraUtilitiesDocsContract._docs_strip_invented_toc_before_frontmatter(
-                content
-            )
+        content = FlextInfraUtilitiesDocsContract._docs_contract_strip_invented_toc_before_frontmatter(
+            content
         )
-        toc = FlextInfraUtilitiesDocsContract.docs_build_toc(content)
+        toc = FlextInfraUtilitiesDocsContract.docs_contract_build_toc(content)
         if c.Infra.TOC_START in content and c.Infra.TOC_END in content:
             updated = c.Infra.TOC_BLOCK_RE.sub(toc, content, count=1)
             return (updated, int(updated != original))
         lines = content.splitlines()
-        body_start = FlextInfraUtilitiesDocsContract._docs_body_start(lines)
+        body_start = FlextInfraUtilitiesDocsContract._docs_contract_body_start(lines)
         heading_at = next(
             (
                 index
@@ -98,12 +96,12 @@ class FlextInfraUtilitiesDocsContract:
         return (updated, int(updated != original))
 
     @staticmethod
-    def docs_anchorize(text: str) -> str:
+    def docs_contract_anchorize(text: str) -> str:
         """Use the Python-Markdown anchor algorithm consumed by MkDocs."""
         return slugify(text, "-")
 
     @staticmethod
-    def docs_build_toc(content: str) -> str:
+    def docs_contract_build_toc(content: str) -> str:
         """Generate a managed TOC block from second- and third-level headings.
 
         Headings inside fenced code blocks are documentation samples, not
@@ -117,19 +115,25 @@ class FlextInfraUtilitiesDocsContract:
         body = c.Infra.TOC_BLOCK_RE.sub("", content)
         lines = body.splitlines()
         renderer.convert(
-            "\n".join(lines[FlextInfraUtilitiesDocsContract._docs_body_start(lines) :])
+            "\n".join(
+                lines[
+                    FlextInfraUtilitiesDocsContract._docs_contract_body_start(lines) :
+                ]
+            )
         )
         items: t.MutableSequenceOf[str] = []
         rendered = m.Infra.DocsRenderedToc.model_validate(
             renderer, from_attributes=True
         )
-        FlextInfraUtilitiesDocsContract._docs_toc_items(rendered.toc_tokens, items)
+        FlextInfraUtilitiesDocsContract._docs_contract_toc_items(
+            rendered.toc_tokens, items
+        )
         if not items:
             items = ["- No sections found"]
         return f"{c.Infra.TOC_START}\n" + "\n".join(items) + f"\n{c.Infra.TOC_END}"
 
     @staticmethod
-    def _docs_toc_items(
+    def _docs_contract_toc_items(
         tokens: t.SequenceOf[m.Infra.DocsTocToken],
         items: t.MutableSequenceOf[str],
         depth: int = 0,
@@ -139,7 +143,7 @@ class FlextInfraUtilitiesDocsContract:
             title = unescape(token.name).replace("[", r"\[").replace("]", r"\]")
             indent = "  " * depth
             items.append(f"{indent}- [{title}](#{token.id})")
-            FlextInfraUtilitiesDocsContract._docs_toc_items(
+            FlextInfraUtilitiesDocsContract._docs_contract_toc_items(
                 token.children, items, depth + 1
             )
 
@@ -245,7 +249,7 @@ class FlextInfraUtilitiesDocsContract:
             )
         current = path.read_text(encoding=c.Cli.ENCODING_DEFAULT) if exists else ""
         normalized = (
-            FlextInfraUtilitiesDocsContract.docs_update_toc(content)[0]
+            FlextInfraUtilitiesDocsContract.docs_contract_update_toc(content)[0]
             if path.suffix == ".md"
             else content
         )

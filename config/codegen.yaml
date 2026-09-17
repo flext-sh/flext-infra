@@ -66,13 +66,19 @@ Infra:
       qlty_selector: github:qltysh/qlty
       qlty_version: latest
       node_version: latest
-      jscpd_selector: npm:jscpd
+      jscpd_selector: github:kucherenko/jscpd
       jscpd_version: latest
       waza_selector: github:microsoft/waza
       waza_version: latest
       scc_selector: aqua:boyter/scc
       scc_version: latest
       go_version: latest
+      # NOTE (root cause R1): generated .mise.toml must declare make as a managed
+      # mise tool so direnv exec resolves a real installed binary instead of a
+      # stale host shim (e.g. a conda-carried make). Every project invokes make
+      # through the lifecycle; make is the one tool the Makefile cannot resolve
+      # from itself, so mise must provision it.
+      make_version: latest
       protected_mise_tools:
         - beads
         - gascity
@@ -395,6 +401,7 @@ Infra:
         root_files:
           - .coverage
           - .testmondata
+          - flext-infra-codegen-transaction-journal.json.lock
         trace_globs:
           - "*.pstats"
       # Branch shapes and PR state that let a push skip the pre-push gate, and
@@ -932,12 +939,6 @@ Infra:
       - path: .github/workflows/_fragments/cross_repo_dependency_credential
         owner: codegen
         policy: full
-      - path: .github/workflows/_fragments/private_dependency_auth
-        owner: codegen
-        policy: full
-      - path: .github/workflows/_fragments/private_submodules_init
-        owner: codegen
-        policy: full
       - path: .github/workflows/_fragments/testmon_cache
         owner: codegen
         policy: full
@@ -1169,7 +1170,7 @@ Infra:
             runtime: [flext-cli, flext-infra, pytest>=9.1.1, pytest-timeout>=2.4.0, docker>=7.2.0, python-on-whales>=0.81.0]
           - upstream: flext_cli
             project: flext-grpc
-            runtime: [flext-cli, grpcio>=1.83.1]
+            runtime: [flext-cli, grpcio>=1.84.0]
           - upstream: flext_cli
             project: flext-observability
             runtime: [flext-cli, flask>=3.1.3, starlette>=1.6.0, psutil>=7.2.2]
@@ -1178,13 +1179,13 @@ Infra:
             runtime: [flext-cli]
           - upstream: flext_cli
             project: flext-quality
-            runtime: [flext-cli, flext-infra, flext-web, flext-api, fastmcp>=4.0.3, requests>=2.34.2, aiohttp>=3.14.3, flask>=3.1.3, jinja2>=3.1.6, schedule>=1.2.2, pytest>=9.1.1]
+            runtime: [flext-cli, flext-infra, flext-web, flext-api, fastmcp>=4.0.4, requests>=2.34.2, aiohttp>=3.14.3, flask>=3.1.3, jinja2>=3.1.6, schedule>=1.2.2, pytest>=9.1.1]
           - upstream: flext_cli
             project: flext-web
-            runtime: [flext-cli, flask>=3.1.3, uvicorn>=0.52.4, fastapi>=0.141.1, starlette>=1.6.0, werkzeug>=3.1.8]
+            runtime: [flext-cli, flask>=3.1.3, uvicorn>=0.53.0, fastapi>=0.141.1, starlette>=1.6.0, werkzeug>=3.1.8]
           - upstream: flext_cli
             project: flext-db-oracle
-            runtime: [flext-cli, oracledb>=26.0.0, sqlalchemy>=2.0.52]
+            runtime: [flext-cli, oracledb>=26.0.0, sqlalchemy>=2.0.54]
           - upstream: flext_cli
             project: flext-ldif
             runtime: [flext-cli]
@@ -1193,7 +1194,7 @@ Infra:
             runtime: [flext-ldif, ldap3>=2.10.2rc4]
           - upstream: flext_cli
             project: flext-meltano
-            runtime: [flext-cli, meltano>=4.2.2, singer-sdk>=0.54.5, sqlalchemy>=2.0.52, psycopg2-binary>=2.9.13, redis>=8.1.0]
+            runtime: [flext-cli, meltano>=4.2.2, singer-sdk>=0.54.6, sqlalchemy>=2.0.54, psycopg2-binary>=2.9.13, redis>=8.1.0]
           - upstream: flext_cli
             project: flext-oracle-oic
             runtime: [flext-cli, flext-auth, flext-api]
@@ -1226,7 +1227,7 @@ Infra:
             runtime: [flext-meltano, flext-oracle-oic, flext-api]
           - upstream: flext_core
             project: flext-tap-oracle-wms
-            runtime: [flext-meltano, flext-oracle-wms, singer-sdk>=0.54.5]
+            runtime: [flext-meltano, flext-oracle-wms, singer-sdk>=0.54.6]
           - upstream: flext_core
             project: flext-target-ldap
             runtime: [flext-meltano, flext-ldap]
@@ -1931,25 +1932,16 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: true
-      # Every repository releases itself through the protocol; the workspace
-      # root additionally publishes its members to the package index.
+      # Release automation is opt-in per distribution. Repositories without an
+      # explicit declaration have this generated workflow retired by conform.
         - source: base/.github/workflows/release.yml.j2
           destination: .github/workflows/release.yml
           profiles: [workspace, standalone]
           delegate: render
           overwrite: true
+          requires_release_protocol: true
         - source: base/.github/workflows/_fragments/cross_repo_dependency_credential.j2
           destination: .github/workflows/_fragments/cross_repo_dependency_credential
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/.github/workflows/_fragments/private_dependency_auth.j2
-          destination: .github/workflows/_fragments/private_dependency_auth
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/.github/workflows/_fragments/private_submodules_init.j2
-          destination: .github/workflows/_fragments/private_submodules_init
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false

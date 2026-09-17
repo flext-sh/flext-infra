@@ -102,6 +102,10 @@ Infra:
             - surface-catalog.json
             - env.example
             - bootstrap.ps1
+            - CODEBUDDY.md
+            - GEMINI.md
+            - QODER.md
+            - opencode.jsonc
           ignore_globs:
             - skills
             - rules

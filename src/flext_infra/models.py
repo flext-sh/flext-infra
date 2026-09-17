@@ -11,12 +11,12 @@ from __future__ import annotations
 
 from flext_cli import m
 
+from ._models._config.base import FlextInfraConfigModels
 from ._models.base import FlextInfraModelsBase
 from ._models.census import FlextInfraModelsCensus
 from ._models.check import FlextInfraModelsCheck
-from ._models.codegen import FlextInfraModelsCodegen
+from ._models.codegen import FlextInfraCodegen
 from ._models.codemod import FlextInfraModelsCodemod
-from ._models.config import FlextInfraConfigModels
 from ._models.deps import FlextInfraModelsDeps
 from ._models.docs import FlextInfraModelsDocs
 from ._models.enforcement import FlextInfraModelsEnforcement
@@ -30,6 +30,7 @@ from ._models.release import FlextInfraModelsRelease
 from ._models.rope import FlextInfraModelsRope
 from ._models.rope_move import FlextInfraModelsRopeMove
 from ._models.scan import FlextInfraModelsScan
+from ._models.settings import FlextInfraSettingsModels
 from ._models.testmon import FlextInfraModelsTestmon
 from ._models.transformers import FlextInfraModelsTransformers
 from ._models.validate import FlextInfraModelsCore
@@ -47,7 +48,7 @@ class FlextInfraModels(m):
         # isolated from the active detector work in _models/codegen.py while
         # remaining exposed through the single public m.Infra facade.
         FlextInfraConfigModels,
-        FlextInfraModelsCodegen,
+        FlextInfraCodegen,
         FlextInfraModelsCodemod,
         FlextInfraModelsDeps,
         FlextInfraModelsDocs,
@@ -70,6 +71,7 @@ class FlextInfraModels(m):
         FlextInfraModelsRopeMove,
         FlextInfraModelsScan,
         FlextInfraModelsTestmon,
+        FlextInfraSettingsModels,
         FlextInfraModelsCore,
         FlextInfraModelsBase,
     ):

@@ -26,28 +26,28 @@ from jinja2.environment import (
 from flext_core import m, t
 
 
-def _reject_blanket_mask(rule: str) -> str:
-    """Return the bare rule name, rejecting ``ALL`` and blank padding.
-
-    Normalizing here keeps the rendered TOML free of accidental padding: a
-    padded name would otherwise reach a generated pyproject verbatim and no
-    longer match the rule Ruff knows.
-    """
-    normalized = rule.strip()
-    if not normalized:
-        message = "a Ruff exemption must name a rule, not blank padding."
-        raise ValueError(message)
-    if normalized.upper() == "ALL":
-        message = (
-            "ALL is not a Ruff exemption: it masks every rule, present and "
-            "future. Name each suppressed rule instead."
-        )
-        raise ValueError(message)
-    return normalized
-
-
 class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
+
+    @staticmethod
+    def _reject_blanket_mask(rule: str) -> str:
+        """Return the bare rule name, rejecting ``ALL`` and blank padding.
+
+        Normalizing here keeps the rendered TOML free of accidental padding: a
+        padded name would otherwise reach a generated pyproject verbatim and no
+        longer match the rule Ruff knows.
+        """
+        normalized = rule.strip()
+        if not normalized:
+            message = "a Ruff exemption must name a rule, not blank padding."
+            raise ValueError(message)
+        if normalized.upper() == "ALL":
+            message = (
+                "ALL is not a Ruff exemption: it masks every rule, present and "
+                "future. Name each suppressed rule instead."
+            )
+            raise ValueError(message)
+        return normalized
 
     type PlanSourceTimestamp = str | date | datetime | None
     "Native YAML timestamp ingress; dates retain their original precision."
@@ -161,7 +161,7 @@ class FlextInfraTypesBase:
         str, t.StringConstraints(pattern=r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
     ]
     "Lowercase Git SHA-1 or SHA-256 commit object identifier."
-    # ── Git type aliases ─────────────────────────────────────────────
+    # ── Git type aliases ────────────────────────────────────────────
 
     type GitOid = str
     "Canonical hex Git object identifier."
@@ -169,3 +169,6 @@ class FlextInfraTypesBase:
     "Fully-qualified or short Git ref name."
     type GitPathSpec = str
     "Git pathspec string (e.g. ``:(exclude)dir``)."
+
+
+__all__: list[str] = ["FlextInfraTypesBase"]

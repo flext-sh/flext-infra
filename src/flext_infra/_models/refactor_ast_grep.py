@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import c, t
 
-from ._defaults import ImmutableEmptyMapping
+from . import FlextInfraModelsDefaults
 
 
 class FlextInfraModelsRefactorGrep:
@@ -158,14 +158,16 @@ class FlextInfraModelsRefactorGrep:
             description="Simple symbol names targeted by the migration",
         )
         keyword_renames: t.StrMapping = m.Field(
-            default_factory=ImmutableEmptyMapping, description="Keyword rename mapping"
+            default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping,
+            description="Keyword rename mapping",
         )
         remove_keywords: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Keywords removed from matching callsites",
         )
         add_keywords: t.StrMapping = m.Field(
-            default_factory=ImmutableEmptyMapping, description="Keywords to add"
+            default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping,
+            description="Keywords to add",
         )
 
     class ImportModernizerRuleConfig(m.ContractModel):
@@ -177,7 +179,8 @@ class FlextInfraModelsRefactorGrep:
 
         module: Annotated[str, m.Field(description="Module path to modernize")] = ""
         symbol_mapping: t.StrMapping = m.Field(
-            default_factory=ImmutableEmptyMapping, description="Symbol-to-alias mapping"
+            default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping,
+            description="Symbol-to-alias mapping",
         )
 
     class AccessorMigrationRule(m.ContractModel):
@@ -255,15 +258,15 @@ class FlextInfraModelsRefactorGrep:
         lint_before: Annotated[
             t.MappingKV[str, t.StrSequence],
             m.Field(description="Lint output before the proposed rewrite"),
-        ] = m.Field(default_factory=ImmutableEmptyMapping)
+        ] = m.Field(default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping)
         lint_after: Annotated[
             t.MappingKV[str, t.StrSequence],
             m.Field(description="Lint output after the proposed rewrite"),
-        ] = m.Field(default_factory=ImmutableEmptyMapping)
+        ] = m.Field(default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping)
         new_lint_errors: Annotated[
             t.MappingKV[str, t.StrSequence],
             m.Field(description="Lint errors introduced by the proposed rewrite"),
-        ] = m.Field(default_factory=ImmutableEmptyMapping)
+        ] = m.Field(default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping)
 
     class AccessorMigrationReport(m.ArbitraryTypesModel):
         """Workspace-scale report for accessor migration orchestration.
@@ -296,15 +299,15 @@ class FlextInfraModelsRefactorGrep:
         lint_before_totals: Annotated[
             t.IntMapping,
             m.Field(description="Per-tool count of lint lines before rewrites"),
-        ] = m.Field(default_factory=ImmutableEmptyMapping)
+        ] = m.Field(default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping)
         lint_after_totals: Annotated[
             t.IntMapping,
             m.Field(description="Per-tool count of lint lines after rewrites"),
-        ] = m.Field(default_factory=ImmutableEmptyMapping)
+        ] = m.Field(default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping)
         new_lint_error_totals: Annotated[
             t.IntMapping,
             m.Field(description="Per-tool count of newly introduced lint lines"),
-        ] = m.Field(default_factory=ImmutableEmptyMapping)
+        ] = m.Field(default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping)
         files: t.VariadicTuple[FlextInfraModelsRefactorGrep.AccessorMigrationFile] = (
             m.Field(
                 default_factory=tuple,

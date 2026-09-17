@@ -77,7 +77,7 @@ class FlextInfraCodemodAstScan(FlextInfraServiceBase[t.Cli.ResultValue]):
         cli.display_text("ast: validate ast-grep rule fixtures")
         FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
         current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-        seen: set[tuple[tuple[str, str, str, str | None], ...]] = set()
+        seen: set[t.VariadicTuple[t.Quad[str, str, str, str | None]]] = set()
         iteration = 0
         while current.actionable:
             iteration += 1

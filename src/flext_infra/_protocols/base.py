@@ -394,6 +394,11 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def make_version(self) -> str:
+            """Moving Make release selector provisioned by mise."""
+            ...
+
+        @property
         def suspended_mise_selector_patterns(self) -> t.StrSequence:
             """Selector families rejected while their capabilities are suspended."""
             ...

@@ -53,7 +53,7 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
         the same assertion depend on where the checkout happens to sit, which
         differs between the workspace and a standalone CI clone.
         """
-        gitignore_sections: tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...] = (
+        gitignore_sections: t.VariadicTuple[m.Infra.ScaffoldGitignoreSectionSpec] = (
             config.Infra.codegen.gitignore_sections
         )
         return tuple(

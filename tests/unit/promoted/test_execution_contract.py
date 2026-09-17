@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraPromoted, c, m
+from flext_infra import FlextInfraPromoted, c, m, settings
 from tests import p, t, u
 
 
@@ -59,6 +59,39 @@ class TestsFlextInfraPromotedExecutionContract:
             registry.add(u.Tests.promoted_command(path=command_path, what=what))
             return registry, marker
 
+        @staticmethod
+        def _write_discoverable_command(tmp_path: Path) -> Path:
+            """Write one header-bearing command discoverable by the dispatcher."""
+            command_path = (
+                tmp_path
+                / c.Infra.DIR_SCRIPTS
+                / "probe"
+                / f"{c.Infra.PromotedSelector.ALL}.py"
+            )
+            command_path.parent.mkdir(parents=True)
+            marker = tmp_path / "EXECUTED"
+            header = "\n".join(
+                f"# {key} = {value}"
+                for key, value in (
+                    ("verb", "'probe'"),
+                    ("what", f"'{c.Infra.PromotedSelector.ALL}'"),
+                    ("domain", "'probe'"),
+                    ("summary", "'Probe command'"),
+                    ("description", "'Writes one marker file when executed.'"),
+                    ("example", "'make probe'"),
+                    ("mutates", "true"),
+                )
+            )
+            command_path.write_text(
+                f"# {c.Infra.PromotedHeader.START}\n"
+                f"{header}\n"
+                f"# {c.Infra.PromotedHeader.END}\n"
+                "from pathlib import Path\n"
+                f"Path({str(marker)!r}).write_text('1')\n",
+                encoding="utf-8",
+            )
+            return marker
+
         @pytest.mark.parametrize("ambient_value", [None, "arbitrary"])
         def test_dispatch_executes_declared_operation(
             self, tmp_path: Path, ambient_value: str | None
@@ -78,6 +111,32 @@ class TestsFlextInfraPromotedExecutionContract:
                 )
             tm.that(exit_code, eq=0)
             tm.that(marker.exists(), eq=True)
+
+        @pytest.mark.parametrize("ambient_value", [None, "arbitrary"])
+        def test_dispatch_executes_settings_declared_operation(
+            self, tmp_path: Path, ambient_value: str | None
+        ) -> None:
+            """WHAT declared through the live settings singleton reaches dispatch."""
+            marker = self._write_discoverable_command(tmp_path)
+            settings_cls = type(settings)
+            settings_cls.update_global(
+                Infra={"WHAT": c.Infra.PromotedSelector.ALL}
+            )
+            try:
+                environment = (
+                    {} if ambient_value is None else {"UNDECLARED_INPUT": ambient_value}
+                )
+                with tm.scope(
+                    env=environment,
+                    remove_env_keys=("HELP", "OPTIONS", "UNDECLARED_INPUT"),
+                ):
+                    exit_code = FlextInfraPromoted.main(
+                        ("probe",), spec=u.Infra.promoted_workspace_spec(tmp_path)
+                    )
+                tm.that(exit_code, eq=0)
+                tm.that(marker.exists(), eq=True)
+            finally:
+                settings_cls.reset_for_testing()
 
         def test_dispatch_renders_verb_help_for_undeclared_all(
             self, tmp_path: Path, capsys: pytest.CaptureFixture[str]

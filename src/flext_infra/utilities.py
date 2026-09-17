@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from flext_cli import u as cli_u
 
+from ._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
 from ._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
 from ._utilities.base import FlextInfraUtilitiesBase
 from ._utilities.census import FlextInfraUtilitiesRefactorCensus
@@ -130,6 +131,7 @@ class FlextInfraUtilities(cli_u):
         FlextInfraUtilitiesDocsContract,
         FlextInfraUtilitiesDocsFix,
         FlextInfraUtilitiesDocsGenerate,
+        FlextInfraUtilitiesDocsGithubLinks,
         FlextInfraUtilitiesDocsRender,
         FlextInfraUtilitiesDocsScope,
         FlextInfraUtilitiesDocsValidate,

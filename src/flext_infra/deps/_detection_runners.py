@@ -85,7 +85,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
             ) = None
             if isinstance(loaded_result.value, list):
                 normalized_issues: t.MutableSequenceOf[t.JsonMapping] = []
-                for item in loaded_result.value:
+                for index, item in enumerate(loaded_result.value):
                     if not isinstance(item, Mapping):
                         continue
                     validated = u.validate_value(t.Infra.INFRA_MAPPING_ADAPTER, item)

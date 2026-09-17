@@ -16,7 +16,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
     """Plan effects only; the docs transaction owns publication and locking."""
 
     @classmethod
-    def collect_plan_files(
+    def docs_collect_plan_files(
         cls, repository_root: Path, configuration: m.Infra.PlanCollectionConfig
     ) -> m.Infra.PlanCollectionBundle:
         """Capture sources before any canonical or home projection writes."""
@@ -46,18 +46,70 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         manifest, excluded_outputs = cls.collection_manifest(
             canonical, projection, states
         )
+        if not configuration.enabled:
+            owned_outputs = {
+                canonical / "collection-manifest.json",
+                *(
+                    canonical / artifact.relative_path
+                    for artifact in manifest.artifacts
+                ),
+            }
+            for path in owned_outputs:
+                cls.collection_capture(path, states)
+            plans_list = [
+                FlextInfraUtilitiesDocsContract.docs_file_plan(
+                    root,
+                    path,
+                    None,
+                    desired_mode=None,
+                    source_states=tuple(states[item] for item in sorted(states)),
+                ).unwrap()
+                for path in sorted(owned_outputs)
+            ]
+            directories = {
+                parent
+                for path in owned_outputs
+                for parent in path.parents
+                if parent != canonical and parent.is_relative_to(canonical)
+            }
+            return m.Infra.PlanCollectionBundle(
+                files=tuple(plans_list),
+                source_states=tuple(states[path] for path in sorted(states)),
+                required_directories=(),
+                prunable_directories=tuple(
+                    sorted(
+                        directories,
+                        key=lambda path: (len(path.parts), path.as_posix()),
+                        reverse=True,
+                    )
+                ),
+                revisions=(),
+                coverage=(),
+                inventories=(),
+                excluded_outputs=tuple(sorted(owned_outputs)),
+            )
         history = list(manifest.revisions)
         observed = {(item.identity, item.digest) for item in history}
         revisions_by_identity = {item.identity: item for item in manifest.revisions}
         coverage: list[m.Infra.PlanCollectionCoverage] = []
         inventories: list[m.Infra.PlanCollectionSourceInventory] = []
         desired: t.MutableMappingKV[Path, bytes] = {}
+        canonical_plans = {
+            canonical / revision.canonical_path for revision in manifest.revisions
+        }
+        invalid_owned: dict[Path, str] = {}
         for artifact in manifest.artifacts:
             path = canonical / artifact.relative_path
             content = states[path].content
             if content is None:
-                msg = f"canonical collection artifact disappeared: {path}"
-                raise ValueError(msg)
+                invalid_owned[path] = artifact.digest
+                continue
+            if (
+                path not in canonical_plans
+                and sha256(content).hexdigest() != artifact.digest
+            ):
+                invalid_owned[path] = artifact.digest
+                continue
             desired[path] = content
         for source in configuration.sources:
             paths = cls.collection_source_files(root, source, excluded_outputs)
@@ -95,7 +147,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
                         msg = f"collection source changed during read: {state.path}"
                         raise ValueError(msg)
                     states[state.path] = state
-                revision = cls._collect_revision(
+                revision = cls._docs_collect_revision(
                     canonical,
                     source_root,
                     source,
@@ -160,10 +212,15 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
             )
             for revision in revisions
         )
-        index, _changed = FlextInfraUtilitiesDocsContract.docs_update_toc(
+        index, _changed = FlextInfraUtilitiesDocsContract.docs_contract_update_toc(
             "\n".join(lines) + "\n"
         )
         desired[canonical / "collection-index.md"] = index.encode()
+        for path, digest in invalid_owned.items():
+            content = desired.get(path)
+            if content is None or sha256(content).hexdigest() != digest:
+                msg = f"immutable canonical artifact changed or disappeared: {path}"
+                raise ValueError(msg)
         manifest_path = canonical / "collection-manifest.json"
         owned = {item.relative_path: item for item in manifest.artifacts}
         owned.update({
@@ -215,13 +272,13 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         )
 
     @classmethod
-    def _collect_revision(
+    def _docs_collect_revision(
         cls,
         canonical: Path,
         source_root: Path,
         source: m.Infra.PlanCollectionSource,
         path: Path,
-        artifacts: tuple[m.Cli.AtomicFileState, ...],
+        artifacts: t.VariadicTuple[m.Cli.AtomicFileState],
         desired: t.MutableMappingKV[Path, bytes],
         *,
         previous: m.Infra.PlanCollectionRevision | None,

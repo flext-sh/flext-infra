@@ -55,6 +55,22 @@ class FlextInfraUtilitiesClassNestingCst(FlextInfraUtilitiesClassNestingReferenc
             for node in module.body
             if isinstance(node, cst.ClassDef) and node.name.value in definitions
         }
+        if not owner_nodes:
+            owner = cst.parse_statement(
+                f'class {owner_name}:\n    """Canonical namespace owner."""\n'
+            )
+            if not isinstance(owner, cst.ClassDef):
+                msg_0 = f"class-nesting could not create owner {owner_name}"
+                raise TypeError(msg_0)
+            index = next(
+                index
+                for index, node in enumerate(module.body)
+                if isinstance(node, cst.ClassDef) and node.name.value in definitions
+            )
+            module = module.with_changes(
+                body=(*module.body[:index], owner, *module.body[index:])
+            )
+            owner_nodes = (owner,)
         if len(owner_nodes) != 1 or set(extras) != set(definitions):
             msg = (
                 f"class-nesting structure mismatch for {owner_name}: "
@@ -102,7 +118,17 @@ class FlextInfraUtilitiesClassNestingCst(FlextInfraUtilitiesClassNestingReferenc
         nested_owner = owner.with_changes(body=body)
         return module.with_changes(
             body=tuple(
-                nested_owner if node is owner else node
+                cst.parse_statement(f'__all__: list[str] = ["{owner_name}"]\n')
+                if isinstance(node, cst.SimpleStatementLine)
+                and any(
+                    isinstance(statement, cst.AnnAssign)
+                    and isinstance(statement.target, cst.Name)
+                    and statement.target.value == "__all__"
+                    for statement in node.body
+                )
+                else nested_owner
+                if node is owner
+                else node
                 for node in module.body
                 if not (
                     isinstance(node, cst.ClassDef) and node.name.value in definitions

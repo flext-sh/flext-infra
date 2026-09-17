@@ -118,7 +118,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 cli.display_text(f"mod: apply {len(rules)} ast-grep rule file(s)")
                 FlextInfraModGateEngine.scan(root, fix=True).unwrap()
             after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-            FlextInfraCodemodBatchApply._validate_fix_match(current, after_ast)
+            FlextInfraCodemodBatchApply.validate_fix_match(current, after_ast)
             transaction_paths = FlextInfraCodemodSemanticApply.plan_transaction_paths(
                 root, after_ast
             )
@@ -145,17 +145,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         iteration = 0
         while current_text.findings:
             iteration += 1
-            text_fingerprint = tuple(
-                sorted(
-                    (
-                        finding.rule_id,
-                        finding.file.as_posix(),
-                        finding.line,
-                        finding.text,
-                        finding.replacement,
-                    )
-                    for finding in current_text.entries
-                )
+            text_fingerprint = FlextInfraCodemodBatchApply._text_fingerprint(
+                current_text.entries
             )
             if text_fingerprint in seen_text:
                 prev_iter = seen_text[text_fingerprint]
@@ -196,10 +187,25 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         return r[t.Cli.ResultValue].ok(True)
 
     @staticmethod
-    def _validate_fix_match(
+    def _text_fingerprint(
+        entries: t.VariadicTuple[m.Infra.ModTextFinding],
+    ) -> t.VariadicTuple[tuple[str, str, int, str, str]]:
+        """Build a sorted fingerprint of all text findings."""
+        result: list[tuple[str, str, int, str, str]] = []
+        for entry in entries:
+            rule_id: str = entry.rule_id
+            file_path: str = entry.file.as_posix()
+            line_no: int = entry.line
+            text_val: str = entry.text
+            replacement_val: str = entry.replacement
+            result.append((rule_id, file_path, line_no, text_val, replacement_val))
+        return tuple(sorted(result))
+
+    @staticmethod
+    def validate_fix_match(
         before: m.Infra.ModScanReport, after_apply: m.Infra.ModScanReport
     ) -> None:
-        """Validate that applied fixes match expected changes (fix!=match)."""
+        """Reject unresolved rewrites while preserving valid rule cascades."""
         # Check that actionable findings were actually resolved
         before_actionable = {
             (f.rule_id, f.file.as_posix(), f.text, f.replacement)
@@ -221,13 +227,18 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"findings in rules {sorted(rule_ids)} across files {sorted(files)}"
             )
             raise RuntimeError(msg)
-        # Check that new actionable findings weren't introduced
+        # A completed rule may enable a later rule in the declared cascade.
+        # Those later-rule findings are consumed by the next fixed-point iteration.
         new_actionable = after_apply_actionable - before_actionable
-        if new_actionable:
-            rule_ids = {r for r, _, _, _ in new_actionable}
-            files = {p for _, p, _, _ in new_actionable}
+        prior_rule_ids = {rule_id for rule_id, _, _, _ in before_actionable}
+        unexpected = {
+            finding for finding in new_actionable if finding[0] in prior_rule_ids
+        }
+        if unexpected:
+            rule_ids = {r for r, _, _, _ in unexpected}
+            files = {p for _, p, _, _ in unexpected}
             msg = (
-                f"fix!=match: ast-grep apply introduced {len(new_actionable)} new actionable "
+                f"fix!=match: ast-grep apply introduced {len(unexpected)} new actionable "
                 f"findings in rules {sorted(rule_ids)} across files {sorted(files)}"
             )
             raise RuntimeError(msg)

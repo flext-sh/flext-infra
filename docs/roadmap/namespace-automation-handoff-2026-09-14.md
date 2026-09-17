@@ -1,5 +1,9 @@
 # Handoff: automação de namespace e runtime do flext-infra
 
+> Historical evidence only. This plan records an earlier execution context and
+> its command examples are not current workspace guidance. Use the root
+> `AGENTS.md` and `make help` for the active contract.
+
 <!-- TOC START -->
 - [1. Pedido, prioridade e limite desta entrega](#1-pedido-prioridade-e-limite-desta-entrega)
 - [2. Plano de execução reconstruído e confronto com o resultado](#2-plano-de-execucao-reconstruido-e-confronto-com-o-resultado)
@@ -12,6 +16,7 @@
   - [4.5 A evidência foi fragmentada e ficou atrás do código](#45-a-evidencia-foi-fragmentada-e-ficou-atras-do-codigo)
   - [4.6 Gates diferentes estão respondendo perguntas diferentes](#46-gates-diferentes-estao-respondendo-perguntas-diferentes)
   - [4.7 A retomada inicialmente perguntou pelo plano errado](#47-a-retomada-inicialmente-perguntou-pelo-plano-errado)
+  - [4.8 A compatibilidade foi investigada tarde demais](#48-a-compatibilidade-foi-investigada-tarde-demais)
 - [5. O que foi preservado no código](#5-o-que-foi-preservado-no-codigo)
 - [6. Evidências executáveis e suas limitações](#6-evidencias-executaveis-e-suas-limitacoes)
 - [7. Beads relacionados e uso correto](#7-beads-relacionados-e-uso-correto)
@@ -22,6 +27,14 @@
   - [8.4 Critérios de aceite antes da integração](#84-criterios-de-aceite-antes-da-integracao)
 - [9. Limite de encerramento deste handoff](#9-limite-de-encerramento-deste-handoff)
 <!-- TOC END -->
+
+> **Historical handoff.** This document preserves evidence from 2026-09-14/15;
+> it is not the current execution queue. Resume from Gas City Bead
+> `flext-5fxu6.4` and its active children, including the documentation slice
+> `flext-5fxu6.4.28`, then apply the newest root `AGENTS.md`, ADRs, and
+> branch-matched `flext-law`. Historical authorization for administrative merge
+> or acceptance with red custom gates is superseded: current work requires the
+> normal reviewed no-ff landing path and the active Bead's zero-warning gates.
 
 **Atualização da retomada:** o operador passou a exigir estabilização e PRs
 integrados, mantendo este handoff disponível durante o trabalho. O encerramento
@@ -56,13 +69,27 @@ válido. O runtime define o contrato, incluindo ambiente, geração e consumidor
 no checkout do rig e o banco central já mantido pelo Gas City. Não inicializar
 outro banco nem interpretar uma leitura de metadata como prova de conectividade.
 
+**Correção de autoridade (2026-09-17):** esta tabela e o corpo deste documento são evidência
+histórica da execução de 14/09/2026. O estado corrente é `flext-infra` em
+`0.12.0-dev@a2bd0a7262a0eab84bd7e4c27f8bdd10de0d247a` (superprojeto `676ae7aa3c`). Nenhum SHA
+desta tabela é ancestral da tip atual — `5eb47cd21`, `758467a6a`, `ee9e5e018`, `7b0b89c59`,
+`4cb1f038c` e `cb312a46b` são todos superseditos ou fora da árvore de integração. A leitura viva
+substitui cada linha abaixo onde fontes atuais discordarem. O CRG citado aqui não existe no checkout
+atual; o único CRG válido é da worktree `rope-modernize`, construído em `469b26b4e` (ancestral da
+tip). O defeito `_lazy_analysis` em `codegen/_conform/execute.py:376/598` permanece não resolvido e
+os god modules (`_models/config.py` 3.342 LOC, `codegen/conform.py` 2.996 LOC) estão inalterados.
+Recupere pelos Gas City tasks `flext-itpd1.2` (cursor documental/governança) e
+`flext-5fxu6.4` (owner técnico), por este handoff versionado e por
+`docs/guides/execution-context.md`. Planos locais da workspace são evidência de
+sessão, não autoridade standalone.
+
 | Contexto para retomada imediata | Estado observado |
 | --- | --- |
 | Checkpoint da continuação | [PR #734](https://github.com/flext-sh/flext-infra/pull/734), Draft, branch `fix/workspace-hygiene-0.12.0`, tip publicado `5eb47cd2106ace4dc2a62818f84d107459a0f79f`. Preserva `cb312a46b` (produtores de Beads e revalidação de testes) e o guia de ativação automática. Os jobs CI desse Draft aparecem SKIPPED; isso não constitui aceite. O remoto de integração já contém `712624c9d`, inclusive o checkpoint `cb312a46b`, por contribuição concorrente |
 | Última suíte concluída | `make test`, cwd flext-infra, exit 2; recibo `20260915T021753.505056Z-2111735/suite-outcome.json`: retorno bruto -15, `timed_out=true`, nenhum sinal encaminhado. Dois workers, 2.305 casos selecionados, execução interrompida em aproximadamente 10%. A rodada anterior `20260915T020045.360053Z-1956983` também terminou exit 2, retorno bruto -9 e timeout. Nenhuma suíte completa verde |
 | Causa comum confirmada em setup | Os eventos de `real_detector_project` preservam stdout/stderr de `make setup`: construção do infra local falha porque `flext-api/pyproject.toml` conserva uma tabela vazia `tool.uv.workspace` dentro do workspace composto. O responsável foi corrigido em `ee9e5e018`; a projeção dos demais membros ainda precisa convergir pelo gerador. Não alterar fixtures para esconder esse defeito de ambiente |
 | Correção de relatórios em validação | `RunCommand.reports_dir_path` usava `Path.cwd()` e sobrescrevia o relatório do chamador em checks de outro repositório. Agora usa `repository_root`. O teste público existente executa Ruff real em dois projetos, confere o destino e preserva um relatório do chamador; caso `artifacts/check` PASS na rodada acima. Isso não certifica o restante da suíte. Bead `flext-9oljq` atualizado via direnv, exit 0 |
-| Beads central e recuperação nativa | Sem override manual de porta, `direnv exec /home/marlonsc/flext bd context --json` e `bd show flext-c4k44 --json` retornaram exit 0: banco flext, modo server, identidade preservada. Uma leitura posterior falhou com connection refused; `gc doctor` confirmou runtime Dolt indisponível e indicou `gc start`. Esse comando, via direnv no city, retornou exit 0; novas leituras de contexto e de `flext-9oljq` retornaram exit 0. Nenhum banco substituto, cópia de dados, porta manual ou segundo servidor foi criado. `gc doctor` completo ainda não recebeu aceite |
+| Beads central e recuperação nativa | Sem override manual de porta, `direnv exec <flext-rig> bd context --json` e `direnv exec <flext-rig> bd show flext-c4k44 --json` retornaram exit 0: banco flext, modo server, identidade preservada. Uma leitura posterior falhou com connection refused; `gc doctor` confirmou runtime Dolt indisponível e indicou `gc start`. Esse comando, via direnv no city, retornou exit 0; novas leituras de contexto e de `flext-9oljq` retornaram exit 0. Nenhum banco substituto, cópia de dados, porta manual ou segundo servidor foi criado. `gc doctor` completo ainda não recebeu aceite |
 | Branch e PR de entrega | GitHub confirma [PR #732 MERGED](https://github.com/flext-sh/flext-infra/pull/732), `mergedAt=2026-09-15T00:44:57Z`, mergeCommit informado pela API `758467a6a`. O remoto contém o merge de dois pais `b82eefa3e7e00241eaeba7bd663809a47b58d169` e avançou até `ee9e5e018`. A continuação na branch existente `fix/workspace-hygiene-0.12.0` absorveu esse tip por merge no-ff `7b0b89c59`, exit 0; mudanças posteriores aguardam validação e publicação |
 | Handoff e reparos publicados | `4cb1f038c0bc6988acb87bd0e5c84335ba38dba7`, push exit 0; inclui guia de contexto, mapa de ADRs, skill e reparos de escopo/ordem da automação |
 | Último checkpoint antes do merge | `a895de0c9`, preserva a projeção standalone após setup |
@@ -83,7 +110,7 @@ outro banco nem interpretar uma leitura de metadata como prova de conectividade.
 | Divergência de ferramenta observada | `make status` exit 0, standalone/local, 160 pacotes compatíveis, mas exibiu uv 0.12.10 após setup usar 0.12.13. O template escolhe uv pelo PATH do chamador fora do bootstrap; ainda falta unificar essa escolha no responsável provisionado |
 | Geração e concorrência | Após liberação observada do lock, `make gen` exit 0 publicou Makefile/pyproject e verificou ponto fixo, lazy-init e docs. A nova geração para corrigir Beads retornou exit 2 por `filelock._error.Timeout`; `lslocks` confirmou outro processo com o journal de flext. Nenhum lock foi removido, processo interrompido ou timeout aumentado |
 | Cache e contrato de ambiente | O bootstrap passou a declarar `UV_CACHE_DIR` no armazenamento persistente, porque o XDG cache do scratch forçava downloads/rebuilds por fixture. Removidos `UvEnvironmentPlan.lock_path` e sua asserção obsoleta; alterações ainda aguardam prova completa pelo caminho Make |
-| Tracker atual | `direnv exec /home/marlonsc/flext gc status`, cwd ~/gc, exit 0: supervisor ativo, banco central com 26.296 registros. `direnv exec /home/marlonsc/flext bd show flext-c4k44 --json` e leitura de flext-5fxu6.4 exit 0 após ajuste concorrente em .envrc.local. Comentário de fechamento em flext-5fxu6.4 gravado com exit 0. Causa no gerador: metadata omitia dolt_mode apesar de SSOT=server; correção do produtor aguarda geração. Não houve banco substituto ou reinicialização |
+| Tracker atual | `direnv exec <flext-rig> gc status`, cwd do city, exit 0: supervisor ativo, banco central com 26.296 registros. `direnv exec <flext-rig> bd show flext-c4k44 --json` e leitura de `flext-5fxu6.4` retornaram exit 0 após ajuste concorrente em `.envrc.local`. Comentário de fechamento em `flext-5fxu6.4` gravado com exit 0. Causa no gerador: metadata omitia `dolt_mode` apesar de SSOT=server; correção do produtor aguarda geração. Não houve banco substituto ou reinicialização |
 | Consumidores externos | `make help` exit 0 em ambos: ai-hub standalone, integração `dev`, PRs #777/#778; Cosmos workspace, integração `develop`, checkout agora em `fix/revalidation-apply-contract`. Nenhuma prova de geração ou runtime integrado desses consumidores foi obtida por esta execução |
 | Próxima ação concreta | Concluir a remoção do contrato nos responsáveis e consumidores; reparar/revalidar a suíte; absorver contribuições relacionadas, publicar e integrar administrativamente com prova dos SHAs integrados nos três projetos |
 
