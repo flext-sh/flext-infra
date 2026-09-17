@@ -12,7 +12,8 @@ from typing import Annotated
 from flext_cli import m
 
 from .. import c, p, t
-from . import FlextInfraCodegen, FlextInfraModelsDefaults, FlextInfraModelsMixins as mm
+from . import FlextInfraCodegen, FlextInfraModelsMixins as mm
+from ._defaults import FlextInfraModelsDefaults
 
 
 class FlextInfraModelsRope:

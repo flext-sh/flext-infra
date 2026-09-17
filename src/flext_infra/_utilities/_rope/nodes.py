@@ -63,9 +63,9 @@ class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
                     stack.extend(
                         item
                         for item in value
-                        if FlextInfraUtilitiesRopeAnalysisNodes._is_ast_node(item)
+                        if FlextInfraUtilitiesRopeAnalysisNodes.is_ast_node(item)
                     )
-                elif FlextInfraUtilitiesRopeAnalysisNodes._is_ast_node(value):
+                elif FlextInfraUtilitiesRopeAnalysisNodes.is_ast_node(value):
                     stack.append(value)
         return collected
 
@@ -78,7 +78,7 @@ class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
         nodes: list[t.Infra.RopeAstNode] = [
             child
             for child in body
-            if FlextInfraUtilitiesRopeAnalysisNodes._is_ast_node(child)
+            if FlextInfraUtilitiesRopeAnalysisNodes.is_ast_node(child)
         ]
         return tuple(nodes)
 

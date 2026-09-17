@@ -62,10 +62,10 @@ class FlextInfraUtilitiesRopeAnalysisAst(FlextInfraUtilitiesRopeAnalysisSource):
                 value = getattr(parent, field_name, None)
                 if isinstance(value, list):
                     for child in value:
-                        if hasattr(child, "_fields"):
+                        if FlextInfraUtilitiesRopeAnalysisAst.is_ast_node(child):
                             parent_map[id(child)] = parent
                             stack.append(child)
-                elif hasattr(value, "_fields"):
+                elif FlextInfraUtilitiesRopeAnalysisAst.is_ast_node(value):
                     parent_map[id(value)] = parent
                     stack.append(value)
         return parent_map

@@ -195,9 +195,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         )
         residue = tm.not_none(layout.projects[0].transaction_root)
 
-        def begin_after_reconciliation(
-            scope_root: Path,
-        ) -> p.Result[bool]:
+        def begin_after_reconciliation(scope_root: Path) -> p.Result[bool]:
             residue.mkdir(parents=True)
             (residue / "orphan").write_bytes(b"journal-less staging")
             session = tm.ok(
