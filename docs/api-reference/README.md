@@ -1,9 +1,10 @@
 # flext-infra API Reference
 
 <!-- TOC START -->
-- [Source of Truth](#source-of-truth)
-- [Generated Pages](#generated-pages)
-- [Surface Summary](#surface-summary)
+- [flext-infra API Reference](#flext-infra-api-reference)
+  - [Source of Truth](#source-of-truth)
+  - [Generated Pages](#generated-pages)
+  - [Surface Summary](#surface-summary)
 <!-- TOC END -->
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->

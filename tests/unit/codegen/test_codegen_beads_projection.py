@@ -96,14 +96,10 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.that(rendered_config, has="gc.endpoint_status:")
         tm.that(rendered_config, has="types.custom:")
         tm.that(rendered_config, has="dolt.auto-start:")
-        # The ledger marker is always planned (the generated .envrc city
-        # activation fail-loudly reads it at direnv load), but a fresh
-        # checkout carries a mintable identity: Beads still owns the mint.
-        if rendered_metadata is None:
-            pytest.fail("the ledger marker is part of every managed plan")
-        metadata = u.Tests.json_payload(rendered_metadata)
-        tm.that("project_id" in metadata, eq=False)
-        tm.that(metadata["dolt_database"], eq="project_database")
+        # Beads owns and mints the ledger marker at first use (flext-l2296):
+        # a fresh checkout legitimately lacks it and conform must not plan
+        # the absent runtime artifact.
+        tm.that(rendered_metadata, none=True)
         tm.that(hasattr(plan, "beads"), eq=False)
 
     def test_gascity_disabled_renders_standalone_beads_config(

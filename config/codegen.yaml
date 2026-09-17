@@ -56,6 +56,10 @@ Infra:
       kubeconform_version: latest
       # Projection: .mise.toml [settings] lockfile / locked and [tool_config] locked.
       # false is required: existing lockfiles would pin checksums against latest.
+      retired_dependency_artifacts:
+        - uv.lock
+        - mise.lock
+        - .mise.lock
       mise_lockfile: false
       mise_locked: false
       # Projection: .mise.toml [tools] keys. Override the selector here.

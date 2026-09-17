@@ -192,7 +192,7 @@ class FlextInfraModelsMiseToolchain:
         Language runtimes and native tools are declared as moving ``latest``
         selectors or a major.minor line. No mise.lock: setup resolves the
         newest published release. Python linters/type-checkers remain owned
-        by pyproject and uv.lock.
+        by pyproject manifests.
         """
 
         # Selector families rejected while their capabilities are suspended.
@@ -290,6 +290,10 @@ class FlextInfraModelsMiseToolchain:
         ] = ()
         uv_version: Annotated[
             t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
+        ]
+        retired_dependency_artifacts: Annotated[
+            tuple[Literal["uv.lock", "mise.lock", ".mise.lock"], ...],
+            m.Field(description="Exact dependency artifacts retired by generation"),
         ]
         mise_lockfile: Annotated[
             bool,

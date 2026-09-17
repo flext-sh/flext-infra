@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, t, u
+from flext_infra import c, e, m, t, u
 
 from .base_gate import FlextInfraGate
 
@@ -192,9 +192,10 @@ class FlextInfraMypyGate(FlextInfraGate):
                     raw_line, strict=True
                 )
             except c.ValidationError as exc:
+                failed = e.fail_validation(error=exc)
                 return False, (
                     self._malformed_report_issue(
-                        exc, tool=c.Infra.MYPY, file=str(project_dir)
+                        str(failed.error), tool=c.Infra.MYPY, file=str(project_dir)
                     ),
                 )
             issues.append(

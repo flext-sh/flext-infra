@@ -1,7 +1,8 @@
 # flext-infra API Overview
 
 <!-- TOC START -->
-- [Next Pages](#next-pages)
+- [flext-infra API Overview](#flext-infra-api-overview)
+  - [Next Pages](#next-pages)
 <!-- TOC END -->
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->

@@ -10,11 +10,8 @@ from flext_cli import m, u
 
 from ... import t
 from ..._constants import FlextInfraConstantsRelease
-from .. import FlextInfraModelsDepsToolSettings
-from .artifact import FlextInfraConfigModelsArtifact
 from .contexts import FlextInfraConfigModelsContexts
 from .contract import FlextInfraConfigModelsContract
-from .static import FlextInfraConfigModelsStatic
 
 
 class FlextInfraConfigModelsRelease:
@@ -169,124 +166,6 @@ class FlextInfraConfigModelsRelease:
         hashes: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(min_length=1, description="Accepted sha256 digests"),
-        ]
-
-    class Infra(FlextInfraConfigModelsContract.ConfigContract):
-        """Complete flext-infra configuration namespace."""
-
-        name: Annotated[t.NonEmptyStr, m.Field(description="Project distribution name")]
-        initial_project_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description=(
-                    "Version seeded into a newly scaffolded project's pyproject; "
-                    "from then on the release protocol is the only writer"
-                )
-            ),
-        ]
-        codegen: Annotated[
-            FlextInfraConfigModelsArtifact.CodegenConfigSpec,
-            m.Field(description="Unified project and workspace codegen contract"),
-        ]
-        tooling: Annotated[
-            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
-            m.Field(description="Validated lint, typecheck, and scaffold policy"),
-        ]
-        source_scan: Annotated[
-            FlextInfraConfigModelsStatic.SourceScanSpec,
-            m.Field(description="Production-only source discovery contract"),
-        ]
-        release: Annotated[
-            FlextInfraConfigModelsRelease.ReleasePolicySpec,
-            m.Field(description="Release protocol policy: eligibility, bumps, index"),
-        ]
-        # Static policy is validated data, never detector code.
-        enforcement: Annotated[
-            FlextInfraConfigModelsStatic.StaticEnforcementSpec,
-            m.Field(description="Rope-only static enforcement policy"),
-        ]
-
-    class Root(FlextInfraConfigModelsContract.ConfigContract):
-        """Root payload deep-merged from flext-infra config files."""
-
-        Infra: Annotated[
-            FlextInfraConfigModelsRelease.Infra,
-            m.Field(description="Validated flext-infra namespace"),
-        ]
-
-    class CodegenOverridesRoot(FlextInfraConfigModelsContract.ConfigContract):
-        """Override root mirroring the Infra.codegen structure with override-only fields.
-
-        Every field is optional and defaults to empty so an override file can
-        declare only the deltas it needs. The conform system deep-merges this
-        onto the immutable ``codegen.yaml`` before Pydantic validation.
-        """
-
-        codegen: Annotated[
-            FlextInfraConfigModelsRelease._CodegenOverridesSection,
-            m.Field(description="Override sections for the codegen namespace"),
-        ]
-
-    class _CodegenOverridesSection(FlextInfraConfigModelsContract.ConfigContract):
-        """Override deltas that deep-merge onto CodegenConfigSpec fields."""
-
-        checkout_submodules_overrides: Annotated[
-            Mapping[str, str],
-            m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
-                description="Per-distribution checkout submodules overrides",
-            ),
-        ]
-        ci_private_submodules: Annotated[
-            Mapping[str, t.JsonMapping],
-            m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
-                description="Per-distribution private submodule deploy-key contracts",
-            ),
-        ]
-        make: Annotated[
-            FlextInfraConfigModelsRelease._MakeOverridesSection | None,
-            m.Field(default=None, description="Make override deltas"),
-        ] = None
-        layout: Annotated[
-            FlextInfraConfigModelsRelease._LayoutOverridesSection | None,
-            m.Field(default=None, description="Layout override deltas"),
-        ] = None
-
-    class _MakeOverridesSection(FlextInfraConfigModelsContract.ConfigContract):
-        """Override deltas for the generated Make contract."""
-
-        custom_handler_profile_overrides: Annotated[
-            Mapping[str, t.JsonMapping],
-            m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
-                description="Per-profile custom handler policy relaxations",
-            ),
-        ]
-
-    class _LayoutOverridesSection(FlextInfraConfigModelsContract.ConfigContract):
-        """Override deltas for the layout conformance contract."""
-
-        project_overrides: Annotated[
-            Mapping[str, t.JsonMapping],
-            m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
-                description="Per-project layout deltas",
-            ),
-        ]
-
-    class CodegenOverridesSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """Typed content of the config overrides layer (config/codegen-overrides.yaml).
-
-        Layer 2 of the hierarchical architecture: project-specific parameters
-        that sit on top of the immutable codegen.yaml business rules. Every field
-        here is a delta applied to the base config; the overrides file never
-        duplicates immutable rules.
-        """
-
-        Infra: Annotated[
-            FlextInfraConfigModelsRelease.CodegenOverridesRoot,
-            m.Field(description="flext-infra override namespace"),
         ]
 
     class UvEnvironmentPlan(FlextInfraConfigModelsContract.ConfigContract):
