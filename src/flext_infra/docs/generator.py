@@ -102,7 +102,7 @@ class FlextInfraDocGenerator(
         self,
         request: m.Infra.DocsGenerateRequest,
         bundle: m.Infra.DocsGenerationBundle,
-        plans: tuple[m.Infra.CodegenFilePlan, ...],
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> p.Result[bool]:
         """Require exact untouched sources and a fresh unchanged render."""
         outputs = {plan.path for plan in plans}
@@ -133,7 +133,7 @@ class FlextInfraDocGenerator(
     def _generation_reports(
         self,
         bundle: m.Infra.DocsGenerationBundle,
-        committed_plans: tuple[m.Infra.CodegenFilePlan, ...],
+        committed_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         written: frozenset[Path],
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Report only destinations committed by the shared transaction."""

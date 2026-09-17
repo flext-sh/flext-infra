@@ -278,7 +278,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         source_root: Path,
         source: m.Infra.PlanCollectionSource,
         path: Path,
-        artifacts: tuple[m.Cli.AtomicFileState, ...],
+        artifacts: t.VariadicTuple[m.Cli.AtomicFileState],
         desired: t.MutableMappingKV[Path, bytes],
         *,
         previous: m.Infra.PlanCollectionRevision | None,

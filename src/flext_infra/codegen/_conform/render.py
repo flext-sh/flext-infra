@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
+
 from typing import TYPE_CHECKING
 
 from ... import c, config, m, p, r, t, u
 from ...deps import FlextInfraEnsureRuffConfigPhase
+from ._request_fields import FlextInfraCodegenConformRequestFields
 from .bootstrap import FlextInfraCodegenConformBootstrap
 from .misc import FlextInfraCodegenConformMisc
 
@@ -45,7 +47,9 @@ class _ConformRenderRoles:
         ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]: ...
 
 
-class FlextInfraCodegenConformRender(_ConformRenderRoles):
+class FlextInfraCodegenConformRender(
+    FlextInfraCodegenConformRequestFields, _ConformRenderRoles
+):
     """Artifact composition and render context projection."""
 
     @staticmethod

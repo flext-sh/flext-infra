@@ -13,7 +13,7 @@ from flext_tests import tm
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, u
+from tests import c, m, t, u
 
 pytestmark = [pytest.mark.slow]
 
@@ -25,7 +25,7 @@ class TestsFlextInfraScriptDispatchMakefile:
     def _render_root_makefile(
         tmp_path: Path,
         *,
-        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...],
+        extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec],
         script_dispatch: m.Infra.ScriptDispatchSpec | None,
     ) -> str:
         # The engine is consumer-agnostic, so this fixture models a

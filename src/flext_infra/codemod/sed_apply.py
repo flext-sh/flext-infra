@@ -117,7 +117,7 @@ class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             combined |= flag_map[name]
         return combined
 
-    def _scan_pattern(self, pattern_spec: m.Infra.SedPatternSpec) -> tuple[int, int]:
+    def _scan_pattern(self, pattern_spec: m.Infra.SedPatternSpec) -> t.Pair[int, int]:
         """Scan for matches without applying. Returns (file_count, change_count)."""
         flags = self._compile_flags(pattern_spec.flags)
         compiled = re.compile(pattern_spec.pattern, flags)
@@ -160,7 +160,7 @@ class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     modified_files.add(file_path)
         return len(modified_files)
 
-    def _compute_fingerprint(self) -> tuple[tuple[str, str, str, str], ...]:
+    def _compute_fingerprint(self) -> t.VariadicTuple[t.Quad[str, str, str, str]]:
         """Compute a fingerprint of all pattern matches across the repository."""
         entries: list[tuple[str, str, str, str]] = []
         for pattern_spec in config.Infra.sed_patterns.patterns:

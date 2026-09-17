@@ -546,14 +546,14 @@ class FlextInfraMiseArtifactsJournal:
         selector = relative.parts[0]
         participant_root = participants.get(selector)
         states = tuple(
-            state
-            for state in (directory.before, directory.created)
-            if state is not None
+            directory_state
+            for directory_state in (directory.before, directory.created)
+            if directory_state is not None
         )
         if participant_root is not None:
             expected = participant_root.joinpath(*relative.parts[1:])
             valid = directory.project == selector and all(
-                state.path == expected for state in states
+                directory_state.path == expected for directory_state in states
             )
             if valid:
                 return r[Path | None].ok(None)
@@ -583,7 +583,7 @@ class FlextInfraMiseArtifactsJournal:
         current_scope: Path,
         recorded_participants: t.MappingKV[str, m.Infra.CodegenFileParticipant],
         current_participants: t.MappingKV[str, m.Infra.CodegenFileParticipant],
-    ) -> tuple[Path, Path]:
+    ) -> t.Pair[Path, Path]:
         """Resolve the physical owner roots for one journaled absolute path."""
         for selector, participant in recorded_participants.items():
             if path.is_relative_to(participant.root):
@@ -674,7 +674,7 @@ class FlextInfraMiseArtifactsJournal:
                 mode=source.mode,
                 device=source.device,
                 inode=source.inode,
-                link_count=source.link_count,
+                link_count=cast("Literal[1] | None", source.link_count),
                 file_attributes=source.file_attributes,
                 reparse_tag=source.reparse_tag,
                 absent_parent=absent_parent,

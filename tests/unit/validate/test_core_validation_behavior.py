@@ -8,7 +8,7 @@ from flext_tests import tm
 
 from flext_infra import config
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from tests import c, m, u
+from tests import c, m, t, u
 
 _FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
 
@@ -33,7 +33,7 @@ def _make_project_with_module(
 
 def _make_project_with_module_path(
     tmp_path: Path, *, module_source: str, module_path: str
-) -> tuple[Path, Path]:
+) -> t.Pair[Path, Path]:
     project_root = tmp_path / "project"
     package_dir = project_root / "src" / "flext_test"
     package_dir.mkdir(parents=True)

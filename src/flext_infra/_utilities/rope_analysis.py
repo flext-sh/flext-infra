@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ._rope_analysis.base import (
+from ._rope_analysis import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
     FlextInfraUtilitiesRopeAnalysisExports,
     FlextInfraUtilitiesRopeAnalysisImportState,

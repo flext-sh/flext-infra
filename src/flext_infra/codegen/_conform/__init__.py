@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from ._request_fields import FlextInfraCodegenConformRequestFields
     from .base import FlextInfraCodegenConform
     from .bootstrap import FlextInfraCodegenConformBootstrap
     from .execute import FlextInfraCodegenConformExecute
@@ -22,11 +23,13 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenConformMisc",
     "FlextInfraCodegenConformPlan",
     "FlextInfraCodegenConformRender",
+    "FlextInfraCodegenConformRequestFields",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
+            "._request_fields": ("FlextInfraCodegenConformRequestFields",),
             ".base": ("FlextInfraCodegenConform",),
             ".bootstrap": ("FlextInfraCodegenConformBootstrap",),
             ".execute": ("FlextInfraCodegenConformExecute",),
