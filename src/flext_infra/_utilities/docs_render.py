@@ -6,6 +6,7 @@ import fnmatch
 import textwrap
 from pathlib import Path
 from typing import ClassVar
+from urllib.parse import urlsplit
 
 from flext_cli import u
 
@@ -18,6 +19,24 @@ class FlextInfraUtilitiesDocsRender:
     """Rendering helpers for generated docs content."""
 
     _MARKDOWN_LINE_LENGTH: ClassVar[int] = 80
+
+    @staticmethod
+    def _repository_name(repo_url: str) -> str:
+        """Return the ``owner/repository`` identity declared by one URL."""
+        normalized = repo_url.strip().rstrip("/").removesuffix(".git")
+        if not normalized:
+            return c.Infra.GITHUB_REPO_NAME
+        if "://" in normalized:
+            path = urlsplit(normalized).path
+        elif ":" in normalized and "@" in normalized.partition(":")[0]:
+            path = normalized.partition(":")[2]
+        else:
+            path = normalized
+        parts = tuple(part for part in path.split("/") if part)
+        if len(parts) < 2:
+            msg = f"repository URL does not identify owner/repository: {repo_url}"
+            raise ValueError(msg)
+        return "/".join(parts[-2:])
 
     @staticmethod
     def _wrap_markdown_line(line: str) -> t.SequenceOf[str]:
@@ -500,7 +519,9 @@ class FlextInfraUtilitiesDocsRender:
             site_title=str(data.get("site_title", "")).strip() or scope.name,
             site_url=str(data.get("site_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
             repo_url=str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
-            repo_name=c.Infra.GITHUB_REPO_NAME,
+            repo_name=FlextInfraUtilitiesDocsRender._repository_name(
+                str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL
+            ),
             scope_name=scope.name,
             exclude_docs_block=FlextInfraUtilitiesDocsRender._render_block(
                 FlextInfraUtilitiesDocsRender._exclude_docs_lines(data)
@@ -608,7 +629,9 @@ class FlextInfraUtilitiesDocsRender:
             site_title=str(data.get("site_title", "")).strip() or "FLEXT Workspace",
             site_url=str(data.get("site_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
             repo_url=str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
-            repo_name=c.Infra.GITHUB_REPO_NAME,
+            repo_name=FlextInfraUtilitiesDocsRender._repository_name(
+                str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL
+            ),
             exclude_docs_block=FlextInfraUtilitiesDocsRender._render_block(
                 FlextInfraUtilitiesDocsRender._exclude_docs_lines(data)
             ),
