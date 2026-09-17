@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Final
+<<<<<<< HEAD
+from typing import TYPE_CHECKING, Final
+=======
+from typing import TYPE_CHECKING, Final
+>>>>>>> origin/0.12.0-dev
 
 from ... import c, config, m, p, r, t, u
 from ...docs import FlextInfraDocGenerator
@@ -16,9 +20,13 @@ from .. import (
 
 
 class _ConformExecuteRoles:
-    request: m.Infra.CodegenConformRequest | None = None
-    repository_root: Path = Path()
-    initial_workspace: m.Infra.WorkspaceSpec | None = None
+    if TYPE_CHECKING:
+
+        def plan(self, request: m.Infra.CodegenConformRequest) -> p.Result[m.Infra.CodegenPlan]: ...
+        def _mise_config_plans(self, plan: m.Infra.CodegenPlan) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
+        def _conform_workspace_beads_routes(self, request: m.Infra.CodegenConformRequest) -> p.Result[bool]: ...
+        def _owned_docs_files(self, request: m.Infra.CodegenConformRequest, files: t.SequenceOf[m.Infra.CodegenFilePlan]) -> tuple[m.Infra.CodegenFilePlan, ...]: ...
+        def _owned_docs_directories(self, request: m.Infra.CodegenConformRequest, plan: m.Infra.CodegenPlan, directories: t.SequenceOf[Path]) -> tuple[Path, ...]: ...
 
 
 class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
