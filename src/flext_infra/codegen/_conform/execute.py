@@ -23,6 +23,7 @@ class _ConformExecuteRoles:
         def _owned_docs_files(self, request: m.Infra.CodegenConformRequest, files: t.SequenceOf[m.Infra.CodegenFilePlan]) -> tuple[m.Infra.CodegenFilePlan, ...]: ...
         def _owned_docs_directories(self, request: m.Infra.CodegenConformRequest, plan: m.Infra.CodegenPlan, directories: t.SequenceOf[Path]) -> tuple[Path, ...]: ...
 
+
 class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
     """Transactional execution of conformance plans."""
 
