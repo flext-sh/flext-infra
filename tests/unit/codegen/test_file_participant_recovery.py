@@ -25,9 +25,7 @@ class TestsFlextInfraFileParticipantRecovery:
         docs_root.mkdir()
         roots = {"@docs-0": docs_root}
         source = tm.ok(
-            u.Cli.atomic_read_binary_file_state(
-                workspace / "README.md", required=True
-            )
+            u.Cli.atomic_read_binary_file_state(workspace / "README.md", required=True)
         )
         transaction = FlextInfraCodegenTransaction(
             FlextInfraCodegenMiseArtifacts(repository_root=workspace)

@@ -74,9 +74,7 @@ class TestsFlextInfraPlanCollection:
                 "enabled": False,
             })
         with pytest.raises(ValueError, match="requires at least one source"):
-            m.Infra.PlanCollectionConfig(
-                enabled=True, canonical_dir=Path("docs/plans")
-            )
+            m.Infra.PlanCollectionConfig(enabled=True, canonical_dir=Path("docs/plans"))
 
     def test_yaml_sequence_fields_reject_scalar_strings(self) -> None:
         with pytest.raises(ValueError, match="valid tuple"):

@@ -15,7 +15,9 @@ class FlextInfraCodegenConformBootstrap:
     @staticmethod
     def _mise_bootstrap_environment() -> m.Infra.MiseBootstrapEnvironmentSpec:
         """Project the single generated Mise isolation contract into templates."""
-        return cast("m.Infra.MiseBootstrapEnvironmentSpec", u.Infra.mise_bootstrap_environment())
+        return cast(
+            "m.Infra.MiseBootstrapEnvironmentSpec", u.Infra.mise_bootstrap_environment()
+        )
 
     @staticmethod
     def link_mode(

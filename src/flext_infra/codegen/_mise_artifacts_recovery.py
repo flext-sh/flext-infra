@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 from flext_core import r
 from flext_infra import c, m
@@ -370,7 +370,7 @@ class FlextInfraMiseRecovery:
                 entry.rollback_reparse_tag,
             ),
         }
-        return stored[prefix]
+        return cast(_FileOwnershipIdentity, stored[prefix])
 
     @staticmethod
     def _identity(state: m.Cli.AtomicFileState) -> _FileIdentity:

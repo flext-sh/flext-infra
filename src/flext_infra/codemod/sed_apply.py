@@ -160,7 +160,7 @@ class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     modified_files.add(file_path)
         return len(modified_files)
 
-    def _compute_fingerprint(self) -> tuple[str, str, str, str]:
+    def _compute_fingerprint(self) -> tuple[tuple[str, str, str, str], ...]:
         """Compute a fingerprint of all pattern matches across the repository."""
         entries: list[tuple[str, str, str, str]] = []
         for pattern_spec in config.Infra.sed_patterns.patterns:

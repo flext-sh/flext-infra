@@ -458,9 +458,7 @@ class FlextInfraMiseArtifactsJournal:
                 recorded_participants,
                 current_participants,
             )
-            rebound = cls._relocated_path(
-                source.path, previous_root, current_root
-            )
+            rebound = cls._relocated_path(source.path, previous_root, current_root)
             if rebound.failure:
                 return result_type.from_failure(rebound)
             sources.append(source.model_copy(update={"path": rebound.value}))

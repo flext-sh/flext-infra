@@ -37,7 +37,7 @@ class FlextInfraUtilitiesDocsRender:
         if len(parts) < FlextInfraUtilitiesDocsRender._MIN_REPO_PARTS:
             msg = f"repository URL does not identify owner/repository: {repo_url}"
             raise ValueError(msg)
-        return "/".join(parts[-FlextInfraUtilitiesDocsRender._MIN_REPO_PARTS:])
+        return "/".join(parts[-FlextInfraUtilitiesDocsRender._MIN_REPO_PARTS :])
 
     @staticmethod
     def _wrap_markdown_line(line: str) -> t.SequenceOf[str]:

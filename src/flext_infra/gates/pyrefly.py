@@ -89,7 +89,9 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         except c.ValidationError as exc:
             return False, (
                 self._malformed_report_issue(
-                    str(e.fail_validation(error=exc).error), tool=c.Infra.PYREFLY, file=str(json_file)
+                    str(e.fail_validation(error=exc).error),
+                    tool=c.Infra.PYREFLY,
+                    file=str(json_file),
                 ),
             )
         issues: t.MutableSequenceOf[m.Infra.Issue] = [

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import override
+from typing import override, cast
 
 from flext_cli import cli
 
@@ -141,17 +141,20 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         iteration = 0
         while current_text.findings:
             iteration += 1
-            fingerprint = tuple(
-                sorted(
-                    (
-                        finding.rule_id,
-                        finding.file.as_posix(),
-                        finding.line,
-                        finding.text,
-                        finding.replacement,
+            fingerprint = cast(
+                tuple[tuple[str, str, int, str, str | None], ...],
+                tuple(
+                    sorted(
+                        (
+                            finding.rule_id,
+                            finding.file.as_posix(),
+                            finding.line,
+                            finding.text,
+                            finding.replacement,
+                        )
+                        for finding in current_text.entries
                     )
-                    for finding in current_text.entries
-                )
+                ),
             )
             if fingerprint in seen_text:
                 prev_iter = seen_text[fingerprint]

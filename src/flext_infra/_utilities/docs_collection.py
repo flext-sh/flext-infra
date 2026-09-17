@@ -49,7 +49,10 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         if not configuration.enabled:
             owned_outputs = {
                 canonical / "collection-manifest.json",
-                *(canonical / artifact.relative_path for artifact in manifest.artifacts),
+                *(
+                    canonical / artifact.relative_path
+                    for artifact in manifest.artifacts
+                ),
             }
             for path in owned_outputs:
                 cls.collection_capture(path, states)

@@ -41,7 +41,7 @@ class FlextInfraDocCollector:
         parsed = u.Cli.yaml_parse(snapshot.content.decode("utf-8"))
         if parsed.failure:
             return r[bool].from_failure(parsed)
-        validated = u.validate_value(
+        validated: p.Result[m.Infra.PlanCollectionConfig] = u.validate_value(
             m.Infra.PlanCollectionConfig, parsed.value, strict=False
         )
         if validated.failure:

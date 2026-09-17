@@ -202,8 +202,7 @@ class TestsFlextInfraCodegenLazyInit:
             self._create_init_file(tmp_path / "src" / "pkg", self._VALID_INIT)
             generated = tuple(
                 self._create_init_file(
-                    tmp_path / directory / "provider" / "pkg",
-                    self._VALID_TESTS_INIT,
+                    tmp_path / directory / "provider" / "pkg", self._VALID_TESTS_INIT
                 )
                 for directory in (".agents-sync-home", ".test-tmp")
             )

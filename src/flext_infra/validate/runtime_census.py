@@ -131,7 +131,9 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             )
         ]
 
-    def _project_report(self, project: p.Infra.ProjectInfo) -> p.Result[m.Infra.ValidationReport]:
+    def _project_report(
+        self, project: p.Infra.ProjectInfo
+    ) -> p.Result[m.Infra.ValidationReport]:
         """Run the runtime census for one project and return a merged report."""
         package_name = self._package_name_for_project(project)
         if package_name is None:
