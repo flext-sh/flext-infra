@@ -128,6 +128,9 @@ class FlextInfraUtilitiesDocsGuidesMixin:
                 len(lines) >= _OWNED_HEADER_LINES
                 and lines[0] == generated
                 and lines[1] in source_headers
+            ):
+                owned.add(path)
+                continue
             ownership = FlextInfraUtilitiesDocsGuidesMixin.docs_project_guide_content(
                 "", scope.name, path.name
             ).partition("\n\n")[0]

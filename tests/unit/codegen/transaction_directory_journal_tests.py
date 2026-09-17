@@ -179,7 +179,7 @@ class TestsFlextInfraTransactionDirectoryJournal:
         tm.that(target.exists(), eq=False)
         tm.ok(
             owner.run_locked(
-                prepare=True, operation=lambda scope: r[Path].ok(scope)
+                prepare=True, operation=r[Path].ok
             )
         )
 

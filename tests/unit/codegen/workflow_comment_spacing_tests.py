@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 from typing import TYPE_CHECKING
 
 import pytest
@@ -37,7 +38,7 @@ class TestsFlextInfraWorkflowCommentSpacing:
         offenders: list[str] = []
         lines = text.splitlines()
         tokens = list(yaml.scan(text, Loader=yaml.SafeLoader))
-        for previous, following in zip(tokens, tokens[1:], strict=False):
+        for previous, following in itertools.pairwise(tokens):
             gap = text[previous.end_mark.index : following.start_mark.index]
             first_line = gap.split("\n", 1)[0]
             if "#" not in first_line:
@@ -80,7 +81,7 @@ class TestsFlextInfraWorkflowCommentSpacing:
                 path: self._inline_comment_offenders(text)
                 for path, text in workflows.items()
             },
-            eq=dict.fromkeys(workflows, []),
+            eq={key: [] for key in workflows},
         )
 
 

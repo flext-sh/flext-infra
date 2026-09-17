@@ -222,8 +222,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"findings in rules {sorted(rule_ids)} across files {sorted(files)}"
             )
             raise RuntimeError(msg)
-<<<<<<< HEAD
-=======
         # A completed rule may enable a later rule in the declared cascade.
         # Those later-rule findings are consumed by the next fixed-point iteration.
         new_actionable = after_apply_actionable - before_actionable
@@ -241,7 +239,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"findings in rules {sorted(rule_ids)} across files {sorted(files)}"
             )
             raise RuntimeError(msg)
->>>>>>> refs/remotes/origin/0.12.0-dev
 
 
 __all__: list[str] = ["FlextInfraCodemodBatchApply"]
