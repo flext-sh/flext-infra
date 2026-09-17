@@ -398,7 +398,7 @@ class FlextInfraMiseArtifactsJournal:
         cls,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
-        journal_state: m.Cli.AtomicFileState,
+        journal_snapshot: m.Cli.AtomicFileState,
     ) -> p.Result[bool]:
         """Retain journal authority until all journal-authorized cleanup completes."""
         directories = journal_state.cleanup_journaled_directories(
@@ -406,7 +406,7 @@ class FlextInfraMiseArtifactsJournal:
         )
         if directories.failure:
             return directories
-        removed = files.delete_state(journal_state)
+        removed = files.delete_state(journal_snapshot)
         if removed.failure:
             return r[bool].from_failure(removed)
         return r[bool].ok(True)
