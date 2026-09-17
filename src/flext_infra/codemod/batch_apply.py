@@ -137,21 +137,12 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         current_text = FlextInfraModTextGateEngine.scan(
             root, fix=False, validate_receipts=True
         ).unwrap()
-        seen_text: dict[tuple[tuple[str, str, int, str, str | None], ...], int] = {}
+        seen_text: dict[tuple[tuple[str, str, int, str], ...], int] = {}
         iteration = 0
         while current_text.findings:
             iteration += 1
-            fingerprint = tuple(
-                sorted(
-                    (
-                        finding.rule_id,
-                        finding.file.as_posix(),
-                        finding.line,
-                        finding.text,
-                        finding.replacement,
-                    )
-                    for finding in current_text.entries
-                )
+            fingerprint: tuple[tuple[str, str, int, str], ...] = FlextInfraCodemodBatchApply._text_fingerprint(
+                current_text.entries,
             )
             if fingerprint in seen_text:
                 prev_iter = seen_text[fingerprint]
@@ -188,6 +179,24 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         FlextInfraModGateEngine.validate(root).unwrap()
         cli.display_text("mod: AST fixed point verified with zero findings")
         return r[t.Cli.ResultValue].ok(True)
+
+    @staticmethod
+    def _text_fingerprint(
+        entries: tuple[m.Infra.ModTextFinding, ...],
+    ) -> tuple[tuple[str, str, int, str, str], ...]:
+        """Build a sorted fingerprint of all text findings."""
+        items: list[tuple[str, str, int, str, str]] = []
+        for entry in entries:
+            items.append(
+                (
+                    entry.rule_id,
+                    entry.file.as_posix(),
+                    entry.line,
+                    entry.text,
+                    entry.replacement,
+                )
+            )
+        return tuple(sorted(items))
 
     @staticmethod
     def _validate_fix_match(

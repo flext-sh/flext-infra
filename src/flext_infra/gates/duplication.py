@@ -200,10 +200,9 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 )
             )
         except c.ValidationError as exc:
-            failed = e.fail_validation(error=exc)
             return r[m.Infra.ProjectDuplicationOverrides].fail_op(
                 f"[tool.flext.project.duplication] validation ({pyproject_path})",
-                failed.error,
+                e.fail_validation(error=exc).error,
             )
 
     def _declared_duplication_trees(self) -> p.Result[t.StrSequence]:
@@ -219,9 +218,9 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         try:
             manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
         except c.ValidationError as exc:
-            failed = e.fail_validation(error=exc)
             return r[t.StrSequence].fail_op(
-                f"workspace manifest model validation ({manifest_path})", failed.error
+                f"workspace manifest model validation ({manifest_path})",
+                e.fail_validation(error=exc).error,
             )
         return r[t.StrSequence].ok(tuple(manifest.repository.duplication_trees))
 

@@ -165,7 +165,10 @@ class TestsFlextInfraDocsGeneratorGuides:
             if item.path == destination
         )
 
-        tm.that(plan.desired_content or b"", has=b"`<workspace-root>/docs/guides/operator.md`")
+        tm.that(
+            plan.desired_content or b"",
+            has=b"`<workspace-root>/docs/guides/operator.md`",
+        )
 
     def test_root_guide_snapshot_change_rejects_prepared_bundle(
         self, tmp_path: Path

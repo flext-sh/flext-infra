@@ -31,6 +31,8 @@ class FlextInfraConstantsSourceCode:
     # --- Directory exclusion sets (was: class Excluded) ---
     COMMON_EXCLUDED_DIRS: Final[frozenset[str]] = frozenset({
         ".git",
+        ".agents-sync-home",
+        ".test-tmp",
         ".venv",
         ".worktrees",
         "node_modules",

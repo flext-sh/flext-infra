@@ -146,15 +146,21 @@ class FlextInfraUtilitiesDocsCollectionSources:
         ).value
         if updated is None:
             return None, None
-        original = updated if isinstance(updated, str) else updated.isoformat()
         if isinstance(updated, datetime):
-            timestamp = updated
-        elif isinstance(updated, date):
+            original = updated.isoformat()
+            if updated.tzinfo is None:
+                return original, None
+            return original, updated.astimezone(UTC).isoformat().replace("+00:00", "Z")
+        if isinstance(updated, date):
+            return updated.isoformat(), None
+        # updated is str
+        original = updated
+        try:
+            date.fromisoformat(updated)
+        except ValueError:
+            timestamp = datetime.fromisoformat(updated)
+        else:
             return original, None
-        parsed_date = date.fromisoformat(updated)
-        if parsed_date.isoformat() == updated:
-            return original, None
-        timestamp = datetime.fromisoformat(updated)
         if timestamp.tzinfo is None:
             return original, None
         return original, timestamp.astimezone(UTC).isoformat().replace("+00:00", "Z")

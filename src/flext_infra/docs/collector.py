@@ -41,7 +41,7 @@ class FlextInfraDocCollector:
         parsed = u.Cli.yaml_parse(snapshot.content.decode("utf-8"))
         if parsed.failure:
             return r[bool].from_failure(parsed)
-        validated = u.validate_value(
+        validated: p.Result[m.Infra.PlanCollectionConfig] = u.validate_value(
             m.Infra.PlanCollectionConfig, parsed.value, strict=False
         )
         if validated.failure:
@@ -110,6 +110,17 @@ class FlextInfraDocCollector:
             )
             if published.failure:
                 return r[bool].from_failure(published)
+            for directory in bundle.prunable_directories:
+                observed = u.Cli.atomic_read_empty_directory_state(
+                    directory, required=False
+                )
+                if observed.failure:
+                    return r[bool].from_failure(observed)
+                if not observed.value.exists:
+                    continue
+                removed = u.Cli.atomic_delete_empty_directory_guarded(observed.value)
+                if removed.failure:
+                    return r[bool].from_failure(removed)
             return r[bool].ok(True)
 
         return transaction.run_files_locked(roots, publish)
