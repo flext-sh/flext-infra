@@ -10,7 +10,7 @@ from flext_cli import m as cli_m
 from flext_core import m, u
 from flext_infra import t
 
-from ._config.base import FlextInfraConfigModels
+from ._config.artifact import FlextInfraConfigModelsArtifact
 
 
 class FlextInfraModelsDocsCollection:
@@ -207,7 +207,7 @@ class FlextInfraModelsDocsCollection:
     class PlanCollectionBundle(m.ArbitraryTypesModel):
         """Read-only planning result consumed by the existing publisher."""
 
-        files: tuple[FlextInfraConfigModels.CodegenFilePlan, ...] = m.Field(
+        files: tuple[FlextInfraConfigModelsArtifact.CodegenFilePlan, ...] = m.Field(
             description="Effects for the existing docs transaction"
         )
         source_states: tuple[cli_m.Cli.AtomicFileState, ...] = m.Field(

@@ -68,7 +68,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         Used for structural AST traversal without requiring Rope semantic methods.
         """
 
-        _fields: tuple[str, ...]
+        _fields: tuple[str, ...]  # Instance attribute on concrete AST nodes
 
         lineno: int | None
         col_offset: int | None

@@ -2,10 +2,20 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, TypeGuard
+
 from flext_infra.models import m
 from flext_infra.typings import t
 
 from .base import FlextInfraUtilitiesRopeAnalysisBase
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
+
+
+def _is_ast_node(obj: object) -> TypeGuard[t.Infra.RopeAstNode]:
+    """Type guard to narrow to RopeAstNode via structural `_fields` check."""
+    return hasattr(obj, "_fields")
 
 
 class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
@@ -47,8 +57,8 @@ class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
             for field_name in getattr(node, "_fields", ()):
                 value = getattr(node, field_name, None)
                 if isinstance(value, list):
-                    stack.extend(item for item in value if hasattr(item, "_fields"))
-                elif hasattr(value, "_fields"):
+                    stack.extend(item for item in value if _is_ast_node(item))
+                elif _is_ast_node(value):
                     stack.append(value)
         return collected
 
@@ -59,7 +69,7 @@ class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
         if not isinstance(body, (list, tuple)):
             return ()
         nodes: list[t.Infra.RopeAstNode] = [
-            child for child in body if hasattr(child, "_fields")
+            child for child in body if _is_ast_node(child)
         ]
         return tuple(nodes)
 
