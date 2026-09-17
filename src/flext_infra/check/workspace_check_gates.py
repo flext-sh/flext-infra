@@ -310,18 +310,19 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 elapsed=execution.result.duration,
             )
             if not execution.result.passed:
-                # Operator stability contract (2026-09-15): quality findings are
-                # expected and NEVER fail the canonical Make verb; they feed the
-                # generator through reports and this console receipt. Only the
-                # reports carry the detail; the verb always completes.
                 for finding in execution.result.errors:
                     u.Cli.info(finding)
                 if not execution.result.errors and execution.raw_output.strip():
                     u.Cli.info(execution.raw_output.strip())
-            status = c.Cli.PipelineStageStatus.OK
+                return r[m.Cli.PipelineStageResult].fail(
+                    f"{gate_id} failed for {project_name} "
+                    f"with {execution.error_count} findings"
+                )
             return r[m.Cli.PipelineStageResult].ok(
                 cli.stage_result(
-                    gate_id, status=status, output={"errors": execution.error_count}
+                    gate_id,
+                    status=c.Cli.PipelineStageStatus.OK,
+                    output={"errors": execution.error_count},
                 )
             )
 

@@ -116,6 +116,12 @@ package_name = {{ package_name | tojson }}
 [tool.hatch.metadata]
 allow-direct-references = {{ tooling.tools.hatch.allow_direct_references | lower }}
 {% if make_profile != "workspace" %}
+{% if hatch_build_hook_path %}
+
+{# NOTE (multi-agent, flext-get3j): emit only the project-owned declaration. #}
+[tool.hatch.build.hooks.custom]
+path = {{ hatch_build_hook_path.as_posix() | tojson }}
+{% endif %}
 
 [tool.hatch.build.targets.wheel]
 packages = [
