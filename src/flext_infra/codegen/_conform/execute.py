@@ -370,10 +370,9 @@ class FlextInfraCodegenConformExecute:
             return r[m.Infra.CodegenResult].from_failure(aborted)
         conform_paths = frozenset(f.path for f in plan.files)
         lazy_plans = tuple(
-            p for p in lazy_analysis.value.files
-            if p.path not in conform_paths
+            p for p in lazy_analysis.value.files if p.path not in conform_paths
         )
-        _lazy_analysis = lazy_analysis.value.model_copy(update={"files": lazy_plans})
+        lazy_analysis_ = lazy_analysis.value.model_copy(update={"files": lazy_plans})
         extended = transaction.append_phase_locked(
             session.value, lazy_analysis.value.phase, lazy_plans
         )
@@ -423,11 +422,7 @@ class FlextInfraCodegenConformExecute:
         published = transaction.commit_locked(
             with_docs.value,
             lambda: self._validate_managed_fixed_point(
-                request,
-                with_docs.value,
-                transaction,
-                lazy_analysis.value,
-                docs_analysis,
+                request, with_docs.value, transaction, lazy_analysis_, docs_analysis
             ),
         )
         if published.failure:
@@ -595,7 +590,7 @@ class FlextInfraCodegenConformExecute:
                 f"codegen publication did not reach a fixed point: {paths}\n{drift}"
             )
         u.Cli.info("stage=verify-lazy-init-receipt")
-        lazy_fixed_point = transaction.validate_phase_analysis_locked(_lazy_analysis)
+        lazy_fixed_point = transaction.validate_phase_analysis_locked(lazy_analysis)
         if lazy_fixed_point.failure:
             return r[bool].from_failure(lazy_fixed_point)
         u.Cli.info("stage=verify-docs-receipt")

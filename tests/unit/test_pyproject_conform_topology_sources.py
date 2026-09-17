@@ -242,8 +242,17 @@ workspace = true
 
         lock_result = tm.ok(
             u.Cli.run_raw(
-                [c.Infra.UV, "pip", "install", "--dry-run", "--offline",
-                 "--python", sys.executable, "-r", str(root / c.Infra.PYPROJECT_FILENAME)],
+                [
+                    c.Infra.UV,
+                    "pip",
+                    "install",
+                    "--dry-run",
+                    "--offline",
+                    "--python",
+                    sys.executable,
+                    "-r",
+                    str(root / c.Infra.PYPROJECT_FILENAME),
+                ],
                 cwd=root,
                 timeout=c.DEFAULT_TIMEOUT_SECONDS,
                 env={"UV_CACHE_DIR": str(tmp_path / "uv-cache")},

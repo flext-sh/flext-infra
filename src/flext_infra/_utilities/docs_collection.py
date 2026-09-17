@@ -16,7 +16,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
     """Plan effects only; the docs transaction owns publication and locking."""
 
     @classmethod
-    def collect_plan_files(
+    def docs_collect_plan_files(
         cls, repository_root: Path, configuration: m.Infra.PlanCollectionConfig
     ) -> m.Infra.PlanCollectionBundle:
         """Capture sources before any canonical or home projection writes."""
@@ -95,7 +95,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
                         msg = f"collection source changed during read: {state.path}"
                         raise ValueError(msg)
                     states[state.path] = state
-                revision = cls._collect_revision(
+                revision = cls._docs_collect_revision(
                     canonical,
                     source_root,
                     source,
@@ -160,7 +160,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
             )
             for revision in revisions
         )
-        index, _changed = FlextInfraUtilitiesDocsContract.docs_update_toc(
+        index, _changed = FlextInfraUtilitiesDocsContract.docs_contract_update_toc(
             "\n".join(lines) + "\n"
         )
         desired[canonical / "collection-index.md"] = index.encode()
@@ -215,7 +215,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         )
 
     @classmethod
-    def _collect_revision(
+    def _docs_collect_revision(
         cls,
         canonical: Path,
         source_root: Path,

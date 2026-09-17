@@ -13,6 +13,18 @@ Ele reconcilia pedidos, plano reconstruído, mudanças, críticas, ADRs e Beads.
 O Beads continua sendo o responsável pelo estado de execução; o handoff contém
 evidência e instruções de retomada, sem criar uma fila paralela de tarefas.
 
+**Estado corrente (2026-09-17):** a tip ativa é `flext-infra@0.12.0-dev@a2bd0a726`
+(superprojeto `676ae7aa3c`). Nenhum SHA citado no handoff de 14/09 é ancestral dela. O CRG citado
+não existe no checkout atual — o único válido é da worktree `rope-modernize`, construído em
+`469b26b4e`, ancestral da tip. O defeito `_lazy_analysis` em
+`src/flext_infra/codegen/_conform/execute.py:376/598` permanece e os god modules estão inalterados.
+Gas City task `flext-itpd1.2` mantém o cursor da convergência documental e
+`flext-5fxu6.4` continua sendo o proprietário técnico da modernização. O handoff
+versionado deste repositório é a rota standalone; planos locais do superprojeto
+preservam contexto de sessão, mas não são links portáveis nem substituem o
+tracker. As fases 3 e 8 ainda não têm prova verde. Esta correção substitui
+somente os SHA, fases e proprietários caducos do handoff.
+
 ## Começar pela decisão pendente
 
 O runtime correto define o comportamento; os testes verificam esse contrato.

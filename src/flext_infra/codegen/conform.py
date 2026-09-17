@@ -558,8 +558,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].from_failure(aborted)
         conform_paths = frozenset(f.path for f in plan.files)
         lazy_plans = tuple(
-            p for p in lazy_analysis.value.files
-            if p.path not in conform_paths
+            p for p in lazy_analysis.value.files if p.path not in conform_paths
         )
         lazy_analysis_ = lazy_analysis.value.model_copy(update={"files": lazy_plans})
         extended = transaction.append_phase_locked(
@@ -607,11 +606,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         published = transaction.commit_locked(
             with_docs.value,
             lambda: self._validate_managed_fixed_point(
-                request,
-                with_docs.value,
-                transaction,
-                lazy_analysis_,
-                docs_analysis,
+                request, with_docs.value, transaction, lazy_analysis_, docs_analysis
             ),
         )
         if published.failure:
@@ -1117,8 +1112,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 # strips stale generated sections and deletes the file when
                 # nothing custom remains, so `.envrc` stays the single
                 # beads activation owner. Mirrors the `_conform` family owner.
-                normalized = FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized(
-                    current
+                normalized = (
+                    FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized(
+                        current
+                    )
                 )
                 if normalized == current:
                     current_plan = FlextInfraCodegenConform._file_plan(

@@ -37,6 +37,36 @@ class TestsPlanCollection:
             ),
         )
 
+    def test_yaml_shaped_configuration_parses_at_the_typed_boundary(self) -> None:
+        config = m.Infra.PlanCollectionConfig.model_validate({
+            "canonical_dir": "docs/plans",
+            "sources": [
+                {
+                    "id": "kilo-local-plans",
+                    "provider": "kilo",
+                    "root": ".kilo/plans",
+                    "adapter": "files",
+                    "driver": "flext-infra-files",
+                    "driver_version": "1",
+                    "plan_globs": ["**/*.md"],
+                    "exclude_globs": [],
+                    "publication": "plan-artifacts",
+                }
+            ],
+        })
+
+        tm.that(config.canonical_dir, eq=Path("docs/plans"))
+        tm.that(config.sources[0].root, eq=Path(".kilo/plans"))
+        tm.that(config.sources[0].plan_globs, eq=("**/*.md",))
+        tm.that(config.sources[0].exclude_globs, eq=())
+
+    def test_yaml_sequence_fields_reject_scalar_strings(self) -> None:
+        with pytest.raises(ValueError):
+            m.Infra.PlanCollectionConfig.model_validate({
+                "canonical_dir": "docs/plans",
+                "sources": "kilo-local-plans",
+            })
+
     def test_plan_and_companion_are_snapshotted_without_writing(
         self, tmp_path: Path
     ) -> None:
@@ -44,7 +74,7 @@ class TestsPlanCollection:
         self._write(tmp_path / "input" / "design" / "research.md", "# Research\n")
         config = self._config()
 
-        bundle = u.Infra.collect_plan_files(tmp_path, config)
+        bundle = u.Infra.docs_collect_plan_files(tmp_path, config)
 
         tm.that(len(bundle.revisions), eq=1)
         tm.that(bundle.revisions[0].attachments, eq=("research.md",))
@@ -52,7 +82,7 @@ class TestsPlanCollection:
         tm.that(tmp_path / "input" / "design.md" in captured, eq=True)
         tm.that(tmp_path / "input" / "design" / "research.md" in captured, eq=True)
         tm.that((tmp_path / config.canonical_dir).exists(), eq=False)
-        repeated = u.Infra.collect_plan_files(tmp_path, config)
+        repeated = u.Infra.docs_collect_plan_files(tmp_path, config)
         tm.that(repeated.revisions[0].digest, eq=bundle.revisions[0].digest)
 
     def test_changed_attachment_creates_revision_without_overwriting_curated_plan(
@@ -62,13 +92,13 @@ class TestsPlanCollection:
         attachment = tmp_path / "input" / "design" / "research.md"
         self._write(attachment, "# Initial research\n")
         config = self._config()
-        first = u.Infra.collect_plan_files(tmp_path, config)
+        first = u.Infra.docs_collect_plan_files(tmp_path, config)
         canonical = tmp_path / config.canonical_dir / first.revisions[0].canonical_path
         curated = "# Reconciled with implementation evidence\n"
         self._write(canonical, curated)
         self._write(attachment, "# Additional research\n")
 
-        second = u.Infra.collect_plan_files(tmp_path, config)
+        second = u.Infra.docs_collect_plan_files(tmp_path, config)
 
         tm.that(second.revisions[0].identity, eq=first.revisions[0].identity)
         tm.that(second.revisions[0].digest != first.revisions[0].digest, eq=True)
@@ -98,7 +128,7 @@ class TestsPlanCollection:
             ),
         )
 
-        bundle = u.Infra.collect_plan_files(tmp_path, config)
+        bundle = u.Infra.docs_collect_plan_files(tmp_path, config)
 
         tm.that(bundle.coverage[0].status, eq="private-inventory")
         tm.that(bundle.coverage[0].private_paths, eq=(session,))
@@ -112,7 +142,7 @@ class TestsPlanCollection:
 
     def test_missing_source_is_not_empty_coverage(self, tmp_path: Path) -> None:
         with pytest.raises(FileNotFoundError, match="input"):
-            u.Infra.collect_plan_files(tmp_path, self._config())
+            u.Infra.docs_collect_plan_files(tmp_path, self._config())
 
     def test_projection_is_explicit_and_carries_its_own_owner(
         self, tmp_path: Path
@@ -121,7 +151,7 @@ class TestsPlanCollection:
         projection = tmp_path / "home-docs" / "plans"
         config = self._config().model_copy(update={"projection_root": projection})
 
-        bundle = u.Infra.collect_plan_files(tmp_path, config)
+        bundle = u.Infra.docs_collect_plan_files(tmp_path, config)
 
         projected = tuple(item for item in bundle.files if item.project == projection)
         tm.that(bool(projected), eq=True)
@@ -150,13 +180,13 @@ class TestsPlanCollection:
                 ),
             ),
         )
-        first = u.Infra.collect_plan_files(tmp_path, config)
+        first = u.Infra.docs_collect_plan_files(tmp_path, config)
         for plan in first.files:
             assert plan.desired_content is not None
             self._write(plan.path, plan.desired_content.decode())
         u.Infra.verify_plan_collection_publication(tmp_path, config, first)
 
-        second = u.Infra.collect_plan_files(tmp_path, config)
+        second = u.Infra.docs_collect_plan_files(tmp_path, config)
 
         tm.that(second.revisions, eq=first.revisions)
         for plan in second.files:
@@ -166,7 +196,7 @@ class TestsPlanCollection:
         edited = "# Home amendment requiring semantic review\n"
         self._write(home_copy, edited)
 
-        third = u.Infra.collect_plan_files(tmp_path, config)
+        third = u.Infra.docs_collect_plan_files(tmp_path, config)
 
         tm.that(len(third.revisions), eq=1)
         tm.that(third.revisions[0].identity, eq=imported.identity)
@@ -182,7 +212,7 @@ class TestsPlanCollection:
         for plan in third.files:
             assert plan.desired_content is not None
             self._write(plan.path, plan.desired_content.decode())
-        fourth = u.Infra.collect_plan_files(tmp_path, config)
+        fourth = u.Infra.docs_collect_plan_files(tmp_path, config)
         tm.that(fourth.revisions, eq=third.revisions)
         for plan in fourth.files:
             tm.that(u.Infra.codegen_file_requires_effect(plan), eq=False)
@@ -192,7 +222,7 @@ class TestsPlanCollection:
     ) -> None:
         self._write(tmp_path / "input" / "design.md", "# Design\n")
         config = self._config()
-        bundle = u.Infra.collect_plan_files(tmp_path, config)
+        bundle = u.Infra.docs_collect_plan_files(tmp_path, config)
         self._write(tmp_path / "input" / "additional.md", "# Additional\n")
 
         with pytest.raises(ValueError, match="topology changed"):
@@ -224,7 +254,7 @@ class TestsPlanCollection:
             )),
         )
 
-        bundle = u.Infra.collect_plan_files(tmp_path, self._config())
+        bundle = u.Infra.docs_collect_plan_files(tmp_path, self._config())
 
         tm.that(bundle.revisions[0].source_updated_at, eq=expected)
         tm.that(bundle.revisions[0].source_updated_at_original is not None, eq=True)
@@ -234,7 +264,7 @@ class TestsPlanCollection:
     def test_new_companion_file_changes_source_topology(self, tmp_path: Path) -> None:
         self._write(tmp_path / "input" / "design.md", "# Design\n")
         config = self._config()
-        bundle = u.Infra.collect_plan_files(tmp_path, config)
+        bundle = u.Infra.docs_collect_plan_files(tmp_path, config)
         self._write(tmp_path / "input" / "design" / "new.md", "# Research\n")
 
         with pytest.raises(ValueError, match="topology changed"):
@@ -262,7 +292,7 @@ class TestsPlanCollection:
                 ),
             ),
         )
-        initial = u.Infra.collect_plan_files(tmp_path, config)
+        initial = u.Infra.docs_collect_plan_files(tmp_path, config)
         for plan in initial.files:
             assert plan.desired_content is not None
             self._write(plan.path, plan.desired_content.decode())
@@ -278,7 +308,7 @@ class TestsPlanCollection:
         amendment = "# Updated projected research\n"
         self._write(attachment, amendment)
 
-        changed = u.Infra.collect_plan_files(tmp_path, config)
+        changed = u.Infra.docs_collect_plan_files(tmp_path, config)
 
         tm.that(changed.revisions[0].identity, eq=revision.identity)
         tm.that(changed.revisions[0].digest != revision.digest, eq=True)
@@ -291,7 +321,7 @@ class TestsPlanCollection:
             assert plan.desired_content is not None
             self._write(plan.path, plan.desired_content.decode())
         u.Infra.verify_plan_collection_publication(tmp_path, config, changed)
-        stable = u.Infra.collect_plan_files(tmp_path, config)
+        stable = u.Infra.docs_collect_plan_files(tmp_path, config)
         tm.that(stable.revisions, eq=changed.revisions)
         for plan in stable.files:
             tm.that(u.Infra.codegen_file_requires_effect(plan), eq=False)
@@ -299,10 +329,10 @@ class TestsPlanCollection:
     def test_concurrent_canonical_edit_rejects_stale_plan(self, tmp_path: Path) -> None:
         self._write(tmp_path / "input" / "design.md", "# Source\n")
         config = self._config()
-        first = u.Infra.collect_plan_files(tmp_path, config)
+        first = u.Infra.docs_collect_plan_files(tmp_path, config)
         canonical = tmp_path / config.canonical_dir / first.revisions[0].canonical_path
         self._write(canonical, "# Curated\n")
-        pending = u.Infra.collect_plan_files(tmp_path, config)
+        pending = u.Infra.docs_collect_plan_files(tmp_path, config)
         self._write(canonical, "# Concurrent curated amendment\n")
 
         with pytest.raises(ValueError, match="source changed"):
@@ -315,7 +345,7 @@ class TestsPlanCollection:
         config = self._config()
         for root in (first_root, next_root):
             self._write(root / "input" / "design.md", "# Portable source\n")
-        first = u.Infra.collect_plan_files(first_root, config)
+        first = u.Infra.docs_collect_plan_files(first_root, config)
         for plan in first.files:
             assert plan.desired_content is not None
             self._write(
@@ -323,7 +353,7 @@ class TestsPlanCollection:
                 plan.desired_content.decode(),
             )
 
-        relocated = u.Infra.collect_plan_files(next_root, config)
+        relocated = u.Infra.docs_collect_plan_files(next_root, config)
 
         tm.that(relocated.revisions, eq=first.revisions)
         for revision in relocated.revisions:

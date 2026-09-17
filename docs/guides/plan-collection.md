@@ -1,5 +1,9 @@
 # Plan collection
 
+<!-- TOC START -->
+- No sections found
+<!-- TOC END -->
+
 The documentation collector prepares authenticated file plans; the existing
 documentation transaction alone publishes them. It neither executes an LLM nor
 decides implementation status, supersession, deletion, or Bead closure.

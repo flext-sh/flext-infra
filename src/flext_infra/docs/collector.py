@@ -59,7 +59,7 @@ class FlextInfraDocCollector:
                 return r[bool].fail(
                     "plan collection configuration changed before collection"
                 )
-            bundle = u.Infra.collect_plan_files(scope_root, configuration)
+            bundle = u.Infra.docs_collect_plan_files(scope_root, configuration)
             incomplete = tuple(
                 item for item in bundle.coverage if item.adapter == "private-inventory"
             )

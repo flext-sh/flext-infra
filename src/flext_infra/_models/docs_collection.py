@@ -12,6 +12,13 @@ from flext_infra import t
 
 from .config import FlextInfraConfigModels
 
+_PATH_FROM_STR = m.BeforeValidator(
+    lambda value: Path(value) if isinstance(value, str) else value
+)
+_TUPLE_FROM_LIST = m.BeforeValidator(
+    lambda value: tuple(value) if isinstance(value, list) else value
+)
+
 
 class FlextInfraModelsDocsCollection:
     """Collection describes provenance, never semantic execution status."""
@@ -34,7 +41,9 @@ class FlextInfraModelsDocsCollection:
             ),
         ]
         provider: t.NonEmptyStr = m.Field(description="Declared source provider")
-        root: Path = m.Field(description="Declared physical source root")
+        root: Annotated[
+            Path, _PATH_FROM_STR, m.Field(description="Declared physical source root")
+        ]
         adapter: Literal["files", "private-inventory"] = m.Field(
             description="Selected deterministic source adapter"
         )
@@ -44,15 +53,21 @@ class FlextInfraModelsDocsCollection:
         )
         plan_globs: Annotated[
             tuple[str, ...],
+            _TUPLE_FROM_LIST,
             m.Field(min_length=1, description="Explicit plan discovery patterns"),
         ]
-        exclude_globs: tuple[str, ...] = m.Field(
-            default=(), description="Explicit source exclusions"
-        )
-        updated_fields: tuple[str, ...] = m.Field(
-            default=("source_updated_at",),
-            description="Source-owned substantive update fields in priority order",
-        )
+        exclude_globs: Annotated[
+            tuple[str, ...],
+            _TUPLE_FROM_LIST,
+            m.Field(description="Explicit source exclusions"),
+        ] = ()
+        updated_fields: Annotated[
+            tuple[str, ...],
+            _TUPLE_FROM_LIST,
+            m.Field(
+                description="Source-owned substantive update fields in priority order"
+            ),
+        ] = ("source_updated_at",)
         companion_directory: bool = m.Field(
             default=True, description="Collect the same-basename artifact directory"
         )
@@ -63,14 +78,19 @@ class FlextInfraModelsDocsCollection:
     class PlanCollectionConfig(m.ContractModel):
         """Repository-owned associations; projection is separately authorized."""
 
-        canonical_dir: Path = m.Field(
-            description="Repository-relative canonical plan destination"
-        )
-        projection_root: Path | None = m.Field(
-            default=None, description="Separately authorized absolute projection owner"
-        )
+        canonical_dir: Annotated[
+            Path,
+            _PATH_FROM_STR,
+            m.Field(description="Repository-relative canonical plan destination"),
+        ]
+        projection_root: Annotated[
+            Path | None,
+            _PATH_FROM_STR,
+            m.Field(description="Separately authorized absolute projection owner"),
+        ] = None
         sources: Annotated[
             tuple[FlextInfraModelsDocsCollection.PlanCollectionSource, ...],
+            _TUPLE_FROM_LIST,
             m.Field(
                 min_length=1,
                 description="Complete explicitly associated source inventory",

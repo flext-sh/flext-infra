@@ -430,8 +430,11 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 ["--no-print-directory", "setup"], cwd=project_root, env=ci_env
             )
         )
-        tm.that(u.Cli.process_succeeded(stale.outcome), eq=True,
-                msg=stale.stdout + stale.stderr)
+        tm.that(
+            u.Cli.process_succeeded(stale.outcome),
+            eq=True,
+            msg=stale.stdout + stale.stderr,
+        )
         tm.that(stale.stdout, has="ci-runtime-provisioned")
         tm.that(lock_path.exists(), eq=False)
 
