@@ -117,7 +117,9 @@ class FlextInfraUtilitiesDocsGuidesMixin:
                 "adjust that workspace source, never this member projection. -->"
             )
             legacy_marker = (
-                content.startswith("<!-- AUTO-GENERATED FILE — regenerate through `make gen`")
+                content.startswith(
+                    "<!-- AUTO-GENERATED FILE — regenerate through `make gen`"
+                )
                 and f"docs/guides/{path.name}" in content.partition("\n\n")[0]
             )
             if content.startswith(

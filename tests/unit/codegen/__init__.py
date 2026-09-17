@@ -106,6 +106,7 @@ if TYPE_CHECKING:
         TestsFlextInfraToolchainBeadsDistribution,
     )
     from .toolchain_go_backend_tests import TestsFlextInfraToolchainGoBackend
+    from .toolchain_make_tests import TestsFlextInfraToolchainMake
     from .toolchain_requirement_tests import TestsFlextInfraToolchainRequirement
     from .transaction_directory_journal_tests import (
         TestsFlextInfraTransactionDirectoryJournal,
@@ -172,6 +173,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraTemplateFormatterFixedPoint",
     "TestsFlextInfraToolchainBeadsDistribution",
     "TestsFlextInfraToolchainGoBackend",
+    "TestsFlextInfraToolchainMake",
     "TestsFlextInfraToolchainRequirement",
     "TestsFlextInfraTransactionDirectoryJournal",
     "TestsFlextInfraTransactionLease",
@@ -320,6 +322,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraToolchainBeadsDistribution",
             ),
             ".toolchain_go_backend_tests": ("TestsFlextInfraToolchainGoBackend",),
+            ".toolchain_make_tests": ("TestsFlextInfraToolchainMake",),
             ".toolchain_requirement_tests": ("TestsFlextInfraToolchainRequirement",),
             ".transaction_directory_journal_tests": (
                 "TestsFlextInfraTransactionDirectoryJournal",
