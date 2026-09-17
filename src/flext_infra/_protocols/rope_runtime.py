@@ -66,9 +66,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """AST node shape — both stdlib ast.AST and Rope's PyObject subclasses.
 
         Used for structural AST traversal without requiring Rope semantic methods.
+        Concrete implementations must have `_fields` attribute (tuple[str, ...]).
         """
-
-        _fields: tuple[str, ...]  # Instance attribute on concrete AST nodes
 
         lineno: int | None
         col_offset: int | None

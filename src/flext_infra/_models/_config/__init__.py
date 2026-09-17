@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from .infra import FlextInfraConfigModelsInfra
     from .make import FlextInfraConfigModelsMake
     from .provider import FlextInfraConfigModelsProvider
-    from .release import FlextInfraConfigModelsRelease
     from .render import FlextInfraConfigModelsRender
     from .scaffold import FlextInfraConfigModelsScaffold
     from .static import FlextInfraConfigModelsStatic
@@ -32,7 +31,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraConfigModelsInfra",
     "FlextInfraConfigModelsMake",
     "FlextInfraConfigModelsProvider",
-    "FlextInfraConfigModelsRelease",
     "FlextInfraConfigModelsRender",
     "FlextInfraConfigModelsScaffold",
     "FlextInfraConfigModelsStatic",
@@ -51,7 +49,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".infra": ("FlextInfraConfigModelsInfra",),
             ".make": ("FlextInfraConfigModelsMake",),
             ".provider": ("FlextInfraConfigModelsProvider",),
-            ".release": ("FlextInfraConfigModelsRelease",),
             ".render": ("FlextInfraConfigModelsRender",),
             ".scaffold": ("FlextInfraConfigModelsScaffold",),
             ".static": ("FlextInfraConfigModelsStatic",),
