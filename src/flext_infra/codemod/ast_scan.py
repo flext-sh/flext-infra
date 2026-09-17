@@ -17,7 +17,8 @@ from typing import override
 
 from flext_cli import cli
 
-from .. import FlextInfraServiceBase, p, r, t, u
+from flext_core import r
+from .. import FlextInfraServiceBase, p, t, u
 from . import FlextInfraModGateEngine, FlextInfraModTextGateEngine
 
 

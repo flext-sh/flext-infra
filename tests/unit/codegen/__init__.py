@@ -9,8 +9,6 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
-
     from ._support import CodegenTestSupport
     from .autofix_workspace_tests import TestsFlextInfraCodegenAutofixWorkspace
     from .census_models_tests import TestsFlextInfraCodegenCensusModels
@@ -183,23 +181,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraWorkspaceRootSetupSubmodules",
     "archive_root",
     "build_loose_project",
-    "c",
-    "d",
-    "e",
-    "h",
     "layout_engine",
-    "m",
-    "p",
-    "r",
-    "s",
-    "t",
-    "td",
-    "tf",
-    "tk",
-    "tm",
-    "tv",
-    "u",
-    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -329,24 +311,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".transaction_lease_tests": ("TestsFlextInfraTransactionLease",),
             ".workflow_orphan_guard_tests": ("TestsFlextInfraWorkflowOrphanGuard",),
-            "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
-            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

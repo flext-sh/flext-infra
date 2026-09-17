@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from ... import m, s
+from flext_core import s
+from ... import m
 from .._conform_gitignore import FlextInfraCodegenConformGitignoreMixin
 from .bootstrap import FlextInfraCodegenConformBootstrap
 from .execute import FlextInfraCodegenConformExecute

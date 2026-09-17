@@ -13,7 +13,8 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import Annotated, cast, override
 
-from flext_infra import m, p, r, t, u
+from flext_core import r
+from flext_infra import m, p, t, u
 
 from ..base import FlextInfraServiceBase
 from ._toml_phase_ops import FlextInfraTomlPhaseOps

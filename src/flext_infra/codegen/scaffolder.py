@@ -11,7 +11,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from .. import c, m, r, s, u
+from flext_core import r, s
+from .. import c, m, u
 from ._mise_artifacts_publication import publish_file_plan
 
 if TYPE_CHECKING:

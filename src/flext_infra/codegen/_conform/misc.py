@@ -6,7 +6,8 @@ import re
 from pathlib import Path
 from typing import Annotated
 
-from ... import c, config, m, p, r, t, u
+from flext_core import r
+from ... import c, config, m, p, t, u
 from ...workspace import FlextInfraWorkspaceDetector
 from .bootstrap import FlextInfraCodegenConformBootstrap
 from .execute import FlextInfraCodegenConformExecute

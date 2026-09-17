@@ -10,7 +10,8 @@ import tempfile
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-from .. import c, m, p, r, settings, t, u
+from flext_core import r
+from .. import c, m, p, settings, t, u
 from ..detectors import FlextInfraLspDiagnosticsDetector
 from ..gates import (
     FlextInfraPyreflyGate,

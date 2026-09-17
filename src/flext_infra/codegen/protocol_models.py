@@ -11,7 +11,8 @@ from typing import TypeAliasType, get_args, override
 
 from flext_cli import cli
 
-from .. import FlextInfraServiceBase, m, p, r, t
+from flext_core import r
+from .. import FlextInfraServiceBase, m, p, t
 from . import FlextInfraCodegenProtocolModelAnnotations as _annotations
 from ._protocol_model_render import FlextInfraCodegenProtocolModelRender
 

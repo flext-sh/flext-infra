@@ -6,7 +6,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ... import c, config, m, p, r, t, u
+from flext_core import r
+from ... import c, config, m, p, t, u
 from ...deps import FlextInfraEnsureRuffConfigPhase
 from .bootstrap import FlextInfraCodegenConformBootstrap
 from .misc import FlextInfraCodegenConformMisc

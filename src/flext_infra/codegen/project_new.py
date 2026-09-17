@@ -9,7 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from .. import c, config, m, r, s, u
+from flext_core import r, s
+from .. import c, config, m, u
 from .conform import FlextInfraCodegenConform
 
 # New file per operator live

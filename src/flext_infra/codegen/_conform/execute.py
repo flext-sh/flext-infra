@@ -5,7 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
-from ... import c, config, m, p, r, t, u
+from flext_core import r
+from ... import c, config, m, p, t, u
 from ...docs import FlextInfraDocGenerator
 from ...workspace import FlextInfraWorkspaceDetector
 from .. import (
@@ -122,7 +123,7 @@ class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
             return self._execute_managed(request)
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY:
             mise_owner = FlextInfraCodegenMiseArtifacts(
-                repository_root=request.root, apply_changes=True, check_only=False
+                repository_root=request.root
             )
             transaction = FlextInfraCodegenTransaction(mise_owner)
             return transaction.run_locked(
@@ -204,8 +205,6 @@ class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
         mode = c.Infra.CodegenConformMode(request.mode)
         mise_owner = FlextInfraCodegenMiseArtifacts(
             repository_root=request.root,
-            apply_changes=mode is c.Infra.CodegenConformMode.APPLY,
-            check_only=mode is c.Infra.CodegenConformMode.CHECK,
         )
         transaction = FlextInfraCodegenTransaction(mise_owner)
         return transaction.run_locked(
@@ -606,7 +605,7 @@ class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
         if docs_fixed_point.failure:
             return r[bool].from_failure(docs_fixed_point)
         mise = FlextInfraCodegenMiseArtifacts(
-            repository_root=request.root, apply_changes=False, check_only=True
+            repository_root=request.root
         )
         for project in session.plan.projects:
             validated = mise.validate_artifacts(project.layout.root)

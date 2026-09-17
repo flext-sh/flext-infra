@@ -7,7 +7,8 @@ from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from .. import c, config, m, r, s, t, u
+from flext_core import r, s
+from .. import c, config, m, t, u
 
 if TYPE_CHECKING:
     from .. import p
@@ -15,6 +16,10 @@ if TYPE_CHECKING:
 
 class FlextInfraCodegenMiseArtifacts(s[bool]):
     """Validate unlocked latest-version Mise declarations and launchers."""
+
+    repository_root: Annotated[
+        Path, m.Field(description="Repository whose generated Mise artifacts are validated")
+    ]
 
     config_only: Annotated[
         bool,

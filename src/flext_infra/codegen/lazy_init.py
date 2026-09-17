@@ -12,9 +12,10 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, Annotated, override
 
-from .. import c, config, m, r, s, u
+from flext_core import r, s
+from .. import c, config, m, u
 from ..workspace.rope import FlextInfraRopeWorkspace
 from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
 from .lazy_init_planner import FlextInfraCodegenLazyInitPlanner
@@ -31,6 +32,12 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
     Processes bottom-up so child packages are generated before parents.
     """
 
+    repository_root: Annotated[
+        Path, m.Field(description="Workspace whose package initializers are planned")
+    ]
+    target_module: Annotated[
+        str, m.Field(description="Optional package module restricted to one lazy-init plan")
+    ] = ""
     _modified_files: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
     _duplicate_class_names: int = u.PrivateAttr(default_factory=lambda: 0)
 

@@ -21,7 +21,7 @@
   `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport`,
   `FlextInfraCanonicalAliasGate`, `FlextInfraCensusImportDiscoveryVisitor` (+180
   more)
-- Alias exports: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
+- Alias exports: `c`, `m`, `p`, `s`, `t`, `u`
 - Public symbol exports: `CliDispatchService`, `CliRouteBase`,
   `CliRouteService`, `CodegenRoutes`, `FlextInfra`,
   `FlextInfraAbstractionBoundaryGate`,
