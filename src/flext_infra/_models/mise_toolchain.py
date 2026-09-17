@@ -389,6 +389,16 @@ class FlextInfraModelsMiseToolchain:
                 )
             ),
         ]
+        make_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Moving Make release selector (latest); mise provisions make "
+                    "so direnv always resolves a real binary rather than a stale "
+                    "host shim. Override toolchain.make_version; never pin."
+                )
+            ),
+        ]
         beads: Annotated[
             FlextInfraModelsMiseToolchain.BeadsToolSpec,
             m.Field(description="Official Beads CLI installed through mise"),

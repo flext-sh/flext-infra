@@ -110,7 +110,8 @@ jobs:
     permissions:
       contents: write # Push the release tag and create the GitHub release.
       id-token: write # Trusted publishing to the package index.
-    environment: pypi
+    # Why: trusted publishing uses this job's OIDC token; a GitHub Environment
+    # is repository-specific and must not be projected unless declared by its owner.
     env:
       {{ make.ci.variable }}: {{ make.ci.value }}
       GH_TOKEN: {% raw %}${{ github.token }}{% endraw %}

@@ -414,6 +414,9 @@ class FlextInfraConfigModelsContexts:
         go_version: Annotated[
             t.NonEmptyStr, tool_version_field("Exact Go runtime version")
         ]
+        make_version: Annotated[
+            t.NonEmptyStr, tool_version_field("Moving Make release selector, e.g. 'latest'")
+        ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")
         ]
@@ -607,6 +610,16 @@ class FlextInfraConfigModelsContexts:
         package: Annotated[
             bool, m.Field(description="Repository publishes a Python package")
         ]
+        publishes_release: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description=(
+                    "Whether this distribution explicitly opts into the generated "
+                    "release protocol"
+                ),
+            ),
+        ] = False
         editable: Annotated[
             bool, m.Field(description="Overlay repository as an editable dependency")
         ]

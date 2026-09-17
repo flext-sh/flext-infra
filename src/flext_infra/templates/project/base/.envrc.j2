@@ -23,8 +23,10 @@ PROJECT_STATE_ROOT="${PROJECT_ROOT%/*}/{{ state_directory_name }}/${PROJECT_ROOT
 # enclosing repository (workspace or linked worktree).
 PROJECT_SCRATCH="${HOME}/{{ scratch_home_relative }}/{{ state_directory_name }}${PROJECT_ROOT}/{{ scratch_namespace }}"
 mkdir -p "${PROJECT_SCRATCH}"
-if command -v chattr >/dev/null 2>&1 && [[ "$(stat -f -c %T "${PROJECT_SCRATCH}")" == "btrfs" ]]; then
-  chattr +C "${PROJECT_SCRATCH}"
+if command -v chattr >/dev/null 2>&1; then
+  if [[ "$(stat -f -c %T "${PROJECT_SCRATCH}")" == "btrfs" ]]; then
+    chattr +C "${PROJECT_SCRATCH}"
+  fi
 fi
 export PROJECT_ROOT
 export TMPDIR="${PROJECT_SCRATCH}"
@@ -38,8 +40,8 @@ export PYTHONUNBUFFERED=1
 
 # === SECTION: mise activation (managed) ===
 # Source: typed generated Mise storage contract; setup owns installation.
-if [[ -v {{ mise_bootstrap.storage_root_variable }} ]] && [[ -n "${{ mise_bootstrap.storage_root_variable }}" ]]; then
-  MISE_STORAGE_ROOT="${{ mise_bootstrap.storage_root_variable }}"
+if [[ -v {{ mise_bootstrap.storage_root_variable }} ]] && [[ -n "${{ '{' }}{{ mise_bootstrap.storage_root_variable }}{{ '}' }}" ]]; then
+  MISE_STORAGE_ROOT="${{ '{' }}{{ mise_bootstrap.storage_root_variable }}{{ '}' }}"
 elif [[ -v XDG_DATA_HOME ]] && [[ -n "${XDG_DATA_HOME}" ]]; then
   MISE_STORAGE_ROOT="${XDG_DATA_HOME}/mise"
 elif [[ -v HOME ]] && [[ -n "${HOME}" ]]; then
