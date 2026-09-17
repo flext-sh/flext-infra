@@ -1,7 +1,9 @@
 # Plan collection
 
 <!-- TOC START -->
-- No sections found
+- [Authorization](#authorization)
+- [Source revisions](#source-revisions)
+- [Publication and verification](#publication-and-verification)
 <!-- TOC END -->
 
 ## Authorization

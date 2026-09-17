@@ -117,6 +117,20 @@ class TestsFlextInfraDocsSharedIter:
         tm.that(backup in files, eq=False)
         tm.that(archived in files, eq=False)
 
+    def test_excludes_generated_crg_reports(self, tmp_path: Path) -> None:
+        """Keep graph evidence outside mutable documentation normalization."""
+        maintained = tmp_path / "docs/architecture/README.md"
+        maintained.parent.mkdir(parents=True)
+        maintained.write_text("# Architecture\n")
+        generated = tmp_path / "docs/architecture/crg-reports/architecture.md"
+        generated.parent.mkdir(parents=True)
+        generated.write_text("# CRG report\n")
+
+        files = u.Infra.iter_markdown_files(tmp_path)
+
+        tm.that(maintained in files, eq=True)
+        tm.that(generated in files, eq=False)
+
     def test_excludes_immutable_plan_collection_revisions(self, tmp_path: Path) -> None:
         docs_dir = tmp_path / "docs"
         current = docs_dir / "plans" / "current.md"

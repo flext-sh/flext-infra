@@ -561,11 +561,11 @@ class FlextInfraMiseArtifactsJournal:
                 f"generation directory path is inconsistent: {directory.path}"
             )
         candidates: set[Path] = set()
-        for state in states:
-            candidate = state.path
+        for recorded in states:
+            candidate = recorded.path
             for _part in relative.parts:
                 candidate = candidate.parent
-            if candidate / relative != state.path:
+            if candidate / relative != recorded.path:
                 return r[Path | None].fail(
                     f"generation directory path is inconsistent: {directory.path}"
                 )
