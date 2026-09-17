@@ -201,10 +201,69 @@ class TestsFlextInfraDepsModernizerPyright:
                     **pyright_rules.source_env_suppressions,
                     "root": rules.source_dir,
                     "reportPrivateUsage": rules.source_report_private_usage,
-                    "extraPaths": [rules.source_dir],
+                    "extraPaths": [rules.source_dir, "flext-core/src", "flext-api/src"],
                 }
             ],
         )
+
+    def test_root_config_includes_member_src_paths(
+        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Workspace root execution environments include every declared first-party member src path for Pylance resolution."""
+        pyright_rules = tool_config_document.tools.pyright
+        rules = pyright_rules.path_rules
+        _ = (tmp_path / "pyproject.toml").write_text(
+            "[project]\nname='workspace'\nversion='0.1.0'\n",
+            encoding="utf-8",
+        )
+        flext_core = tmp_path / "flext-core"
+        flext_api = tmp_path / "flext-api"
+        (flext_core / "src").mkdir(parents=True, exist_ok=True)
+        (flext_api / "src").mkdir(parents=True, exist_ok=True)
+        (flext_core / "src" / "flext_core").mkdir(parents=True, exist_ok=True)
+        (flext_core / "src" / "flext_core" / "__init__.py").write_text(
+            "VALUE = 1\n", encoding="utf-8"
+        )
+        (flext_api / "src" / "flext_api").mkdir(parents=True, exist_ok=True)
+        (flext_api / "src" / "flext_api" / "__init__.py").write_text(
+            "VALUE = 1\n", encoding="utf-8"
+        )
+        (tmp_path / "src").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "src" / "workspace").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "src" / "workspace" / "__init__.py").write_text(
+            "VALUE = 1\n", encoding="utf-8"
+        )
+        u.Tests.declare_workspace_projects(tmp_path, ("flext-core", "flext-api"))
+        u.Tests.write_project_beads_config(tmp_path, "workspace")
+        doc = u.Cli.toml_document()
+
+        _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
+            doc, is_root=True, repository_root=tmp_path
+        )
+
+        pyright = self._pyright_baseline(doc)
+        if pyright is None:
+            return
+        envs = u.Cli.toml_unwrap_item(pyright["executionEnvironments"])
+        tm.that(envs, is_=Sequence)
+        if not isinstance(envs, Sequence):
+            return
+        src_env = None
+        for entry in envs:
+            environment = u.Cli.toml_unwrap_item(entry)
+            if isinstance(environment, MutableMapping) and (
+                environment.get("root") == rules.source_dir
+            ):
+                src_env = environment
+                break
+        tm.that(src_env is not None, eq=True)
+        if src_env is None:
+            return
+        extra_paths: t.StrSequence = u.Cli.toml_unwrap_item(
+            src_env.get("extraPaths", ())
+        )
+        tm.that("flext-core/src" in extra_paths, eq=True)
+        tm.that("flext-api/src" in extra_paths, eq=True)
 
     def test_declared_repository_config_sets_expected_execution_environments(
         self, tool_config_document: m.Infra.ToolConfigDocument
