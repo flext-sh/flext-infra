@@ -95,11 +95,20 @@ class FlextInfraCodegenTransaction:
                 ):
                     if participant.root in self._file_leases:
                         continue
-                    lease_path = participant.root / c.Infra.JOURNAL_NAME
+                    # The lease is regenerable transaction state: it lives in
+                    # the root's ignored state directory, never beside tracked
+                    # content where it would surface as an untracked entry.
+                    lease_directory = (
+                        participant.root / c.Infra.TRANSACTION_STATE_DIRNAME
+                    )
+                    if lease_directory.is_symlink() or lease_directory.exists():
+                        files.physical_directory_identity(lease_directory).unwrap()
+                    lease_path = lease_directory / c.Infra.JOURNAL_NAME
                     u.Cli.atomic_read_binary_file_state(
                         lease_path.with_name(f"{lease_path.name}.lock"), required=False
                     ).unwrap()
                     stack.enter_context(u.Infra.codegen_transaction_lease(lease_path))
+                    files.physical_directory_identity(lease_directory).unwrap()
                     acquired.add(participant.root)
                     self._file_leases[participant.root] = participant
                     physical = files.physical_directory_identity(
