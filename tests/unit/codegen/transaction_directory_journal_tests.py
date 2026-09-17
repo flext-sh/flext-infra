@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra import m, p, u
 from flext_infra.codegen import codegen_transaction as transaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
@@ -111,6 +112,76 @@ class TestsFlextInfraTransactionDirectoryJournal:
             tm.that(
                 artifacts.unix_launcher.parent.exists(), eq=not missing_launcher_parent
             )
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("raises", [False, True])
+    def test_failed_phase_after_begin_leaves_no_prepared_journal(
+        self, tmp_path: Path, *, raises: bool
+    ) -> None:
+        """A failing or raising phase after begin recovers under the same lease."""
+        root = test_u.Tests.git_repository(tmp_path)
+        test_u.Tests.copy_tracked_mise_seeds(root)
+        owner = transaction.FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root)
+        )
+        target = root / "generated.md"
+        cause = OSError("docs preparation raised after begin")
+
+        def failing_phase(
+            _session: m.Infra.CodegenTransactionSession,
+        ) -> p.Result[bool]:
+            tm.that(target.read_bytes(), eq=b"prepared phase\n")
+            if raises:
+                raise cause
+            return r[bool].fail("docs preparation failed after begin")
+
+        def publish(scope_root: Path) -> p.Result[bool]:
+            config_path = root / ".mise.toml"
+            before = tm.ok(
+                u.Cli.atomic_read_binary_file_state(config_path, required=True)
+            )
+            config_plan = tm.ok(
+                u.Infra.planned_file(
+                    root,
+                    config_path,
+                    required=True,
+                    desired_content=before.content,
+                    desired_mode=before.mode,
+                    owner="mise",
+                )
+            )
+            generated = tm.ok(
+                u.Infra.planned_file(
+                    root,
+                    target,
+                    required=False,
+                    desired_content=b"prepared phase\n",
+                    desired_mode=before.mode,
+                    owner="conform",
+                )
+            )
+            session = tm.ok(
+                owner.begin_locked(scope_root, (config_plan,), (config_plan, generated))
+            )
+            return owner.publish_prepared_locked(session, failing_phase)
+
+        if raises:
+            with pytest.raises(OSError, match="raised after begin") as failure:
+                owner.run_locked(prepare=True, operation=publish)
+            tm.that(failure.value is cause, eq=True)
+        else:
+            tm.fail(
+                owner.run_locked(prepare=True, operation=publish),
+                has="docs preparation failed after begin",
+            )
+        identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
+        tm.that(FlextInfraMiseWorkspacePlanner.journal_path(identity).exists(), eq=False)
+        tm.that(target.exists(), eq=False)
+        tm.ok(
+            owner.run_locked(
+                prepare=True, operation=lambda scope: r[Path].ok(scope)
+            )
+        )
 
     def test_appended_phase_rejects_replaced_created_parent(
         self, tmp_path: Path

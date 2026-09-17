@@ -533,65 +533,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         session = transaction.begin_locked(scope_root, config_plans.value, plan.files)
         if session.failure:
             return r[m.Infra.CodegenResult].from_failure(session)
-        lazy_analysis = FlextInfraCodegenLazyInit(
-            repository_root=request.root
-        ).plan_files()
-        if lazy_analysis.failure:
-            aborted = transaction.abort_locked(
-                session.value, lazy_analysis.error or "lazy-init planning failed"
-            )
-            return r[m.Infra.CodegenResult].from_failure(aborted)
-        conform_paths = frozenset(f.path for f in plan.files)
-        lazy_plans = tuple(
-            p for p in lazy_analysis.value.files if p.path not in conform_paths
-        )
-        lazy_analysis_ = lazy_analysis.value.model_copy(update={"files": lazy_plans})
-        extended = transaction.append_phase_locked(
-            session.value, lazy_analysis.value.phase, lazy_plans
-        )
-        if extended.failure:
-            return r[m.Infra.CodegenResult].from_failure(extended)
-        docs_generator = FlextInfraDocGenerator(
-            repository_root=request.root,
-            projects=tuple(repository.name for repository in plan.repositories),
-            include_root=docs_include_root,
-        )
-        docs_bundle = docs_generator.prepare_bundle()
-        if docs_bundle.failure:
-            aborted = transaction.abort_locked(
-                extended.value, docs_bundle.error or "docs preparation failed"
-            )
-            return r[m.Infra.CodegenResult].from_failure(aborted)
-        docs_directories = docs_generator.required_directories(docs_bundle.value)
-        if docs_directories.failure:
-            aborted = transaction.abort_locked(
-                extended.value,
-                docs_directories.error or "docs directory planning failed",
-            )
-            return r[m.Infra.CodegenResult].from_failure(aborted)
-        with_directories = transaction.append_directories_locked(
-            extended.value, "docs", docs_directories.value
-        )
-        if with_directories.failure:
-            return r[m.Infra.CodegenResult].from_failure(with_directories)
-        docs_plans = docs_generator.plan_files(docs_bundle.value)
-        if docs_plans.failure:
-            aborted = transaction.abort_locked(
-                with_directories.value, docs_plans.error or "docs planning failed"
-            )
-            return r[m.Infra.CodegenResult].from_failure(aborted)
-        docs_analysis = m.Infra.CodegenPhaseAnalysis(
-            phase="docs", files=docs_plans.value, inputs=docs_bundle.value.source_states
-        )
-        with_docs = transaction.append_phase_locked(
-            with_directories.value, "docs", docs_plans.value
-        )
-        if with_docs.failure:
-            return r[m.Infra.CodegenResult].from_failure(with_docs)
-        published = transaction.commit_locked(
-            with_docs.value,
-            lambda: self._validate_managed_fixed_point(
-                request, with_docs.value, transaction, lazy_analysis_, docs_analysis
+        published = transaction.publish_prepared_locked(
+            session.value,
+            lambda prepared: self._publish_prepared_phases(
+                request,
+                plan,
+                transaction,
+                prepared,
+                docs_include_root=docs_include_root,
             ),
         )
         if published.failure:
@@ -607,6 +556,70 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].from_failure(allowed)
         return r[m.Infra.CodegenResult].ok(
             m.Infra.CodegenResult(plan=verified.value, written_files=published.value)
+        )
+
+    def _publish_prepared_phases(
+        self,
+        request: m.Infra.CodegenConformRequest,
+        plan: m.Infra.CodegenPlan,
+        transaction: FlextInfraCodegenTransaction,
+        session: m.Infra.CodegenTransactionSession,
+        *,
+        docs_include_root: bool,
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Append lazy-init and docs to the prepared journal, then commit it.
+
+        ``FlextInfraCodegenTransaction.publish_prepared_locked`` owns recovery:
+        every failure here is returned as-is and never aborts locally.
+        """
+        result_type = r[tuple[Path, ...]]
+        lazy_analysis = FlextInfraCodegenLazyInit(
+            repository_root=request.root
+        ).plan_files()
+        if lazy_analysis.failure:
+            return result_type.from_failure(lazy_analysis)
+        conform_paths = frozenset(f.path for f in plan.files)
+        lazy_plans = tuple(
+            p for p in lazy_analysis.value.files if p.path not in conform_paths
+        )
+        lazy_analysis_ = lazy_analysis.value.model_copy(update={"files": lazy_plans})
+        extended = transaction.append_phase_locked(
+            session, lazy_analysis.value.phase, lazy_plans
+        )
+        if extended.failure:
+            return result_type.from_failure(extended)
+        docs_generator = FlextInfraDocGenerator(
+            repository_root=request.root,
+            projects=tuple(repository.name for repository in plan.repositories),
+            include_root=docs_include_root,
+        )
+        docs_bundle = docs_generator.prepare_bundle()
+        if docs_bundle.failure:
+            return result_type.from_failure(docs_bundle)
+        docs_directories = docs_generator.required_directories(docs_bundle.value)
+        if docs_directories.failure:
+            return result_type.from_failure(docs_directories)
+        with_directories = transaction.append_directories_locked(
+            extended.value, "docs", docs_directories.value
+        )
+        if with_directories.failure:
+            return result_type.from_failure(with_directories)
+        docs_plans = docs_generator.plan_files(docs_bundle.value)
+        if docs_plans.failure:
+            return result_type.from_failure(docs_plans)
+        docs_analysis = m.Infra.CodegenPhaseAnalysis(
+            phase="docs", files=docs_plans.value, inputs=docs_bundle.value.source_states
+        )
+        with_docs = transaction.append_phase_locked(
+            with_directories.value, "docs", docs_plans.value
+        )
+        if with_docs.failure:
+            return result_type.from_failure(with_docs)
+        return transaction.commit_locked(
+            with_docs.value,
+            lambda: self._validate_managed_fixed_point(
+                request, with_docs.value, transaction, lazy_analysis_, docs_analysis
+            ),
         )
 
     def _allow_direnv_after_apply(

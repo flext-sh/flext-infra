@@ -833,6 +833,56 @@ class FlextInfraCodegenTransaction:
         """Recover the complete prepared transaction and preserve the cause."""
         return self._recover_failure(session.plan.layout, failure)
 
+    def publish_prepared_locked[T](
+        self,
+        session: m.Infra.CodegenTransactionSession,
+        operation: Callable[[m.Infra.CodegenTransactionSession], p.Result[T]],
+    ) -> p.Result[T]:
+        """Run every phase after ``begin_locked`` without stranding its journal.
+
+        A phase that fails or raises after the journal was prepared recovers
+        that journal here, while the lease is still held, and keeps the cause:
+        a failure is returned unchanged and an exception escapes unchanged.
+        A failure whose owner already attempted recovery (it carries
+        ``recovery_error``) is returned as-is, never recovered twice.
+        """
+        layout = session.plan.layout
+        try:
+            outcome = operation(session)
+        except Exception as exc:
+            recovered = self._recover_prepared(layout)
+            if recovered.failure:
+                exc.add_note(f"generation recovery failed: {recovered.error}")
+            raise
+        if outcome.success or (
+            outcome.error_data is not None and "recovery_error" in outcome.error_data
+        ):
+            return outcome
+        recovered = self._recover_prepared(layout)
+        if recovered.failure:
+            return r[T].fail(
+                outcome.error or "generation phase failed",
+                error_data={
+                    **(outcome.error_data or {}),
+                    "recovery_error": recovered.error,
+                },
+            )
+        return outcome
+
+    def _recover_prepared(
+        self, layout: m.Infra.MiseToolchainWorkspaceLayout
+    ) -> p.Result[bool]:
+        """Recover a journal that is still on disk; an absent journal owns nothing."""
+        observed = state.journal_state(layout)
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        snapshot = state.journal_snapshot(observed.value)
+        if snapshot is None:
+            return r[bool].fail("generation journal state is unavailable")
+        if snapshot.content is None:
+            return r[bool].ok(False)
+        return self._recover(layout)
+
     @staticmethod
     def _phase_sources(
         phase: str, plans: t.VariadicTuple[m.Infra.CodegenFilePlan]
