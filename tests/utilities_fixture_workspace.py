@@ -113,6 +113,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         root_packages: t.StrSequence = (),
         extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec] = (),
         gascity_enabled: bool | None = None,
+        role: c.Infra.MakeProfile = c.Infra.MakeProfile.STANDALONE,
     ) -> Path:
         """Write the declared ``config/workspace.yaml`` of one standalone repository.
 
@@ -129,7 +130,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         participation; ``None`` writes no overlay at all (the fleet default).
         """
         repository = TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
-            name, role=c.Infra.MakeProfile.STANDALONE
+            name, role=role
         )
         if extra_verbs:
             repository = repository.model_copy(update={"extra_verbs": extra_verbs})

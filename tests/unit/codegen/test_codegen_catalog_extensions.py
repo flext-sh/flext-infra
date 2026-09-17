@@ -97,6 +97,8 @@ class TestsFlextInfraCodegenCatalogExtensions:
         )
         mise_template = template.with_name(".mise.toml.j2").read_text(encoding="utf-8")
         tm.that(mise_template, has='direnv = "{{ direnv_version }}"')
+        tm.that(mise_template, has='go = "{{ go_version }}"')
+        tm.that(mise_template, has='make = "{{ make_version }}"')
         tm.that(mise_template, lacks="credential_command")
         tm.that(mise_template, lacks="minimum_release_age")
         # S1 (operator law 2026-09-14): gen has one always-apply recipe; the

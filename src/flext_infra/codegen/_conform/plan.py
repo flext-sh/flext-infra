@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from ... import c, config, m, p, r, t, u
 from ...deps import FlextInfraPyprojectModernizer
@@ -15,7 +15,79 @@ from ...workspace.environment_contracts import FlextInfraWorkspaceEnvironmentCon
 from .misc import FlextInfraCodegenConformMisc
 
 
-class FlextInfraCodegenConformPlan:
+class _ConformPlanRoles:
+    if TYPE_CHECKING:
+
+        def _surface_contract(
+            self, surface: c.Infra.CodegenConformSurface
+        ) -> m.Infra.CodegenConformSurfaceContract: ...
+        def retired_projection_plans(
+            self, root: Path, profile: c.Infra.MakeProfile
+        ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]: ...
+        def _uv_environment_plan(
+            self,
+            *,
+            root: Path,
+            repository_root: Path,
+            target: m.Infra.RepositoryConformTarget,
+            workspace: m.Infra.WorkspaceSpec,
+            config: m.Infra.CodegenConfigSpec,
+        ) -> m.Infra.UvEnvironmentPlan: ...
+        def _scaffold_python_dirs(
+            self,
+            entries: t.SequenceOf[p.Infra.TemplateEntrySpec],
+            profile: c.Infra.MakeProfile,
+        ) -> t.StrSequence: ...
+        def _project_render_context(
+            self,
+            repository: m.Infra.RepositoryRef,
+            target: m.Infra.RepositoryConformTarget,
+            workspace: m.Infra.WorkspaceSpec,
+            codegen: m.Infra.CodegenConfigSpec,
+            *,
+            tooling_runtime: m.Infra.ToolingRuntimeContext,
+            repository_root: Path,
+            managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
+            use_committed_artifacts: bool = True,
+        ) -> p.Result[m.Infra.ProjectRenderContext]: ...
+        def _rendered_artifact_source(
+            self,
+            *,
+            templates_root: Path,
+            template_relpath: Path,
+            failure_prefix: str,
+            dist: str,
+            repository: m.Infra.RepositoryRef,
+            repository_root: Path,
+            target: m.Infra.RepositoryConformTarget,
+            workspace: m.Infra.WorkspaceSpec,
+            codegen: m.Infra.CodegenConfigSpec,
+            destination: str,
+            tooling_runtime: m.Infra.ToolingRuntimeContext,
+            project_context: m.Infra.ProjectRenderContext | None,
+            managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
+        ) -> p.Result[str]: ...
+        def compose_project_artifact(
+            self,
+            repository_root: Path,
+            destination: str,
+            rendered: str,
+            *,
+            managed_artifacts: m.Infra.ProjectManagedArtifactsSnapshot | None = None,
+            workspace: m.Infra.WorkspaceSpec | None = None,
+            codegen: m.Infra.CodegenConfigSpec | None = None,
+            repository: m.Infra.RepositoryRef | None = None,
+            target: m.Infra.RepositoryConformTarget | None = None,
+        ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
+        def validate_custom_make(
+            self, content: str, policy: m.Infra.CustomHandlerPolicy
+        ) -> p.Result[bool]: ...
+        def _absent_file_plan(
+            self, root: Path, path: Path
+        ) -> p.Result[m.Infra.CodegenFilePlan]: ...
+
+
+class FlextInfraCodegenConformPlan(_ConformPlanRoles):
     """Conformance planning across scaffold and existing repositories."""
 
     def plan(
@@ -295,6 +367,7 @@ class FlextInfraCodegenConformPlan:
             )
             for entry in codegen.templates.entries
             if profile in entry.profiles
+            and (not entry.requires_release_protocol or repository.publishes_release)
             and (
                 contract.destinations is None
                 or entry.destination in contract.destinations
@@ -548,9 +621,11 @@ class FlextInfraCodegenConformPlan:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"managed destination escapes repository root: {entry.destination}"
                 )
-            if profile not in entry.profiles:
-                # Why: profile-excluded managed workflows must not keep firing
-                # (ci-matrix on standalone). Prune the orphan projection.
+            if profile not in entry.profiles or (
+                entry.requires_release_protocol and not repository.publishes_release
+            ):
+                # Profile- and capability-excluded workflows must not keep firing.
+                # Conform, rather than a user, retires the generated orphan.
                 if (
                     managed.path.parts[:2] == (".github", "workflows")
                     and path.is_file()

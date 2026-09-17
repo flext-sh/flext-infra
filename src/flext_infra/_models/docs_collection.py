@@ -3,21 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
 from flext_cli import m as cli_m
 
-from flext_core import m
+from flext_core import m, u
 from flext_infra import t
 
-from .config import FlextInfraConfigModels
-
-_PATH_FROM_STR = m.BeforeValidator(
-    lambda value: Path(value) if isinstance(value, str) else value
-)
-_TUPLE_FROM_LIST = m.BeforeValidator(
-    lambda value: tuple(value) if isinstance(value, list) else value
-)
+from ._config.base import FlextInfraConfigModels
 
 
 class FlextInfraModelsDocsCollection:
@@ -42,7 +35,11 @@ class FlextInfraModelsDocsCollection:
         ]
         provider: t.NonEmptyStr = m.Field(description="Declared source provider")
         root: Annotated[
-            Path, _PATH_FROM_STR, m.Field(description="Declared physical source root")
+            Path,
+            m.BeforeValidator(
+                lambda value: Path(value) if isinstance(value, str) else value
+            ),
+            m.Field(description="Declared physical source root"),
         ]
         adapter: Literal["files", "private-inventory"] = m.Field(
             description="Selected deterministic source adapter"
@@ -53,17 +50,23 @@ class FlextInfraModelsDocsCollection:
         )
         plan_globs: Annotated[
             tuple[str, ...],
-            _TUPLE_FROM_LIST,
+            m.BeforeValidator(
+                lambda value: tuple(value) if isinstance(value, list) else value
+            ),
             m.Field(min_length=1, description="Explicit plan discovery patterns"),
         ]
         exclude_globs: Annotated[
             tuple[str, ...],
-            _TUPLE_FROM_LIST,
+            m.BeforeValidator(
+                lambda value: tuple(value) if isinstance(value, list) else value
+            ),
             m.Field(description="Explicit source exclusions"),
         ] = ()
         updated_fields: Annotated[
             tuple[str, ...],
-            _TUPLE_FROM_LIST,
+            m.BeforeValidator(
+                lambda value: tuple(value) if isinstance(value, list) else value
+            ),
             m.Field(
                 description="Source-owned substantive update fields in priority order"
             ),
@@ -78,24 +81,40 @@ class FlextInfraModelsDocsCollection:
     class PlanCollectionConfig(m.ContractModel):
         """Repository-owned associations; projection is separately authorized."""
 
+        enabled: bool = m.Field(
+            description="Explicit authorization for plan source publication"
+        )
         canonical_dir: Annotated[
             Path,
-            _PATH_FROM_STR,
+            m.BeforeValidator(
+                lambda value: Path(value) if isinstance(value, str) else value
+            ),
             m.Field(description="Repository-relative canonical plan destination"),
         ]
         projection_root: Annotated[
             Path | None,
-            _PATH_FROM_STR,
+            m.BeforeValidator(
+                lambda value: Path(value) if isinstance(value, str) else value
+            ),
             m.Field(description="Separately authorized absolute projection owner"),
         ] = None
         sources: Annotated[
             tuple[FlextInfraModelsDocsCollection.PlanCollectionSource, ...],
-            _TUPLE_FROM_LIST,
-            m.Field(
-                min_length=1,
-                description="Complete explicitly associated source inventory",
+            m.BeforeValidator(
+                lambda value: tuple(value) if isinstance(value, list) else value
             ),
-        ]
+            m.Field(description="Complete explicitly associated source inventory"),
+        ] = ()
+
+        @u.model_validator(mode="after")
+        def _authorization_matches_sources(self) -> Self:
+            if self.enabled and not self.sources:
+                msg = "enabled plan collection requires at least one source"
+                raise ValueError(msg)
+            if not self.enabled and (self.sources or self.projection_root is not None):
+                msg = "disabled plan collection cannot declare sources or projection"
+                raise ValueError(msg)
+            return self
 
     class PlanCollectionRevision(m.ContractModel):
         """Immutable source revision, including companion artifact digests."""
@@ -196,6 +215,9 @@ class FlextInfraModelsDocsCollection:
         )
         required_directories: tuple[Path, ...] = m.Field(
             description="Required destination parent chains"
+        )
+        prunable_directories: tuple[Path, ...] = m.Field(
+            default=(), description="Owned empty directories removed after publication"
         )
         revisions: tuple[FlextInfraModelsDocsCollection.PlanCollectionRevision, ...] = (
             m.Field(description="Latest newly observed revision per plan")

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ... import c, config, m, p, r, t, u
 from ...deps import FlextInfraEnsureRuffConfigPhase
@@ -11,7 +12,37 @@ from .bootstrap import FlextInfraCodegenConformBootstrap
 from .misc import FlextInfraCodegenConformMisc
 
 
-class FlextInfraCodegenConformRender:
+class _ConformRenderRoles:
+    if TYPE_CHECKING:
+
+        def _gitignore_sections(
+            self,
+            codegen: m.Infra.CodegenConfigSpec,
+            *,
+            profile: c.Infra.MakeProfile,
+            project_name: str | None = None,
+            workspace: m.Infra.WorkspaceSpec | None = None,
+            project_patterns: t.StrSequence = (),
+        ) -> t.VariadicTuple[m.Infra.ScaffoldGitignoreSectionSpec]: ...
+        def _mise_bootstrap_environment(
+            self,
+        ) -> m.Infra.MiseBootstrapEnvironmentSpec: ...
+        def _repository_provider(
+            self, repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec
+        ) -> p.Result[m.Infra.ProviderSpec]: ...
+        def _repository_root_rel(self, workspace: m.Infra.WorkspaceSpec) -> str: ...
+        def _merge_extra_verbs(
+            self,
+            declared: t.VariadicTuple[m.Infra.MakeVerbSpec],
+            discovered: t.VariadicTuple[m.Infra.MakeVerbSpec],
+            canonical_names: frozenset[str],
+        ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]: ...
+        def _discover_script_verbs(
+            self, repository_root: Path
+        ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]: ...
+
+
+class FlextInfraCodegenConformRender(_ConformRenderRoles):
     """Artifact composition and render context projection."""
 
     @staticmethod
@@ -801,6 +832,7 @@ class FlextInfraCodegenConformRender:
                 scc_version=codegen.toolchain.scc_version,
                 kubeconform_version=codegen.toolchain.kubeconform_version,
                 go_version=codegen.toolchain.go_version,
+                make_version=codegen.toolchain.make_version,
                 author_name=project.author_name,
                 author_email=project.author_email,
                 repository=project.homepage,

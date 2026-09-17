@@ -137,24 +137,15 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         current_text = FlextInfraModTextGateEngine.scan(
             root, fix=False, validate_receipts=True
         ).unwrap()
-        seen_text: dict[tuple[tuple[str, str, int, str, str | None], ...], int] = {}
+        seen_text: dict[tuple[tuple[str, str, int, str], ...], int] = {}
         iteration = 0
         while current_text.findings:
             iteration += 1
-            fingerprint = tuple(
-                sorted(
-                    (
-                        finding.rule_id,
-                        finding.file.as_posix(),
-                        finding.line,
-                        finding.text,
-                        finding.replacement,
-                    )
-                    for finding in current_text.entries
-                )
+            text_fp: tuple[tuple[str, str, int, str], ...] = (
+                FlextInfraCodemodBatchApply._text_fingerprint(current_text.entries)
             )
-            if fingerprint in seen_text:
-                prev_iter = seen_text[fingerprint]
+            if text_fp in seen_text:
+                prev_iter = seen_text[text_fp]
                 stalled = {
                     finding.rule_id
                     for finding in current_text.entries
@@ -166,7 +157,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     f"{', '.join(sorted(stalled)) or 'none'}; changes retained "
                     "for mandatory owner repair"
                 )
-            seen_text[fingerprint] = iteration
+            seen_text[text_fp] = iteration
             cli.display_text(
                 f"mod: text phase iteration {iteration} — "
                 f"{current_text.findings} sed-by-list finding(s), "
@@ -188,6 +179,20 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         FlextInfraModGateEngine.validate(root).unwrap()
         cli.display_text("mod: AST fixed point verified with zero findings")
         return r[t.Cli.ResultValue].ok(True)
+
+    @staticmethod
+    def _text_fingerprint(
+        entries: tuple[m.Infra.ModTextFinding, ...],
+    ) -> tuple[tuple[str, str, int, str], ...]:
+        """Build a sorted fingerprint of all text findings."""
+        result: list[tuple[str, str, int, str]] = []
+        for entry in entries:
+            rule_id: str = entry.rule_id
+            file_path: str = entry.file.as_posix()
+            line_no: int = entry.line
+            text_val: str = entry.text
+            result.append((rule_id, file_path, line_no, text_val))
+        return tuple(sorted(result))
 
     @staticmethod
     def _validate_fix_match(

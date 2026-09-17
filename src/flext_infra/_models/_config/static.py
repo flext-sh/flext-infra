@@ -96,7 +96,7 @@ class FlextInfraConfigModelsStatic:
         | StaticBareExceptRule
         | StaticAnnotatedStringRule
         | StaticCommentRule,
-        m.Field(discriminator="operator"),
+        m.Discriminator("operator"),
     ]
 
     class StaticEnforcementSpec(FlextInfraConfigModelsContract.ConfigContract):

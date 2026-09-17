@@ -35,8 +35,8 @@ locked = {{ "true" if mise_locked else "false" }}
 # Source: config:python_version, config:codegen.scaffold.project.dev native toolchain floors
 #         (kubectl_version, helm_version, kind_version, taplo_version, ast_grep_version,
 #          gitleaks_version, scc_selector/scc_version, kubeconform_version, qlty_selector/qlty_version,
-#          node_version, jscpd_selector/jscpd_version, waza_selector/waza_version,
-#          beads (selector/track/version/prerelease/branch))
+#          node_version, jscpd_selector/jscpd_version, waza_version, go_version, make_version,
+#          beads (selector/track/version/prerelease/branch), gascity (selector/track/version/prerelease/branch))
 [tools]
 python = "{{ python_version }}"
 uv = "{{ uv_version }}"
@@ -54,6 +54,7 @@ node = "{{ node_version }}"
 "{{ jscpd_selector }}" = "{{ jscpd_version }}"
 "{{ waza_selector }}" = "{{ waza_version }}"
 go = "{{ go_version }}"
+make = "{{ make_version }}"
 [tools."{{ qlty_selector }}"]
 version = "{{ qlty_version }}"
 github_attestations = false

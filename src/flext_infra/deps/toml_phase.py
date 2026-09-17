@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import MutableMapping
-from typing import Annotated, override
+from typing import Annotated, cast, override
 
 from flext_infra import m, p, r, t, u
 
@@ -60,13 +60,16 @@ class FlextInfraTomlPhaseService(
     @override
     def execute(self) -> p.Result[t.StrSequence]:
         """Apply all phases and return one flat change list."""
-        return r[t.StrSequence].create_from_callable(
-            lambda: tuple(
-                change
-                for phase in self.phases
-                for change in self._apply_phase(phase, parent_path=())
+        return cast(
+            "p.Result[t.StrSequence]",
+            r[t.StrSequence].create_from_callable(
+                lambda: tuple(
+                    change
+                    for phase in self.phases
+                    for change in self._apply_phase(phase, parent_path=())
+                ),
+                error_code="toml_phase_execute",
             ),
-            error_code="toml_phase_execute",
         )
 
     def apply(self) -> t.StrSequence:

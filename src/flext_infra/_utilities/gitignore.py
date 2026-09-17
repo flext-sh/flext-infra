@@ -62,7 +62,7 @@ class FlextInfraUtilitiesGitignore:
                 return r[str].from_failure(resolved)
             project_patterns = resolved.value.artifacts.Gitignore.patterns
         context = m.Infra.GitignoreRenderSpec(
-            gitignore_sections=FlextInfraUtilitiesGitignore._gitignore_sections(
+            gitignore_sections=FlextInfraUtilitiesGitignore.gitignore_sections(
                 codegen,
                 profile=profile,
                 project_name=project_name,
@@ -73,7 +73,7 @@ class FlextInfraUtilitiesGitignore:
         return cli_u.Cli.template_render(templates_root / entry.source, context)
 
     @staticmethod
-    def _gitignore_sections(
+    def gitignore_sections(
         codegen: m.Infra.CodegenConfigSpec,
         *,
         profile: c.Infra.MakeProfile,

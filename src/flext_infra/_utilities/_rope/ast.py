@@ -22,7 +22,7 @@ class FlextInfraUtilitiesRopeAnalysisAst(FlextInfraUtilitiesRopeAnalysisSource):
     """AST structural introspection above the node primitives."""
 
     @staticmethod
-    def decorator_names(pyfunction: object) -> t.StrSequence:
+    def decorator_names(pyfunction: t.Infra.RopePyObject) -> t.StrSequence:
         """Extract decorator names from a rope ``PyFunction`` (no ast import)."""
         decorators = getattr(pyfunction, "decorators", None) or ()
         names: list[str] = []
@@ -38,7 +38,9 @@ class FlextInfraUtilitiesRopeAnalysisAst(FlextInfraUtilitiesRopeAnalysisSource):
         return names
 
     @staticmethod
-    def first_decorator_line(pyfunction: object, *, default_line: int) -> int:
+    def first_decorator_line(
+        pyfunction: t.Infra.RopePyObject, *, default_line: int
+    ) -> int:
         """Return the lowest line number among ``pyfunction``'s decorators."""
         decorators = getattr(pyfunction, "decorators", None) or ()
         candidate_lines = [
@@ -93,7 +95,7 @@ class FlextInfraUtilitiesRopeAnalysisAst(FlextInfraUtilitiesRopeAnalysisSource):
             current = parent
 
     @staticmethod
-    def line_col_range(node: object) -> t.Quad[int, int, int, int] | None:
+    def line_col_range(node: t.Infra.RopePyObject) -> t.Quad[int, int, int, int] | None:
         """Return ``(lineno, col_offset, end_lineno, end_col_offset)`` for an AST node."""
         lineno = getattr(node, "lineno", None)
         col_offset = getattr(node, "col_offset", None)

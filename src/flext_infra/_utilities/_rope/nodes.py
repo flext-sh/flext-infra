@@ -17,12 +17,12 @@ class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
     """AST node primitives: kinds, names, walking, and class info."""
 
     @staticmethod
-    def node_kind(node: object) -> str:
+    def node_kind(node: t.Infra.RopePyObject) -> str:
         """Return an AST node's class name (e.g. ``"AnnAssign"``) without importing ast."""
         return type(node).__name__
 
     @staticmethod
-    def name_of(node: object) -> str:
+    def name_of(node: t.Infra.RopePyObject) -> str:
         """Return ``node.id`` (Name) or ``node.attr`` (Attribute) or ``""``."""
         identifier = getattr(node, "id", None)
         if isinstance(identifier, str) and identifier:
@@ -33,15 +33,17 @@ class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
         return ""
 
     @staticmethod
-    def walk_ast_nodes(root: object) -> t.SequenceOf[object]:
+    def walk_ast_nodes(
+        root: t.Infra.RopePyObject,
+    ) -> t.SequenceOf[t.Infra.RopePyObject]:
         """Recursively yield every AST node reachable from ``root`` via ``_fields``.
 
         Equivalent to ``ast.walk`` but uses only public attribute access on
         rope-provided AST objects, so no ``import ast`` is needed at the
         consumer layer.
         """
-        collected: list[object] = []
-        stack: list[object] = [root]
+        collected: list[t.Infra.RopePyObject] = []
+        stack: list[t.Infra.RopePyObject] = [root]
         while stack:
             node = stack.pop()
             collected.append(node)
@@ -113,7 +115,7 @@ class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
         )
 
     @staticmethod
-    def _class_info_from_ast(node: object) -> m.Infra.ClassInfo | None:
+    def _class_info_from_ast(node: t.Infra.RopePyObject) -> m.Infra.ClassInfo | None:
         """Return ClassInfo for one top-level ClassDef AST node."""
         if FlextInfraUtilitiesRopeAnalysisNodes.node_kind(node) != "ClassDef":
             return None
@@ -139,12 +141,12 @@ class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
         )
 
     @staticmethod
-    def class_base_name(node: object) -> str:
+    def class_base_name(node: t.Infra.RopePyObject) -> str:
         """Return terminal base name from an AST base expression."""
         return FlextInfraUtilitiesRopeAnalysisNodes._class_base_name(node)
 
     @staticmethod
-    def _class_base_name(node: object) -> str:
+    def _class_base_name(node: t.Infra.RopePyObject) -> str:
         """Return terminal base name from an AST base expression."""
         for attr_name in ("id", "attr", "name"):
             value = getattr(node, attr_name, "")
