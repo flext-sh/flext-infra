@@ -228,24 +228,6 @@ class FlextInfraConfigModelsContexts:
                 )
             ),
         ] = ""
-        dependency_cooldown_exclusions: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Fleet-wide package distributions frozen at their current floor "
-                    "by the dependency cooldown policy"
-                )
-            ),
-        ] = ()
-        dependency_cooldown_overrides: Annotated[
-            t.MappingKV[str, str],
-            m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
-                description=(
-                    "Per-package cooldown cutoff dates overriding the fleet default"
-                ),
-            ),
-        ]
 
     class ProjectRenderContext(MakeRenderContext):
         """Complete typed input consumed by project scaffold templates."""
@@ -668,26 +650,6 @@ class FlextInfraConfigModelsContexts:
                 )
             ),
         ] = None
-        dependency_cooldown_exclusions: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                default=(),
-                description=(
-                    "Repository-specific package distributions frozen at their "
-                    "current floor by the dependency cooldown policy"
-                ),
-            ),
-        ] = ()
-        dependency_cooldown_overrides: Annotated[
-            t.MappingKV[str, str],
-            m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
-                description=(
-                    "Repository-specific per-package cooldown override cutoff dates; "
-                    "maps distribution name to a PEP 440 version cutoff string"
-                ),
-            ),
-        ]
 
     class RepositoryConformTarget(FlextInfraConfigModelsContract.ConfigContract):
         """Runtime-derived conformance identity for one repository."""

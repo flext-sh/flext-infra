@@ -24,21 +24,6 @@ class FlextInfraCodegenConformBootstrap:
         return repository.uv_link_mode or toolchain.uv_link_mode
 
     @staticmethod
-    def _dependency_cooldown_policy(
-        repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
-    ) -> tuple[tuple[str, ...], MutableMapping[str, str]]:
-        """Compose fleet defaults with the repository's narrower policy."""
-        exclusions = dict.fromkeys(toolchain.dependency_cooldown_exclusions)
-        overrides = dict(toolchain.dependency_cooldown_overrides)
-        for package in repository.dependency_cooldown_exclusions:
-            overrides.pop(package, None)
-            exclusions[package] = None
-        for package, cutoff in repository.dependency_cooldown_overrides.items():
-            exclusions.pop(package, None)
-            overrides[package] = cutoff
-        return tuple(exclusions), overrides
-
-    @staticmethod
     def _discover_script_verbs(
         repository_root: Path,
     ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]:

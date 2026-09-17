@@ -137,7 +137,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         current_text = FlextInfraModTextGateEngine.scan(
             root, fix=False, validate_receipts=True
         ).unwrap()
-        seen_text: dict[tuple[tuple[str, str, int, str | None, str | None], ...], int] = {}
+        seen_text: dict[tuple[tuple[str, str, int, str, str | None], ...], int] = {}
         iteration = 0
         while current_text.findings:
             iteration += 1

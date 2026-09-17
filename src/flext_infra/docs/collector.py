@@ -41,7 +41,12 @@ class FlextInfraDocCollector:
         parsed = u.Cli.yaml_parse(snapshot.content.decode("utf-8"))
         if parsed.failure:
             return r[bool].from_failure(parsed)
-        configuration = m.Infra.PlanCollectionConfig.model_validate(parsed.value)
+        validated = u.validate_value(
+            m.Infra.PlanCollectionConfig, parsed.value, strict=False
+        )
+        if validated.failure:
+            return r[bool].from_failure(validated)
+        configuration = validated.value
         roots = {"@canonical": root}
         if configuration.projection_root is not None:
             roots["@projection"] = configuration.projection_root.expanduser()

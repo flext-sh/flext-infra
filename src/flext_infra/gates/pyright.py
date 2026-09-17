@@ -87,10 +87,9 @@ class FlextInfraPyrightGate(FlextInfraGate):
                 result.stdout, strict=True
             )
         except c.ValidationError as exc:
-            failed = e.fail_validation(error=exc)
             return False, (
                 self._malformed_report_issue(
-                    str(failed.error), tool=c.Infra.PYRIGHT, file=str(project_dir)
+                    str(e.fail_validation(error=exc).error), tool=c.Infra.PYRIGHT, file=str(project_dir)
                 ),
             )
         issues: t.MutableSequenceOf[m.Infra.Issue] = [

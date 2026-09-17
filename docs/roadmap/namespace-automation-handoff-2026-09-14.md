@@ -24,6 +24,14 @@
 - [9. Limite de encerramento deste handoff](#9-limite-de-encerramento-deste-handoff)
 <!-- TOC END -->
 
+> **Historical handoff.** This document preserves evidence from 2026-09-14/15;
+> it is not the current execution queue. Resume from Gas City Bead
+> `flext-5fxu6.4` and its active children, including the documentation slice
+> `flext-5fxu6.4.28`, then apply the newest root `AGENTS.md`, ADRs, and
+> branch-matched `flext-law`. Historical authorization for administrative merge
+> or acceptance with red custom gates is superseded: current work requires the
+> normal reviewed no-ff landing path and the active Bead's zero-warning gates.
+
 **Atualização da retomada:** o operador passou a exigir estabilização e PRs
 integrados, mantendo este handoff disponível durante o trabalho. O encerramento
 somente como WIP descrito no registro original foi superado. Em `check`, o aceite

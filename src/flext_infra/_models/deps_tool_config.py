@@ -19,6 +19,30 @@ class FlextInfraModelsDepsToolSettings(
 ):
     """Models for tool configuration loaded from YAML."""
 
+    class ModPhasesConfig(m.ArbitraryTypesModel):
+        """Component selection for ``make mod`` phases (toggles are data)."""
+
+        import_alignment: Annotated[
+            bool,
+            m.Field(
+                alias="import-alignment",
+                default=True,
+                description=("Run the rope-native import-alignment phase of make mod."),
+            ),
+        ] = True
+
+    class ModConfig(m.ArbitraryTypesModel):
+        """Declarative policy for the unified modernize verb ``mod``."""
+
+        @staticmethod
+        def _default_phases() -> FlextInfraModelsDepsToolSettings.ModPhasesConfig:
+            return FlextInfraModelsDepsToolSettings.ModPhasesConfig()
+
+        phases: FlextInfraModelsDepsToolSettings.ModPhasesConfig = m.Field(
+            default_factory=_default_phases,
+            description="Phase toggles read from config/tooling.yaml.",
+        )
+
     class DeptryConfig(m.ArbitraryTypesModel):
         """Deptry namespace and dependency-group policy."""
 
@@ -686,6 +710,15 @@ class FlextInfraModelsDepsToolSettings(
         )
         lazy_init: FlextInfraModelsDepsToolSettings.LazyInitConfig = m.Field(
             alias="lazy-init", description="Declarative lazy-init generation policy."
+        )
+
+        @staticmethod
+        def _default_mod() -> FlextInfraModelsDepsToolSettings.ModConfig:
+            return FlextInfraModelsDepsToolSettings.ModConfig()
+
+        mod: FlextInfraModelsDepsToolSettings.ModConfig = m.Field(
+            default_factory=_default_mod,
+            description="Declarative make-mod phase policy.",
         )
 
     class ToolingScalarSetting(m.ArbitraryTypesModel):

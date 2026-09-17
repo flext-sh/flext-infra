@@ -40,9 +40,7 @@ class TestsFlextInfraInfraUtilities:
         root = Path(__file__).parents[2]
         rule = (
             root
-            / "src"
-            / "flext_infra"
-            / c.Infra.CODEMOD_RESOURCE_DIRNAME
+            / c.Infra.CODEMOD_CONFIG_RELPATH.parent
             / c.Cli.RULES_DIR_NAME
             / "config-dict-type-from-typings.yml"
         )
