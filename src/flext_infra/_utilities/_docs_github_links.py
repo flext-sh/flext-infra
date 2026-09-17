@@ -11,12 +11,8 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import m, t
-
-if TYPE_CHECKING:
-    from flext_infra import config
+from flext_infra import FlextInfraConfig, config, m, t
 
 _GITHUB_BLOB_TREE_RE = re.compile(
     r"^https://github\.com/"
@@ -31,9 +27,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
     """Governed GitHub URL helpers for docs audit and fix."""
 
     @staticmethod
-    def _config() -> config.FlextInfraConfig:
-        from flext_infra import config
-
+    def _config() -> FlextInfraConfig:
         return config
 
     @staticmethod
@@ -60,7 +54,12 @@ class FlextInfraUtilitiesDocsGithubLinks:
         if organization == "flext-sh" and repository.startswith("flext-"):
             for repo in FlextInfraUtilitiesDocsGithubLinks.docs_github_repos():
                 if repo.organization == "flext-sh" and repo.repository == "flext":
-                    return repo.model_copy(update={"repository": repository})
+                    return m.Infra.DocsGithubRepoSpec(
+                        organization=repo.organization,
+                        repository=repository,
+                        branch=repo.branch,
+                        local_checkout=repo.local_checkout,
+                    )
         return None
 
     @staticmethod
