@@ -22,8 +22,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_core import r
-from flext_core import s
+from flext_core import r, s
 from flext_infra import c, m, u
 
 if TYPE_CHECKING:

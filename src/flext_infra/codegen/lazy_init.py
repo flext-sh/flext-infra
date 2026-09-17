@@ -15,6 +15,7 @@ from time import perf_counter
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r, s
+
 from .. import c, config, m, u
 from ..workspace.rope import FlextInfraRopeWorkspace
 from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin

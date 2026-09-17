@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r, s
+
 from .. import c, config, m, u
 from .conform import FlextInfraCodegenConform
 

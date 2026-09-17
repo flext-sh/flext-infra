@@ -21,8 +21,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_core import r
-from flext_core import s
+from flext_core import r, s
 from flext_infra import m, u
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 

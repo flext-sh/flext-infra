@@ -11,6 +11,7 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from flext_core import r
+
 from .. import c, m, p, settings, t, u
 from ..detectors import FlextInfraLspDiagnosticsDetector
 from ..gates import (

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, override
 from flext_cli import cli
 
 from flext_core import r
+
 from .. import FlextInfraServiceBase, c, m, p, t, u
 from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles

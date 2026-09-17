@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_core import r, s
+
 from .. import c, u
 
 if TYPE_CHECKING:

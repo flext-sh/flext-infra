@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
+
 from .. import c, m, u
 from ..workspace import FlextInfraWorkspaceDetector
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files

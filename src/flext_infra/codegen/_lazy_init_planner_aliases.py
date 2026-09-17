@@ -58,6 +58,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         surface: str,
     ) -> None:
         """Expose only facade aliases declared by modules in this directory."""
+        del surface
         letter_module = {
             letter: filename.removesuffix(".py")
             for filename, letter in c.Infra.NAMESPACE_LAYER_BY_FILE.items()
