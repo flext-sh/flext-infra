@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ... import m, tm, u
+from flext_tests import tm
+
+from ... import m, u
 
 
 class TestsFlextInfraTemplateFormatterFixedPoint:

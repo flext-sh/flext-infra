@@ -19,7 +19,8 @@ if TYPE_CHECKING:
 import pytest
 from flext_tests import tm
 
-from flext_infra import m, r
+from flext_core import r
+from flext_infra import m
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService

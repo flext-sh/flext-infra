@@ -15,7 +15,8 @@ from pathlib import Path
 import pytest
 
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from tests import c, tm, u
+from flext_tests import tm
+from tests import c, u
 
 _PROJECT_COUNT = c.Tests.GEN_PIPELINE_PROJECT_COUNT
 _MODULES_PER_PROJECT = c.Tests.GEN_PIPELINE_MODULES_PER_PROJECT

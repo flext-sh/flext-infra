@@ -104,7 +104,7 @@ class FlextInfraPyprojectModernizer(
             format_source=format_source,
             root_modules=root_modules,
             root_packages=root_packages,
-            declared_python_dirs=declared_python_dirs,
+            declared_python_dirs=declared_python_dirs or (),
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             generated_python_roots=generated_python_roots,
             project_kind=project_kind,

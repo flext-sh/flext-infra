@@ -28,6 +28,11 @@ class FlextInfraCodegenExecutionBase[TResult: t.Cli.ResultValue](s[TResult]):
     project_filter: Annotated[
         str, m.Field(default="", description="Optional project selection filter")
     ] = ""
+    output_format: Annotated[
+        str,
+        m.Field(default="text", description="Output format (json|text)"),
+        m.BeforeValidator(lambda value: value.strip().lower()),
+    ] = "text"
 
     @property
     def effective_dry_run(self) -> bool:

@@ -22,8 +22,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_core import r, s
+from flext_core import r
 from flext_infra import c, m, u
+from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -31,7 +32,7 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraValidateImportCycles(s[bool]):
+class FlextInfraValidateImportCycles(FlextInfraProjectSelectionServiceBase[bool]):
     """Detects runtime import cycles using rope's semantic import resolver.
 
     Guard 1 of the circular-import defense-in-depth suite. Unlike a raw
