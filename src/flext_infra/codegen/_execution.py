@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Annotated
 
 from flext_core import s
-
 from flext_infra import m, t
 
 
@@ -32,7 +31,7 @@ class FlextInfraCodegenExecutionBase[TResult: t.Cli.ResultValue](s[TResult]):
 
     @property
     def effective_dry_run(self) -> bool:
-        """Return the one execution mode that forbids mutation."""
+        """The one execution mode that forbids mutation."""
         return self.dry_run or self.check_only or not self.apply_changes
 
 

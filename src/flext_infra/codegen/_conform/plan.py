@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, override
 
 from flext_core import r
 
@@ -924,6 +924,7 @@ class FlextInfraCodegenConformPlan(_ConformPlanRoles):
         return "."
 
     @staticmethod
+    @override
     def _repository_provider(
         repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec
     ) -> p.Result[m.Infra.ProviderSpec]:

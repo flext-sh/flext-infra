@@ -18,8 +18,8 @@ from flext_core import r
 
 from .. import c, config, m, u
 from ..workspace.rope import FlextInfraRopeWorkspace
-from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
 from ._execution import FlextInfraCodegenExecutionBase
+from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
 from .lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 
 if TYPE_CHECKING:

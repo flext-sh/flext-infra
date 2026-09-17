@@ -16,9 +16,6 @@ from .. import (
     FlextInfraCodegenTransaction,
 )
 
-if TYPE_CHECKING:
-    from .base import FlextInfraCodegenConform
-
 
 class _ConformExecuteRoles:
     if TYPE_CHECKING:

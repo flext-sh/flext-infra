@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING, override
 from flext_core import r
 
 from .. import c, m, u
-from ._mise_artifacts_publication import publish_file_plan
 from ._execution import FlextInfraCodegenExecutionBase
+from ._mise_artifacts_publication import publish_file_plan
 
 if TYPE_CHECKING:
     from .. import p, t
