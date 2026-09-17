@@ -13,12 +13,12 @@ from flext_cli import m as cli_m
 
 from flext_core import m
 
+from ._models._config import FlextInfraConfigModels
 from ._models.base import FlextInfraModelsBase
 from ._models.census import FlextInfraModelsCensus
 from ._models.check import FlextInfraModelsCheck
 from ._models.codegen import FlextInfraModelsCodegen
 from ._models.codemod import FlextInfraModelsCodemod
-from ._models._config import FlextInfraConfigModels
 from ._models.deps import FlextInfraModelsDeps
 from ._models.docs import FlextInfraModelsDocs
 from ._models.enforcement import FlextInfraModelsEnforcement

@@ -58,7 +58,7 @@ class FlextInfraConfigModelsRoot:
         """Root payload deep-merged from flext-infra config files."""
 
         Infra: Annotated[
-            "FlextInfraConfigModelsRoot.Infra",
+            FlextInfraConfigModelsRoot.Infra,
             m.Field(description="Validated flext-infra namespace"),
         ]
 
@@ -66,7 +66,7 @@ class FlextInfraConfigModelsRoot:
         """Override root mirroring the codegen namespace."""
 
         codegen: Annotated[
-            "FlextInfraConfigModelsRoot._CodegenOverridesSection",
+            FlextInfraConfigModelsRoot._CodegenOverridesSection,
             m.Field(description="Override sections for the codegen namespace"),
         ]
 
@@ -88,11 +88,11 @@ class FlextInfraConfigModelsRoot:
             ),
         ]
         make: Annotated[
-            "FlextInfraConfigModelsRoot._MakeOverridesSection | None",
+            FlextInfraConfigModelsRoot._MakeOverridesSection | None,
             m.Field(default=None, description="Make override deltas"),
         ] = None
         layout: Annotated[
-            "FlextInfraConfigModelsRoot._LayoutOverridesSection | None",
+            FlextInfraConfigModelsRoot._LayoutOverridesSection | None,
             m.Field(default=None, description="Layout override deltas"),
         ] = None
 
@@ -122,7 +122,7 @@ class FlextInfraConfigModelsRoot:
         """Typed content of the codegen override layer."""
 
         Infra: Annotated[
-            "FlextInfraConfigModelsRoot.CodegenOverridesRoot",
+            FlextInfraConfigModelsRoot.CodegenOverridesRoot,
             m.Field(description="flext-infra override namespace"),
         ]
 
