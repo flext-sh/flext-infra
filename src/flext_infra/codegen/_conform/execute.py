@@ -19,15 +19,37 @@ from .. import (
 
 class _ConformExecuteRoles:
     if TYPE_CHECKING:
+        request: m.Infra.CodegenConformRequest | None
+        repository_root: Path
+        initial_workspace: m.Infra.WorkspaceSpec | None
         def plan(self, request: m.Infra.CodegenConformRequest) -> p.Result[m.Infra.CodegenPlan]: ...
         def _mise_config_plans(self, plan: m.Infra.CodegenPlan) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
         def _conform_workspace_beads_routes(self, request: m.Infra.CodegenConformRequest) -> p.Result[bool]: ...
         def _owned_docs_files(self, request: m.Infra.CodegenConformRequest, files: t.SequenceOf[m.Infra.CodegenFilePlan]) -> tuple[m.Infra.CodegenFilePlan, ...]: ...
         def _owned_docs_directories(self, request: m.Infra.CodegenConformRequest, plan: m.Infra.CodegenPlan, directories: t.SequenceOf[Path]) -> tuple[Path, ...]: ...
+        @staticmethod
+        def _repository_provider(repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec) -> p.Result[m.Infra.ProviderSpec]: ...
 
 
 class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
     """Transactional execution of conformance plans."""
+
+    request: Annotated[
+        m.Infra.CodegenConformRequest | None,
+        m.Field(default=None, exclude=True, description="Validated conform request"),
+    ] = None
+    repository_root: Annotated[
+        Path,
+        m.Field(default=Path(), exclude=True, description="Conform repository root"),
+    ] = Path()
+    initial_workspace: Annotated[
+        m.Infra.WorkspaceSpec | None,
+        m.Field(
+            default=None,
+            exclude=True,
+            description="Validated scaffold specification included in the atomic plan",
+        ),
+    ] = None
 
     @classmethod
     def execute_request(
@@ -608,8 +630,13 @@ class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
         mise = FlextInfraCodegenMiseArtifacts(
             repository_root=request.root
         )
-        for project in session.plan.projects:
-            validated = mise.validate_artifacts(project.layout.root)
+        plan = session.plan
+        if isinstance(plan, m.Infra.MiseToolchainWorkspacePlan):
+            project_layouts = (p.layout for p in plan.projects)
+        else:
+            project_layouts = plan.layout.projects
+        for project_layout in project_layouts:
+            validated = mise.validate_artifacts(project_layout.root)
             if validated.failure:
                 return r[bool].from_failure(validated)
         return r[bool].ok(True)

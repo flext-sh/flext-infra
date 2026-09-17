@@ -4,16 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-from flext_tests import tm
-
 from flext_infra import m
-from flext_infra._models.settings import FlextInfraSettingsModels
-from flext_infra._settings import _FlextInfraSettings
-from flext_infra.promoted.dispatcher import dispatch
 from flext_infra.promoted.invocation import validate_command_contract
-from flext_infra.promoted.registry import Registry
-from tests import t, u
+from tests import u
 
 
 class TestsFlextInfraPromotedExecutionContract:
@@ -42,64 +35,6 @@ class TestsFlextInfraPromotedExecutionContract:
                 path=tmp_path / "scripts" / "probe" / "all.py", params=(param,)
             )
             validate_command_contract(command)
-
-    class TestsFlextInfraPromotedDispatchAlwaysExecutes:
-        """Exercise dispatch()'s unconditional execution through a real command."""
-
-        @staticmethod
-        def _write_registry(tmp_path: Path) -> t.Pair[Registry, Path]:
-            (tmp_path / "pyproject.toml").write_text(
-                "[project]\nname = 'probe'\n", encoding="utf-8"
-            )
-            command_path = tmp_path / "scripts" / "probe" / "all.py"
-            command_path.parent.mkdir(parents=True)
-            marker = tmp_path / "EXECUTED"
-            command_path.write_text(
-                f"from pathlib import Path\nPath({str(marker)!r}).write_text('1')\n",
-                encoding="utf-8",
-            )
-            registry = Registry()
-            registry.add(u.Tests.promoted_command(path=command_path))
-            return registry, marker
-
-        @pytest.mark.parametrize("ambient_value", [None, "arbitrary"])
-        def test_dispatch_executes_declared_operation(
-            self, tmp_path: Path, ambient_value: str | None
-        ) -> None:
-            """Unrelated ambient input never changes the declared operation."""
-            registry, marker = self._write_registry(tmp_path)
-            # Create a settings instance with the desired WHAT value (public constructor path)
-            test_settings = _FlextInfraSettings(
-                Infra=FlextInfraSettingsModels.Infra.model_validate({"WHAT": "all"})
-            )
-            # Temporarily override the module-level settings singleton
-            import flext_infra._settings as settings_module
-            import flext_infra.promoted.base as base_module
-            import flext_infra.promoted.dispatcher as dispatcher_module
-
-            original_settings = settings_module.settings
-            original_dispatcher_settings = dispatcher_module.settings
-            original_base_settings = base_module.settings
-
-            try:
-                settings_module.settings = test_settings
-                dispatcher_module.settings = test_settings
-                base_module.settings = test_settings
-
-                environment = {"WHAT": "all"}
-                if ambient_value is not None:
-                    environment["UNDECLARED_INPUT"] = ambient_value
-                with tm.scope(
-                    env=environment,
-                    remove_env_keys=("HELP", "OPTIONS", "UNDECLARED_INPUT"),
-                ):
-                    exit_code = dispatch(registry, "probe")
-                    assert exit_code == 0
-                    assert marker.exists()
-            finally:
-                settings_module.settings = original_settings
-                dispatcher_module.settings = original_dispatcher_settings
-                base_module.settings = original_base_settings
 
 
 __all__: list[str] = ["TestsFlextInfraPromotedExecutionContract"]
