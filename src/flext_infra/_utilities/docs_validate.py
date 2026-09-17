@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 
 from flext_core import r
-from flext_infra import p
 from flext_infra.constants import c
 from flext_infra.typings import t
 
@@ -19,7 +18,7 @@ from .docs_scope import FlextInfraUtilitiesDocsScope
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m
+    from flext_infra import m, p
 
 
 class FlextInfraUtilitiesDocsValidate:
@@ -90,14 +89,17 @@ class FlextInfraUtilitiesDocsValidate:
         raw: t.Infra.InfraSequence,
     ) -> p.Result[t.StrSequence]:
         """Validate ``required_skills`` payload against the canonical adapter."""
-        return cast(
-            "p.Result[t.StrSequence]",
+
+        def _format_error(e: str) -> str:
+            return f"invalid required_skills configuration: {e}"
+
+        return (
             r[t.StrSequence]
             .create_from_callable(
                 lambda: t.Infra.STR_SEQ_ADAPTER.validate_python(raw, strict=True),
                 error_code="required_skills_validation",
             )
-            .map_error(lambda e: f"invalid required_skills configuration: {e}"),
+            .map_error(_format_error)
         )
 
     @staticmethod
