@@ -101,3 +101,19 @@ class FlextInfraCodegenConformBootstrap:
                     pyproject=False,
                     custom=False,
                 )
+
+    @staticmethod
+    def is_dry_run_config_backup(name: str) -> bool:
+        """Return whether ``name`` is a dry-run ``config.yaml`` backup snapshot.
+
+        Why (cosmos-3flk9): the bd client rewrites ``last-touched`` on every
+        write, and a dry-run ``make gen`` leaves ``config.yaml.<ts>.bak``
+        snapshots behind — both are ephemeral tooling state, not unmerged
+        ledger state, so they must not fail the composed-project verify.
+        """
+        return name.startswith(
+            f"{Path(c.Infra.BEADS_CONFIG_RELPATH).name}."
+        ) and name.endswith(".bak")
+
+
+__all__: list[str] = ["FlextInfraCodegenConformBootstrap"]

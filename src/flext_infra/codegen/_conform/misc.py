@@ -4,33 +4,15 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Annotated
 
 from ... import c, config, m, p, r, t, u
 from ...workspace import FlextInfraWorkspaceDetector
+from ._request_fields import FlextInfraCodegenConformRequestFields
 from .bootstrap import FlextInfraCodegenConformBootstrap
-from .execute import FlextInfraCodegenConformExecute
 
 
-class FlextInfraCodegenConformMisc:
+class FlextInfraCodegenConformMisc(FlextInfraCodegenConformRequestFields):
     """Beads routes, docs ownership, and projection plan helpers."""
-
-    request: Annotated[
-        m.Infra.CodegenConformRequest | None,
-        m.Field(default=None, exclude=True, description="Validated conform request"),
-    ] = None
-    repository_root: Annotated[
-        Path,
-        m.Field(default=Path(), exclude=True, description="Conform repository root"),
-    ] = Path()
-    initial_workspace: Annotated[
-        m.Infra.WorkspaceSpec | None,
-        m.Field(
-            default=None,
-            exclude=True,
-            description="Validated scaffold specification included in the atomic plan",
-        ),
-    ] = None
 
     @staticmethod
     def _member_repository_roots(
@@ -154,7 +136,7 @@ class FlextInfraCodegenConformMisc:
             entry.name
             for entry in route.iterdir()
             if entry.name not in allowed_entries
-            and not FlextInfraCodegenConformExecute.is_dry_run_config_backup(entry.name)
+            and not FlextInfraCodegenConformBootstrap.is_dry_run_config_backup(entry.name)
         )
         if unexpected:
             return r[bool].fail(

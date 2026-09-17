@@ -12,6 +12,7 @@ from ...deps import FlextInfraPyprojectModernizer
 from ...services.codegen import FlextInfraCodegen
 from ...workspace import FlextInfraWorkspaceDetector
 from ...workspace.environment_contracts import FlextInfraWorkspaceEnvironmentContracts
+from ._request_fields import FlextInfraCodegenConformRequestFields
 from .misc import FlextInfraCodegenConformMisc
 
 
@@ -64,7 +65,7 @@ class _ConformPlanRoles:
             codegen: m.Infra.CodegenConfigSpec,
             destination: str,
             tooling_runtime: m.Infra.ToolingRuntimeContext,
-            project_context: m.Infra.ProjectRenderContext | None,
+            project_context: m.Infra.ProjectRenderContext | None = None,
             managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
         ) -> p.Result[str]: ...
         def compose_project_artifact(
@@ -87,7 +88,9 @@ class _ConformPlanRoles:
         ) -> p.Result[m.Infra.CodegenFilePlan]: ...
 
 
-class FlextInfraCodegenConformPlan(_ConformPlanRoles):
+class FlextInfraCodegenConformPlan(
+    FlextInfraCodegenConformRequestFields, _ConformPlanRoles
+):
     """Conformance planning across scaffold and existing repositories."""
 
     def plan(
@@ -909,7 +912,6 @@ class FlextInfraCodegenConformPlan(_ConformPlanRoles):
             )
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(completed))
 
-    @staticmethod
     @staticmethod
     def _select_repositories(
         request: m.Infra.CodegenConformRequest,

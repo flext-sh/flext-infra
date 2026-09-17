@@ -13,6 +13,7 @@ from .. import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
+from ._request_fields import FlextInfraCodegenConformRequestFields
 
 
 class _ConformExecuteRoles:
@@ -40,7 +41,9 @@ class _ConformExecuteRoles:
         ) -> t.VariadicTuple[Path]: ...
 
 
-class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
+class FlextInfraCodegenConformExecute(
+    FlextInfraCodegenConformRequestFields, _ConformExecuteRoles
+):
     """Transactional execution of conformance plans."""
 
     @classmethod
@@ -629,16 +632,3 @@ class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
             if validated.failure:
                 return r[bool].from_failure(validated)
         return r[bool].ok(True)
-
-    @staticmethod
-    def is_dry_run_config_backup(name: str) -> bool:
-        """Return whether ``name`` is a dry-run ``config.yaml`` backup snapshot.
-
-        Why (cosmos-3flk9): the bd client rewrites ``last-touched`` on every
-        write, and a dry-run ``make gen`` leaves ``config.yaml.<ts>.bak``
-        snapshots behind — both are ephemeral tooling state, not unmerged
-        ledger state, so they must not fail the composed-project verify.
-        """
-        return name.startswith(
-            f"{Path(c.Infra.BEADS_CONFIG_RELPATH).name}."
-        ) and name.endswith(".bak")
