@@ -172,6 +172,26 @@ class TestsRule0NamespaceStructure:
         )
 
     @pytest.mark.parametrize(
+        "module_source",
+        [
+            pytest.param("class RuntimeService:\n    pass\n", id="class"),
+            pytest.param("def runtime_service() -> None:\n    pass\n", id="function"),
+            pytest.param("pass\n", id="module-statement"),
+        ],
+    )
+    def test_rule0_validates_statements_without_expression_values(
+        self, tmp_path: Path, module_source: str
+    ) -> None:
+        """Ordinary statements without expression values remain valid AST input."""
+        root = _make_project_with_module(
+            tmp_path, module_source=module_source, module_name="runtime.py"
+        )
+
+        report = tm.ok(FlextInfraNamespaceValidator().validate_project(root))
+
+        tm.that(report.violations, empty=False)
+
+    @pytest.mark.parametrize(
         ("module_source", "forbidden_violation_substr"),
         [
             pytest.param(

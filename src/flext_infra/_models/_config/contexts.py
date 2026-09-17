@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
@@ -23,6 +23,23 @@ from .scaffold import FlextInfraConfigModelsScaffold
 
 class FlextInfraConfigModelsContexts:
     """Render context and repository reference models."""
+
+    @staticmethod
+    def _validated_hatch_build_hook_path(value: Path | None) -> Path | None:
+        """Return one normalized project-relative Hatch hook declaration."""
+        if value is None:
+            return None
+        raw = str(value)
+        not_project_relative = (
+            value.is_absolute() or not value.parts or value.as_posix() in {"", "."}
+        )
+        unsafe_segments = (
+            ".." in value.parts or "\\" in raw or bool(PureWindowsPath(raw).drive)
+        )
+        if not_project_relative or unsafe_segments:
+            msg = f"hatch_build_hook_path must be a safe project-relative path: {raw}"
+            raise ValueError(msg)
+        return value
 
     class MakeCommandContext(FlextInfraConfigModelsContract.ConfigContract):
         """Shared command identity required by every generated Make surface."""
@@ -236,6 +253,12 @@ class FlextInfraConfigModelsContexts:
     class ProjectRenderContext(MakeRenderContext):
         """Complete typed input consumed by project scaffold templates."""
 
+        # NOTE (multi-agent, flext-get3j): this render field is the exact
+        # projection of ProjectSpec; templates must not infer or default a hook.
+        hatch_build_hook_path: Annotated[
+            Path | None,
+            m.Field(description="Project-relative Hatch custom build hook module"),
+        ] = None
         namespace_scan_dirs: Annotated[
             t.StrSequence,
             m.Field(
@@ -535,9 +558,22 @@ class FlextInfraConfigModelsContexts:
         ]
         year: Annotated[int, m.Field(description="Copyright year")]
 
+        @m.field_validator("hatch_build_hook_path")
+        @classmethod
+        def _validate_hatch_build_hook_path(cls, value: Path | None) -> Path | None:
+            return FlextInfraConfigModelsContexts._validated_hatch_build_hook_path(
+                value
+            )
+
     class ProjectSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
 
+        # NOTE (multi-agent, flext-get3j): ProjectSpec is the sole declaration
+        # owner; absence is meaningful and must never select a conventional hook.
+        hatch_build_hook_path: Annotated[
+            Path | None,
+            m.Field(description="Project-relative Hatch custom build hook module"),
+        ] = None
         package_name: Annotated[
             t.NonEmptyStr, m.Field(description="Import package name")
         ]
@@ -640,6 +676,13 @@ class FlextInfraConfigModelsContexts:
             m.Field(description="Declared relative path to the workspace root"),
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
+
+        @m.field_validator("hatch_build_hook_path")
+        @classmethod
+        def _validate_hatch_build_hook_path(cls, value: Path | None) -> Path | None:
+            return FlextInfraConfigModelsContexts._validated_hatch_build_hook_path(
+                value
+            )
 
     class RepositoryRef(FlextInfraConfigModelsContract.ConfigContract):
         """One declared repository and its immutable Git origin contract."""

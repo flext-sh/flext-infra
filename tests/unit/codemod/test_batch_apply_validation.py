@@ -39,12 +39,14 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             entries=(finding,),
         )
 
-    def test_allows_a_later_rule_enabled_by_a_prior_rewrite(self, tmp_path: Path) -> None:
+    def test_allows_a_later_rule_enabled_by_a_prior_rewrite(
+        self, tmp_path: Path
+    ) -> None:
         """A staged rule becomes work for the next fixed-point iteration."""
         before = self._report(tmp_path / "subject.py", "bind-test-utility-alias")
         after = self._report(tmp_path / "subject.py", "rewire-test-utility-receiver")
 
-        FlextInfraCodemodBatchApply._validate_fix_match(before, after)
+        FlextInfraCodemodBatchApply.validate_fix_match(before, after)
 
     def test_rejects_a_rewrite_that_introduces_its_own_rule_again(
         self, tmp_path: Path
@@ -54,7 +56,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         after = self._report(tmp_path / "other.py", "rewrite-test-utility-receiver")
 
         with pytest.raises(RuntimeError, match="introduced 1 new actionable"):
-            FlextInfraCodemodBatchApply._validate_fix_match(before, after)
+            FlextInfraCodemodBatchApply.validate_fix_match(before, after)
 
 
 __all__: list[str] = ["TestsFlextInfraCodemodBatchApplyValidation"]

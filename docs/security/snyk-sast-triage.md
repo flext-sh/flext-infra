@@ -1,12 +1,13 @@
 # Triagem Snyk Code (SAST) — flext-sh/flext-infra
 
 <!-- TOC START -->
+
 - [Resumo](#resumo)
 - [Como usar este documento](#como-usar-este-documento)
 - [Achados](#achados)
   - [1 · 🟡 MEDIUM · Arbitrary File Write via Archive Extraction (Tar Slip)](#1-medium-arbitrary-file-write-via-archive-extraction-tar-slip)
   - [2 · ⚪ LOW · Jinja auto-escape is set to false](#2-low-jinja-auto-escape-is-set-to-false)
-<!-- TOC END -->
+  <!-- TOC END -->
 
 Gerado do scan Snyk da org Datacosmos (dump 2026-08-06). Bead: `flext-32k4`
 
@@ -18,10 +19,10 @@ executáveis nem comprovam o estado atual dos arquivos citados.
 
 **2 achados** — critical 0, high 0, medium 1, low 1
 
-| categoria | achados |
-|---|---|
-| Arbitrary File Write via Archive Extraction (Tar Slip) | 1 |
-| Jinja auto-escape is set to false. | 1 |
+| categoria                                              | achados |
+| ------------------------------------------------------ | ------- |
+| Arbitrary File Write via Archive Extraction (Tar Slip) | 1       |
+| Jinja auto-escape is set to false.                     | 1       |
 
 ## Como usar este documento
 
@@ -31,6 +32,7 @@ Preencha **Decisão**: `corrigir` / `falso-positivo` (registrar em `.snyk`) / `r
 ## Achados
 
 ### 1 · 🟡 MEDIUM · Arbitrary File Write via Archive Extraction (Tar Slip)
+
 **Local**: `src/flext_infra/release/_release_artifact_source.py:212` · **CWE**: -
 
 ```text
@@ -44,22 +46,25 @@ Preencha **Decisão**: `corrigir` / `falso-positivo` (registrar em `.snyk`) / `r
       215                  "extract committed release source", exc
       216              )
 ```
+
 **Decisão**:
 
 ### 2 · ⚪ LOW · Jinja auto-escape is set to false
+
 **Local**: `tests/unit/codegen/test_codegen_catalog_extensions.py:209` · **CWE**: -
 
 ```text
 205              / "gitmodules.j2"
       206          )
       207          import jinja2
-      208  
+      208
 >>>   209          rendered = jinja2.Template(template.read_text(encoding="utf-8")).render(
       210              workspace_gitlinks=[
       211                  {
       212                      "repository": {
       213                          "name": "demo-member",
 ```
+
 **Decisão**:
 
 Dados brutos: `~/snyk-violations/sast/flext-sh__flext-infra.sast.json`

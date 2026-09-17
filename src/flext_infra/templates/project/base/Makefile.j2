@@ -491,7 +491,7 @@ _builtin-self-check: _builtin_require_environment
 		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
 		exit 2; \
 	fi; \
-	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects . --apply
+	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects .
 
 _builtin-self-fmt: _builtin_require_environment
 	@$(UV_RUN) ruff format {{ make.ruff.format_apply | join(" ") }} $(RUFF_PATHS)
@@ -514,8 +514,8 @@ _builtin-self-docs: _builtin_docs_all
 _builtin_build_artifacts:
 	@$(WORKSPACE_ORCHESTRATE) --verb build $(WORKSPACE_PROJECT_ARGS)
 
-# Check applies supported fixes and fails while findings remain. The workspace
-# delegates the same operation to each member; CI={{ make.ci.value }} keeps
+# Check validates without writing. `fix` and `fmt` own supported corrections.
+# The workspace delegates the same operation to each member; CI={{ make.ci.value }} keeps
 # make.ci.check_gates in each generated member handler.
 _builtin_check_all: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS)

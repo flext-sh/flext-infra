@@ -112,6 +112,7 @@ if TYPE_CHECKING:
         TestsFlextInfraTransactionDirectoryJournal,
     )
     from .transaction_lease_tests import TestsFlextInfraTransactionLease
+    from .workflow_comment_spacing_tests import TestsFlextInfraWorkflowCommentSpacing
     from .workflow_orphan_guard_tests import TestsFlextInfraWorkflowOrphanGuard
 __all__: tuple[str, ...] = (
     "CodegenTestSupport",
@@ -179,6 +180,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraTransactionLease",
     "TestsFlextInfraUtilityFacadeProjection",
     "TestsFlextInfraVscodeOwnerMerge",
+    "TestsFlextInfraWorkflowCommentSpacing",
     "TestsFlextInfraWorkflowOrphanGuard",
     "TestsFlextInfraWorkspaceRootSetupSubmodules",
     "archive_root",
@@ -328,6 +330,9 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraTransactionDirectoryJournal",
             ),
             ".transaction_lease_tests": ("TestsFlextInfraTransactionLease",),
+            ".workflow_comment_spacing_tests": (
+                "TestsFlextInfraWorkflowCommentSpacing",
+            ),
             ".workflow_orphan_guard_tests": ("TestsFlextInfraWorkflowOrphanGuard",),
             "flext_tests": (
                 "c",

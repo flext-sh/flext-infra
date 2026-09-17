@@ -1,9 +1,11 @@
 # Mapa de decisões aplicáveis ao flext-infra
 
 <!-- TOC START -->
+
 - [Divergências identificadas](#divergencias-identificadas)
 - [Contexto de implementação](#contexto-de-implementacao)
 - [Estado corrente (reconciliado com fontes vivas em a2bd0a726)](#estado-corrente-reconciliado-com-fontes-vivas-em-a2bd0a726)
+
 <!-- TOC END -->
 
 Este índice aponta os responsáveis arquiteturais da estabilização de namespace
@@ -11,11 +13,11 @@ e runtime. Os ADRs de plataforma abaixo pertencem a `flext`; este repositório
 mantém o código, seus testes e este mapa de navegação. O índice não substitui
 nem duplica o texto das decisões.
 
-| Referência | Responsabilidade | Aplicação nesta execução |
-| --- | --- | --- |
+| Referência                                                                                                                                 | Responsabilidade                                        | Aplicação nesta execução                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | [ADR-005](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/005-config-settings-constants-templates-schemas-ssot.md) | Configuração, settings, constantes, templates e schemas | Usar §§1–2 para configuração e seus responsáveis tipados; corrigir templates/SSOT antes das projeções |
-| [ADR-010](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/010-unified-project-standardization-via-codegen.md) | Padronização e descoberta semântica | §3b descreve descoberta nas fontes e rewiring automático; conferir a implementação e a skill canônica |
-| [ADR-014](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/014-family-part-shape-rope-codemod-rules.md) | Forma das famílias e codemods Rope | Alinhar órfãos, wrappers, consumidores e detecção de namespace |
+| [ADR-010](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/010-unified-project-standardization-via-codegen.md)      | Padronização e descoberta semântica                     | §3b descreve descoberta nas fontes e rewiring automático; conferir a implementação e a skill canônica |
+| [ADR-014](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/014-family-part-shape-rope-codemod-rules.md)             | Forma das famílias e codemods Rope                      | Alinhar órfãos, wrappers, consumidores e detecção de namespace                                        |
 
 ## Divergências identificadas
 

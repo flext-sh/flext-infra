@@ -6,6 +6,7 @@ Provider governance may add a minimal prelude, but this repository owns the
 package-specific body below.
 
 <!-- AIHUB-AGENTS-SCOPE-LOCAL-BEGIN -->
+
 **Package:** `flext_infra` · ~82k src LOC · deps: `flext-cli`, `flext-core`
 
 ## Overview
@@ -26,13 +27,13 @@ src/flext_infra/
 
 ## Code Map
 
-| Symbol | Kind | Location | Role |
-| --- | --- | --- | --- |
-| `FlextInfra` | class | `api.py` | Rope workspace / health facade |
-| `FlextInfraCli` | class | `cli.py` | CLI entry |
-| `FlextInfraEnforcementEngine` | class | `_enforcement/engine.py` | catalog-backed enforcement |
-| `FlextInfraCodegenPipeline` | class | `codegen/pipeline.py` | codegen pipeline |
-| `FlextInfraPyprojectModernizer` | class | `deps/modernizer.py` | managed pyproject enforcement |
+| Symbol                          | Kind  | Location                 | Role                           |
+| ------------------------------- | ----- | ------------------------ | ------------------------------ |
+| `FlextInfra`                    | class | `api.py`                 | Rope workspace / health facade |
+| `FlextInfraCli`                 | class | `cli.py`                 | CLI entry                      |
+| `FlextInfraEnforcementEngine`   | class | `_enforcement/engine.py` | catalog-backed enforcement     |
+| `FlextInfraCodegenPipeline`     | class | `codegen/pipeline.py`    | codegen pipeline               |
+| `FlextInfraPyprojectModernizer` | class | `deps/modernizer.py`     | managed pyproject enforcement  |
 
 ## Conventions (specific to this package)
 
@@ -73,10 +74,12 @@ make check
 make test
 make build
 ```
+
 <!-- AIHUB-AGENTS-SCOPE-LOCAL-END -->
 
 <!-- AIHUB-GOVERNANCE-INSTRUCTIONS-BEGIN -->
 <!-- AIHUB-GOVERNANCE-CAPSULE v1 sha256:e1b7a9ae088643bf660b78ff1aea55d49076ec46518707976d77c78ed23db5db -->
+
 # Generated session governance capsule
 
 This projection is derived by `agentsctl sync`; edit canonical `AGENTS.md`, `rules/`, `skills/`, or `commands/`, never this output. The operator's newest request has precedence. Provider hooks are delivery mechanisms, not policy owners.
@@ -279,4 +282,5 @@ sufficient.
 
 Skills: caveman, context-canary, fix-forward-collaboration, governance-audit, operator-correction-learning, plan-focus-recovery, sprint-closure, strategic-compact, verification-loop
 Commands: add-language-rules, database-migration, feature-development, ghi-list, pr-list, ralph-loop, security-triage, synthesize-governance
+
 <!-- AIHUB-GOVERNANCE-INSTRUCTIONS-END -->

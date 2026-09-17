@@ -809,6 +809,9 @@ class FlextInfraCodegenConformRender(
                 package_name=project.package_name,
                 packaged_data_dirs=packaged_data_dirs,
                 namespace_scan_dirs=project.namespace_scan_dirs,
+                # NOTE (multi-agent, flext-get3j): carry only the validated
+                # project declaration; conform owns no inferred Hatch hook.
+                hatch_build_hook_path=project.hatch_build_hook_path,
                 class_stem=project.class_stem,
                 ns=project.namespace,
                 ns_attr=project.namespace_attribute,
