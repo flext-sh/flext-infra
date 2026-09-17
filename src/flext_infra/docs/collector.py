@@ -110,6 +110,17 @@ class FlextInfraDocCollector:
             )
             if published.failure:
                 return r[bool].from_failure(published)
+            for directory in bundle.prunable_directories:
+                observed = u.Cli.atomic_read_empty_directory_state(
+                    directory, required=False
+                )
+                if observed.failure:
+                    return r[bool].from_failure(observed)
+                if not observed.value.exists:
+                    continue
+                removed = u.Cli.atomic_delete_empty_directory_guarded(observed.value)
+                if removed.failure:
+                    return r[bool].from_failure(removed)
             return r[bool].ok(True)
 
         return transaction.run_files_locked(roots, publish)

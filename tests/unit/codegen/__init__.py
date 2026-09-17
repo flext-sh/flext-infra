@@ -78,6 +78,7 @@ if TYPE_CHECKING:
     from .test_codegen_runtime_profiles import TestsFlextInfraCodegenRuntimeProfiles
     from .test_codegen_setup_submodules import TestsFlextInfraCodegenSetupSubmodules
     from .test_codegen_version_file import TestsFlextInfraCodegenVersionFile
+    from .test_file_participant_recovery import TestsFlextInfraFileParticipantRecovery
     from .test_gen_respects_invocation_scope import (
         TestsFlextInfraGenRespectsInvocationScope,
     )
@@ -153,6 +154,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCodegenSetupSubmodules",
     "TestsFlextInfraCodegenVersionFile",
     "TestsFlextInfraCodegenViolationKey",
+    "TestsFlextInfraFileParticipantRecovery",
     "TestsFlextInfraGenRespectsInvocationScope",
     "TestsFlextInfraLazyInitAliasInheritance",
     "TestsFlextInfraLazyInitBootstrapPackage",
@@ -286,6 +288,9 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraCodegenSetupSubmodules",
             ),
             ".test_codegen_version_file": ("TestsFlextInfraCodegenVersionFile",),
+            ".test_file_participant_recovery": (
+                "TestsFlextInfraFileParticipantRecovery",
+            ),
             ".test_gen_respects_invocation_scope": (
                 "TestsFlextInfraGenRespectsInvocationScope",
             ),

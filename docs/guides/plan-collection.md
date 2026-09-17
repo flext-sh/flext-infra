@@ -4,6 +4,8 @@
 - No sections found
 <!-- TOC END -->
 
+## Authorization
+
 The documentation collector prepares authenticated file plans; the existing
 documentation transaction alone publishes them. It neither executes an LLM nor
 decides implementation status, supersession, deletion, or Bead closure.
@@ -13,6 +15,15 @@ The repository owns source associations in `config/plan-collection.yaml`.
 authorized absolute output owner. Each source declares its provider, stable ID,
 root, adapter, driver/version, plan globs, optional exclusions, timestamp fields,
 companion-directory policy, and publication classification.
+
+`enabled` is mandatory. The disabled state requires zero sources and no
+projection root; it transactionally deletes only paths authenticated by the
+existing generated manifest, then removes the resulting owned empty
+directories. A repository may enable collection only with an explicitly
+approved, versioned source inventory. Ignored `.kilo` session plans are not a
+publication source.
+
+## Source revisions
 
 The `files` adapter accepts explicitly associated plan artifacts, snapshots each
 plan and its same-basename companion directory, and includes attachments in the
@@ -41,6 +52,8 @@ Date-only and local-datetime precision is preserved; absent timestamps remain
 unknown. UTF-8 BOM and CRLF frontmatter are accepted without rewriting archived
 source bytes.
 Filesystem timestamps are not treated as substantive source updates.
+
+## Publication and verification
 
 The publisher authenticates inputs and source topology before effects. It must
 register the projection as an explicit transaction participant and account for

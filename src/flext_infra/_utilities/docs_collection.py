@@ -46,6 +46,45 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         manifest, excluded_outputs = cls.collection_manifest(
             canonical, projection, states
         )
+        if not configuration.enabled:
+            owned_outputs = {
+                canonical / "collection-manifest.json",
+                *(canonical / artifact.relative_path for artifact in manifest.artifacts),
+            }
+            for path in owned_outputs:
+                cls.collection_capture(path, states)
+            plans_list = [
+                FlextInfraUtilitiesDocsContract.docs_file_plan(
+                    root,
+                    path,
+                    None,
+                    desired_mode=None,
+                    source_states=tuple(states[item] for item in sorted(states)),
+                ).unwrap()
+                for path in sorted(owned_outputs)
+            ]
+            directories = {
+                parent
+                for path in owned_outputs
+                for parent in path.parents
+                if parent != canonical and parent.is_relative_to(canonical)
+            }
+            return m.Infra.PlanCollectionBundle(
+                files=tuple(plans_list),
+                source_states=tuple(states[path] for path in sorted(states)),
+                required_directories=(),
+                prunable_directories=tuple(
+                    sorted(
+                        directories,
+                        key=lambda path: (len(path.parts), path.as_posix()),
+                        reverse=True,
+                    )
+                ),
+                revisions=(),
+                coverage=(),
+                inventories=(),
+                excluded_outputs=tuple(sorted(owned_outputs)),
+            )
         history = list(manifest.revisions)
         observed = {(item.identity, item.digest) for item in history}
         revisions_by_identity = {item.identity: item for item in manifest.revisions}
