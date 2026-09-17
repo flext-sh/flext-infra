@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import ast
+import typing
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, config, m
+import flext_infra
+from flext_infra import c, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import u
 
@@ -26,49 +29,6 @@ class TestsFlextInfraCodegenBeadsProjection:
         )
         return root
 
-    @staticmethod
-    def _plan(root: Path) -> m.Infra.CodegenPlan:
-        for entry in config.Infra.codegen.templates.entries:
-            destination = entry.destination.format(
-                package_name="fixture_project", ns="fixture_project"
-            )
-            (root / destination).parent.mkdir(parents=True, exist_ok=True)
-        for managed in config.Infra.codegen.managed_files:
-            (root / managed.path).parent.mkdir(parents=True, exist_ok=True)
-        # Scaffold entries create declaration family directories, and the
-        # facade completeness law rejects owners without their public facade.
-        package_dir = root / "src" / "fixture_project"
-        for family in ("u", "p"):
-            facade = package_dir / f"{c.Infra.FAMILY_PUBLIC_MODULES[family]}.py"
-            if (package_dir / c.Infra.FAMILY_DIRECTORIES[family]).is_dir() and (
-                not facade.is_file()
-            ):
-                facade.write_text(
-                    f"class FixtureProject{family.capitalize()}Facade:\n    pass\n",
-                    encoding="utf-8",
-                )
-        result = FlextInfraCodegenConform(repository_root=root).plan(
-            u.Tests.conform_request(
-                root,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.CHECK,
-            )
-        )
-        tm.ok(result)
-        return m.Infra.CodegenPlan.model_validate(result.value)
-
-    @staticmethod
-    def _rendered(plan: m.Infra.CodegenPlan, destination: str) -> str | None:
-        match = next(
-            (item for item in plan.files if item.path.as_posix().endswith(destination)),
-            None,
-        )
-        return (
-            None
-            if match is None or match.desired_content is None
-            else u.Tests.codegen_file_text(match)
-        )
-
     def test_local_identity_renders_only_declarative_beads_files(
         self, tmp_path: Path
     ) -> None:
@@ -78,9 +38,9 @@ class TestsFlextInfraCodegenBeadsProjection:
             issue_prefix="project-prefix",
         )
 
-        plan = self._plan(root)
-        rendered_config = self._rendered(plan, c.Infra.BEADS_CONFIG_RELPATH)
-        rendered_metadata = self._rendered(plan, c.Infra.BEADS_METADATA_RELPATH)
+        plan = u.Tests.governed_project_plan(root)
+        rendered_config = u.Tests.planned_text(plan, c.Infra.BEADS_CONFIG_RELPATH)
+        rendered_metadata = u.Tests.planned_text(plan, c.Infra.BEADS_METADATA_RELPATH)
 
         if rendered_config is None:
             pytest.fail("local identity must produce the declarative Beads config")
@@ -115,9 +75,9 @@ class TestsFlextInfraCodegenBeadsProjection:
             root, "fixture-project", gascity_enabled=False
         )
 
-        plan = self._plan(root)
-        rendered_config = self._rendered(plan, c.Infra.BEADS_CONFIG_RELPATH)
-        rendered_mise = self._rendered(plan, ".mise.toml")
+        plan = u.Tests.governed_project_plan(root)
+        rendered_config = u.Tests.planned_text(plan, c.Infra.BEADS_CONFIG_RELPATH)
+        rendered_mise = u.Tests.planned_text(plan, ".mise.toml")
 
         if rendered_config is None:
             pytest.fail("standalone identity must produce the declarative Beads config")
@@ -165,8 +125,8 @@ class TestsFlextInfraCodegenBeadsProjection:
             root, "fixture-project", gascity_enabled=False
         )
 
-        plan = self._plan(root)
-        rendered_envrc = self._rendered(plan, ".envrc")
+        plan = u.Tests.governed_project_plan(root)
+        rendered_envrc = u.Tests.planned_text(plan, ".envrc")
 
         if rendered_envrc is None:
             pytest.fail("standalone identity must produce the managed .envrc")
@@ -205,7 +165,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         entry = next(
             (
                 item
-                for item in self._plan(root).files
+                for item in u.Tests.governed_project_plan(root).files
                 if item.path.name == ".envrc.local"
             ),
             None,
@@ -239,7 +199,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         entry = next(
             (
                 item
-                for item in self._plan(root).files
+                for item in u.Tests.governed_project_plan(root).files
                 if item.path.name == ".envrc.local"
             ),
             None,
@@ -267,8 +227,8 @@ class TestsFlextInfraCodegenBeadsProjection:
             root, "fixture-project", gascity_enabled=True
         )
 
-        plan = self._plan(root)
-        rendered_envrc = self._rendered(plan, ".envrc")
+        plan = u.Tests.governed_project_plan(root)
+        rendered_envrc = u.Tests.planned_text(plan, ".envrc")
 
         if rendered_envrc is None:
             pytest.fail("city participation must produce the managed .envrc")
@@ -278,6 +238,64 @@ class TestsFlextInfraCodegenBeadsProjection:
             lacks='source_env "$HOME/.config/environment.d/projects/agent-tools.envrc"',
         )
         tm.that(rendered_envrc, has="AGENTS_GAS_CITY_ROOT must name the canonical")
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("gascity_enabled", [True, False])
+    def test_envrc_render_models_have_one_definition(
+        self, tmp_path: Path, *, gascity_enabled: bool
+    ) -> None:
+        """The .envrc context renders from one model family in both city tiers.
+
+        A duplicated model family let the renderer and its validator bind two
+        different classes of the same name, so the ``gascity.backend`` field of
+        one was absent from the other and standalone renders failed.
+        """
+        root = self._project(
+            tmp_path / "project",
+            database="project_database",
+            issue_prefix="project-prefix",
+        )
+        u.Tests.write_standalone_workspace_manifest(
+            root, "fixture-project", gascity_enabled=gascity_enabled
+        )
+
+        rendered_envrc = u.Tests.planned_text(
+            u.Tests.governed_project_plan(root), ".envrc"
+        )
+
+        if rendered_envrc is None:
+            pytest.fail("a governed identity must produce the managed .envrc")
+        tm.that("AGENTS_GAS_CITY_ROOT" in rendered_envrc, eq=gascity_enabled)
+        pending: list[type[m.BaseModel]] = [m.Infra.EnvrcRenderSpec]
+        used: set[type[m.BaseModel]] = set()
+        while pending:
+            model = pending.pop()
+            if model in used:
+                continue
+            used.add(model)
+            for field in model.model_fields.values():
+                stack: list[object] = [field.annotation]
+                while stack:
+                    annotation = stack.pop()
+                    stack.extend(typing.get_args(annotation))
+                    if isinstance(annotation, type) and issubclass(
+                        annotation, m.BaseModel
+                    ):
+                        pending.append(annotation)
+        names = {model.__name__ for model in used}
+        definitions: dict[str, set[Path]] = {name: set() for name in names}
+        package_root = Path(flext_infra.__file__).parent
+        for module in package_root.rglob("*.py"):
+            source = module.read_text(encoding="utf-8")
+            if not any(f"class {name}" in source for name in names):
+                continue
+            for node in ast.walk(ast.parse(source)):
+                if isinstance(node, ast.ClassDef) and node.name in definitions:
+                    definitions[node.name].add(module.relative_to(package_root))
+        tm.that(
+            {name: len(modules) for name, modules in definitions.items()},
+            eq=dict.fromkeys(names, 1),
+        )
 
     def test_metadata_projection_preserves_a_minted_ledger_identity(
         self, tmp_path: Path
@@ -301,7 +319,7 @@ class TestsFlextInfraCodegenBeadsProjection:
             '{"backend":"dolt"}\n', encoding="utf-8"
         )
 
-        rendered = self._rendered(self._plan(root), c.Infra.BEADS_METADATA_RELPATH)
+        rendered = u.Tests.planned_text(u.Tests.governed_project_plan(root), c.Infra.BEADS_METADATA_RELPATH)
         if rendered is None:
             pytest.fail("local identity must produce the Beads marker")
         metadata = u.Tests.json_payload(rendered)
@@ -322,7 +340,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         identity = root / "config" / "beads.yaml"
         before = identity.read_bytes()
 
-        _ = self._plan(root)
+        _ = u.Tests.governed_project_plan(root)
 
         tm.that(identity.read_bytes(), eq=before)
 
