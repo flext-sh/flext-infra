@@ -17,6 +17,9 @@ from .. import (
 
 class _ConformExecuteRoles:
     if TYPE_CHECKING:
+        request: m.Infra.CodegenConformRequest
+        repository_root: Path
+        initial_workspace: m.Infra.WorkspaceSpec | None
 
         def plan(
             self, request: m.Infra.CodegenConformRequest

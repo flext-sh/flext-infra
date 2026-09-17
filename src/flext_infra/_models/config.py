@@ -15,18 +15,16 @@ from .._constants import (
 )
 from . import (
     FlextInfraModelsDepsToolSettings,
+    FlextInfraModelsDefaults,
     FlextInfraModelsLayout,
-    immutable_empty_mapping,
 )
 from ._config.artifact import FlextInfraConfigModelsArtifact
 from ._config.beads import FlextInfraConfigModelsBeads
 from ._config.render import FlextInfraConfigModelsRender
-from ._defaults import FlextInfraModelsDefaults
 from .mise_toolchain import FlextInfraModelsMiseToolchain
 
 
 class FlextInfraConfigModels:
-    immutable_empty_mapping = FlextInfraModelsDefaults.immutable_empty_mapping
 
     """Field-only models for config loading and codegen plans."""
 
@@ -3060,14 +3058,14 @@ class FlextInfraConfigModels:
         checkout_submodules_overrides: Annotated[
             Mapping[str, str],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description="Per-distribution checkout submodules overrides",
             ),
         ]
         ci_private_submodules: Annotated[
             Mapping[str, t.JsonMapping],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description="Per-distribution private submodule deploy-key contracts",
             ),
         ]
@@ -3086,7 +3084,7 @@ class FlextInfraConfigModels:
         custom_handler_profile_overrides: Annotated[
             Mapping[str, t.JsonMapping],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description="Per-profile custom handler policy relaxations",
             ),
         ]
@@ -3097,7 +3095,7 @@ class FlextInfraConfigModels:
         project_overrides: Annotated[
             Mapping[str, t.JsonMapping],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description="Per-project layout deltas",
             ),
         ]

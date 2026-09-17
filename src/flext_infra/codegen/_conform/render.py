@@ -14,6 +14,9 @@ from .misc import FlextInfraCodegenConformMisc
 
 class _ConformRenderRoles:
     if TYPE_CHECKING:
+        request: m.Infra.CodegenConformRequest
+        repository_root: Path
+        initial_workspace: m.Infra.WorkspaceSpec | None
 
         def _gitignore_sections(
             self,

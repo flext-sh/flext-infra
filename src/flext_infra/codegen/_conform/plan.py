@@ -17,6 +17,9 @@ from .misc import FlextInfraCodegenConformMisc
 
 class _ConformPlanRoles:
     if TYPE_CHECKING:
+        request: m.Infra.CodegenConformRequest
+        repository_root: Path
+        initial_workspace: m.Infra.WorkspaceSpec | None
 
         def _surface_contract(
             self, surface: c.Infra.CodegenConformSurface

@@ -3,16 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING
 
 from flext_infra.models import m
 from flext_infra.typings import t
 
 from ..rope_core import FlextInfraUtilitiesRopeCore
-
-if TYPE_CHECKING:
-    from flext_infra.protocols import p
-
 from .imports import FlextInfraUtilitiesRopeAnalysisImports
 from .nodes import FlextInfraUtilitiesRopeAnalysisNodes
 from .source import FlextInfraUtilitiesRopeAnalysisSource
@@ -51,14 +46,14 @@ class FlextInfraUtilitiesRopeAnalysisAst(FlextInfraUtilitiesRopeAnalysisSource):
         return min(candidate_lines) if candidate_lines else default_line
 
     @staticmethod
-    def ast_parent_map(root: p.AttributeProbe) -> MutableMapping[int, p.AttributeProbe]:
+    def ast_parent_map(root: t.Infra.RopeAstNode) -> MutableMapping[int, t.Infra.RopeAstNode]:
         """Return a child-id -> parent map for the full AST reachable from ``root``.
 
         Uses only public ``_fields`` access (no ``import ast``); the shared SSOT
         for parent lookups across every rope detector.
         """
-        parent_map: MutableMapping[int, p.AttributeProbe] = {}
-        stack: list[p.AttributeProbe] = [root]
+        parent_map: MutableMapping[int, t.Infra.RopeAstNode] = {}
+        stack: list[t.Infra.RopeAstNode] = [root]
         while stack:
             parent = stack.pop()
             for field_name in getattr(parent, "_fields", ()):
@@ -75,7 +70,7 @@ class FlextInfraUtilitiesRopeAnalysisAst(FlextInfraUtilitiesRopeAnalysisSource):
 
     @classmethod
     def is_module_level_node(
-        cls, node: p.AttributeProbe, parent_map: t.MappingKV[int, p.AttributeProbe]
+        cls, node: t.Infra.RopeAstNode, parent_map: t.MappingKV[int, t.Infra.RopeAstNode]
     ) -> bool:
         """Return True when ``node`` is a direct child of the module body.
 
@@ -95,7 +90,7 @@ class FlextInfraUtilitiesRopeAnalysisAst(FlextInfraUtilitiesRopeAnalysisSource):
             current = parent
 
     @staticmethod
-    def line_col_range(node: t.Infra.RopePyObject) -> t.Quad[int, int, int, int] | None:
+    def line_col_range(node: t.Infra.RopeAstNode) -> t.Quad[int, int, int, int] | None:
         """Return ``(lineno, col_offset, end_lineno, end_col_offset)`` for an AST node."""
         lineno = getattr(node, "lineno", None)
         col_offset = getattr(node, "col_offset", None)
@@ -144,7 +139,7 @@ class FlextInfraUtilitiesRopeAnalysisAst(FlextInfraUtilitiesRopeAnalysisSource):
     ) -> int:
         """Return direct symbol count for a top-level class without semantic imports."""
         pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-        tree: p.AttributeProbe = pymodule.get_ast()
+        tree: t.Infra.RopeAstNode = pymodule.get_ast()
         class_body = FlextInfraUtilitiesRopeAnalysisNodes._class_body_nodes(
             tree, class_name=class_name
         )
