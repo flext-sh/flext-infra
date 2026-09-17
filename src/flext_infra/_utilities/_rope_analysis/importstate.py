@@ -554,7 +554,9 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
                 return ()
             source_class_bases = {
                 class_info.name: class_info.bases
-                for class_info in cls.class_info_from_source(resource.read())
+                for class_info in FlextInfraUtilitiesRopeAnalysisAstHelpers.class_info_from_source(
+                    resource.read()
+                )
             }
             state = cls.get_module_semantic_state(rope_project, resource)
         finally:

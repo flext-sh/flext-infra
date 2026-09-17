@@ -89,13 +89,17 @@ class FlextInfraUtilitiesDocsValidate:
         raw: t.Infra.InfraSequence,
     ) -> p.Result[t.StrSequence]:
         """Validate ``required_skills`` payload against the canonical adapter."""
+
+        def _format_error(e: str) -> str:
+            return f"invalid required_skills configuration: {e}"
+
         return (
             r[t.StrSequence]
             .create_from_callable(
                 lambda: t.Infra.STR_SEQ_ADAPTER.validate_python(raw, strict=True),
                 error_code="required_skills_validation",
             )
-            .map_error(lambda e: f"invalid required_skills configuration: {e}")
+            .map_error(_format_error)
         )
 
     @staticmethod
