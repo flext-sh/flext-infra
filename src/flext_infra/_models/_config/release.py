@@ -10,7 +10,7 @@ from flext_cli import m, u
 
 from ... import t
 from ..._constants import FlextInfraConstantsRelease
-from .._defaults import FlextInfraModelsDefaults
+from .. import FlextInfraModelsDefaults
 from .contexts import FlextInfraConfigModelsContexts
 from .contract import FlextInfraConfigModelsContract
 

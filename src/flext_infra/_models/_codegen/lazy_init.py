@@ -9,7 +9,7 @@ from flext_cli import m
 
 from ... import c, t
 from .. import FlextInfraModelsMixins as mm
-from .._defaults import FlextInfraModelsDefaults
+from .. import FlextInfraModelsDefaults
 
 
 class FlextInfraModelsCodegenLazyInitModels:

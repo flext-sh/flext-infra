@@ -9,10 +9,10 @@ from flext_cli import m
 
 from .. import c, t
 from . import (
-    FlextInfraConfigModels,
     FlextInfraModelsDefaults,
     FlextInfraModelsMixins as mm,
 )
+from ._config import FlextInfraConfigModels
 from ._git import FlextInfraModelsGitIdentity
 
 

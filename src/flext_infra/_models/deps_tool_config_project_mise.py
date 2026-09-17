@@ -8,7 +8,7 @@ from flext_cli import m
 
 from flext_infra import t
 
-from ._defaults import FlextInfraModelsDefaults
+from . import FlextInfraModelsDefaults
 from .deps_tool_config_project_ruff import FlextInfraModelsDepsToolConfigProjectRuff
 
 
