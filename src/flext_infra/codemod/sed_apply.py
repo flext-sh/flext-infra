@@ -62,7 +62,7 @@ class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         self._validate_patterns()
 
         cli.display_text("sed: preflight scan")
-        seen: dict[tuple[str, str, str, str], int] = {}
+        seen: dict[tuple[tuple[str, str, str, str], ...], int] = {}
         iteration = 0
 
         while True:

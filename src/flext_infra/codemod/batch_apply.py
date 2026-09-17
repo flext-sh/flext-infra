@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import override, cast
+from typing import override
 
 from flext_cli import cli
 
@@ -141,21 +141,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         iteration = 0
         while current_text.findings:
             iteration += 1
-            fingerprint = cast(
-                tuple[tuple[str, str, int, str, str | None], ...],
-                tuple(
-                    sorted(
-                        (
-                            finding.rule_id,
-                            finding.file.as_posix(),
-                            finding.line,
-                            finding.text,
-                            finding.replacement,
-                        )
-                        for finding in current_text.entries
-                    )
-                ),
-            )
+            fingerprint = self._text_fingerprint(current_text.entries)
             if fingerprint in seen_text:
                 prev_iter = seen_text[fingerprint]
                 stalled = {
@@ -191,6 +177,24 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         FlextInfraModGateEngine.validate(root).unwrap()
         cli.display_text("mod: AST fixed point verified with zero findings")
         return r[t.Cli.ResultValue].ok(True)
+
+    @staticmethod
+    def _text_fingerprint(
+        entries: t.ModScanEntrySequence,
+    ) -> tuple[tuple[str, str, int, str, str | None], ...]:
+        """Build a sorted fingerprint of all text findings."""
+        return tuple(
+            sorted(
+                (
+                    entry.rule_id,
+                    entry.file.as_posix(),
+                    entry.line,
+                    entry.text,
+                    entry.replacement,
+                )
+                for entry in entries
+            )
+        )
 
     @staticmethod
     def _validate_fix_match(
