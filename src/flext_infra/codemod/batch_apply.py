@@ -198,7 +198,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
     def _validate_fix_match(
         before: m.Infra.ModScanReport, after_apply: m.Infra.ModScanReport
     ) -> None:
-        """Validate that applied fixes match expected changes (fix!=match)."""
+        """Reject unresolved rewrites while preserving valid rule cascades."""
         # Check that actionable findings were actually resolved
         before_actionable = {
             (f.rule_id, f.file.as_posix(), f.text, f.replacement)
@@ -217,16 +217,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             files = {p for _, p, _, _ in unresolved}
             msg = (
                 f"fix!=match: ast-grep apply did not resolve {len(unresolved)} expected actionable "
-                f"findings in rules {sorted(rule_ids)} across files {sorted(files)}"
-            )
-            raise RuntimeError(msg)
-        # Check that new actionable findings weren't introduced
-        new_actionable = after_apply_actionable - before_actionable
-        if new_actionable:
-            rule_ids = {r for r, _, _, _ in new_actionable}
-            files = {p for _, p, _, _ in new_actionable}
-            msg = (
-                f"fix!=match: ast-grep apply introduced {len(new_actionable)} new actionable "
                 f"findings in rules {sorted(rule_ids)} across files {sorted(files)}"
             )
             raise RuntimeError(msg)
