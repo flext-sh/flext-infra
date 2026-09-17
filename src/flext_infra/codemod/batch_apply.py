@@ -141,11 +141,11 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         iteration = 0
         while current_text.findings:
             iteration += 1
-            fingerprint: tuple[tuple[str, str, int, str], ...] = FlextInfraCodemodBatchApply._text_fingerprint(
+            text_fp: tuple[tuple[str, str, int, str], ...] = FlextInfraCodemodBatchApply._text_fingerprint(
                 current_text.entries,
             )
-            if fingerprint in seen_text:
-                prev_iter = seen_text[fingerprint]
+            if text_fp in seen_text:
+                prev_iter = seen_text[text_fp]
                 stalled = {
                     finding.rule_id
                     for finding in current_text.entries
@@ -157,7 +157,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     f"{', '.join(sorted(stalled)) or 'none'}; changes retained "
                     "for mandatory owner repair"
                 )
-            seen_text[fingerprint] = iteration
+            seen_text[text_fp] = iteration
             cli.display_text(
                 f"mod: text phase iteration {iteration} — "
                 f"{current_text.findings} sed-by-list finding(s), "

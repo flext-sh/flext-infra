@@ -16,10 +16,6 @@ from .. import (
 
 
 class _ConformExecuteRoles:
-    request: m.Infra.CodegenConformRequest | None = None
-    repository_root: Path = Path()
-    initial_workspace: m.Infra.WorkspaceSpec | None = None
-
     def plan(self, request: m.Infra.CodegenConformRequest) -> p.Result[m.Infra.CodegenPlan]: ...
     def _mise_config_plans(self, plan: m.Infra.CodegenPlan) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
     def _conform_workspace_beads_routes(self, request: m.Infra.CodegenConformRequest) -> p.Result[bool]: ...
