@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypeGuard
+from typing import TypeGuard
 
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -22,7 +22,8 @@ class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
     def _ensure_ast_node(obj: object) -> t.Infra.RopeAstNode:
         """Ensure an object is an AST node (has `_fields`), narrowing the type."""
         if not FlextInfraUtilitiesRopeAnalysisNodes._is_ast_node(obj):
-            raise TypeError(f"Expected AST node with _fields, got {type(obj).__name__}")
+            msg = f"Expected AST node with _fields, got {type(obj).__name__}"
+            raise TypeError(msg)
         return obj
 
     @staticmethod

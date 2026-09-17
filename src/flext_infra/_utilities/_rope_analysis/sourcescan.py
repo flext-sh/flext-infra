@@ -34,7 +34,8 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     def _ensure_ast_node(obj: object) -> t.Infra.RopeAstNode:
         """Ensure an object is an AST node (has `_fields`), narrowing the type."""
         if not FlextInfraUtilitiesRopeAnalysisSourceScan._is_ast_node(obj):
-            raise TypeError(f"Expected AST node with _fields, got {type(obj).__name__}")
+            msg = f"Expected AST node with _fields, got {type(obj).__name__}"
+            raise TypeError(msg)
         return obj
 
     @staticmethod

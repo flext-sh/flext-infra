@@ -4,16 +4,13 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, TypeGuard
+from typing import ClassVar, TypeGuard
 
 from flext_infra.models import m
 from flext_infra.typings import t
 
 from ..rope_core import FlextInfraUtilitiesRopeCore
 from ..rope_runtime import FlextInfraUtilitiesRopeRuntime
-
-if TYPE_CHECKING:
-    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesRopeAnalysisAstHelpers:
@@ -30,7 +27,8 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
     def _ensure_ast_node(obj: object) -> t.Infra.RopeAstNode:
         """Ensure an object is an AST node (has `_fields`), narrowing the type."""
         if not FlextInfraUtilitiesRopeAnalysisAstHelpers._is_ast_node(obj):
-            raise TypeError(f"Expected AST node with _fields, got {type(obj).__name__}")
+            msg = f"Expected AST node with _fields, got {type(obj).__name__}"
+            raise TypeError(msg)
         return obj
 
     @staticmethod
