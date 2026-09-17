@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from ._conform.render import FlextInfraCodegenConformRender
     from ._conform_gitignore import FlextInfraCodegenConformGitignoreMixin
     from ._consolidator_steps import FlextInfraCodegenConsolidatorStepsMixin
+    from ._execution import FlextInfraCodegenExecutionBase
     from ._fixer_passes import FlextInfraCodegenFixerPassesMixin
     from ._fixer_results import FlextInfraCodegenFixerResultsMixin
     from ._fixer_workspace import FlextInfraCodegenFixerWorkspaceMixin
@@ -88,6 +89,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenConformRender",
     "FlextInfraCodegenConsolidator",
     "FlextInfraCodegenConsolidatorStepsMixin",
+    "FlextInfraCodegenExecutionBase",
     "FlextInfraCodegenFixer",
     "FlextInfraCodegenFixerPassesMixin",
     "FlextInfraCodegenFixerResultsMixin",
@@ -168,6 +170,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._conform.render": ("FlextInfraCodegenConformRender",),
             "._conform_gitignore": ("FlextInfraCodegenConformGitignoreMixin",),
             "._consolidator_steps": ("FlextInfraCodegenConsolidatorStepsMixin",),
+            "._execution": ("FlextInfraCodegenExecutionBase",),
             "._fixer_passes": ("FlextInfraCodegenFixerPassesMixin",),
             "._fixer_results": ("FlextInfraCodegenFixerResultsMixin",),
             "._fixer_workspace": ("FlextInfraCodegenFixerWorkspaceMixin",),
