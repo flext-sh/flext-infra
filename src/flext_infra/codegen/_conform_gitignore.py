@@ -44,7 +44,7 @@ class FlextInfraCodegenConformGitignoreMixin:
 
         Thin delegating wrapper to the canonical utility owner (u.Infra).
         """
-        return u.Infra._gitignore_sections(
+        return u.Infra.gitignore_sections(
             codegen,
             profile=profile,
             project_name=project_name,

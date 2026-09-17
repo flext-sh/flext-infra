@@ -101,6 +101,3 @@ class FlextInfraCodegenConformBootstrap:
                     pyproject=False,
                     custom=False,
                 )
-            case _:
-                msg = f"Unsupported codegen conform surface: {surface}"
-                raise ValueError(msg)

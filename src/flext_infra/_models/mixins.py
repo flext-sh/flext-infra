@@ -66,9 +66,14 @@ class FlextInfraModelsMixins:
         @property
         def project_names(self) -> t.StrSequence | None:
             """Normalized project names from repeated selectors."""
-            from flext_infra import u
-
-            return u.Infra.normalize_sequence_values(self.projects)
+            names = tuple(
+                item.strip()
+                for value in (self.projects or ())
+                for group in (value or "").split(",")
+                for item in group.split()
+                if item.strip()
+            )
+            return names or None
 
     class ReadMixin(ScopeMixin):
         """Read-only commands — report file + output directory only.
@@ -88,16 +93,22 @@ class FlextInfraModelsMixins:
         @property
         def report_path(self) -> Path | None:
             """Resolved report path when provided."""
-            from flext_infra import u
-
-            return u.Infra.normalize_optional_path(self.report)
+            if self.report is None:
+                return None
+            path = self.report if isinstance(self.report, Path) else Path(self.report)
+            return path.resolve()
 
         @property
         def output_dir_path(self) -> Path | None:
             """Resolved output directory when provided."""
-            from flext_infra import u
-
-            return u.Infra.normalize_optional_path(self.output_dir)
+            if self.output_dir is None:
+                return None
+            path = (
+                self.output_dir
+                if isinstance(self.output_dir, Path)
+                else Path(self.output_dir)
+            )
+            return path.resolve()
 
     class WriteMixin(ScopeMixin):
         """Canonical write contract — apply/dry-run + safety gates.

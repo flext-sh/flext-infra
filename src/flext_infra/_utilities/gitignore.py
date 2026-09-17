@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import u as cli_u
+from flext_cli import u
 
 from flext_infra import m, p, r, t
 from flext_infra.constants import c
@@ -51,18 +51,12 @@ class FlextInfraUtilitiesGitignore:
         ).resolve()
         project_patterns: t.StrSequence = ()
         if project_dir is not None:
-            from .project_managed_artifacts import (
-                FlextInfraUtilitiesProjectManagedArtifacts,
-            )
-
-            resolved = FlextInfraUtilitiesProjectManagedArtifacts.load_project_managed_artifacts(
-                project_dir
-            )
+            resolved = u.Infra.load_project_managed_artifacts(project_dir)
             if resolved.failure:
                 return r[str].from_failure(resolved)
             project_patterns = resolved.value.artifacts.Gitignore.patterns
         context = m.Infra.GitignoreRenderSpec(
-            gitignore_sections=FlextInfraUtilitiesGitignore._gitignore_sections(
+            gitignore_sections=FlextInfraUtilitiesGitignore.gitignore_sections(
                 codegen,
                 profile=profile,
                 project_name=project_name,
@@ -70,10 +64,10 @@ class FlextInfraUtilitiesGitignore:
                 project_patterns=project_patterns,
             )
         )
-        return cli_u.Cli.template_render(templates_root / entry.source, context)
+        return u.Cli.template_render(templates_root / entry.source, context)
 
     @staticmethod
-    def _gitignore_sections(
+    def gitignore_sections(
         codegen: m.Infra.CodegenConfigSpec,
         *,
         profile: c.Infra.MakeProfile,

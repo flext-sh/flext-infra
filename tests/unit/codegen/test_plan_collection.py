@@ -10,7 +10,7 @@ from flext_tests import tm
 from flext_infra import m, u
 
 
-class TestsPlanCollection:
+class TestsFlextInfraPlanCollection:
     """Collection plans are reproducible and preserve curated documentation."""
 
     @staticmethod
@@ -22,6 +22,7 @@ class TestsPlanCollection:
     @staticmethod
     def _config() -> m.Infra.PlanCollectionConfig:
         return m.Infra.PlanCollectionConfig(
+            enabled=True,
             canonical_dir=Path("docs/plans"),
             sources=(
                 m.Infra.PlanCollectionSource(
@@ -39,6 +40,7 @@ class TestsPlanCollection:
 
     def test_yaml_shaped_configuration_parses_at_the_typed_boundary(self) -> None:
         config = m.Infra.PlanCollectionConfig.model_validate({
+            "enabled": True,
             "canonical_dir": "docs/plans",
             "sources": [
                 {
@@ -60,9 +62,22 @@ class TestsPlanCollection:
         tm.that(config.sources[0].plan_globs, eq=("**/*.md",))
         tm.that(config.sources[0].exclude_globs, eq=())
 
+    def test_disabled_configuration_has_no_publication_sources(self) -> None:
+        config = m.Infra.PlanCollectionConfig(
+            enabled=False, canonical_dir=Path("docs/plans")
+        )
+
+        tm.that(config.sources, eq=())
+        disabled = {**self._config().model_dump(), "enabled": False}
+        with pytest.raises(ValueError, match="disabled plan collection"):
+            m.Infra.PlanCollectionConfig.model_validate(disabled)
+        with pytest.raises(ValueError, match="requires at least one source"):
+            m.Infra.PlanCollectionConfig(enabled=True, canonical_dir=Path("docs/plans"))
+
     def test_yaml_sequence_fields_reject_scalar_strings(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="valid tuple"):
             m.Infra.PlanCollectionConfig.model_validate({
+                "enabled": True,
                 "canonical_dir": "docs/plans",
                 "sources": "kilo-local-plans",
             })
@@ -133,6 +148,29 @@ class TestsPlanCollection:
         tm.that(plan.desired_content, eq=source.read_bytes())
         tm.that(u.Infra.codegen_file_requires_effect(plan), eq=True)
 
+    def test_disabled_collection_plans_manifest_owned_pruning(
+        self, tmp_path: Path
+    ) -> None:
+        self._write(tmp_path / "input" / "design.md", "# Private source\n")
+        published = u.Infra.docs_collect_plan_files(tmp_path, self._config())
+        for plan in published.files:
+            assert plan.desired_content is not None
+            self._write(plan.path, plan.desired_content.decode())
+        disabled = m.Infra.PlanCollectionConfig(
+            enabled=False, canonical_dir=Path("docs/plans")
+        )
+
+        pruning = u.Infra.docs_collect_plan_files(tmp_path, disabled)
+
+        tm.that(bool(pruning.files), eq=True)
+        tm.that(pruning.revisions, eq=())
+        tm.that(pruning.coverage, eq=())
+        tm.that(pruning.inventories, eq=())
+        tm.that(bool(pruning.prunable_directories), eq=True)
+        for plan in pruning.files:
+            tm.that(plan.desired_content, eq=None)
+            tm.that(plan.path.is_relative_to(tmp_path / "docs" / "plans"), eq=True)
+
     def test_private_inventory_never_publishes_session_contents(
         self, tmp_path: Path
     ) -> None:
@@ -140,6 +178,7 @@ class TestsPlanCollection:
         session = tmp_path / "sessions" / "session.jsonl"
         self._write(session, private_session_text)
         config = m.Infra.PlanCollectionConfig(
+            enabled=True,
             canonical_dir=Path("docs/plans"),
             sources=(
                 m.Infra.PlanCollectionSource(
@@ -192,6 +231,7 @@ class TestsPlanCollection:
         projection = tmp_path / "home" / "plans"
         self._write(projection / "design.md", "# Original home plan\n")
         config = m.Infra.PlanCollectionConfig(
+            enabled=True,
             canonical_dir=Path("docs/plans"),
             projection_root=projection,
             sources=(
@@ -304,6 +344,7 @@ class TestsPlanCollection:
         self._write(projection / "design.md", "# Original\n")
         self._write(projection / "design" / "research.md", "# Research\n")
         config = m.Infra.PlanCollectionConfig(
+            enabled=True,
             canonical_dir=Path("docs/plans"),
             projection_root=projection,
             sources=(
@@ -393,4 +434,4 @@ class TestsPlanCollection:
             )
 
 
-__all__: list[str] = ["TestsPlanCollection"]
+__all__: list[str] = ["TestsFlextInfraPlanCollection"]

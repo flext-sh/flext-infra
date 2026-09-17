@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Final, override
+from typing import TYPE_CHECKING, Final
 
 from ... import c, config, m, p, r, t, u
 from ...docs import FlextInfraDocGenerator
@@ -15,7 +15,35 @@ from .. import (
 )
 
 
-class FlextInfraCodegenConformExecute:
+class _ConformExecuteRoles:
+    if TYPE_CHECKING:
+        request: m.Infra.CodegenConformRequest
+        repository_root: Path
+        initial_workspace: m.Infra.WorkspaceSpec | None
+
+        def plan(
+            self, request: m.Infra.CodegenConformRequest
+        ) -> p.Result[m.Infra.CodegenPlan]: ...
+        def _mise_config_plans(
+            self, plan: m.Infra.CodegenPlan
+        ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
+        def _conform_workspace_beads_routes(
+            self, request: m.Infra.CodegenConformRequest
+        ) -> p.Result[bool]: ...
+        def _owned_docs_files(
+            self,
+            request: m.Infra.CodegenConformRequest,
+            files: t.SequenceOf[m.Infra.CodegenFilePlan],
+        ) -> tuple[m.Infra.CodegenFilePlan, ...]: ...
+        def _owned_docs_directories(
+            self,
+            request: m.Infra.CodegenConformRequest,
+            plan: m.Infra.CodegenPlan,
+            directories: t.SequenceOf[Path],
+        ) -> tuple[Path, ...]: ...
+
+
+class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
     """Transactional execution of conformance plans."""
 
     @classmethod
@@ -103,7 +131,6 @@ class FlextInfraCodegenConformExecute:
             )
         return result
 
-    @override
     def execute(self) -> p.Result[m.Infra.CodegenResult]:
         """Run check or apply and require a verified fixed point."""
         request = self.request or m.Infra.CodegenConformRequest(

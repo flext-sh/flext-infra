@@ -92,6 +92,28 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.that(rendered_mise, lacks="gascity")
         tm.that(rendered_mise, has='[tools."github:marlon-costa-dc/beads"]')
 
+    def test_mise_manifest_provisions_managed_make(self, tmp_path: Path) -> None:
+        """The generated ``.mise.toml`` must declare make as a managed tool.
+
+        Root cause (R1): when make is absent from [tools], direnv resolves
+        make from the stale host shim (conda-carried) instead of a Mise
+        installation, so ``make setup`` exits 1. The projection must own
+        make so the setup runtime resolves/executes it without conda.
+        """
+        root = self._project(
+            tmp_path / "project",
+            database="project_database",
+            issue_prefix="project-prefix",
+        )
+
+        plan = self._plan(root)
+        rendered_mise = self._rendered(plan, ".mise.toml")
+
+        if rendered_mise is None:
+            pytest.fail("conform must produce the managed .mise.toml")
+        tm.that(rendered_mise, has='make = "latest"')
+        tm.that(rendered_mise, lacks="conda")
+
     def test_gascity_disabled_renders_local_envrc_tier(self, tmp_path: Path) -> None:
         """A disabled city renders the repository-local bd activation tier."""
         root = self._project(

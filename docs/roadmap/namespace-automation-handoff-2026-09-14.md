@@ -1,5 +1,9 @@
 # Handoff: automação de namespace e runtime do flext-infra
 
+> Historical evidence only. This plan records an earlier execution context and
+> its command examples are not current workspace guidance. Use the root
+> `AGENTS.md` and `make help` for the active contract.
+
 <!-- TOC START -->
 - [1. Pedido, prioridade e limite desta entrega](#1-pedido-prioridade-e-limite-desta-entrega)
 - [2. Plano de execução reconstruído e confronto com o resultado](#2-plano-de-execucao-reconstruido-e-confronto-com-o-resultado)

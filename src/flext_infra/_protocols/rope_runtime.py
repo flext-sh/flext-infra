@@ -62,6 +62,24 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopePyObject]: ...
 
     @runtime_checkable
+    class RopeAstNode(Protocol):
+        """AST node shape — both stdlib ast.AST and Rope's PyObject subclasses.
+
+        Used for structural AST traversal without requiring Rope semantic methods.
+        """
+
+        _fields: tuple[str, ...]
+
+        lineno: int | None
+        col_offset: int | None
+        end_lineno: int | None
+        end_col_offset: int | None
+
+        id: str | None
+        attr: str | None
+        name: str | None
+
+    @runtime_checkable
     class RopeAssignment(Protocol):
         """Rope assignment shape."""
 

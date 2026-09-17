@@ -632,13 +632,6 @@ _builtin_clean_generated:
 		\( {% for pattern in make.clean.trace_globs %}-name '{{ pattern }}'{% if not loop.last %} -o {% endif %}{% endfor %} \) \
 		-delete
 {% endif %}
-	@set -eu; \
-	if [ -L "$(PROJECT_SCRATCH_ROOT)" ]; then \
-		printf 'ERROR: scratch root %s must be physical, found a symlink\n' "$(PROJECT_SCRATCH_ROOT)" >&2; \
-		exit 2; \
-	elif [ -d "$(PROJECT_SCRATCH_ROOT)" ]; then \
-		find "$(PROJECT_SCRATCH_ROOT)" -depth -delete; \
-	fi
 
 # Release protocol. `plan` derives the next version from merged pull-request
 # titles and guards against any version change made outside the protocol;

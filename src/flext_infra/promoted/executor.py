@@ -9,6 +9,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_infra import u
 from flext_infra.promoted.invocation import param_value
 
 from .base import (

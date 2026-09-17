@@ -31,6 +31,8 @@ class FlextInfraConstantsSourceCode:
     # --- Directory exclusion sets (was: class Excluded) ---
     COMMON_EXCLUDED_DIRS: Final[frozenset[str]] = frozenset({
         ".git",
+        ".agents-sync-home",
+        ".test-tmp",
         ".venv",
         ".worktrees",
         "node_modules",
@@ -51,11 +53,12 @@ class FlextInfraConstantsSourceCode:
     }
     "Non-productive roots excluded while discovering Python analyzer surfaces."
     DOC_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
+        "crg-reports",
         "incoming",
         "legado",
         "site",
     }
-    "Live documentation excludes generated sites and historical evidence roots."
+    "Live docs exclude generated sites and immutable or historical evidence roots."
     PYPROJECT_SKIP_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
         ".claude.disabled",
         "context_test",

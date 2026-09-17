@@ -192,10 +192,11 @@ class FlextInfraMypyGate(FlextInfraGate):
                     raw_line, strict=True
                 )
             except c.ValidationError as exc:
-                failed = e.fail_validation(error=exc)
                 return False, (
                     self._malformed_report_issue(
-                        str(failed.error), tool=c.Infra.MYPY, file=str(project_dir)
+                        str(e.fail_validation(error=exc).error),
+                        tool=c.Infra.MYPY,
+                        file=str(project_dir),
                     ),
                 )
             issues.append(

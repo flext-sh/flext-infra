@@ -20,6 +20,19 @@ if TYPE_CHECKING:
 HEADER_START = "/// cosmos-command"
 HEADER_END = "///"
 COMMAND_SUFFIXES = frozenset({".sh", ".py"})
+
+
+def current_settings() -> type(settings):
+    """Return the live settings singleton so callers always see env overrides.
+
+    Modules that cache ``from flext_infra import settings`` at import time
+    hold a frozen snapshot; this indirection re-resolves the singleton on every
+    call, so ``FlextSettings.update_global`` propagates to dispatch and base
+    code without module-level monkeypatching.
+    """
+    return type(settings).fetch_global()
+
+
 # Generator-owned package markers (`make gen` lazy-init) are Python packaging
 # structure inside a verb directory, never a public command.
 PACKAGE_MARKERS = frozenset({"__init__.py"})
@@ -43,7 +56,7 @@ class MissingHeaderError(RegistryError):
 
 def workspace_python_cmd() -> Path | None:
     """Return the active workspace interpreter from ``VIRTUAL_ENV`` when set."""
-    venv = settings.Infra.virtual_env
+    venv = current_settings().Infra.virtual_env
     if not venv:
         return None
     candidate = Path(sys.executable)
@@ -59,7 +72,7 @@ def workspace_venv() -> Path:
     of which project owns it. When no ``VIRTUAL_ENV`` is active, the
     interpreter already running the dispatcher is authoritative.
     """
-    venv = settings.Infra.virtual_env
+    venv = current_settings().Infra.virtual_env
     if venv and Path(sys.executable).is_file():
         return Path(venv)
     return Path(sys.prefix)
