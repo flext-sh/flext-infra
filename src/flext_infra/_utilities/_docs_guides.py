@@ -109,7 +109,8 @@ class FlextInfraUtilitiesDocsGuidesMixin:
             ownership = FlextInfraUtilitiesDocsGuidesMixin.docs_project_guide_content(
                 "", scope.name, path.name
             ).partition("\n\n")[0]
-            if content.startswith(ownership + "\n\n"):
+            previous_ownership = ownership.replace("`<workspace-root>/", "`")
+            if content.startswith((ownership + "\n\n", previous_ownership + "\n\n")):
                 owned.add(path)
         artifacts: list[DocsRenderedArtifactTuple] = []
         expected_paths = {destination_root / path.name for path in sources}

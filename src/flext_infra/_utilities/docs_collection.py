@@ -52,12 +52,22 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         coverage: list[m.Infra.PlanCollectionCoverage] = []
         inventories: list[m.Infra.PlanCollectionSourceInventory] = []
         desired: t.MutableMappingKV[Path, bytes] = {}
+        canonical_plans = {
+            canonical / revision.canonical_path for revision in manifest.revisions
+        }
+        invalid_owned: dict[Path, str] = {}
         for artifact in manifest.artifacts:
             path = canonical / artifact.relative_path
             content = states[path].content
             if content is None:
-                msg = f"canonical collection artifact disappeared: {path}"
-                raise ValueError(msg)
+                invalid_owned[path] = artifact.digest
+                continue
+            if (
+                path not in canonical_plans
+                and sha256(content).hexdigest() != artifact.digest
+            ):
+                invalid_owned[path] = artifact.digest
+                continue
             desired[path] = content
         for source in configuration.sources:
             paths = cls.collection_source_files(root, source, excluded_outputs)
@@ -164,6 +174,11 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
             "\n".join(lines) + "\n"
         )
         desired[canonical / "collection-index.md"] = index.encode()
+        for path, digest in invalid_owned.items():
+            content = desired.get(path)
+            if content is None or sha256(content).hexdigest() != digest:
+                msg = f"immutable canonical artifact changed or disappeared: {path}"
+                raise ValueError(msg)
         manifest_path = canonical / "collection-manifest.json"
         owned = {item.relative_path: item for item in manifest.artifacts}
         owned.update({

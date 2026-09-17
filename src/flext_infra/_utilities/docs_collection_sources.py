@@ -195,8 +195,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
                 ):
                     excluded.append(candidate)
                 elif candidate not in plans and root == canonical:
-                    msg = f"immutable canonical artifact changed or disappeared: {candidate}"
-                    raise ValueError(msg)
+                    continue
                 elif root == projection and state.content is not None:
                     projected_plans = {
                         root / plan.relative_to(canonical) for plan in plans
