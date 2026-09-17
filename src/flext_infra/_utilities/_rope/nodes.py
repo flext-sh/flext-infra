@@ -13,7 +13,7 @@ from .base import FlextInfraUtilitiesRopeAnalysisBase
 class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
     """AST node primitives: kinds, names, walking, and class info."""
 
-@staticmethod
+    @staticmethod
     def is_ast_node(obj: object) -> TypeGuard[t.Infra.RopeAstNode]:
         """Type guard to narrow to RopeAstNode via structural `_fields` check."""
         return hasattr(obj, "_fields")
@@ -62,9 +62,9 @@ class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
                     stack.extend(
                         item
                         for item in value
-                        if FlextInfraUtilitiesRopeAnalysisNodes.is_ast_node(item)
+                        if FlextInfraUtilitiesRopeAnalysisNodes._is_ast_node(item)
                     )
-                elif FlextInfraUtilitiesRopeAnalysisNodes.is_ast_node(value):
+                elif FlextInfraUtilitiesRopeAnalysisNodes._is_ast_node(value):
                     stack.append(value)
         return collected
 
@@ -77,7 +77,7 @@ class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
         nodes: list[t.Infra.RopeAstNode] = [
             child
             for child in body
-            if FlextInfraUtilitiesRopeAnalysisNodes.is_ast_node(child)
+            if FlextInfraUtilitiesRopeAnalysisNodes._is_ast_node(child)
         ]
         return tuple(nodes)
 
