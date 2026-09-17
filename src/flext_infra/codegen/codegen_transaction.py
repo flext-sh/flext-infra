@@ -117,7 +117,7 @@ class FlextInfraCodegenTransaction:
         self,
         scope_root: Path,
         roots: t.MappingKV[str, Path],
-        inputs: tuple[m.Cli.AtomicFileState, ...],
+        inputs: t.VariadicTuple[m.Cli.AtomicFileState],
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Create a durable file-only cursor using the existing journal lifecycle."""
         result_type = r[m.Infra.CodegenTransactionSession]
@@ -197,9 +197,9 @@ class FlextInfraCodegenTransaction:
         scope_root: Path,
         roots: t.MappingKV[str, Path],
         analysis: m.Infra.CodegenPhaseAnalysis,
-        directories: tuple[Path, ...],
+        directories: t.VariadicTuple[Path],
         validator: Callable[[], p.Result[bool]],
-    ) -> p.Result[tuple[Path, ...]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Compose file publication through the same durable phase lifecycle."""
         result_type = r[tuple[Path, ...]]
         started = self.begin_files_locked(scope_root, roots, analysis.inputs)

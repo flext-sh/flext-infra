@@ -141,8 +141,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         iteration = 0
         while current_text.findings:
             iteration += 1
-            text_fp: tuple[tuple[str, str, int, str], ...] = FlextInfraCodemodBatchApply._text_fingerprint(
-                current_text.entries,
+            text_fp: t.VariadicTuple[t.Quad[str, str, int, str]] = (
+                FlextInfraCodemodBatchApply._text_fingerprint(current_text.entries)
             )
             if text_fp in seen_text:
                 prev_iter = seen_text[text_fp]
@@ -182,8 +182,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
 
     @staticmethod
     def _text_fingerprint(
-        entries: tuple[m.Infra.ModTextFinding, ...],
-    ) -> tuple[tuple[str, str, int, str], ...]:
+        entries: t.VariadicTuple[m.Infra.ModTextFinding],
+    ) -> t.VariadicTuple[t.Quad[str, str, int, str]]:
         """Build a sorted fingerprint of all text findings."""
         result: list[tuple[str, str, int, str]] = []
         for entry in entries:

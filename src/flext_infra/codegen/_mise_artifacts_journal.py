@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, cast
 
 from flext_core import r
 from flext_infra import c, m, u
@@ -539,8 +539,7 @@ class FlextInfraMiseArtifactsJournal:
 
     @staticmethod
     def _recorded_directory_root(
-        directory: m.Infra.CodegenJournalDirectory,
-        participants: t.MappingKV[str, Path],
+        directory: m.Infra.CodegenJournalDirectory, participants: t.MappingKV[str, Path]
     ) -> p.Result[Path | None]:
         """Recover one workspace root candidate or validate an external owner."""
         relative = Path(directory.path)
@@ -584,7 +583,7 @@ class FlextInfraMiseArtifactsJournal:
         current_scope: Path,
         recorded_participants: t.MappingKV[str, m.Infra.CodegenFileParticipant],
         current_participants: t.MappingKV[str, m.Infra.CodegenFileParticipant],
-    ) -> tuple[Path, Path]:
+    ) -> t.Pair[Path, Path]:
         """Resolve the physical owner roots for one journaled absolute path."""
         for selector, participant in recorded_participants.items():
             if path.is_relative_to(participant.root):

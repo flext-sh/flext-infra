@@ -8,7 +8,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from tests import c, u
+from tests import c, t, u
 
 _FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
 
@@ -33,7 +33,7 @@ def _make_project_with_module(
 
 def _make_project_with_module_path(
     tmp_path: Path, *, module_source: str, module_path: str
-) -> tuple[Path, Path]:
+) -> t.Pair[Path, Path]:
     project_root = tmp_path / "project"
     package_dir = project_root / "src" / "flext_test"
     package_dir.mkdir(parents=True)
@@ -166,8 +166,7 @@ class TestsRule0NamespaceStructure:
         tm.ok(result)
         tm.that(
             any(
-                violation.startswith("[NS-000")
-                for violation in result.value.violations
+                violation.startswith("[NS-000") for violation in result.value.violations
             ),
             eq=False,
         )

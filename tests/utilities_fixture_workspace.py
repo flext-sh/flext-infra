@@ -666,7 +666,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             )
             return tree, status
 
-    __all__: tuple[str, ...] = ("WorktreeFixture",)
+    __all__: t.VariadicTuple[str] = ("WorktreeFixture",)
 
 
 __all__: list[str] = ["TestsFlextInfraUtilitiesWorkspaceFixtureMixin"]

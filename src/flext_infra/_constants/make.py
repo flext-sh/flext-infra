@@ -80,6 +80,7 @@ class FlextInfraConstantsMake:
         "docs",
         "fmt",
         "fix",
+        "fix-enforcement",
         "test",
     )
     ORCHESTRATOR_REMOVE_ENV_KEYS: Final[t.StrSequence] = (

@@ -35,7 +35,7 @@ class FlextInfraCodegenConformMisc:
     @staticmethod
     def _member_repository_roots(
         request: m.Infra.CodegenConformRequest, plan: m.Infra.CodegenPlan
-    ) -> tuple[Path, ...]:
+    ) -> t.VariadicTuple[Path]:
         """Return the physical roots of the declared member repositories."""
         return tuple(
             (request.root / repository.path).resolve()
@@ -48,7 +48,7 @@ class FlextInfraCodegenConformMisc:
         cls,
         request: m.Infra.CodegenConformRequest,
         files: t.SequenceOf[m.Infra.CodegenFilePlan],
-    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+    ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:
         """Keep only docs plans owned by the invoked repository's own scope.
 
         Member repositories declared ``codegen: conform`` are self-governing:
@@ -69,7 +69,7 @@ class FlextInfraCodegenConformMisc:
         request: m.Infra.CodegenConformRequest,
         plan: m.Infra.CodegenPlan,
         directories: t.SequenceOf[Path],
-    ) -> tuple[Path, ...]:
+    ) -> t.VariadicTuple[Path]:
         """Keep only docs directory chains inside the invoked repository."""
         root = request.root.resolve()
         member_roots = cls._member_repository_roots(request, plan)

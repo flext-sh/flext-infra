@@ -18,11 +18,26 @@ from .. import (
 class _ConformExecuteRoles:
     if TYPE_CHECKING:
 
-        def plan(self, request: m.Infra.CodegenConformRequest) -> p.Result[m.Infra.CodegenPlan]: ...
-        def _mise_config_plans(self, plan: m.Infra.CodegenPlan) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
-        def _conform_workspace_beads_routes(self, request: m.Infra.CodegenConformRequest) -> p.Result[bool]: ...
-        def _owned_docs_files(self, request: m.Infra.CodegenConformRequest, files: t.SequenceOf[m.Infra.CodegenFilePlan]) -> tuple[m.Infra.CodegenFilePlan, ...]: ...
-        def _owned_docs_directories(self, request: m.Infra.CodegenConformRequest, plan: m.Infra.CodegenPlan, directories: t.SequenceOf[Path]) -> tuple[Path, ...]: ...
+        def plan(
+            self, request: m.Infra.CodegenConformRequest
+        ) -> p.Result[m.Infra.CodegenPlan]: ...
+        def _mise_config_plans(
+            self, plan: m.Infra.CodegenPlan
+        ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
+        def _conform_workspace_beads_routes(
+            self, request: m.Infra.CodegenConformRequest
+        ) -> p.Result[bool]: ...
+        def _owned_docs_files(
+            self,
+            request: m.Infra.CodegenConformRequest,
+            files: t.SequenceOf[m.Infra.CodegenFilePlan],
+        ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]: ...
+        def _owned_docs_directories(
+            self,
+            request: m.Infra.CodegenConformRequest,
+            plan: m.Infra.CodegenPlan,
+            directories: t.SequenceOf[Path],
+        ) -> t.VariadicTuple[Path]: ...
 
 
 class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
@@ -261,7 +276,7 @@ class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
     _SOURCE_RACE_CYCLES: Final[int] = 3
     """Bounded convergence attempts after a mid-cycle source mutation."""
 
-    _SOURCE_RACE_MARKERS: Final[tuple[str, ...]] = (
+    _SOURCE_RACE_MARKERS: Final[t.VariadicTuple[str]] = (
         "atomic source changed",
         "atomic destination parent is missing",
         "atomic source has conflicting snapshots",
