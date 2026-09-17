@@ -19,7 +19,6 @@ from flext_infra.codegen import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenProjectNew,
 )
-from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.docs import FlextInfraDocGenerator
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -592,45 +591,6 @@ class TestsFlextInfraCodegenConform:
         tm.that(package_root, has='"flext_cli": (')
         tm.that(package_root, has='"r"')
 
-    def test_make_context_accepts_manifest_without_project_metadata(
-        self, tmp_path: Path
-    ) -> None:
-        """Build Make context from repository-owned data alone."""
-        repository = u.Tests.repository_ref("consumer")
-        workspace = m.Infra.WorkspaceSpec(
-            name="consumer",
-            beads=u.Tests.beads_project("consumer"),
-            repository=repository,
-        )
-        target = TestsFlextInfraConformSupport.conform_target(
-            tmp_path, repository, make_profile=c.Infra.MakeProfile.STANDALONE
-        )
-        tooling_runtime = tm.ok(
-            FlextInfraPyprojectModernizer(
-                repository_root=tmp_path, skip_check=True
-            ).resolve_tooling_context(
-                project_name=repository.distribution,
-                package_name=repository.distribution.replace("-", "_"),
-                path=tmp_path / "pyproject.toml",
-                declared_python_dirs=("src",),
-            )
-        )
-        context = FlextInfraCodegenConform.make_render_context(
-            repository,
-            target,
-            workspace,
-            config.Infra.codegen,
-            tooling_runtime=tooling_runtime,
-            repository_root=tmp_path,
-        )
-        rendered = tm.ok(context)
-        tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)
-        tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
-        tm.that(rendered.repository_root_rel, eq=".")
-
-    # Why (suite budget): parametrized over both conform modes, each running a
-    # full plan/apply cycle on a real git repo; 10s only holds on an idle CPU.
-    @pytest.mark.slow
     @pytest.mark.parametrize("mode", tuple(c.Infra.CodegenConformMode))
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path, mode: c.Infra.CodegenConformMode

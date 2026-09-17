@@ -106,6 +106,33 @@ class TestsPlanCollection:
         tm.that(plan.desired_content, eq=curated.encode())
         tm.that(canonical.read_text(), eq=curated)
 
+    def test_modified_generated_revision_is_repaired_from_unchanged_source(
+        self, tmp_path: Path
+    ) -> None:
+        source = tmp_path / "input" / "design.md"
+        self._write(source, "# Source\n")
+        config = self._config()
+        first = u.Infra.collect_plan_files(tmp_path, config)
+        for plan in first.files:
+            assert plan.desired_content is not None
+            self._write(plan.path, plan.desired_content.decode())
+        revision = first.revisions[0]
+        generated = (
+            tmp_path
+            / config.canonical_dir
+            / revision.canonical_path.with_suffix("")
+            / "incoming"
+            / revision.digest
+            / "plan.md"
+        )
+        self._write(generated, "# Hand-edited generated output\n")
+
+        repaired = u.Infra.collect_plan_files(tmp_path, config)
+
+        plan = next(item for item in repaired.files if item.path == generated)
+        tm.that(plan.desired_content, eq=source.read_bytes())
+        tm.that(u.Infra.codegen_file_requires_effect(plan), eq=True)
+
     def test_private_inventory_never_publishes_session_contents(
         self, tmp_path: Path
     ) -> None:

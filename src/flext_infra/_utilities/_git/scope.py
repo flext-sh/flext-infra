@@ -23,19 +23,13 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
     @classmethod
     def _git_repo_root(cls, scope_root: str) -> str | None:
         """Return the nearest enclosing Git worktree root for ``scope_root``."""
-        current = Path(scope_root).resolve()
-        while True:
-            if (current / ".git").exists():
-                repo = cls._repo(current)
-                working_tree_dir = repo.working_tree_dir
-                if working_tree_dir is None:
-                    return None
-                resolved_worktree = Path(working_tree_dir).resolve()
-                return str(current) if resolved_worktree == current else None
-            parent = current.parent
-            if parent == current:
-                return None
-            current = parent
+        opened = cls._open_repo(Path(scope_root).resolve())
+        if opened.failure:
+            return None
+        working_tree_dir = opened.value.working_tree_dir
+        if working_tree_dir is None:
+            return None
+        return str(Path(working_tree_dir).resolve())
 
     @classmethod
     def _git_tracked_repo_relative_paths(cls, repo_root: str) -> t.StrSequence | None:

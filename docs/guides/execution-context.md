@@ -113,10 +113,10 @@ lote. Refatorações estruturais continuam passando pelo `make mod`.
 ## Diferenciar checkpoint de conclusão
 
 Um WIP publicado preserva o trabalho e permite revisão. Conclusão exige os
-critérios vigentes, integração e runtime medido no SHA integrado. Nesta
-estabilização o operador limitou o aceite de `check` a Ruff, Mypy, Pyright e
-Pyrefly; o resultado dos gates customizados continua visível. Essa exceção
-pertence à execução e não enfraquece a política geral nem fecha seus defeitos.
+critérios do Bead ativo, integração e runtime medido no SHA integrado. Exceções
+registradas em handoffs históricos, incluindo aceite temporário com gates
+customizados vermelhos, não transferem para uma revisão ou Bead posterior. O
+contrato atual exige os verbos canônicos sem warnings ou findings residuais.
 
 O handoff final relaciona PRs, commits de merge e prova após integração aos
 Beads. Se algo permanece pendente, o texto deve nomeá-lo e oferecer a próxima

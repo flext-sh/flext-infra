@@ -15,6 +15,8 @@ from flext_cli import u as cli_u
 from flext_infra.constants import c
 from flext_infra.typings import t
 
+from .._settings import env_lookup as _settings_env_lookup
+
 
 class FlextInfraUtilitiesBase:
     """Base utilities for flext-infra project.
@@ -23,6 +25,18 @@ class FlextInfraUtilitiesBase:
     Generic ``validate`` and ``deep`` methods use PEP 695 type parameters
     so callers can validate ANY shape with a single SSOT helper.
     """
+
+    @staticmethod
+    def env_lookup(name: str) -> str | None:
+        """Return one raw environment value through the governed boundary.
+
+        The only sanctioned escape hatch for keys that are dynamic by
+        contract (caller-named CLI parameters, CI passthrough variables,
+        subprocess environment merges). Static values must be typed
+        ``settings.Infra.*`` fields instead; ambient ``os.environ`` reads
+        elsewhere are banned by the ``ban-ambient-environ-read`` rule.
+        """
+        return _settings_env_lookup(name)
 
     @staticmethod
     def resolve_repository_root_or_cwd(repository_root: Path | None = None) -> Path:
