@@ -25,6 +25,16 @@ class TestsFlextInfraRootArtifactOwnership:
 
         tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
 
+    def test_release_workflow_requires_explicit_repository_opt_in(self) -> None:
+        """Package membership alone must never activate release automation."""
+        entry = next(
+            item
+            for item in config.Infra.codegen.templates.entries
+            if item.destination == ".github/workflows/release.yml"
+        )
+
+        tm.that(entry.requires_release_protocol, eq=True)
+
     def test_governed_artifacts_have_one_explicit_policy(self) -> None:
         configured = config.Infra.codegen.managed_files
         paths = tuple(item.path.as_posix() for item in configured)

@@ -16,11 +16,22 @@ from .misc import FlextInfraCodegenConformMisc
 
 class _ConformRenderRoles:
     if TYPE_CHECKING:
+        request: m.Infra.CodegenConformRequest
+        repository_root: Path
+        initial_workspace: m.Infra.WorkspaceSpec | None
 
         def _gitignore_sections(
-            self, codegen: m.Infra.CodegenConfigSpec, *, profile: c.Infra.MakeProfile, project_name: str | None = None, workspace: m.Infra.WorkspaceSpec | None = None, project_patterns: t.StrSequence = ()
+            self,
+            codegen: m.Infra.CodegenConfigSpec,
+            *,
+            profile: c.Infra.MakeProfile,
+            project_name: str | None = None,
+            workspace: m.Infra.WorkspaceSpec | None = None,
+            project_patterns: t.StrSequence = (),
         ) -> t.VariadicTuple[m.Infra.ScaffoldGitignoreSectionSpec]: ...
-        def _mise_bootstrap_environment(self) -> m.Infra.MiseBootstrapEnvironmentSpec: ...
+        def _mise_bootstrap_environment(
+            self,
+        ) -> m.Infra.MiseBootstrapEnvironmentSpec: ...
         def _repository_provider(
             self, repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec
         ) -> p.Result[m.Infra.ProviderSpec]: ...
@@ -31,7 +42,9 @@ class _ConformRenderRoles:
             discovered: t.VariadicTuple[m.Infra.MakeVerbSpec],
             canonical_names: frozenset[str],
         ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]: ...
-        def _discover_script_verbs(self, repository_root: Path) -> t.VariadicTuple[m.Infra.MakeVerbSpec]: ...
+        def _discover_script_verbs(
+            self, repository_root: Path
+        ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]: ...
 
 
 class FlextInfraCodegenConformRender(
@@ -826,6 +839,7 @@ class FlextInfraCodegenConformRender(
                 scc_version=codegen.toolchain.scc_version,
                 kubeconform_version=codegen.toolchain.kubeconform_version,
                 go_version=codegen.toolchain.go_version,
+                make_version=codegen.toolchain.make_version,
                 author_name=project.author_name,
                 author_email=project.author_email,
                 repository=project.homepage,

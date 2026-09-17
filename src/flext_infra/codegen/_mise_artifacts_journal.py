@@ -10,7 +10,7 @@ from flext_infra import c, m, u
 
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 from ._mise_artifacts_process import FlextInfraMiseArtifactsProcess as process
-from ._mise_artifacts_state import FlextInfraMiseArtifactsState as state
+from ._mise_artifacts_state import FlextInfraMiseArtifactsState as journal_state
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -350,10 +350,10 @@ class FlextInfraMiseArtifactsJournal:
         )
         if written.failure:
             return r[m.Cli.AtomicFileState].from_failure(written)
-        observed = state.journal_state(layout)
+        observed = journal_state.journal_state(layout)
         if observed.failure:
             return r[m.Cli.AtomicFileState].from_failure(observed)
-        observed_snapshot = state.journal_snapshot(observed.value)
+        observed_snapshot = journal_state.journal_snapshot(observed.value)
         if observed_snapshot is None:
             return r[m.Cli.AtomicFileState].fail(
                 "published codegen journal parent disappeared"
@@ -372,11 +372,11 @@ class FlextInfraMiseArtifactsJournal:
         cls, layout: m.Infra.MiseToolchainWorkspaceLayout
     ) -> p.Result[t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
         """Parse the typed v8 journal without deriving a second filesystem path."""
-        snapshot = state.journal_state(layout)
+        snapshot = journal_state.journal_state(layout)
         result_type = r[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]
         if snapshot.failure:
             return result_type.from_failure(snapshot)
-        journal_snapshot = state.journal_snapshot(snapshot.value)
+        journal_snapshot = journal_state.journal_snapshot(snapshot.value)
         if journal_snapshot is None or journal_snapshot.content is None:
             return result_type.fail("codegen transaction journal is absent")
         if journal_snapshot.mode != c.Infra.JOURNAL_MODE:
@@ -397,15 +397,15 @@ class FlextInfraMiseArtifactsJournal:
         cls,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
-        journal_state: m.Cli.AtomicFileState,
+        journal_snapshot: m.Cli.AtomicFileState,
     ) -> p.Result[bool]:
         """Retain journal authority until all journal-authorized cleanup completes."""
-        directories = state.cleanup_journaled_directories(
+        directories = journal_state.cleanup_journaled_directories(
             layout, journal, include_generated=journal.state != "committed"
         )
         if directories.failure:
             return directories
-        removed = files.delete_state(journal_state)
+        removed = files.delete_state(journal_snapshot)
         if removed.failure:
             return r[bool].from_failure(removed)
         return r[bool].ok(True)
@@ -561,11 +561,11 @@ class FlextInfraMiseArtifactsJournal:
                 f"generation directory path is inconsistent: {directory.path}"
             )
         candidates: set[Path] = set()
-        for directory_state in states:
-            candidate = directory_state.path
+        for recorded in states:
+            candidate = recorded.path
             for _part in relative.parts:
                 candidate = candidate.parent
-            if candidate / relative != directory_state.path:
+            if candidate / relative != recorded.path:
                 return r[Path | None].fail(
                     f"generation directory path is inconsistent: {directory.path}"
                 )

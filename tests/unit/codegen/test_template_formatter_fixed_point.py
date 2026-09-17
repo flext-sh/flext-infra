@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ... import m, tm, u
+from flext_infra import c, config
+
+from ... import m, t, tm, u
 
 
 class TestsFlextInfraTemplateFormatterFixedPoint:
@@ -19,6 +21,35 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
         / "base"
     )
 
+    @staticmethod
+    def _render_spec(
+        *,
+        workspace_repositories: t.VariadicTuple[m.Infra.RepositoryRef] = (),
+        has_devcontainer: bool = False,
+    ) -> m.Infra.GithubWorkflowRenderSpec:
+        """Build the common strictly typed workflow rendering contract.
+
+        Only the two fields under test vary across the assertions; every
+        other field is sourced from the canonical config the production
+        renderer reads, so the context matches the SSOT the renderer uses
+        instead of freezing today's values.
+        """
+        codegen = config.Infra.codegen
+        return m.Infra.GithubWorkflowRenderSpec(
+            dist="demo",
+            make_profile=c.Infra.MakeProfile.STANDALONE,
+            gascity_enabled=True,
+            repository_branch="develop",
+            ci_trigger_branches=("develop", "main"),
+            python_version=codegen.toolchain.python_version,
+            state_directory_name=codegen.toolchain.state_directory_name,
+            github_actions=codegen.github_actions,
+            make=codegen.make,
+            workspace_repositories=workspace_repositories,
+            has_devcontainer=has_devcontainer,
+            checkout_submodules=codegen.checkout_submodules,
+        )
+
     def test_standalone_pyproject_template_does_not_declare_empty_workspace(
         self,
     ) -> None:
@@ -30,19 +61,14 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
     def test_dependabot_render_has_one_terminal_newline(self) -> None:
         empty = tm.ok(
             u.Cli.template_render(
-                self._TEMPLATES / ".github/dependabot.yml.j2",
-                m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo", workspace_repositories=()
-                ),
+                self._TEMPLATES / ".github/dependabot.yml.j2", self._render_spec()
             )
         )
         repository = u.Tests.repository_ref("member", path=Path("member"))
         populated = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo", workspace_repositories=(repository,)
-                ),
+                self._render_spec(workspace_repositories=(repository,)),
             )
         )
 
@@ -53,22 +79,13 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
         without = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo",
-                    workspace_repositories=(),
-                    has_devcontainer=False,
-                    # `model_construct` fills nothing beyond the declared
-                    # fields, so the context reads the same SSOT the renderer
-                    # reads instead of freezing today's values.
-                ),
+                self._render_spec(has_devcontainer=False),
             )
         )
         with_devcontainer = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo", workspace_repositories=(), has_devcontainer=True
-                ),
+                self._render_spec(has_devcontainer=True),
             )
         )
 

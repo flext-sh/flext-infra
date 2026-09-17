@@ -9,8 +9,8 @@ from flext_cli import m
 
 from ... import t
 from ..._constants import FlextInfraConstantsCodegenProject
-from .. import FlextInfraModelsDepsToolSettings
-from .._defaults import tool_version_field
+from .._defaults import FlextInfraModelsDefaults, tool_version_field
+from ..deps_tool_config import FlextInfraModelsDepsToolSettings
 from .beads import FlextInfraConfigModelsBeads
 from .contract import FlextInfraConfigModelsContract
 from .make import FlextInfraConfigModelsMake
@@ -178,7 +178,7 @@ class FlextInfraConfigModelsContexts:
         ruff_per_file_ignores: Annotated[
             t.MappingKV[str, t.StrSequence],
             m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description=(
                     "Effective Ruff exemptions: fleet policy composed with this "
                     "repository's own ManagedArtifacts overlay"
@@ -409,10 +409,17 @@ class FlextInfraConfigModelsContexts:
             t.NonEmptyStr, tool_version_field("Exact scc code-counter version")
         ]
         kubeconform_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible kubeconform minor line")
+            t.NonEmptyStr,
+            FlextInfraModelsDefaults.tool_version_field(
+                "Compatible kubeconform minor line"
+            ),
         ]
         go_version: Annotated[
             t.NonEmptyStr, tool_version_field("Exact Go runtime version")
+        ]
+        make_version: Annotated[
+            t.NonEmptyStr,
+            tool_version_field("Moving Make release selector, e.g. 'latest'"),
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")
@@ -607,6 +614,16 @@ class FlextInfraConfigModelsContexts:
         package: Annotated[
             bool, m.Field(description="Repository publishes a Python package")
         ]
+        publishes_release: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description=(
+                    "Whether this distribution explicitly opts into the generated "
+                    "release protocol"
+                ),
+            ),
+        ] = False
         editable: Annotated[
             bool, m.Field(description="Overlay repository as an editable dependency")
         ]

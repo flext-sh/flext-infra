@@ -18,6 +18,9 @@ from .misc import FlextInfraCodegenConformMisc
 
 class _ConformPlanRoles:
     if TYPE_CHECKING:
+        request: m.Infra.CodegenConformRequest
+        repository_root: Path
+        initial_workspace: m.Infra.WorkspaceSpec | None
 
         def _surface_contract(
             self, surface: c.Infra.CodegenConformSurface
@@ -370,6 +373,7 @@ class FlextInfraCodegenConformPlan(
             )
             for entry in codegen.templates.entries
             if profile in entry.profiles
+            and (not entry.requires_release_protocol or repository.publishes_release)
             and (
                 contract.destinations is None
                 or entry.destination in contract.destinations
@@ -623,9 +627,11 @@ class FlextInfraCodegenConformPlan(
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"managed destination escapes repository root: {entry.destination}"
                 )
-            if profile not in entry.profiles:
-                # Why: profile-excluded managed workflows must not keep firing
-                # (ci-matrix on standalone). Prune the orphan projection.
+            if profile not in entry.profiles or (
+                entry.requires_release_protocol and not repository.publishes_release
+            ):
+                # Profile- and capability-excluded workflows must not keep firing.
+                # Conform, rather than a user, retires the generated orphan.
                 if (
                     managed.path.parts[:2] == (".github", "workflows")
                     and path.is_file()

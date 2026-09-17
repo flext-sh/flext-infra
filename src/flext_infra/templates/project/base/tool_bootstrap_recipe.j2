@@ -143,7 +143,8 @@
 .PHONY: {{ target }}
 
 {{ target }}:
-	@set -eu; \
+	# The lifecycle invokes recursive make through mise, so preserve jobserver FDs.
+	+@set -eu; \
 	uv_selector="{{ uv_version }}"; \
 	if [ ! -f "{{ mise }}" ]; then \
 		printf 'ERROR: missing generated mise launcher: %s; run make gen\n' "{{ mise }}" >&2; \

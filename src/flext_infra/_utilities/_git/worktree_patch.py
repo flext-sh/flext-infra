@@ -12,7 +12,7 @@ from flext_infra.constants import c
 from flext_infra.models import m
 
 from .worktree_checkpoint import FlextInfraUtilitiesGitWorktreeCheckpointMixin
-from .worktree_io import git_stdin
+from .worktree_io import FlextInfraUtilitiesGitWorktreeIO
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -33,7 +33,7 @@ class FlextInfraUtilitiesGitWorktreePatchMixin(
         direction: list[str] = ["--reverse"] if reverse else []
         try:
             repo = cls._repo(repository_root)
-            with git_stdin(patch) as istream:
+            with FlextInfraUtilitiesGitWorktreeIO.git_stdin(patch) as istream:
                 repo.git.apply("--check", "--binary", *direction, "-", istream=istream)
         except GitCommandError as exc:
             return r[bool].fail(str(exc), exception=exc)
@@ -126,7 +126,7 @@ class FlextInfraUtilitiesGitWorktreePatchMixin(
             (delta.source_root / path).unlink()
         try:
             repo = cls._repo(delta.source_root)
-            with git_stdin(delta.patch) as istream:
+            with FlextInfraUtilitiesGitWorktreeIO.git_stdin(delta.patch) as istream:
                 repo.git.apply("--binary", "-", istream=istream)
         except GitCommandError:
             # Rollback: restore original ignored files.
@@ -157,7 +157,7 @@ class FlextInfraUtilitiesGitWorktreePatchMixin(
             return r[bool].from_failure(check_result)
         try:
             repo = cls._repo(delta.source_root)
-            with git_stdin(delta.patch) as istream:
+            with FlextInfraUtilitiesGitWorktreeIO.git_stdin(delta.patch) as istream:
                 repo.git.apply("--binary", "-", istream=istream)
         except GitCommandError:
             converged_result = cls._git_source_has_patch(delta)

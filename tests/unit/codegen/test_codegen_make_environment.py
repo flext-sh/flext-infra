@@ -724,6 +724,9 @@ class TestsFlextInfraCodegenMakeEnvironment:
             "ifneq ($(filter setup,$(MAKECMDGOALS)),)",
             "SETUP_BOOTSTRAP_ONLY := Y",
             'if [ -n "$${GITHUB_PATH:-}" ]; then',
+            # The bootstrap shell delegates to recursive make through mise exec.
+            # The `+` prefix is required to preserve GNU Make's jobserver FDs.
+            "\t+@set -eu;",
             # Managed tools reach the setup lifecycle by RUNNING it inside the
             # bootstrapped Mise, not by the old inline PATH computation: the
             # toolchain is installed at its latest release and the lifecycle
