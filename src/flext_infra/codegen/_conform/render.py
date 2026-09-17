@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-
 from typing import TYPE_CHECKING
 
 from ... import c, config, m, p, r, t, u

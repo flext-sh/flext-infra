@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, TypeGuard
 
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -17,6 +17,19 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
     """Shared rope parsing and AST traversal primitives."""
 
     _parse_project: ClassVar[t.Infra.RopeProject | None] = None
+
+    @staticmethod
+    def is_ast_node(obj: object) -> TypeGuard[t.Infra.RopeAstNode]:
+        """Type guard to narrow to RopeAstNode via structural `_fields` check."""
+        return hasattr(obj, "_fields")
+
+    @staticmethod
+    def ensure_ast_node(obj: object) -> t.Infra.RopeAstNode:
+        """Ensure an object is an AST node (has `_fields`), narrowing the type."""
+        if not FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(obj):
+            msg = f"Expected AST node with _fields, got {type(obj).__name__}"
+            raise TypeError(msg)
+        return obj
 
     @staticmethod
     def resource_cache_key(
@@ -132,9 +145,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return type(node).__name__
 
     @staticmethod
-    def walk_ast_nodes(
-        root: t.Infra.RopeAstNode,
-    ) -> t.SequenceOf[t.Infra.RopeAstNode]:
+    def walk_ast_nodes(root: t.Infra.RopeAstNode) -> t.SequenceOf[t.Infra.RopeAstNode]:
         """Recursively yield every AST node reachable from ``root`` via ``_fields``.
 
         Equivalent to ``ast.walk`` but uses only public attribute access on
@@ -149,13 +160,19 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
             for field_name in getattr(node, "_fields", ()):
                 value = getattr(node, field_name, None)
                 if isinstance(value, list):
-                    stack.extend(item for item in value if hasattr(item, "_fields"))
-                elif hasattr(value, "_fields"):
+                    stack.extend(
+                        item
+                        for item in value
+                        if FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(item)
+                    )
+                elif FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(value):
                     stack.append(value)
         return collected
 
     @staticmethod
-    def ast_parent_map(root: t.Infra.RopeAstNode) -> MutableMapping[int, t.Infra.RopeAstNode]:
+    def ast_parent_map(
+        root: t.Infra.RopeAstNode,
+    ) -> MutableMapping[int, t.Infra.RopeAstNode]:
         """Return a child-id -> parent map for the full AST reachable from ``root``.
 
         Uses only public ``_fields`` access (no ``import ast``); the shared SSOT
@@ -169,17 +186,19 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
                 value = getattr(parent, field_name, None)
                 if isinstance(value, list):
                     for child in value:
-                        if hasattr(child, "_fields"):
+                        if FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(child):
                             parent_map[id(child)] = parent
                             stack.append(child)
-                elif hasattr(value, "_fields"):
+                elif FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(value):
                     parent_map[id(value)] = parent
                     stack.append(value)
         return parent_map
 
     @classmethod
     def is_module_level_node(
-        cls, node: t.Infra.RopeAstNode, parent_map: t.MappingKV[int, t.Infra.RopeAstNode]
+        cls,
+        node: t.Infra.RopeAstNode,
+        parent_map: t.MappingKV[int, t.Infra.RopeAstNode],
     ) -> bool:
         """Return True when ``node`` is a direct child of the module body.
 
@@ -277,7 +296,9 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return tuple(names)
 
     @staticmethod
-    def class_symbol_names(class_body: t.SequenceOf[t.Infra.RopeAstNode]) -> t.StrSequence:
+    def class_symbol_names(
+        class_body: t.SequenceOf[t.Infra.RopeAstNode],
+    ) -> t.StrSequence:
         """Return direct method, nested-class and attribute symbols for a class body."""
         names: set[str] = set()
         for node in class_body:

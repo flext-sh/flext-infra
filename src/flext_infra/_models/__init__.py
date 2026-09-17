@@ -17,13 +17,13 @@ if TYPE_CHECKING:
     from ._codegen.scaffold import FlextInfraModelsCodegenScaffoldModels
     from ._codegen.transaction import FlextInfraModelsCodegenTransactionModels
     from ._config.artifact import FlextInfraConfigModelsArtifact
+    from ._config.base import FlextInfraConfigModels
     from ._config.beads import FlextInfraConfigModelsBeads
     from ._config.contexts import FlextInfraConfigModelsContexts
     from ._config.contract import FlextInfraConfigModelsContract
     from ._config.infra import FlextInfraConfigModelsInfra
     from ._config.make import FlextInfraConfigModelsMake
     from ._config.provider import FlextInfraConfigModelsProvider
-    from ._config.release import FlextInfraConfigModelsRelease
     from ._config.render import FlextInfraConfigModelsRender
     from ._config.scaffold import FlextInfraConfigModelsScaffold
     from ._config.static import FlextInfraConfigModelsStatic
@@ -38,7 +38,6 @@ if TYPE_CHECKING:
     from .codegen_render import FlextInfraModelsCodegenRender
     from .codegen_toolchain import FlextInfraModelsCodegenToolchain
     from .codemod import FlextInfraModelsCodemod
-    from .config import FlextInfraConfigModels
     from .deps import FlextInfraModelsDeps
     from .deps_toml import FlextInfraModelsDepsToml
     from .deps_tool_config import FlextInfraModelsDepsToolSettings
@@ -92,7 +91,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraConfigModelsInfra",
     "FlextInfraConfigModelsMake",
     "FlextInfraConfigModelsProvider",
-    "FlextInfraConfigModelsRelease",
     "FlextInfraConfigModelsRender",
     "FlextInfraConfigModelsScaffold",
     "FlextInfraConfigModelsStatic",
@@ -166,13 +164,13 @@ _LAZY_IMPORTS = MappingProxyType(
             "._codegen.transaction": ("FlextInfraModelsCodegenTransactionModels",),
             "._config": ("_config",),
             "._config.artifact": ("FlextInfraConfigModelsArtifact",),
+            "._config.base": ("FlextInfraConfigModels",),
             "._config.beads": ("FlextInfraConfigModelsBeads",),
             "._config.contexts": ("FlextInfraConfigModelsContexts",),
             "._config.contract": ("FlextInfraConfigModelsContract",),
             "._config.infra": ("FlextInfraConfigModelsInfra",),
             "._config.make": ("FlextInfraConfigModelsMake",),
             "._config.provider": ("FlextInfraConfigModelsProvider",),
-            "._config.release": ("FlextInfraConfigModelsRelease",),
             "._config.render": ("FlextInfraConfigModelsRender",),
             "._config.scaffold": ("FlextInfraConfigModelsScaffold",),
             "._config.static": ("FlextInfraConfigModelsStatic",),
@@ -188,7 +186,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen_render": ("FlextInfraModelsCodegenRender",),
             ".codegen_toolchain": ("FlextInfraModelsCodegenToolchain",),
             ".codemod": ("FlextInfraModelsCodemod",),
-            ".config": ("FlextInfraConfigModels",),
             ".deps": ("FlextInfraModelsDeps",),
             ".deps_toml": ("FlextInfraModelsDepsToml",),
             ".deps_tool_config": ("FlextInfraModelsDepsToolSettings",),

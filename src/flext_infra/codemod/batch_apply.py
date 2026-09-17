@@ -201,7 +201,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
     def _validate_fix_match(
         before: m.Infra.ModScanReport, after_apply: m.Infra.ModScanReport
     ) -> None:
-        """Validate that applied fixes match expected changes (fix!=match)."""
+        """Reject unresolved rewrites while preserving valid rule cascades."""
         # Check that actionable findings were actually resolved
         before_actionable = {
             (f.rule_id, f.file.as_posix(), f.text, f.replacement)

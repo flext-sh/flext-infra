@@ -60,7 +60,8 @@ class FlextInfraUtilitiesClassNestingCst(FlextInfraUtilitiesClassNestingReferenc
                 f'class {owner_name}:\n    """Canonical namespace owner."""\n'
             )
             if not isinstance(owner, cst.ClassDef):
-                raise TypeError(f"class-nesting could not create owner {owner_name}")
+                msg_0 = f"class-nesting could not create owner {owner_name}"
+                raise TypeError(msg_0)
             index = next(
                 index
                 for index, node in enumerate(module.body)

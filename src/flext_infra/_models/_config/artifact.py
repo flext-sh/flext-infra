@@ -14,8 +14,7 @@ from ..._constants import (
     FlextInfraConstantsRelease,
     FlextInfraConstantsSharedInfra,
 )
-from .. import FlextInfraModelsLayout
-from .._defaults import FlextInfraModelsDefaults
+from .. import FlextInfraModelsDefaults, FlextInfraModelsLayout
 from .contexts import FlextInfraConfigModelsContexts
 from .contract import FlextInfraConfigModelsContract
 from .make import FlextInfraConfigModelsMake

@@ -320,6 +320,11 @@ class FlextInfraCodegenTransaction:
         if layout_result.failure:
             return result_type.from_failure(layout_result)
         layout = layout_result.value
+        residue = state.transaction_residue(layout)
+        if residue:
+            cleaned = state.cleanup_orphan_residue(layout)
+            if cleaned.failure:
+                return result_type.from_failure(cleaned)
         if state.transaction_residue(layout):
             return result_type.fail(
                 f"generation residue has no journal authority: {state.transaction_residue(layout)[0]}"

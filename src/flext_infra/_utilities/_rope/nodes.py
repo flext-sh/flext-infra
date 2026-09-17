@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TypeGuard
+
 from flext_infra.models import m
 from flext_infra.typings import t
 
@@ -10,6 +12,19 @@ from .base import FlextInfraUtilitiesRopeAnalysisBase
 
 class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
     """AST node primitives: kinds, names, walking, and class info."""
+
+    @staticmethod
+    def is_ast_node(obj: object) -> TypeGuard[t.Infra.RopeAstNode]:
+        """Type guard to narrow to RopeAstNode via structural `_fields` check."""
+        return hasattr(obj, "_fields")
+
+    @staticmethod
+    def ensure_ast_node(obj: object) -> t.Infra.RopeAstNode:
+        """Ensure an object is an AST node (has `_fields`), narrowing the type."""
+        if not FlextInfraUtilitiesRopeAnalysisNodes.is_ast_node(obj):
+            msg = f"Expected AST node with _fields, got {type(obj).__name__}"
+            raise TypeError(msg)
+        return obj
 
     @staticmethod
     def node_kind(node: t.Infra.RopeAstNode) -> str:
@@ -30,9 +45,7 @@ class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
         return ""
 
     @staticmethod
-    def walk_ast_nodes(
-        root: t.Infra.RopeAstNode,
-    ) -> t.SequenceOf[t.Infra.RopeAstNode]:
+    def walk_ast_nodes(root: t.Infra.RopeAstNode) -> t.SequenceOf[t.Infra.RopeAstNode]:
         """Recursively yield every AST node reachable from ``root`` via ``_fields``.
 
         Equivalent to ``ast.walk`` but uses only public attribute access on
@@ -47,8 +60,12 @@ class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
             for field_name in getattr(node, "_fields", ()):
                 value = getattr(node, field_name, None)
                 if isinstance(value, list):
-                    stack.extend(item for item in value if hasattr(item, "_fields"))
-                elif hasattr(value, "_fields"):
+                    stack.extend(
+                        item
+                        for item in value
+                        if FlextInfraUtilitiesRopeAnalysisNodes.is_ast_node(item)
+                    )
+                elif FlextInfraUtilitiesRopeAnalysisNodes.is_ast_node(value):
                     stack.append(value)
         return collected
 
@@ -59,7 +76,9 @@ class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
         if not isinstance(body, (list, tuple)):
             return ()
         nodes: list[t.Infra.RopeAstNode] = [
-            child for child in body if hasattr(child, "_fields")
+            child
+            for child in body
+            if FlextInfraUtilitiesRopeAnalysisNodes.is_ast_node(child)
         ]
         return tuple(nodes)
 

@@ -14,7 +14,7 @@ from flext_cli import m
 
 from flext_infra import c, t
 
-from ._defaults import FlextInfraModelsDefaults
+from . import FlextInfraModelsDefaults
 from .mixins import FlextInfraModelsMixins as mm
 
 
