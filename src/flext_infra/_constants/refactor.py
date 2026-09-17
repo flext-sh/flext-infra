@@ -111,6 +111,8 @@ class FlextInfraConstantsRefactor:
     # Declarative sed-by-list rules: one list entry drives one regex rewrite
     # across the governed scan surface with an exact expected-count receipt.
     CODEMOD_TEXT_RULES_FILENAME: Final[str] = "text_rules.yml"
+    # Declarative text-rule path derived from the filename SSOT.
+    CODEMOD_TEXT_RULES_RELPATH: Final[Path] = Path(CODEMOD_TEXT_RULES_FILENAME)
     CODEMOD_TEXT_RULES_KEY: Final[str] = "rules"
     CODEMOD_TEXT_KEY_ID: Final[str] = "id"
     CODEMOD_TEXT_KEY_DESCRIPTION: Final[str] = "description"
