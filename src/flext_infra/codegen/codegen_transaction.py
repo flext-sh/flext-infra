@@ -844,7 +844,9 @@ class FlextInfraCodegenTransaction:
                 return result_type.fail(
                     f"new transaction tree contains unregistered entries: {recorded.path}"
                 )
-        persisted = self._write_journal(layout, manifested.value, expected=current_state)
+        persisted = self._write_journal(
+            layout, manifested.value, expected=current_state
+        )
         if persisted.failure:
             return result_type.from_failure(persisted)
         return result_type.ok((manifested.value, persisted.value))
@@ -1078,7 +1080,9 @@ class FlextInfraCodegenTransaction:
             return r[bool].from_failure(loaded)
         journal, journal_state = loaded.value
         if expected is not None and journal_state != expected:
-            return r[bool].fail("generation recovery journal changed from owned receipt")
+            return r[bool].fail(
+                "generation recovery journal changed from owned receipt"
+            )
         if journal.file_participants:
             if journal.projects:
                 return r[bool].fail(

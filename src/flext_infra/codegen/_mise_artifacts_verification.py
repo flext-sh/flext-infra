@@ -26,7 +26,9 @@ class FlextInfraMiseArtifactsVerification:
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
         *,
-        created: t.VariadicTuple[m.Cli.AtomicFileState | m.Cli.AtomicDirectoryState] = (),
+        created: t.VariadicTuple[
+            m.Cli.AtomicFileState | m.Cli.AtomicDirectoryState
+        ] = (),
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenJournalDirectory]]:
         """Register exact transaction trees after validating any prior authority."""
         result_type = r[tuple[m.Infra.CodegenJournalDirectory, ...]]
@@ -596,7 +598,9 @@ class FlextInfraMiseArtifactsVerification:
         observed: m.Cli.AtomicPhysicalTreeManifest,
         *,
         allow_registered_additions: bool,
-        created: t.VariadicTuple[m.Cli.AtomicFileState | m.Cli.AtomicDirectoryState] = (),
+        created: t.VariadicTuple[
+            m.Cli.AtomicFileState | m.Cli.AtomicDirectoryState
+        ] = (),
     ) -> p.Result[bool]:
         """Accept only stable objects and explicitly journaled file transitions."""
         if not cls._same_directory_identity(authorized.root, observed.root):
