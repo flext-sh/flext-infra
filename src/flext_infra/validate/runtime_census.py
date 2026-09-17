@@ -166,12 +166,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         ]
         all_reports: list[m.Infra.ValidationReport] = []
         for module_name in real_modules:
-            try:
-                all_reports.extend(self._check_module(module_name))
-            except Exception as exc:
-                return r[m.Infra.ValidationReport].fail(
-                    f"{module_name}: import failed: {type(exc).__name__}: {exc}"
-                )
+            all_reports.extend(self._check_module(module_name))
         merged_violations = tuple(
             violation for report in all_reports for violation in report.violations
         )

@@ -15,7 +15,6 @@ from __future__ import annotations
 import functools
 import re
 from bisect import bisect_right
-from collections.abc import Mapping
 from fnmatch import fnmatch
 from pathlib import Path
 

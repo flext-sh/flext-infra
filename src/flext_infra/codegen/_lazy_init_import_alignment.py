@@ -413,7 +413,7 @@ class FlextInfraCodegenLazyInitImportAlignmentMixin:
             def leave_ImportFrom(
                 self, original_node: ImportFrom, updated: ImportFrom
             ) -> cst.ImportFrom:
-                replacement = self._mapping.get(original)
+                replacement = self._mapping.get(original_node)
                 if replacement is None:
                     return updated
                 statement = cst.parse_statement(replacement)
