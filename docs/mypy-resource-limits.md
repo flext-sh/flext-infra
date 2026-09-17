@@ -1,6 +1,7 @@
 # Mypy resource limits
 
 <!-- TOC START -->
+
 - No sections found
 <!-- TOC END -->
 

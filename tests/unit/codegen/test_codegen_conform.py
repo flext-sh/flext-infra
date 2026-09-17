@@ -50,7 +50,9 @@ class TestsFlextInfraCodegenConform:
     @staticmethod
     def _planned_hook_pyproject(
         root: Path, hook_path: str | Path | None
-    ) -> tuple[FlextInfraCodegenConform, m.Infra.CodegenConformRequest, m.Infra.CodegenFilePlan]:
+    ) -> tuple[
+        FlextInfraCodegenConform, m.Infra.CodegenConformRequest, m.Infra.CodegenFilePlan
+    ]:
         """Plan the canonical pyproject through the public conform owner."""
         workspace = TestsFlextInfraCodegenConform._hook_workspace(hook_path)
         request = u.Tests.conform_request(
@@ -79,9 +81,9 @@ class TestsFlextInfraCodegenConform:
         rendered = u.Tests.codegen_file_text(pyproject)
 
         tm.that(
-            u.Tests.toml_table_at(rendered, "tool", "hatch", "build", "hooks", "custom")[
-                "path"
-            ],
+            u.Tests.toml_table_at(
+                rendered, "tool", "hatch", "build", "hooks", "custom"
+            )["path"],
             eq="scripts/hatch_build.py",
         )
         tm.that(

@@ -1,6 +1,7 @@
 # Recuperar e manter o contexto de execução
 
 <!-- TOC START -->
+
 - [Começar pela decisão pendente](#comecar-pela-decisao-pendente)
 - [Registrar antes de ampliar o trabalho](#registrar-antes-de-ampliar-o-trabalho)
 - [Reconciliar decisões com seus responsáveis](#reconciliar-decisoes-com-seus-responsaveis)

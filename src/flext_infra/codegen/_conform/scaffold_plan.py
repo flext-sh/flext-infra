@@ -92,6 +92,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             )
             for entry in codegen.templates.entries
             if profile in entry.profiles
+            and (not entry.requires_release_protocol or repository.publishes_release)
             and (
                 contract.destinations is None
                 or entry.destination in contract.destinations

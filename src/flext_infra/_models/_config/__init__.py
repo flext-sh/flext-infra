@@ -10,13 +10,13 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from .artifact import FlextInfraConfigModelsArtifact
-    from .base import FlextInfraConfigModelsBase
+    from .base import FlextInfraConfigModels
     from .beads import FlextInfraConfigModelsBeads
     from .contexts import FlextInfraConfigModelsContexts
     from .contract import FlextInfraConfigModelsContract
-    from .infra import FlextInfraConfigModelsInfra
     from .make import FlextInfraConfigModelsMake
     from .provider import FlextInfraConfigModelsProvider
+    from .release import FlextInfraConfigModelsRelease
     from .render import FlextInfraConfigModelsRender
     from .root import FlextInfraConfigModelsRoot
     from .scaffold import FlextInfraConfigModelsScaffold
@@ -24,14 +24,14 @@ if TYPE_CHECKING:
     from .templates import FlextInfraConfigModelsTemplates
     from .workspace import FlextInfraConfigModelsWorkspace
 __all__: tuple[str, ...] = (
+    "FlextInfraConfigModels",
     "FlextInfraConfigModelsArtifact",
-    "FlextInfraConfigModelsBase",
     "FlextInfraConfigModelsBeads",
     "FlextInfraConfigModelsContexts",
     "FlextInfraConfigModelsContract",
-    "FlextInfraConfigModelsInfra",
     "FlextInfraConfigModelsMake",
     "FlextInfraConfigModelsProvider",
+    "FlextInfraConfigModelsRelease",
     "FlextInfraConfigModelsRender",
     "FlextInfraConfigModelsRoot",
     "FlextInfraConfigModelsScaffold",
@@ -44,13 +44,13 @@ _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             ".artifact": ("FlextInfraConfigModelsArtifact",),
-            ".base": ("FlextInfraConfigModelsBase",),
+            ".base": ("FlextInfraConfigModels",),
             ".beads": ("FlextInfraConfigModelsBeads",),
             ".contexts": ("FlextInfraConfigModelsContexts",),
             ".contract": ("FlextInfraConfigModelsContract",),
-            ".infra": ("FlextInfraConfigModelsInfra",),
             ".make": ("FlextInfraConfigModelsMake",),
             ".provider": ("FlextInfraConfigModelsProvider",),
+            ".release": ("FlextInfraConfigModelsRelease",),
             ".render": ("FlextInfraConfigModelsRender",),
             ".root": ("FlextInfraConfigModelsRoot",),
             ".scaffold": ("FlextInfraConfigModelsScaffold",),

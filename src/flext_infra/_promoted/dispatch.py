@@ -27,10 +27,15 @@ class FlextInfraPromotedDispatch(FlextInfraPromotedDiscovery):
         script_roots: Sequence[Path] | None = None,
         spec: p.Infra.Promoted.WorkspaceSpec | None = None,
     ) -> int:
-        """Run the promoted command dispatcher."""
+        """Run the promoted command dispatcher.
+
+        WHAT is resolved from the live settings singleton on every run, so
+        ``FlextSettings.update_global`` propagates without monkeypatching.
+        """
         args = tuple(sys.argv[1:] if argv is None else argv)
         verb = args[0] if args else c.Infra.PromotedSelector.HELP
-        requested_what = (settings.Infra.dispatch_what or "").strip()
+        live_settings = type(settings).fetch_global()
+        requested_what = (live_settings.Infra.dispatch_what or "").strip()
         try:
             workspace = spec or u.Infra.promoted_discovered_workspace_spec()
             u.Infra.promoted_ensure_local_python(workspace)

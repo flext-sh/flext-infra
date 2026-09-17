@@ -352,6 +352,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 package_name=project.package_name,
                 packaged_data_dirs=packaged_data_dirs,
                 namespace_scan_dirs=project.namespace_scan_dirs,
+                # NOTE (multi-agent, flext-get3j): carry only the validated
+                # project declaration; conform owns no inferred Hatch hook.
+                hatch_build_hook_path=project.hatch_build_hook_path,
                 class_stem=project.class_stem,
                 ns=project.namespace,
                 ns_attr=project.namespace_attribute,
@@ -381,6 +384,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 scc_version=codegen.toolchain.scc_version,
                 kubeconform_version=codegen.toolchain.kubeconform_version,
                 go_version=codegen.toolchain.go_version,
+                make_version=codegen.toolchain.make_version,
                 author_name=project.author_name,
                 author_email=project.author_email,
                 repository=project.homepage,
