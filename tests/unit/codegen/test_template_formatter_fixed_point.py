@@ -21,16 +21,13 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
     )
 
     @staticmethod
-    def _workflow_spec(**updates: object) -> m.Infra.GithubWorkflowRenderSpec:
-        """Build a complete render contract, then validate test-specific changes."""
-        baseline = CodegenTestSupport.workflow_spec(
+    def _workflow_spec() -> m.Infra.GithubWorkflowRenderSpec:
+        """Build the complete typed render contract shared by the tests."""
+        return CodegenTestSupport.workflow_spec(
             dist="demo",
             make_profile=c.Infra.MakeProfile.STANDALONE,
             repository_branch="0.12.0-dev",
             ci_trigger_branches=(),
-        )
-        return m.Infra.GithubWorkflowRenderSpec.model_validate(
-            {**baseline.model_dump(), **updates}
         )
 
     def test_standalone_pyproject_template_does_not_declare_empty_workspace(
@@ -45,14 +42,21 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
         empty = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                self._workflow_spec(workspace_repositories=()),
+                m.Infra.GithubWorkflowRenderSpec.model_validate(
+                    {**self._workflow_spec().model_dump(), "workspace_repositories": ()}
+                ),
             )
         )
         repository = u.Tests.repository_ref("member", path=Path("member"))
         populated = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                self._workflow_spec(workspace_repositories=(repository,)),
+                m.Infra.GithubWorkflowRenderSpec.model_validate(
+                    {
+                        **self._workflow_spec().model_dump(),
+                        "workspace_repositories": (repository,),
+                    }
+                ),
             )
         )
 
@@ -63,13 +67,25 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
         without = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                self._workflow_spec(workspace_repositories=(), has_devcontainer=False),
+                m.Infra.GithubWorkflowRenderSpec.model_validate(
+                    {
+                        **self._workflow_spec().model_dump(),
+                        "workspace_repositories": (),
+                        "has_devcontainer": False,
+                    }
+                ),
             )
         )
         with_devcontainer = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                self._workflow_spec(workspace_repositories=(), has_devcontainer=True),
+                m.Infra.GithubWorkflowRenderSpec.model_validate(
+                    {
+                        **self._workflow_spec().model_dump(),
+                        "workspace_repositories": (),
+                        "has_devcontainer": True,
+                    }
+                ),
             )
         )
 

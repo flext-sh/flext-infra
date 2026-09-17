@@ -20,16 +20,13 @@ class TestsFlextInfraCodegenCiCustomSteps:
     """The declared contract of the project-owned CI extension point."""
 
     @staticmethod
-    def _workflow_spec(**updates: object) -> m.Infra.GithubWorkflowRenderSpec:
-        """Build a complete render contract, then validate test-specific changes."""
-        baseline = CodegenTestSupport.workflow_spec(
+    def _workflow_spec() -> m.Infra.GithubWorkflowRenderSpec:
+        """Build the complete typed render contract shared by the tests."""
+        return CodegenTestSupport.workflow_spec(
             dist="demo",
             make_profile=c.Infra.MakeProfile.STANDALONE,
             repository_branch="0.12.0-dev",
             ci_trigger_branches=(),
-        )
-        return m.Infra.GithubWorkflowRenderSpec.model_validate(
-            {**baseline.model_dump(), **updates}
         )
 
     def test_a_project_declaring_nothing_changes_nothing(self) -> None:
@@ -41,7 +38,9 @@ class TestsFlextInfraCodegenCiCustomSteps:
     def test_declared_steps_reach_the_workflow_verbatim(self) -> None:
         """The block is carried as text; the generator never parses it."""
         block = "      - name: Authenticate\n        run: echo declared"
-        spec = self._workflow_spec(custom_steps=block)
+        spec = m.Infra.GithubWorkflowRenderSpec.model_validate(
+            {**self._workflow_spec().model_dump(), "custom_steps": block}
+        )
 
         tm.that(spec.custom_steps, eq=block)
 
