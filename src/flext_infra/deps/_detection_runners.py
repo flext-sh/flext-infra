@@ -90,14 +90,8 @@ class FlextInfraDependencyDetectionRunnersMixin:
                     try:
                         typed_item = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(item)
                     except c.ValidationError as exc:
-<<<<<<< HEAD
                         return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail_op(
                             "validate deptry issue", exc
-=======
-                        return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail(
-                            f"deptry JSON issue {index} failed validation: {exc}",
-                            exception=exc,
->>>>>>> origin/0.12.0-dev
                         )
                     converted_issue = self._to_toml_config(typed_item)
                     if len(converted_issue) == len(typed_item):

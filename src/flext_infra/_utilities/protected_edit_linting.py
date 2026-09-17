@@ -11,10 +11,7 @@ from typing import ClassVar
 
 from flext_cli import u
 
-<<<<<<< HEAD
 from .._config import FlextInfraConfig
-=======
->>>>>>> origin/0.12.0-dev
 from flext_infra.constants import c
 from flext_infra.models import FlextInfraConfigModels as config, m
 from flext_infra.typings import t

@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from flext_cli import m
 
-<<<<<<< HEAD
 from .._defaults import FlextInfraModelsDefaults
-=======
->>>>>>> origin/0.12.0-dev
 from ..mise_toolchain import FlextInfraModelsMiseToolchain
 
 
@@ -23,10 +20,7 @@ class FlextInfraConfigModelsContract:
             strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
         )
 
-<<<<<<< HEAD
     immutable_empty_mapping = FlextInfraModelsDefaults.immutable_empty_mapping
-=======
->>>>>>> origin/0.12.0-dev
     MiseToolSpec = FlextInfraModelsMiseToolchain.MiseToolSpec
     ProtectedMiseToolSpec = FlextInfraModelsMiseToolchain.ProtectedMiseToolSpec
     BeadsEndpointSpec = FlextInfraModelsMiseToolchain.BeadsEndpointSpec

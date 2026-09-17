@@ -32,12 +32,7 @@ class FlextInfraConfig(FlextCliConfig):
         return cls._config_dir()
 
 
-<<<<<<< HEAD
-config = FlextInfraConfig()
-=======
 config: FlextInfraConfig = FlextInfraConfig.fetch_global()
 """Pre-instantiated frozen config singleton — ``from flext_infra import config``."""
-
->>>>>>> origin/0.12.0-dev
 
 __all__: list[str] = ["FlextInfraConfig", "config"]

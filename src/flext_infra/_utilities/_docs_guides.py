@@ -124,13 +124,6 @@ class FlextInfraUtilitiesDocsGuidesMixin:
                     "adjust that workspace source, never this member projection. -->"
                 ),
             }
-            if (
-                len(lines) >= _OWNED_HEADER_LINES
-                and lines[0] == generated
-                and lines[1] in source_headers
-<<<<<<< HEAD
-            ):
-=======
             ownership = FlextInfraUtilitiesDocsGuidesMixin.docs_project_guide_content(
                 "", scope.name, path.name
             ).partition("\n\n")[0]
@@ -146,7 +139,6 @@ class FlextInfraUtilitiesDocsGuidesMixin:
                 previous_ownership + "\n\n",
                 legacy_ownership + "\n\n",
             )):
->>>>>>> origin/0.12.0-dev
                 owned.add(path)
         artifacts: list[DocsRenderedArtifactTuple] = []
         expected_paths = {destination_root / path.name for path in sources}

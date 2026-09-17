@@ -21,10 +21,6 @@ from . import (
 from ._config.artifact import FlextInfraConfigModelsArtifact
 from ._config.beads import FlextInfraConfigModelsBeads
 from ._config.render import FlextInfraConfigModelsRender
-<<<<<<< HEAD
-from ._defaults import FlextInfraModelsDefaults
-=======
->>>>>>> origin/0.12.0-dev
 from .mise_toolchain import FlextInfraModelsMiseToolchain
 
 
@@ -2174,12 +2170,8 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Exact Go runtime version")
         ]
         make_version: Annotated[
-<<<<<<< HEAD
-            t.NonEmptyStr, m.Field(description="Moving Make release selector, e.g. 'latest'")
-=======
             t.NonEmptyStr,
             m.Field(description="Moving Make release selector, e.g. 'latest'"),
->>>>>>> origin/0.12.0-dev
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")

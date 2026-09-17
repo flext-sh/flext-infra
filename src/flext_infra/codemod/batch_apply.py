@@ -137,17 +137,11 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         current_text = FlextInfraModTextGateEngine.scan(
             root, fix=False, validate_receipts=True
         ).unwrap()
-        seen_text: dict[tuple[tuple[str, str, int, str], ...], int] = {}
+        seen_text: dict[tuple[tuple[str, str, int, str, str], ...], int] = {}
         iteration = 0
         while current_text.findings:
             iteration += 1
-<<<<<<< HEAD
             text_fp: tuple[tuple[str, str, int, str, str], ...] = (
-=======
-            fingerprint: tuple[tuple[str, str, int, str], ...] = (
-                FlextInfraCodemodBatchApply._text_fingerprint(current_text.entries
-            text_fp: tuple[tuple[str, str, int, str], ...] = (
->>>>>>> origin/0.12.0-dev
                 FlextInfraCodemodBatchApply._text_fingerprint(current_text.entries)
             )
             if text_fp in seen_text:
@@ -189,9 +183,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
     @staticmethod
     def _text_fingerprint(
         entries: t.VariadicTuple[m.Infra.ModTextFinding],
-    ) -> t.VariadicTuple[t.Quad[str, str, int, str]]:
+    ) -> tuple[tuple[str, str, int, str, str], ...]:
         """Build a sorted fingerprint of all text findings."""
-<<<<<<< HEAD
         items: list[tuple[str, str, int, str, str]] = [
             (
                 entry.rule_id,
@@ -203,16 +196,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             for entry in entries
         ]
         return tuple(sorted(items))
-=======
-        result: list[tuple[str, str, int, str]] = []
-        for entry in entries:
-            rule_id: str = entry.rule_id
-            file_path: str = entry.file.as_posix()
-            line_no: int = entry.line
-            text_val: str = entry.text
-            result.append((rule_id, file_path, line_no, text_val))
-        return tuple(sorted(result))
->>>>>>> origin/0.12.0-dev
 
     @staticmethod
     def _validate_fix_match(

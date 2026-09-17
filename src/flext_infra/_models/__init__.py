@@ -29,16 +29,7 @@ if TYPE_CHECKING:
     from ._config.static import FlextInfraConfigModelsStatic
     from ._config.templates import FlextInfraConfigModelsTemplates
     from ._config.workspace import FlextInfraConfigModelsWorkspace
-<<<<<<< HEAD
     from ._defaults import FlextInfraModelsDefaults
-=======
-    from ._defaults import (
-        FlextInfraModelsDefaults,
-        ImmutableEmptyMapping,
-        immutable_empty_mapping,
-        tool_version_field,
-    )
->>>>>>> origin/0.12.0-dev
     from ._git.identity import FlextInfraModelsGitIdentity
     from .base import FlextInfraModelsBase
     from .census import FlextInfraModelsCensus
@@ -187,16 +178,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._config.static": ("FlextInfraConfigModelsStatic",),
             "._config.templates": ("FlextInfraConfigModelsTemplates",),
             "._config.workspace": ("FlextInfraConfigModelsWorkspace",),
-<<<<<<< HEAD
             "._defaults": ("FlextInfraModelsDefaults",),
-=======
-            "._defaults": (
-                "FlextInfraModelsDefaults",
-                "ImmutableEmptyMapping",
-                "immutable_empty_mapping",
-                "tool_version_field",
-            ),
->>>>>>> origin/0.12.0-dev
             "._git": ("_git",),
             "._git.identity": ("FlextInfraModelsGitIdentity",),
             ".base": ("FlextInfraModelsBase",),
