@@ -131,9 +131,7 @@ class TestsFlextInfraDocsSharedIter:
         tm.that(maintained in files, eq=True)
         tm.that(generated in files, eq=False)
 
-    def test_excludes_immutable_plan_collection_revisions(
-        self, tmp_path: Path
-    ) -> None:
+    def test_excludes_immutable_plan_collection_revisions(self, tmp_path: Path) -> None:
         docs_dir = tmp_path / "docs"
         current = docs_dir / "plans" / "current.md"
         incoming = docs_dir / "plans" / "current" / "incoming" / "digest" / "plan.md"
@@ -145,5 +143,6 @@ class TestsFlextInfraDocsSharedIter:
 
         tm.that(current in files, eq=True)
         tm.that(incoming in files, eq=False)
+
 
 __all__: list[str] = ["TestsFlextInfraDocsSharedIter"]

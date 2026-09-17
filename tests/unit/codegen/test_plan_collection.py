@@ -68,10 +68,7 @@ class TestsFlextInfraPlanCollection:
         )
 
         tm.that(config.sources, eq=())
-        disabled = {
-            **self._config().model_dump(),
-            "enabled": False,
-        }
+        disabled = {**self._config().model_dump(), "enabled": False}
         with pytest.raises(ValueError, match="disabled plan collection"):
             m.Infra.PlanCollectionConfig.model_validate(disabled)
         with pytest.raises(ValueError, match="requires at least one source"):

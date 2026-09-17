@@ -370,7 +370,7 @@ class FlextInfraMiseRecovery:
                 entry.rollback_reparse_tag,
             ),
         }
-        return cast(_FileOwnershipIdentity, stored[prefix])
+        return cast("_FileOwnershipIdentity", stored[prefix])
 
     @staticmethod
     def _identity(state: m.Cli.AtomicFileState) -> _FileIdentity:

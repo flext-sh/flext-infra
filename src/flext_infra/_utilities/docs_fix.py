@@ -96,10 +96,7 @@ class FlextInfraUtilitiesDocsFix:
                 )
                 return f"{match.group('open')}{closed_body}```"
 
-            repaired = c.Infra.WELDED_FENCE_RE.sub(
-                r"\g<body>\n```",
-                original,
-            )
+            repaired = c.Infra.WELDED_FENCE_RE.sub(r"\g<body>\n```", original)
             sanitized = c.Infra.PYTHON_FENCE_FIX_RE.sub(_replace_fence, repaired)
             if sanitized == original:
                 continue

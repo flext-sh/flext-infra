@@ -73,8 +73,7 @@ class TestsFlextInfraDocsFixer:
         workspace = u.Tests.create_docs_workspace(tmp_path)
         document = workspace / "docs/welded.md"
         document.write_text(
-            "# Example\n\n```python\nvalue = 1```\n\n## Next\n",
-            encoding="utf-8",
+            "# Example\n\n```python\nvalue = 1```\n\n## Next\n", encoding="utf-8"
         )
 
         result = FlextInfraDocFixer().fix(workspace, apply=True)
