@@ -66,7 +66,7 @@ Infra:
       qlty_selector: github:qltysh/qlty
       qlty_version: latest
       node_version: latest
-      jscpd_selector: npm:jscpd
+      jscpd_selector: github:kucherenko/jscpd
       jscpd_version: latest
       waza_selector: github:microsoft/waza
       waza_version: latest
