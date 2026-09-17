@@ -23,3 +23,6 @@ class FlextInfraModelsCodegen(
     FlextInfraModelsCodegenPipelineModels,
 ):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
+
+
+__all__: list[str] = ["FlextInfraModelsCodegen"]

@@ -15,11 +15,7 @@ class FlextInfraModelsDefaults:
     """Facade for typed immutable defaults shared by Pydantic model fields."""
 
     class ImmutableEmptyMapping[K, V](Mapping[K, V]):
-        """Fully typed immutable empty mapping used as a field factory.
-
-        Kept beside the ``immutable_empty_mapping`` factory: every consumer
-        imported on 0.12.0-dev still binds the class directly.
-        """
+        """Fully typed immutable empty mapping used as a field factory."""
 
         @override
         def __getitem__(self, key: K) -> V:
@@ -58,4 +54,13 @@ class FlextInfraModelsDefaults:
         return m.Field(description=description)
 
 
-__all__: list[str] = ["FlextInfraModelsDefaults"]
+__all__: list[str] = [
+    "FlextInfraModelsDefaults",
+    "ImmutableEmptyMapping",
+    "immutable_empty_mapping",
+    "tool_version_field",
+]
+
+ImmutableEmptyMapping = FlextInfraModelsDefaults.ImmutableEmptyMapping
+immutable_empty_mapping = FlextInfraModelsDefaults.immutable_empty_mapping
+tool_version_field = FlextInfraModelsDefaults.tool_version_field

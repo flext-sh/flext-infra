@@ -92,7 +92,7 @@ class FlextInfraModelsRefactorViolations:
             default_factory=tuple, description="Helper classifications from one file"
         )
         totals: t.IntMapping = m.Field(
-            default_factory=immutable_empty_mapping,
+            default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
             description="Category totals for file helpers",
         )
         manual_review: t.VariadicTuple[
@@ -109,18 +109,18 @@ class FlextInfraModelsRefactorViolations:
             t.NonNegativeInt, m.Field(description="Total violations in file")
         ]
         counts: t.IntMapping = m.Field(
-            default_factory=immutable_empty_mapping, description="Per-pattern counts"
+            default_factory=FlextInfraModelsDefaults.immutable_empty_mapping, description="Per-pattern counts"
         )
 
     class ViolationAnalysisReport(m.ArbitraryTypesModel):
         """Full violation analysis report for refactor diagnostics."""
 
         totals: t.IntMapping = m.Field(
-            default_factory=immutable_empty_mapping,
+            default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
             description="Aggregate counts by pattern",
         )
         files: t.MappingKV[str, t.IntMapping] = m.Field(
-            default_factory=immutable_empty_mapping,
+            default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
             description="Per-file per-pattern counts",
         )
         top_files: t.VariadicTuple[
