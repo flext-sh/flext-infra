@@ -42,8 +42,8 @@ class FlextInfraUtilitiesDocsGuidesMixin:
         header = (
             "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
             "from the workspace root. -->\n"
-            f"<!-- Source of truth: `docs/guides/{guide_name}`; adjust that source, "
-            "never this projection. -->\n\n"
+            f"<!-- Source of truth: `<workspace-root>/docs/guides/{guide_name}`; "
+            "adjust that workspace source, never this member projection. -->\n\n"
             f"# {project_name} - {title}\n\n"
             f"> Project profile: `{project_name}`"
         )
