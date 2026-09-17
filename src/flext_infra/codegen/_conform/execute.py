@@ -368,8 +368,13 @@ class FlextInfraCodegenConformExecute:
                 session.value, lazy_analysis.error or "lazy-init planning failed"
             )
             return r[m.Infra.CodegenResult].from_failure(aborted)
+        conform_paths = frozenset(f.path for f in plan.files)
+        lazy_plans = tuple(
+            p for p in lazy_analysis.value.files if p.path not in conform_paths
+        )
+        lazy_analysis_ = lazy_analysis.value.model_copy(update={"files": lazy_plans})
         extended = transaction.append_phase_locked(
-            session.value, lazy_analysis.value.phase, lazy_analysis.value.files
+            session.value, lazy_analysis.value.phase, lazy_plans
         )
         if extended.failure:
             return r[m.Infra.CodegenResult].from_failure(extended)
@@ -417,11 +422,7 @@ class FlextInfraCodegenConformExecute:
         published = transaction.commit_locked(
             with_docs.value,
             lambda: self._validate_managed_fixed_point(
-                request,
-                with_docs.value,
-                transaction,
-                lazy_analysis.value,
-                docs_analysis,
+                request, with_docs.value, transaction, lazy_analysis_, docs_analysis
             ),
         )
         if published.failure:

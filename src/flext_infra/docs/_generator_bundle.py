@@ -138,7 +138,9 @@ class FlextInfraDocGeneratorBundleMixin:
                     normalized_content = c.Infra.FENCE_NOTEST_RE.sub(
                         r"```\1", normalized_content
                     )
-                    normalized_content = u.Infra.docs_update_toc(normalized_content)[0]
+                    normalized_content = u.Infra.docs_contract_update_toc(
+                        normalized_content
+                    )[0]
                 normalized_artifacts.append(
                     m.Infra.DocsRenderedArtifact(
                         relative_path=target.relative_to(project),
