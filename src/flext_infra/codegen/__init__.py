@@ -22,6 +22,7 @@ if TYPE_CHECKING:
         FlextInfraCodegenGenerationTypeCheckingMixin,
     )
     from ._codegen_staging import stage_file_plans
+    from ._conform._request_fields import FlextInfraCodegenConformRequestFields
     from ._conform.bootstrap import FlextInfraCodegenConformBootstrap
     from ._conform.execute import FlextInfraCodegenConformExecute
     from ._conform.misc import FlextInfraCodegenConformMisc
@@ -86,6 +87,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenConformMisc",
     "FlextInfraCodegenConformPlan",
     "FlextInfraCodegenConformRender",
+    "FlextInfraCodegenConformRequestFields",
     "FlextInfraCodegenConsolidator",
     "FlextInfraCodegenConsolidatorStepsMixin",
     "FlextInfraCodegenFixer",
@@ -161,6 +163,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             "._codegen_staging": ("stage_file_plans",),
             "._conform": ("_conform",),
+            "._conform._request_fields": ("FlextInfraCodegenConformRequestFields",),
             "._conform.bootstrap": ("FlextInfraCodegenConformBootstrap",),
             "._conform.execute": ("FlextInfraCodegenConformExecute",),
             "._conform.misc": ("FlextInfraCodegenConformMisc",),

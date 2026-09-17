@@ -175,13 +175,11 @@ class TestsFlextInfraTransactionDirectoryJournal:
                 has="docs preparation failed after begin",
             )
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
-        tm.that(FlextInfraMiseWorkspacePlanner.journal_path(identity).exists(), eq=False)
-        tm.that(target.exists(), eq=False)
-        tm.ok(
-            owner.run_locked(
-                prepare=True, operation=r[Path].ok
-            )
+        tm.that(
+            FlextInfraMiseWorkspacePlanner.journal_path(identity).exists(), eq=False
         )
+        tm.that(target.exists(), eq=False)
+        tm.ok(owner.run_locked(prepare=True, operation=r[Path].ok))
 
     def test_appended_phase_rejects_replaced_created_parent(
         self, tmp_path: Path

@@ -116,7 +116,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 cli.display_text(f"mod: apply {len(rules)} ast-grep rule file(s)")
                 FlextInfraModGateEngine.scan(root, fix=True).unwrap()
             after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-            FlextInfraCodemodBatchApply._validate_fix_match(current, after_ast)
+            FlextInfraCodemodBatchApply.validate_fix_match(current, after_ast)
             transaction_paths = FlextInfraCodemodSemanticApply.plan_transaction_paths(
                 root, after_ast
             )
@@ -141,8 +141,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         iteration = 0
         while current_text.findings:
             iteration += 1
-            fingerprint: tuple[tuple[str, str, int, str], ...] = (
-                FlextInfraCodemodBatchApply._text_fingerprint(current_text.entries
             text_fp: tuple[tuple[str, str, int, str], ...] = (
                 FlextInfraCodemodBatchApply._text_fingerprint(current_text.entries)
             )
@@ -197,7 +195,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         return tuple(sorted(result))
 
     @staticmethod
-    def _validate_fix_match(
+    def validate_fix_match(
         before: m.Infra.ModScanReport, after_apply: m.Infra.ModScanReport
     ) -> None:
         """Reject unresolved rewrites while preserving valid rule cascades."""
@@ -227,9 +225,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         new_actionable = after_apply_actionable - before_actionable
         prior_rule_ids = {rule_id for rule_id, _, _, _ in before_actionable}
         unexpected = {
-            finding
-            for finding in new_actionable
-            if finding[0] in prior_rule_ids
+            finding for finding in new_actionable if finding[0] in prior_rule_ids
         }
         if unexpected:
             rule_ids = {r for r, _, _, _ in unexpected}

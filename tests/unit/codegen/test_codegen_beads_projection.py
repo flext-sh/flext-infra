@@ -319,7 +319,9 @@ class TestsFlextInfraCodegenBeadsProjection:
             '{"backend":"dolt"}\n', encoding="utf-8"
         )
 
-        rendered = u.Tests.planned_text(u.Tests.governed_project_plan(root), c.Infra.BEADS_METADATA_RELPATH)
+        rendered = u.Tests.planned_text(
+            u.Tests.governed_project_plan(root), c.Infra.BEADS_METADATA_RELPATH
+        )
         if rendered is None:
             pytest.fail("local identity must produce the Beads marker")
         metadata = u.Tests.json_payload(rendered)

@@ -21,14 +21,12 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
     """Static helpers for resolving tracked files and directories within Git scopes."""
 
     @classmethod
-    def _git_repo_root(cls, scope_root: str) -> str | None:
+    def _git_repo_root(cls, scope_root: str) -> str:
         """Return the nearest enclosing Git worktree root for ``scope_root``."""
-        opened = cls._open_repo(Path(scope_root).resolve())
-        if opened.failure:
-            return None
-        working_tree_dir = opened.value.working_tree_dir
+        working_tree_dir = cls._repo(Path(scope_root).resolve()).working_tree_dir
         if working_tree_dir is None:
-            return None
+            msg = f"opened Git repository has no worktree: {scope_root}"
+            raise RuntimeError(msg)
         return str(Path(working_tree_dir).resolve())
 
     @classmethod
@@ -71,8 +69,6 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
         """
         resolved_root = Path(scope_root)
         repo_root_text = cls._git_repo_root(scope_root)
-        if repo_root_text is None:
-            return None
         repo_relative_paths = cls._git_tracked_repo_relative_paths(repo_root_text)
         if repo_relative_paths is None:
             return None
