@@ -16,19 +16,18 @@ from .._constants import (
 from . import (
     FlextInfraModelsDepsToolSettings,
     FlextInfraModelsLayout,
-    immutable_empty_mapping,
 )
 from ._config import (
     FlextInfraConfigModelsArtifact,
     FlextInfraConfigModelsBeads,
     FlextInfraConfigModelsRender,
 )
-from ._defaults import tool_version_field
+from ._defaults import FlextInfraModelsDefaults
 from .mise_toolchain import FlextInfraModelsMiseToolchain
 
 
 class FlextInfraConfigModels:
-    immutable_empty_mapping = immutable_empty_mapping
+    immutable_empty_mapping = FlextInfraModelsDefaults.immutable_empty_mapping
 
     """Field-only models for config loading and codegen plans."""
 

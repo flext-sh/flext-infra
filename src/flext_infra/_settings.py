@@ -18,10 +18,7 @@ from flext_infra import m
 from ._models.settings import FlextInfraSettingsModels
 
 
-# NOTE (multi-agent): migrated base FlextCliSettings->FlextSettings to
-# complete the workspace settings migration (flext-d421); flext_cli dropped its
-# public FlextCliSettings export. Canonical pattern per flext-api/flext-auth.
-class _FlextInfraSettings(FlextSettings):
+class FlextInfraSettings(FlextSettings):
     """Environment-backed infra settings; fields under ``settings.Infra.*``."""
 
     model_config: ClassVar[m.SettingsConfigDict] = m.SettingsConfigDict(
@@ -37,21 +34,17 @@ class _FlextInfraSettings(FlextSettings):
         description="Namespaced infra settings.",
     )
 
+    @staticmethod
+    def env_lookup(name: str) -> str | None:
+        """Return one raw environment value through the settings boundary.
 
-settings: _FlextInfraSettings = _FlextInfraSettings()
-"""Pre-instantiated project settings singleton — ``from flext_infra import settings``."""
-
-
-def env_lookup(name: str) -> str | None:
-    """Return one raw environment value through the settings boundary.
-
-    The only sanctioned raw-environment read in the package: keys that are
-    dynamic by contract (caller-named CLI parameters, CI passthrough
-    variables, subprocess environment merges). Static values must be typed
-    ``settings.Infra.*`` fields instead; ambient ``os.environ`` reads
-    elsewhere are banned by the ``ban-ambient-environ-read`` rule.
-    """
-    return _os.environ.get(name)
+        The only sanctioned raw-environment read in the package: keys that are
+        dynamic by contract (caller-named CLI parameters, CI passthrough
+        variables, subprocess environment merges). Static values must be typed
+        ``settings.Infra.*`` fields instead; ambient ``os.environ`` reads
+        elsewhere are banned by the ``ban-ambient-environ-read`` rule.
+        """
+        return _os.environ.get(name)
 
 
-__all__: list[str] = ["env_lookup", "settings"]
+__all__: list[str] = ["FlextInfraSettings"]

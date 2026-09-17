@@ -8,7 +8,7 @@ from flext_cli import m
 
 from flext_infra import t
 
-from ._defaults import ImmutableEmptyMapping
+from ._defaults import FlextInfraModelsDefaults
 
 
 class FlextInfraModelsDepsToolConfigProjectRuff:
@@ -22,7 +22,7 @@ class FlextInfraModelsDepsToolConfigProjectRuff:
             m.Field(
                 description="Project-local per-file rules merged with global policy."
             ),
-        ] = m.Field(default_factory=ImmutableEmptyMapping)
+        ] = m.Field(default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping)
 
 
 __all__: list[str] = ["FlextInfraModelsDepsToolConfigProjectRuff"]

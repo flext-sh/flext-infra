@@ -20,7 +20,7 @@ from types import FrameType
 from flext_infra import t
 
 
-class MypyDarwinSupervisor:
+class FlextInfraMypyDarwinSupervisor:
     """Own the checker process group and stop it on resource-control failure."""
 
     class ProcessGroupAbsentError(Exception):
@@ -37,13 +37,13 @@ class MypyDarwinSupervisor:
         try:
             os.killpg(pid, signum)
         except ProcessLookupError as err:
-            raise MypyDarwinSupervisor.ProcessGroupAbsentError from err
+            raise FlextInfraMypyDarwinSupervisor.ProcessGroupAbsentError from err
         except PermissionError:
             # Darwin may retain an unsignalable zombie-only process group.
             # Only a native accounting proof of no live member closes it.
             if cls._usage(pid)[1]:
                 raise
-            raise MypyDarwinSupervisor.ProcessGroupAbsentError from None
+            raise FlextInfraMypyDarwinSupervisor.ProcessGroupAbsentError from None
 
     @staticmethod
     def _usage(pid: int) -> t.Pair[int, bool]:
@@ -129,7 +129,7 @@ class MypyDarwinSupervisor:
 
 if __name__ == "__main__":
     raise SystemExit(
-        MypyDarwinSupervisor.run(
+        FlextInfraMypyDarwinSupervisor.run(
             sys.argv[4:], int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])
         )
     )

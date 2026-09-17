@@ -9,8 +9,7 @@ from typing import TYPE_CHECKING
 
 from flext_core.result import FlextResult as r
 from flext_infra import c, t
-
-from .._models.workspace import FlextInfraModelsWorkspace as mw
+from flext_infra._models.workspace import FlextInfraModelsWorkspace
 from ._docs_scope_policy import FlextInfraUtilitiesDocsScopePolicyMixin
 from .git import FlextInfraUtilitiesGit
 from .project_discovery import FlextInfraUtilitiesProjectDiscovery
@@ -27,12 +26,12 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
     @staticmethod
     def resolve_projects(
         repository_root: Path, names: t.StrSequence
-    ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
+    ) -> p.Result[t.SequenceOf[FlextInfraModelsWorkspace.ProjectInfo]]:
         """Resolve project names through repository-local topology only."""
         owner = FlextInfraUtilitiesDocsScopeProjectsMixin
         discovered = owner.discover_projects(repository_root)
         if discovered.failure:
-            return r[t.SequenceOf[mw.ProjectInfo]].from_failure(discovered)
+            return r[t.SequenceOf[FlextInfraModelsWorkspace.ProjectInfo]].from_failure(discovered)
         projects = list(discovered.value)
         root = owner.absolute_lexical(repository_root)
         if all(project.path != root for project in projects):
@@ -45,10 +44,10 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
             if root_project is not None:
                 projects.append(root_project)
         if not names:
-            return r[t.SequenceOf[mw.ProjectInfo]].ok(
+            return r[t.SequenceOf[FlextInfraModelsWorkspace.ProjectInfo]].ok(
                 sorted(projects, key=operator.attrgetter("name"))
             )
-        by_name: MutableMapping[str, mw.ProjectInfo] = {}
+        by_name: MutableMapping[str, FlextInfraModelsWorkspace.ProjectInfo] = {}
         for project in projects:
             by_name.setdefault(project.name, project)
             by_name.setdefault(project.path.name, project)
@@ -58,10 +57,10 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
                 by_name.setdefault(project.path.relative_to(root).as_posix(), project)
         missing = [name for name in names if name not in by_name]
         if missing:
-            return r[t.SequenceOf[mw.ProjectInfo]].fail(
+            return r[t.SequenceOf[FlextInfraModelsWorkspace.ProjectInfo]].fail(
                 f"unknown projects: {', '.join(sorted(missing))}"
             )
-        return r[t.SequenceOf[mw.ProjectInfo]].ok(
+        return r[t.SequenceOf[FlextInfraModelsWorkspace.ProjectInfo]].ok(
             sorted((by_name[name] for name in names), key=operator.attrgetter("name"))
         )
 
@@ -81,7 +80,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
     @staticmethod
     def project_info_for_entry(
         entry: Path, *, workspace_declared_repositories: frozenset[Path]
-    ) -> mw.ProjectInfo | None:
+    ) -> FlextInfraModelsWorkspace.ProjectInfo | None:
         """Build one canonical project descriptor for one discovered project root."""
         entry = FlextInfraUtilitiesDocsScopeProjectsMixin.absolute_lexical(entry)
         project_state = FlextInfraUtilitiesDocsScopeProjectsMixin.project_state(entry)
@@ -120,7 +119,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
             )
             else c.Infra.MakeProfile.STANDALONE
         )
-        return mw.ProjectInfo(
+        return FlextInfraModelsWorkspace.ProjectInfo(
             path=entry,
             name=project_state.project_name,
             stack="python/flext",
@@ -139,12 +138,12 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
     @staticmethod
     def discover_projects(
         repository_root: Path,
-    ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
+    ) -> p.Result[t.SequenceOf[FlextInfraModelsWorkspace.ProjectInfo]]:
         """Discover the root or projects declared by its own ``.gitmodules``."""
         owner = FlextInfraUtilitiesDocsScopeProjectsMixin
         roots = owner.docs_repository_roots(repository_root)
         if roots.failure:
-            return r[t.SequenceOf[mw.ProjectInfo]].from_failure(roots)
+            return r[t.SequenceOf[FlextInfraModelsWorkspace.ProjectInfo]].from_failure(roots)
         repository_root = roots.value[0]
         excluded = owner.excluded_roots(repository_root)
         workspace_declared_repositories = owner.workspace_declared_repository_path_set(
@@ -153,8 +152,8 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
         project_roots = FlextInfraUtilitiesProjectDiscovery.discover_project_candidates(
             repository_root
         )
-        root_project: mw.ProjectInfo | None = None
-        projects: list[mw.ProjectInfo] = []
+        root_project: FlextInfraModelsWorkspace.ProjectInfo | None = None
+        projects: list[FlextInfraModelsWorkspace.ProjectInfo] = []
         for project_root in project_roots:
             if project_root.name == "cmd" or project_root.name in excluded:
                 continue
@@ -173,8 +172,8 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
                 continue
             projects.append(project_info)
         if not projects and root_project is not None:
-            return r[t.SequenceOf[mw.ProjectInfo]].ok([root_project])
-        return r[t.SequenceOf[mw.ProjectInfo]].ok(projects)
+            return r[t.SequenceOf[FlextInfraModelsWorkspace.ProjectInfo]].ok([root_project])
+        return r[t.SequenceOf[FlextInfraModelsWorkspace.ProjectInfo]].ok(projects)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsScopeProjectsMixin"]
