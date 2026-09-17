@@ -395,6 +395,7 @@ Infra:
         root_files:
           - .coverage
           - .testmondata
+          - flext-infra-codegen-transaction-journal.json.lock
         trace_globs:
           - "*.pstats"
       # Branch shapes and PR state that let a push skip the pre-push gate, and

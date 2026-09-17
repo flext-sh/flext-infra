@@ -1,5 +1,9 @@
 # Handoff: automação de namespace e runtime do flext-infra
 
+> Historical evidence only. This plan records an earlier execution context and
+> its command examples are not current workspace guidance. Use the root
+> `AGENTS.md` and `make help` for the active contract.
+
 <!-- TOC START -->
 - [1. Pedido, prioridade e limite desta entrega](#1-pedido-prioridade-e-limite-desta-entrega)
 - [2. Plano de execução reconstruído e confronto com o resultado](#2-plano-de-execucao-reconstruido-e-confronto-com-o-resultado)
@@ -12,6 +16,7 @@
   - [4.5 A evidência foi fragmentada e ficou atrás do código](#45-a-evidencia-foi-fragmentada-e-ficou-atras-do-codigo)
   - [4.6 Gates diferentes estão respondendo perguntas diferentes](#46-gates-diferentes-estao-respondendo-perguntas-diferentes)
   - [4.7 A retomada inicialmente perguntou pelo plano errado](#47-a-retomada-inicialmente-perguntou-pelo-plano-errado)
+  - [4.8 A compatibilidade foi investigada tarde demais](#48-a-compatibilidade-foi-investigada-tarde-demais)
 - [5. O que foi preservado no código](#5-o-que-foi-preservado-no-codigo)
 - [6. Evidências executáveis e suas limitações](#6-evidencias-executaveis-e-suas-limitacoes)
 - [7. Beads relacionados e uso correto](#7-beads-relacionados-e-uso-correto)

@@ -106,11 +106,26 @@ class FlextInfraUtilitiesDocsGuidesMixin:
                 destinations[path] = content
         owned: set[Path] = set()
         for path, content in destinations.items():
-            ownership = FlextInfraUtilitiesDocsGuidesMixin.docs_project_guide_content(
-                "", scope.name, path.name
-            ).partition("\n\n")[0]
-            previous_ownership = ownership.replace("`<workspace-root>/", "`")
-            if content.startswith((ownership + "\n\n", previous_ownership + "\n\n")):
+            lines = content.splitlines()
+            generated = (
+                "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
+                "from the workspace root. -->"
+            )
+            source_headers = {
+                (
+                    f"<!-- Source of truth: `docs/guides/{path.name}`; "
+                    "adjust that source, never this projection. -->"
+                ),
+                (
+                    f"<!-- Source of truth: `<workspace-root>/docs/guides/{path.name}`; "
+                    "adjust that workspace source, never this member projection. -->"
+                ),
+            }
+            if (
+                len(lines) >= 2
+                and lines[0] == generated
+                and lines[1] in source_headers
+            ):
                 owned.add(path)
         artifacts: list[DocsRenderedArtifactTuple] = []
         expected_paths = {destination_root / path.name for path in sources}

@@ -74,6 +74,11 @@ class FlextInfraConstantsDocs:
     )
     """Regex matching ``python`` fenced blocks for fix-in-place replacement."""
 
+    WELDED_FENCE_RE: Final[t.RegexPattern] = re.compile(
+        r"^(?P<body>.*[^`\n])```[ \t]*$", re.MULTILINE
+    )
+    """Match a closing fence welded to the final code line by an older fixer."""
+
     FENCE_NOTEST_RE: Final[t.RegexPattern] = re.compile(
         r"^```(\S+)\s+notest\s*$", re.MULTILINE
     )

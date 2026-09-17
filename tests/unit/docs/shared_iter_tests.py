@@ -117,5 +117,33 @@ class TestsFlextInfraDocsSharedIter:
         tm.that(backup in files, eq=False)
         tm.that(archived in files, eq=False)
 
+    def test_excludes_immutable_incoming_revisions(self, tmp_path: Path) -> None:
+        """Keep authenticated incoming plan revisions outside mutable doc fixes."""
+        canonical = tmp_path / "docs/plans/plan.md"
+        canonical.parent.mkdir(parents=True)
+        canonical.write_text("# Curated plan\n")
+        incoming = tmp_path / "docs/plans/plan/incoming/digest/plan.md"
+        incoming.parent.mkdir(parents=True)
+        incoming.write_text("# Authenticated revision\n")
+
+        files = u.Infra.iter_markdown_files(tmp_path)
+
+        tm.that(canonical in files, eq=True)
+        tm.that(incoming in files, eq=False)
+
+    def test_excludes_generated_crg_reports(self, tmp_path: Path) -> None:
+        """Keep graph evidence outside mutable documentation normalization."""
+        maintained = tmp_path / "docs/architecture/README.md"
+        maintained.parent.mkdir(parents=True)
+        maintained.write_text("# Architecture\n")
+        generated = tmp_path / "docs/architecture/crg-reports/architecture.md"
+        generated.parent.mkdir(parents=True)
+        generated.write_text("# CRG report\n")
+
+        files = u.Infra.iter_markdown_files(tmp_path)
+
+        tm.that(maintained in files, eq=True)
+        tm.that(generated in files, eq=False)
+
 
 __all__: list[str] = ["TestsFlextInfraDocsSharedIter"]
