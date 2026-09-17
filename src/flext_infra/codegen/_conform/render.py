@@ -19,6 +19,7 @@ class _ConformRenderRoles:
         request: m.Infra.CodegenConformRequest | None
         repository_root: Path
         initial_workspace: m.Infra.WorkspaceSpec | None
+
         def _gitignore_sections(self, codegen: m.Infra.CodegenConfigSpec, *, profile: c.Infra.MakeProfile, project_name: str | None = None, workspace: m.Infra.WorkspaceSpec | None = None, project_patterns: t.StrSequence = ()) -> t.VariadicTuple[m.Infra.ScaffoldGitignoreSectionSpec]: ...
         def _mise_bootstrap_environment(self) -> m.Infra.MiseBootstrapEnvironmentSpec: ...
         @staticmethod
