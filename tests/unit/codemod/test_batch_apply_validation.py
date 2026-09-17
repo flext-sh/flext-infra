@@ -39,7 +39,9 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             entries=(finding,),
         )
 
-    def test_allows_a_later_rule_enabled_by_a_prior_rewrite(self, tmp_path: Path) -> None:
+    def test_allows_a_later_rule_enabled_by_a_prior_rewrite(
+        self, tmp_path: Path
+    ) -> None:
         """A staged rule becomes work for the next fixed-point iteration."""
         before = self._report(tmp_path / "subject.py", "bind-test-utility-alias")
         after = self._report(tmp_path / "subject.py", "rewire-test-utility-receiver")
