@@ -526,35 +526,56 @@ class FlextInfraMiseArtifactsJournal:
             for participant in journal.file_participants
         }
         for directory in journal.directories:
-            relative = Path(directory.path)
-            selector = relative.parts[0]
-            participant_root = participants.get(selector)
-            if participant_root is not None:
-                expected = participant_root.joinpath(*relative.parts[1:])
-                if directory.project != selector or any(
-                    state is not None and state.path != expected
-                    for state in (directory.before, directory.created)
-                ):
-                    return r[Path].fail(
-                        f"generation directory path is inconsistent: {directory.path}"
-                    )
-                continue
-            for directory_state in (directory.before, directory.created):
-                if directory_state is None:
-                    continue
-                candidate = directory_state.path
-                for _part in relative.parts:
-                    candidate = candidate.parent
-                if candidate / relative != directory_state.path:
-                    return r[Path].fail(
-                        f"generation directory path is inconsistent: {directory.path}"
-                    )
-                candidates.add(candidate)
+            candidate = cls._recorded_directory_root(directory, participants)
+            if candidate.failure:
+                return r[Path].from_failure(candidate)
+            if candidate.value is not None:
+                candidates.add(candidate.value)
         if not candidates:
             return r[Path].ok(current_scope)
         if len(candidates) != 1:
             return r[Path].fail("generation journal has no single recorded scope path")
         return r[Path].ok(candidates.pop())
+
+    @staticmethod
+    def _recorded_directory_root(
+        directory: m.Infra.CodegenJournalDirectory,
+        participants: t.MappingKV[str, Path],
+    ) -> p.Result[Path | None]:
+        """Recover one workspace root candidate or validate an external owner."""
+        relative = Path(directory.path)
+        selector = relative.parts[0]
+        participant_root = participants.get(selector)
+        states = tuple(
+            state
+            for state in (directory.before, directory.created)
+            if state is not None
+        )
+        if participant_root is not None:
+            expected = participant_root.joinpath(*relative.parts[1:])
+            valid = directory.project == selector and all(
+                state.path == expected for state in states
+            )
+            if valid:
+                return r[Path | None].ok(None)
+            return r[Path | None].fail(
+                f"generation directory path is inconsistent: {directory.path}"
+            )
+        candidates: set[Path] = set()
+        for state in states:
+            candidate = state.path
+            for _part in relative.parts:
+                candidate = candidate.parent
+            if candidate / relative != state.path:
+                return r[Path | None].fail(
+                    f"generation directory path is inconsistent: {directory.path}"
+                )
+            candidates.add(candidate)
+        if len(candidates) > 1:
+            return r[Path | None].fail(
+                f"generation directory path is inconsistent: {directory.path}"
+            )
+        return r[Path | None].ok(next(iter(candidates), None))
 
     @staticmethod
     def _relocation_roots(
