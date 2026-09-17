@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Literal, cast
 
 from flext_core import r
 from flext_infra import c, m, u
@@ -546,14 +546,14 @@ class FlextInfraMiseArtifactsJournal:
         selector = relative.parts[0]
         participant_root = participants.get(selector)
         states = tuple(
-            state
-            for state in (directory.before, directory.created)
-            if state is not None
+            directory_state
+            for directory_state in (directory.before, directory.created)
+            if directory_state is not None
         )
         if participant_root is not None:
             expected = participant_root.joinpath(*relative.parts[1:])
             valid = directory.project == selector and all(
-                state.path == expected for state in states
+                directory_state.path == expected for directory_state in states
             )
             if valid:
                 return r[Path | None].ok(None)
@@ -561,11 +561,11 @@ class FlextInfraMiseArtifactsJournal:
                 f"generation directory path is inconsistent: {directory.path}"
             )
         candidates: set[Path] = set()
-        for state in states:
-            candidate = state.path
+        for directory_state in states:
+            candidate = directory_state.path
             for _part in relative.parts:
                 candidate = candidate.parent
-            if candidate / relative != state.path:
+            if candidate / relative != directory_state.path:
                 return r[Path | None].fail(
                     f"generation directory path is inconsistent: {directory.path}"
                 )
@@ -674,7 +674,7 @@ class FlextInfraMiseArtifactsJournal:
                 mode=source.mode,
                 device=source.device,
                 inode=source.inode,
-                link_count=source.link_count,
+                link_count=cast("Literal[1] | None", source.link_count),
                 file_attributes=source.file_attributes,
                 reparse_tag=source.reparse_tag,
                 absent_parent=absent_parent,
