@@ -197,11 +197,14 @@ class FlextInfraPyprojectModernizerRunMixin:
             if not dry_run:
                 profile_changes = (
                     FlextInfraDepsFloorProfileWriter.rewrite_profiles_from_resolution(
-                        resolved_versions=resolved_versions, internal_names=internal_names
+                        resolved_versions=resolved_versions,
+                        internal_names=internal_names,
                     )
                 )
                 if profile_changes:
-                    u.Cli.info("deps: dependency_profiles floors updated from the provisioned runtime")
+                    u.Cli.info(
+                        "deps: dependency_profiles floors updated from the provisioned runtime"
+                    )
                     for change in profile_changes:
                         u.Cli.info(f"  - {change}")
             return 0

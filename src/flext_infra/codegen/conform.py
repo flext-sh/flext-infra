@@ -51,21 +51,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return link_mode
 
     @staticmethod
-    def _dependency_cooldown_policy(
-        repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
-    ) -> tuple[tuple[str, ...], MutableMapping[str, str]]:
-        """Compose fleet defaults with the repository's narrower policy."""
-        exclusions = dict.fromkeys(toolchain.dependency_cooldown_exclusions)
-        overrides = dict(toolchain.dependency_cooldown_overrides)
-        for package in repository.dependency_cooldown_exclusions:
-            overrides.pop(package, None)
-            exclusions[package] = None
-        for package, cutoff in repository.dependency_cooldown_overrides.items():
-            exclusions.pop(package, None)
-            overrides[package] = cutoff
-        return tuple(exclusions), overrides
-
-    @staticmethod
     def _discover_script_verbs(
         repository_root: Path,
     ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]:
@@ -1110,8 +1095,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 # strips stale generated sections and deletes the file when
                 # nothing custom remains, so `.envrc` stays the single
                 # beads activation owner. Mirrors the `_conform` family owner.
-                normalized = FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized(
-                    current
+                normalized = (
+                    FlextInfraWorkspaceEnvironmentContracts.envrc_local_normalized(
+                        current
+                    )
                 )
                 if normalized == current:
                     current_plan = FlextInfraCodegenConform._file_plan(
@@ -2375,11 +2362,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         gitlinks = FlextInfraCodegenConform._managed_gitlinks(workspace, codegen)
         if gitlinks.failure:
             return r[m.Infra.MakeRenderContext].from_failure(gitlinks)
-        cooldown_exclusions, cooldown_overrides = (
-            FlextInfraCodegenConform._dependency_cooldown_policy(
-                repository, codegen.toolchain
-            )
-        )
         extra_verbs = FlextInfraCodegenConform._merge_extra_verbs(
             repository.extra_verbs,
             (
@@ -2426,8 +2408,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 workspace_gitlinks=gitlinks.value,
                 extra_verbs=extra_verbs,
                 script_dispatch=repository.script_dispatch,
-                dependency_cooldown_exclusions=cooldown_exclusions,
-                dependency_cooldown_overrides=cooldown_overrides,
             )
         )
 
