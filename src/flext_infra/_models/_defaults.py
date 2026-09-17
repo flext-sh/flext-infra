@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Mapping, MutableMapping
 from types import MappingProxyType
-from typing import Never, override
+from typing import override
 
 from flext_cli import m
 
@@ -15,11 +15,7 @@ class FlextInfraModelsDefaults:
     """Facade for typed immutable defaults shared by Pydantic model fields."""
 
     class ImmutableEmptyMapping[K, V](Mapping[K, V]):
-        """Fully typed immutable empty mapping used as a field factory.
-
-        Kept beside the ``immutable_empty_mapping`` factory: every consumer
-        imported on 0.12.0-dev still binds the class directly.
-        """
+        """Fully typed immutable empty mapping used as a field factory."""
 
         @override
         def __getitem__(self, key: K) -> V:
@@ -37,9 +33,9 @@ class FlextInfraModelsDefaults:
             return 0
 
     @staticmethod
-    def immutable_empty_mapping() -> Mapping[Never, Never]:
-        """Return a fresh immutable empty mapping."""
-        empty: MutableMapping[Never, Never] = {}
+    def immutable_empty_mapping[K, V]() -> Mapping[K, V]:
+        """Return a fresh immutable empty mapping typed for any key/value."""
+        empty: MutableMapping[K, V] = {}
         return MappingProxyType(empty)
 
     @staticmethod
@@ -58,4 +54,6 @@ class FlextInfraModelsDefaults:
         return m.Field(description=description)
 
 
-__all__: list[str] = ["FlextInfraModelsDefaults"]
+__all__: list[str] = [
+    "FlextInfraModelsDefaults",
+]

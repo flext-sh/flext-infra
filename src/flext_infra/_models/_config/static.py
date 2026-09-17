@@ -39,7 +39,8 @@ class FlextInfraConfigModelsStatic:
     class StaticImportMemberRule(StaticRule):
         """Reject one member imported from a configured module."""
 
-        operator: Literal["import_member"] = m.Field(description="Import source module")
+        operator: Literal["import_member"] = m.Field(description="Operator")
+        module: t.NonEmptyStr = m.Field(description="Import source module")
         member: t.NonEmptyStr = m.Field(description="Rejected imported member")
 
     class StaticAttributeRule(StaticRule):
@@ -95,7 +96,7 @@ class FlextInfraConfigModelsStatic:
         | StaticBareExceptRule
         | StaticAnnotatedStringRule
         | StaticCommentRule,
-        m.Field(discriminator="operator"),
+        m.Discriminator("operator"),
     ]
 
     class StaticEnforcementSpec(FlextInfraConfigModelsContract.ConfigContract):

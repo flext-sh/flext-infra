@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal, cast
 
 from flext_core import r
-
 from flext_infra import c, m, u
 
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files

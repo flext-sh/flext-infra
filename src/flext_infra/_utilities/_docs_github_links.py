@@ -31,7 +31,7 @@ class FlextInfraUtilitiesDocsGithubLinks:
     """Governed GitHub URL helpers for docs audit and fix."""
 
     @staticmethod
-    def _config() -> "config.FlextInfraConfig":
+    def _config() -> config.FlextInfraConfig:
         from flext_infra import config
 
         return config
@@ -44,7 +44,9 @@ class FlextInfraUtilitiesDocsGithubLinks:
     @staticmethod
     def docs_stale_github_organizations() -> frozenset[str]:
         """Placeholder organizations that must not appear in doc URLs."""
-        return frozenset(FlextInfraUtilitiesDocsGithubLinks._config().Infra.codegen.make.docs.stale_github_organizations)
+        return frozenset(
+            FlextInfraUtilitiesDocsGithubLinks._config().Infra.codegen.make.docs.stale_github_organizations
+        )
 
     @staticmethod
     def docs_github_repo_lookup(

@@ -127,7 +127,7 @@ class FlextInfraConstantsCodegenProject:
     BEADS_LOCAL_VERSION_FILENAME: Final[str] = ".local_version"
     BEADS_LAST_TOUCHED_FILENAME: Final[str] = "last-touched"
     BEADS_CONFIG_VERSION: Final = 1
-    CONFORM_NAMESPACE_TABLE: Final["t.VariadicTuple[str]"] = (
+    CONFORM_NAMESPACE_TABLE: Final[t.VariadicTuple[str]] = (
         "tool",
         "flext",
         "namespace",

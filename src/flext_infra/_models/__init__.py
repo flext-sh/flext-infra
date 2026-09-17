@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from ._config.beads import FlextInfraConfigModelsBeads
     from ._config.contexts import FlextInfraConfigModelsContexts
     from ._config.contract import FlextInfraConfigModelsContract
+    from ._config.infra import FlextInfraConfigModelsInfra
     from ._config.make import FlextInfraConfigModelsMake
     from ._config.provider import FlextInfraConfigModelsProvider
     from ._config.release import FlextInfraConfigModelsRelease
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
     from ._config.templates import FlextInfraConfigModelsTemplates
     from ._config.workspace import FlextInfraConfigModelsWorkspace
     from ._defaults import (
+        FlextInfraModelsDefaults,
         ImmutableEmptyMapping,
         immutable_empty_mapping,
         tool_version_field,
@@ -37,7 +39,7 @@ if TYPE_CHECKING:
     from .base import FlextInfraModelsBase
     from .census import FlextInfraModelsCensus
     from .check import FlextInfraModelsCheck
-    from .codegen import FlextInfraModelsCodegen
+    from .codegen import FlextInfraCodegen
     from .codegen_render import FlextInfraModelsCodegenRender
     from .codegen_toolchain import FlextInfraModelsCodegenToolchain
     from .codemod import FlextInfraModelsCodemod
@@ -86,11 +88,13 @@ if TYPE_CHECKING:
     from .workspace import FlextInfraModelsWorkspace
     from .worktree import FlextInfraModelsWorktree
 __all__: tuple[str, ...] = (
+    "FlextInfraCodegen",
     "FlextInfraConfigModels",
     "FlextInfraConfigModelsArtifact",
     "FlextInfraConfigModelsBeads",
     "FlextInfraConfigModelsContexts",
     "FlextInfraConfigModelsContract",
+    "FlextInfraConfigModelsInfra",
     "FlextInfraConfigModelsMake",
     "FlextInfraConfigModelsProvider",
     "FlextInfraConfigModelsRelease",
@@ -102,7 +106,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsBase",
     "FlextInfraModelsCensus",
     "FlextInfraModelsCheck",
-    "FlextInfraModelsCodegen",
     "FlextInfraModelsCodegenFixModels",
     "FlextInfraModelsCodegenJournalModels",
     "FlextInfraModelsCodegenLazyInitModels",
@@ -113,6 +116,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsCodegenTransactionModels",
     "FlextInfraModelsCodemod",
     "FlextInfraModelsCore",
+    "FlextInfraModelsDefaults",
     "FlextInfraModelsDeps",
     "FlextInfraModelsDepsToml",
     "FlextInfraModelsDepsToolConfigLinters",
@@ -173,6 +177,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._config.beads": ("FlextInfraConfigModelsBeads",),
             "._config.contexts": ("FlextInfraConfigModelsContexts",),
             "._config.contract": ("FlextInfraConfigModelsContract",),
+            "._config.infra": ("FlextInfraConfigModelsInfra",),
             "._config.make": ("FlextInfraConfigModelsMake",),
             "._config.provider": ("FlextInfraConfigModelsProvider",),
             "._config.release": ("FlextInfraConfigModelsRelease",),
@@ -182,6 +187,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._config.templates": ("FlextInfraConfigModelsTemplates",),
             "._config.workspace": ("FlextInfraConfigModelsWorkspace",),
             "._defaults": (
+                "FlextInfraModelsDefaults",
                 "ImmutableEmptyMapping",
                 "immutable_empty_mapping",
                 "tool_version_field",
@@ -191,7 +197,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".base": ("FlextInfraModelsBase",),
             ".census": ("FlextInfraModelsCensus",),
             ".check": ("FlextInfraModelsCheck",),
-            ".codegen": ("FlextInfraModelsCodegen",),
+            ".codegen": ("FlextInfraCodegen",),
             ".codegen_render": ("FlextInfraModelsCodegenRender",),
             ".codegen_toolchain": ("FlextInfraModelsCodegenToolchain",),
             ".codemod": ("FlextInfraModelsCodemod",),
