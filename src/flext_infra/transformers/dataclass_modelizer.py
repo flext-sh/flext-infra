@@ -189,7 +189,7 @@ class FlextInfraRefactorDataclassModelizer(FlextInfraRopeTransformer):
             try:
                 annotation_text = ast.unparse(item.annotation)
             except (ValueError, RecursionError):
-                return False
+                raise
             return _is_serializable_annotation(annotation_text)
 
         def _rewrite_to_frozen_model(

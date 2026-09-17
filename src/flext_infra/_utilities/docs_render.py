@@ -19,6 +19,7 @@ class FlextInfraUtilitiesDocsRender:
     """Rendering helpers for generated docs content."""
 
     _MARKDOWN_LINE_LENGTH: ClassVar[int] = 80
+    _MIN_REPO_PARTS: ClassVar[int] = 2
 
     @staticmethod
     def _repository_name(repo_url: str) -> str:
@@ -33,10 +34,10 @@ class FlextInfraUtilitiesDocsRender:
         else:
             path = normalized
         parts = tuple(part for part in path.split("/") if part)
-        if len(parts) < 2:
+        if len(parts) < FlextInfraUtilitiesDocsRender._MIN_REPO_PARTS:
             msg = f"repository URL does not identify owner/repository: {repo_url}"
             raise ValueError(msg)
-        return "/".join(parts[-2:])
+        return "/".join(parts[-FlextInfraUtilitiesDocsRender._MIN_REPO_PARTS:])
 
     @staticmethod
     def _wrap_markdown_line(line: str) -> t.SequenceOf[str]:

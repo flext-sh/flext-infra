@@ -40,10 +40,6 @@ class FlextInfraModTextGateEngine:
             parsed = u.Cli.yaml_parse(source.read_text(encoding=c.Cli.ENCODING_DEFAULT))
             if parsed.failure:
                 return r[t.VariadicTuple[m.Infra.ModTextRule]].from_failure(parsed)
-            if not isinstance(parsed.value, Mapping):
-                return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(
-                    f"text rule file must be a YAML mapping: {source}"
-                )
             listing = parsed.value.get(c.Infra.CODEMOD_TEXT_RULES_KEY)
             if not isinstance(listing, list):
                 return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(

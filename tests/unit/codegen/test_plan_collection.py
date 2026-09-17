@@ -10,7 +10,7 @@ from flext_tests import tm
 from flext_infra import m, u
 
 
-class TestsPlanCollection:
+class TestsFlextInfraPlanCollection:
     """Collection plans are reproducible and preserve curated documentation."""
 
     @staticmethod
@@ -61,7 +61,7 @@ class TestsPlanCollection:
         tm.that(config.sources[0].exclude_globs, eq=())
 
     def test_yaml_sequence_fields_reject_scalar_strings(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="valid tuple"):
             m.Infra.PlanCollectionConfig.model_validate({
                 "canonical_dir": "docs/plans",
                 "sources": "kilo-local-plans",
@@ -366,4 +366,4 @@ class TestsPlanCollection:
             )
 
 
-__all__: list[str] = ["TestsPlanCollection"]
+__all__: list[str] = ["TestsFlextInfraPlanCollection"]

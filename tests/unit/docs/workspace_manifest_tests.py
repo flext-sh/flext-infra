@@ -63,13 +63,21 @@ class TestsFlextInfraWorkspaceManifest:
         """Absence of the manifest is the ordinary case for a project."""
         tm.that(u.Infra.is_fleet_umbrella(tmp_path), eq=False)
 
-    def test_the_manifest_alone_makes_a_checkout_an_umbrella(
+    def test_a_standalone_manifest_does_not_make_an_umbrella(
         self, tmp_path: Path
     ) -> None:
-        """The declared manifest is the signal."""
+        """A governed standalone project keeps its project documentation shape."""
         written = u.Tests.write_standalone_workspace_manifest(tmp_path, _PROBE)
 
         tm.that(written, eq=u.Infra.workspace_manifest_path(tmp_path))
+        tm.that(u.Infra.is_fleet_umbrella(tmp_path), eq=False)
+
+    def test_workspace_role_declares_a_fleet_umbrella(self, tmp_path: Path) -> None:
+        """Only the typed workspace role selects aggregate documentation."""
+        u.Tests.write_standalone_workspace_manifest(
+            tmp_path, _PROBE, role=c.Infra.MakeProfile.WORKSPACE
+        )
+
         tm.that(u.Infra.is_fleet_umbrella(tmp_path), eq=True)
 
     def test_a_beads_override_never_makes_a_checkout_an_umbrella(

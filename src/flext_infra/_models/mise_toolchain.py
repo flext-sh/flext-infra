@@ -454,6 +454,8 @@ class FlextInfraModelsMiseToolchain:
         @property
         def python_selector(self) -> str:
             """Mise/pyenv-style selector for the configured Python minor line."""
+            major, _, minor = self.python_version.partition(".")
+            return f"{major}.{minor}"
 
     class BeadsEndpointSpec(_ConfigContract):
         """Static network endpoint projected into Beads configuration."""

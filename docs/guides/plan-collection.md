@@ -45,6 +45,14 @@ Filesystem timestamps are not treated as substantive source updates.
 The publisher authenticates inputs and source topology before effects. It must
 register the projection as an explicit transaction participant and account for
 declared read/write aliases; it must not relax path-escape validation.
+
+Immutable revisions live below each canonical plan's `incoming/` directory.
+The documentation renderer excludes every `incoming` subtree so formatting,
+TOC generation, and link rewriting cannot mutate digest-attested evidence.
+If an unintegrated collection is interrupted after publication, rebuilding its
+generated manifest and incoming artifacts requires explicit operator approval;
+never repair those files manually or accept a changed digest.
+
 The post-publication verifier checks every declared output against its planned
 bytes and mode, while retaining exact snapshots for unrelated inputs. Manifest,
 receipt and canonical text reads, including absence, are bound on first read so

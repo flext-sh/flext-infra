@@ -70,7 +70,7 @@ def is_project_internal(target: str, project_package: str) -> bool:
     """Return whether an import target lives inside the project namespace."""
     if target == project_package:
         return True
-    return bool(target.startswith(project_package + "."))
+    return target.startswith(project_package + ".")
 
 
 def relative_import_form(
@@ -171,7 +171,7 @@ class _ImportAlignmentVisitor(cst.CSTVisitor):
         return target == "__future__" or target.startswith("__future__.")
 
     def _names_from_tuple(
-        self, names: cst.ImportTarget | cst.ImportStar | None
+        self, names: cst.ImportAlias | cst.Tuple | cst.ImportStar | None
     ) -> list[str]:
         result: list[str] = []
         if isinstance(names, cst.ImportStar):
@@ -186,6 +186,8 @@ class _ImportAlignmentVisitor(cst.CSTVisitor):
                 if isinstance(elt, cst.Element)
                 and isinstance(elt.value, cst.ImportAlias)
             )
+            return result
+        if names is None:
             return result
         result.extend(
             dotted_name(alias.name)
@@ -409,7 +411,7 @@ class FlextInfraCodegenLazyInitImportAlignmentMixin:
 
             @override
             def leave_ImportFrom(
-                self, original: ImportFrom, updated: ImportFrom
+                self, original_node: ImportFrom, updated: ImportFrom
             ) -> cst.ImportFrom:
                 replacement = self._mapping.get(original)
                 if replacement is None:

@@ -131,30 +131,23 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             )
         ]
 
-    def _project_report(self, project: p.Infra.ProjectInfo) -> m.Infra.ValidationReport:
+    def _project_report(self, project: p.Infra.ProjectInfo) -> p.Result[m.Infra.ValidationReport]:
         """Run the runtime census for one project and return a merged report."""
         package_name = self._package_name_for_project(project)
         if package_name is None:
-            return m.Infra.ValidationReport(
-                passed=True,
-                violations=(),
-                summary=f"{project.name}: no importable package found",
+            return r[m.Infra.ValidationReport].ok(
+                m.Infra.ValidationReport(
+                    passed=True,
+                    violations=(),
+                    summary=f"{project.name}: no importable package found",
+                )
             )
         module_names: t.SequenceOf[str]
-        # Operator stability contract (2026-09-16): an unimportable package is
-        # a census violation to report, never a verb crash.
         try:
             module_names = self._walk_modules(package_name)
-        except Exception as exc:
-            return m.Infra.ValidationReport(
-                passed=False,
-                violations=(
-                    (
-                        f"{package_name}: package import failed: "
-                        f"{type(exc).__name__}: {exc}"
-                    ),
-                ),
-                summary=f"{project.name}: package import failed",
+        except ImportError as exc:
+            return r[m.Infra.ValidationReport].fail(
+                f"{package_name}: package import failed: {type(exc).__name__}: {exc}"
             )
         real_modules = list(module_names)
         if self.target_module is not None:
@@ -173,23 +166,11 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         ]
         all_reports: list[m.Infra.ValidationReport] = []
         for module_name in real_modules:
-            # Operator stability contract (2026-09-16): a module that cannot
-            # import is a census violation to report, never a verb crash —
-            # findings feed the generator, the Make verb completes.
             try:
                 all_reports.extend(self._check_module(module_name))
             except Exception as exc:
-                all_reports.append(
-                    m.Infra.ValidationReport(
-                        passed=False,
-                        violations=(
-                            (
-                                f"{module_name}: import failed: "
-                                f"{type(exc).__name__}: {exc}"
-                            ),
-                        ),
-                        summary=f"{module_name}: import failed",
-                    )
+                return r[m.Infra.ValidationReport].fail(
+                    f"{module_name}: import failed: {type(exc).__name__}: {exc}"
                 )
         merged_violations = tuple(
             violation for report in all_reports for violation in report.violations
@@ -200,8 +181,10 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             if not passed
             else f"{project.name}: runtime census passed ({len(real_modules)} module(s))"
         )
-        return m.Infra.ValidationReport(
-            passed=passed, violations=merged_violations, summary=summary
+        return r[m.Infra.ValidationReport].ok(
+            m.Infra.ValidationReport(
+                passed=passed, violations=merged_violations, summary=summary
+            )
         )
 
     def build_report(self) -> p.Result[m.Infra.ValidationReport]:
@@ -217,7 +200,10 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             )
         merged_violations: list[str] = []
         for project in projects:
-            report = self._project_report(project)
+            report_result = self._project_report(project)
+            if report_result.failure:
+                return r[m.Infra.ValidationReport].from_failure(report_result)
+            report = report_result.value
             merged_violations.extend(report.violations)
         passed = not merged_violations
         summary = (
