@@ -143,7 +143,7 @@ class FlextInfraUtilitiesRopeAnalysisAst(FlextInfraUtilitiesRopeAnalysisSource):
     ) -> int:
         """Return direct symbol count for a top-level class without semantic imports."""
         pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-        tree = FlextInfraUtilitiesRopeAnalysisNodes._ensure_ast_node(pymodule.get_ast())
+        tree = FlextInfraUtilitiesRopeAnalysisNodes.ensure_ast_node(pymodule.get_ast())
         class_body = FlextInfraUtilitiesRopeAnalysisNodes._class_body_nodes(
             tree, class_name=class_name
         )

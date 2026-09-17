@@ -798,7 +798,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     ) -> t.StrSequence:
         """Collect orphaned import lines via rope-parsed bodies."""
         source_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
-        FlextInfraUtilitiesRopeAnalysis.ensure_ast_node(source_pymodule.get_ast())
+        source_ast = FlextInfraUtilitiesRopeAnalysis.ensure_ast_node(
+            source_pymodule.get_ast()
+        )
         source_lines = source.splitlines()
         kept_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(kept_source)
         kept_ast = FlextInfraUtilitiesRopeAnalysis.ensure_ast_node(
@@ -811,7 +813,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 if name:
                     kept_names.add(name)
         import_lines: t.MutableSequenceOf[str] = []
-        for node in getattr(source_pymodule.get_ast(), "body", []) or []:
+        for node in getattr(source_ast, "body", []) or []:
             if FlextInfraUtilitiesRopeAnalysis.node_kind(node) not in {
                 "Import",
                 "ImportFrom",

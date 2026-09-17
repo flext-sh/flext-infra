@@ -1096,7 +1096,7 @@ class FlextInfraUtilitiesRopeAnalysisSource(FlextInfraUtilitiesRopeAnalysisScope
         export_names = {name for name in exports if name}
         target_map: MutableMapping[str, str] = dict.fromkeys(export_names, package_name)
         pymodule = FlextInfraUtilitiesRopeAnalysisBase.parse_string_module(source)
-        module_ast = FlextInfraUtilitiesRopeAnalysisNodes._ensure_ast_node(
+        module_ast = FlextInfraUtilitiesRopeAnalysisNodes.ensure_ast_node(
             pymodule.get_ast()
         )
         for node in FlextInfraUtilitiesRopeAnalysisNodes.walk_ast_nodes(module_ast):

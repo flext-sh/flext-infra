@@ -168,6 +168,48 @@ class TestsFlextInfraTransactionDirectoryJournal:
         tm.that(target.parent.is_dir(), eq=True)
         tm.that(preserved.is_dir(), eq=True)
 
+    def test_begin_locked_cleans_residue_created_after_reconciliation(
+        self, tmp_path: Path
+    ) -> None:
+        """Recover staging that appears after locked reconciliation but before begin."""
+        root = test_u.Tests.git_repository(tmp_path)
+        test_u.Tests.copy_tracked_mise_seeds(root)
+        mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=root)
+        owner = transaction.FlextInfraCodegenTransaction(mise_owner)
+        config_path = root / ".mise.toml"
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(config_path, required=True))
+        config_plan = tm.ok(
+            u.Infra.planned_file(
+                root,
+                config_path,
+                required=True,
+                desired_content=before.content,
+                desired_mode=before.mode,
+                owner="mise",
+            )
+        )
+        layout = tm.ok(
+            FlextInfraMiseWorkspacePlanner(mise_owner).layout_from_selectors(
+                root.resolve(), (".",), transaction_id=self._TRANSACTION_ID
+            )
+        )
+        residue = tm.not_none(layout.projects[0].transaction_root)
+
+        def begin_after_reconciliation(
+            scope_root: Path,
+        ) -> p.Result[bool]:
+            residue.mkdir(parents=True)
+            (residue / "orphan").write_bytes(b"journal-less staging")
+            session = tm.ok(
+                owner.begin_locked(scope_root, (config_plan,), (config_plan,))
+            )
+            tm.that(residue.exists(), eq=False)
+            return owner.commit_locked(
+                session, lambda: mise_owner.validate_artifacts(root)
+            )
+
+        tm.ok(owner.run_locked(prepare=True, operation=begin_after_reconciliation))
+
     @staticmethod
     def _layout(root: Path) -> m.Infra.MiseToolchainWorkspaceLayout:
         root.mkdir()
