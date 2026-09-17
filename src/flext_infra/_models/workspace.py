@@ -11,8 +11,8 @@ from .. import c, t
 from . import (
     FlextInfraConfigModels,
     FlextInfraModelsMixins as mm,
+    ImmutableEmptyMapping,
 )
-from ._defaults import ImmutableEmptyMapping
 from ._git import FlextInfraModelsGitIdentity
 
 

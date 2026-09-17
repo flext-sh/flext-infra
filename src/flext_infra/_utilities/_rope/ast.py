@@ -38,7 +38,9 @@ class FlextInfraUtilitiesRopeAnalysisAst(FlextInfraUtilitiesRopeAnalysisSource):
         return names
 
     @staticmethod
-    def first_decorator_line(pyfunction: t.Infra.RopePyObject, *, default_line: int) -> int:
+    def first_decorator_line(
+        pyfunction: t.Infra.RopePyObject, *, default_line: int
+    ) -> int:
         """Return the lowest line number among ``pyfunction``'s decorators."""
         decorators = getattr(pyfunction, "decorators", None) or ()
         candidate_lines = [

@@ -16,6 +16,7 @@ from .._constants import (
 from . import (
     FlextInfraModelsDepsToolSettings,
     FlextInfraModelsLayout,
+    immutable_empty_mapping,
 )
 from ._config.artifact import FlextInfraConfigModelsArtifact
 from ._config.beads import FlextInfraConfigModelsBeads
@@ -923,7 +924,7 @@ class FlextInfraConfigModels:
         custom_handler_profile_overrides: Annotated[
             Mapping[t.NonEmptyStr, FlextInfraConfigModels.CustomHandlerPolicyOverride],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description="Per-profile overrides of the custom handler policy",
             ),
         ]
@@ -1737,7 +1738,7 @@ class FlextInfraConfigModels:
                 t.NonEmptyStr, FlextInfraConfigModels.ReleaseAutomationOverrideSpec
             ],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description="Per-distribution deviations from the shared contract",
             ),
         ]
@@ -1936,7 +1937,7 @@ class FlextInfraConfigModels:
         ruff_per_file_ignores: Annotated[
             t.MappingKV[str, t.StrSequence],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description=(
                     "Effective Ruff exemptions: fleet policy composed with this "
                     "repository's own ManagedArtifacts overlay"
@@ -2123,55 +2124,56 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]
         kubectl_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact kubectl toolchain version")
+            t.NonEmptyStr, m.Field(description="Exact kubectl toolchain version")
         ]
         helm_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Helm toolchain version")
+            t.NonEmptyStr, m.Field(description="Exact Helm toolchain version")
         ]
         kind_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact kind toolchain version")
+            t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
         ]
         direnv_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible direnv major.minor line")
+            t.NonEmptyStr, m.Field(description="Compatible direnv major.minor line")
         ]
         uv_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible uv major.minor line")
+            t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
         ]
         qlty_version: Annotated[
             t.NonEmptyStr,
-            tool_version_field("Moving qlty release selector, e.g. 'latest'"),
+            m.Field(description="Moving qlty release selector, e.g. 'latest'"),
         ]
         node_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible Node.js major.minor line")
+            t.NonEmptyStr, m.Field(description="Compatible Node.js major.minor line")
         ]
         jscpd_version: Annotated[
             t.NonEmptyStr,
-            tool_version_field("Moving jscpd release selector, e.g. 'latest'"),
+            m.Field(description="Moving jscpd release selector, e.g. 'latest'"),
         ]
         waza_version: Annotated[
             t.NonEmptyStr,
-            tool_version_field("Moving Waza release selector, e.g. 'latest'"),
+            m.Field(description="Moving Waza release selector, e.g. 'latest'"),
         ]
         taplo_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Taplo formatter version")
+            t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
         ]
         ast_grep_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact ast-grep analyzer version")
+            t.NonEmptyStr, m.Field(description="Exact ast-grep analyzer version")
         ]
         gitleaks_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Gitleaks scanner version")
+            t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
         ]
         scc_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact scc code-counter version")
+            t.NonEmptyStr, m.Field(description="Exact scc code-counter version")
         ]
         kubeconform_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible kubeconform minor line")
+            t.NonEmptyStr, m.Field(description="Compatible kubeconform minor line")
         ]
         go_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Go runtime version")
+            t.NonEmptyStr, m.Field(description="Exact Go runtime version")
         ]
         make_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Moving Make release selector, e.g. 'latest'")
+            t.NonEmptyStr,
+            m.Field(description="Moving Make release selector, e.g. 'latest'"),
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")
@@ -2547,7 +2549,7 @@ class FlextInfraConfigModels:
         checkout_submodules_overrides: Annotated[
             Mapping[str, str],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description=(
                     "Per-distribution override of checkout_submodules, for "
                     "projects that really do exercise their subprojects in CI"
@@ -2557,7 +2559,7 @@ class FlextInfraConfigModels:
         ci_private_submodules: Annotated[
             Mapping[str, FlextInfraConfigModels.CiPrivateSubmodulesSpec],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description=(
                     "Per-distribution private submodule deploy-key contracts "
                     "rendered into generated CI before make setup"
@@ -2567,7 +2569,7 @@ class FlextInfraConfigModels:
         ci_private_dependency_auth: Annotated[
             Mapping[str, FlextInfraConfigModels.CiPrivateDependencyAuthSpec],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description=(
                     "Per-distribution GitHub App identity minting installation "
                     "tokens for private git dependencies in generated CI"
@@ -2577,7 +2579,7 @@ class FlextInfraConfigModels:
         ci_system_packages: Annotated[
             Mapping[str, t.VariadicTuple[t.NonEmptyStr]],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description=(
                     "Per-distribution runner packages (Ubuntu apt names) the "
                     "generated CI installs before the gates run"

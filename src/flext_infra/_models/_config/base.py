@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ..config import FlextInfraConfigModels as FlextInfraConfigModelsLegacy
 from .artifact import FlextInfraConfigModelsArtifact
 from .beads import FlextInfraConfigModelsBeads
 from .contexts import FlextInfraConfigModelsContexts
@@ -28,4 +29,5 @@ class FlextInfraConfigModels(
     FlextInfraConfigModelsTemplates,
     FlextInfraConfigModelsWorkspace,
 ):
-    pass
+    class Infra(FlextInfraConfigModelsLegacy.Infra):
+        """Typed settings namespace retained while config fields complete migration."""

@@ -52,7 +52,7 @@ def env_lookup(name: str) -> str | None:
 
 
 settings: FlextInfraSettings = FlextInfraSettings.fetch_global()
-"""Process-wide settings singleton declared for root lazy export."""
+"""Process-wide infra settings singleton — ``from flext_infra import settings``."""
 
 
 __all__: list[str] = ["FlextInfraSettings", "env_lookup", "settings"]

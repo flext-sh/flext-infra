@@ -109,7 +109,8 @@ class FlextInfraModelsRefactorViolations:
             t.NonNegativeInt, m.Field(description="Total violations in file")
         ]
         counts: t.IntMapping = m.Field(
-            default_factory=FlextInfraModelsDefaults.immutable_empty_mapping, description="Per-pattern counts"
+            default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
+            description="Per-pattern counts",
         )
 
     class ViolationAnalysisReport(m.ArbitraryTypesModel):

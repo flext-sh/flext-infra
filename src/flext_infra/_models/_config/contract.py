@@ -18,6 +18,7 @@ class FlextInfraConfigModelsContract:
         model_config = m.ConfigDict(
             strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
         )
+
     MiseToolSpec = FlextInfraModelsMiseToolchain.MiseToolSpec
     ProtectedMiseToolSpec = FlextInfraModelsMiseToolchain.ProtectedMiseToolSpec
     BeadsEndpointSpec = FlextInfraModelsMiseToolchain.BeadsEndpointSpec

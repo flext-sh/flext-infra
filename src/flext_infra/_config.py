@@ -11,7 +11,7 @@ from typing import ClassVar
 
 from flext_cli.config import FlextCliConfig
 
-from ._models.config import FlextInfraConfigModels
+from ._models._config.base import FlextInfraConfigModels
 
 
 class FlextInfraConfig(FlextCliConfig):
@@ -33,7 +33,7 @@ class FlextInfraConfig(FlextCliConfig):
 
 
 config: FlextInfraConfig = FlextInfraConfig.fetch_global()
-"""Pre-instantiated frozen config singleton declared for root lazy export."""
+"""Pre-instantiated frozen config singleton — ``from flext_infra import config``."""
 
 
 __all__: list[str] = ["FlextInfraConfig", "config"]

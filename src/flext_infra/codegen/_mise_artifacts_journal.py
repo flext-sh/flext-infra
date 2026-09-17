@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal, cast
 
 from flext_core import r
-
 from flext_infra import c, m, u
 
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
@@ -540,8 +539,7 @@ class FlextInfraMiseArtifactsJournal:
 
     @staticmethod
     def _recorded_directory_root(
-        directory: m.Infra.CodegenJournalDirectory,
-        participants: t.MappingKV[str, Path],
+        directory: m.Infra.CodegenJournalDirectory, participants: t.MappingKV[str, Path]
     ) -> p.Result[Path | None]:
         """Recover one workspace root candidate or validate an external owner."""
         relative = Path(directory.path)

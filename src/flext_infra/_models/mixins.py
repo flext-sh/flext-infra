@@ -103,7 +103,11 @@ class FlextInfraModelsMixins:
             """Resolved output directory when provided."""
             if self.output_dir is None:
                 return None
-            path = self.output_dir if isinstance(self.output_dir, Path) else Path(self.output_dir)
+            path = (
+                self.output_dir
+                if isinstance(self.output_dir, Path)
+                else Path(self.output_dir)
+            )
             return path.resolve()
 
     class WriteMixin(ScopeMixin):

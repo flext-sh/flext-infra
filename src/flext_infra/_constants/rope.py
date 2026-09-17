@@ -67,7 +67,7 @@ class FlextInfraConstantsRope:
     # tuples live in u.Infra (FlextInfraUtilitiesRopeRuntimeTypes), not in the
     # constants layer, to keep c.Infra declarative and cycle-free.
 
-    ROPE_IGNORED_RESOURCES: Final["t.VariadicTuple[str]"] = (
+    ROPE_IGNORED_RESOURCES: Final[t.VariadicTuple[str]] = (
         ".venv",
         "venv",
         "node_modules",

@@ -141,8 +141,8 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         iteration = 0
         while current_text.findings:
             iteration += 1
-            text_fp: tuple[tuple[str, str, int, str], ...] = FlextInfraCodemodBatchApply._text_fingerprint(
-                current_text.entries,
+            text_fp: tuple[tuple[str, str, int, str], ...] = (
+                FlextInfraCodemodBatchApply._text_fingerprint(current_text.entries)
             )
             if text_fp in seen_text:
                 prev_iter = seen_text[text_fp]

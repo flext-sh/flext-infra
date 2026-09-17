@@ -166,8 +166,7 @@ class TestsRule0NamespaceStructure:
         tm.ok(result)
         tm.that(
             any(
-                violation.startswith("[NS-000")
-                for violation in result.value.violations
+                violation.startswith("[NS-000") for violation in result.value.violations
             ),
             eq=False,
         )

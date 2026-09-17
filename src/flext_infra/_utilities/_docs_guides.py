@@ -116,13 +116,11 @@ class FlextInfraUtilitiesDocsGuidesMixin:
                 f"<!-- Source of truth: `docs/guides/{path.name}`; "
                 "adjust that source, never this projection. -->"
             )
-            if content.startswith(
-                (
-                    ownership + "\n\n",
-                    previous_ownership + "\n\n",
-                    legacy_ownership + "\n\n",
-                )
-            ):
+            if content.startswith((
+                ownership + "\n\n",
+                previous_ownership + "\n\n",
+                legacy_ownership + "\n\n",
+            )):
                 owned.add(path)
         artifacts: list[DocsRenderedArtifactTuple] = []
         expected_paths = {destination_root / path.name for path in sources}

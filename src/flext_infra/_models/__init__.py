@@ -86,6 +86,7 @@ if TYPE_CHECKING:
     from .workspace import FlextInfraModelsWorkspace
     from .worktree import FlextInfraModelsWorktree
 __all__: tuple[str, ...] = (
+    "FlextInfraCodegen",
     "FlextInfraConfigModels",
     "FlextInfraConfigModelsArtifact",
     "FlextInfraConfigModelsBeads",
@@ -102,7 +103,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsBase",
     "FlextInfraModelsCensus",
     "FlextInfraModelsCheck",
-"FlextInfraCodegen",
     "FlextInfraModelsCodegenFixModels",
     "FlextInfraModelsCodegenJournalModels",
     "FlextInfraModelsCodegenLazyInitModels",

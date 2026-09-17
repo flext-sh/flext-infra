@@ -9,7 +9,8 @@ from flext_cli import m
 
 from ... import t
 from ..._constants import FlextInfraConstantsCodegenProject
-from .. import FlextInfraModelsDepsToolSettings
+from .._defaults import FlextInfraModelsDefaults, tool_version_field
+from ..deps_tool_config import FlextInfraModelsDepsToolSettings
 from .beads import FlextInfraConfigModelsBeads
 from .contract import FlextInfraConfigModelsContract
 from .make import FlextInfraConfigModelsMake
@@ -366,55 +367,59 @@ class FlextInfraConfigModelsContexts:
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]
         kubectl_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kubectl toolchain version")
+            t.NonEmptyStr, tool_version_field("Exact kubectl toolchain version")
         ]
         helm_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Helm toolchain version")
+            t.NonEmptyStr, tool_version_field("Exact Helm toolchain version")
         ]
         kind_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
+            t.NonEmptyStr, tool_version_field("Exact kind toolchain version")
         ]
         direnv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Compatible direnv major.minor line")
+            t.NonEmptyStr, tool_version_field("Compatible direnv major.minor line")
         ]
         uv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
+            t.NonEmptyStr, tool_version_field("Compatible uv major.minor line")
         ]
         qlty_version: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Moving qlty release selector, e.g. 'latest'"),
+            tool_version_field("Moving qlty release selector, e.g. 'latest'"),
         ]
         node_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Compatible Node.js major.minor line")
+            t.NonEmptyStr, tool_version_field("Compatible Node.js major.minor line")
         ]
         jscpd_version: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Moving jscpd release selector, e.g. 'latest'"),
+            tool_version_field("Moving jscpd release selector, e.g. 'latest'"),
         ]
         waza_version: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Moving Waza release selector, e.g. 'latest'"),
+            tool_version_field("Moving Waza release selector, e.g. 'latest'"),
         ]
         taplo_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
+            t.NonEmptyStr, tool_version_field("Exact Taplo formatter version")
         ]
         ast_grep_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact ast-grep analyzer version")
+            t.NonEmptyStr, tool_version_field("Exact ast-grep analyzer version")
         ]
         gitleaks_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
+            t.NonEmptyStr, tool_version_field("Exact Gitleaks scanner version")
         ]
         scc_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact scc code-counter version")
+            t.NonEmptyStr, tool_version_field("Exact scc code-counter version")
         ]
         kubeconform_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Compatible kubeconform minor line")
+            t.NonEmptyStr,
+            FlextInfraModelsDefaults.tool_version_field(
+                "Compatible kubeconform minor line"
+            ),
         ]
         go_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Go runtime version")
+            t.NonEmptyStr, tool_version_field("Exact Go runtime version")
         ]
         make_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Moving Make release selector, e.g. 'latest'")
+            t.NonEmptyStr,
+            tool_version_field("Moving Make release selector, e.g. 'latest'"),
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")
