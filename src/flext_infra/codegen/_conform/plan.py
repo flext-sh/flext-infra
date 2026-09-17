@@ -12,24 +12,88 @@ from ...deps import FlextInfraPyprojectModernizer
 from ...services.codegen import FlextInfraCodegen
 from ...workspace import FlextInfraWorkspaceDetector
 from ...workspace.environment_contracts import FlextInfraWorkspaceEnvironmentContracts
+from ._request_fields import FlextInfraCodegenConformRequestFields
 from .misc import FlextInfraCodegenConformMisc
 
 
 class _ConformPlanRoles:
     if TYPE_CHECKING:
+        request: m.Infra.CodegenConformRequest
+        repository_root: Path
+        initial_workspace: m.Infra.WorkspaceSpec | None
 
-        def _surface_contract(self, surface: c.Infra.CodegenConformSurface) -> m.Infra.CodegenConformSurfaceContract: ...
-        def retired_projection_plans(self, root: Path, profile: c.Infra.MakeProfile) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]: ...
-        def _uv_environment_plan(self, *, root: Path, repository_root: Path, target: m.Infra.RepositoryConformTarget, workspace: m.Infra.WorkspaceSpec, config: m.Infra.CodegenConfigSpec) -> m.Infra.UvEnvironmentPlan: ...
-        def _scaffold_python_dirs(self, entries: t.SequenceOf[p.Infra.TemplateEntrySpec], profile: c.Infra.MakeProfile) -> t.StrSequence: ...
-        def _project_render_context(self, repository: m.Infra.RepositoryRef, target: m.Infra.RepositoryConformTarget, workspace: m.Infra.WorkspaceSpec, codegen: m.Infra.CodegenConfigSpec, *, tooling_runtime: m.Infra.ToolingRuntimeContext, repository_root: Path, managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None, use_committed_artifacts: bool = True) -> p.Result[m.Infra.ProjectRenderContext]: ...
-        def _rendered_artifact_source(self, *, templates_root: Path, template_relpath: Path, failure_prefix: str, dist: str, repository: m.Infra.RepositoryRef, repository_root: Path, target: m.Infra.RepositoryConformTarget, workspace: m.Infra.WorkspaceSpec, codegen: m.Infra.CodegenConfigSpec, destination: str, tooling_runtime: m.Infra.ToolingRuntimeContext, project_context: m.Infra.ProjectRenderContext | None, managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None) -> p.Result[str]: ...
-        def compose_project_artifact(self, repository_root: Path, destination: str, rendered: str, *, managed_artifacts: m.Infra.ProjectManagedArtifactsSnapshot | None = None, workspace: m.Infra.WorkspaceSpec | None = None, codegen: m.Infra.CodegenConfigSpec | None = None, repository: m.Infra.RepositoryRef | None = None, target: m.Infra.RepositoryConformTarget | None = None) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
-        def validate_custom_make(self, content: str, policy: m.Infra.CustomHandlerPolicy) -> p.Result[bool]: ...
-        def _absent_file_plan(self, root: Path, path: Path) -> p.Result[m.Infra.CodegenFilePlan]: ...
+        def _surface_contract(
+            self, surface: c.Infra.CodegenConformSurface
+        ) -> m.Infra.CodegenConformSurfaceContract: ...
+        def retired_projection_plans(
+            self, root: Path, profile: c.Infra.MakeProfile
+        ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]: ...
+        def _uv_environment_plan(
+            self,
+            *,
+            root: Path,
+            repository_root: Path,
+            target: m.Infra.RepositoryConformTarget,
+            workspace: m.Infra.WorkspaceSpec,
+            config: m.Infra.CodegenConfigSpec,
+        ) -> m.Infra.UvEnvironmentPlan: ...
+        def _scaffold_python_dirs(
+            self,
+            entries: t.SequenceOf[p.Infra.TemplateEntrySpec],
+            profile: c.Infra.MakeProfile,
+        ) -> t.StrSequence: ...
+        def _project_render_context(
+            self,
+            repository: m.Infra.RepositoryRef,
+            target: m.Infra.RepositoryConformTarget,
+            workspace: m.Infra.WorkspaceSpec,
+            codegen: m.Infra.CodegenConfigSpec,
+            *,
+            tooling_runtime: m.Infra.ToolingRuntimeContext,
+            repository_root: Path,
+            managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
+            use_committed_artifacts: bool = True,
+        ) -> p.Result[m.Infra.ProjectRenderContext]: ...
+        def _rendered_artifact_source(
+            self,
+            *,
+            templates_root: Path,
+            template_relpath: Path,
+            failure_prefix: str,
+            dist: str,
+            repository: m.Infra.RepositoryRef,
+            repository_root: Path,
+            target: m.Infra.RepositoryConformTarget,
+            workspace: m.Infra.WorkspaceSpec,
+            codegen: m.Infra.CodegenConfigSpec,
+            destination: str,
+            tooling_runtime: m.Infra.ToolingRuntimeContext,
+            project_context: m.Infra.ProjectRenderContext | None = None,
+            managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
+        ) -> p.Result[str]: ...
+        def compose_project_artifact(
+            self,
+            repository_root: Path,
+            destination: str,
+            rendered: str,
+            *,
+            managed_artifacts: m.Infra.ProjectManagedArtifactsSnapshot | None = None,
+            workspace: m.Infra.WorkspaceSpec | None = None,
+            codegen: m.Infra.CodegenConfigSpec | None = None,
+            repository: m.Infra.RepositoryRef | None = None,
+            target: m.Infra.RepositoryConformTarget | None = None,
+        ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
+        def validate_custom_make(
+            self, content: str, policy: m.Infra.CustomHandlerPolicy
+        ) -> p.Result[bool]: ...
+        def _absent_file_plan(
+            self, root: Path, path: Path
+        ) -> p.Result[m.Infra.CodegenFilePlan]: ...
 
 
-class FlextInfraCodegenConformPlan(_ConformPlanRoles):
+class FlextInfraCodegenConformPlan(
+    FlextInfraCodegenConformRequestFields, _ConformPlanRoles
+):
     """Conformance planning across scaffold and existing repositories."""
 
     def plan(
@@ -309,9 +373,7 @@ class FlextInfraCodegenConformPlan(_ConformPlanRoles):
             )
             for entry in codegen.templates.entries
             if profile in entry.profiles
-            and (
-                not entry.requires_release_protocol or repository.publishes_release
-            )
+            and (not entry.requires_release_protocol or repository.publishes_release)
             and (
                 contract.destinations is None
                 or entry.destination in contract.destinations
@@ -673,7 +735,7 @@ class FlextInfraCodegenConformPlan(_ConformPlanRoles):
             plans.append(planned.value)
         layout = u.Infra.layout(root)
         if layout is not None and layout.class_stem:
-            families: tuple[Literal["u", "p"], ...] = ("u", "p")
+            families: t.VariadicTuple[Literal["u", "p"]] = ("u", "p")
             for family in families:
                 rendered = u.Infra.render_utility_facade(
                     layout.package_dir, family=family
@@ -856,7 +918,6 @@ class FlextInfraCodegenConformPlan(_ConformPlanRoles):
             )
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(completed))
 
-    @staticmethod
     @staticmethod
     def _select_repositories(
         request: m.Infra.CodegenConformRequest,

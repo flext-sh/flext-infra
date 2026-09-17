@@ -213,8 +213,7 @@ class TestsFlextInfraDepsModernizerPyright:
         pyright_rules = tool_config_document.tools.pyright
         rules = pyright_rules.path_rules
         _ = (tmp_path / "pyproject.toml").write_text(
-            "[project]\nname='workspace'\nversion='0.1.0'\n",
-            encoding="utf-8",
+            "[project]\nname='workspace'\nversion='0.1.0'\n", encoding="utf-8"
         )
         flext_core = tmp_path / "flext-core"
         flext_api = tmp_path / "flext-api"

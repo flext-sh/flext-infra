@@ -15,6 +15,7 @@ from ..._constants import (
     FlextInfraConstantsSharedInfra,
 )
 from .. import FlextInfraModelsLayout
+from .._defaults import FlextInfraModelsDefaults
 from .contexts import FlextInfraConfigModelsContexts
 from .contract import FlextInfraConfigModelsContract
 from .make import FlextInfraConfigModelsMake
@@ -111,7 +112,7 @@ class FlextInfraConfigModelsArtifact:
         checkout_submodules_overrides: Annotated[
             Mapping[str, str],
             m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description=(
                     "Per-distribution override of checkout_submodules, for "
                     "projects that really do exercise their subprojects in CI"
@@ -121,7 +122,7 @@ class FlextInfraConfigModelsArtifact:
         ci_private_submodules: Annotated[
             Mapping[str, FlextInfraConfigModelsProvider.CiPrivateSubmodulesSpec],
             m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description=(
                     "Per-distribution private submodule deploy-key contracts "
                     "rendered into generated CI before make setup"
@@ -131,7 +132,7 @@ class FlextInfraConfigModelsArtifact:
         ci_private_dependency_auth: Annotated[
             Mapping[str, FlextInfraConfigModelsProvider.CiPrivateDependencyAuthSpec],
             m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description=(
                     "Per-distribution GitHub App identity minting installation "
                     "tokens for private git dependencies in generated CI"
@@ -141,7 +142,7 @@ class FlextInfraConfigModelsArtifact:
         ci_system_packages: Annotated[
             Mapping[str, t.VariadicTuple[t.NonEmptyStr]],
             m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description=(
                     "Per-distribution runner packages (Ubuntu apt names) the "
                     "generated CI installs before the gates run"
@@ -629,7 +630,7 @@ class FlextInfraConfigModelsArtifact:
                 FlextInfraConfigModelsArtifact.ReleaseAutomationOverrideSpec,
             ],
             m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description="Per-distribution deviations from the shared contract",
             ),
         ]

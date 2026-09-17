@@ -25,7 +25,9 @@ class FlextInfraCProfileEntry:
         policy = config.Infra.tooling.tools.pytest
         stream = io.StringIO()
         stats = pstats.Stats(str(profile_path), stream=stream)
-        stats.strip_dirs().sort_stats(policy.profile_sort).print_stats(policy.profile_limit)
+        stats.strip_dirs().sort_stats(policy.profile_sort).print_stats(
+            policy.profile_limit
+        )
         output_path.parent.mkdir(parents=True, exist_ok=True)
         temporary = output_path.with_name(f".{output_path.name}.{os.getpid()}.tmp")
         temporary.write_text(stream.getvalue(), encoding="utf-8")

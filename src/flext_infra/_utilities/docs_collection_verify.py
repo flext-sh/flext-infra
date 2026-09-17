@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_cli import u as cli_u
 
-from flext_infra import m
+from flext_infra import m, t
 
 from .docs_collection_sources import FlextInfraUtilitiesDocsCollectionSources
 
@@ -19,8 +19,8 @@ class FlextInfraUtilitiesDocsCollectionVerify(FlextInfraUtilitiesDocsCollectionS
         cls,
         root: Path,
         configuration: m.Infra.PlanCollectionConfig,
-        exclusions: tuple[Path, ...],
-    ) -> tuple[m.Infra.PlanCollectionSourceInventory, ...]:
+        exclusions: t.VariadicTuple[Path],
+    ) -> t.VariadicTuple[m.Infra.PlanCollectionSourceInventory]:
         inventories: list[m.Infra.PlanCollectionSourceInventory] = []
         for source in configuration.sources:
             paths = cls.collection_source_files(root, source, exclusions)

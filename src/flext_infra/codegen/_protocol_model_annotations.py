@@ -67,7 +67,7 @@ class FlextInfraCodegenProtocolModelAnnotations:
         models_facade_name: str = m.Field(
             description="Single-letter models facade alias used in sources."
         )
-        facade_probes: tuple[tuple[str, str], ...] = m.Field(
+        facade_probes: t.VariadicTuple[t.Pair[str, str]] = m.Field(
             description=(
                 "Alias to importable facade object paths probed when mapping "
                 "identical runtime types to public names."

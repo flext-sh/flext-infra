@@ -12,9 +12,13 @@ from typing import Annotated
 from flext_cli import m
 
 from .. import c, p, t
+<<<<<<< HEAD
 from ._codegen.base import FlextInfraModelsCodegen
 from ._defaults import FlextInfraModelsDefaults
 from .mixins import FlextInfraModelsMixins as mm
+=======
+from . import FlextInfraCodegen, FlextInfraModelsMixins as mm, ImmutableEmptyMapping
+>>>>>>> origin/0.12.0-dev
 
 
 class FlextInfraModelsRope:
@@ -333,11 +337,11 @@ class FlextInfraModelsRope:
             m.Field(description="Resolved package directory containing the module"),
         ]
         package_context: Annotated[
-            FlextInfraModelsCodegen.LazyInitPackageContext,
+            FlextInfraCodegen.LazyInitPackageContext,
             m.Field(description="Resolved lazy-init package context for the module"),
         ]
         module_policy: Annotated[
-            FlextInfraModelsCodegen.NamespaceModulePolicy,
+            FlextInfraCodegen.NamespaceModulePolicy,
             m.Field(description="Canonical module policy derived for the module"),
         ]
         project_layout: Annotated[

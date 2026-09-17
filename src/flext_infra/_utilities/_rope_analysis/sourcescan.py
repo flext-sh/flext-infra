@@ -10,7 +10,6 @@ from flext_infra.typings import t
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from flext_infra.protocols import p
 
 from .asthelpers import FlextInfraUtilitiesRopeAnalysisAstHelpers
 
@@ -27,7 +26,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     _IMPORT_ALIAS_AS_PARTS: ClassVar[int] = 3
 
     @staticmethod
-    def literal_string_sequence(node: p.AttributeProbe | None) -> t.StrSequence:
+    def literal_string_sequence(node: t.Infra.RopeAstNode | None) -> t.StrSequence:
         """Return string entries from a parsed literal sequence node."""
         if node is None:
             return ()
@@ -114,7 +113,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
 
     @staticmethod
     def mapping_entries_refs(
-        node: p.AttributeProbe | None,
+        node: t.Infra.RopeAstNode | None,
     ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
         """Return literal mapping entries plus variable references."""
         if node is None:
@@ -149,7 +148,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
 
     @staticmethod
     def _dict_entries_refs(
-        node: p.AttributeProbe,
+        node: t.Infra.RopeAstNode,
     ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
         """Return string-sequence dict entries and unpack references."""
         keys = getattr(node, "keys", ()) or ()

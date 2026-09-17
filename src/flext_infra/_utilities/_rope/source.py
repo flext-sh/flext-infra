@@ -16,7 +16,6 @@ from ..rope_runtime import FlextInfraUtilitiesRopeRuntime
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from flext_infra.protocols import p
 
 from .base import FlextInfraUtilitiesRopeAnalysisBase
 from .imports import FlextInfraUtilitiesRopeAnalysisImports
@@ -439,7 +438,7 @@ class FlextInfraUtilitiesRopeAnalysisSource(FlextInfraUtilitiesRopeAnalysisScope
         return tuple(dict.fromkeys(names))
 
     @staticmethod
-    def literal_string_sequence(node: p.AttributeProbe | None) -> t.StrSequence:
+    def literal_string_sequence(node: t.Infra.RopeAstNode | None) -> t.StrSequence:
         """Return string entries from a parsed literal sequence node."""
         if node is None:
             return ()
@@ -518,7 +517,7 @@ class FlextInfraUtilitiesRopeAnalysisSource(FlextInfraUtilitiesRopeAnalysisScope
 
     @staticmethod
     def mapping_entries_refs(
-        node: p.AttributeProbe | None,
+        node: t.Infra.RopeAstNode | None,
     ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
         """Return literal mapping entries plus variable references."""
         if node is None:
@@ -551,7 +550,7 @@ class FlextInfraUtilitiesRopeAnalysisSource(FlextInfraUtilitiesRopeAnalysisScope
 
     @staticmethod
     def _dict_entries_refs(
-        node: p.AttributeProbe,
+        node: t.Infra.RopeAstNode,
     ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
         """Return string-sequence dict entries and unpack references."""
         keys = getattr(node, "keys", ()) or ()
@@ -1022,7 +1021,7 @@ class FlextInfraUtilitiesRopeAnalysisSource(FlextInfraUtilitiesRopeAnalysisScope
         return ""
 
     @staticmethod
-    def _statement_target_names(statement: t.Infra.RopePyObject) -> list[str]:
+    def _statement_target_names(statement: t.Infra.RopeAstNode) -> list[str]:
         """Extract target names from an Assign/AnnAssign/PEP-695 TypeAlias."""
         kind = FlextInfraUtilitiesRopeAnalysisNodes.node_kind(statement)
         if kind == "AnnAssign":

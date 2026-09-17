@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from flext_infra import t
+
 from .asthelpers import FlextInfraUtilitiesRopeAnalysisAstHelpers
 from .exports import FlextInfraUtilitiesRopeAnalysisExports
 from .importstate import FlextInfraUtilitiesRopeAnalysisImportState
 from .sourcescan import FlextInfraUtilitiesRopeAnalysisSourceScan
 
-__all__: tuple[str, ...] = (
+__all__: t.VariadicTuple[str] = (
     "FlextInfraUtilitiesRopeAnalysisAstHelpers",
     "FlextInfraUtilitiesRopeAnalysisExports",
     "FlextInfraUtilitiesRopeAnalysisImportState",

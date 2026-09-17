@@ -11,7 +11,7 @@ from typing import ClassVar
 
 from flext_cli.config import FlextCliConfig
 
-from ._models.config import FlextInfraConfigModels
+from ._models._config.base import FlextInfraConfigModels
 
 
 class FlextInfraConfig(FlextCliConfig):
@@ -32,6 +32,12 @@ class FlextInfraConfig(FlextCliConfig):
         return cls._config_dir()
 
 
+<<<<<<< HEAD
 config = FlextInfraConfig()
+=======
+config: FlextInfraConfig = FlextInfraConfig.fetch_global()
+"""Pre-instantiated frozen config singleton — ``from flext_infra import config``."""
+
+>>>>>>> origin/0.12.0-dev
 
 __all__: list[str] = ["FlextInfraConfig", "config"]

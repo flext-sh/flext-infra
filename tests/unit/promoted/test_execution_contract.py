@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import m
+from flext_infra import m, settings
 from flext_infra.promoted.dispatcher import dispatch
 from flext_infra.promoted.invocation import validate_command_contract
 from flext_infra.promoted.registry import Registry
@@ -67,31 +67,10 @@ class TestsFlextInfraPromotedExecutionContract:
         ) -> None:
             """Unrelated ambient input never changes the declared operation."""
             registry, marker = self._write_registry(tmp_path)
-            settings_module = importlib.import_module("flext_infra._settings")
-            base_module = importlib.import_module("flext_infra.promoted.base")
-            dispatcher_module = importlib.import_module(
-                "flext_infra.promoted.dispatcher"
-            )
-            # Build a settings instance with the desired WHAT value through the
-            # public models namespace (the settings class itself stays private).
-            test_settings = settings_module.settings.model_copy(
-                update={
-                    "Infra": m.FlextInfraSettingsModels.Infra.model_validate(
-                        {"WHAT": "all"}
-                    )
-                }
-            )
-
-            original_settings = settings_module.settings
-            original_dispatcher_settings = dispatcher_module.settings
-            original_base_settings = base_module.settings
-
+            settings_cls = type(settings)
+            settings_cls.update_global(Infra={"WHAT": "all"})
             try:
-                settings_module.settings = test_settings
-                dispatcher_module.settings = test_settings
-                base_module.settings = test_settings
-
-                environment = {"WHAT": "all"}
+                environment: dict[str, str] = {}
                 if ambient_value is not None:
                     environment["UNDECLARED_INPUT"] = ambient_value
                 with tm.scope(
@@ -102,9 +81,7 @@ class TestsFlextInfraPromotedExecutionContract:
                     assert exit_code == 0
                     assert marker.exists()
             finally:
-                settings_module.settings = original_settings
-                dispatcher_module.settings = original_dispatcher_settings
-                base_module.settings = original_base_settings
+                settings_cls.reset_for_testing()
 
 
 __all__: list[str] = ["TestsFlextInfraPromotedExecutionContract"]
