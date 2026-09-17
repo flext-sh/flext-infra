@@ -53,7 +53,7 @@ rule:
 constraints:
   OLD:
     kind: identifier
-    regex: '^[A-Za-z][A-Za-z0-9_]+$'
+    regex: "^[A-Za-z][A-Za-z0-9_]+$"
   NEW:
     kind: identifier
     regex: '^[A-Za-z]\w*$'
@@ -68,4 +68,3 @@ note: >-
   are the canonical FLEXT facade objects, not compatibility names.
 files:
   - "**/*.py"
-
