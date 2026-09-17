@@ -17,11 +17,9 @@ from . import (
     FlextInfraModelsDepsToolSettings,
     FlextInfraModelsLayout,
 )
-from ._config import (
-    FlextInfraConfigModelsArtifact,
-    FlextInfraConfigModelsBeads,
-    FlextInfraConfigModelsRender,
-)
+from ._config.artifact import FlextInfraConfigModelsArtifact
+from ._config.beads import FlextInfraConfigModelsBeads
+from ._config.render import FlextInfraConfigModelsRender
 from ._defaults import FlextInfraModelsDefaults
 from .mise_toolchain import FlextInfraModelsMiseToolchain
 
