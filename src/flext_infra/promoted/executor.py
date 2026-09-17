@@ -9,14 +9,15 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.promoted.base import (
+from flext_infra.promoted.invocation import param_value
+
+from .base import (
     RegistryError,
     find_owner_root,
     local_python_cmd,
     workspace_python,
     workspace_venv,
 )
-from flext_infra.promoted.invocation import param_value
 
 if TYPE_CHECKING:
     from flext_infra import p, t

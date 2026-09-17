@@ -14,7 +14,6 @@ from typing import Annotated, override
 
 from flext_core import r
 from flext_infra import config, p, u
-from flext_infra.base import s
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
@@ -23,12 +22,14 @@ from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.models import m
-from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.typings import t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.environment_contracts import (
     FlextInfraWorkspaceEnvironmentContracts,
 )
+
+from ..base import s
+from ..services.codegen import FlextInfraCodegen
 
 
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
@@ -555,8 +556,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 session.value, lazy_analysis.error or "lazy-init planning failed"
             )
             return r[m.Infra.CodegenResult].from_failure(aborted)
+        conform_paths = frozenset(f.path for f in plan.files)
+        lazy_plans = tuple(
+            p for p in lazy_analysis.value.files
+            if p.path not in conform_paths
+        )
+        lazy_analysis_ = lazy_analysis.value.model_copy(update={"files": lazy_plans})
         extended = transaction.append_phase_locked(
-            session.value, lazy_analysis.value.phase, lazy_analysis.value.files
+            session.value, lazy_analysis.value.phase, lazy_plans
         )
         if extended.failure:
             return r[m.Infra.CodegenResult].from_failure(extended)
@@ -603,7 +610,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 request,
                 with_docs.value,
                 transaction,
-                lazy_analysis.value,
+                lazy_analysis_,
                 docs_analysis,
             ),
         )
