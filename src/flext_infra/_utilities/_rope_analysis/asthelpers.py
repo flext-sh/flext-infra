@@ -143,7 +143,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         """Return an AST node's class name (e.g. ``"AnnAssign"``) without importing ast."""
         return type(node).__name__
 
-@staticmethod
+    @staticmethod
     def walk_ast_nodes(root: t.Infra.RopeAstNode) -> t.SequenceOf[t.Infra.RopeAstNode]:
         """Recursively yield every AST node reachable from ``root`` via ``_fields``.
 

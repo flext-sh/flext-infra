@@ -193,7 +193,9 @@ class TestsFlextInfraModCliRoute:
             "--apply",
         ])
         updated = tm.not_none(
-            tm.ok(u.Cli.atomic_read_binary_file_state(sample_path, required=True)).content
+            tm.ok(
+                u.Cli.atomic_read_binary_file_state(sample_path, required=True)
+            ).content
         ).decode(c.Cli.ENCODING_DEFAULT)
 
         tm.that(exit_code, eq=0)

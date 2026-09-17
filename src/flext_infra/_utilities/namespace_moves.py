@@ -528,7 +528,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         seen_imports: t.Infra.StrSet = set()
         for block in blocks:
             block_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(block)
-            block_ast = FlextInfraUtilitiesRopeAnalysis._ensure_ast_node(
+            block_ast = FlextInfraUtilitiesRopeAnalysis.ensure_ast_node(
                 block_pymodule.get_ast()
             )
             for sub in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(block_ast):
@@ -700,7 +700,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         source_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(
             kept_source
         )
-        source_ast = FlextInfraUtilitiesRopeAnalysis._ensure_ast_node(
+        source_ast = FlextInfraUtilitiesRopeAnalysis.ensure_ast_node(
             source_pymodule.get_ast()
         )
         referenced_aliases = sorted({
@@ -757,7 +757,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         moved_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(
             moved_source
         )
-        moved_ast = FlextInfraUtilitiesRopeAnalysis._ensure_ast_node(
+        moved_ast = FlextInfraUtilitiesRopeAnalysis.ensure_ast_node(
             moved_pymodule.get_ast()
         )
         runtime_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
@@ -798,12 +798,10 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     ) -> t.StrSequence:
         """Collect orphaned import lines via rope-parsed bodies."""
         source_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
-        FlextInfraUtilitiesRopeAnalysis._ensure_ast_node(
-            source_pymodule.get_ast()
-        )
+        FlextInfraUtilitiesRopeAnalysis.ensure_ast_node(source_pymodule.get_ast())
         source_lines = source.splitlines()
         kept_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(kept_source)
-        kept_ast = FlextInfraUtilitiesRopeAnalysis._ensure_ast_node(
+        kept_ast = FlextInfraUtilitiesRopeAnalysis.ensure_ast_node(
             kept_pymodule.get_ast()
         )
         kept_names: set[str] = set()

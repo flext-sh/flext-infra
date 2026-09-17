@@ -13,17 +13,16 @@ from .base import FlextInfraUtilitiesRopeAnalysisBase
 class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
     """AST node primitives: kinds, names, walking, and class info."""
 
-    @staticmethod
-    def _is_ast_node(obj: object) -> TypeGuard[t.Infra.RopeAstNode]:
+@staticmethod
+    def is_ast_node(obj: object) -> TypeGuard[t.Infra.RopeAstNode]:
         """Type guard to narrow to RopeAstNode via structural `_fields` check."""
         return hasattr(obj, "_fields")
 
     @staticmethod
-    def _ensure_ast_node(obj: object) -> t.Infra.RopeAstNode:
+    def ensure_ast_node(obj: object) -> t.Infra.RopeAstNode:
         """Ensure an object is an AST node (has `_fields`), narrowing the type."""
-        if not FlextInfraUtilitiesRopeAnalysisNodes._is_ast_node(obj):
-            msg = f"Expected AST node with _fields, got {type(obj).__name__}"
-            raise TypeError(msg)
+        if not FlextInfraUtilitiesRopeAnalysisNodes.is_ast_node(obj):
+            raise TypeError(f"Expected AST node with _fields, got {type(obj).__name__}")
         return obj
 
     @staticmethod
@@ -63,9 +62,9 @@ class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
                     stack.extend(
                         item
                         for item in value
-                        if FlextInfraUtilitiesRopeAnalysisNodes._is_ast_node(item)
+                        if FlextInfraUtilitiesRopeAnalysisNodes.is_ast_node(item)
                     )
-                elif FlextInfraUtilitiesRopeAnalysisNodes._is_ast_node(value):
+                elif FlextInfraUtilitiesRopeAnalysisNodes.is_ast_node(value):
                     stack.append(value)
         return collected
 
@@ -78,7 +77,7 @@ class FlextInfraUtilitiesRopeAnalysisNodes(FlextInfraUtilitiesRopeAnalysisBase):
         nodes: list[t.Infra.RopeAstNode] = [
             child
             for child in body
-            if FlextInfraUtilitiesRopeAnalysisNodes._is_ast_node(child)
+            if FlextInfraUtilitiesRopeAnalysisNodes.is_ast_node(child)
         ]
         return tuple(nodes)
 

@@ -69,6 +69,8 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         Concrete implementations must have `_fields` attribute (tuple[str, ...]).
         """
 
+        _fields: tuple[str, ...]
+
         lineno: int | None
         col_offset: int | None
         end_lineno: int | None
