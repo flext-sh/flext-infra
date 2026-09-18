@@ -46,6 +46,19 @@ class FlextInfraConfig(FlextCliConfig):
     config singleton is first fetched; an absent file is a no-op.
     """
 
+    ORG_OVERRIDES_FILENAME: ClassVar[str] = "codegen-org.yaml"
+    """Tracked org-layer declarations of the repository being governed.
+
+    A private organization that consumes this generator registers its own
+    provider entries and doc checkouts in ``config/codegen-org.yaml`` at the
+    root of ITS repository — org data is allowed there because the file is
+    tracked by the org's own (private) repository, never by this public one.
+    The generator merges it when invoked from that repository root (the
+    generated Makefiles always run there, so CI resolves the same values
+    local runs do). Same strict pipeline; merged after the operator's local
+    file; absent file is a no-op.
+    """
+
     @classmethod
     @override
     def _config_files(cls) -> list[Path]:
@@ -65,6 +78,9 @@ class FlextInfraConfig(FlextCliConfig):
         local = cls._config_dir() / cls.LOCAL_OVERRIDES_FILENAME
         if local.is_file():
             files.append(local)
+        org = Path.cwd() / cls.CONFIG_DIR / cls.ORG_OVERRIDES_FILENAME
+        if org.is_file():
+            files.append(org)
         return files
 
 

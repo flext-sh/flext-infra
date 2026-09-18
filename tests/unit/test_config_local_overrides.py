@@ -86,3 +86,36 @@ class TestsFlextInfraConfigLocalOverrides:
             tm.that("flext-cli" in overrides, eq=True)
         finally:
             FlextInfraConfig.reset_for_testing()
+
+    def test_org_layer_from_governed_repository_resolves(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The governed repository's tracked org layer merges last in its cwd.
+
+        CI runs the generator from the governed repository root, where no
+        operator-local file exists: the org layer is what lets a private
+        organization's provider resolve on a runner.
+        """
+        self._copy_tracked_configs(tmp_path)
+        org_root = tmp_path / "org-repo"
+        (org_root / "config").mkdir(parents=True)
+        (org_root / "config" / "codegen-org.yaml").write_text(
+            "Infra:\n"
+            "  codegen:\n"
+            "    providers:\n"
+            "      - name: example-org\n"
+            "        organization: example-org\n"
+            "        base_url: https://github.com/example-org\n"
+            "        branch: main\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(tmp_path))
+        monkeypatch.chdir(org_root)
+        FlextInfraConfig.reset_for_testing()
+        try:
+            fresh = FlextInfraConfig.fetch_global()
+            names = [provider.name for provider in fresh.Infra.codegen.providers]
+            tm.that("example-org" in names, eq=True)
+            tm.that("flext-sh" in names, eq=True)
+        finally:
+            FlextInfraConfig.reset_for_testing()
