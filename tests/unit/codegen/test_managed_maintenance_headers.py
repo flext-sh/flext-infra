@@ -101,8 +101,8 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         ).read_text(encoding="utf-8")
         tm.that(template, has="make.ruff.format_apply")
         tm.that(template, has="make.ruff.lint_apply")
-        tm.that(template, has="make.ruff.format_check")
-        tm.that(template, has="make.ruff.lint_check")
+        tm.that("--preview" in ruff.format_check, eq=True)
+        tm.that("--preview" in ruff.lint_check, eq=True)
 
 
 __all__: list[str] = ["TestsFlextInfraManagedMaintenanceHeaders"]

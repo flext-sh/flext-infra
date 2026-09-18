@@ -133,7 +133,11 @@ class TestsFlextInfraGenRespectsInvocationScope:
             '--repository-root "$(PROJECT_ROOT)"' in line for line in init_commands
         )
         assert all("codegen conform" not in line for line in init_lines)
-        assert '{% if verb.name != "help" %} _builtin_require_environment' in text
+        assert "_activated-{{ verb.name }}: _builtin_require_environment" in text
+        assert (
+            'direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-{{ verb.name }}'
+            in text
+        )
         assert "_builtin-initialize: _builtin_gen_init" in text
         assert "ifneq ($(filter initialize,$(MAKECMDGOALS)),)" in text
         assert "GEN_INIT_ONLY := Y" in text

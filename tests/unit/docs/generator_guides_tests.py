@@ -211,7 +211,7 @@ class TestsFlextInfraDocsGeneratorGuides:
         planned = generator.plan_files(bundle)
 
         tm.fail(planned)
-        tm.that(planned.error or "", has="docs source changed during planning")
+        tm.that(planned.error or "", has="docs source state changed during planning")
         tm.that((workspace / "flext-a/docs/guides/operator.md").exists(), eq=False)
 
     def test_guide_parent_identity_change_rejects_prepared_bundle(
@@ -232,7 +232,7 @@ class TestsFlextInfraDocsGeneratorGuides:
         planned = generator.plan_files(bundle)
 
         tm.fail(planned)
-        tm.that(planned.error or "", has="docs source changed during planning")
+        tm.that(planned.error or "", has="docs source state changed during planning")
 
     def test_stale_guide_ownership_change_rejects_prepared_delete(
         self, tmp_path: Path
@@ -252,7 +252,7 @@ class TestsFlextInfraDocsGeneratorGuides:
         planned = generator.plan_files(bundle)
 
         tm.fail(planned)
-        tm.that(planned.error or "", has="docs source changed during planning")
+        tm.that(planned.error or "", has="docs source state changed during planning")
         tm.that(destination.read_text(encoding="utf-8"), eq="# Now custom\n")
 
     def test_standalone_guides_never_read_parent_or_project_their_own_heading(

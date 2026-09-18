@@ -121,7 +121,10 @@ class TestsFlextInfraScriptDispatchMakefile:
             ),
             script_dispatch=None,
         )
-        tm.that(rendered.count("\ndeploy: _builtin_require_environment\n"), eq=1)
+        tm.that(rendered.count("\ndeploy:\n"), eq=1)
+        tm.that(
+            rendered.count("\n_activated-deploy: _builtin_require_environment\n"), eq=1
+        )
 
     def test_dispatch_routes_custom_what_before_allowlist(self, tmp_path: Path) -> None:
         """Custom ``_custom_<verb>`` handlers bypass the builtin allowlist.

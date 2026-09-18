@@ -49,7 +49,7 @@ class TestsFlextInfraDocsGeneratorBundle:
         planned = generator.plan_files(prepared.value)
 
         tm.fail(planned)
-        tm.that(planned.error or "", has="docs source changed during planning")
+        tm.that(planned.error or "", has="docs source state changed during planning")
 
     def test_plan_files_rejects_source_topology_addition_after_bundle(
         self, tmp_path: Path

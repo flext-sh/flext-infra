@@ -31,15 +31,15 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
         reported as absence.
         """
         resolved_scope = Path(scope_root).resolve()
+        probe = FlextInfraUtilitiesGitSemanticIdentityMixin.git_is_inside_work_tree
+        probed = probe(m.Infra.GitRepoRequest(repo_root=resolved_scope))
+        if probed.failure:
+            raise OSError(probed.error or "failed to probe Git work tree")
+        if not probed.value.value:
+            return None
         opened = cls._open_repo(resolved_scope)
         if opened.failure:
-            probe = FlextInfraUtilitiesGitSemanticIdentityMixin.git_is_inside_work_tree
-            probed = probe(m.Infra.GitRepoRequest(repo_root=resolved_scope))
-            if probed.failure:
-                raise OSError(probed.error or "failed to probe Git work tree")
-            if probed.value.value:
-                raise OSError(opened.error or "failed to open git repository")
-            return None
+            raise OSError(opened.error or "failed to open git repository")
         working_tree_dir = opened.value.working_tree_dir
         if working_tree_dir is None:
             msg = f"opened Git repository has no worktree: {scope_root}"

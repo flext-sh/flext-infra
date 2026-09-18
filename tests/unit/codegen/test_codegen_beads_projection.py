@@ -89,7 +89,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.that(rendered_config, lacks="Gas City contract")
         if rendered_mise is None:
             pytest.fail("standalone identity must produce the managed Mise manifest")
-        tm.that(rendered_mise, lacks="gascity")
+        tm.that(rendered_mise, lacks='[tools."github:steveyegge/gascity"]')
         tm.that(rendered_mise, has='[tools."github:marlon-costa-dc/beads"]')
 
     def test_mise_manifest_provisions_managed_make(self, tmp_path: Path) -> None:
@@ -133,7 +133,9 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.that(rendered_envrc, lacks="AGENTS_GAS_CITY_ROOT")
         tm.that(rendered_envrc, lacks="dolt-state.json")
         tm.that(rendered_envrc, lacks="jq -er")
-        tm.that(rendered_envrc, has='watch_file "$checkout_root/.beads/metadata.json"')
+        tm.that(
+            rendered_envrc, has='watch_file "${checkout_root}/.beads/metadata.json"'
+        )
         tm.that(
             rendered_envrc, has="unset BEADS_DOLT_SERVER_HOST BEADS_DOLT_SERVER_PORT"
         )

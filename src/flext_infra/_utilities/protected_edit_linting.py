@@ -12,7 +12,7 @@ from typing import ClassVar
 from flext_cli import u
 
 from flext_infra.constants import c
-from flext_infra.models import FlextInfraConfigModels as config, m
+from flext_infra.models import m
 from flext_infra.typings import t
 
 from .discovery import FlextInfraUtilitiesDiscovery
@@ -79,6 +79,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
         whose strict complement is the slow whole-program checkers owned by
         ``make check CI=N``. A per-file snapshot validator never runs those.
         """
+        from flext_infra import config
+
         lint_tool_gates = {
             "lint" if tool == "ruff" else tool for tool, _ in c.Infra.LINT_TOOLS
         }

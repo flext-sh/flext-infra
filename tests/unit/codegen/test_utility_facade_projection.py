@@ -96,6 +96,12 @@ class TestsFlextInfraUtilityFacadeProjection:
         with pytest.raises(ValueError, match="have no public facade"):
             u.Infra.render_utility_facade(package)
 
+    def test_empty_owner_directory_needs_no_facade(self, tmp_path: Path) -> None:
+        """A preflight-created empty directory is not a private implementation."""
+        package = tmp_path / "src" / "flext_sample"
+        (package / "_utilities").mkdir(parents=True)
+        tm.that(u.Infra.render_utility_facade(package), eq=None)
+
     def test_facade_without_local_owners_is_complete(self, tmp_path: Path) -> None:
         """A pure re-export facade with no owners directory needs no projection."""
         package = tmp_path / "src" / "flext_sample"

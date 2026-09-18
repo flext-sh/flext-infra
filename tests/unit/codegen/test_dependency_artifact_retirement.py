@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
 
 from flext_infra import c, config
@@ -34,8 +33,9 @@ class TestsDependencyArtifactRetirement:
         target.write_text("active lease\n")
         filename = config.Infra.codegen.toolchain.retired_dependency_artifacts[0]
         (tmp_path / filename).symlink_to(target)
-        with pytest.raises(ValueError, match="Refusing non-file"):
-            FlextInfraCodegenConform.retired_projection_plans(
-                tmp_path, c.Infra.MakeProfile.WORKSPACE
-            )
+        result = FlextInfraCodegenConform.retired_projection_plans(
+            tmp_path, c.Infra.MakeProfile.WORKSPACE
+        )
+        tm.that(result.failure, eq=True)
+        tm.that(result.error, has="Refusing non-file")
         tm.that(target.read_text(), eq="active lease\n")

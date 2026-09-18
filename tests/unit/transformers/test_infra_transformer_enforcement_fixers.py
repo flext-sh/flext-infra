@@ -71,10 +71,14 @@ class TestsFlextInfraTransformersEnforcementFixers:
 
     def test_future_import_already_present_is_unchanged(self) -> None:
         """Verify future import already present is unchanged."""
-        source = "from __future__ import annotations\n\nx = 1\n"
-        code, changes = self._transform(source, FlextInfraRefactorFutureImport())
-        tm.that(code, eq=source)
-        tm.that(changes, eq=[])
+        for source in (
+            "from __future__ import annotations\n\nx = 1\n",
+            '"""Module."""\n\nfrom __future__ import annotations\n\n\nclass Owner:\n    pass\n',
+            '"""Module."""\nfrom __future__ import annotations\nx = 1\n',
+        ):
+            code, changes = self._transform(source, FlextInfraRefactorFutureImport())
+            tm.that(code, eq=source)
+            tm.that(changes, eq=[])
 
     def test_future_import_inserted_at_top_when_absent(self) -> None:
         """Verify future import inserted at top when absent."""

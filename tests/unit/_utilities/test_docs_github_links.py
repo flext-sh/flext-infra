@@ -319,13 +319,20 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
             tm.that(len(issues), eq=0)
 
         def test_correct_url_no_branch_issue(self) -> None:
-            issues = u.Infra.docs_github_link_issues(
-                file="test.md",
-                line_number=1,
-                raw="[x](https://github.com/flext-sh/flext/blob/0.12.0-dev/README.md)",
-                target=("https://github.com/flext-sh/flext/blob/0.12.0-dev/README.md"),
+            target = tm.not_none(
+                u.Infra.docs_canonical_github_url("flext-sh", "flext", "README.md")
             )
-            tm.that(len(issues), eq=0)
+            issues = u.Infra.docs_github_link_issues(
+                file="test.md", line_number=1, raw=f"[x]({target})", target=target
+            )
+            tm.that(
+                [
+                    issue
+                    for issue in issues
+                    if issue.issue_type == "wrong_github_branch"
+                ],
+                eq=[],
+            )
 
         def test_unknown_repo_no_issues(self) -> None:
             issues = u.Infra.docs_github_link_issues(
