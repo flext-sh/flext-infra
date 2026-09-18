@@ -94,7 +94,7 @@ class FlextInfraMiseArtifactsVerification:
                 )
                 if transition.failure:
                     return result_type.from_failure(transition)
-            validated = u.validate_value(
+            validated: p.Result[m.Infra.CodegenJournalDirectory] = u.validate_value(
                 m.Infra.CodegenJournalDirectory,
                 {**directory.model_dump(), "manifest": observed.value},
             )

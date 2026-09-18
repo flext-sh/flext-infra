@@ -164,7 +164,7 @@ class FlextInfraDocGeneratorBundleMixin:
         )
         if stable.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(stable)
-        validated_bundle = u.validate_value(
+        validated_bundle: p.Result[m.Infra.DocsGenerationBundle] = u.validate_value(
             m.Infra.DocsGenerationBundle,
             {
                 "scopes": tuple(normalized_scopes),

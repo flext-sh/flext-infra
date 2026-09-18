@@ -10,28 +10,40 @@ from flext_tests import tm
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from tests import u
 
-_FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
-
-
-def _read_fixture(name: str) -> str:
-    fixture_name = name.replace(".py", ".pysrc") if name.endswith(".py") else name
-    return (_FIXTURES_DIR / fixture_name).read_text(encoding="utf-8")
-
-
-def _make_project_with_module(
-    tmp_path: Path, *, module_source: str, module_name: str
-) -> Path:
-    project_root = tmp_path / "project"
-    package_dir = project_root / "src" / "flext_test"
-    package_dir.mkdir(parents=True)
-    _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-    u.Tests.write_canonical_package_layout(package_dir)
-    _ = (package_dir / module_name).write_text(module_source, encoding="utf-8")
-    u.Tests.initialize_git_repo(project_root)
-    return project_root
-
 
 class TestsPydanticLegacyDetection:
+    """Test suite for the namespace validator rule under test."""
+
+    _FIXTURES_DIR = (
+        Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
+    )
+
+    def _read_fixture(self, name: str) -> str:
+
+        fixture_name = name.replace(".py", ".pysrc") if name.endswith(".py") else name
+
+        return (self._FIXTURES_DIR / fixture_name).read_text(encoding="utf-8")
+
+    def _make_project_with_module(
+        self, tmp_path: Path, *, module_source: str, module_name: str
+    ) -> Path:
+
+        project_root = tmp_path / "project"
+
+        package_dir = project_root / "src" / "flext_test"
+
+        package_dir.mkdir(parents=True)
+
+        _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+
+        u.Tests.write_canonical_package_layout(package_dir)
+
+        _ = (package_dir / module_name).write_text(module_source, encoding="utf-8")
+
+        u.Tests.initialize_git_repo(project_root)
+
+        return project_root
+
     """Test suite for Pydantic legacy decorator/method detection."""
 
     @pytest.mark.parametrize(
@@ -192,7 +204,7 @@ class TestsPydanticLegacyDetection:
     def test_pydantic_decorator_binding_provenance(
         self, tmp_path: Path, imports: str, body: str, *, legacy: bool
     ) -> None:
-        root = _make_project_with_module(
+        root = self._make_project_with_module(
             tmp_path,
             module_source=(
                 "from __future__ import annotations\n"
@@ -223,7 +235,7 @@ class TestsPydanticLegacyDetection:
     def test_pydantic_method_detection_requires_unambiguous_member(
         self, tmp_path: Path, call: str, *, legacy: bool
     ) -> None:
-        root = _make_project_with_module(
+        root = self._make_project_with_module(
             tmp_path,
             module_source=(
                 "from __future__ import annotations\n\n"

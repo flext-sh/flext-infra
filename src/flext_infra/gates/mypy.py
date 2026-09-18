@@ -187,7 +187,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         for raw_line in result.stdout.splitlines():
             if not raw_line.strip():
                 continue
-            validated = u.validate_value(
+            validated: p.Result[m.Infra.MypyDiagnostic] = u.validate_value(
                 m.Infra.MypyDiagnostic, raw_line, from_json=True, strict=True
             )
             if validated.failure:

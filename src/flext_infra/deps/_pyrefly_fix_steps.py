@@ -86,7 +86,9 @@ class FlextInfraConfigFixerSteps:
         sub_configs = pyrefly.get(c.Infra.SUB_CONFIG)
         if not isinstance(sub_configs, list):
             return r[tuple[t.StrSequence, bool]].ok(((), False))
-        validated_configs = u.validate_value(t.Infra.INFRA_SEQ_ADAPTER, sub_configs)
+        validated_configs: p.Result[t.JsonList] = u.validate_value(
+            t.Infra.INFRA_SEQ_ADAPTER, sub_configs
+        )
         if validated_configs.failure:
             return r[tuple[t.StrSequence, bool]].fail_op(
                 "validate-sub-configs", validated_configs.error
@@ -98,7 +100,9 @@ class FlextInfraConfigFixerSteps:
         for conf in configs:
             conf_out: t.Infra.InfraValue = conf
             if isinstance(conf, Mapping):
-                validated_conf = u.validate_value(t.Infra.INFRA_MAPPING_ADAPTER, conf)
+                validated_conf: p.Result[t.JsonMapping] = u.validate_value(
+                t.Infra.INFRA_MAPPING_ADAPTER, conf
+            )
                 if validated_conf.failure:
                     return r[tuple[t.StrSequence, bool]].fail_op(
                         "validate-pyrefly-sub-config", validated_conf.error

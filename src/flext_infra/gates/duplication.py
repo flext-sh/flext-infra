@@ -193,7 +193,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         flext = u.Cli.json_as_mapping(tool).get("flext", {})
         project = u.Cli.json_as_mapping(flext).get("project", {})
         duplication = u.Cli.json_as_mapping(project).get("duplication", {})
-        validated = u.validate_value(
+        validated: p.Result[m.Infra.ProjectDuplicationOverrides] = u.validate_value(
             m.Infra.ProjectDuplicationOverrides, u.Cli.json_as_mapping(duplication)
         )
         if validated.failure:
@@ -213,7 +213,9 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             return r[t.StrSequence].fail(
                 f"invalid workspace manifest ({manifest_path}): {loaded.error}"
             )
-        validated = u.validate_value(m.Infra.WorkspaceManifestSpec, loaded.value.data)
+        validated: p.Result[m.Infra.WorkspaceManifestSpec] = u.validate_value(
+            m.Infra.WorkspaceManifestSpec, loaded.value.data
+        )
         if validated.failure:
             return r[t.StrSequence].fail_op(
                 f"workspace manifest model validation ({manifest_path})",

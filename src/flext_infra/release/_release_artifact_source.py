@@ -114,7 +114,7 @@ class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixi
             return r[m.Infra.SourceSnapshot].fail(
                 f"extract committed release source failed: {exc}", exception=exc
             )
-        validated = u.validate_value(
+        validated: p.Result[m.Infra.SourceSnapshot] = u.validate_value(
             m.Infra.SourceSnapshot,
             {"commit_oid": oid, "source_date_epoch": int(source_date_epoch)},
         )

@@ -322,7 +322,7 @@ class FlextInfraMiseArtifactsState:
         )
         if created.failure:
             return result_type.from_failure(created)
-        validated = u.validate_value(
+        validated: p.Result[m.Infra.CodegenJournalDirectory] = u.validate_value(
             m.Infra.CodegenJournalDirectory,
             {**entry.model_dump(), "before": before, "created": created.value},
         )

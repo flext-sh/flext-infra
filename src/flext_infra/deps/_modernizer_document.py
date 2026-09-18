@@ -24,7 +24,7 @@ from .phases.ensure_vulture import FlextInfraEnsureVultureConfigPhase
 from .phases.inject_comments import FlextInfraInjectCommentsPhase
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, MutableMapping
     from pathlib import Path
 
     from flext_infra import p
@@ -83,7 +83,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         payload_source = u.Cli.toml_mapping_from_text(original_rendered)
         if payload_source is None:
             return r[m.Infra.PyprojectDocumentState].fail(f"invalid TOML: {path}")
-        validated = u.validate_value(
+        validated: p.Result[MutableMapping[str, t.JsonValue]] = u.validate_value(
             t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER, payload_source
         )
         if validated.failure:

@@ -82,7 +82,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
                     column=0,
                 ),
             )
-        validated = u.validate_value(
+        validated: p.Result[m.Infra.PyrightReport] = u.validate_value(
             m.Infra.PyrightReport, result.stdout, from_json=True, strict=True
         )
         if validated.failure:

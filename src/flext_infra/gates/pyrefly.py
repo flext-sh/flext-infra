@@ -82,7 +82,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                     result, tool=c.Infra.PYREFLY, file=str(json_file), line=0, column=0
                 ),
             )
-        validated = u.validate_value(
+        validated: p.Result[m.Infra.PyreflyReport] = u.validate_value(
             m.Infra.PyreflyReport,
             json_file.read_text(encoding="utf-8"),
             from_json=True,
