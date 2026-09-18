@@ -84,12 +84,17 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         tm.that(text, lacks="[MANAGED]")
 
     def test_makefile_fmt_renders_ssot_ruff_preview_and_unsafe_fixes(self) -> None:
-        """Fmt APPLY uses ruff --preview and --unsafe-fixes from make.ruff."""
-        ruff = config.Infra.codegen.make.ruff
-        tm.that("--preview" in ruff.format_apply, eq=True)
-        tm.that("--preview" in ruff.lint_apply, eq=True)
-        tm.that("--unsafe-fixes" in ruff.lint_apply, eq=True)
-        tm.that("--fix" in ruff.lint_apply, eq=True)
+        """Fmt is format-only: ruff --preview format plus the fmt_gates writers.
+
+        Single-pass verb law: no lint fix may render inside fmt (the lint
+        gate's apply mode inside ``make fix`` is the only lint repair), so the
+        template must not reference the removed ``lint_apply`` contract at all.
+        """
+        make = config.Infra.codegen.make
+        tm.that("--preview" in make.ruff.format_apply, eq=True)
+        tm.that("--unsafe-fixes" in make.ruff.lint_fix, eq=True)
+        tm.that("--fix" in make.ruff.lint_fix, eq=True)
+        tm.that(make.fmt_gates, eq=("markdown-format",))
         template = (
             Path(__file__).parents[3]
             / "src"
@@ -100,9 +105,9 @@ class TestsFlextInfraManagedMaintenanceHeaders:
             / "Makefile.j2"
         ).read_text(encoding="utf-8")
         tm.that(template, has="make.ruff.format_apply")
-        tm.that(template, has="make.ruff.lint_apply")
-        tm.that(template, has="make.ruff.format_check")
-        tm.that(template, has="make.ruff.lint_check")
+        tm.that(template, has="make.fmt_gates")
+        tm.that(template, has="make.check_gates_fixable")
+        tm.that(template, lacks="lint_apply")
 
 
 __all__: list[str] = ["TestsFlextInfraManagedMaintenanceHeaders"]

@@ -106,6 +106,10 @@ Infra:
             - GEMINI.md
             - QODER.md
             - opencode.jsonc
+            # Operator ruling 2026-09-19: the wip/ root lane is canonical
+            # code (aihub-hjsdg.1) — the entry name feeds the same name-based
+            # allowlist the gate judges root entries against.
+            - wip
           ignore_globs:
             - skills
             - rules

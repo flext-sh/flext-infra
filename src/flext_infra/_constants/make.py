@@ -72,9 +72,13 @@ class FlextInfraConstantsMake:
     CANONICAL_FIXABLE_GATE_IDS: Final[t.VariadicTuple[str]] = (
         "lint",
         "markdown",
+        "markdown-code",
         "canonical-alias",
         "smells",
     )
+    # markdown-format is deliberately absent: prettier is a formatter, so the
+    # gate's mutating side is owned by `make fmt` (check = `prettier --check`),
+    # never by `make fix` — one operation per tool per verb, never repeated.
     ORCHESTRATED_VERBS: Final[t.StrSequence] = (
         "build",
         "check",

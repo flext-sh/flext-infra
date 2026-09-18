@@ -1,6 +1,34 @@
 {% from "base_test_report_recipe.j2" import test_report_recipe -%}
 {% from "submodule_setup_recipe.j2" import submodule_setup_recipe -%}
 {% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe -%}
+{# ---- Shared command bases --------------------------------------------------
+   Every verb states only its delta (which gate list, which mode); the checker
+   invocation, the CI gate filter, the empty-gates guard, and the fmt/fix
+   bodies are each rendered from ONE definition so no verb or profile can
+   drift from another. #}
+{%- macro gates_csv(names) -%}{{ names|join(",") }}{%- endmacro -%}
+{%- macro gates_banner(names) -%}{{ names|join(" ") }}{%- endmacro -%}
+{%- macro check_run(gates, extra="") -%}$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "{{ gates }}" --projects .{{ extra }}{%- endmacro -%}
+{%- macro local_check_body() -%}
+	@set -eu; \
+		gates="{{ gates_csv(make.check_gates_default) }}"; \
+		if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
+			gates="{{ gates_csv(make.ci.check_gates) }}"; \
+			printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates: {{ gates_banner(make.ci.check_gates) }}\n'; \
+		fi; \
+		if [ -z "$$gates" ]; then \
+			printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
+			exit 2; \
+		fi; \
+		{{ check_run("$$gates") }}
+{%- endmacro -%}
+{%- macro fmt_body() -%}
+	@$(UV_RUN) ruff format {{ make.ruff.format_apply | join(" ") }} $(RUFF_PATHS)
+	@{{ check_run(gates_csv(make.fmt_gates), " --apply") }}
+{%- endmacro -%}
+{%- macro fix_body() -%}
+	@{{ check_run(gates_csv(make.check_gates_fixable), " --apply --report-findings") }}
+{%- endmacro -%}
 # @flext-generated: continuous
 # @flext-owner: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
 # @flext-adjust: edit the owner configuration or template; never this projection
@@ -474,24 +502,13 @@ _builtin-self-test: _builtin_require_environment
 ) }}
 
 _builtin-self-check: _builtin_require_environment
-	@set -eu; \
-		gates="{% for gate in make.check_gates_default %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
-		if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
-			gates="{% for gate in make.ci.check_gates %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
-			printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates:{% for allowed in make.ci.check_gates %} {{ allowed }}{% endfor %}\n'; \
-		fi; \
-		if [ -z "$$gates" ]; then \
-		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
-		exit 2; \
-	fi; \
-	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects .
+{{ local_check_body() }}
 
 _builtin-self-fmt: _builtin_require_environment
-	@$(UV_RUN) ruff format {{ make.ruff.format_apply | join(" ") }} $(RUFF_PATHS)
-	@$(UV_RUN) ruff check {{ make.ruff.lint_apply | join(" ") }} $(RUFF_PATHS)
+{{ fmt_body() }}
 
 _builtin-self-fix: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "{% for gate in make.check_gates_fixable %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}" --projects . --apply --report-findings
+{{ fix_body() }}
 
 _builtin-self-fix-enforcement: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) check fix-enforcement --repository-root "$(PROJECT_ROOT)" --safe-only --apply
@@ -534,17 +551,7 @@ _builtin_build_artifacts:
 # CI={{ make.ci.value }} keeps make.ci.check_gates, the strict complement of
 # make.ci.local_check_gates.
 _builtin_check_all: _builtin_require_environment
-	@set -eu; \
-		gates="{% for gate in make.check_gates_default %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
-		if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
-			gates="{% for gate in make.ci.check_gates %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
-			printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates:{% for allowed in make.ci.check_gates %} {{ allowed }}{% endfor %}\n'; \
-		fi; \
-		if [ -z "$$gates" ]; then \
-		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
-		exit 2; \
-	fi; \
-	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects .
+{{ local_check_body() }}
 
 _builtin_test_all: _builtin_require_environment
 {{ test_report_recipe(
@@ -552,31 +559,16 @@ _builtin_test_all: _builtin_require_environment
     invocation_namespace=make.testmon_cache.invocation_namespace,
 ) }}
 
-# Ruff is the style/autofix rule (make.ruff in codegen.yaml). Every
-# invocation uses --preview. Never weaken ruff to keep a file; change the code.
-# fmt applies corrections and reports remaining diagnostics without failing:
-# violations are expected and their repair belongs to fix; only a real
-# tool failure (ruff exit >= 2) breaks the Make verb.
-# fmt applies corrections and reports remaining diagnostics without failing:
-# violations are expected and their repair belongs to fix; only a real
-# tool failure (ruff exit >= 2) breaks the Make verb.
-# Their reports preserve the same verdict as the underlying quality gates.
+# fmt is format-only (single-pass verb law): ruff formats Python, the
+# fmt_gates formatters run once through the checker's apply mode, and every
+# lint repair belongs to `make fix`. Only a real tool failure (exit >= 2)
+# breaks the verb; a formatter's residual findings stay reportable and are
+# enforced by `make check`.
 _builtin_fmt_all: _builtin_require_environment
-	@set -eu; \
-		$(UV_RUN) ruff format {{ make.ruff.format_apply | join(" ") }} $(RUFF_PATHS); \
-		if $(UV_RUN) ruff check {{ make.ruff.lint_apply | join(" ") }} $(RUFF_PATHS); then \
-			printf 'INFO: fmt lint clean\n'; \
-		else \
-			stamprc=$$?; \
-			if [ $$stamprc -le 1 ]; then \
-				printf 'INFO: fmt diagnostics remain (report-only, repair belongs to fix)\n'; \
-			else \
-				exit $$stamprc; \
-			fi; \
-		fi
+{{ fmt_body() }}
 
 _builtin_fix_all: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "{% for gate in make.check_gates_fixable %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}" --projects . --apply --report-findings
+{{ fix_body() }}
 
 # Catalog-driven enforcement fixes: every ENFORCE rule whose fix action is
 # declared safe, applied through its registered adapter.
@@ -692,7 +684,7 @@ _builtin-mod: _builtin_mod_apply
 _builtin-waza:
 	@cd "$(PROJECT_ROOT)" && "$(SETUP_MISE)" exec -- waza check --no-update-check
 _builtin-duplication:
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates duplication --projects .
+	@{{ check_run("duplication") }}
 
 {% if script_dispatch %}
 # Repository-owned script verbs route through the promoted command framework:
