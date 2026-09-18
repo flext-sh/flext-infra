@@ -90,6 +90,10 @@ class FlextInfraConstantsCheck:
     })
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
+    CHECK_REPORT_MARKDOWN_FILENAME: Final[str] = "check-report.md"
+    "Human-readable check report written beside the SARIF report."
+    CHECK_REPORT_SARIF_FILENAME: Final[str] = "check-report.sarif"
+    "SARIF 2.1.0 check report: the machine-readable findings owner of ``check run``."
     MUTATING_GATES: Final[frozenset[str]] = frozenset({FORMAT})
     "Gates that rewrite files: owned by `fmt`/`fix`, never a read-only `check` vocabulary."
     RUFF_FORMAT_FILE_RE: Final[t.RegexPattern] = re.compile(

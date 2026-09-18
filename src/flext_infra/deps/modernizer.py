@@ -82,15 +82,19 @@ class FlextInfraPyprojectModernizer(
         payload_source = u.Cli.toml_mapping_from_text(source)
         if payload_source is None:
             return r[str].fail(f"invalid TOML: {path}")
-        try:
-            payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
-                payload_source
-            )
-            canonical_dev = t.Infra.STR_SEQ_ADAPTER.validate_python(
-                u.Infra.canonical_dev_dependencies_from_payload(payload)
-            )
-        except c.ValidationError as exc:
-            return r[str].fail_op("pyproject model validation", exc)
+        validated_payload = u.validate_value(
+            t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER, payload_source
+        )
+        if validated_payload.failure:
+            return r[str].fail_op("pyproject model validation", validated_payload.error)
+        payload = validated_payload.value
+        validated_dev = u.validate_value(
+            t.Infra.STR_SEQ_ADAPTER,
+            u.Infra.canonical_dev_dependencies_from_payload(payload),
+        )
+        if validated_dev.failure:
+            return r[str].fail_op("pyproject model validation", validated_dev.error)
+        canonical_dev = validated_dev.value
         state = m.Infra.PyprojectDocumentState(
             pyproject_path=path, original_rendered=source, payload=payload
         )
@@ -298,9 +302,14 @@ class FlextInfraPyprojectModernizer(
             if classified.failure:
                 return r[m.Infra.ToolingRuntimeContext].from_failure(classified)
             resolved_project_kind = classified.value
-        try:
-            environments = self._tooling_pyright_environments(raw_environments)
-            runtime = m.Infra.ToolingRuntimeContext.model_validate({
+        environments = self._tooling_pyright_environments(raw_environments)
+        if environments.failure:
+            return r[m.Infra.ToolingRuntimeContext].fail_op(
+                "tooling runtime context validation", environments.error
+            )
+        validated = u.validate_value(
+            m.Infra.ToolingRuntimeContext,
+            {
                 "project_kind": resolved_project_kind,
                 "coverage_fail_under": coverage.get("fail_under"),
                 "first_party": ruff_isort.get("known-first-party"),
@@ -340,42 +349,52 @@ class FlextInfraPyprojectModernizer(
                     for key, value in sorted(pyright.items())
                     if key not in scalar_keys
                 ],
-                "pyright_execution_environments": environments,
+                "pyright_execution_environments": environments.value,
                 "ruff_src": ruff.get("src"),
                 "ruff_exclude": ruff.get(c.Infra.EXCLUDE),
                 "ruff_ignore": ruff_lint.get(c.Infra.IGNORE),
-            })
-        except c.ValidationError as exc:
+            },
+        )
+        if validated.failure:
             return r[m.Infra.ToolingRuntimeContext].fail_op(
-                "tooling runtime context validation", exc
+                "tooling runtime context validation", validated.error
             )
-        return r[m.Infra.ToolingRuntimeContext].ok(runtime)
+        return r[m.Infra.ToolingRuntimeContext].ok(validated.value)
 
     @staticmethod
     def _tooling_pyright_environments(
         raw_environments: t.SequenceOf[t.JsonValue],
-    ) -> t.SequenceOf[m.Infra.ToolingPyrightEnvironment]:
+    ) -> p.Result[t.SequenceOf[m.Infra.ToolingPyrightEnvironment]]:
         """Validate Pyright environments once into their canonical models."""
         # flext-j47u: nested tooling data crosses the TOML boundary as models, not dicts.
+        result_type = r[t.SequenceOf[m.Infra.ToolingPyrightEnvironment]]
         environments: t.MutableSequenceOf[m.Infra.ToolingPyrightEnvironment] = []
         excluded = frozenset({"root", c.Infra.EXTRA_PATHS})
         for raw_environment in raw_environments:
-            environment = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_environment)
-            environments.append(
-                m.Infra.ToolingPyrightEnvironment.model_validate({
+            mapped = u.validate_value(t.Cli.JSON_MAPPING_ADAPTER, raw_environment)
+            if mapped.failure:
+                return result_type.fail_op(
+                    "validate pyright execution environment", mapped.error
+                )
+            environment = mapped.value
+            validated = u.validate_value(
+                m.Infra.ToolingPyrightEnvironment,
+                {
                     "root": environment.get("root"),
                     "extra_paths": environment.get(c.Infra.EXTRA_PATHS, ()),
-                    "settings": tuple(
-                        m.Infra.ToolingScalarSetting.model_validate({
-                            "name": key,
-                            "value": value,
-                        })
+                    "settings": [
+                        {"name": key, "value": value}
                         for key, value in sorted(environment.items())
                         if key not in excluded
-                    ),
-                })
+                    ],
+                },
             )
-        return tuple(environments)
+            if validated.failure:
+                return result_type.fail_op(
+                    "validate pyright execution environment", validated.error
+                )
+            environments.append(validated.value)
+        return result_type.ok(tuple(environments))
 
     @override
     def execute(self) -> p.Result[bool]:

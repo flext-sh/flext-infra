@@ -33,7 +33,6 @@ if TYPE_CHECKING:
         TestsFlextInfraWorkspaceCheckerResolveGates,
     )
     from .extended_run_projects_tests import TestsFlextInfraRunProjects
-    from .extended_runners_extra_tests import TestsFlextInfraExtendedRunnerExtras
     from .extended_runners_ruff_tests import TestsFlextInfraRealGateRunners
     from .extended_workspace_init_tests import TestsFlextInfraWorkspaceInit
     from .fix_pyrefly_config_tests import TestsFlextInfraFixPyreflyConfig
@@ -60,7 +59,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraExtendedConfigFixer",
     "TestsFlextInfraExtendedConfigFixerErrors",
     "TestsFlextInfraExtendedProjectRunners",
-    "TestsFlextInfraExtendedRunnerExtras",
     "TestsFlextInfraFixPyreflyConfig",
     "TestsFlextInfraGateErrorReporting",
     "TestsFlextInfraGateRegistry",
@@ -123,7 +121,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraWorkspaceCheckerResolveGates",
             ),
             ".extended_run_projects_tests": ("TestsFlextInfraRunProjects",),
-            ".extended_runners_extra_tests": ("TestsFlextInfraExtendedRunnerExtras",),
             ".extended_runners_ruff_tests": ("TestsFlextInfraRealGateRunners",),
             ".extended_workspace_init_tests": ("TestsFlextInfraWorkspaceInit",),
             ".fix_pyrefly_config_tests": ("TestsFlextInfraFixPyreflyConfig",),

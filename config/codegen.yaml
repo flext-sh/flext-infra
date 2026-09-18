@@ -669,7 +669,6 @@ Infra:
           vscode_exclude: false,
           watch_exclude: false,
         }
-
     vscode:
       # Canonical .vscode/settings.json content injected with owner semantics:
       # scalar/list keys and artifact maps are exact; explicitly declared

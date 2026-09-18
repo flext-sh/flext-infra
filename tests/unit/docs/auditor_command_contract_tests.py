@@ -236,7 +236,7 @@ ruff check src
         )
         guide = scope.path / "docs/guides/commands.md"
         guide.parent.mkdir(parents=True)
-        token = ""
+        token = " APPLY=Y" if "APPLY" in expected else ""
         u.write_file(guide, f"```bash\nmake {verb_name}{token}\n```\n")
 
         issues = u.Infra.docs_command_contract_issues(scope)

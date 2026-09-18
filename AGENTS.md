@@ -17,23 +17,47 @@ Build/tooling package for codegen, workspace conformance, dependency modernizati
 
 ```text
 src/flext_infra/
-├── api.py cli.py __main__.py iteration.py
-├── codegen/ detectors/ fixers/ transformers/ rules/ schemas/ templates/
-├── config/ deps/ gates/ check/ validate/ docs/ github/ maintenance/
-├── release/ workspace/ services/ _enforcement/
+├── api.py cli.py __main__.py base.py git.py worktree.py promoted.py
+├── codegen/ codemod/ refactor/ detectors/ fixers/ transformers/ templates/
+├── deps/ gates/ check/ validate/ docs/ maintenance/
+├── release/ workspace/ services/ _enforcement/ _promoted/
 ├── constants.py typings.py protocols.py models.py utilities.py
 └── _constants/ _typings/ _protocols/ _models/ _utilities/
 ```
 
 ## Code Map
 
-| Symbol                          | Kind  | Location                 | Role                           |
-| ------------------------------- | ----- | ------------------------ | ------------------------------ |
-| `FlextInfra`                    | class | `api.py`                 | Rope workspace / health facade |
-| `FlextInfraCli`                 | class | `cli.py`                 | CLI entry                      |
-| `FlextInfraEnforcementEngine`   | class | `_enforcement/engine.py` | catalog-backed enforcement     |
-| `FlextInfraCodegenPipeline`     | class | `codegen/pipeline.py`    | codegen pipeline               |
-| `FlextInfraPyprojectModernizer` | class | `deps/modernizer.py`     | managed pyproject enforcement  |
+| Symbol | Kind | Location | Role |
+| --- | --- | --- | --- |
+| `FlextInfra` | class | `api.py` | Rope workspace / health facade |
+| `FlextInfraCli` | class | `cli.py` | CLI entry |
+| `FlextInfraEnforcementEngine` | class | `_enforcement/engine.py` | catalog-backed enforcement |
+| `FlextInfraCodegenPipeline` | class | `codegen/pipeline.py` | codegen pipeline |
+| `FlextInfraPyprojectModernizer` | class | `deps/modernizer.py` | managed pyproject enforcement |
+| `FlextInfraCodegenConform` | class | `codegen/conform.py` | body-less conform facade over `codegen/_conform/base.py` |
+| `FlextInfraConfigModels` | class | `_models/_config/base.py` | config model facade over `_models/_config/*` families |
+| `FlextInfraPromoted` | class | `promoted.py` | promoted command framework facade |
+
+## Promoted command framework
+
+Repository-owned `scripts/<verb>/<WHAT>.{py,sh}` commands declare a
+`/// cosmos-command` header and are reached only through
+`make <verb> WHAT=<action>` when the repository declares `script_dispatch`.
+
+- `FlextInfraPromoted` (`promoted.py`) composes registry state, discovery and
+  dispatch from `_promoted/{registry,discovery,dispatch}.py`. `main(argv)` is
+  the dispatcher entry; `dispatch(registry, verb, what)` receives WHAT already
+  resolved once at the CLI boundary.
+- Stateless primitives are `u.Infra.promoted_*` (`_utilities/_promoted/`):
+  `promoted_main`, `promoted_run`, `promoted_workspace_spec(root)`,
+  `promoted_discovered_workspace_spec`, `promoted_find_owner_root` (the start
+  directory itself is a valid owner), `promoted_render_help(registry, selector)`
+  with `verb` or `verb/what`, and `promoted_validate_command_contract`.
+  Dynamic command parameters are read through `u.Infra.env_value`.
+- Vocabulary is `c.Infra.Promoted*` (`_constants/promoted*.py`); the registry
+  contract is `p.Infra.Promoted.Registry`.
+- An empty, `help` or undeclared `all` WHAT renders the verb help; a verb that
+  declares an `all` command still runs it.
 
 ## Conventions (specific to this package)
 
@@ -74,6 +98,7 @@ make check
 make test
 make build
 ```
+
 
 <!-- AIHUB-AGENTS-SCOPE-LOCAL-END -->
 

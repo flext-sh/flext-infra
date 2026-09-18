@@ -114,7 +114,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
         """Write markdown/SARIF reports and print summary to output."""
         results = outcome.results
         timestamp = u.now().strftime("%Y-%m-%d %H:%M:%S %Z")
-        md_path = report_base / "check-report.md"
+        md_path = report_base / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME
         md_write_result = u.Cli.atomic_write_text_file(
             md_path,
             FlextInfraWorkspaceCheckReportsMixin._generate_markdown(
@@ -123,7 +123,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
         )
         if md_write_result.failure:
             return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(md_write_result)
-        sarif_path = report_base / "check-report.sarif"
+        sarif_path = report_base / c.Infra.CHECK_REPORT_SARIF_FILENAME
         sarif_report = FlextInfraWorkspaceCheckReportsMixin._generate_sarif(
             results, resolved_gates
         )

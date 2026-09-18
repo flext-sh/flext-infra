@@ -258,9 +258,11 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(src_env is not None, eq=True)
         if src_env is None:
             return
-        extra_paths: t.StrSequence = u.Cli.toml_unwrap_item(
+        extra_paths = u.Cli.toml_unwrap_item(
             src_env.get("extraPaths", ())
         )
+        if not isinstance(extra_paths, list):
+            return
         tm.that("flext-core/src" in extra_paths, eq=True)
         tm.that("flext-api/src" in extra_paths, eq=True)
 

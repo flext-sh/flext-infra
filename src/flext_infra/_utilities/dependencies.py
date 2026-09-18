@@ -282,7 +282,10 @@ class FlextInfraUtilitiesDependencies:
         for distribution in distributions():
             if distribution.read_text("direct_url.json") is not None:
                 continue
-            name = distribution.metadata["Name"]
+            name = distribution.metadata.get("Name")
+            if name is None:
+                msg = "Installed distribution has no Name metadata"
+                raise TypeError(msg)
             normalized = cls.dep_name(name)
             if normalized is None:
                 msg = f"Invalid installed distribution name: {name}"

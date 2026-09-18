@@ -1,17 +1,16 @@
-"""Codegen artifact, conform, and plan result models (merged: FlextInfraConfigModelsRelease)."""
+"""Codegen artifact, conform, and plan result models."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal, Self
+from typing import Annotated, Literal, Self
 
 from flext_cli import m, u
 
 from ... import t
 from ..._constants import (
     FlextInfraConstantsCodegenProject,
-    FlextInfraConstantsRelease,
     FlextInfraConstantsSharedInfra,
 )
 from .. import FlextInfraModelsDefaults, FlextInfraModelsLayout
@@ -19,6 +18,7 @@ from .contexts import FlextInfraConfigModelsContexts
 from .contract import FlextInfraConfigModelsContract
 from .make import FlextInfraConfigModelsMake
 from .provider import FlextInfraConfigModelsProvider
+from .release import FlextInfraConfigModelsRelease
 from .render import FlextInfraConfigModelsRender
 from .scaffold import FlextInfraConfigModelsScaffold
 from .templates import FlextInfraConfigModelsTemplates
@@ -26,7 +26,7 @@ from .workspace import FlextInfraConfigModelsWorkspace
 
 
 class FlextInfraConfigModelsArtifact:
-    """Codegen artifact, conform, and plan result models (merged: FlextInfraConfigModelsRelease)."""
+    """Codegen artifact, conform, and plan result models."""
 
     class CodegenArtifactSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One ephemeral/generated resource every ignore/exclude derives from."""
@@ -550,7 +550,7 @@ class FlextInfraConfigModelsArtifact:
             m.Field(description="Canonical Make contract"),
         ]
         uv_environments: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsArtifact.UvEnvironmentPlan],
+            t.VariadicTuple[FlextInfraConfigModelsRelease.UvEnvironmentPlan],
             m.Field(description="uv plans paired with selected repositories"),
         ]
         files: Annotated[
@@ -752,23 +752,4 @@ class FlextInfraConfigModelsArtifact:
         patterns: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsArtifact.SedPatternSpec],
             m.Field(default=(), description="Ordered substitution patterns"),
-        ] = ()
-
-    class UvEnvironmentPlan(FlextInfraConfigModelsContract.ConfigContract):
-        """One deterministic uv environment operation plan."""
-
-        project_root: Annotated[Path, m.Field(description="Selected project root")]
-        environment_root: Annotated[
-            Path, m.Field(description="Project supplying the active .venv")
-        ]
-        python_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Mise/Python version selector")
-        ]
-        groups: Annotated[
-            t.VariadicTuple[str],
-            m.Field(description="Ordered dependency groups synchronized by setup"),
-        ]
-        editable_repositories: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
-            m.Field(description="Local repositories installed by setup"),
         ] = ()
