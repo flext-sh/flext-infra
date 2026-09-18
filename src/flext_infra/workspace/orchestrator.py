@@ -36,6 +36,7 @@ class FlextInfraOrchestratorService(
     ] = None
 
     @m.computed_field
+    @override
     @property
     def root(self) -> Path:
         """Canonical workspace root."""

@@ -106,8 +106,8 @@ class TestsFlextInfraCodegenBeadsProjection:
             issue_prefix="project-prefix",
         )
 
-        plan = self._plan(root)
-        rendered_mise = self._rendered(plan, ".mise.toml")
+        plan = u.Tests.governed_project_plan(root)
+        rendered_mise = u.Tests.planned_text(plan, ".mise.toml")
 
         if rendered_mise is None:
             pytest.fail("conform must produce the managed .mise.toml")

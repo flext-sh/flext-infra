@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping, MutableMapping
+from collections.abc import Iterator, Mapping
 from types import MappingProxyType
-from typing import override
+from typing import Never, override
 
 from flext_cli import m
 
@@ -33,10 +33,9 @@ class FlextInfraModelsDefaults:
             return 0
 
     @staticmethod
-    def immutable_empty_mapping[K, V]() -> Mapping[K, V]:
-        """Return a fresh immutable empty mapping typed for any key/value."""
-        empty: MutableMapping[K, V] = {}
-        return MappingProxyType(empty)
+    def immutable_empty_mapping() -> Mapping[Never, Never]:
+        """Return a fresh immutable empty mapping assignable to any mapping type."""
+        return MappingProxyType({})
 
     @staticmethod
     def tool_version_field(description: str) -> t.Infra.ModelFieldSpec:

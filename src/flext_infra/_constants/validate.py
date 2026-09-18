@@ -78,6 +78,9 @@ class FlextInfraConstantsSharedInfra:
         "dependencies",
     })
     SKILL_REPORT_SKIPPED_FILES: Final[frozenset[str]] = frozenset({".gitkeep"})
+    PYTHON_IMPORT_NAME_RE: Final[t.RegexPattern] = re.compile(
+        r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$"
+    )
     SKILL_OWNER_MARKER_RE: Final[t.RegexPattern] = re.compile(
         r"^# Owner-Skill:\s+(.agents/skills/([a-z0-9][-a-z0-9]*)/SKILL\.md)\s*$"
     )

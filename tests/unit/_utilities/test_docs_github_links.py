@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import m, u
+from flext_infra import u
 
 
 class TestsFlextInfraUtilitiesDocsGithubLinks:
@@ -23,11 +23,10 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
             repos = u.Infra.docs_github_repos()
             tm.that(len(repos) > 0, eq=True)
 
-        def test_repos_are_typed_spec(self) -> None:
+        def test_repos_carry_spec_contract(self) -> None:
             repos = u.Infra.docs_github_repos()
             tm.that(
-                all(isinstance(repo, m.Infra.DocsGithubRepoSpec) for repo in repos),
-                eq=True,
+                all(repo.organization and repo.repository for repo in repos), eq=True
             )
 
         def test_repos_contain_flext(self) -> None:
@@ -38,9 +37,9 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
     class TestStaleGithubOrganizations:
         """Verify placeholder organizations that must be rewritten."""
 
-        def test_stale_organizations_is_frozenset(self) -> None:
+        def test_stale_organizations_stable_across_calls(self) -> None:
             stale = u.Infra.docs_stale_github_organizations()
-            tm.that(isinstance(stale, frozenset), eq=True)
+            tm.that(stale, eq=u.Infra.docs_stale_github_organizations())
 
         def test_stale_organizations_contains_placeholder(self) -> None:
             stale = u.Infra.docs_stale_github_organizations()
@@ -51,13 +50,13 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
 
         def test_lookup_known_repo(self) -> None:
             repo = u.Infra.docs_github_repo_lookup("flext-sh", "flext")
-            tm.that(repo is not None, eq=True)
+            assert repo is not None
             tm.that(repo.organization, eq="flext-sh")
             tm.that(repo.repository, eq="flext")
 
         def test_lookup_member_repo_returns_copy(self) -> None:
             repo = u.Infra.docs_github_repo_lookup("flext-sh", "flext-core")
-            tm.that(repo is not None, eq=True)
+            assert repo is not None
             tm.that(repo.organization, eq="flext-sh")
             tm.that(repo.repository, eq="flext-core")
             tm.that(repo.branch, eq="0.12.0-dev")

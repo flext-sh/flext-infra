@@ -75,12 +75,12 @@ class FlextInfraWorkspaceCheckReportsMixin:
                         m.Infra.SarifRule(
                             id=rule_id,
                             short_description=f"{tool_name} ({gate}) issue",
-                            help_uri=tool_url,
+                            helpUri=tool_url,
                         ),
                     )
                     sarif_results.append(
                         m.Infra.SarifResult(
-                            rule_id=rule_id,
+                            ruleId=rule_id,
                             level="warning"
                             if issue.severity.lower() == c.Infra.SeverityLevel.WARNING
                             else "error",

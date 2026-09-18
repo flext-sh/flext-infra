@@ -9,6 +9,8 @@ from flext_cli import u
 from flext_infra import m, p, r, t
 from flext_infra.constants import c
 
+from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+
 
 class FlextInfraUtilitiesGitignore:
     """Gitignore rendering utilities."""
@@ -48,7 +50,7 @@ class FlextInfraUtilitiesGitignore:
         templates_root = FlextInfraUtilitiesGitignore.codegen_templates_root(codegen)
         project_patterns: t.StrSequence = ()
         if project_dir is not None:
-            resolved = u.Infra.load_project_managed_artifacts(project_dir)
+            resolved = FlextInfraUtilitiesProjectManagedArtifacts.load_project_managed_artifacts(project_dir)
             if resolved.failure:
                 return r[str].from_failure(resolved)
             project_patterns = resolved.value.artifacts.Gitignore.patterns

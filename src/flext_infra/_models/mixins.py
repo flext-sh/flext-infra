@@ -95,20 +95,14 @@ class FlextInfraModelsMixins:
             """Resolved report path when provided."""
             if self.report is None:
                 return None
-            path = self.report if isinstance(self.report, Path) else Path(self.report)
-            return path.resolve()
+            return Path(self.report).resolve()
 
         @property
         def output_dir_path(self) -> Path | None:
             """Resolved output directory when provided."""
             if self.output_dir is None:
                 return None
-            path = (
-                self.output_dir
-                if isinstance(self.output_dir, Path)
-                else Path(self.output_dir)
-            )
-            return path.resolve()
+            return Path(self.output_dir).resolve()
 
     class WriteMixin(ScopeMixin):
         """Canonical write contract — apply/dry-run + safety gates.

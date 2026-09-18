@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_core import r
+from flext_core import p, r
 from flext_infra import c, config, m, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 
@@ -82,13 +82,13 @@ class FlextInfraPyprojectModernizer(
         payload_source = u.Cli.toml_mapping_from_text(source)
         if payload_source is None:
             return r[str].fail(f"invalid TOML: {path}")
-        validated_payload = u.validate_value(
+        validated_payload: p.Result[t.MutableJsonMapping] = u.validate_value(
             t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER, payload_source
         )
         if validated_payload.failure:
             return r[str].fail_op("pyproject model validation", validated_payload.error)
         payload = validated_payload.value
-        validated_dev = u.validate_value(
+        validated_dev: p.Result[t.StrSequence] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
             u.Infra.canonical_dev_dependencies_from_payload(payload),
         )
@@ -307,7 +307,7 @@ class FlextInfraPyprojectModernizer(
             return r[m.Infra.ToolingRuntimeContext].fail_op(
                 "tooling runtime context validation", environments.error
             )
-        validated = u.validate_value(
+        validated: p.Result[m.Infra.ToolingRuntimeContext] = u.validate_value(
             m.Infra.ToolingRuntimeContext,
             {
                 "project_kind": resolved_project_kind,
@@ -377,7 +377,7 @@ class FlextInfraPyprojectModernizer(
                     "validate pyright execution environment", mapped.error
                 )
             environment = mapped.value
-            validated = u.validate_value(
+            validated: p.Result[m.Infra.ToolingPyrightEnvironment] = u.validate_value(
                 m.Infra.ToolingPyrightEnvironment,
                 {
                     "root": environment.get("root"),

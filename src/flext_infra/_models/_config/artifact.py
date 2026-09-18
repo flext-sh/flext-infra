@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, Literal, Self
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 
 from ... import t
 from ..._constants import (
     FlextInfraConstantsCodegenProject,
+    FlextInfraConstantsRelease,
     FlextInfraConstantsSharedInfra,
 )
 from .. import FlextInfraModelsDefaults, FlextInfraModelsLayout

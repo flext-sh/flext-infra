@@ -142,7 +142,7 @@ class FlextInfraConstantsWorkspace:
     # checkout nested in a VCS directory (submodule worktrees under
     # .git/modules) reproduced that directory in the mirror, so every process
     # whose TMPDIR lived there discovered a config-less repository.
-    SCRATCH_IDENTITY_SEGMENT_ALIASES: Final[t.StrPairSequence] = (
+    SCRATCH_IDENTITY_SEGMENT_ALIASES: Final[t.VariadicTuple[t.StrPair]] = (
         (FlextInfraConstantsSharedInfra.GIT_DIR, "_git"),
     )
     "Checkout path segments renamed when mirrored into the scratch identity."
