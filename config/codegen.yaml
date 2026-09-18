@@ -683,7 +683,6 @@ Infra:
         python.analysis.autoImportCompletions: true
         python.analysis.completeFunctionParens: true
         python.analysis.diagnosticMode: workspace
-        python.analysis.typeCheckingMode: strict
         python.analysis.findRefsInBackgroundThread: false
         python.analysis.generateWithTypeAnnotation: true
         python.analysis.gotoOverrideCodeLens: false
@@ -755,11 +754,17 @@ Infra:
           editor.defaultFormatter: charliermarsh.ruff
           editor.formatOnSave: true
           editor.codeActionsOnSave.source.organizeImports: explicit
-        python.analysis.diagnosticSeverityOverrides:
-          reportUntypedBaseClass: none
         terminal.integrated.env.linux:
           PATH: ${workspaceFolder}/.venv/bin:${env:PATH}
           VIRTUAL_ENV: ${workspaceFolder}/.venv
+      stripped_keys:
+        # Pylance emits settingsNotOverridable diagnostics (severity=warning) when
+        # these keys appear in .vscode/settings.json alongside a [tool.pyright] section
+        # in pyproject.toml. Each key below is owned canonically by [tool.pyright]
+        # in every governed package; the codegen actively strips them from the
+        # settings projection so the file stays green with no warnings.
+        - python.analysis.typeCheckingMode
+        - python.analysis.diagnosticSeverityOverrides
 
     # NOTE(mro-0wuz, epic mro-hzox): declarative project-layout SSOT consumed by
     # the layout engine (codegen/layout.py) and the layout quality gate. Every

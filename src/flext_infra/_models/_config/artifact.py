@@ -63,6 +63,17 @@ class FlextInfraConfigModelsArtifact:
             Mapping[str, Mapping[str, str | bool | int]],
             m.Field(description="VS Code map keys union-merged over project settings"),
         ]
+        stripped_keys: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "VS Code keys actively stripped from the settings projection "
+                    "because they conflict with a pyrightconfig.json/pyproject.toml "
+                    "owner (Pylance settingsNotOverridable)."
+                ),
+            ),
+        ]
 
     class CodegenLocCapSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Per-module logical-LOC ceiling policy (scc code lines)."""
