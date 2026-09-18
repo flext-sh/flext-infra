@@ -250,7 +250,7 @@ padrão.
        24  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
        25  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        26  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       27  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       27  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
 ```
 
 **Decisão**:
@@ -268,7 +268,7 @@ padrão.
        24  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
 >>>    25  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        26  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       27  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       27  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
        28      && ln -sf /usr/local/go/bin/go /usr/local/bin/go
        29  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
 ```
@@ -310,7 +310,7 @@ padrão.
        26  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
        27  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        28  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
 ```
 
 **Decisão**:
@@ -328,7 +328,7 @@ padrão.
        26  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
 >>>    27  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        28  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
        30      && ln -sf /usr/local/go/bin/go /usr/local/bin/go
        31  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
 ```
@@ -370,7 +370,7 @@ padrão.
        27  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
        28  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        29  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
 ```
 
 **Decisão**:
@@ -388,7 +388,7 @@ padrão.
        27  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
 >>>    28  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        29  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
        31      && ln -sf /usr/local/go/bin/go /usr/local/bin/go
        32  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
 ```
@@ -430,7 +430,7 @@ padrão.
        26  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
        27  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        28  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
 ```
 
 **Decisão**:
@@ -448,7 +448,7 @@ padrão.
        26  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
 >>>    27  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        28  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
        30      && ln -sf /usr/local/go/bin/go /usr/local/bin/go
        31  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
 ```
@@ -490,7 +490,7 @@ padrão.
        27  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
        28  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        29  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
 ```
 
 **Decisão**:
@@ -508,7 +508,7 @@ padrão.
        27  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
 >>>    28  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        29  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
        31      && ln -sf /usr/local/go/bin/go /usr/local/bin/go
        32  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
 ```
@@ -571,7 +571,7 @@ padrão.
       399          rules: list[FlextInfraModelsCodegen.NsRule] = m.Field(
       400              description="Governance rules"
       401          )
-      402          canonical_values: list[FlextInfraModelsCodegen.CanonicalValueRule] = m.Field(
+      402          canonical_values: list[FlextInfraModelsCodegen.CanonicalValueRule ...
 ```
 
 **Decisão**:
@@ -586,7 +586,7 @@ padrão.
 ```text
        22
        23          class_name: t.NonEmptyStr = m.Field(description="Generated class name.")
-       24          base_class: t.NonEmptyStr = m.Field(description="Generated base class name.")
+       24          base_class: t.NonEmptyStr = m.Field(description="Generated base c ...
        25          base_import_block: str = m.Field(description="Rendered base import block.")
 >>>    26          docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
        27
@@ -812,7 +812,7 @@ padrão.
        72
        73      @staticmethod
 >>>    74      def _fallback_bracket_balance_line(line: str) -> int:
-       75          """Approximate bracket balance for incomplete lines that ``tokenize`` rejects."""
+       75          """Approximate bracket balance for incomplete lines that ``tokeni ...
        76          balance = 0
        77          in_single_quote = False
        78          in_double_quote = False
@@ -931,7 +931,7 @@ padrão.
        48          return f">={normalized_version}" if normalized_version else ""
        49
        50      @classmethod
->>>    51      def locked_dependency_versions(cls, lock_path: Path) -> t.MappingKV[str, str]:
+>>>    51      def locked_dependency_versions(cls, lock_path: Path) -> t.MappingKV[s ...
        52          """Return normalized registry package versions from one ``uv.lock`` file."""
        53          result: t.MappingKV[str, str] = {}
        54          if lock_path.is_file():
@@ -967,7 +967,7 @@ padrão.
 > Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
 
 ```text
-      124                              result = rewritten if rewritten != raw_text else None
+      124                              result = rewritten if rewritten != raw_text e ...
       125          return result
       126
       127      @classmethod
@@ -1129,7 +1129,7 @@ padrão.
 > Define a constant instead of duplicating this literal "_not declared_" 3 times.
 
 ```text
-      271      def docs_project_index(scope: m.Infra.DocScope, contract: t.JsonMapping) -> str:
+      271      def docs_project_index(scope: m.Infra.DocScope, contract: t.JsonMappi ...
       272          """Return the standard ``<project>/docs/index.md`` landing page."""
       273          data = contract
       274          version = str(data.get("version", "")).strip() or "unknown"
@@ -1356,7 +1356,7 @@ padrão.
        79              exclude_dependencies=uv_exclude_dependencies,
        80          )
        81          if sources_result.failure:
->>>    82              return r[str].fail(sources_result.error or "uv source conformance failed")
+>>>    82              return r[str].fail(sources_result.error or "uv source conform ...
        83          provenance_result = cls._validate_dependency_provenance(
        84              source,
        85              project_name=project_name,
@@ -1372,7 +1372,7 @@ padrão.
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
 ```text
-       96              return r[str].fail("canonical pyproject rendering produced invalid TOML")
+       96              return r[str].fail("canonical pyproject rendering produced in ...
        97          return r[str].ok(rendered)
        98
        99      @classmethod
@@ -1536,7 +1536,7 @@ padrão.
      1041          return tuple(parts)
      1042
      1043      @staticmethod
->>>  1044      def _top_level_partition(source: str, separator: str) -> tuple[str, str, str]:
+>>>  1044      def _top_level_partition(source: str, separator: str) -> tuple[str, s ...
      1045          """Partition one source fragment at a top-level separator."""
      1046          depth = 0
      1047          quote = ""
@@ -2201,7 +2201,7 @@ padrão.
 >>>   160      def _status(self, primary_root: Path) -> p.Result[str]:
       161          bead = (self.bead or "").strip()
       162          branch_result = self._resolve_lane_branch()
-      163          branch = branch_result.value if branch_result.success else (self.branch or "")
+      163          branch = branch_result.value if branch_result.success else (self. ...
       164          lines: list[str] = ["work status"]
 ```
 
@@ -2215,7 +2215,7 @@ padrão.
 
 ```text
        62          except OSError as exc:
-       63              return r[bytes].fail(f"workspace fingerprint read failed for {path}: {exc}")
+       63              return r[bytes].fail(f"workspace fingerprint read failed for ...
        64
        65      @classmethod
 >>>    66      def workspace_fingerprint(
@@ -2341,9 +2341,9 @@ padrão.
       105                  lazy_map[alias_name] = (package_name, alias_name)
       106
 >>>   107      def _resolve_local_aliases(
-      108          self, lazy_map: t.MutableLazyAliasMap, *, current_pkg: str, pkg_dir: Path
+      108          self, lazy_map: t.MutableLazyAliasMap, *, current_pkg: str, pkg_d ...
       109      ) -> None:
-      110          """Inject public_file_aliases from the lazy-init config into the lazy map."""
+      110          """Inject public_file_aliases from the lazy-init config into the ...
       111          alias_to_files: dict[str, list[str]] = {}
 ```
 
@@ -2459,7 +2459,7 @@ padrão.
 
 ```text
       526                  if profile not in allowed:
-      527                      # Why: profile-excluded managed workflows must not survive as
+      527                      # Why: profile-excluded managed workflows must not su ...
       528                      # "keep current" ghosts (ci-matrix on workspace projects).
       529                      if (
 >>>   530                          relative.parts[:2] == (".github", "workflows")
@@ -2605,7 +2605,7 @@ padrão.
      1687                      infra_repository.error
 >>>  1688                      or "infrastructure CLI repository resolution failed"
      1689                  )
-     1690              infra_provider = self._repository_provider(infra_repository.value, codegen)
+     1690              infra_provider = self._repository_provider(infra_repository.v ...
      1691              if infra_provider.failure:
      1692                  return r[p.Model].fail(
 ```
@@ -2621,10 +2621,10 @@ padrão.
 
 ```text
      1689                  )
-     1690              infra_provider = self._repository_provider(infra_repository.value, codegen)
+     1690              infra_provider = self._repository_provider(infra_repository.v ...
      1691              if infra_provider.failure:
      1692                  return r[p.Model].fail(
->>>  1693                      infra_provider.error or "infrastructure provider resolution failed"
+>>>  1693                      infra_provider.error or "infrastructure provider reso ...
      1694                  )
      1695              gitlinks = self._managed_gitlinks(workspace, codegen)
      1696              if gitlinks.failure:
@@ -2947,7 +2947,7 @@ padrão.
       149          return r[bool].ok(bool(changes))
       150
 >>>   151      def sync_extra_paths(
-      152          self, *, dry_run: bool = False, project_dirs: t.SequenceOf[Path] | None = None
+      152          self, *, dry_run: bool = False, project_dirs: t.SequenceOf[Path] ...
       153      ) -> p.Result[int]:
       154          """Synchronize extraPaths and mypy_path across projects."""
       155          if project_dirs:
@@ -3046,7 +3046,7 @@ padrão.
        33          return normalized
        34
        35      @staticmethod
->>>    36      def to_infra_value(value: t.Infra.InfraValue | None) -> t.Infra.InfraValue | None:
+>>>    36      def to_infra_value(value: t.Infra.InfraValue | None) -> t.Infra.Infra ...
        37          """Convert container value to namespaced infra value."""
        38          if value is None:
        39              return None
@@ -3107,7 +3107,7 @@ padrão.
       120          return r[t.StrSequence].ok(all_fixes)
       121
 >>>   122      def run(
-      123          self, projects: t.StrSequence, *, dry_run: bool = False, verbose: bool = False
+      123          self, projects: t.StrSequence, *, dry_run: bool = False, verbose: ...
       124      ) -> p.Result[t.StrSequence]:
       125          """Run pyrefly configuration fixes for selected projects."""
       126          project_paths = [
@@ -3122,7 +3122,7 @@ padrão.
 > Refactor this function to reduce its Cognitive Complexity from 36 to the 15 allowed.
 
 ```text
-       97                  changes[0] if changes else f"pyproject tooling render failed: {path}"
+       97                  changes[0] if changes else f"pyproject tooling render fai ...
        98              )
        99          return r[str].ok(state.rendered)
       100
@@ -3223,7 +3223,7 @@ padrão.
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
 ```text
-      317              name=target_name, line=line if isinstance(line, int) and line > 0 else 1
+      317              name=target_name, line=line if isinstance(line, int) and line ...
       318          )
       319
       320      @staticmethod
@@ -3293,7 +3293,7 @@ padrão.
        24          *,
        25          project_root: Path,
        26          rope_project: t.Infra.RopeProject,
-       27          _parse_failures: t.SequenceOf[m.Infra.ParseFailureViolation] | None = None,
+       27          _parse_failures: t.SequenceOf[m.Infra.ParseFailureViolation] | No ...
 ```
 
 **Decisão**:
@@ -3447,7 +3447,7 @@ padrão.
 
 ```text
        17  class FlextInfraRuntimeAliasDetector:
-       18      """Detect missing/duplicate runtime aliases (e.g. m = FlextFooModels) via rope."""
+       18      """Detect missing/duplicate runtime aliases (e.g. m = FlextFooModels) ...
        19
        20      @staticmethod
 >>>    21      def detect_file(
@@ -3632,7 +3632,7 @@ padrão.
        60          return len(issues) == 0, issues
        61
        62      @classmethod
->>>    63      def _files_over_cap(cls, tokei_json: str, cap: int) -> tuple[m.Infra.Issue, ...]:
+>>>    63      def _files_over_cap(cls, tokei_json: str, cap: int) -> tuple[m.Infra. ...
        64          """Extract over-cap modules from a tokei `--output json` payload.
        65
        66          Pure function (no subprocess) so the cap logic is unit-testable against
@@ -3648,7 +3648,7 @@ padrão.
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
 ```text
-      126          mypy_path = str(typings_generated) + (f":{existing}" if existing else "")
+      126          mypy_path = str(typings_generated) + (f":{existing}" if existing ...
       127          return u.Cli.process_env(overrides={"MYPYPATH": mypy_path})
       128
       129      @override
@@ -4077,7 +4077,7 @@ padrão.
       136
       137      @staticmethod
 >>>   138      def _is_passthrough_wrapper(func: object, call: object) -> bool:
-      139          """Whether ``func``'s body is exactly ``return call(*args, **kwargs)`` over its params."""
+      139          """Whether ``func``'s body is exactly ``return call(*args, **kwar ...
       140          args_obj = getattr(func, "args", None)
       141          if args_obj is None:
       142              return False
@@ -4117,7 +4117,7 @@ padrão.
       187
       188      @classmethod
 >>>   189      def _validate_open_sdist(
-      190          cls, archive: tarfile.TarFile, path: Path, project: str, license_sha256: str
+      190          cls, archive: tarfile.TarFile, path: Path, project: str, license_ ...
       191      ) -> p.Result[bool]:
       192          """Validate one already-open source-distribution archive."""
       193          expected_roots = (project.casefold(), project.replace("-", "_").casefold())
@@ -4503,7 +4503,7 @@ padrão.
       160          return result, changed
       161
       162      @staticmethod
->>>   163      def _drop_keyword(text: str, pattern: t.Infra.RegexPattern) -> tuple[str, int]:
+>>>   163      def _drop_keyword(text: str, pattern: t.Infra.RegexPattern) -> tuple[ ...
       164          """Remove ``<name>=<value>[,]?`` occurrences from a call slice."""
       165          result = text
       166          drops = 0
@@ -4546,7 +4546,7 @@ padrão.
 >>>   164      def _tarjan(
       165          self, graph: MutableMapping[str, set[str]]
       166      ) -> t.SequenceOf[t.StrSequence]:
-      167          """Tarjan's SCC over ``graph``; returns each SCC as a list of module names."""
+      167          """Tarjan's SCC over ``graph``; returns each SCC as a list of mod ...
       168          index_counter = [0]
 ```
 
@@ -4604,7 +4604,7 @@ padrão.
       365          ]
       366
 >>>   367      def check_rule_3(
-      368          self, tree: object, filepath: Path, *, class_stem: str, package_name: str
+      368          self, tree: object, filepath: Path, *, class_stem: str, package_n ...
       369      ) -> t.StrSequence:
       370          """Rule 3 — Runtime modules use namespaced FLEXT aliases (c/m/p/t/u)."""
       371          owner_rules = self._owner_direct_facade_rules(class_stem)
@@ -4660,7 +4660,7 @@ padrão.
 
 ```text
       325          )
-      326          return r[int].ok(0 if value.reason != "testmon db missing or empty" else 1)
+      326          return r[int].ok(0 if value.reason != "testmon db missing or empt ...
       327
       328      @override
 >>>   329      def execute(self) -> p.Result[int]:
@@ -4785,7 +4785,7 @@ padrão.
       484
       485      @classmethod
 >>>   486      def conform_target(
-      487          cls, repository_root: Path, workspace_spec: m.Infra.WorkspaceSpec | None = None
+      487          cls, repository_root: Path, workspace_spec: m.Infra.WorkspaceSpec ...
       488      ) -> p.Result[m.Infra.RepositoryConformTarget]:
       489          """Derive the sole conformance target from live Git and typed identity."""
       490          resolved_root = repository_root.expanduser().resolve()
@@ -4825,7 +4825,7 @@ padrão.
        29
        30      @classmethod
 >>>    31      def validate(
-       32          cls, repository_root: Path, *, metadata_paths: t.StrSequence | None = None
+       32          cls, repository_root: Path, *, metadata_paths: t.StrSequence | No ...
        33      ) -> p.Result[int]:
        34          """Validate PEP 610 and editable path metadata for active members."""
        35          resolved_root = repository_root.resolve()
@@ -4842,7 +4842,7 @@ padrão.
 ```text
       183                      f"{branch_cleanup.error or 'unknown branch cleanup failure'}"
       184                  )
-      185          return r.fail(f"worktree setup failed: {setup_error}; clean lane rolled back")
+      185          return r.fail(f"worktree setup failed: {setup_error}; clean lane ...
       186
 >>>   187      def _add(self, primary_root: Path, branch: str, base: str) -> p.Result[str]:
       188          """Create and set up one branch worktree transactionally."""
@@ -5214,7 +5214,7 @@ padrão.
 ```text
        54          ("_settings.py", "Settings", "FlextSettings", "Runtime settings"),
        55      )
-       56      "Runtime singleton modules for src/: (filename, class_suffix, base_class, docstring)."
+       56      "Runtime singleton modules for src/: (filename, class_suffix, base_cl ...
        57      VIOLATION_PATTERN: Final[t.RegexPattern] = re.compile(
 >>>    58          r"\[(?P<rule>NS-\d{3})-\d{3}\]\s+(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)"
        59      )
@@ -6338,7 +6338,7 @@ padrão.
        98      @staticmethod
        99      def _public_export_order_key(export_name: str) -> tuple[int, str]:
       100          """Classify one export using Ruff's canonical ``RUF022`` order."""
->>>   101          category = 0 if export_name.isupper() else 1 if export_name[:1].isupper() else 2
+>>>   101          category = 0 if export_name.isupper() else 1 if export_name[:1].i ...
       102          # flext-wkii.17 (Codex): dependency order belongs to facade imports;
       103          # published __all__ values follow Ruff RUF022 (case-sensitive ASCII
       104          # secondary sort) so the two contracts never fight.
@@ -6447,7 +6447,7 @@ active source block to triage.
 
 ```text
        56          message = (
-       57              f"docstring coverage {docstring_coverage.percent}% below minimum "
+       57              f"docstring coverage {docstring_coverage.percent}% below mini ...
        58              f"{params.docstring_min}%"
        59              if coverage_breached and docstring_coverage is not None
 >>>    60              else "audit passed"
@@ -6646,7 +6646,7 @@ active source block to triage.
 > Extract this nested conditional expression into an independent statement.
 
 ```text
-      122          """Build the canonical JSON payload from the accumulated wrapper run state."""
+      122          """Build the canonical JSON payload from the accumulated wrapper ...
       123          mode_value = (
       124              "check"
       125              if self.check_only
@@ -6690,7 +6690,7 @@ active source block to triage.
       184              tail = result[cursor:].lstrip()
       185              head = result[:start].rstrip()
       186              head = head.removesuffix(",")
->>>   187              joiner = "" if not head.endswith("(") and tail.startswith(")") else " "
+>>>   187              joiner = "" if not head.endswith("(") and tail.startswith(")" ...
       188              if head.endswith("(") or tail.startswith(")"):
       189                  joiner = ""
       190              elif tail and not tail.startswith(","):
@@ -6707,7 +6707,7 @@ active source block to triage.
 
 ```text
        34      ] = False
-       35      _runner: p.Cli.CommandRunner | None = m.PrivateAttr(default_factory=lambda: None)
+       35      _runner: p.Cli.CommandRunner | None = m.PrivateAttr(default_factory=l ...
        36
        37      def __init__(
 >>>    38          self,
@@ -6776,7 +6776,7 @@ active source block to triage.
        24  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
        25  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        26  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       27  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       27  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
 ```
 
 **Decisão**:
@@ -6795,7 +6795,7 @@ active source block to triage.
        24  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
 >>>    25  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        26  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       27  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       27  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
        28      && ln -sf /usr/local/go/bin/go /usr/local/bin/go
        29  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
 ```
@@ -6814,7 +6814,7 @@ active source block to triage.
        24  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
        25  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        26  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
->>>    27  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+>>>    27  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
        28      && ln -sf /usr/local/go/bin/go /usr/local/bin/go
        29  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
        30  # End SECTION: managed tool bootstrap
@@ -6860,7 +6860,7 @@ active source block to triage.
        26  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
        27  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        28  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
 ```
 
 **Decisão**:
@@ -6879,7 +6879,7 @@ active source block to triage.
        26  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
 >>>    27  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        28  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
        30      && ln -sf /usr/local/go/bin/go /usr/local/bin/go
        31  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
 ```
@@ -6898,7 +6898,7 @@ active source block to triage.
        26  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
        27  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        28  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
->>>    29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+>>>    29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
        30      && ln -sf /usr/local/go/bin/go /usr/local/bin/go
        31  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
        32  # End SECTION: managed tool bootstrap
@@ -6944,7 +6944,7 @@ active source block to triage.
        27  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
        28  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        29  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
 ```
 
 **Decisão**:
@@ -6963,7 +6963,7 @@ active source block to triage.
        27  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
 >>>    28  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        29  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
        31      && ln -sf /usr/local/go/bin/go /usr/local/bin/go
        32  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
 ```
@@ -6982,7 +6982,7 @@ active source block to triage.
        27  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
        28  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        29  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
->>>    30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+>>>    30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
        31      && ln -sf /usr/local/go/bin/go /usr/local/bin/go
        32  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
        33  # End SECTION: managed tool bootstrap
@@ -7028,7 +7028,7 @@ active source block to triage.
        26  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
        27  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        28  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
 ```
 
 **Decisão**:
@@ -7047,7 +7047,7 @@ active source block to triage.
        26  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
 >>>    27  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        28  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
        30      && ln -sf /usr/local/go/bin/go /usr/local/bin/go
        31  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
 ```
@@ -7066,7 +7066,7 @@ active source block to triage.
        26  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
        27  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        28  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
->>>    29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+>>>    29  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
        30      && ln -sf /usr/local/go/bin/go /usr/local/bin/go
        31  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
        32  # End SECTION: managed tool bootstrap
@@ -7112,7 +7112,7 @@ active source block to triage.
        27  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
        28  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        29  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
 ```
 
 **Decisão**:
@@ -7131,7 +7131,7 @@ active source block to triage.
        27  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
 >>>    28  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        29  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
-       30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+       30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
        31      && ln -sf /usr/local/go/bin/go /usr/local/bin/go
        32  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
 ```
@@ -7150,7 +7150,7 @@ active source block to triage.
        27  # tokei (and any future cargo-backed mise tool) needs a Rust toolchain.
        28  RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
        29  # go is required for mise-managed beads (go:github.com/steveyegge/beads/cmd/bd).
->>>    30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf - \
+>>>    30  RUN curl -fsSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | tar -C /us ...
        31      && ln -sf /usr/local/go/bin/go /usr/local/bin/go
        32  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
        33  # End SECTION: managed tool bootstrap
@@ -7252,7 +7252,7 @@ active source block to triage.
 
 ```text
        82          payload["run-timeout-seconds"] = (
-       83              policy.case_timeout_seconds + policy.termination_grace_seconds - 1
+       83              policy.case_timeout_seconds + policy.termination_grace_second ...
        84          )
        85
 >>>    86          with pytest.raises(
@@ -7380,7 +7380,7 @@ active source block to triage.
       170              msg = "class placement exploded"
       171              raise RuntimeError(msg)
       172
-      173          monkeypatch.setattr(FlextInfraClassPlacementDetector, "detect_file", _fail)
+      173          monkeypatch.setattr(FlextInfraClassPlacementDetector, "detect_fil ...
 >>>   174          with (
       175              u.Infra.open_project(tmp_path) as rope_project,
       176              pytest.raises(RuntimeError, match="class placement detector failed"),
@@ -7445,7 +7445,7 @@ active source block to triage.
       475                      return "invalid"
       476
 >>>   477              with pytest.raises(
-      478                  TypeError, match=r"rope import_dependents returned non-tuple for demo"
+      478                  TypeError, match=r"rope import_dependents returned non-tu ...
       479              ):
       480                  u.Infra.indexed_search_resources(
       481                      _BrokenWorkspace(),
@@ -7464,7 +7464,7 @@ active source block to triage.
        44              "tests/test_sample.py\n--maxfail=0",
        45          ],
        46      )
-       47      def test_file_rejects_non_normalized_or_control_text(self, file: str) -> None:
+       47      def test_file_rejects_non_normalized_or_control_text(self, file: str) ...
 >>>    48          with pytest.raises(c.ValidationError, match="file must"):
        49              FlextInfraPytestSelectorValidator(repository_root=Path.cwd(), file=file)
        50
@@ -7572,7 +7572,7 @@ active source block to triage.
        26      )
        27      "Regex matching every generated lazy-export sidecar filename "
        28      "(``_exports.py``, ``_exports_lazy.py``, ``_exports_lazy_part_N.py``, "
-       29      "``_lazy_exports.py``); these reserved names are superseded by the inline "
+       29      "``_lazy_exports.py``); these reserved names are superseded by the in ...
 ```
 
 **Decisão**:
@@ -7630,7 +7630,7 @@ active source block to triage.
        22      MAKE_ASSIGNMENT_RE: Final[t.RegexPattern] = re.compile(
 >>>    23          r"^[A-Za-z_][A-Za-z0-9_]*\s*(?::?:|\?|\+)?="
        24      )
-       25      "GNU Make variable assignment at column 0 (``=``, ``:=``, ``::=``, ``?=``, ``+=``)."
+       25      "GNU Make variable assignment at column 0 (``=``, ``:=``, ``::=``, `` ...
        26      MAKE_DIRECTIVE_RE: Final[t.RegexPattern] = re.compile(
        27          r"^(?:export|unexport|override|include|-include|sinclude|vpath)\b"
 ```
@@ -7644,7 +7644,7 @@ active source block to triage.
 > Use concise character class syntax '\w' instead of '[A-Za-z0-9_]'.
 
 ```text
-      662      "Public accessor name prefixes that should be renamed (drop the prefix or use a canonical verb)."
+      662      "Public accessor name prefixes that should be renamed (drop the prefi ...
       663
       664      # --- FLEXT scan patterns ---
       665      RETIRED_TYPE_PATTERN: Final[t.RegexPattern] = re.compile(
@@ -7771,7 +7771,7 @@ active source block to triage.
       310          """Collect optional dependency groups from one TOML document."""
       311          normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
       312          if not normalized:
-      313              # flext-j47u (codex): keep the empty mapping immutable and fully typed.
+      313              # flext-j47u (codex): keep the empty mapping immutable and fu ...
 >>>   314              return MappingProxyType(dict[str, tuple[str, ...]]())
       315          return cls.project_dev_groups_from_payload(normalized)
       316
@@ -7992,7 +7992,7 @@ active source block to triage.
 ```text
        86          """Build root public exports in Ruff's canonical isort-style order."""
        87          # flext-wkii.17.26 (codex): the planner is the sole ABI filter; rendering
-       88          # only orders its validated contract and must not reinterpret target paths.
+       88          # only orders its validated contract and must not reinterpret tar ...
        89          _ = lazy_filtered
 >>>    90          export_candidates = tuple(dict.fromkeys(exports))
        91          return tuple(
@@ -8015,7 +8015,7 @@ active source block to triage.
       262          metric_checks = tuple(
       263              m.Infra.QualityGateCheck(
       264                  name=name,
->>>   265                  passed=(value := u.Cli.json_nested_int(after_metrics, metric)) == 0,
+>>>   265                  passed=(value := u.Cli.json_nested_int(after_metrics, met ...
       266                  detail=f"{label}={value}",
       267                  critical=True,
       268              )
@@ -8198,7 +8198,7 @@ active source block to triage.
       150                  if additions:
       151                      inner = result[:close].rstrip()
 >>>   152                      inner_has_args = inner.endswith(",") or inner[-1:] != "("
-      153                      sep = ", " if inner_has_args and not inner.endswith(",") else ""
+      153                      sep = ", " if inner_has_args and not inner.endswith(" ...
       154                      if inner.endswith(","):
       155                          sep = " "
       156                      if inner.endswith("("):

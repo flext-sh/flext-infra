@@ -40,6 +40,8 @@ class FlextInfraConstantsCheck:
     LINT: Final[str] = "lint"
     FORMAT: Final[str] = "format"
     MARKDOWN: Final[str] = "markdown"
+    MARKDOWN_FORMAT: Final[str] = "markdown-format"
+    MARKDOWN_CODE: Final[str] = "markdown-code"
     SILENT_FAILURE: Final[str] = "silent-failure"
     SARIF_TOOL_INFO: Final[t.MappingKV[str, t.StrPair]] = MappingProxyType({
         "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
@@ -57,6 +59,8 @@ class FlextInfraConstantsCheck:
         ),
         "security": ("Bandit", "https://bandit.readthedocs.io/"),
         "markdown": ("rumdl", "https://rumdl.dev/"),
+        "markdown-format": ("Prettier", "https://prettier.io/"),
+        "markdown-code": ("Ruff", "https://docs.astral.sh/ruff/"),
         "loc-cap": ("scc", "https://github.com/boyter/scc"),
         "boundary": (
             "Flext Abstraction Boundary Auditor",
@@ -102,6 +106,30 @@ class FlextInfraConstantsCheck:
     MARKDOWN_RE: Final[t.RegexPattern] = re.compile(
         r"^(?P<file>.*?):(?P<line>\d+):(?P<col>\d+):\s+\[(?P<code>MD\d+)\]\s+(?P<msg>.*)$"
     )
+    MARKDOWN_FORMAT_RE: Final[t.RegexPattern] = re.compile(
+        r"^\[warn\]\s+(?P<file>\S+\.md)\s*$", re.MULTILINE
+    )
+    "Prettier ``--check`` unformatted-file line (``[warn] <file.md>``); config warns never match."
+    MARKDOWN_PY_FENCE_RE: Final[t.RegexPattern] = re.compile(
+        r"^```(?P<info>python\S*(?:\s+notest)?)\s*$\n(?P<code>.*?)^```\s*$",
+        re.MULTILINE | re.DOTALL,
+    )
+    "Canonical fenced-Python-block extractor; the flext-tests markdown validator consumes the same pattern."
+    MARKDOWN_CODE_SOURCE_FORMAT: Final[str] = "{}_b{}.py"
+    "Temp-file name for one extracted block: sanitized doc path plus block index."
+    MARKDOWN_CODE_LINT_SELECT: Final[t.StrSequence] = ("E9", "W605")
+    "Snippet lint scope: syntax errors and invalid escapes — style belongs to the format pass."
+    MARKDOWN_CODE_RE: Final[t.RegexPattern] = re.compile(
+        r"^(?P<file>\S+\.py):(?P<line>\d+):(?P<col>\d+):\s+(?P<code>[A-Za-z0-9_-]+):?\s+(?P<msg>.*)$"
+    )
+    "Ruff concise diagnostic line over extracted sources, mapped back through the origin map."
+    MARKDOWN_CODE_FORMAT_FILE_RE: Final[t.RegexPattern] = re.compile(
+        r"^would reformat\s+(?P<file>\S+)$", re.MULTILINE
+    )
+    MARKDOWN_CODE_FORMAT_ERROR_RE: Final[t.RegexPattern] = re.compile(
+        r"^error: Failed to format (?P<file>\S+):", re.MULTILINE
+    )
+    "Ruff format verdict lines over extracted sources (``--check`` / hard failure)."
     VALID_GATE_SEVERITIES: Final[frozenset[str]] = frozenset(GateSeverity)
     "Severity levels accepted by gate output parsers — derived from GateSeverity."
     PYRIGHT_DIAGNOSTICS_KEY: Final[str] = "generalDiagnostics"
@@ -269,6 +297,12 @@ class FlextInfraConstantsCheck:
     # rendered from this typed SSOT at scan time, never a hand-maintained file).
     JSCPD_BINARY: Final[str] = "jscpd"
     "Provisioned by mise from codegen.toolchain.jscpd_version; never a runner or a version here."
+
+    # --- markdown-format gate SSOT (operator 2026-09-18: prettier is the
+    # markdown formatter owned by `make fmt`; rumdl stays the linter owned by
+    # `make fix`. The binary is mise-provisioned, never a runner or version).
+    PRETTIER_BINARY: Final[str] = "prettier"
+    "Provisioned by mise from codegen.toolchain.prettier_version; never a runner or a version here."
     JSCPD_MODE: Final[str] = "strict"
     JSCPD_MIN_LINES: Final[int] = 10
     "Minimum lines for a clone (R2: 10 lines = 62 tokens per consumption-law.md)."

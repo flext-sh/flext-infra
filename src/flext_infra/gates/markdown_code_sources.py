@@ -1,0 +1,103 @@
+"""Embedded-Python source extraction for the ``markdown-code`` gate.
+
+Fenced ``python``` blocks on the governed markdown surface and doctest
+examples inside tracked docstrings are extracted once into a temporary source
+tree, so ruff validates and formats them in single invocations. Every
+temporary file maps back through the returned origin dictionary.
+"""
+
+from __future__ import annotations
+
+import ast
+from doctest import DocTestParser
+from pathlib import Path
+from typing import TYPE_CHECKING, Final
+
+from flext_infra import c, u
+
+if TYPE_CHECKING:
+    from flext_infra import t
+
+TEST_SKIP_MARKER: Final[str] = "notest"
+"Existing fence marker (pytest-markdown-docs) opting a block out of code validation."
+
+
+def source_name(relative_posix: str, index: int) -> str:
+    """Encode one block's documentation location into a temp source filename."""
+    return c.Infra.MARKDOWN_CODE_SOURCE_FORMAT.format(
+        relative_posix.replace("/", "__").replace(".", "_"), index
+    )
+
+
+def write_fenced_block_sources(
+    project_dir: Path, markdown_files: t.SequenceOf[Path], target_dir: Path
+) -> dict[str, tuple[str, int]]:
+    """Write one temp source per fenced ``python`` block; return the origin map.
+
+    Blocks carrying the ``notest`` fence marker are skipped: they are opted
+    out of code validation by declaration and may be intentional pseudo-code.
+    """
+    origin_by_source: dict[str, tuple[str, int]] = {}
+    for md_path in markdown_files:
+        relative_posix = md_path.relative_to(project_dir).as_posix()
+        content = md_path.read_text(c.Cli.ENCODING_DEFAULT)
+        for index, match in enumerate(
+            match
+            for match in c.Infra.MARKDOWN_PY_FENCE_RE.finditer(content)
+            if TEST_SKIP_MARKER not in match.group("info")
+        ):
+            name = source_name(relative_posix, index)
+            (target_dir / name).write_text(match.group("code"), c.Cli.ENCODING_DEFAULT)
+            origin_by_source[name] = (
+                relative_posix,
+                content[: match.start()].count("\n") + 1,
+            )
+    return origin_by_source
+
+
+def write_docstring_sources(
+    project_dir: Path, target_dir: Path
+) -> dict[str, tuple[str, int]]:
+    """Write one temp source per doctest example found in tracked docstrings.
+
+    Docstring write-back stays outside the fix contract on purpose: a
+    formatter rewrite inside prose is a semantics risk, so docstring findings
+    remain manual repairs. Example line numbers are approximate within the
+    docstring (stdlib ``doctest`` reports positions relative to its input).
+    """
+    origin_by_source: dict[str, tuple[str, int]] = {}
+    parser = DocTestParser()
+    for py_path in u.Infra.iter_matching_files(project_dir, includes=["*.py"]):
+        relative_parts = py_path.relative_to(project_dir).parts
+        if any(part in c.Infra.CHECK_EXCLUDED_DIRS for part in relative_parts):
+            continue
+        try:
+            tree = ast.parse(py_path.read_text(c.Cli.ENCODING_DEFAULT))
+        except SyntaxError:
+            # Source syntax is the ruff lint gate's finding, not this gate's.
+            continue
+        for node in ast.walk(tree):
+            # Only these carry docstrings; ast.walk also yields expression
+            # nodes and ast.get_docstring raises TypeError on those.
+            if not isinstance(
+                node, ast.Module | ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
+            ):
+                continue
+            docstring = ast.get_docstring(node, clean=False)
+            if docstring is None or not node.body:
+                continue
+            body_start = node.body[0].lineno
+            relative_posix = py_path.relative_to(project_dir).as_posix()
+            for index, example in enumerate(parser.get_examples(docstring)):
+                name = source_name(relative_posix, index)
+                (target_dir / name).write_text(example.source, c.Cli.ENCODING_DEFAULT)
+                origin_by_source[name] = (relative_posix, body_start + example.lineno)
+    return origin_by_source
+
+
+__all__: list[str] = [
+    "TEST_SKIP_MARKER",
+    "source_name",
+    "write_docstring_sources",
+    "write_fenced_block_sources",
+]

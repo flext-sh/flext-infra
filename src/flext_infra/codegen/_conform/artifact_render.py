@@ -191,6 +191,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if destination in {
             c.Infra.MARKDOWNLINT_CONFIG_FILENAME,
             c.Infra.MARKDOWNLINT_IGNORE_FILENAME,
+            c.Infra.PRETTIER_CONFIG_FILENAME,
+            c.Infra.PRETTIER_IGNORE_FILENAME,
             f"{c.Infra.QLTY_CONFIG_DIRNAME}/{c.Infra.QLTY_CONFIG_FILENAME}",
         }:
             return r[p.Model].ok(

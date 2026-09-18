@@ -72,7 +72,7 @@ def test_settings_isolation(settings: FlextTestsSettings) -> None:
     settings.debug = True
     # The settings plugin resets runtime singletons between test functions.
     assert FlextSettings.fetch_global() is not settings
-```
+
 
 ## Resetting singletons manually
 
@@ -85,14 +85,14 @@ from flext_tests import FlextTestsSettings
 FlextSettings.reset_for_testing()
 FlextTestsSettings.reset_for_testing()
 FlextContainer.reset_for_testing()
-```
+
 
 ## Testing result flows
 
 Use the `r` alias instead of importing from `returns` directly:
 
 ```python
-from flext_tests import r
+from flext_tests import p, r
 
 
 def safe_divide(a: float, b: float) -> p.Result[float]:

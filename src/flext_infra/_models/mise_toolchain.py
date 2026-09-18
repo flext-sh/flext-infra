@@ -344,6 +344,23 @@ class FlextInfraModelsMiseToolchain:
             t.NonEmptyStr,
             m.Field(description="Moving jscpd release selector, e.g. 'latest'"),
         ]
+        prettier_selector: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                default="npm:prettier",
+                description=(
+                    "Mise selector for prettier. Override toolchain.prettier_selector; "
+                    "never the .mise.toml key."
+                ),
+            ),
+        ]
+        prettier_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                default="latest",
+                description="Moving prettier release selector, e.g. 'latest'",
+            ),
+        ]
         waza_selector: Annotated[
             t.NonEmptyStr,
             m.Field(

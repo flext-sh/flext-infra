@@ -28,7 +28,8 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
 
         Only the canonical three-way work-tree probe may classify a path as
         outside Git; a genuine probe or open failure raises instead of being
-        reported as absence.
+        reported as absence. Git is a required dependency of this scope probe;
+        unavailable executables must fail rather than hide tracked-file scope.
         """
         resolved_scope = Path(scope_root).resolve()
         probe = FlextInfraUtilitiesGitSemanticIdentityMixin.git_is_inside_work_tree

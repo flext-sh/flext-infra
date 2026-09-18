@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates import FlextInfraCanonicalAliasGate
 from tests import c, m, t, tm
@@ -214,17 +215,22 @@ class TestsFlextInfraGateRegistry:
         (exit 124).
 
         Runtime contract: verbs own tools by intent. `fmt` owns formatting
-        (ruff format), `fix` repairs findings (markdown, smells), `check` is
+        (ruff format plus the fmt_gates writers such as markdown-format),
+        `fix` repairs findings (markdown, markdown-code, smells), `check` is
         read-only. `format` therefore appears in NO check vocabulary: not in
         ALLOWED (check never mutates) and not in FIXABLE (fix never formats).
         """
         registry = FlextInfraGateRegistry.default()
-        registered_fixable = {
+        mutating = {
             gate_id
             for gate_id in c.Infra.CANONICAL_GATE_IDS
             if (gate_cls := registry.get(gate_id)) is not None and gate_cls.can_fix
         }
-        tm.that(set(c.Infra.CANONICAL_FIXABLE_GATE_IDS), eq=registered_fixable)
+        # `make fix` owns every mutating check-gate EXCEPT the fmt-owned
+        # formatters (single-pass verb law: one operation per tool per verb).
+        fmt_owned = set(config.Infra.codegen.make.fmt_gates)
+        tm.that(set(c.Infra.CANONICAL_FIXABLE_GATE_IDS), eq=mutating - fmt_owned)
+        tm.that(fmt_owned <= mutating, eq=True)
         # `format` belongs to `make fmt` alone: absent from the read-only
         # check vocabulary AND from the fix vocabulary.
         tm.that(c.Infra.FORMAT not in c.Infra.CANONICAL_FIXABLE_GATE_IDS, eq=True)

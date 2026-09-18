@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, ClassVar, override
 from flext_infra import c, m, u
 
 from .base_gate import FlextInfraGate
+from .markdown_support import collect_markdown_files, read_ignore_patterns
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -27,22 +28,6 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     # the gate offers it and the canonical sequence can reach green.
     can_fix: ClassVar[bool] = True
 
-    def _collect_markdown_files(self, project_dir: Path) -> t.SequenceOf[Path]:
-        """Collect markdown files."""
-        markdown_files: list[Path] = []
-        for path in u.Infra.iter_matching_files(project_dir, includes=["*.md"]):
-            relative_parts = path.relative_to(project_dir).parts
-            if any(part in c.Infra.CHECK_EXCLUDED_DIRS for part in relative_parts):
-                continue
-            if (
-                len(relative_parts) > 1
-                and relative_parts[0] == ".github"
-                and relative_parts[1] in c.Infra.GITHUB_AGENT_PROJECTION_DIRS
-            ):
-                continue
-            markdown_files.append(path)
-        return markdown_files
-
     def _resolve_config_args(self, project_dir: Path) -> t.StrSequence:
         """Resolve only the repository-local markdown settings owner."""
         config_path = project_dir / c.Infra.MARKDOWNLINT_CONFIG_FILENAME
@@ -55,18 +40,13 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
         ``rumdl`` only applies ignore patterns when scanning directories,
         not when files are passed explicitly on the command line. The gate
-        collects files explicitly, so we read the ignore file and forward
-        its patterns via ``--exclude`` to replicate standard tool behavior.
+        collects files explicitly, so the generated ignore projection is read
+        once and its patterns are forwarded via ``--exclude`` to replicate
+        standard tool behavior.
         """
-        ignore_path = project_dir / c.Infra.MARKDOWNLINT_IGNORE_FILENAME
-        if not ignore_path.is_file():
-            return ()
-        patterns: list[str] = []
-        for line in ignore_path.read_text(c.Cli.ENCODING_DEFAULT).splitlines():
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#"):
-                continue
-            patterns.append(stripped)
+        patterns = read_ignore_patterns(
+            project_dir, c.Infra.MARKDOWNLINT_IGNORE_FILENAME
+        )
         if not patterns:
             return ()
         return ["--exclude", ",".join(patterns)]
@@ -79,7 +59,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         _ = ctx
         return [
             str(path.relative_to(project_dir))
-            for path in self._collect_markdown_files(project_dir)
+            for path in collect_markdown_files(project_dir)
         ]
 
     @override
