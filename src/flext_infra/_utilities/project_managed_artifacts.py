@@ -370,11 +370,18 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         tools = u.Cli.toml_ensure_table(doc, "tools")
         for selector, tool in local_tools.items():
             if selector in tools:
+                # Resilient composition (operator law 2026-09-18): a project
+                # declaring a tool the fleet now provides is promotion residue,
+                # never an ambiguous contract. The fleet SSOT wins, the stale
+                # local declaration is reported for removal, and generation
+                # keeps flowing instead of blocking every consumer.
                 source = resolution.mise_tool_sources[selector]
-                return r[str].fail(
-                    "project Mise selector collides with fleet tool "
-                    f"{selector!r}: global .mise.toml template and {source}"
+                u.Cli.warning(
+                    "project Mise selector "
+                    f"{selector!r} ({source}) is now a fleet tool; "
+                    "the fleet version wins — remove the local declaration"
                 )
+                continue
             tools[selector] = tool.version
         return r[str].ok(u.Cli.toml_dumps(doc))
 
