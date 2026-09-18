@@ -45,6 +45,9 @@ if TYPE_CHECKING:
     from .test_ci_checkout_mode_normalization import (
         TestsFlextInfraCiCheckoutModeNormalization,
     )
+    from .test_ci_declared_secrets_contract import (
+        TestsFlextInfraCiDeclaredSecretsContract,
+    )
     from .test_ci_integration_branch_triggers import (
         TestsFlextInfraCiIntegrationBranchTriggers,
     )
@@ -117,6 +120,7 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "CodegenTestSupport",
     "TestsFlextInfraCiCheckoutModeNormalization",
+    "TestsFlextInfraCiDeclaredSecretsContract",
     "TestsFlextInfraCiIntegrationBranchTriggers",
     "TestsFlextInfraCiSystemPackages",
     "TestsFlextInfraCodegenArtifactSsot",
@@ -244,6 +248,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".submodule_recipe_shell_tests": ("TestsFlextInfraSubmoduleRecipeShell",),
             ".test_ci_checkout_mode_normalization": (
                 "TestsFlextInfraCiCheckoutModeNormalization",
+            ),
+            ".test_ci_declared_secrets_contract": (
+                "TestsFlextInfraCiDeclaredSecretsContract",
             ),
             ".test_ci_integration_branch_triggers": (
                 "TestsFlextInfraCiIntegrationBranchTriggers",
