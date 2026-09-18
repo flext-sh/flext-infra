@@ -37,6 +37,27 @@ class CodegenTestSupport:
             )
 
         @staticmethod
+        def synthetic_private_submodules() -> m.Infra.CiPrivateSubmodulesSpec:
+            """One schema-valid deploy-key contract carrying zero org data.
+
+            The private-submodule init mechanism is proven against this
+            synthetic contract instead of any real workspace entry: real
+            deploy-key contracts are operator-private config living in the
+            gitignored local override layer, never in this public repository.
+            """
+            key = m.Infra.CiPrivateSubmoduleDeployKeySpec.model_validate({
+                "secret": "EXAMPLE_SIBLING_DEPLOY_KEY",
+                "submodule": "example-sibling",
+                "path": "libs/example-sibling",
+                "remote": "git@github.com:example-org/example-sibling.git",
+            })
+            return m.Infra.CiPrivateSubmodulesSpec(
+                known_hosts=("github.com ssh-ed25519 AAAA-public-host-key-line",),
+                paths=("libs/example-sibling",),
+                deploy_keys=(key,),
+            )
+
+        @staticmethod
         def workflow_spec(
             *,
             dist: t.NonEmptyStr,
