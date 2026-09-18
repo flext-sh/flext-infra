@@ -5,6 +5,7 @@
 - [Scope](#scope)
 - [Projects impacted](#projects-impacted)
 - [Pull requests since last release](#pull-requests-since-last-release)
+
 <!-- TOC END -->
 
 ## Scope
