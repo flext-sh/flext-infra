@@ -1,6 +1,6 @@
 """Generated-file plan decisions exposed through ``u.Infra``.
 
-Copyright (c) 2026 Datacosmos. All rights reserved.
+Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 

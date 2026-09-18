@@ -66,7 +66,7 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
             tm.that(repo is None, eq=True)
 
         def test_lookup_unknown_repo_returns_none(self) -> None:
-            repo = u.Infra.docs_github_repo_lookup("datacosmos-br", "nonexistent-repo")
+            repo = u.Infra.docs_github_repo_lookup("example-org", "nonexistent-repo")
             tm.that(repo is None, eq=True)
 
     class TestDocsExpandLocalCheckout:
@@ -104,12 +104,12 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
 
         def test_parse_valid_tree_url(self) -> None:
             match = u.Infra.docs_parse_github_doc_url(
-                "https://github.com/datacosmos-br/ai-hub/tree/dev/src/"
+                "https://github.com/example-org/example-repo/tree/feature-line/src/"
             )
             tm.that(match is not None, eq=True)
             if match is not None:
                 tm.that(match.group("kind"), eq="tree")
-                tm.that(match.group("branch"), eq="dev")
+                tm.that(match.group("branch"), eq="feature-line")
 
         def test_parse_non_github_url_returns_none(self) -> None:
             tm.that(
@@ -217,7 +217,7 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
         def test_rewrite_stale_org_non_flext_returns_none(self) -> None:
             tm.that(
                 u.Infra.docs_rewrite_github_url(
-                    "https://github.com/organization/datacosmos-br/foo"
+                    "https://github.com/organization/example-org/foo"
                 ),
                 none=True,
             )

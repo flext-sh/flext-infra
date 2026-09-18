@@ -634,6 +634,20 @@ class FlextInfraUtilitiesDocsRender:
         return FlextInfraUtilitiesDocsRender._render_markdown(lines)
 
     @staticmethod
+    def _site_title(data: t.JsonMapping) -> str:
+        """Resolve the docs title: declared override, then project name.
+
+        The last-resort literal is deliberately brand-free: a repository that
+        declares neither a site title nor a project name must not describe
+        itself with someone else's name.
+        """
+        return (
+            str(data.get("site_title", "")).strip()
+            or str(data.get("name", "")).strip()
+            or "Workspace docs"
+        )
+
+    @staticmethod
     def docs_root_mkdocs(
         contract: t.JsonMapping, src_paths: t.SequenceOf[str] = ()
     ) -> str:
@@ -646,8 +660,10 @@ class FlextInfraUtilitiesDocsRender:
 
         # NOTE (multi-agent, flext-p4s3.2 / agent: uv_overlay_owner): preserve one
         # typed context across the sole public template-rendering boundary.
+        # The title falls back to the governed project name — never a fleet
+        # brand — so a standalone repository describes itself (ag-q6uo).
         context = m.Infra.MkdocsRenderContext(
-            site_title=str(data.get("site_title", "")).strip() or "FLEXT Workspace",
+            site_title=FlextInfraUtilitiesDocsRender._site_title(data),
             site_url=str(data.get("site_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
             repo_url=str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
             repo_name=FlextInfraUtilitiesDocsRender._repository_name(
@@ -689,7 +705,7 @@ class FlextInfraUtilitiesDocsRender:
             or "_none_"
         )
         return FlextInfraUtilitiesDocsRender._render_markdown([
-            f"# {str(data.get('site_title', '')).strip() or 'FLEXT Workspace'} API Overview",
+            f"# {FlextInfraUtilitiesDocsRender._site_title(data)} API Overview",
             "",
             c.Infra.GENERATED_HEADER,
             "",
