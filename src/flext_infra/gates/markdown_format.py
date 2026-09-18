@@ -16,14 +16,13 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
 
-from .base_gate import FlextInfraGate
-from .markdown_support import collect_markdown_files
+from .markdown_support import FlextInfraMarkdownGateBase
 
 if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraMarkdownFormatGate(FlextInfraGate):
+class FlextInfraMarkdownFormatGate(FlextInfraMarkdownGateBase):
     """Markdown formatting gate."""
 
     gate_id: ClassVar[str] = c.Infra.MARKDOWN_FORMAT
@@ -57,14 +56,7 @@ class FlextInfraMarkdownFormatGate(FlextInfraGate):
         started = time.monotonic()
         if self._resolve_binary() is None:
             return self._binary_missing_result(project_dir, started, ctx)
-        check_dirs = self._get_check_dirs(project_dir, ctx)
-        if not check_dirs:
-            return self._neutral_skip_result(
-                project_dir,
-                started,
-                message=f"{self.gate_id}: no markdown files to check",
-            )
-        return self._execute_check_command(project_dir, ctx, check_dirs, started)
+        return super().check(project_dir, ctx)
 
     def _binary_missing_result(
         self, project_dir: Path, started: float, ctx: m.Infra.GateContext
@@ -81,17 +73,6 @@ class FlextInfraMarkdownFormatGate(FlextInfraGate):
             started=started,
             ctx=ctx,
         )
-
-    @override
-    def _get_check_dirs(
-        self, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> t.StrSequence:
-        """Return relative markdown file paths (doubles as fix targets)."""
-        _ = ctx
-        return [
-            str(path.relative_to(project_dir))
-            for path in collect_markdown_files(project_dir)
-        ]
 
     @override
     def _build_check_command(

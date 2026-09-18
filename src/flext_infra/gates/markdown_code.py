@@ -101,15 +101,16 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         """
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
-            if match := file_pattern.match(line.strip()):
-                if issue := self._origin_issue(
+            if (match := file_pattern.match(line.strip())) and (
+                issue := self._origin_issue(
                     origin,
                     match.group("file"),
                     code=default_code,
                     message=default_message,
                     line=int(match.groupdict().get("line", 1) or 1),
-                ):
-                    issues.append(issue)
+                )
+            ):
+                issues.append(issue)
         if (
             fallback_on_error
             and not u.Cli.process_succeeded(result.outcome)
@@ -231,10 +232,10 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                 continue
             blocks_iter = iter(blocks)
             updated = c.Infra.MARKDOWN_PY_FENCE_RE.sub(
-                lambda match: (
+                lambda match, replacements=blocks_iter: (
                     match.group(0)
                     if TEST_SKIP_MARKER in match.group("info")
-                    else match.group(0).replace(match.group("code"), next(blocks_iter))
+                    else match.group(0).replace(match.group("code"), next(replacements))
                 ),
                 content,
             )

@@ -1,5 +1,4 @@
-<!-- AUTO-GENERATED FILE — regenerate through `make gen` from the workspace root. -->
-<!-- Source of truth: `<workspace-root>/docs/guides/using-flext-tests.md`; adjust that workspace source, never this member projection. -->
+<!-- Repository-owned guide: same-root documentation is an authoritative source. -->
 
 # flext-infra - Using flext-tests
 
@@ -72,7 +71,7 @@ def test_settings_isolation(settings: FlextTestsSettings) -> None:
     settings.debug = True
     # The settings plugin resets runtime singletons between test functions.
     assert FlextSettings.fetch_global() is not settings
-
+```
 
 ## Resetting singletons manually
 
@@ -85,7 +84,7 @@ from flext_tests import FlextTestsSettings
 FlextSettings.reset_for_testing()
 FlextTestsSettings.reset_for_testing()
 FlextContainer.reset_for_testing()
-
+```
 
 ## Testing result flows
 

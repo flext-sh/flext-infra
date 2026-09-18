@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 class TestsFlextInfraMarkdownFormatAndCodeGates:
     """Declarative public-contract tests for the markdown formatting gates."""
 
+    FORMATTED_MARKDOWN = "# Test\n"
+    UNFORMATTED_MARKDOWN = "#    Test\n"
     FORMATTED = "# Test\n\n```python\nx = 1\n```\n"
     UNFORMATTED = "# Test\n\n```python\nx=1\n```\n"
     SYNTAX_BROKEN = "# Test\n\n```python\ndef broken(:\n    return 1\n```\n"
@@ -26,7 +28,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
 
     def test_format_gate_reports_unformatted_markdown(self, tmp_path: Path) -> None:
         project_dir = u.Tests.mk_project(tmp_path, "markdown-format-project")
-        (project_dir / "README.md").write_text(self.UNFORMATTED, encoding="utf-8")
+        (project_dir / "README.md").write_text(self.UNFORMATTED_MARKDOWN, encoding="utf-8")
 
         result = u.Tests.check_gate_asserting(
             FlextInfraMarkdownFormatGate,
@@ -56,7 +58,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         """`make fmt` drives prettier --write once and the tree reaches green."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-format-fix")
         readme = project_dir / "README.md"
-        readme.write_text(self.UNFORMATTED, encoding="utf-8")
+        readme.write_text(self.UNFORMATTED_MARKDOWN, encoding="utf-8")
         u.Tests.initialize_git_repo(project_dir)
         context = m.Infra.GateContext(
             repository_root=tmp_path, reports_dir=tmp_path, apply_fixes=True
@@ -65,7 +67,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         result = FlextInfraMarkdownFormatGate(tmp_path).fix(project_dir, context)
 
         tm.that(result.result.passed, eq=True)
-        tm.that(readme.read_text(encoding="utf-8"), eq=self.FORMATTED)
+        tm.that(readme.read_text(encoding="utf-8"), eq=self.FORMATTED_MARKDOWN)
         _ = u.Tests.check_gate_asserting(
             FlextInfraMarkdownFormatGate,
             tmp_path,
