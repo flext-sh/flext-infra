@@ -122,6 +122,11 @@ Infra:
             - opencode
             - run
             - ast-grep-rule-tests
+          # Local runtime states of the ai-hub agent fleet (mimosa security
+          # scan caches; ZCode session plans) — runtime-owned, never versioned.
+          gitignore_additions:
+            - .mimosa/
+            - .zcode/
         cosmos-docgen:
           keep_root_files:
             - ECOSYSTEM.md
