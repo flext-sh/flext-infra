@@ -23,6 +23,8 @@ class FlextInfraConstantsMake:
     MAKE_CONDITIONAL_RE: Final[t.RegexPattern] = re.compile(
         r"^(?:else\b|endif\b|ifeq\b|ifneq\b|ifdef\b|ifndef\b)"
     )
+    MAKE_REPOSITORY_ROOT: Final[str] = "REPOSITORY_ROOT"
+    "Make variable the workspace orchestrator passes to attached members."
 
     VERB_CHECK: Final[str] = "check"
     VERB_DEPS: Final[str] = "deps"
