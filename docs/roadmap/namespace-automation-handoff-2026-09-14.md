@@ -27,6 +27,7 @@
   - [8.3 Recuperar a validação funcional](#83-recuperar-a-validacao-funcional)
   - [8.4 Critérios de aceite antes da integração](#84-criterios-de-aceite-antes-da-integracao)
 - [9. Limite de encerramento deste handoff](#9-limite-de-encerramento-deste-handoff)
+
 <!-- TOC END -->
 
 > **Historical handoff.** This document preserves evidence from 2026-09-14/15; it is not

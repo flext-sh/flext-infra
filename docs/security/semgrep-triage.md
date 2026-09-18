@@ -14,7 +14,8 @@
   - [8 · 🟡 MEDIUM · conf low · python.lang.security.audit.non-literal-import.non-literal-import](#8-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
   - [9 · 🟡 MEDIUM · conf low · python.lang.security.audit.non-literal-import.non-literal-import](#9-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
   - [10 · 🟡 MEDIUM · conf low · python.lang.security.audit.non-literal-import.non-literal-import](#10-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
-  <!-- TOC END -->
+
+<!-- TOC END -->
 
 Gerado do dump da plataforma Semgrep (deployment `datacosmos`, 2026-08-06).
 

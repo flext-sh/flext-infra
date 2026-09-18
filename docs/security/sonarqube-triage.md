@@ -5760,6 +5760,7 @@ padrão.
   - [395 · ⚪ MINOR · VULNERABILITY · docker:S6471](#395-minor-vulnerability-dockers6471)
   - [396 · ⚪ MINOR · CODE_SMELL · docker:S7031](#396-minor-code_smell-dockers7031)
   - [397 · ⚪ MINOR · CODE_SMELL · docker:S7018](#397-minor-code_smell-dockers7018)
+
 <!-- TOC END -->", re.DOTALL
       171      )
       172      "Regex: TOC marker block (start..end), DOTALL."

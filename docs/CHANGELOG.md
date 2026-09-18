@@ -20,6 +20,7 @@ Full notes: `docs/releases/v0.12.0.md`
 
 - [0.12.0 - 2026-09-04](#0120-2026-09-04)
 - [0.12.0-dev (unreleased)](#0120-dev-unreleased)
+
 <!-- TOC END -->
 
 - terminus T2 EXISTING-PR evidence (bead flext-efyq)

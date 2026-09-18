@@ -440,15 +440,12 @@ Infra:
           - organization: flext-sh
             repository: flext
             branch: 0.12.0-dev
-            local_checkout: ~/flext
           - organization: flext-sh
             repository: flext-core
             branch: 0.12.0-dev
-            local_checkout: ~/flext/flext-core
           - organization: flext-sh
             repository: flext-infra
             branch: 0.12.0-dev
-            local_checkout: ~/flext/flext-infra
       # Private cross-repo doc-link entries (operator checkouts outside this
       # public registry) belong in config/codegen-overrides.local.yaml; the
       # lookup appends local entries and resolves first match.

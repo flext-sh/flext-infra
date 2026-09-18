@@ -7,7 +7,8 @@
 - [Achados](#achados)
   - [1 · 🟡 MEDIUM · Arbitrary File Write via Archive Extraction (Tar Slip)](#1-medium-arbitrary-file-write-via-archive-extraction-tar-slip)
   - [2 · ⚪ LOW · Jinja auto-escape is set to false](#2-low-jinja-auto-escape-is-set-to-false)
-  <!-- TOC END -->
+
+<!-- TOC END -->
 
 Gerado do scan Snyk da org Datacosmos (dump 2026-08-06). Bead: `flext-32k4`
 

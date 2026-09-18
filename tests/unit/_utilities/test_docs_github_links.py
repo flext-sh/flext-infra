@@ -239,24 +239,18 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
     class TestDocsGithubLocalPath:
         """Verify local checkout path resolution for governed URLs."""
 
-        def test_local_path_for_governed_repo(self) -> None:
-            local = u.Infra.docs_github_local_path(
-                "https://github.com/flext-sh/flext/blob/0.12.0-dev/README.md"
-            )
-            tm.that(local is not None, eq=True)
-            if local is not None:
-                tm.that(local, eq=Path("~/flext").expanduser() / "README.md")
-
-        def test_local_path_for_member_repo(self) -> None:
-            local = u.Infra.docs_github_local_path(
-                "https://github.com/flext-sh/flext-core/blob/0.12.0-dev/src/__init__.py"
-            )
-            tm.that(local is not None, eq=True)
-            if local is not None:
-                tm.that(
-                    local,
-                    eq=(Path("~/flext/flext-core").expanduser() / "src/__init__.py"),
+        def test_shared_policy_does_not_require_personal_checkouts(self) -> None:
+            """Standalone consumers do not depend on the policy author's home tree."""
+            for repo in u.Infra.docs_github_repos():
+                target = u.Infra.docs_canonical_github_url(
+                    repo.organization, repo.repository, "README.md"
                 )
+                assert target is not None
+                assert u.Infra.docs_github_local_path(target) is None
+                issues = u.Infra.docs_github_link_issues(
+                    file="example.md", line_number=1, raw=target, target=target
+                )
+                assert not issues
 
         def test_local_path_stale_org_returns_none(self) -> None:
             tm.that(

@@ -5,6 +5,7 @@
 - [Divergências identificadas](#divergencias-identificadas)
 - [Contexto de implementação](#contexto-de-implementacao)
 - [Estado corrente (reconciliado com fontes vivas em a2bd0a726)](#estado-corrente-reconciliado-com-fontes-vivas-em-a2bd0a726)
+
 <!-- TOC END -->
 
 Este índice aponta os responsáveis arquiteturais da estabilização de namespace e
