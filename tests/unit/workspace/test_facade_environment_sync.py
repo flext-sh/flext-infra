@@ -32,9 +32,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         activation_env = {"HOME": str(home), **env}
         tm.ok(
             u.Cli.run_checked(
-                ["direnv", "allow", str(workspace)],
-                cwd=workspace,
-                env=activation_env,
+                ["direnv", "allow", str(workspace)], cwd=workspace, env=activation_env
             )
         )
         return tm.ok(

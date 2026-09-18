@@ -101,8 +101,8 @@ class FlextInfraConfigFixerSteps:
             conf_out: t.Infra.InfraValue = conf
             if isinstance(conf, Mapping):
                 validated_conf: p.Result[t.JsonMapping] = u.validate_value(
-                t.Infra.INFRA_MAPPING_ADAPTER, conf
-            )
+                    t.Infra.INFRA_MAPPING_ADAPTER, conf
+                )
                 if validated_conf.failure:
                     return r[tuple[t.StrSequence, bool]].fail_op(
                         "validate-pyrefly-sub-config", validated_conf.error

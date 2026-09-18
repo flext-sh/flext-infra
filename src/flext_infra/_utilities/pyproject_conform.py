@@ -573,11 +573,12 @@ class FlextInfraUtilitiesPyprojectConform:
     ) -> p.Result[bool]:
         """Sync ``[tool.flext.namespace].scan_dirs`` from the project SSOT.
 
-        ``None`` leaves the section untouched: projects without a declared
-        scope keep the dynamic every-root behavior. A declared sequence is
-        the workspace manifest's production scope (cosmos-3flk9 decision A).
+        ``None`` or an empty sequence leaves the section untouched: projects
+        without a declared scope keep the dynamic every-root behavior. A
+        non-empty sequence is the workspace manifest's production scope
+        (cosmos-3flk9 decision A).
         """
-        if namespace_scan_dirs is None:
+        if not namespace_scan_dirs:
             return r[bool].ok(True)
         namespace = u.Cli.toml_ensure_path(document, c.Infra.CONFORM_NAMESPACE_TABLE)
         u.Cli.toml_sync_string_list(namespace, "scan_dirs", list(namespace_scan_dirs))

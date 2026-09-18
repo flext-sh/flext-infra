@@ -112,9 +112,7 @@ class TestsFlextInfraWorkspaceMain:
             encoding=c.Infra.ENCODING_DEFAULT,
         )
         service = FlextInfraOrchestratorService(
-            repository_root=tmp_path,
-            verb=c.Infra.VERB_CHECK,
-            projects=("demo-a",),
+            repository_root=tmp_path, verb=c.Infra.VERB_CHECK, projects=("demo-a",)
         )
         previous = Path.cwd()
         os.chdir(tmp_path)

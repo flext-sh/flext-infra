@@ -119,9 +119,7 @@ class TestsFlextInfraPromotedExecutionContract:
             """WHAT declared through the live settings singleton reaches dispatch."""
             marker = self._write_discoverable_command(tmp_path)
             settings_cls = type(settings)
-            settings_cls.update_global(
-                Infra={"WHAT": c.Infra.PromotedSelector.ALL}
-            )
+            settings_cls.update_global(Infra={"WHAT": c.Infra.PromotedSelector.ALL})
             try:
                 environment = (
                     {} if ambient_value is None else {"UNDECLARED_INPUT": ambient_value}

@@ -254,9 +254,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _is_source_race(error: str | None) -> bool:
         """Return whether one failure signature is a mid-cycle source mutation."""
         message = error or ""
-        return any(
-            marker in message for marker in c.Infra.CONFORM_SOURCE_RACE_MARKERS
-        )
+        return any(marker in message for marker in c.Infra.CONFORM_SOURCE_RACE_MARKERS)
 
     def _lazy_phase(
         self, request: m.Infra.CodegenConformRequest

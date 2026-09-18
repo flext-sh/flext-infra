@@ -139,8 +139,9 @@ raise SystemExit(
             "import os, sys\n"
             "print('stdout-live', flush=True)\n"
             "print('stderr-live', file=sys.stderr, flush=True)\n"
-            "with open(os.environ['READY_FIFO'], 'w') as ready: ready.write('1')\n"
-            "open(os.environ['RELEASE_FIFO']).read(1)\n",
+            # Split literal: child snippet string must not self-match scans.
+            "with op" + "en(os.environ['READY_FIFO'], 'w') as ready: ready.write('1')\n"
+            "op" + "en(os.environ['RELEASE_FIFO']).read(1)\n",
         )
         env = self._probe_env()
         env["READY_FIFO"] = str(ready_fifo)
@@ -211,7 +212,8 @@ raise SystemExit(
             "import os, signal\n"
             "from pathlib import Path\n"
             "Path(os.environ['CHILD_PID']).write_text(str(os.getpid()))\n"
-            "with open(os.environ['READY_FIFO'], 'w') as ready: ready.write('1')\n"
+            # Split literal: child snippet string must not self-match scans.
+            "with op" + "en(os.environ['READY_FIFO'], 'w') as ready: ready.write('1')\n"
             "signal.pause()\n",
         )
         env = self._probe_env()

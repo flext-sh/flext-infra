@@ -296,10 +296,10 @@ __pyrefly_virtual__/
 .benchmarks/
 .bkp/
 .cache/
-.code-review-graph/
 .dolt_dropped_databases/
 .doltcfg/
 .hypothesis/
+.mimosa/
 .mypy_cache/
 .omo/
 .pylance_cache/
