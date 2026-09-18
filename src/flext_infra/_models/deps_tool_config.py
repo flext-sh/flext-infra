@@ -598,9 +598,7 @@ class FlextInfraModelsDepsToolConfig(
         prettier: Annotated[
             FlextInfraModelsDepsToolConfig.MarkdownPrettierConfig,
             m.Field(
-                default_factory=(
-                    FlextInfraModelsDepsToolConfig.MarkdownPrettierConfig
-                ),
+                default_factory=(FlextInfraModelsDepsToolConfig.MarkdownPrettierConfig),
                 description="Prettier formatting policy projected into .prettierrc.",
             ),
         ]

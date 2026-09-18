@@ -238,7 +238,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             u.Cli.info(
                 "stage=publish mode=converge "
                 f"attempt={attempts}/{c.Infra.CONFORM_SOURCE_RACE_CYCLES} "
-                "reason=atomic source changed; re-planning from current tree"
+                f"reason={result.error}; re-planning from current tree"
             )
         if result.success:
             return result

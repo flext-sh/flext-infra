@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_core import r
+from flext_infra import c
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import m, u
 
@@ -211,7 +212,7 @@ class TestsFlextInfraDocsGeneratorGuides:
         planned = generator.plan_files(bundle)
 
         tm.fail(planned)
-        tm.that(planned.error or "", has="docs source changed during planning")
+        tm.that(planned.error or "", has=c.Infra.DOCS_SOURCE_STATE_RACE_MARKER)
         tm.that((workspace / "flext-a/docs/guides/operator.md").exists(), eq=False)
 
     def test_guide_parent_identity_change_rejects_prepared_bundle(
@@ -232,7 +233,7 @@ class TestsFlextInfraDocsGeneratorGuides:
         planned = generator.plan_files(bundle)
 
         tm.fail(planned)
-        tm.that(planned.error or "", has="docs source changed during planning")
+        tm.that(planned.error or "", has=c.Infra.DOCS_SOURCE_STATE_RACE_MARKER)
 
     def test_stale_guide_ownership_change_rejects_prepared_delete(
         self, tmp_path: Path
@@ -252,7 +253,7 @@ class TestsFlextInfraDocsGeneratorGuides:
         planned = generator.plan_files(bundle)
 
         tm.fail(planned)
-        tm.that(planned.error or "", has="docs source changed during planning")
+        tm.that(planned.error or "", has=c.Infra.DOCS_SOURCE_STATE_RACE_MARKER)
         tm.that(destination.read_text(encoding="utf-8"), eq="# Now custom\n")
 
     def test_standalone_guides_never_read_parent_or_project_their_own_heading(

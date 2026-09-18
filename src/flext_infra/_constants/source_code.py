@@ -79,6 +79,24 @@ class FlextInfraConstantsSourceCode:
         ".beads",
         "reports",
         ".agents",
+        # Runtime tool state (Serena memories, Kilo plans): regenerated caches,
+        # never governed source — excluded from every quality-check surface.
+        ".serena",
+        ".kilo",
+        ".omo",
+        ".tmp",
+        ".snapshots",
+        ".benchmarks",
+        ".hypothesis",
+        ".vscode",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".pyrefly_cache",
+        "htmlcov",
+        "legado",
+        "site",
+        "target",
     }
     "Directories to exclude during quality checks."
     GITHUB_AGENT_PROJECTION_DIRS: Final[frozenset[str]] = frozenset({

@@ -61,7 +61,7 @@ With the settings plugin loaded, its `pytest_runtest_setup` and
 `pytest_runtest_teardown` hooks perform automatic isolation. The two explicit fixtures
 above are not declared with `autouse=True`.
 
-```python
+````python
 from __future__ import annotations
 
 from flext_core import FlextSettings
@@ -108,7 +108,7 @@ def test_safe_divide() -> None:
 
     failure = safe_divide(10, 0)
     assert failure.failure
-```
+````
 
 ## Good practices
 
