@@ -191,11 +191,29 @@ class FlextInfraCodegenVscodeMixin:
                 continue
             settings[key] = canonical
             artifacts_changed = True
+        # Stripped keys are owned canonically by pyproject.toml [tool.pyright];
+        # keeping them in settings.json makes Pylance emit settingsNotOverridable
+        # warnings. Actively delete every retired key so existing files converge
+        # to a warning-free projection.
+        stripped_changed = cls._strip_retired_keys(settings, spec.stripped_keys)
         return r[bool].ok(
             cls._apply_union_settings(settings, spec.map_union_settings)
             or artifacts_changed
+            or stripped_changed
             or changed.value
         )
+
+    @staticmethod
+    def _strip_retired_keys(
+        settings: t.MutableJsonMapping, stripped_keys: t.StrSequence
+    ) -> bool:
+        """Delete every key listed in ``stripped_keys`` from the settings mapping."""
+        changed = False
+        for key in stripped_keys:
+            if key in settings:
+                del settings[key]
+                changed = True
+        return changed
 
     @classmethod
     def _apply_enforced_settings(

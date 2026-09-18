@@ -24,13 +24,6 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
             os.environ.pop(name, None)
 
     @staticmethod
-    def prepend_env_path(name: str, entry: str) -> str | None:
-        """Prepend one entry to a path-like env variable, returning its original."""
-        original = os.environ.get(name)
-        os.environ[name] = f"{entry}:{original}" if original else entry
-        return original
-
-    @staticmethod
     def vscode_declared_search_paths() -> t.JsonList:
         """Return the config-declared VS Code search paths as rendered JSON."""
         return list(

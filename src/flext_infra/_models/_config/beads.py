@@ -152,13 +152,16 @@ class FlextInfraConfigModelsBeads:
             t.NonEmptyStr,
             m.Field(description="Beads metadata path relative to the workspace"),
         ] = ".beads/metadata.json"
+        # BEADS_DIR is caller-owned routing and never cleared: bd discovers the
+        # checkout's tracked .beads by itself, and a linked worktree whose
+        # caller selects a ledger keeps that selection (clearing it broke bd
+        # inside worktrees).
         unset_vars: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Inherited orchestration variables cleared on entry"),
         ] = (
             "GT_ROOT",
             "GT_TOWN_ROOT",
-            "BEADS_DIR",
             "BEADS_DOLT_PORT",
             "BEADS_DOLT_DATA_DIR",
             "BEADS_DOLT_SHARED_SERVER",

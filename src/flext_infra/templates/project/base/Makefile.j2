@@ -101,11 +101,17 @@ override export FLEXT_PYTEST_TARGET_RAW := {{ make.testmon_cache.target_director
 PROJECT_STATE_ROOT := $(abspath $(PROJECT_ROOT)/../{{ state_directory_name }}/$(notdir $(PROJECT_ROOT)))
 # Scratch never lives inside a versioned tree: the home scratch root mirrors
 # the absolute checkout path so a sandbox is never a tracked scope of any
-# enclosing repository (workspace or linked worktree).
+# enclosing repository (workspace or linked worktree). Checkouts nested in a
+# VCS directory rename that segment, so the mirror never contains one; two
+# substitution passes rename adjacent repeated segments too.
 ifeq ($(strip $(HOME)),)
 $(error HOME is required to derive the scratch root)
 endif
-PROJECT_SCRATCH_ROOT := $(HOME)/{{ scratch_home_relative }}/{{ state_directory_name }}$(abspath $(PROJECT_ROOT))/{{ scratch_namespace }}
+PROJECT_SCRATCH_IDENTITY := $(abspath $(PROJECT_ROOT))/
+{% for segment, alias in scratch_identity_segment_aliases -%}
+PROJECT_SCRATCH_IDENTITY := $(subst /{{ segment }}/,/{{ alias }}/,$(subst /{{ segment }}/,/{{ alias }}/,$(PROJECT_SCRATCH_IDENTITY)))
+{% endfor -%}
+PROJECT_SCRATCH_ROOT := $(HOME)/{{ scratch_home_relative }}/{{ state_directory_name }}$(patsubst %/,%,$(PROJECT_SCRATCH_IDENTITY))/{{ scratch_namespace }}
 TESTMON_DATAFILE := $(PROJECT_STATE_ROOT)/{{ make.testmon_cache.namespace }}/{{ make.testmon_cache.database_filename }}
 export TESTMON_DATAFILE
 # === SECTION: REPOSITORY_ROOT isolation (managed) ===
@@ -324,19 +330,6 @@ define _dispatch
 		WHAT="" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$(1)"; \
 	fi
 endef
-{% else %}
-# Without script dispatch, a WHAT-specific custom handler still routes before
-# the builtin; anything else falls through to the canonical builtin target.
-define _dispatch
-	@set -eu; \
-	what="$(WHAT)"; \
-	custom="_custom_$(1)_$$what"; \
-	if [ -n "$$what" ] && $(SELF_MAKE) -n "$$custom" >/dev/null 2>&1; then \
-		$(SELF_MAKE) "$$custom"; \
-	else \
-		$(SELF_MAKE) "_builtin-$(1)"; \
-	fi
-endef
 {% endif %}
 
 define _run_for_all_projects
@@ -514,9 +507,10 @@ _builtin-self-docs: _builtin_docs_all
 _builtin_build_artifacts:
 	@$(WORKSPACE_ORCHESTRATE) --verb build $(WORKSPACE_PROJECT_ARGS)
 
-# Check validates without writing. `fix` and `fmt` own supported corrections.
-# The workspace delegates the same operation to each member; CI={{ make.ci.value }} keeps
-# make.ci.check_gates in each generated member handler.
+# Check is read-only: it validates and reports, never rewrites the tree (fix
+# and fmt own mutation). The workspace delegates the same operation to each
+# member; CI={{ make.ci.value }} keeps make.ci.check_gates in each generated
+# member handler.
 _builtin_check_all: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS)
 
@@ -535,8 +529,8 @@ _builtin_fix_enforcement: _builtin_require_environment
 _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
 
-# Local gates apply their declared repairs on every invocation.
-# Both check and fix fail while findings remain.
+# Check is read-only: it runs the gates without --apply, so the tree is left
+# unchanged; fix applies the declared repairs of the fixable gates.
 # CI={{ make.ci.value }} keeps make.ci.check_gates, the strict complement of
 # make.ci.local_check_gates.
 _builtin_check_all: _builtin_require_environment
@@ -550,7 +544,7 @@ _builtin_check_all: _builtin_require_environment
 		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
 		exit 2; \
 	fi; \
-	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects . --apply
+	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects .
 
 _builtin_test_all: _builtin_require_environment
 {{ test_report_recipe(

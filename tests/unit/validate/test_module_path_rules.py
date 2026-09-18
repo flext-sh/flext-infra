@@ -10,35 +10,50 @@ from flext_tests import tm
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from tests import m, t, u
 
-_FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
-
-
-def _read_fixture(name: str) -> str:
-    fixture_name = name.replace(".py", ".pysrc") if name.endswith(".py") else name
-    return (_FIXTURES_DIR / fixture_name).read_text(encoding="utf-8")
-
-
-def _make_project_with_module_path(
-    tmp_path: Path, *, module_source: str, module_path: str
-) -> t.Pair[Path, Path]:
-    project_root = tmp_path / "project"
-    package_dir = project_root / "src" / "flext_test"
-    package_dir.mkdir(parents=True)
-    _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-    u.Tests.write_canonical_package_layout(package_dir)
-    relative = Path(module_path)
-    target = (
-        project_root / relative
-        if relative.parts[0] == "tests"
-        else package_dir / relative
-    )
-    target.parent.mkdir(parents=True, exist_ok=True)
-    _ = target.write_text(module_source, encoding="utf-8")
-    u.Tests.initialize_git_repo(project_root)
-    return project_root, target
-
 
 class TestsModulePathRules:
+    """Namespace rules key on the module path a project actually declares."""
+
+    _FIXTURES_DIR = (
+        Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
+    )
+
+    def _read_fixture(self, name: str) -> str:
+
+        fixture_name = name.replace(".py", ".pysrc") if name.endswith(".py") else name
+
+        return (self._FIXTURES_DIR / fixture_name).read_text(encoding="utf-8")
+
+    def _make_project_with_module_path(
+        self, tmp_path: Path, *, module_source: str, module_path: str
+    ) -> t.Pair[Path, Path]:
+
+        project_root = tmp_path / "project"
+
+        package_dir = project_root / "src" / "flext_test"
+
+        package_dir.mkdir(parents=True)
+
+        _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+
+        u.Tests.write_canonical_package_layout(package_dir)
+
+        relative = Path(module_path)
+
+        target = (
+            project_root / relative
+            if relative.parts[0] == "tests"
+            else package_dir / relative
+        )
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+
+        _ = target.write_text(module_source, encoding="utf-8")
+
+        u.Tests.initialize_git_repo(project_root)
+
+        return project_root, target
+
     """Namespace rules key on the module path a project actually declares."""
 
     @pytest.mark.parametrize(
@@ -208,7 +223,7 @@ class TestsModulePathRules:
     ) -> None:
         """Namespace rules key on the module path a project actually declares."""
         validator = FlextInfraNamespaceValidator()
-        root, target = _make_project_with_module_path(
+        root, target = self._make_project_with_module_path(
             tmp_path, module_source=module_source, module_path=module_path
         )
         files = u.Infra.iter_python_files(

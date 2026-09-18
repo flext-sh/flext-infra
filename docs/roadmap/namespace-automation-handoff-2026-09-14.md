@@ -541,9 +541,10 @@ primeira falha/custo real; contagens parciais não certificam a suíte.
   reaplicação é verificada. Falhas restantes são ligadas ao seu Bead e não
   convertidas em prova de sucesso.
 - Ruff, Mypy, Pyright e Pyrefly terminam sem erros. Pelo esclarecimento mais
-  recente do operador, findings dos gates customizados podem permanecer;
-  registrar o resultado agregado de `make check` e os resultados individuais,
-  sem chamar o comando inteiro de verde se seu exit code continuar não zero.
+  recente do operador, findings dos gates customizados podem permanecer.
+  `make check` exits 0 by contract (operator ruling 2026-09-16); record the
+  findings from `.reports/check/check-report.{md,sarif}`. Green means zero
+  findings in that report.
 - `make test`, build e documentação terminam com exit 0 no runtime declarado;
   a evidência identifica revisão, ambiente, seleção e resultado completo.
 - Geração consecutiva atinge ponto fixo; não há responsáveis antigos,
