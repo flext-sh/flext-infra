@@ -541,7 +541,10 @@ Infra:
     artifacts:
       - {name: __pycache__, source_scan_ignore: true}
       - {name: __pyrefly_virtual__}
-      - {name: .agents}
+    # mro-operator-20260918b: governance content (.agents/.claude) and direnv
+    # runtime state stay visible to the editor and watcher — removed from the
+    # default vscode/watch excludes; source_scan keeps its dotdir skip.
+      - {name: .agents, vscode_exclude: false, watch_exclude: false}
       - {name: .beads}
       - {name: .benchmarks}
     # mro-0wuz: archive-not-delete target for the layout engine; the generated
@@ -549,11 +552,11 @@ Infra:
       - {name: .bkp}
       - {name: .cache, source_scan_ignore: true}
     # mro-j47u: agent worktrees are duplicate repositories, never production input.
-      - {name: .claude, source_scan_ignore: true}
+      - {name: .claude, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false}
     # mro-jnm1.2: gitignore-only entries absorbed from the removed
-    # REQUIRED_GITIGNORE_ENTRIES constant; .direnv keeps the legacy vscode/
-    # watch/source-scan projections (order-sensitive, after .claude).
-      - {name: .direnv, source_scan_ignore: true}
+    # REQUIRED_GITIGNORE_ENTRIES constant; .direnv keeps the source-scan skip
+    # (order-sensitive, after .claude).
+      - {name: .direnv, source_scan_ignore: true, vscode_exclude: false, watch_exclude: false}
       - {name: .dolt}
       - {name: .dolt_dropped_databases}
       - {name: .doltcfg}
@@ -583,6 +586,18 @@ Infra:
       - {name: .venv, source_scan_ignore: true}
       - {name: .venv.*}
       - {name: "*.egg-info", vscode_exclude: false}
+    # Transient extraction scratch (e.g. legacy _tmp_mdpy_* fenced-block and
+    # docstring sources) must never become tracked candidates even if a gate
+    # regression drops it into the worktree; the markdown-code gate itself
+    # writes only under runner-managed temp roots.
+      - {name: "_tmp_*"}
+    # Editor/patch droppings observed leaking into fleet and sibling
+    # workspaces (flext, ai-hub, cosmos-docgen, cosmos-main, agents): never
+    # production input, never tracked, whatever wrote them.
+      - {name: "*.bak"}
+      - {name: "*.orig"}
+      - {name: "*.rej"}
+      - {name: "*.swp"}
       - {name: build, source_scan_ignore: true}
       - {name: dist, source_scan_ignore: true}
       - {name: node_modules, source_scan_ignore: true}
