@@ -12,7 +12,6 @@
 - [Architecture and tests](#architecture-and-tests)
 - [Documentation ownership](#documentation-ownership)
 - [Related guides](#related-guides)
-
 <!-- TOC END -->
 
 The root `AGENTS.md`, branch-matched `flext-law`, nearest package scope, and active Bead

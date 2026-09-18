@@ -6,7 +6,6 @@
 - [Projects impacted](#projects-impacted)
 - [Pull requests since last release](#pull-requests-since-last-release)
 - [Current state](#current-state)
-
 <!-- TOC END -->
 
 ## Scope

@@ -16,7 +16,6 @@
 - [Good practices](#good-practices)
 - [Bad practices](#bad-practices)
 - [Related](#related)
-
 <!-- TOC END -->
 
 `flext_core` is the base package for result flow, settings, container wiring, logging,

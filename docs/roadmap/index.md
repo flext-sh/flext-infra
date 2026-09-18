@@ -4,7 +4,6 @@
 
 - [Current state](#current-state)
 - [Namespace and runtime handoff](#namespace-and-runtime-handoff)
-
 <!-- TOC END -->
 
 Roadmap updates are generated from docs validation outputs.

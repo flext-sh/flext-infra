@@ -12,7 +12,6 @@
 - [Documentation failures](#documentation-failures)
 - [Test failures](#test-failures)
 - [Related guides](#related-guides)
-
 <!-- TOC END -->
 
 Troubleshooting preserves the same command, ownership, and failure contracts as normal

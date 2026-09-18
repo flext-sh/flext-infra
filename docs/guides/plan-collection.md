@@ -5,7 +5,6 @@
 - [Authorization](#authorization)
 - [Source revisions](#source-revisions)
 - [Publication and verification](#publication-and-verification)
-
 <!-- TOC END -->
 
 ## Authorization

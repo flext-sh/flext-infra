@@ -15,7 +15,6 @@
 - [Good practices](#good-practices)
 - [Bad practices](#bad-practices)
 - [Related](#related)
-
 <!-- TOC END -->
 
 `flext_cli` provides a unified Typer abstraction for model-driven CLI applications.

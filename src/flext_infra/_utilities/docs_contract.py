@@ -130,7 +130,7 @@ class FlextInfraUtilitiesDocsContract:
         )
         if not items:
             items = ["- No sections found"]
-        return f"{c.Infra.TOC_START}\n" + "\n".join(items) + f"\n{c.Infra.TOC_END}"
+        return f"{c.Infra.TOC_START}\n\n" + "\n".join(items) + f"\n\n{c.Infra.TOC_END}"
 
     @staticmethod
     def _docs_contract_toc_items(

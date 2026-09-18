@@ -28,7 +28,9 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
 
     def test_format_gate_reports_unformatted_markdown(self, tmp_path: Path) -> None:
         project_dir = u.Tests.mk_project(tmp_path, "markdown-format-project")
-        (project_dir / "README.md").write_text(self.UNFORMATTED_MARKDOWN, encoding="utf-8")
+        (project_dir / "README.md").write_text(
+            self.UNFORMATTED_MARKDOWN, encoding="utf-8"
+        )
 
         result = u.Tests.check_gate_asserting(
             FlextInfraMarkdownFormatGate,

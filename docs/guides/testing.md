@@ -11,7 +11,6 @@
 - [Canonical execution](#canonical-execution)
 - [Generated documentation](#generated-documentation)
 - [Related guides](#related-guides)
-
 <!-- TOC END -->
 
 FLEXT tests prove observable runtime behavior through public package facades. The
