@@ -10,7 +10,7 @@
 {%- macro gates_banner(names) -%}{{ names|join(" ") }}{%- endmacro -%}
 {%- macro check_run(gates, extra="") -%}$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "{{ gates }}" --projects .{{ extra }}{%- endmacro -%}
 {%- macro local_check_body() -%}
-	@set -eu; \
+{{ "\t" }}@set -eu; \
 		gates="{{ gates_csv(make.check_gates_default) }}"; \
 		if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
 			gates="{{ gates_csv(make.ci.check_gates) }}"; \
@@ -23,11 +23,11 @@
 		{{ check_run("$$gates") }}
 {%- endmacro -%}
 {%- macro fmt_body() -%}
-	@$(UV_RUN) ruff format {{ make.ruff.format_apply | join(" ") }} $(RUFF_PATHS)
-	@{{ check_run(gates_csv(make.fmt_gates), " --apply") }}
+{{ "\t" }}@$(UV_RUN) ruff format {{ make.ruff.format_apply | join(" ") }} $(RUFF_PATHS)
+{{ "\t" }}@{{ check_run(gates_csv(make.fmt_gates), " --apply") }}
 {%- endmacro -%}
 {%- macro fix_body() -%}
-	@{{ check_run(gates_csv(make.check_gates_fixable), " --apply --report-findings") }}
+{{ "\t" }}@{{ check_run(gates_csv(make.check_gates_fixable), " --apply --report-findings") }}
 {%- endmacro -%}
 # @flext-generated: continuous
 # @flext-owner: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2

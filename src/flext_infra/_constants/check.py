@@ -120,7 +120,7 @@ class FlextInfraConstantsCheck:
     MARKDOWN_CODE_LINT_SELECT: Final[t.StrSequence] = ("E9", "W605")
     "Snippet lint scope: syntax errors and invalid escapes — style belongs to the format pass."
     MARKDOWN_CODE_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?P<file>\S+\.py):(?P<line>\d+):(?P<col>\d+):\s+(?P<code>[A-Z]+[0-9]*)\s+(?P<msg>.*)$"
+        r"^(?P<file>\S+\.py):(?P<line>\d+):(?P<col>\d+):\s+(?P<code>[A-Za-z0-9_-]+):?\s+(?P<msg>.*)$"
     )
     "Ruff concise diagnostic line over extracted sources, mapped back through the origin map."
     MARKDOWN_CODE_FORMAT_FILE_RE: Final[t.RegexPattern] = re.compile(

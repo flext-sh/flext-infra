@@ -47,8 +47,10 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             "check",
             "--isolated",
             "--no-cache",
+            "--output-format",
+            "concise",
             "--select",
-            *c.Infra.MARKDOWN_CODE_LINT_SELECT,
+            ",".join(c.Infra.MARKDOWN_CODE_LINT_SELECT),
             str(sources_dir),
         )
 
@@ -88,8 +90,15 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         default_code: str,
         default_message: str,
         file_pattern: re.Pattern[str],
+        fallback_on_error: bool = True,
     ) -> t.SequenceOf[m.Infra.Issue]:
-        """Translate one ruff result into origin-mapped gate findings."""
+        """Translate one ruff result into origin-mapped gate findings.
+
+        ``fallback_on_error`` keeps a failed run without mapped findings from
+        reading as a clean pass; a caller that already reported the same
+        failed sources through another operation suppresses it so one defect
+        stays one finding.
+        """
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
             if match := file_pattern.match(line.strip()):
@@ -101,14 +110,14 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                     line=int(match.groupdict().get("line", 1) or 1),
                 ):
                     issues.append(issue)
-        if not u.Cli.process_succeeded(result.outcome) and not issues:
+        if (
+            fallback_on_error
+            and not u.Cli.process_succeeded(result.outcome)
+            and not issues
+        ):
             issues.append(
                 self._command_error_issue(
-                    result,
-                    tool=c.Infra.RUFF,
-                    file=str(project_dir),
-                    line=1,
-                    column=1,
+                    result, tool=c.Infra.RUFF, file=str(project_dir), line=1, column=1
                 )
             )
         return issues
@@ -126,14 +135,16 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         ran = False
         with tempfile.TemporaryDirectory(prefix="flext-markdown-code-") as tmp:
             sources_dir = Path(tmp)
-            origin = write_fenced_block_sources(project_dir, markdown_files, sources_dir)
+            origin = write_fenced_block_sources(
+                project_dir, markdown_files, sources_dir
+            )
             origin.update(write_docstring_sources(project_dir, sources_dir))
             if not origin:
                 return False, True, ()
             ran = True
             lint = self._run(self._lint_command(sources_dir), project_dir)
             lint_ok = u.Cli.process_succeeded(lint.outcome)
-            findings.extend(
+            lint_findings = list(
                 self._issues_from_ruff(
                     project_dir,
                     lint,
@@ -143,6 +154,11 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                     file_pattern=c.Infra.MARKDOWN_CODE_RE,
                 )
             )
+            findings.extend(lint_findings)
+            # A source the lint already flagged cannot also produce a distinct
+            # format verdict; the format operation suppresses its fallback so
+            # one defect stays one finding.
+            format_fallback = not lint_findings
             if fix:
                 formatted = self._run(
                     self._format_command(sources_dir, write=True), project_dir
@@ -158,6 +174,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                             "embedded block does not survive the format round-trip"
                         ),
                         file_pattern=c.Infra.MARKDOWN_CODE_FORMAT_ERROR_RE,
+                        fallback_on_error=format_fallback,
                     )
                 )
                 if format_ok:
@@ -177,6 +194,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                             "embedded code is not ruff-formatted (repair belongs to `make fix`)"
                         ),
                         file_pattern=c.Infra.MARKDOWN_CODE_FORMAT_FILE_RE,
+                        fallback_on_error=format_fallback,
                     )
                 )
             passed = lint_ok and format_ok
@@ -199,10 +217,10 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                 continue
             blocks: t.MutableSequenceOf[str] = []
             round_trips = True
-            for index, match in enumerate(testable):
-                formatted = (sources_dir / source_name(relative_posix, index)).read_text(
-                    c.Cli.ENCODING_DEFAULT
-                )
+            for index in range(len(testable)):
+                formatted = (
+                    sources_dir / source_name(relative_posix, index)
+                ).read_text(c.Cli.ENCODING_DEFAULT)
                 try:
                     compile(formatted, str(md_path), "exec")
                 except SyntaxError:
@@ -215,7 +233,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             updated = c.Infra.MARKDOWN_PY_FENCE_RE.sub(
                 lambda match: (
                     match.group(0)
-                    if "notest" in match.group("info")
+                    if TEST_SKIP_MARKER in match.group("info")
                     else match.group(0).replace(match.group("code"), next(blocks_iter))
                 ),
                 content,
@@ -250,9 +268,7 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         )
 
     @override
-    def fix(
-        self, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> m.Infra.GateExecution:
+    def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
         """Run the single mutating pass: format extracted blocks and splice clean docs back."""
         if ctx.check_only or not ctx.apply_fixes:
             return self._check_only_fix_result(project_dir)

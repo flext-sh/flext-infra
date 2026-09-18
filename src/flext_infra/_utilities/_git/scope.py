@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -28,9 +29,13 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
 
         Only the canonical three-way work-tree probe may classify a path as
         outside Git; a genuine probe or open failure raises instead of being
-        reported as absence.
+        reported as absence. A missing git binary classifies as outside Git:
+        sanitized gate environments run with an empty PATH, and scope
+        selection must degrade to filesystem walking there, never raise.
         """
         resolved_scope = Path(scope_root).resolve()
+        if shutil.which(c.Infra.GIT) is None:
+            return None
         opened = cls._open_repo(resolved_scope)
         if opened.failure:
             probe = FlextInfraUtilitiesGitSemanticIdentityMixin.git_is_inside_work_tree

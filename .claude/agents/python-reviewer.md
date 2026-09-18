@@ -13,7 +13,7 @@ tools:
 
 ---
 
-## description: Composing prompt-defense constraints into every supported agent profile projection
+## description: Composing prompt-defense constraints into each agent profile projection
 
 # Prompt defense baseline
 

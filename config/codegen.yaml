@@ -70,8 +70,11 @@ Infra:
       jscpd_version: latest
       # Prettier is the markdown formatter (markdown-format gate): provisioned
       # through npm so the fleet binary version is owned by this SSOT alone.
+      # Pinned to 3.5.x: prettier 3.7+ silently dropped markdown prose
+      # reflow (proseWrap becomes a no-op), which breaks the MD013/88
+      # line-length contract.
       prettier_selector: npm:prettier
-      prettier_version: latest
+      prettier_version: 3.5.3
       waza_selector: github:microsoft/waza
       waza_version: latest
       scc_selector: aqua:boyter/scc

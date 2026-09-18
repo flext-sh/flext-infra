@@ -364,11 +364,12 @@ class FlextInfraConfigModelsMake:
         fmt_gates: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(
+                default=("markdown-format",),
                 description=(
                     "Gates whose mutating side `make fmt` drives (formatters). "
                     "The read-only side runs in `make check`; `make fix` never "
                     "repeats them (single-pass verb law)."
-                )
+                ),
             ),
         ]
         work_in_progress: Annotated[

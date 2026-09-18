@@ -26,6 +26,9 @@ if TYPE_CHECKING:
     from .extended_gate_bandit_markdown_tests import (
         TestsFlextInfraBanditAndMarkdownGates,
     )
+    from .extended_gate_markdown_format_code_tests import (
+        TestsFlextInfraMarkdownFormatAndCodeGates,
+    )
     from .extended_gate_mypy_pyright_tests import TestsFlextInfraTypeGates
     from .extended_models_tests import TestsFlextInfraModels
     from .extended_project_runners_tests import TestsFlextInfraExtendedProjectRunners
@@ -63,6 +66,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraGateErrorReporting",
     "TestsFlextInfraGateRegistry",
     "TestsFlextInfraLocCapGate",
+    "TestsFlextInfraMarkdownFormatAndCodeGates",
     "TestsFlextInfraModels",
     "TestsFlextInfraRealGateRunners",
     "TestsFlextInfraRunProjects",
@@ -111,6 +115,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".extended_error_reporting_tests": ("TestsFlextInfraGateErrorReporting",),
             ".extended_gate_bandit_markdown_tests": (
                 "TestsFlextInfraBanditAndMarkdownGates",
+            ),
+            ".extended_gate_markdown_format_code_tests": (
+                "TestsFlextInfraMarkdownFormatAndCodeGates",
             ),
             ".extended_gate_mypy_pyright_tests": ("TestsFlextInfraTypeGates",),
             ".extended_models_tests": ("TestsFlextInfraModels",),

@@ -30,9 +30,7 @@ def source_name(relative_posix: str, index: int) -> str:
 
 
 def write_fenced_block_sources(
-    project_dir: Path,
-    markdown_files: t.SequenceOf[Path],
-    target_dir: Path,
+    project_dir: Path, markdown_files: t.SequenceOf[Path], target_dir: Path
 ) -> dict[str, tuple[str, int]]:
     """Write one temp source per fenced ``python`` block; return the origin map.
 
@@ -49,9 +47,7 @@ def write_fenced_block_sources(
             if TEST_SKIP_MARKER not in match.group("info")
         ):
             name = source_name(relative_posix, index)
-            (target_dir / name).write_text(
-                match.group("code"), c.Cli.ENCODING_DEFAULT
-            )
+            (target_dir / name).write_text(match.group("code"), c.Cli.ENCODING_DEFAULT)
             origin_by_source[name] = (
                 relative_posix,
                 content[: match.start()].count("\n") + 1,
@@ -60,8 +56,7 @@ def write_fenced_block_sources(
 
 
 def write_docstring_sources(
-    project_dir: Path,
-    target_dir: Path,
+    project_dir: Path, target_dir: Path
 ) -> dict[str, tuple[str, int]]:
     """Write one temp source per doctest example found in tracked docstrings.
 
@@ -82,6 +77,12 @@ def write_docstring_sources(
             # Source syntax is the ruff lint gate's finding, not this gate's.
             continue
         for node in ast.walk(tree):
+            # Only these carry docstrings; ast.walk also yields expression
+            # nodes and ast.get_docstring raises TypeError on those.
+            if not isinstance(
+                node, ast.Module | ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
+            ):
+                continue
             docstring = ast.get_docstring(node, clean=False)
             if docstring is None or not node.body:
                 continue
@@ -89,9 +90,7 @@ def write_docstring_sources(
             relative_posix = py_path.relative_to(project_dir).as_posix()
             for index, example in enumerate(parser.get_examples(docstring)):
                 name = source_name(relative_posix, index)
-                (target_dir / name).write_text(
-                    example.source, c.Cli.ENCODING_DEFAULT
-                )
+                (target_dir / name).write_text(example.source, c.Cli.ENCODING_DEFAULT)
                 origin_by_source[name] = (relative_posix, body_start + example.lineno)
     return origin_by_source
 

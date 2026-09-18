@@ -566,6 +566,7 @@ class FlextInfraModelsDepsToolConfig(
         prose_wrap: Annotated[
             str,
             m.Field(
+                default="always",
                 alias="prose-wrap",
                 description="Prettier proseWrap contract for markdown prose.",
             ),
@@ -573,6 +574,7 @@ class FlextInfraModelsDepsToolConfig(
         tab_width: Annotated[
             int,
             m.Field(
+                default=4,
                 alias="tab-width",
                 description="Prettier tabWidth for non-markdown targets.",
             ),
@@ -580,6 +582,7 @@ class FlextInfraModelsDepsToolConfig(
         md_tab_width: Annotated[
             int,
             m.Field(
+                default=2,
                 alias="md-tab-width",
                 description="Prettier tabWidth override for markdown targets.",
             ),
@@ -595,7 +598,10 @@ class FlextInfraModelsDepsToolConfig(
         prettier: Annotated[
             FlextInfraModelsDepsToolConfig.MarkdownPrettierConfig,
             m.Field(
-                description="Prettier formatting policy projected into .prettierrc."
+                default_factory=(
+                    FlextInfraModelsDepsToolConfig.MarkdownPrettierConfig
+                ),
+                description="Prettier formatting policy projected into .prettierrc.",
             ),
         ]
 
