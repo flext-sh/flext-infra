@@ -11,9 +11,9 @@
 
 Gerado do scan Snyk da org Datacosmos (dump 2026-08-06). Bead: `flext-32k4`
 
-Os blocos com números de linha e marcadores `>>>` são saídas históricas do
-scanner. Eles preservam trechos incompletos para triagem; não são exemplos Python
-executáveis nem comprovam o estado atual dos arquivos citados.
+Os blocos com números de linha e marcadores `>>>` são saídas históricas do scanner. Eles
+preservam trechos incompletos para triagem; não são exemplos Python executáveis nem
+comprovam o estado atual dos arquivos citados.
 
 ## Resumo
 
@@ -26,8 +26,9 @@ executáveis nem comprovam o estado atual dos arquivos citados.
 
 ## Como usar este documento
 
-Cada achado traz o **código real** extraído da worktree (linha `>>>` = sink reportado), a regra completa e o CWE.
-Preencha **Decisão**: `corrigir` / `falso-positivo` (registrar em `.snyk`) / `risco-aceito` (com prazo).
+Cada achado traz o **código real** extraído da worktree (linha `>>>` = sink reportado),
+a regra completa e o CWE. Preencha **Decisão**: `corrigir` / `falso-positivo` (registrar
+em `.snyk`) / `risco-aceito` (com prazo).
 
 ## Achados
 

@@ -7,8 +7,8 @@ metadata:
 
 # Python Development
 
-Apply the active project's Python version, dependency owner, public contracts,
-and canonical commands.
+Apply the active project's Python version, dependency owner, public contracts, and
+canonical commands.
 
 Read the [single owner procedure](references/procedure.md) for implementation,
 debugging, testing, packaging, and native-gate evidence.

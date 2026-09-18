@@ -9,5 +9,5 @@ metadata:
 
 Activate for backend ownership, request lifecycles, persistence, transactions,
 messaging, caching, or background processing. Read the
-[complete procedure](references/procedure.md) before changing a boundary. A
-local implementation fix with no architectural decision does not activate.
+[complete procedure](references/procedure.md) before changing a boundary. A local
+implementation fix with no architectural decision does not activate.

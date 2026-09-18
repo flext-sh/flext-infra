@@ -8,8 +8,8 @@
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
-Curated operational guides live here. Keep API behavior in generated reference
-pages sourced from code and docstrings.
+Curated operational guides live here. Keep API behavior in generated reference pages
+sourced from code and docstrings.
 
 - [Configuration](configuration.md)
 - [Development](development.md)

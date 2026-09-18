@@ -6,8 +6,8 @@ Bead: `flext-2wjm.8`
 
 ## Resumo
 
-**397 issues** — BLOCKER 24, CRITICAL 222, MAJOR 104, MINOR 47
-Tipos: VULNERABILITY 57, BUG 4, CODE_SMELL 336 · **Debt total: 5399min**
+**397 issues** — BLOCKER 24, CRITICAL 222, MAJOR 104, MINOR 47 Tipos: VULNERABILITY 57,
+BUG 4, CODE_SMELL 336 · **Debt total: 5399min**
 
 | regra                  | issues |
 | ---------------------- | ------ |
@@ -24,8 +24,11 @@ Tipos: VULNERABILITY 57, BUG 4, CODE_SMELL 336 · **Debt total: 5399min**
 
 ## Como usar
 
-Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o **código real** (linha `>>>`), o tipo e o effort estimado.
-**Decisão**: `corrigir` / `falso-positivo` (marcar na plataforma com justificativa) / `risco-aceito`. Ordem: BLOCKER → CRITICAL → VULNERABILITY → MAJOR. CODE_SMELL em volume pede correção de padrão.
+Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
+**código real** (linha `>>>`), o tipo e o effort estimado. **Decisão**: `corrigir` /
+`falso-positivo` (marcar na plataforma com justificativa) / `risco-aceito`. Ordem:
+BLOCKER → CRITICAL → VULNERABILITY → MAJOR. CODE_SMELL em volume pede correção de
+padrão.
 
 ## Issues
 
@@ -132,7 +135,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/transformers/cli_modernizer.py:76` · **Effort**: 10min
 
-> Rename method "\_banned_modules" to prevent any misunderstanding/clash with field "\_BANNED_MODULES" defined on line 35
+> Rename method "\_banned_modules" to prevent any misunderstanding/clash with field
+> "\_BANNED_MODULES" defined on line 35
 
 ```text
        72
@@ -152,7 +156,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/transformers/cli_modernizer.py:81` · **Effort**: 10min
 
-> Rename method "\_cli_pkg" to prevent any misunderstanding/clash with field "\_CLI_PKG" defined on line 34
+> Rename method "\_cli_pkg" to prevent any misunderstanding/clash with field "\_CLI_PKG"
+> defined on line 34
 
 ```text
        77          """Return the set of CLI helper modules whose imports are removed."""
@@ -172,7 +177,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/transformers/cli_modernizer.py:86` · **Effort**: 10min
 
-> Rename method "\_manual_attrs" to prevent any misunderstanding/clash with field "\_MANUAL_ATTRS" defined on line 42
+> Rename method "\_manual_attrs" to prevent any misunderstanding/clash with field
+> "\_MANUAL_ATTRS" defined on line 42
 
 ```text
        82          """Return the canonical FLEXT CLI package name."""
@@ -190,7 +196,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 9 · 🔴 BLOCKER · CODE_SMELL · `python:S3516`
 
-**Local**: `src/flext_infra/transformers/project_alias_migrator.py:153` · **Effort**: 2min
+**Local**: `src/flext_infra/transformers/project_alias_migrator.py:153` · **Effort**:
+2min
 
 > Refactor this method to not always return the same value.
 
@@ -512,7 +519,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/check.py:114` · **Effort**: 6min
 
-> Define a constant instead of duplicating this literal "cli.read_json_file / cli.write_json_file / u.Cli.json_dumps" 3 times.
+> Define a constant instead of duplicating this literal "cli.read_json_file /
+> cli.write_json_file / u.Cli.json_dumps" 3 times.
 
 ```text
       110          "colorama": "cli.print with c.Cli.MessageStyles",
@@ -572,7 +580,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_models/codegen_render.py:26` · **Effort**: 6min
 
-> Define a constant instead of duplicating this literal "Generated module docstring." 3 times.
+> Define a constant instead of duplicating this literal "Generated module docstring." 3
+> times.
 
 ```text
        22
@@ -712,7 +721,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_utilities/_github_pr_execution.py:69` · **Effort**: 6min
 
-> Define a constant instead of duplicating this literal "invalid pull-request create request" 3 times.
+> Define a constant instead of duplicating this literal "invalid pull-request create
+> request" 3 times.
 
 ```text
        65          validation = FlextInfraUtilitiesGithubPrExecutionMixin._validate_github_pr_create_request(
@@ -730,7 +740,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 36 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/_utilities/_project_discovery_candidates.py:31` · **Effort**: 15min
+**Local**: `src/flext_infra/_utilities/_project_discovery_candidates.py:31` ·
+**Effort**: 15min
 
 > Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed.
 
@@ -750,7 +761,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 37 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/_utilities/_project_discovery_candidates.py:121` · **Effort**: 6min
+**Local**: `src/flext_infra/_utilities/_project_discovery_candidates.py:121` ·
+**Effort**: 6min
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
@@ -1032,7 +1044,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_utilities/docs_generate.py:60` · **Effort**: 8min
 
-> Define a constant instead of duplicating this literal "docs/api-reference/generated/overview.md" 4 times.
+> Define a constant instead of duplicating this literal
+> "docs/api-reference/generated/overview.md" 4 times.
 
 ```text
        56              scope.path, scope.package_name
@@ -1072,7 +1085,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_utilities/docs_generate.py:130` · **Effort**: 8min
 
-> Define a constant instead of duplicating this literal "docs/api-reference/generated" 4 times.
+> Define a constant instead of duplicating this literal "docs/api-reference/generated" 4
+> times.
 
 ```text
       126                  )
@@ -1212,7 +1226,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_utilities/namespace_moves.py:84` · **Effort**: 10min
 
-> Define a constant instead of duplicating this literal "rope import cleanup failed" 5 times.
+> Define a constant instead of duplicating this literal "rope import cleanup failed" 5
+> times.
 
 ```text
        80                      file_paths=(file_path,),
@@ -1312,7 +1327,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_utilities/pyproject_conform.py:43` · **Effort**: 6min
 
-> Define a constant instead of duplicating this literal "pyproject content must define [project]" 3 times.
+> Define a constant instead of duplicating this literal "pyproject content must define
+> [project]" 3 times.
 
 ```text
        39          if source is None:
@@ -1332,7 +1348,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_utilities/pyproject_conform.py:82` · **Effort**: 6min
 
-> Define a constant instead of duplicating this literal "uv source conformance failed" 3 times.
+> Define a constant instead of duplicating this literal "uv source conformance failed" 3
+> times.
 
 ```text
        78              exclude_newer=toolchain.uv_exclude_newer,
@@ -1650,7 +1667,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 82 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/_utilities/rope_analysis_workspace.py:99` · **Effort**: 12min
+**Local**: `src/flext_infra/_utilities/rope_analysis_workspace.py:99` · **Effort**:
+12min
 
 > Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed.
 
@@ -1670,7 +1688,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 83 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/_utilities/rope_analysis_workspace.py:171` · **Effort**: 15min
+**Local**: `src/flext_infra/_utilities/rope_analysis_workspace.py:171` · **Effort**:
+15min
 
 > Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed.
 
@@ -2290,7 +2309,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 114 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/codegen/_lazy_init_generation_registry.py:38` · **Effort**: 22min
+**Local**: `src/flext_infra/codegen/_lazy_init_generation_registry.py:38` · **Effort**:
+22min
 
 > Refactor this function to reduce its Cognitive Complexity from 32 to the 15 allowed.
 
@@ -2310,7 +2330,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 115 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/codegen/_lazy_init_planner_aliases.py:107` · **Effort**: 9min
+**Local**: `src/flext_infra/codegen/_lazy_init_planner_aliases.py:107` · **Effort**:
+9min
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
@@ -2330,7 +2351,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 116 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/codegen/_lazy_init_planner_children.py:30` · **Effort**: 9min
+**Local**: `src/flext_infra/codegen/_lazy_init_planner_children.py:30` · **Effort**:
+9min
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
@@ -2350,7 +2372,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 117 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/codegen/_lazy_init_planner_exports.py:40` · **Effort**: 17min
+**Local**: `src/flext_infra/codegen/_lazy_init_planner_exports.py:40` · **Effort**:
+17min
 
 > Refactor this function to reduce its Cognitive Complexity from 27 to the 15 allowed.
 
@@ -2572,7 +2595,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/codegen/conform.py:1688` · **Effort**: 6min
 
-> Define a constant instead of duplicating this literal "infrastructure CLI repository resolution failed" 3 times.
+> Define a constant instead of duplicating this literal "infrastructure CLI repository
+> resolution failed" 3 times.
 
 ```text
      1684              infra_repository = self._infra_repository(workspace)
@@ -2592,7 +2616,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/codegen/conform.py:1693` · **Effort**: 6min
 
-> Define a constant instead of duplicating this literal "infrastructure provider resolution failed" 3 times.
+> Define a constant instead of duplicating this literal "infrastructure provider
+> resolution failed" 3 times.
 
 ```text
      1689                  )
@@ -2612,7 +2637,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/codegen/conform.py:1698` · **Effort**: 6min
 
-> Define a constant instead of duplicating this literal "managed Gitlink resolution failed" 3 times.
+> Define a constant instead of duplicating this literal "managed Gitlink resolution
+> failed" 3 times.
 
 ```text
      1694                  )
@@ -2870,7 +2896,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 143 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/codemod/rules/refactor/apply_renames.py:136` · **Effort**: 11min
+**Local**: `src/flext_infra/codemod/rules/refactor/apply_renames.py:136` · **Effort**:
+11min
 
 > Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed.
 
@@ -3190,7 +3217,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 159 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/detectors/class_placement_detector.py:321` · **Effort**: 9min
+**Local**: `src/flext_infra/detectors/class_placement_detector.py:321` · **Effort**:
+9min
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
@@ -3210,7 +3238,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 160 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/detectors/compatibility_alias_detector.py:42` · **Effort**: 26min
+**Local**: `src/flext_infra/detectors/compatibility_alias_detector.py:42` · **Effort**:
+26min
 
 > Refactor this function to reduce its Cognitive Complexity from 36 to the 15 allowed.
 
@@ -3230,7 +3259,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 161 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/detectors/compatibility_alias_detector.py:141` · **Effort**: 14min
+**Local**: `src/flext_infra/detectors/compatibility_alias_detector.py:141` · **Effort**:
+14min
 
 > Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed.
 
@@ -3390,7 +3420,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 169 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/detectors/namespace_source_detector.py:21` · **Effort**: 35min
+**Local**: `src/flext_infra/detectors/namespace_source_detector.py:21` · **Effort**:
+35min
 
 > Refactor this function to reduce its Cognitive Complexity from 45 to the 15 allowed.
 
@@ -3472,7 +3503,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/fixers/rope_fixer.py:258` · **Effort**: 6min
 
-> Define a constant instead of duplicating this literal "no files in violation batch" 3 times.
+> Define a constant instead of duplicating this literal "no files in violation batch" 3
+> times.
 
 ```text
       254                  skipped=(
@@ -3492,7 +3524,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/fixers/rope_fixer.py:347` · **Effort**: 6min
 
-> Define a constant instead of duplicating this literal "rope resource not found" 3 times.
+> Define a constant instead of duplicating this literal "rope resource not found" 3
+> times.
 
 ```text
       343                      skipped.append(
@@ -3910,7 +3943,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 195 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/refactor/classvar_constant_autofix.py:122` · **Effort**: 9min
+**Local**: `src/flext_infra/refactor/classvar_constant_autofix.py:122` · **Effort**:
+9min
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
@@ -3930,7 +3964,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 196 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/refactor/classvar_constant_autofix.py:292` · **Effort**: 14min
+**Local**: `src/flext_infra/refactor/classvar_constant_autofix.py:292` · **Effort**:
+14min
 
 > Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed.
 
@@ -3950,7 +3985,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 197 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/refactor/classvar_constant_autofix.py:567` · **Effort**: 7min
+**Local**: `src/flext_infra/refactor/classvar_constant_autofix.py:567` · **Effort**:
+7min
 
 > Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
 
@@ -3970,7 +4006,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 198 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/refactor/classvar_constant_autofix.py:653` · **Effort**: 13min
+**Local**: `src/flext_infra/refactor/classvar_constant_autofix.py:653` · **Effort**:
+13min
 
 > Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed.
 
@@ -4090,7 +4127,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 204 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/release/_release_artifact_metadata.py:75` · **Effort**: 19min
+**Local**: `src/flext_infra/release/_release_artifact_metadata.py:75` · **Effort**:
+19min
 
 > Refactor this function to reduce its Cognitive Complexity from 29 to the 15 allowed.
 
@@ -4212,7 +4250,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/services/cli_routes.py:25` · **Effort**: 8min
 
-> Define a constant instead of duplicating this literal "flext_infra.services.cli_routes_codegen" 4 times.
+> Define a constant instead of duplicating this literal
+> "flext_infra.services.cli_routes_codegen" 4 times.
 
 ```text
        21  # dispatched per invocation. Only the owning module for the RESOLVED group is
@@ -4232,7 +4271,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/services/cli_routes.py:45` · **Effort**: 8min
 
-> Define a constant instead of duplicating this literal "flext_infra.services.cli_routes_validate" 4 times.
+> Define a constant instead of duplicating this literal
+> "flext_infra.services.cli_routes_validate" 4 times.
 
 ```text
        41          "CodegenRoutes",
@@ -4252,7 +4292,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/services/cli_routes.py:65` · **Effort**: 6min
 
-> Define a constant instead of duplicating this literal "flext_infra.services.cli_routes_workspace" 3 times.
+> Define a constant instead of duplicating this literal
+> "flext_infra.services.cli_routes_workspace" 3 times.
 
 ```text
        61          "ValidationRoutes",
@@ -4390,7 +4431,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 219 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/transformers/project_alias_migrator.py:70` · **Effort**: 10min
+**Local**: `src/flext_infra/transformers/project_alias_migrator.py:70` · **Effort**:
+10min
 
 > Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed.
 
@@ -4430,7 +4472,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 221 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/transformers/signature_propagator.py:112` · **Effort**: 16min
+**Local**: `src/flext_infra/transformers/signature_propagator.py:112` · **Effort**:
+16min
 
 > Refactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed.
 
@@ -4450,7 +4493,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 222 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
 
-**Local**: `src/flext_infra/transformers/signature_propagator.py:163` · **Effort**: 12min
+**Local**: `src/flext_infra/transformers/signature_propagator.py:163` · **Effort**:
+12min
 
 > Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed.
 
@@ -4692,7 +4736,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/workspace/detector.py:257` · **Effort**: 6min
 
-> Define a constant instead of duplicating this literal "unable to read Git submodule topology" 3 times.
+> Define a constant instead of duplicating this literal "unable to read Git submodule
+> topology" 3 times.
 
 ```text
       253          """Match governed members and external dependencies to live Git topology."""
@@ -4812,7 +4857,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/worktree.py:193` · **Effort**: 6min
 
-> Define a constant instead of duplicating this literal "invalid worktree lane path" 3 times.
+> Define a constant instead of duplicating this literal "invalid worktree lane path" 3
+> times.
 
 ```text
       189          if not self.apply_changes:
@@ -4852,7 +4898,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `tests/fixtures/ci/docker/alpine.Dockerfile:33` · **Effort**: 20min
 
-> Copying recursively might inadvertently add sensitive data to the container. Make sure it is safe here.
+> Copying recursively might inadvertently add sensitive data to the container. Make sure
+> it is safe here.
 
 ```Dockerfile
        29  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
@@ -4872,7 +4919,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `tests/fixtures/ci/docker/arch.Dockerfile:35` · **Effort**: 20min
 
-> Copying recursively might inadvertently add sensitive data to the container. Make sure it is safe here.
+> Copying recursively might inadvertently add sensitive data to the container. Make sure
+> it is safe here.
 
 ```Dockerfile
        31  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
@@ -4892,7 +4940,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `tests/fixtures/ci/docker/debian.Dockerfile:36` · **Effort**: 20min
 
-> Copying recursively might inadvertently add sensitive data to the container. Make sure it is safe here.
+> Copying recursively might inadvertently add sensitive data to the container. Make sure
+> it is safe here.
 
 ```Dockerfile
        32  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
@@ -4912,7 +4961,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `tests/fixtures/ci/docker/fedora.Dockerfile:35` · **Effort**: 20min
 
-> Copying recursively might inadvertently add sensitive data to the container. Make sure it is safe here.
+> Copying recursively might inadvertently add sensitive data to the container. Make sure
+> it is safe here.
 
 ```Dockerfile
        31  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
@@ -4932,7 +4982,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `tests/fixtures/ci/docker/ubuntu.Dockerfile:36` · **Effort**: 20min
 
-> Copying recursively might inadvertently add sensitive data to the container. Make sure it is safe here.
+> Copying recursively might inadvertently add sensitive data to the container. Make sure
+> it is safe here.
 
 ```Dockerfile
        32  ENV PATH="/usr/local/go/bin:/root/.local/bin:/root/.cargo/bin:/root/.local/share/mise/shims:${PATH}"
@@ -5012,7 +5063,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/census.py:31` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
        27              r"^from\s+flext_core\.\S+\s+import\s+", re.MULTILINE
@@ -5052,7 +5104,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/census.py:35` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
        31              r"^from\s+typing\s+import\s+.*\bMapping\b", re.MULTILINE
@@ -5072,7 +5125,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/check.py:68` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
        64      })
@@ -5092,7 +5146,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/check.py:71` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
        67      RUFF_FORMAT_FILE_RE: Final[t.RegexPattern] = re.compile(
@@ -5132,7 +5187,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/check.py:164` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
       160      BOUNDARY_TOML_RE: Final[t.RegexPattern] = re.compile(
@@ -5152,7 +5208,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/codegen.py:58` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
        54          ("_settings.py", "Settings", "FlextSettings", "Runtime settings"),
@@ -5172,7 +5229,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/docs.py:38` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ````text
        34          "PLC0415",
@@ -5192,7 +5250,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/docs.py:43` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ````text
        39      )
@@ -5212,7 +5271,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/docs.py:62` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
        58      MARKDOWN_LINK_RE: Final[t.RegexPattern] = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
@@ -5232,7 +5292,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/docs.py:65` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
        61      """Match markdown links capturing only the URL (group 1)."""
@@ -5252,7 +5313,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/source_code.py:122` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
       118          r"^\s*from\s+__future__\s+import\s"
@@ -5292,7 +5354,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/source_code.py:174` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
       170          r"<!-- TOC START -->
@@ -5713,7 +5776,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/source_code.py:179` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
       175          re.MULTILINE,
@@ -5733,7 +5797,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/source_code.py:186` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
       182      "Regex: multi-line ``__all__ = [...]`` declaration (DOTALL body)."
@@ -5753,7 +5818,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/source_code.py:190` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
       186          r"^(\w+)\s*:\s*TypeAlias\s*=\s*(.+)$", re.MULTILINE
@@ -5773,7 +5839,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/source_code.py:194` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
       190          r"^from\s+\S+\s+import\s+.*\bt\b", re.MULTILINE
@@ -5793,7 +5860,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/source_code.py:468` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
       464          r"^([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*$"
@@ -5813,7 +5881,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/source_code.py:472` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
       468          r"^([A-Za-z_]\w*)\s*(?::\s*[^=]+)?=\s*(.+)$"
@@ -5853,7 +5922,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/source_code.py:478` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
       474      "Regex: ``cast(Type, value)`` call — captures the value to retain."
@@ -5873,7 +5943,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/source_code.py:482` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
       478          r"^from\s+([\w.]+)\s+import\s+(.+?)$", re.MULTILINE
@@ -5953,7 +6024,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/source_code.py:623` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
       619      "Minimum members for a union type to be normalizable."
@@ -5993,7 +6065,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/validate.py:83` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
        79      SKILL_OWNER_MARKER_RE: Final[t.RegexPattern] = re.compile(
@@ -6013,7 +6086,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Local**: `src/flext_infra/_constants/validate.py:150` · **Effort**: 20min
 
-> Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.
+> Simplify this regular expression to reduce its runtime, as it has super-linear
+> performance due to backtracking.
 
 ```text
       146          r'(?m)^\[submodule "[^"]+"\]\s*$'
@@ -6191,7 +6265,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 289 · 🟡 MAJOR · CODE_SMELL · `python:S3358`
 
-**Local**: `src/flext_infra/_utilities/rope_analysis_workspace.py:136` · **Effort**: 5min
+**Local**: `src/flext_infra/_utilities/rope_analysis_workspace.py:136` · **Effort**:
+5min
 
 > Extract this nested conditional expression into an independent statement.
 
@@ -6211,7 +6286,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 290 · 🟡 MAJOR · CODE_SMELL · `python:S3358`
 
-**Local**: `src/flext_infra/_utilities/rope_analysis_workspace.py:138` · **Effort**: 5min
+**Local**: `src/flext_infra/_utilities/rope_analysis_workspace.py:138` · **Effort**:
+5min
 
 > Extract this nested conditional expression into an independent statement.
 
@@ -6231,7 +6307,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 291 · 🟡 MAJOR · CODE_SMELL · `python:S3358`
 
-**Local**: `src/flext_infra/_utilities/rope_analysis_workspace.py:225` · **Effort**: 5min
+**Local**: `src/flext_infra/_utilities/rope_analysis_workspace.py:225` · **Effort**:
+5min
 
 > Extract this nested conditional expression into an independent statement.
 
@@ -6251,7 +6328,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 292 · 🟡 MAJOR · CODE_SMELL · `python:S3358`
 
-**Local**: `src/flext_infra/codegen/_codegen_generation_lazy_entries.py:101` · **Effort**: 5min
+**Local**: `src/flext_infra/codegen/_codegen_generation_lazy_entries.py:101` ·
+**Effort**: 5min
 
 > Extract this nested conditional expression into an independent statement.
 
@@ -6271,7 +6349,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ### 293 · 🟡 MAJOR · CODE_SMELL · `python:S8495`
 
-**Local**: `src/flext_infra/codegen/_codegen_generation_type_checking.py:143` · **Effort**: 10min
+**Local**: `src/flext_infra/codegen/_codegen_generation_type_checking.py:143` ·
+**Effort**: 10min
 
 > Refactor this function to always return tuples of the same length.
 
@@ -6295,8 +6374,8 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 > Either remove or fill this block of code.
 
-The cited executable probe was deleted during the static-projection cutover;
-there is no active source block to triage.
+The cited executable probe was deleted during the static-projection cutover; there is no
+active source block to triage.
 
 **Decisão**:
 
@@ -6664,7 +6743,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/alpine.Dockerfile:20` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        16  # === SECTION: managed tool bootstrap (managed) ===
@@ -6684,7 +6764,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/alpine.Dockerfile:23` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        19  # uv is supplied by the managed environment without a project patch pin.
@@ -6704,7 +6785,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/alpine.Dockerfile:25` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        21  # uv is intentionally supplied by the caller environment; install it explicitly
@@ -6724,7 +6806,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/alpine.Dockerfile:27` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        23  RUN curl -fsSL https://astral.sh/uv/install.sh | sh
@@ -6744,7 +6827,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/arch.Dockerfile:22` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        18  # === SECTION: managed tool bootstrap (managed) ===
@@ -6764,7 +6848,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/arch.Dockerfile:25` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        21  # uv is supplied by the managed environment without a project patch pin.
@@ -6784,7 +6869,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/arch.Dockerfile:27` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        23  # uv is intentionally supplied by the caller environment; install it explicitly
@@ -6804,7 +6890,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/arch.Dockerfile:29` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        25  RUN curl -fsSL https://astral.sh/uv/install.sh | sh
@@ -6824,7 +6911,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/debian.Dockerfile:23` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        19  # === SECTION: managed tool bootstrap (managed) ===
@@ -6844,7 +6932,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/debian.Dockerfile:26` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        22  # uv is supplied by the managed environment without a project patch pin.
@@ -6864,7 +6953,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/debian.Dockerfile:28` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        24  # uv is intentionally supplied by the caller environment; install it explicitly
@@ -6884,7 +6974,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/debian.Dockerfile:30` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        26  RUN curl -fsSL https://astral.sh/uv/install.sh | sh
@@ -6904,7 +6995,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/fedora.Dockerfile:22` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        18  # === SECTION: managed tool bootstrap (managed) ===
@@ -6924,7 +7016,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/fedora.Dockerfile:25` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        21  # uv is supplied by the managed environment without a project patch pin.
@@ -6944,7 +7037,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/fedora.Dockerfile:27` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        23  # uv is intentionally supplied by the caller environment; install it explicitly
@@ -6964,7 +7058,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/fedora.Dockerfile:29` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        25  RUN curl -fsSL https://astral.sh/uv/install.sh | sh
@@ -6984,7 +7079,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/ubuntu.Dockerfile:23` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        19  # === SECTION: managed tool bootstrap (managed) ===
@@ -7004,7 +7100,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/ubuntu.Dockerfile:26` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        22  # uv is supplied by the managed environment without a project patch pin.
@@ -7024,7 +7121,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/ubuntu.Dockerfile:28` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        24  # uv is intentionally supplied by the caller environment; install it explicitly
@@ -7044,7 +7142,8 @@ there is no active source block to triage.
 
 **Local**: `tests/fixtures/ci/docker/ubuntu.Dockerfile:30` · **Effort**: 30min
 
-> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure it is safe here.
+> Not enforcing HTTPS here might allow for redirections to insecure websites. Make sure
+> it is safe here.
 
 ```Dockerfile
        26  RUN curl -fsSL https://astral.sh/uv/install.sh | sh
@@ -7064,7 +7163,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/codegen/test_root_artifact_ownership.py:86` · **Effort**: 5min
 
-> Refactor this exception test to have only one invocation possibly throwing an exception.
+> Refactor this exception test to have only one invocation possibly throwing an
+> exception.
 
 ```text
        82                  )
@@ -7084,7 +7184,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/codegen/test_root_artifact_ownership.py:106` · **Effort**: 5min
 
-> Refactor this exception test to have only one invocation possibly throwing an exception.
+> Refactor this exception test to have only one invocation possibly throwing an
+> exception.
 
 ```text
       102                  )
@@ -7104,7 +7205,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/deps/test_pytest_timeout_config.py:62` · **Effort**: 5min
 
-> Refactor this exception test to have only one invocation possibly throwing an exception.
+> Refactor this exception test to have only one invocation possibly throwing an
+> exception.
 
 ```text
        58          policy = config.Infra.tooling.tools.pytest
@@ -7124,7 +7226,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/deps/test_pytest_timeout_config.py:73` · **Effort**: 5min
 
-> Refactor this exception test to have only one invocation possibly throwing an exception.
+> Refactor this exception test to have only one invocation possibly throwing an
+> exception.
 
 ```text
        69          policy = config.Infra.tooling.tools.pytest
@@ -7144,7 +7247,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/deps/test_pytest_timeout_config.py:86` · **Effort**: 5min
 
-> Refactor this exception test to have only one invocation possibly throwing an exception.
+> Refactor this exception test to have only one invocation possibly throwing an
+> exception.
 
 ```text
        82          payload["run-timeout-seconds"] = (
@@ -7164,7 +7268,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/deps/test_pytest_timeout_config.py:99` · **Effort**: 5min
 
-> Refactor this exception test to have only one invocation possibly throwing an exception.
+> Refactor this exception test to have only one invocation possibly throwing an
+> exception.
 
 ```text
        95          payload["process-timeout-seconds"] = (
@@ -7184,7 +7289,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/deps/test_pytest_timeout_config.py:110` · **Effort**: 5min
 
-> Refactor this exception test to have only one invocation possibly throwing an exception.
+> Refactor this exception test to have only one invocation possibly throwing an
+> exception.
 
 ```text
       106          policy = config.Infra.tooling.tools.pytest
@@ -7204,7 +7310,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/deps/test_pytest_timeout_config.py:138` · **Effort**: 5min
 
-> Refactor this exception test to have only one invocation possibly throwing an exception.
+> Refactor this exception test to have only one invocation possibly throwing an
+> exception.
 
 ```text
       134          policy = config.Infra.tooling.tools.pytest
@@ -7224,7 +7331,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/io/test_infra_terminal_detection.py:51` · **Effort**: 5min
 
-> Use the "monkeypatch" fixture for temporary modifications instead of manually modifying global state.
+> Use the "monkeypatch" fixture for temporary modifications instead of manually
+> modifying global state.
 
 ```text
        47          tm.that(_Stream(tty=True).isatty(), eq=True)
@@ -7244,7 +7352,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/refactor/test_declarative_enforcement.py:151` · **Effort**: 5min
 
-> Refactor this exception test to have only one invocation possibly throwing an exception.
+> Refactor this exception test to have only one invocation possibly throwing an
+> exception.
 
 ```text
       147
@@ -7264,7 +7373,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/refactor/test_declarative_enforcement.py:174` · **Effort**: 5min
 
-> Refactor this exception test to have only one invocation possibly throwing an exception.
+> Refactor this exception test to have only one invocation possibly throwing an
+> exception.
 
 ```text
       170              msg = "class placement exploded"
@@ -7284,7 +7394,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/refactor/test_declarative_enforcement.py:220` · **Effort**: 5min
 
-> Refactor this exception test to have only one invocation possibly throwing an exception.
+> Refactor this exception test to have only one invocation possibly throwing an
+> exception.
 
 ```text
       216          )
@@ -7304,7 +7415,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/release/orchestrator_helpers_tests.py:271` · **Effort**: 5min
 
-> Refactor this exception test to have only one invocation possibly throwing an exception.
+> Refactor this exception test to have only one invocation possibly throwing an
+> exception.
 
 ```text
       267                  artifacts=(),
@@ -7324,7 +7436,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/test_infra_rope_service.py:477` · **Effort**: 5min
 
-> Refactor this exception test to have only one invocation possibly throwing an exception.
+> Refactor this exception test to have only one invocation possibly throwing an
+> exception.
 
 ```text
       473                  def import_dependents(self, import_target: str) -> str:
@@ -7344,7 +7457,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/validate/pytest_selector_tests.py:48` · **Effort**: 5min
 
-> Refactor this exception test to have only one invocation possibly throwing an exception.
+> Refactor this exception test to have only one invocation possibly throwing an
+> exception.
 
 ```text
        44              "tests/test_sample.py\n--maxfail=0",
@@ -7364,7 +7478,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/validate/pytest_selector_tests.py:62` · **Effort**: 5min
 
-> Refactor this exception test to have only one invocation possibly throwing an exception.
+> Refactor this exception test to have only one invocation possibly throwing an
+> exception.
 
 ```text
        58                  FlextInfraPytestSelectorValidator(
@@ -7384,7 +7499,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/validate/pytest_selector_tests.py:66` · **Effort**: 5min
 
-> Refactor this exception test to have only one invocation possibly throwing an exception.
+> Refactor this exception test to have only one invocation possibly throwing an
+> exception.
 
 ```text
        62          with pytest.raises(c.ValidationError, match="what must be"):
@@ -7404,7 +7520,8 @@ there is no active source block to triage.
 
 **Local**: `tests/unit/validate/pytest_selector_tests.py:68` · **Effort**: 5min
 
-> Refactor this exception test to have only one invocation possibly throwing an exception.
+> Refactor this exception test to have only one invocation possibly throwing an
+> exception.
 
 ```text
        64                  repository_root=Path.cwd(), what="$(shell touch marker)"
@@ -7582,9 +7699,11 @@ there is no active source block to triage.
 
 ### 359 · ⚪ MINOR · CODE_SMELL · `python:S7500`
 
-**Local**: `src/flext_infra/_models/refactor_namespace_enforcer.py:467` · **Effort**: 5min
+**Local**: `src/flext_infra/_models/refactor_namespace_enforcer.py:467` · **Effort**:
+5min
 
-> Replace this comprehension with passing the iterable to the collection constructor call
+> Replace this comprehension with passing the iterable to the collection constructor
+> call
 
 ```text
       463                  self.inline_import_violations,
@@ -7604,7 +7723,8 @@ there is no active source block to triage.
 
 **Local**: `src/flext_infra/_utilities/_git/repo.py:38` · **Effort**: 1min
 
-> Remove this redundant Exception class; it derives from another which is already caught.
+> Remove this redundant Exception class; it derives from another which is already
+> caught.
 
 ```text
        34      if resolved is None:
@@ -7624,7 +7744,8 @@ there is no active source block to triage.
 
 **Local**: `src/flext_infra/_utilities/_rope_core_resources.py:124` · **Effort**: 10min
 
-> Move this assignment out of the argument list; ":=" operator is confusing in this context.
+> Move this assignment out of the argument list; ":=" operator is confusing in this
+> context.
 
 ```text
       120                  (
@@ -7824,7 +7945,8 @@ there is no active source block to triage.
 
 **Local**: `src/flext_infra/_utilities/rope_analysis.py:1658` · **Effort**: 10min
 
-> Move this assignment out of the argument list; ":=" operator is confusing in this context.
+> Move this assignment out of the argument list; ":=" operator is confusing in this
+> context.
 
 ```text
      1654              line=line if isinstance(line, int) and line > 0 else 1,
@@ -7862,7 +7984,8 @@ there is no active source block to triage.
 
 ### 373 · ⚪ MINOR · CODE_SMELL · `python:S7508`
 
-**Local**: `src/flext_infra/codegen/_codegen_generation_lazy_entries.py:90` · **Effort**: 5min
+**Local**: `src/flext_infra/codegen/_codegen_generation_lazy_entries.py:90` ·
+**Effort**: 5min
 
 > Remove this redundant call.
 
@@ -7884,7 +8007,8 @@ there is no active source block to triage.
 
 **Local**: `src/flext_infra/codegen/constants_quality_gate.py:265` · **Effort**: 10min
 
-> Move this assignment out of the argument list; ":=" operator is confusing in this context.
+> Move this assignment out of the argument list; ":=" operator is confusing in this
+> context.
 
 ```text
       261          )
@@ -7984,7 +8108,8 @@ there is no active source block to triage.
 
 **Local**: `src/flext_infra/deps/detection_analysis.py:94` · **Effort**: 5min
 
-> Replace this comprehension with passing the iterable to the collection constructor call
+> Replace this comprehension with passing the iterable to the collection constructor
+> call
 
 ```text
        90          poetry = self._mapping_from_value(tool.get(c.Infra.POETRY))
@@ -8004,7 +8129,8 @@ there is no active source block to triage.
 
 **Local**: `src/flext_infra/deps/detection_analysis.py:109` · **Effort**: 5min
 
-> Replace this comprehension with passing the iterable to the collection constructor call
+> Replace this comprehension with passing the iterable to the collection constructor
+> call
 
 ```text
       105                      .split("==", maxsplit=1)[0]
