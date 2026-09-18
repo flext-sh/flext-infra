@@ -33,7 +33,7 @@ jobs:
           git archive --format=tar.gz HEAD > "$evidence/source.tar.gz"
           sha256sum "$evidence/source.tar.gz" > "$evidence/source.sha256"
       - name: Upload source evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: flext-source-${{ github.sha }}
           path: ${{ runner.temp }}/flext-source/
@@ -86,7 +86,7 @@ jobs:
           cp .github/workflows/ci.yml "$evidence/ci.yml"
           git hash-object .github/workflows/ci.yml > "$evidence/ci-blob.txt"
       - name: Upload exact generated evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: flext-generated-${{ matrix.label }}-${{ github.sha }}
           path: ${{ runner.temp }}/flext-stabilization/
@@ -105,7 +105,7 @@ jobs:
           fi
       - name: Upload structured quality evidence
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: flext-quality-${{ matrix.label }}-${{ github.sha }}
           path: |

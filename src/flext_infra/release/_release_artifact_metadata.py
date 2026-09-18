@@ -12,8 +12,9 @@ from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
-from flext_core import p, r
+from flext_core import r
 from flext_infra import c, t, u
+from flext_infra.protocols import p
 
 from ._release_artifact_archive import FlextInfraReleaseArtifactArchiveMixin
 

@@ -5,9 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_core import p, r
+from flext_core import r
 from flext_infra import c, config, m, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
+from flext_infra.protocols import p
 
 from ._modernizer_document import FlextInfraPyprojectModernizerDocumentMixin
 from ._modernizer_payload import FlextInfraPyprojectModernizerPayloadMixin

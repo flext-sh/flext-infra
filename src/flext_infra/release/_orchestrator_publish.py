@@ -6,8 +6,9 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import p, r
+from flext_core import r
 from flext_infra import c, config, m, u
+from flext_infra.protocols import p
 
 if TYPE_CHECKING:
     from flext_infra import p, t
