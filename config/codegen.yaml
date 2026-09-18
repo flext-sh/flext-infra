@@ -64,7 +64,11 @@ Infra:
       mise_locked: false
       # Projection: .mise.toml [tools] keys. Override the selector here.
       qlty_selector: github:qltysh/qlty
-      qlty_version: latest
+      # Pinned to the last provenance-attested release: 0.644.0 shipped
+      # without github attestations and mise's supply-chain guard rejects
+      # it, breaking `make setup` fleet-wide (bead in flext tracker,
+      # reported by algar-oud-mig 2026-09-18).
+      qlty_version: 0.642.0
       node_version: latest
       jscpd_selector: github:kucherenko/jscpd
       jscpd_version: latest
@@ -249,26 +253,12 @@ Infra:
         organization: flext-sh
         base_url: https://github.com/flext-sh
         branch: 0.12.0-dev
-    # External consumer organization: standalone repositories governed by
-    # conform through their own config/workspace.yaml. A linha de integracao
-    # e 'develop', fixada pela ADR-134 do operador, que proibe 'dev' e
-    # 'master' como sinonimos. Verificado na API do GitHub em 2026-08-03:
-    # cosmos-main, cosmos-charts e cosmos-gitops tem default_branch=develop
-    # e nenhum deles publica 'dev' (GET /branches/dev responde 404).
-      - name: datacosmos-br
-        organization: datacosmos-br
-        base_url: https://github.com/datacosmos-br
-        branch: develop
-    # Personal-account consumer organization: standalone repositories whose
-    # canonical remote is the operator's own account. `invest` and `mcb`
-    # already declare `provider: marlonsc` in their config/workspace.yaml, so
-    # conform must be able to resolve it. Their integration line is `develop`;
-    # a repository that integrates elsewhere overrides it in its own
-    # `integration` block, as `invest` does with `dev`.
-      - name: marlonsc
-        organization: marlonsc
-        base_url: https://github.com/marlonsc
-        branch: develop
+    # Additional consumer organizations are operator-private registry entries:
+    # declare them in config/codegen-overrides.local.yaml, a gitignored
+    # per-clone file merged after the tracked configs (scalars win, dict keys
+    # add, lists concatenate). They are never committed to this public
+    # repository; every governed standalone repository keeps referencing its
+    # provider by name from its own config/workspace.yaml.
     branch_policy:
       # Pushes to these branches trigger the generated CI workflow. The renderer
       # adds the repository's own integration branch to this list; it never
@@ -459,22 +449,9 @@ Infra:
             repository: flext-infra
             branch: 0.12.0-dev
             local_checkout: ~/flext/flext-infra
-          - organization: datacosmos-br
-            repository: ai-hub
-            branch: dev
-            local_checkout: ~/.ai-hub
-          - organization: datacosmos-br
-            repository: cosmos-docgen
-            branch: develop
-            local_checkout: ~/cosmos-docgen
-          - organization: datacosmos-br
-            repository: cosmos-main
-            branch: develop
-            local_checkout: ~/cosmos-main
-          - organization: marlonsc
-            repository: invest
-            branch: main
-            local_checkout: ~/invest
+      # Private cross-repo doc-link entries (operator checkouts outside this
+      # public registry) belong in config/codegen-overrides.local.yaml; the
+      # lookup appends local entries and resolves first match.
       verbs:
         - name: help
           description: Show the complete selector-free public interface.
@@ -857,7 +834,6 @@ Infra:
         - RULE_MODIFICATION.md
         - TESTING_WARNING_SYSTEM.md
         - FLEXT_0_12_BEADS_LANE_REORGANIZATION_PLAN.md
-        - cosmos-docgen_FLEXT_BEADS_LANE_REORGANIZATION_PLAN.md
       # Sample data files moved under <examples_target>/.
       move_example_files:
         - directory.ldif
@@ -1063,7 +1039,9 @@ Infra:
       # Written by the conform pipeline from the project SSOT
       # (_sync_namespace_scope), so a conflict inside it is the owner's
       # own output and is recoverable. tool.flext.docs is deliberately
-      # absent: nothing writes it, it stays CUSTOM.
+      # absent: the template seeds it with package_name at project creation
+      # only, and afterwards it stays CUSTOM — operator keys such as
+      # site_title are owned by the live repository and survive every gen.
           - tool.flext.namespace
         preserve_project_keys:
           - name
@@ -1483,11 +1461,12 @@ Infra:
             - ".claude/settings.local.json.bak"
       # Provider surfaces are REAL files, so the ArgoCD symlink hazard that
       # once justified blocking `.agents/` in non-root checkouts no longer
-      # applies: ai-hub materializes them via generate-workspace-config and
-      # never as mode-120000 symlinks (measured: flext-cli, a standalone
-      # checkout, carries 74 regular files and 0 symlinks under .agents/).
-      # Blocking them made governed projections untrackable in exactly the
-      # repositories that must carry their own authorization surface.
+      # applies: the catalog owner materializes them via
+      # generate-workspace-config and never as mode-120000 symlinks (measured:
+      # flext-cli, a standalone checkout, carries 74 regular files and 0
+      # symlinks under .agents/). Blocking them made governed projections
+      # untrackable in exactly the repositories that must carry their own
+      # authorization surface.
         - name: "WHITELIST: Governed agent projections (every repository role)"
           profiles: [standalone]
           patterns:
@@ -1510,20 +1489,27 @@ Infra:
       # dotted skill names; governed skills are kebab-case directories.
       # Why: a provider tree carries two different kinds of thing and only
       # one of them belongs to the consuming repository. Rules, skills,
-      # commands and agent definitions are projections of agents/ai-hub/
-      # flext-infra -- the generated bytes are authoritative, customized only
-      # through a config override at their owner, and tracked so a clone
-      # reproduces them exactly (including the governed aihub-hooks scripts
-      # and the declared hooks.json surfaces, proven trackable by the
-      # artifact SSOT contract). Per-operator configuration is not: it
-      # belongs to its own project and reaches a checkout as runtime state,
-      # never recorded in a workspace. No profiles key: this holds for every
-      # role.
+      # Rules, skills, commands and agent definitions are catalog projections
+      # -- the generated bytes are authoritative, customized only through a
+      # config override at their owner, and tracked so a clone reproduces them
+      # exactly. Per-operator configuration is not: hook wiring, governance
+      # manifests and agent settings reference machine-absolute paths of the
+      # operator who last ran the catalog generator, so they reach a checkout
+      # as runtime state and are never recorded in any workspace. Every
+      # machine-written settings/hooks surface and its digest sidecar is
+      # blocked by name. No profiles key: this holds for every role.
         - name: "Agent hooks and operator config (runtime state, never source)"
           patterns:
             - ".github/hooks/"
             - "*/.hooks.json.agents-governance.json"
+            - ".claude/settings.json"
+            - ".claude/*.agents-governance.json"
+            - ".gemini/settings.json"
+            - ".gemini/*.agents-governance.json"
             - ".claude/settings.local.json"
+        - name: "Operator-private local config overrides"
+          patterns:
+            - "/config/codegen-overrides.local.yaml"
         - name: "Gas City skill projections (runtime state, never source)"
           patterns:
             - ".agents/skills/.gc-skill-ownership.json"
