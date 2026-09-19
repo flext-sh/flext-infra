@@ -95,14 +95,35 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         return r[m.Infra.CodegenPhaseAnalysis].ok(analysis)
 
     def _plan_in_workspace(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Open Rope once and propagate every planner or filesystem failure."""
-        try:
-            with FlextInfraRopeWorkspace.open_workspace(
-                self.repository_root, rope_repository_root=self.repository_root
-            ) as rope:
-                return self._plan_open_workspace(rope)
-        except c.EXC_OS_VALUE as exc:
-            return r[m.Infra.CodegenPhaseAnalysis].fail_op("lazy-init planning", exc)
+        """Open Rope once and propagate every planner or filesystem failure.
+
+        Retries the entire planning cycle when snapshot verification detects
+        concurrent input changes (RC-A: deterministic lazy-init under concurrency).
+        """
+        max_retries = self.lazy_init.planning_max_retries if hasattr(self, "lazy_init") else 1
+        last_failure: p.Result[m.Infra.CodegenPhaseAnalysis] | None = None
+        for attempt in range(max_retries + 1):
+            try:
+                with FlextInfraRopeWorkspace.open_workspace(
+                    self.repository_root, rope_repository_root=self.repository_root
+                ) as rope:
+                    result = self._plan_open_workspace(rope)
+                    if result.success:
+                        return result
+                    # Retry only on snapshot verification failure (concurrent change)
+                    if "lazy-init source changed during planning" in str(result.failure):
+                        if attempt < max_retries:
+                            u.Cli.info(
+                                f"lazy-init: concurrent change detected (attempt {attempt + 1}/{max_retries + 1}), retrying..."
+                            )
+                            last_failure = result
+                            continue
+                    return result
+            except c.EXC_OS_VALUE as exc:
+                return r[m.Infra.CodegenPhaseAnalysis].fail_op("lazy-init planning", exc)
+        return last_failure or r[m.Infra.CodegenPhaseAnalysis].fail(
+            "lazy-init planning failed after retries"
+        )
 
     def _plan_open_workspace(
         self, rope: FlextInfraRopeWorkspace
@@ -174,7 +195,9 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 f"{details}"
             )
         planner = FlextInfraCodegenLazyInitPlanner(
-            rope_workspace=rope, lazy_init=config.Infra.tooling.lazy_init
+            rope_workspace=rope,
+            lazy_init=config.Infra.tooling.lazy_init,
+            repository_root=self.repository_root,
         )
         u.Cli.info(f"lazy-init: planning {len(package_dirs)} package dirs")
         package_plans = self._plan_all_inits(

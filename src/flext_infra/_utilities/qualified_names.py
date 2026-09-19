@@ -49,7 +49,9 @@ class FlextInfraUtilitiesQualifiedNames:
             if not isinstance(node, (cst.Name, cst.Attribute)):
                 return
             location = self.get_metadata(
-                PositionProvider, node, CodeRange(CodePosition(0, 0), CodePosition(0, 0))
+                PositionProvider,
+                node,
+                CodeRange(CodePosition(0, 0), CodePosition(0, 0)),
             )
             position = location.start
             # Python AST columns count UTF-8 bytes; LibCST columns count characters.

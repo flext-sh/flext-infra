@@ -687,7 +687,8 @@ Infra:
           reportMissingTypeStubs: "none"
       app:
         pyright: {}
-    lazy-init: {}
+    lazy-init:
+      exports_manifest_path: "config/exports.yaml"
 
 # Project-local managed-artifact additions for flext-infra itself.
 #

@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -56,6 +56,8 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         dir_exports: t.MappingKV[str, t.LazyAliasMap],
     ) -> t.StrSequence:
         """Merge direct child packages into the parent lazy map."""
+        import sys
+        print(f"DEBUG _merge_children called for {pkg_dir}", file=sys.stderr, flush=True)
         package_entry = self._package_entry(pkg_dir)
         if package_entry is None:
             return ()
@@ -65,20 +67,13 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         publish_child_exports = (
             parent_context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS
         )
+        u.Cli.info(f"lazy-init: _merge_children for {parent_pkg}: publish_child_exports={publish_child_exports}, child_dirs={len(package_entry.descendant_child_dirs)}")
+        u.Cli.info(f"lazy-init:   dir_exports keys: {list(dir_exports.keys())}")
         direct: list[str] = []
         for child_dir in package_entry.descendant_child_dirs:
-            # flext-pulj (codex): do not merge retired root registries into the
-            # inline map that replaces them.
             if child_dir.name in c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES:
                 continue
             resolved_child_dir = child_dir.resolve()
-            # flext-mh7g4: children are planned before their parent (depth
-            # descending), so the parent inventory follows the child's plan in
-            # the same pass — a planned WRITE counts as a package even before
-            # its initializer exists on disk, and a planned REMOVE/SKIP (for
-            # example a stdlib-shadowing name) never does. Without a plan the
-            # on-disk initializer decides. This keeps check and apply at a
-            # fixed point after one run.
             child_plan = self._source_plan_cache.get(str(resolved_child_dir))
             planned_action = child_plan.action if child_plan is not None else None
             if planned_action is c.Infra.LazyInitAction.REMOVE:
@@ -90,6 +85,7 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             child_entry = self._package_entry(child_dir)
             is_fixture_child = self._is_fixture_package(child_dir)
             child_exports = dir_exports.get(str(resolved_child_dir), {})
+            u.Cli.info(f"lazy-init:   child {child_dir.name}: key={str(resolved_child_dir)}, planned_action={planned_action}, child_exports={len(child_exports)}, is_fixture={is_fixture_child}")
             child_pkg_name = (
                 child_entry.package_name
                 if child_entry is not None and child_entry.package_name
@@ -106,8 +102,6 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                 continue
             if resolved_child_dir.parent != resolved_pkg_dir:
                 continue
-            # flext-pulj (codex): private fixture modules are pytest-owned plugin
-            # boundaries and never bubble into their production package root.
             if is_fixture_child:
                 continue
             direct.append(child_pkg_name)
@@ -117,7 +111,9 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                 (child_pkg_name, ""),
             )
             if not publish_child_exports:
+                u.Cli.info(f"lazy-init:   skipping child exports merge (publish_child_exports=False)")
                 continue
+            merged_count = 0
             for name, (module_name, attr) in child_exports.items():
                 source_module_name = module_name.rsplit(".", maxsplit=1)[-1]
                 test_only_source_module = (
@@ -132,6 +128,8 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                     and self._publish(name, allow_main=True)
                 ):
                     self._add(lazy_map, name, (module_name, attr))
+                    merged_count += 1
+            u.Cli.info(f"lazy-init:   merged {merged_count} exports from child {child_dir.name}")
         return tuple(sorted(direct))
 
     def _shadows_stdlib_module(self, pkg_dir: Path) -> bool:

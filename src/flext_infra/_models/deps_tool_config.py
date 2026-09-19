@@ -575,6 +575,23 @@ class FlextInfraModelsDepsToolSettings(
     class LazyInitConfig(m.ArbitraryTypesModel):
         """Declarative policy for ``__init__.py`` lazy export generation."""
 
+        planning_max_retries: Annotated[
+            int,
+            m.Field(
+                default=1,
+                ge=0,
+                le=3,
+                description="Max retries for planning when concurrent input changes are detected (0 = no retry).",
+            ),
+        ] = 1
+        exports_manifest_path: Annotated[
+            str | None,
+            m.Field(
+                default=None,
+                description="Path to declarative public exports manifest (e.g., config/exports.yaml). When set, scan becomes a validator against this manifest.",
+            ),
+        ] = None
+
     class ToolConfigDocument(m.ArbitraryTypesModel):
         """Root schema for canonical ``config/tooling.yaml`` policy data."""
 
