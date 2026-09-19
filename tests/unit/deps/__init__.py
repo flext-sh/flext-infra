@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from .test_modernizer_packaging import TestsFlextInfraDepsModernizerPackaging
     from .test_modernizer_pyrefly import TestsFlextInfraModernizerPyrefly
     from .test_modernizer_pyright import TestsFlextInfraDepsModernizerPyright
+    from .test_modernizer_tool_tables import TestsFlextInfraDepsModernizerToolTables
     from .test_modernizer_tooling import TestsFlextInfraDepsModernizerTooling
     from .test_modernizer_workspace import TestsFlextInfraDepsModernizerWorkspace
     from .test_project_gitignore_patterns import TestsFlextInfraProjectGitignorePatterns
@@ -43,6 +44,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraDepsModernizerHelpers",
     "TestsFlextInfraDepsModernizerPackaging",
     "TestsFlextInfraDepsModernizerPyright",
+    "TestsFlextInfraDepsModernizerToolTables",
     "TestsFlextInfraDepsModernizerTooling",
     "TestsFlextInfraDepsModernizerWorkspace",
     "TestsFlextInfraModernizerPyrefly",
@@ -83,6 +85,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_modernizer_packaging": ("TestsFlextInfraDepsModernizerPackaging",),
             ".test_modernizer_pyrefly": ("TestsFlextInfraModernizerPyrefly",),
             ".test_modernizer_pyright": ("TestsFlextInfraDepsModernizerPyright",),
+            ".test_modernizer_tool_tables": (
+                "TestsFlextInfraDepsModernizerToolTables",
+            ),
             ".test_modernizer_tooling": ("TestsFlextInfraDepsModernizerTooling",),
             ".test_modernizer_workspace": ("TestsFlextInfraDepsModernizerWorkspace",),
             ".test_project_gitignore_patterns": (

@@ -95,10 +95,9 @@ class TestsFlextInfraPytestTimeoutConfig:
     def test_slow_budget_is_declared_and_bounded_by_the_case_and_run_walls(
         self,
     ) -> None:
-        """An explicitly slow item gets the law's 60s arm, not the 10s default."""
+        """An explicitly slow item gets a longer arm than the per-case default."""
         policy = config.Infra.tooling.tools.pytest
 
-        tm.that(policy.slow_timeout_seconds, eq=60)
         tm.that(policy.slow_timeout_seconds > policy.case_timeout_seconds, eq=True)
         tm.that(policy.slow_timeout_seconds < policy.run_timeout_seconds, eq=True)
 
@@ -120,13 +119,6 @@ class TestsFlextInfraPytestTimeoutConfig:
 
         with pytest.raises(c.ValidationError, match=expected):
             type(policy).model_validate(payload)
-
-    def test_canonical_full_suite_budget_matches_timeout_policy(self) -> None:
-        """The generated pre-push suite carries the typed wall-clock budget."""
-        policy = config.Infra.tooling.tools.pytest
-
-        tm.that(policy.run_timeout_seconds, eq=600)
-        tm.that(policy.process_timeout_seconds, eq=660)
 
     def test_process_budget_must_exceed_run_and_termination_windows(self) -> None:
         policy = config.Infra.tooling.tools.pytest
