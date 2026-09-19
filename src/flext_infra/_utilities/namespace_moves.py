@@ -553,7 +553,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         """Remove moved aliases from a literal module ``__all__`` assignment."""
         pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
         lines = source.splitlines()
-        for node in getattr(pymodule.get_ast(), "body", ()) or ():
+        module_ast = pymodule.get_ast()
+        if not hasattr(module_ast, "_fields"):
+            return source
+        for node in getattr(module_ast, "body", ()) or ():
+            if not hasattr(node, "_fields"):
+                continue
             if c.Infra.DUNDER_ALL not in (
                 FlextInfraUtilitiesRopeAnalysis.assignment_target_names(node)
             ):
@@ -842,6 +847,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             moved_pymodule.get_ast()
         )
         runtime_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
+        moved_ast = moved_pymodule.get_ast()
+        if not hasattr(moved_ast, "_fields"):
+            return ()
         moved_aliases: set[str] = set()
         for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(moved_ast):
             if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "Name":

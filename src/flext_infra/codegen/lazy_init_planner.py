@@ -81,7 +81,9 @@ class FlextInfraCodegenLazyInitPlanner(
         self, pkg_dir: Path, *, dir_exports: t.MappingKV[str, t.LazyAliasMap]
     ) -> m.Infra.LazyInitPlan:
         """Build the lazy-init render plan for one package directory."""
-        u.Cli.info(f"DEBUG build_plan called for {pkg_dir} ({self.context(pkg_dir).current_pkg})")
+        u.Cli.info(
+            f"DEBUG build_plan called for {pkg_dir} ({self.context(pkg_dir).current_pkg})"
+        )
         context = self.context(pkg_dir)
         if not context.importable or self._shadows_stdlib_module(pkg_dir):
             # flext-mh7g4: no generated content can repair a package name that

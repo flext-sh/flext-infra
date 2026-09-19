@@ -35,14 +35,18 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         try:
             import yaml
 
-            manifest = yaml.safe_load(manifest_path.read_text(encoding=c.Cli.ENCODING_DEFAULT))
+            manifest = yaml.safe_load(
+                manifest_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            )
             if not isinstance(manifest, dict):
                 return None
             package_exports = manifest.get(self._current_package_for_manifest())
             if not isinstance(package_exports, list):
                 return None
             result = frozenset(str(name) for name in package_exports)
-            u.Cli.info(f"lazy-init: loaded manifest for {self._current_package_for_manifest()} with {len(result)} exports")
+            u.Cli.info(
+                f"lazy-init: loaded manifest for {self._current_package_for_manifest()} with {len(result)} exports"
+            )
             return result
         except Exception as e:
             u.Cli.info(f"lazy-init: manifest load failed: {e}")
@@ -76,7 +80,9 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         if declared_contract is None:
             declared_contract = self._declared_root_contract(context)
 
-        u.Cli.info(f"lazy-init: filtering exports for {context.current_pkg} ({context.pkg_dir}): export_names={len(export_names)}, lazy_map={len(lazy_map)}, eager_names={len(eager_names)}, declared_contract={len(declared_contract) if declared_contract else 0}")
+        u.Cli.info(
+            f"lazy-init: filtering exports for {context.current_pkg} ({context.pkg_dir}): export_names={len(export_names)}, lazy_map={len(lazy_map)}, eager_names={len(eager_names)}, declared_contract={len(declared_contract) if declared_contract else 0}"
+        )
 
         governed_lazy_map = {
             name: target
@@ -88,7 +94,9 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
                 declared_contract=declared_contract,
             )
         }
-        u.Cli.info(f"lazy-init: governed_lazy_map={len(governed_lazy_map)} after filtering")
+        u.Cli.info(
+            f"lazy-init: governed_lazy_map={len(governed_lazy_map)} after filtering"
+        )
         lazy_map.clear()
         lazy_map.update(governed_lazy_map)
         public_export_names = {
@@ -125,10 +133,14 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
 
         Divergence between scan and manifest = gen failure (never silent mutation).
         """
-        u.Cli.info(f"lazy-init: validating manifest ({len(manifest_contract)} exports) against scan ({len(scan_exports)} exports)")
+        u.Cli.info(
+            f"lazy-init: validating manifest ({len(manifest_contract)} exports) against scan ({len(scan_exports)} exports)"
+        )
         missing_in_scan = manifest_contract - scan_exports
         extra_in_scan = scan_exports - manifest_contract
-        u.Cli.info(f"lazy-init: missing_in_scan={len(missing_in_scan)}, extra_in_scan={len(extra_in_scan)}")
+        u.Cli.info(
+            f"lazy-init: missing_in_scan={len(missing_in_scan)}, extra_in_scan={len(extra_in_scan)}"
+        )
         if missing_in_scan:
             u.Cli.info(f"lazy-init: missing examples: {sorted(missing_in_scan)[:5]}")
         if extra_in_scan:
@@ -136,15 +148,20 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         if missing_in_scan or extra_in_scan:
             details = []
             if missing_in_scan:
-                details.append(f"missing in scan (orphaned in manifest): {sorted(missing_in_scan)}")
+                details.append(
+                    f"missing in scan (orphaned in manifest): {sorted(missing_in_scan)}"
+                )
             if extra_in_scan:
-                details.append(f"extra in scan (undeclared in manifest): {sorted(extra_in_scan)}")
-            u.Cli.info(f"lazy-init: RAISING ValueError for divergence")
-            raise ValueError(
+                details.append(
+                    f"extra in scan (undeclared in manifest): {sorted(extra_in_scan)}"
+                )
+            u.Cli.info("lazy-init: RAISING ValueError for divergence")
+            msg = (
                 f"lazy-init public export contract divergence for {context.current_pkg}: "
                 f"{'; '.join(details)}. Update config/exports.yaml or restore deleted modules."
             )
-        u.Cli.info(f"lazy-init: validation passed")
+            raise ValueError(msg)
+        u.Cli.info("lazy-init: validation passed")
 
     def _declared_root_contract(
         self, context: m.Infra.LazyInitPackageContext

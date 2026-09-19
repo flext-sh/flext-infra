@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar, TypeGuard
+from typing import TYPE_CHECKING, ClassVar, TypeIs
 
 from flext_infra.models import m
 from flext_infra.typings import t
 
 from ..rope_core import FlextInfraUtilitiesRopeCore
 from ..rope_runtime import FlextInfraUtilitiesRopeRuntime
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesRopeAnalysisAstHelpers:
@@ -19,17 +22,9 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
     _parse_project: ClassVar[t.Infra.RopeProject | None] = None
 
     @staticmethod
-    def is_ast_node(obj: object) -> TypeGuard[t.Infra.RopeAstNode]:
-        """Type guard to narrow to RopeAstNode via structural `_fields` check."""
-        return hasattr(obj, "_fields")
-
-    @staticmethod
-    def ensure_ast_node(obj: object) -> t.Infra.RopeAstNode:
-        """Ensure an object is an AST node (has `_fields`), narrowing the type."""
-        if not FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(obj):
-            msg = f"Expected AST node with _fields, got {type(obj).__name__}"
-            raise TypeError(msg)
-        return obj
+    def is_ast_node(node: p.AttributeProbe) -> TypeIs[t.Infra.RopeAstNode]:
+        """Narrow one dynamic Rope value to its structural AST contract."""
+        return hasattr(node, "_fields")
 
     @staticmethod
     def resource_cache_key(
@@ -140,24 +135,24 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return min(candidate_lines) if candidate_lines else default_line
 
     @staticmethod
-    def node_kind(node: t.Infra.RopeAstNode) -> str:
+    def node_kind(node: p.AttributeProbe) -> str:
         """Return an AST node's class name (e.g. ``"AnnAssign"``) without importing ast."""
-        ast_node = FlextInfraUtilitiesRopeAnalysisAstHelpers.ensure_ast_node(node)
-        return type(ast_node).__name__
+        return type(node).__name__
 
     @staticmethod
-    def walk_ast_nodes(root: t.Infra.RopeAstNode) -> t.SequenceOf[t.Infra.RopeAstNode]:
+    def walk_ast_nodes(root: p.AttributeProbe) -> t.SequenceOf[t.Infra.RopeAstNode]:
         """Recursively yield every AST node reachable from ``root`` via ``_fields``.
 
         Equivalent to ``ast.walk`` but uses only public attribute access on
         rope-provided AST objects, so no ``import ast`` is needed at the
         consumer layer.
         """
-        ast_root = FlextInfraUtilitiesRopeAnalysisAstHelpers.ensure_ast_node(root)
         collected: list[t.Infra.RopeAstNode] = []
-        stack: list[t.Infra.RopeAstNode] = [ast_root]
+        stack: list[p.AttributeProbe] = [root]
         while stack:
             node = stack.pop()
+            if not FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(node):
+                continue
             collected.append(node)
             for field_name in getattr(node, "_fields", ()):
                 value = getattr(node, field_name, None)
@@ -167,24 +162,28 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
                         for item in value
                         if FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(item)
                     )
-                elif FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(value):
+                elif (
+                    value is not None
+                    and FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(value)
+                ):
                     stack.append(value)
         return collected
 
     @staticmethod
     def ast_parent_map(
-        root: t.Infra.RopeAstNode,
+        root: p.AttributeProbe,
     ) -> MutableMapping[int, t.Infra.RopeAstNode]:
         """Return a child-id -> parent map for the full AST reachable from ``root``.
 
         Uses only public ``_fields`` access (no ``import ast``); the shared SSOT
         for parent lookups across every rope detector.
         """
-        ast_root = FlextInfraUtilitiesRopeAnalysisAstHelpers.ensure_ast_node(root)
         parent_map: MutableMapping[int, t.Infra.RopeAstNode] = {}
-        stack: list[t.Infra.RopeAstNode] = [ast_root]
+        stack: list[p.AttributeProbe] = [root]
         while stack:
             parent = stack.pop()
+            if not FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(parent):
+                continue
             for field_name in getattr(parent, "_fields", ()):
                 value = getattr(parent, field_name, None)
                 if isinstance(value, list):
@@ -192,7 +191,10 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
                         if FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(child):
                             parent_map[id(child)] = parent
                             stack.append(child)
-                elif FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(value):
+                elif (
+                    value is not None
+                    and FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(value)
+                ):
                     parent_map[id(value)] = parent
                     stack.append(value)
         return parent_map
@@ -208,10 +210,12 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         Walks the parent chain; a node nested inside any ClassDef/FunctionDef is
         NOT module-level. Shared SSOT for placement detectors.
         """
-        current = cls.ensure_ast_node(node)
+        current = node
         while True:
             parent = parent_map.get(id(current))
             if parent is None:
+                return False
+            if not hasattr(parent, "_fields"):
                 return False
             parent_kind = cls.node_kind(parent)
             if parent_kind in {"ClassDef", "FunctionDef", "AsyncFunctionDef"}:
@@ -221,22 +225,23 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
             current = parent
 
     @staticmethod
-    def name_of(node: object | None) -> str:
+    def name_of(node: p.AttributeProbe) -> str:
         """Return ``node.id`` (Name) or ``node.attr`` (Attribute) or ``""``."""
-        if node is None:
+        if not hasattr(node, "_fields"):
             return ""
-        ast_node = FlextInfraUtilitiesRopeAnalysisAstHelpers.ensure_ast_node(node)
-        identifier = getattr(ast_node, "id", None)
+        identifier = getattr(node, "id", None)
         if isinstance(identifier, str) and identifier:
             return identifier
-        attr = getattr(ast_node, "attr", None)
+        attr = getattr(node, "attr", None)
         if isinstance(attr, str) and attr:
             return attr
         return ""
 
     @staticmethod
-    def line_col_range(node: t.Infra.RopeAstNode) -> t.Quad[int, int, int, int] | None:
+    def line_col_range(node: p.AttributeProbe) -> t.Quad[int, int, int, int] | None:
         """Return ``(lineno, col_offset, end_lineno, end_col_offset)`` for an AST node."""
+        if not hasattr(node, "_fields"):
+            return None
         lineno = getattr(node, "lineno", None)
         col_offset = getattr(node, "col_offset", None)
         end_lineno = getattr(node, "end_lineno", None) or lineno
@@ -251,26 +256,26 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return (lineno, col_offset, end_lineno, end_col_offset)
 
     @staticmethod
-    def _body_nodes(node: t.Infra.RopeAstNode) -> t.SequenceOf[t.Infra.RopeAstNode]:
+    def _body_nodes(node: p.AttributeProbe) -> t.SequenceOf[t.Infra.RopeAstNode]:
         """Return direct AST body children for a Rope AST node."""
-        ast_node = FlextInfraUtilitiesRopeAnalysisAstHelpers.ensure_ast_node(node)
-        body = getattr(ast_node, "body", ())
+        if not hasattr(node, "_fields"):
+            return ()
+        body = getattr(node, "body", ())
         if not isinstance(body, (list, tuple)):
             return ()
         nodes: list[t.Infra.RopeAstNode] = [
-            child
-            for child in body
-            if FlextInfraUtilitiesRopeAnalysisAstHelpers.is_ast_node(child)
+            child for child in body if hasattr(child, "_fields")
         ]
         return tuple(nodes)
 
     @staticmethod
     def class_body_nodes(
-        tree: t.Infra.RopeAstNode, *, class_name: str
+        tree: p.AttributeProbe, *, class_name: str
     ) -> t.SequenceOf[t.Infra.RopeAstNode]:
         """Return direct body nodes for a top-level class name."""
-        ast_tree = FlextInfraUtilitiesRopeAnalysisAstHelpers.ensure_ast_node(tree)
-        for node in FlextInfraUtilitiesRopeAnalysisAstHelpers._body_nodes(ast_tree):
+        if not hasattr(tree, "_fields"):
+            return ()
+        for node in FlextInfraUtilitiesRopeAnalysisAstHelpers._body_nodes(tree):
             if FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(node) != "ClassDef":
                 continue
             if getattr(node, "name", "") == class_name:
@@ -278,42 +283,42 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return ()
 
     @staticmethod
-    def assignment_target_names(node: t.Infra.RopeAstNode) -> t.StrSequence:
+    def assignment_target_names(node: p.AttributeProbe) -> t.StrSequence:
         """Return direct assignment target names represented by one AST node."""
-        ast_node = FlextInfraUtilitiesRopeAnalysisAstHelpers.ensure_ast_node(node)
-        return FlextInfraUtilitiesRopeAnalysisAstHelpers._assignment_target_names(
-            ast_node
-        )
+        return FlextInfraUtilitiesRopeAnalysisAstHelpers._assignment_target_names(node)
 
     @staticmethod
-    def _assignment_target_names(node: t.Infra.RopeAstNode) -> t.StrSequence:
+    def _assignment_target_names(node: p.AttributeProbe) -> t.StrSequence:
         """Return direct assignment target names represented by one AST node."""
-        ast_node = FlextInfraUtilitiesRopeAnalysisAstHelpers.ensure_ast_node(node)
-        node_kind = FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(ast_node)
+        if not hasattr(node, "_fields"):
+            return ()
+        node_kind = FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(node)
         if node_kind == "AnnAssign":
-            target_name = FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(
-                getattr(ast_node, "target", None)
-            )
-            return (target_name,) if target_name else ()
+            target = getattr(node, "target", None)
+            if target is not None and hasattr(target, "_fields"):
+                target_name = FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(target)
+                return (target_name,) if target_name else ()
+            return ()
         if node_kind != "Assign":
             return ()
-        targets = getattr(ast_node, "targets", ())
+        targets = getattr(node, "targets", ())
         if not isinstance(targets, (list, tuple)):
             return ()
         names: list[str] = []
         for target in targets:
-            target_name = FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(target)
-            if target_name:
-                names.append(target_name)
+            if hasattr(target, "_fields"):
+                target_name = FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(target)
+                if target_name:
+                    names.append(target_name)
         return tuple(names)
 
     @staticmethod
-    def class_symbol_names(
-        class_body: t.SequenceOf[t.Infra.RopeAstNode],
-    ) -> t.StrSequence:
+    def class_symbol_names(class_body: t.SequenceOf[p.AttributeProbe]) -> t.StrSequence:
         """Return direct method, nested-class and attribute symbols for a class body."""
         names: set[str] = set()
         for node in class_body:
+            if not hasattr(node, "_fields"):
+                continue
             node_kind = FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(node)
             if node_kind in {"AsyncFunctionDef", "ClassDef", "FunctionDef"}:
                 node_name = getattr(node, "name", "")
@@ -335,7 +340,8 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return tuple(
             class_info
             for node in body
-            if (
+            if hasattr(node, "_fields")
+            and (
                 class_info
                 := FlextInfraUtilitiesRopeAnalysisAstHelpers._class_info_from_ast(node)
             )
@@ -343,16 +349,17 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         )
 
     @staticmethod
-    def _class_info_from_ast(node: t.Infra.RopeAstNode) -> m.Infra.ClassInfo | None:
+    def _class_info_from_ast(node: p.AttributeProbe) -> m.Infra.ClassInfo | None:
         """Return ClassInfo for one top-level ClassDef AST node."""
-        ast_node = FlextInfraUtilitiesRopeAnalysisAstHelpers.ensure_ast_node(node)
-        if FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(ast_node) != "ClassDef":
+        if not hasattr(node, "_fields"):
             return None
-        name = getattr(ast_node, "name", "")
+        if FlextInfraUtilitiesRopeAnalysisAstHelpers.node_kind(node) != "ClassDef":
+            return None
+        name = getattr(node, "name", "")
         if not isinstance(name, str) or not name:
             return None
-        line = getattr(ast_node, "lineno", 1)
-        raw_bases = getattr(ast_node, "bases", ())
+        line = getattr(node, "lineno", 1)
+        raw_bases = getattr(node, "bases", ())
         if not isinstance(raw_bases, (list, tuple)):
             raw_bases = ()
         return m.Infra.ClassInfo(
@@ -369,21 +376,21 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         )
 
     @staticmethod
-    def class_base_name(node: t.Infra.RopeAstNode) -> str:
+    def class_base_name(node: p.AttributeProbe) -> str:
         """Return terminal base name from an AST base expression."""
-        ast_node = FlextInfraUtilitiesRopeAnalysisAstHelpers.ensure_ast_node(node)
-        return FlextInfraUtilitiesRopeAnalysisAstHelpers._class_base_name(ast_node)
+        return FlextInfraUtilitiesRopeAnalysisAstHelpers._class_base_name(node)
 
     @staticmethod
-    def _class_base_name(node: t.Infra.RopeAstNode) -> str:
+    def _class_base_name(node: p.AttributeProbe) -> str:
         """Return terminal base name from an AST base expression."""
-        ast_node = FlextInfraUtilitiesRopeAnalysisAstHelpers.ensure_ast_node(node)
+        if not hasattr(node, "_fields"):
+            return ""
         for attr_name in ("id", "attr", "name"):
-            value = getattr(ast_node, attr_name, "")
+            value = getattr(node, attr_name, "")
             if isinstance(value, str) and value:
                 return value
-        subscript_value = getattr(ast_node, "value", None)
-        if subscript_value is not None:
+        subscript_value = getattr(node, "value", None)
+        if subscript_value is not None and hasattr(subscript_value, "_fields"):
             return FlextInfraUtilitiesRopeAnalysisAstHelpers._class_base_name(
                 subscript_value
             )

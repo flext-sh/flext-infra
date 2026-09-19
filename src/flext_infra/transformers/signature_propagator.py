@@ -80,7 +80,10 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         for node in u.Infra.walk_ast_nodes(u.Infra.ensure_ast_node(pymodule.get_ast())):
             if u.Infra.node_kind(node) != "Call":
                 continue
-            if u.Infra.name_of(getattr(node, "func", None)) != simple_name:
+            func = getattr(node, "func", None)
+            if not hasattr(func, "_fields"):
+                continue
+            if u.Infra.name_of(func) != simple_name:
                 continue
             span = u.Infra.line_col_range(node)
             if span is None:

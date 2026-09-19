@@ -277,11 +277,7 @@ class FlextInfraUtilitiesRepository:
                 repository.url
             ).partition("/")
         )
-        if (
-            not separator
-            or not name
-            or owner != provider.value.organization.casefold()
-        ):
+        if not separator or not name or owner != provider.value.organization.casefold():
             return r[str].fail(
                 "repository URL does not identify a repository of provider "
                 f"{provider.value.name}: {repository.name}"

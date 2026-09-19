@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ... import tm, u
+from flext_infra import c
+
+from ... import m, tm, u
 from ._support import CodegenTestSupport
 
 
@@ -20,6 +22,24 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
         / "base"
     )
 
+    @staticmethod
+    def _workflow_spec(
+        *,
+        workspace_repositories: t.VariadicTuple[m.Infra.RepositoryRef],
+        has_devcontainer: bool,
+    ) -> m.Infra.GithubWorkflowRenderSpec:
+        spec = CodegenTestSupport.Ci.workflow_spec(
+            dist="demo",
+            make_profile=c.Infra.MakeProfile.STANDALONE,
+            repository_branch="develop",
+            ci_trigger_branches=CodegenTestSupport.Ci.CI_TRIGGER_BASELINE_BRANCHES,
+        )
+        return type(spec).model_validate({
+            **spec.model_dump(),
+            "workspace_repositories": workspace_repositories,
+            "has_devcontainer": has_devcontainer,
+        })
+
     def test_standalone_pyproject_template_does_not_declare_empty_workspace(
         self,
     ) -> None:
@@ -29,16 +49,11 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
         tm.that(template, lacks="[tool.uv.workspace]")
 
     def test_dependabot_render_has_one_terminal_newline(self) -> None:
-        from flext_infra import c
-
         empty = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                CodegenTestSupport.Ci.workflow_spec(
-                    dist="demo",
-                    make_profile=c.Infra.MakeProfile.STANDALONE,
-                    repository_branch="main",
-                    ci_trigger_branches=CodegenTestSupport.Ci.CI_TRIGGER_BASELINE_BRANCHES,
+                self._workflow_spec(
+                    workspace_repositories=(), has_devcontainer=False
                 ),
             )
         )
@@ -46,12 +61,8 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
         populated = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                CodegenTestSupport.Ci.workflow_spec(
-                    dist="demo",
-                    make_profile=c.Infra.MakeProfile.STANDALONE,
-                    repository_branch="main",
-                    ci_trigger_branches=CodegenTestSupport.Ci.CI_TRIGGER_BASELINE_BRANCHES,
-                    workspace_repositories=(repository,),
+                self._workflow_spec(
+                    workspace_repositories=(repository,), has_devcontainer=False
                 ),
             )
         )
@@ -60,16 +71,11 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
             tm.that(rendered.endswith("\n") and not rendered.endswith("\n\n"), eq=True)
 
     def test_dependabot_projects_devcontainers_only_when_one_exists(self) -> None:
-        from flext_infra import c
-
         without = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                CodegenTestSupport.Ci.workflow_spec(
-                    dist="demo",
-                    make_profile=c.Infra.MakeProfile.STANDALONE,
-                    repository_branch="main",
-                    ci_trigger_branches=CodegenTestSupport.Ci.CI_TRIGGER_BASELINE_BRANCHES,
+                self._workflow_spec(
+                    workspace_repositories=(),
                     has_devcontainer=False,
                 ),
             )
@@ -77,12 +83,8 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
         with_devcontainer = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                CodegenTestSupport.Ci.workflow_spec(
-                    dist="demo",
-                    make_profile=c.Infra.MakeProfile.STANDALONE,
-                    repository_branch="main",
-                    ci_trigger_branches=CodegenTestSupport.Ci.CI_TRIGGER_BASELINE_BRANCHES,
-                    has_devcontainer=True,
+                self._workflow_spec(
+                    workspace_repositories=(), has_devcontainer=True
                 ),
             )
         )

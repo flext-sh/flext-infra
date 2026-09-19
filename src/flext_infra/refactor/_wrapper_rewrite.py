@@ -108,6 +108,8 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
             ):
                 continue
             parent_attr = getattr(node, "value", None)
+            if not hasattr(parent_attr, "_fields"):
+                continue
             if (
                 parent_attr is None
                 or u.Infra.node_kind(parent_attr) != "Attribute"
@@ -115,6 +117,8 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
             ):
                 continue
             base_name = getattr(parent_attr, "value", None)
+            if not hasattr(base_name, "_fields"):
+                continue
             if base_name is None or u.Infra.node_kind(base_name) != "Name":
                 continue
             base_id = getattr(base_name, "id", "")

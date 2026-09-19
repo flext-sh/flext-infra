@@ -4,13 +4,47 @@ from __future__ import annotations
 
 from pathlib import Path
 
+<<<<<<< HEAD
 from flext_infra import r
 from tests import c, m
+=======
+from flext_infra import p, r
+from tests import c, m, t, u
+>>>>>>> d84644f0698f06d81f3be10cc3de2865455841a9
 from tests.utilities_replay import TestsFlextInfraUtilitiesReplayRunnerMixin
 
 
 class TestsFlextInfraUtilitiesReplaySequenceMixin:
+<<<<<<< HEAD
     """Command replay and typed fixture factory helpers."""
+=======
+    """In-order command replay and typed fixture factory helpers."""
+
+    class SequenceRunner(TestsFlextInfraUtilitiesReplayRunnerMixin.DeptryRunner):
+        """Protocol-compatible runner that replays command results in order."""
+
+        def __init__(self, results: t.SequenceOf[p.Result[m.Cli.CommandOutput]]) -> None:
+            """Store ordered command results for replay."""
+            self._results = list(results)
+            self._index = 0
+            self.commands: MutableSequence[t.StrSequence] = []
+
+        def _next_result(self) -> p.Result[m.Cli.CommandOutput]:
+            current = self._index
+            self._index = current + 1
+            if not self._results:
+                return r[m.Cli.CommandOutput].fail("runner result sequence is empty")
+            return (
+                self._results[current]
+                if current < len(self._results)
+                else self._results[-1]
+            )
+
+        @override
+        def _command_result(self) -> p.Result[m.Cli.CommandOutput]:
+            """Replay the next stored result instead of a single one."""
+            return self._next_result()
+>>>>>>> d84644f0698f06d81f3be10cc3de2865455841a9
 
     @staticmethod
     def command_runner(
@@ -39,6 +73,41 @@ class TestsFlextInfraUtilitiesReplaySequenceMixin:
         )
 
     @staticmethod
+<<<<<<< HEAD
+=======
+    def sequence_runner(
+        *results: p.Result[m.Cli.CommandOutput],
+    ) -> TestsFlextInfraUtilitiesReplaySequenceMixin.SequenceRunner:
+        """Build one in-order command-result replaying runner."""
+        return TestsFlextInfraUtilitiesReplaySequenceMixin.SequenceRunner(list(results))
+
+    @staticmethod
+    def pyright_report_json(
+        *diagnostics: t.MappingKV[str, t.JsonValue], files_analyzed: int = 1
+    ) -> str:
+        """Render one complete native Pyright JSON report for the given diagnostics.
+
+        The summary counts are computed from the diagnostics so the report
+        always satisfies ``m.Infra.PyrightReport``'s reconciliation contract.
+        """
+        counts = {"error": 0, "warning": 0, "information": 0}
+        for diagnostic in diagnostics:
+            counts[str(diagnostic["severity"])] += 1
+        return u.Cli.json_dumps({
+            "version": "1.1.411",
+            "time": "1",
+            "generalDiagnostics": [dict(diagnostic) for diagnostic in diagnostics],
+            "summary": {
+                "filesAnalyzed": files_analyzed,
+                "errorCount": counts["error"],
+                "warningCount": counts["warning"],
+                "informationCount": counts["information"],
+                "timeInSec": 0.1,
+            },
+        }).unwrap()
+
+    @staticmethod
+>>>>>>> d84644f0698f06d81f3be10cc3de2865455841a9
     def create_command_output(
         *, stdout: str = "", stderr: str = "", exit_code: int = 0, duration: float = 0.0
     ) -> m.Cli.CommandOutput:
