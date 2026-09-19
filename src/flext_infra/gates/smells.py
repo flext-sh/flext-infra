@@ -95,7 +95,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             issues = ()
         else:
             issues = (self._failure_issue(parsed.error),)
-        issues = self._drop_generated_projections(issues)
+        issues = self._drop_generated_projections(issues, project)
         if not issues and not u.Cli.process_succeeded(scan.outcome):
             return (self._tool_failure_issue(scan),)
         return issues
@@ -211,18 +211,21 @@ class FlextInfraSmellsGate(FlextInfraGate):
         )
 
     def _drop_generated_projections(
-        self, issues: t.VariadicTuple[m.Infra.Issue]
+        self, issues: t.VariadicTuple[m.Infra.Issue], project: str
     ) -> t.VariadicTuple[m.Infra.Issue]:
         """Drop findings in generated projections; their owner is the generator.
 
         A file whose first line carries the canonical AUTO-GENERATED header is a
         projection of one codegen source, so duplication between projections is
         by construction and the smell gate reports only hand-written source.
-        Unreadable files keep their findings (fail-closed).
+        ``Issue.file`` is project-relative while ``qlty`` URIs are
+        workspace-relative, so the project directory is joined to the workspace
+        root before reading the header. Unreadable files keep their findings
+        (fail-closed).
         """
         visible: list[m.Infra.Issue] = []
         for issue in issues:
-            path = self._repository_root / issue.file
+            path = self._repository_root / project / issue.file
             try:
                 with path.open("r", encoding=c.Cli.ENCODING_DEFAULT) as handle:
                     first_line = handle.readline()

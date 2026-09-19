@@ -251,12 +251,15 @@ class FlextInfraWorkspaceDetector(
                 tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
             ].from_failure(loaded)
         if not loaded.value:
-            return r[
-                tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
-            ].fail(
-                "governed repository must declare its provider and url in its "
-                f"own workspace manifest: {manifest_path} is absent"
-            )
+            # A checkout without ``config/workspace.yaml`` remains a valid
+            # observed repository (pre-G1 contract, restored): the observed
+            # state IS the identity, gascity participates, and no manifest
+            # project spec exists. Absence never constructs a None payload.
+            return r[tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]].ok((
+                observed,
+                True,
+                None,
+            ))
         manifest = loaded.value[0]
         declared = manifest.repository
         contradictions = cls._manifest_git_contradictions(declared, observed)

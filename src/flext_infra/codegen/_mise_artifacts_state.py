@@ -484,9 +484,7 @@ class FlextInfraMiseArtifactsState:
         the receipts are the content-addressed cache), so a directory
         containing either is durable state, never a transient cleanup target.
         """
-        candidates = [
-            layout.journal_path.with_name(f"{layout.journal_path.name}.lock")
-        ]
+        candidates = [layout.journal_path.with_name(f"{layout.journal_path.name}.lock")]
         state_root = next(
             (
                 ancestor
