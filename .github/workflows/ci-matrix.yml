@@ -18,7 +18,6 @@ name: ci-matrix
   workflow_dispatch: {}
 # End SECTION: triggers
 
-
 # === SECTION: permissions (managed) ===
 # Source: template (minimal read-only permissions)
 permissions:
