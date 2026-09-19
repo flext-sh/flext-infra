@@ -33,9 +33,6 @@ class FlextInfraPromotedDispatch(FlextInfraPromotedDiscovery):
         ``FlextSettings.update_global`` propagates without monkeypatching.
         """
         args = tuple(sys.argv[1:] if argv is None else argv)
-        verb = args[0] if args else c.Infra.PromotedSelector.HELP
-        live_settings = type(settings).fetch_global()
-        requested_what = (live_settings.Infra.dispatch_what or "").strip()
         try:
             return cls._run(args, script_roots=script_roots, spec=spec)
         except c.Infra.PromotedRegistryError as exc:
