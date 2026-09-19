@@ -743,7 +743,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             )
             # Why: u here is flext_cli's plain facade (no nested Infra); call
             # the owning class directly, matching the sibling Rope* calls.
-            if not FlextInfraUtilitiesTransformerHeader.alias_locally_bound(target_source, bound)
+            if not u.Infra.alias_locally_bound(target_source, bound)
         ]
         if not kept:
             return ""

@@ -8,7 +8,7 @@ import pytest
 from flext_tests import tm
 
 from tests import c, u
-from tests.unit.validate._fixtures import TestsFlextInfraValidateNamespaceBase
+from ._fixtures import TestsFlextInfraValidateNamespaceBase
 
 
 class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBase):

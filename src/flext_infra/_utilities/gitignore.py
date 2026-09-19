@@ -50,7 +50,7 @@ class FlextInfraUtilitiesGitignore:
         templates_root = FlextInfraUtilitiesGitignore.codegen_templates_root(codegen)
         project_patterns: t.StrSequence = ()
         if project_dir is not None:
-            resolved = FlextInfraUtilitiesProjectManagedArtifacts.load_project_managed_artifacts(project_dir)
+            resolved = u.Infra.load_project_managed_artifacts(project_dir)
             if resolved.failure:
                 return r[str].from_failure(resolved)
             project_patterns = resolved.value.artifacts.Gitignore.patterns
