@@ -1,17 +1,19 @@
-"""FLEXT embedded-code gate: ruff over fenced blocks and docstring examples.
+"""FLEXT embedded-code gate: ruff format over fenced blocks and docstring examples.
 
-The code inside documentation is still code. This gate extracts fenced
-``python``` blocks and doctest examples into one temporary source tree and
-runs ruff in single invocations per operation (the single-pass verb law):
-``check`` runs the error-class lint plus the format verdict read-only, and
-``fix`` — reached from ``make fix`` — writes ruff-format output back into
-fenced blocks when every block of a file recompiles cleanly. Docstring
-findings are reported for manual repair; prose-embedded rewrites stay a
-human decision.
+The code inside documentation is still code — parseable embedded sources are
+held to the ruff-format contract. This gate extracts fenced ``python`` blocks
+and doctest examples into one temporary source tree and runs ONE ruff format
+invocation per verb (single-pass law): ``check`` renders the format verdict
+read-only, ``fix`` — reached from ``make fix`` — writes formatting back into
+fenced blocks when every block of a file round-trips cleanly. Unparseable
+documentation fragments stay out of scope by design: their syntax findings
+belong to the flext-tests markdown validator (MD-001 with approved
+exceptions), and docstring write-back stays a human decision.
 """
 
 from __future__ import annotations
 
+import fnmatch
 import re
 import tempfile
 import time
@@ -27,9 +29,46 @@ from .markdown_code_sources import (
     write_docstring_sources,
     write_fenced_block_sources,
 )
-from .markdown_support import collect_markdown_files
+from .markdown_support import collect_markdown_files, read_ignore_patterns
+
+
+def _ignore_filtered(
+    project_dir: Path, markdown_files: t.SequenceOf[Path]
+) -> t.SequenceOf[Path]:
+    """Drop files the generated ignore projection excludes, like the rumdl gate.
+
+    The rumdl gate forwards ``.markdownlintignore`` patterns via ``--exclude``
+    because explicit files bypass directory-scan ignores; this gate feeds
+    extracted sources instead, so the same projection is applied to the
+    collected list here — all markdown gates share one ignore SSOT.
+    """
+    patterns = read_ignore_patterns(project_dir, c.Infra.MARKDOWNLINT_IGNORE_FILENAME)
+    if not patterns:
+        return markdown_files
+
+    def _excluded(path: Path) -> bool:
+        relative = path.relative_to(project_dir).as_posix()
+        return any(
+            fnmatch.fnmatch(relative, pattern)
+            or relative.startswith(pattern.rstrip("/*") + "/")
+            for pattern in patterns
+        )
+
+    return tuple(path for path in markdown_files if not _excluded(path))
+
+
+def _is_syntax_broken(code: str, origin: Path) -> bool:
+    """True when one embedded source does not compile (documentation fragment)."""
+    try:
+        compile(code, str(origin), "exec")
+    except SyntaxError:
+        return True
+    return False
+
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from flext_infra import p, t
 
 
@@ -40,23 +79,12 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
     gate_name: ClassVar[str] = "Markdown Code"
     can_fix: ClassVar[bool] = True
 
-    def _lint_command(self, sources_dir: Path) -> t.StrSequence:
-        """Build the single error-class lint invocation over extracted sources."""
-        return self._python_console_script_command(
-            c.Infra.RUFF,
-            "check",
-            "--isolated",
-            "--no-cache",
-            "--output-format",
-            "concise",
-            "--select",
-            ",".join(c.Infra.MARKDOWN_CODE_LINT_SELECT),
-            str(sources_dir),
-        )
-
     def _format_command(self, sources_dir: Path, *, write: bool) -> t.StrSequence:
-        """Build one ruff format invocation (verdict with ``--check``, write otherwise)."""
-        args = ["format", "--isolated", "--no-cache"]
+        """Build one ruff format invocation (verdict with ``--check``, write otherwise).
+
+        Concise output keeps the verdict line one-match-per-file for the parser.
+        """
+        args = ["format", "--isolated", "--no-cache", "--output-format", "concise"]
         return self._python_console_script_command(
             c.Infra.RUFF, *args, *(("--check",) if not write else ()), str(sources_dir)
         )
@@ -90,32 +118,29 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         default_code: str,
         default_message: str,
         file_pattern: re.Pattern[str],
-        fallback_on_error: bool = True,
     ) -> t.SequenceOf[m.Infra.Issue]:
         """Translate one ruff result into origin-mapped gate findings.
 
-        ``fallback_on_error`` keeps a failed run without mapped findings from
-        reading as a clean pass; a caller that already reported the same
-        failed sources through another operation suppresses it so one defect
-        stays one finding.
+        A failed run without mapped findings never reads as a clean pass: the
+        tool-level error becomes the finding.
         """
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
-            if (match := file_pattern.match(line.strip())) and (
-                issue := self._origin_issue(
+            match = file_pattern.match(line.strip())
+            issue = (
+                self._origin_issue(
                     origin,
                     match.group("file"),
                     code=default_code,
                     message=default_message,
                     line=int(match.groupdict().get("line", 1) or 1),
                 )
-            ):
+                if match
+                else None
+            )
+            if issue is not None:
                 issues.append(issue)
-        if (
-            fallback_on_error
-            and not u.Cli.process_succeeded(result.outcome)
-            and not issues
-        ):
+        if not u.Cli.process_succeeded(result.outcome) and not issues:
             issues.append(
                 self._command_error_issue(
                     result, tool=c.Infra.RUFF, file=str(project_dir), line=1, column=1
@@ -126,11 +151,14 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
     def _run_extracted(
         self, project_dir: Path, markdown_files: t.SequenceOf[Path], *, fix: bool
     ) -> tuple[bool, bool, t.SequenceOf[m.Infra.Issue]]:
-        """Run the extracted-source operations.
+        """Run the single format operation over extracted sources.
 
         Returns ``(ran, passed, issues)``: ``ran`` is False when the project
-        carries no embedded documentation code at all, which is the neutral
-        skip both verbs report instead of an empty verdict.
+        carries no parseable embedded documentation code at all, which is the
+        neutral skip both verbs report instead of an empty verdict. Only the
+        format contract lives here — syntax ownership belongs to the
+        flext-tests markdown validator, so unparseable fragments never enter
+        the extracted tree and cannot turn into gate findings.
         """
         findings: t.MutableSequenceOf[m.Infra.Issue] = []
         ran = False
@@ -143,28 +171,11 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             if not origin:
                 return False, True, ()
             ran = True
-            lint = self._run(self._lint_command(sources_dir), project_dir)
-            lint_ok = u.Cli.process_succeeded(lint.outcome)
-            lint_findings = list(
-                self._issues_from_ruff(
-                    project_dir,
-                    lint,
-                    origin,
-                    default_code=self.gate_id,
-                    default_message="embedded code fails ruff error-class lint",
-                    file_pattern=c.Infra.MARKDOWN_CODE_RE,
-                )
+            formatted = self._run(
+                self._format_command(sources_dir, write=fix), project_dir
             )
-            findings.extend(lint_findings)
-            # A source the lint already flagged cannot also produce a distinct
-            # format verdict; the format operation suppresses its fallback so
-            # one defect stays one finding.
-            format_fallback = not lint_findings
+            format_ok = u.Cli.process_succeeded(formatted.outcome)
             if fix:
-                formatted = self._run(
-                    self._format_command(sources_dir, write=True), project_dir
-                )
-                format_ok = u.Cli.process_succeeded(formatted.outcome)
                 findings.extend(
                     self._issues_from_ruff(
                         project_dir,
@@ -175,53 +186,59 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
                             "embedded block does not survive the format round-trip"
                         ),
                         file_pattern=c.Infra.MARKDOWN_CODE_FORMAT_ERROR_RE,
-                        fallback_on_error=format_fallback,
                     )
                 )
                 if format_ok:
                     self._splice_formatted_blocks(project_dir, sources_dir)
             else:
-                verdict = self._run(
-                    self._format_command(sources_dir, write=False), project_dir
-                )
-                format_ok = u.Cli.process_succeeded(verdict.outcome)
                 findings.extend(
                     self._issues_from_ruff(
                         project_dir,
-                        verdict,
+                        formatted,
                         origin,
                         default_code=self.gate_id,
                         default_message=(
                             "embedded code is not ruff-formatted (repair belongs to `make fix`)"
                         ),
                         file_pattern=c.Infra.MARKDOWN_CODE_FORMAT_FILE_RE,
-                        fallback_on_error=format_fallback,
                     )
                 )
-            passed = lint_ok and format_ok
+            passed = format_ok
         return ran, passed, findings
 
     def _splice_formatted_blocks(
         self, project_dir: Path, sources_dir: Path
     ) -> t.SequenceOf[Path]:
-        """Write formatted blocks back into docs whose round-trip recompiles cleanly."""
+        """Write formatted blocks back into docs whose round-trip recompiles cleanly.
+
+        Enumeration matches the extractor exactly: only parseable non-``notest``
+        blocks own a staged source, share its index, and take part in the
+        all-or-nothing splice; fragments stay byte-identical.
+        """
         rewritten: t.MutableSequenceOf[Path] = []
-        for md_path in collect_markdown_files(project_dir):
+        for md_path in _ignore_filtered(
+            project_dir, collect_markdown_files(project_dir)
+        ):
             content = md_path.read_text(c.Cli.ENCODING_DEFAULT)
             relative_posix = md_path.relative_to(project_dir).as_posix()
-            testable = [
-                match
+            parseable = [
+                match.group("code")
                 for match in c.Infra.MARKDOWN_PY_FENCE_RE.finditer(content)
                 if TEST_SKIP_MARKER not in match.group("info")
             ]
-            if not testable:
+            parseable = [
+                code for code in parseable if not _is_syntax_broken(code, md_path)
+            ]
+            if not parseable:
                 continue
             blocks: t.MutableSequenceOf[str] = []
             round_trips = True
-            for index in range(len(testable)):
-                formatted = (
-                    sources_dir / source_name(relative_posix, index)
-                ).read_text(c.Cli.ENCODING_DEFAULT)
+            for index, _original in enumerate(parseable):
+                source = sources_dir / source_name(relative_posix, index)
+                if not source.is_file():
+                    round_trips = False
+                    break
+                formatted = source.read_text(c.Cli.ENCODING_DEFAULT)
                 try:
                     compile(formatted, str(md_path), "exec")
                 except SyntaxError:
@@ -231,14 +248,22 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             if not round_trips:
                 continue
             blocks_iter = iter(blocks)
-            updated = c.Infra.MARKDOWN_PY_FENCE_RE.sub(
-                lambda match, replacements=blocks_iter: (
-                    match.group(0)
-                    if TEST_SKIP_MARKER in match.group("info")
-                    else match.group(0).replace(match.group("code"), next(replacements))
-                ),
-                content,
-            )
+
+            def _resubstitute(
+                match: re.Match[str],
+                *,
+                origin_path: Path = md_path,
+                replacements: Iterator[str] = blocks_iter,
+            ) -> str:
+                """Splice one formatted block; fragments and markers stay verbatim."""
+                keep = TEST_SKIP_MARKER in match.group("info") or _is_syntax_broken(
+                    match.group("code"), origin_path
+                )
+                if keep:
+                    return match.group(0)
+                return match.group(0).replace(match.group("code"), next(replacements))
+
+            updated = c.Infra.MARKDOWN_PY_FENCE_RE.sub(_resubstitute, content)
             if updated != content:
                 md_path.write_text(updated, c.Cli.ENCODING_DEFAULT)
                 rewritten.append(md_path)
@@ -252,7 +277,9 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
         _ = ctx
         started = time.monotonic()
         ran, passed, issues = self._run_extracted(
-            project_dir, collect_markdown_files(project_dir), fix=False
+            project_dir,
+            _ignore_filtered(project_dir, collect_markdown_files(project_dir)),
+            fix=False,
         )
         if not ran:
             return self._neutral_skip_result(
@@ -275,7 +302,9 @@ class FlextInfraMarkdownCodeGate(FlextInfraGate):
             return self._check_only_fix_result(project_dir)
         started = time.monotonic()
         ran, passed, issues = self._run_extracted(
-            project_dir, collect_markdown_files(project_dir), fix=True
+            project_dir,
+            _ignore_filtered(project_dir, collect_markdown_files(project_dir)),
+            fix=True,
         )
         if not ran:
             return self._neutral_skip_result(

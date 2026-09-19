@@ -68,7 +68,15 @@ class FlextInfraConstantsMake:
         for gate in FlextInfraConstantsCheck.SARIF_TOOL_INFO
         if gate not in FlextInfraConstantsCheck.MUTATING_GATES
     )
-    CANONICAL_DEFAULT_GATE_IDS: Final[t.VariadicTuple[str]] = CANONICAL_GATE_IDS
+    # markdown-code stays allowed and explicitly invocable (`--gates
+    # markdown-code`), but is not a default check gate: operator ruling
+    # 2026-09-18 (flext-uz0dt) takes it out of the unset-CI default set
+    # pending review.
+    CANONICAL_DEFAULT_GATE_IDS: Final[t.VariadicTuple[str]] = tuple(
+        gate
+        for gate in CANONICAL_GATE_IDS
+        if gate != FlextInfraConstantsCheck.MARKDOWN_CODE
+    )
     CANONICAL_FIXABLE_GATE_IDS: Final[t.VariadicTuple[str]] = (
         "lint",
         "markdown",

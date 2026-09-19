@@ -25,11 +25,20 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
     UNFORMATTED = "# Test\n\n```python\nx=1\n```\n"
     SYNTAX_BROKEN = "# Test\n\n```python\ndef broken(:\n    return 1\n```\n"
     NOTEST_PSEUDO = "# Test\n\n```python notest\nthis is @@@ not python\n```\n"
+    # Prettier only rewraps prose under proseWrap=always (the projected fleet
+    # contract); fixtures materialize that config the way `make gen` does.
+    PROSE_CONFIG = '{"printWidth": 40, "proseWrap": "always"}'
+    LONG_PROSE = (
+        "# Test\n\nLorem ipsum dolor sit amet consectetur adipiscing elit"
+        " sed do eiusmod tempor incididunt ut labore magna.\n"
+    )
+    WRAPPED_PROSE_HEAD = "# Test\n\nLorem ipsum dolor sit amet consectetur"
 
     def test_format_gate_reports_unformatted_markdown(self, tmp_path: Path) -> None:
         project_dir = u.Tests.mk_project(tmp_path, "markdown-format-project")
-        (project_dir / "README.md").write_text(
-            self.UNFORMATTED_MARKDOWN, encoding="utf-8"
+        (project_dir / "README.md").write_text(self.LONG_PROSE, encoding="utf-8")
+        (project_dir / c.Infra.PRETTIER_CONFIG_FILENAME).write_text(
+            self.PROSE_CONFIG, encoding="utf-8"
         )
 
         result = u.Tests.check_gate_asserting(
@@ -60,7 +69,10 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         """`make fmt` drives prettier --write once and the tree reaches green."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-format-fix")
         readme = project_dir / "README.md"
-        readme.write_text(self.UNFORMATTED_MARKDOWN, encoding="utf-8")
+        readme.write_text(self.LONG_PROSE, encoding="utf-8")
+        (project_dir / c.Infra.PRETTIER_CONFIG_FILENAME).write_text(
+            self.PROSE_CONFIG, encoding="utf-8"
+        )
         u.Tests.initialize_git_repo(project_dir)
         context = m.Infra.GateContext(
             repository_root=tmp_path, reports_dir=tmp_path, apply_fixes=True
@@ -69,7 +81,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         result = FlextInfraMarkdownFormatGate(tmp_path).fix(project_dir, context)
 
         tm.that(result.result.passed, eq=True)
-        tm.that(readme.read_text(encoding="utf-8"), eq=self.FORMATTED_MARKDOWN)
+        tm.that(readme.read_text(encoding="utf-8"), has=self.WRAPPED_PROSE_HEAD)
         _ = u.Tests.check_gate_asserting(
             FlextInfraMarkdownFormatGate,
             tmp_path,
@@ -114,23 +126,18 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             issues_len=issues_len,
         )
 
-    def test_code_gate_reports_syntax_broken_block_at_origin(
-        self, tmp_path: Path
-    ) -> None:
-        """Findings map back to the documentation file and block position."""
+    def test_code_gate_fragments_stay_out_of_scope(self, tmp_path: Path) -> None:
+        """Syntax-broken fragments are legitimate docs, not gate findings.
+
+        The flext-tests markdown validator owns their MD-001 findings (with
+        approved exceptions); this formatting gate stays silent about them.
+        """
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-broken")
         (project_dir / "README.md").write_text(self.SYNTAX_BROKEN, encoding="utf-8")
 
-        result = u.Tests.check_gate_asserting(
-            FlextInfraMarkdownCodeGate,
-            tmp_path,
-            project_dir,
-            passed=False,
-            issues_len=2,
+        _ = u.Tests.check_gate_asserting(
+            FlextInfraMarkdownCodeGate, tmp_path, project_dir, passed=True, issues_len=0
         )
-
-        tm.that(result.issues[0].file, eq="README.md")
-        tm.that(result.issues[0].line, eq=3)
 
     def test_code_gate_fix_splices_formatted_block_back(self, tmp_path: Path) -> None:
         """`make fix` formats fenced blocks whose round-trip recompiles cleanly."""
@@ -148,7 +155,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         tm.that(readme.read_text(encoding="utf-8"), eq=self.FORMATTED)
 
     def test_code_gate_does_not_splice_broken_blocks(self, tmp_path: Path) -> None:
-        """A block that cannot round-trip stays untouched and is reported."""
+        """A fragment that cannot parse stays untouched and reports nothing."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-no-splice")
         readme = project_dir / "README.md"
         readme.write_text(self.SYNTAX_BROKEN, encoding="utf-8")
@@ -159,18 +166,18 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         result = FlextInfraMarkdownCodeGate(tmp_path).fix(project_dir, context)
 
         tm.that(readme.read_text(encoding="utf-8"), eq=self.SYNTAX_BROKEN)
-        tm.that(result.result.passed, eq=False)
-        tm.that(bool(result.issues), eq=True)
+        tm.that(result.result.passed, eq=True)
+        tm.that(result.issues, eq=())
 
-    def test_code_gate_lints_doctest_examples_in_docstrings(
+    def test_code_gate_reports_unformatted_docstring_example(
         self, tmp_path: Path
     ) -> None:
-        """Docstring examples are validated at their source location."""
+        """Parseable docstring examples answer to the format contract."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-docstring")
         source_dir = project_dir / c.Infra.DEFAULT_SRC_DIR
         source_dir.mkdir()
         (source_dir / "widget.py").write_text(
-            '"""Widget.\n\n>>> def broken(:\n    return 1\n\n"""\n', encoding="utf-8"
+            '"""Widget.\n\n>>> x=1\n\n"""', encoding="utf-8"
         )
 
         result = u.Tests.check_gate_asserting(
@@ -178,7 +185,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             tmp_path,
             project_dir,
             passed=False,
-            issues_len=2,
+            issues_len=1,
         )
 
         tm.that(result.issues[0].file, eq="src/widget.py")

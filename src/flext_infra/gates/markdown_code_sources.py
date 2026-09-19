@@ -32,10 +32,13 @@ def source_name(relative_posix: str, index: int) -> str:
 def write_fenced_block_sources(
     project_dir: Path, markdown_files: t.SequenceOf[Path], target_dir: Path
 ) -> dict[str, tuple[str, int]]:
-    """Write one temp source per fenced ``python`` block; return the origin map.
+    """Write one temp source per parseable fenced ``python`` block.
 
-    Blocks carrying the ``notest`` fence marker are skipped: they are opted
-    out of code validation by declaration and may be intentional pseudo-code.
+    Blocks carrying the ``notest`` fence marker are skipped (opted out of
+    code validation by declaration), and so are blocks that do not compile:
+    documentation fragments are legitimate prose, and their syntax findings
+    belong to the flext-tests markdown validator (MD-001 with approved
+    exceptions), never to this formatting gate.
     """
     origin_by_source: dict[str, tuple[str, int]] = {}
     for md_path in markdown_files:
@@ -46,8 +49,13 @@ def write_fenced_block_sources(
             for match in c.Infra.MARKDOWN_PY_FENCE_RE.finditer(content)
             if TEST_SKIP_MARKER not in match.group("info")
         ):
+            source_text = match.group("code")
+            try:
+                compile(source_text, str(md_path), "exec")
+            except SyntaxError:
+                continue
             name = source_name(relative_posix, index)
-            (target_dir / name).write_text(match.group("code"), c.Cli.ENCODING_DEFAULT)
+            (target_dir / name).write_text(source_text, c.Cli.ENCODING_DEFAULT)
             origin_by_source[name] = (
                 relative_posix,
                 content[: match.start()].count("\n") + 1,
@@ -89,8 +97,13 @@ def write_docstring_sources(
             body_start = node.body[0].lineno
             relative_posix = py_path.relative_to(project_dir).as_posix()
             for index, example in enumerate(parser.get_examples(docstring)):
+                source_text = example.source
+                try:
+                    compile(source_text, str(py_path), "exec")
+                except SyntaxError:
+                    continue
                 name = source_name(relative_posix, index)
-                (target_dir / name).write_text(example.source, c.Cli.ENCODING_DEFAULT)
+                (target_dir / name).write_text(source_text, c.Cli.ENCODING_DEFAULT)
                 origin_by_source[name] = (relative_posix, body_start + example.lineno)
     return origin_by_source
 

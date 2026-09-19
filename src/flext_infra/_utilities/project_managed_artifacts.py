@@ -49,7 +49,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(stable_paths)
         if stable_paths.value != paths.value:
             return r[tuple[m.Cli.AtomicFileState, ...]].fail(
-                f"project config source topology changed: {config_dir}"
+                f"{c.Infra.CONFIG_SNAPSHOT_TOPOLOGY_RACE_MARKER}: {config_dir}"
             )
         stable_project = cls._required_directory_identity(
             project_dir, purpose="project root"
@@ -58,7 +58,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(stable_project)
         if stable_project.value != project_identity.value:
             return r[tuple[m.Cli.AtomicFileState, ...]].fail(
-                f"project root changed during config snapshot: {project_dir}"
+                f"{c.Infra.CONFIG_SNAPSHOT_ROOT_RACE_MARKER}: {project_dir}"
             )
         return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(sources))
 

@@ -1,9 +1,7 @@
 # flext_infra.api
 
 <!-- TOC START -->
-
 - No sections found
-
 <!-- TOC END -->
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
