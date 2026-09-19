@@ -376,12 +376,12 @@ class FlextInfraUtilitiesPyprojectConform:
         source = FlextInfraUtilitiesRepository.declared_git_source(requirement)
         if source.failure:
             return r[str].from_failure(source)
-        if source.value is None:
+        url, declared_ref = source.value
+        if not url:
             return r[str].fail(
                 "internal flext dependency declares no direct git source and "
                 f"is not a workspace dependency: {dependency_name}"
             )
-        url, declared_ref = source.value
         ref = str(revisions.get(dependency_name, declared_ref))
         # The declared source stays authoritative under a workspace root too:
         # uv replaces it there with the root ``workspace = true`` overlay, and
@@ -638,12 +638,12 @@ class FlextInfraUtilitiesPyprojectConform:
             )
             if source.failure:
                 return r[tuple[str, ...]].from_failure(source)
-            if source.value is None:
+            url, _ref = source.value
+            if not url:
                 return r[tuple[str, ...]].fail(
                     "pinned dependency declares no direct git source to detect "
                     f"its URL from: {name}"
                 )
-            url, _ref = source.value
             overrides.append(f"{name} @ git+{url}@{revisions[name]}")
         return r[tuple[str, ...]].ok(tuple(overrides))
 
