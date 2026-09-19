@@ -7,16 +7,16 @@ Private GitPython parts live under ``_utilities/_git/``. Consumers use
 from __future__ import annotations
 
 from ._git.attestation import FlextInfraUtilitiesGitAttestationMixin
+from ._git.worktree_facts import FlextInfraUtilitiesGitWorktreeFactsMixin
 from ._git.scope import FlextInfraUtilitiesGitScopeMixin
 from ._git.semantic_submodule import FlextInfraUtilitiesGitSemanticSubmoduleMixin
-from ._git.worktree_facts import FlextInfraUtilitiesGitWorktreeFactsMixin
 
 
 class FlextInfraUtilitiesGit(
     FlextInfraUtilitiesGitAttestationMixin,
-    FlextInfraUtilitiesGitWorktreeFactsMixin,
     FlextInfraUtilitiesGitScopeMixin,
     FlextInfraUtilitiesGitSemanticSubmoduleMixin,
+    FlextInfraUtilitiesGitWorktreeFactsMixin,
 ):
     """Canonical Git owner for flext-infra: scope + worktree + checkpoint/patch.
 
