@@ -184,10 +184,6 @@ class FlextInfraModelsDocs(
             FlextInfraConfigModels.RepositoryRef | None,
             m.Field(description="Exact repository catalog model"),
         ] = None
-        provider: Annotated[
-            FlextInfraConfigModels.ProviderSpec | None,
-            m.Field(description="Exact Git provider model"),
-        ] = None
         package_name: Annotated[str, m.Field(description="Documented package name")]
         doc_summary: Annotated[str, m.Field(description="Package docstring summary")]
         site_title: Annotated[str, m.Field(description="Resolved site title")]

@@ -11,11 +11,13 @@ Roadmap updates are generated from docs validation outputs.
 
 ## Current state
 
-Reconciled against live sources on `0.12.0-dev` at `a2bd0a7262a0eab84bd7e4c27f8bdd10de0d247a`
-(superproject gitlink `676ae7aa3c7511ce3b133fdd31e43cfc49e7564f`). The CRG build referenced by
-older plans does not exist in this checkout; the only valid CRG lives in the `rope-modernize`
-worktree, built at `469b26b4e0b336e78548fef1fdcfca347f9c5d53`, which is an ancestor of the current
-tip. Any structural claim must be re-derived from the current tree, never from that stale graph.
+Reconciled against live sources on `0.12.0-dev` at
+`a2bd0a7262a0eab84bd7e4c27f8bdd10de0d247a` (superproject gitlink
+`676ae7aa3c7511ce3b133fdd31e43cfc49e7564f`). The CRG build referenced by older plans
+does not exist in this checkout; the only valid CRG lives in the `rope-modernize`
+worktree, built at `469b26b4e0b336e78548fef1fdcfca347f9c5d53`, which is an ancestor of
+the current tip. Any structural claim must be re-derived from the current tree, never
+from that stale graph.
 
 | Item                                  | Live state                                                                                                                                                                                                                                                                                            | Evidence                                                       |
 | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
@@ -28,16 +30,16 @@ tip. Any structural claim must be re-derived from the current tree, never from t
 | Phases 3, 8                           | **Not started.** Canonical cycle and closure have no green evidence on the current tip.                                                                                                                                                                                                               | Plan §"Status das fases"                                       |
 
 The authoritative execution state is Gas City: `flext-itpd1.2` owns the current
-documentation/governance convergence and `flext-5fxu6.4` owns generator and
-enforcement work. Workspace-local plans are session evidence, not portable links
-or a second queue. Unresolved items recorded here are the `_lazy_analysis` scope
-mismatch, the god-module cutover, full canonical gates, and fleet closure; none
-are proven resolved by any live source.
+documentation/governance convergence and `flext-5fxu6.4` owns generator and enforcement
+work. Workspace-local plans are session evidence, not portable links or a second queue.
+Unresolved items recorded here are the `_lazy_analysis` scope mismatch, the god-module
+cutover, full canonical gates, and fleet closure; none are proven resolved by any live
+source.
 
 ## Namespace and runtime handoff
 
 The detailed execution handoff is
 [`namespace-automation-handoff-2026-09-14.md`](namespace-automation-handoff-2026-09-14.md).
-Its opening table is the entry point; the body is historical evidence, not current state. The
-current-state table above supersedes stale SHA, phase, and owner claims in that document where live
-sources disagree.
+Its opening table is the entry point; the body is historical evidence, not current
+state. The current-state table above supersedes stale SHA, phase, and owner claims in
+that document where live sources disagree.

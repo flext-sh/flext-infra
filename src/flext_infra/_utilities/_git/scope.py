@@ -10,7 +10,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
+from flext_infra.models import m
 
+from .semantic_identity import FlextInfraUtilitiesGitSemanticIdentityMixin
 from .semantic_index import FlextInfraUtilitiesGitSemanticIndexMixin
 
 if TYPE_CHECKING:
@@ -21,9 +23,25 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
     """Static helpers for resolving tracked files and directories within Git scopes."""
 
     @classmethod
-    def _git_repo_root(cls, scope_root: str) -> str:
-        """Return the nearest enclosing Git worktree root for ``scope_root``."""
-        working_tree_dir = cls._repo(Path(scope_root).resolve()).working_tree_dir
+    def _git_repo_root(cls, scope_root: str) -> str | None:
+        """Return the enclosing Git worktree root, or ``None`` outside any worktree.
+
+        Only the canonical three-way work-tree probe may classify a path as
+        outside Git; a genuine probe or open failure raises instead of being
+        reported as absence. Git is a required dependency of this scope probe;
+        unavailable executables must fail rather than hide tracked-file scope.
+        """
+        resolved_scope = Path(scope_root).resolve()
+        probe = FlextInfraUtilitiesGitSemanticIdentityMixin.git_is_inside_work_tree
+        probed = probe(m.Infra.GitRepoRequest(repo_root=resolved_scope))
+        if probed.failure:
+            raise OSError(probed.error or "failed to probe Git work tree")
+        if not probed.value.value:
+            return None
+        opened = cls._open_repo(resolved_scope)
+        if opened.failure:
+            raise OSError(opened.error or "failed to open git repository")
+        working_tree_dir = opened.value.working_tree_dir
         if working_tree_dir is None:
             msg = f"opened Git repository has no worktree: {scope_root}"
             raise RuntimeError(msg)
@@ -69,6 +87,8 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
         """
         resolved_root = Path(scope_root)
         repo_root_text = cls._git_repo_root(scope_root)
+        if repo_root_text is None:
+            return None
         repo_relative_paths = cls._git_tracked_repo_relative_paths(repo_root_text)
         if repo_relative_paths is None:
             return None

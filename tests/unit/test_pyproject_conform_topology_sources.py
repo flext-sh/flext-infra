@@ -1,11 +1,11 @@
 """Tests for canonical dependency source selection by topology role.
 
 The repository root owns the local ``workspace = true`` overlay. Publishable
-projects keep their direct Git requirement with the configured branch so the
-same package metadata resolves standalone; uv applies the root overlay when
-resolving them inside the workspace (a member ``[tool.uv.sources]`` git entry
-is rejected by uv itself, so the inline form is the only valid dual-context
-declaration).
+projects keep their declared direct Git requirement — the requirement line is
+the only URL and ref authority — so the same package metadata resolves
+standalone; uv applies the root overlay when resolving them inside the
+workspace (a member ``[tool.uv.sources]`` git entry is rejected by uv itself,
+so the inline form is the only valid dual-context declaration).
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -16,6 +16,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import c, config, m, u
@@ -24,9 +25,6 @@ from tests import TestsFlextInfraUtilities as tu, u as test_u
 
 class TestsFlextInfraPyprojectConformTopologySources:
     _ROLE = c.Infra.MakeProfile
-    # Provider identity, branch and base URL come from the config SSOT, never
-    # from literals repeated in the test.
-    _PROVIDER_SPEC = config.Infra.codegen.providers[0]
 
     def _member_ref(self, distribution: str, path: str) -> m.Infra.RepositoryRef:
         """Declare one standalone-capable member through the provider contract."""
@@ -44,8 +42,68 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
 
     def _inline_requirement(self, ref: m.Infra.RepositoryRef) -> str:
-        """Render the direct-source form derived from the same declared contract."""
-        return f"{ref.distribution} @ git+{ref.url}@{self._PROVIDER_SPEC.branch}"
+        """Render the direct-source form derived from the declared fixture branch."""
+        return f"{ref.distribution} @ git+{ref.url}@{test_u.Tests.provider_branch()}"
+
+    def test_declared_revision_survives_generation_and_controls_transitives(
+        self,
+    ) -> None:
+        """The same declared SHA reaches runtime, dev, codegen and uv resolution."""
+        revision = "a1" * 20
+        project = test_u.Tests.project_spec("workspace")
+        project = m.Infra.ProjectSpec.model_validate({
+            **project.model_dump(),
+            "dependency_revisions": {"flext-core": revision},
+        })
+        workspace = self._workspace().model_copy(update={"project": project})
+        declared = (
+            "flext-core @ git+"
+            f"{test_u.Tests.repository_ref('flext-core').url}@"
+            f"{test_u.Tests.provider_branch()}"
+        )
+        source = (
+            '[project]\nname = "workspace"\nversion = "0.1.0"\n'
+            f'dependencies = ["{declared}"]\n'
+            f'[dependency-groups]\ndev = ["{declared}"]\n'
+            f'codegen = ["{declared}"]\n'
+        )
+        rendered = tm.ok(
+            u.Infra.pyproject_dependencies_conform(
+                source, workspace=workspace, workspace_mode=self._ROLE.STANDALONE
+            )
+        )
+        for section, key in (
+            ("project", "dependencies"),
+            ("dependency-groups", "dev"),
+            ("dependency-groups", "codegen"),
+        ):
+            requirements = tu.Tests.toml_strings_at(rendered, section, key)
+            tm.that(len(requirements), eq=1)
+            tm.that(requirements[0].endswith(f"@{revision}"), eq=True)
+        parsed = tu.Tests.toml_mapping(u.Cli.toml_parse_text(rendered))
+        uv = tu.Tests.toml_mapping(tu.Tests.toml_mapping(parsed["tool"])["uv"])
+        tm.that(
+            uv["override-dependencies"],
+            eq=list(tu.Tests.toml_strings_at(rendered, "project", "dependencies")),
+        )
+        second = tm.ok(
+            u.Infra.pyproject_dependencies_conform(
+                rendered, workspace=workspace, workspace_mode=self._ROLE.STANDALONE
+            )
+        )
+        tm.that(second, eq=rendered)
+
+    @pytest.mark.parametrize("revision", ["main", "1234", "z" * 40])
+    def test_dependency_revision_rejects_mutable_or_invalid_refs(
+        self, revision: str
+    ) -> None:
+        """A declared fixed revision must be an immutable full commit id."""
+        project = test_u.Tests.project_spec("workspace")
+        with pytest.raises(ValueError, match="dependency_revisions"):
+            m.Infra.ProjectSpec.model_validate({
+                **project.model_dump(),
+                "dependency_revisions": {"flext-core": revision},
+            })
 
     def _assert_direct_source(self, rendered: str, ref: m.Infra.RepositoryRef) -> None:
         """Assert the canonical standalone output: one direct Git requirement."""
@@ -77,10 +135,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         rendered = tm.ok(
             u.Infra.pyproject_dependencies_conform(
-                root_source,
-                providers=config.Infra.codegen.providers,
-                workspace=workspace,
-                workspace_mode=self._ROLE.WORKSPACE,
+                root_source, workspace=workspace, workspace_mode=self._ROLE.WORKSPACE
             )
         )
 
@@ -109,10 +164,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         rendered = tm.ok(
             u.Infra.pyproject_dependencies_conform(
-                external,
-                providers=config.Infra.codegen.providers,
-                workspace=workspace,
-                workspace_mode=self._ROLE.STANDALONE,
+                external, workspace=workspace, workspace_mode=self._ROLE.STANDALONE
             )
         )
 
@@ -133,7 +185,6 @@ class TestsFlextInfraPyprojectConformTopologySources:
         rendered = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 publishable_project,
-                providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=self._ROLE.WORKSPACE,
             )
@@ -141,8 +192,10 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         self._assert_direct_source(rendered, provider)
 
-    def test_publishable_project_pins_unmapped_provider_source_to_branch(self) -> None:
-        """Derive the declared branch for a provider absent from subprojects."""
+    def test_publishable_project_preserves_declared_ref_of_unmapped_source(
+        self,
+    ) -> None:
+        """The declared ref stays authoritative for a dependency no member owns."""
         workspace = self._workspace(
             self._member_ref("flext-core", "flext-core"),
             self._member_ref("flext-api", "flext-api"),
@@ -156,7 +209,6 @@ class TestsFlextInfraPyprojectConformTopologySources:
                     'dependencies = ["flext-unmapped @ '
                     'git+https://github.com/flext-sh/flext-unmapped.git@main"]\n'
                 ),
-                providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=self._ROLE.WORKSPACE,
             )
@@ -168,7 +220,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             eq=(
                 (
                     "flext-unmapped @ git+https://github.com/flext-sh/"
-                    f"flext-unmapped.git@{self._PROVIDER_SPEC.branch}"
+                    "flext-unmapped.git@main"
                 ),
             ),
         )
@@ -206,10 +258,7 @@ workspace = true
 """
         root_rendered = tm.ok(
             u.Infra.pyproject_dependencies_conform(
-                root_source,
-                providers=config.Infra.codegen.providers,
-                workspace=workspace,
-                workspace_mode=self._ROLE.WORKSPACE,
+                root_source, workspace=workspace, workspace_mode=self._ROLE.WORKSPACE
             )
         )
         consumer_rendered = tm.ok(
@@ -220,7 +269,6 @@ workspace = true
                     f'dependencies = ["{self._inline_requirement(provider)}"]\n'
                     "\n[tool.uv.workspace]\n"
                 ),
-                providers=config.Infra.codegen.providers,
                 workspace=m.Infra.WorkspaceSpec(
                     name=consumer.name,
                     beads=workspace.beads,
@@ -286,10 +334,7 @@ workspace = true
 
         rendered = tm.ok(
             u.Infra.pyproject_dependencies_conform(
-                member_source,
-                providers=config.Infra.codegen.providers,
-                workspace=workspace,
-                workspace_mode=self._ROLE.STANDALONE,
+                member_source, workspace=workspace, workspace_mode=self._ROLE.STANDALONE
             )
         )
 

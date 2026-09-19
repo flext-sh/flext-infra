@@ -154,7 +154,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
             added = sorted(set(discovered.value).difference(expected_paths))
             removed = sorted(set(expected_paths).difference(discovered.value))
             return r[bool].fail(
-                "docs source topology changed during planning: "
+                f"{c.Infra.DOCS_SOURCE_TOPOLOGY_RACE_MARKER}: "
                 f"added={[path.as_posix() for path in added]}, "
                 f"removed={[path.as_posix() for path in removed]}"
             )
@@ -172,7 +172,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                     if getattr(expected, field) != getattr(observed, field)
                 )
                 return r[bool].fail(
-                    f"docs source state changed during planning: {expected.path}; "
+                    f"{c.Infra.DOCS_SOURCE_STATE_RACE_MARKER}: {expected.path}; "
                     f"differing={list(differing)}"
                 )
         return r[bool].ok(True)

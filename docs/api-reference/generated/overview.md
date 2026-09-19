@@ -10,28 +10,28 @@
 
 - Package: `flext_infra`
 - Version: `0.12.0`
-- Description: FLEXT Infrastructure Tooling - Build automation, code generation,
-  and workspace management
+- Description: FLEXT Infrastructure Tooling - Build automation, code generation, and
+  workspace management
 - Doc summary: Flext Infra package.
-- Classifiers: `Development Status :: 3 - Alpha`, `Framework :: Pydantic :: 2`,
-  `Framework :: Pydantic`, `Intended Audience :: Developers`, `Operating System
-:: OS Independent`, `Programming Language :: Python :: 3 :: Only` (+4 more)
+- Classifiers: Development Status :: 3 - Alpha, Framework :: Pydantic :: 2, Framework ::
+  Pydantic, Intended Audience :: Developers, Operating System :: OS Independent,
+  Programming Language :: Python :: 3 :: Only, Programming Language :: Python :: 3.13,
+  Topic :: Software Development :: Build Tools, Topic :: Software Development :: Code
+  Generators, Typing :: Typed
 - Project class: `infra`
 - Keywords: `automation`, `codegen`, `flext`, `infrastructure`, `tooling`
 - Main facades: `FlextInfra`, `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
   `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport`,
-  `FlextInfraCanonicalAliasGate`, `FlextInfraCensusImportDiscoveryVisitor` (+181
-  more)
+  `FlextInfraCanonicalAliasGate`, `FlextInfraCensusImportDiscoveryVisitor` (+185 more)
 - Alias exports: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
-- Public symbol exports: `CliDispatchService`, `CliRouteBase`,
-  `CliRouteService`, `CodegenRoutes`, `FlextInfra`,
-  `FlextInfraAbstractionBoundaryGate`,
+- Public symbol exports: `TEST_SKIP_MARKER`, `CliDispatchService`, `CliRouteBase`,
+  `CliRouteService`, `CodegenRoutes`, `FlextInfra`, `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
-  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+194 more)
-- Exported module shortcuts: `check`, `codegen`, `codemod`, `deps`, `detectors`,
-  `docs`, `fixers`, `gates` (+8 more)
-- Generated module pages: `207`
+  `FlextInfraBooleanLogicFixer` (+204 more)
+- Exported module shortcuts: `check`, `codegen`, `codemod`, `deps`, `detectors`, `docs`,
+  `fixers`, `gates` (+7 more)
+- Generated module pages: `211`
 
 ## Next Pages
 

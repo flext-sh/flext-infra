@@ -10,7 +10,10 @@ Infra:
   release:
     publishable_prefixes:
       - flext-
-      - ai-hub
+    # A consumer workspace that also publishes distributions outside this
+    # prefix declares the extra prefix in
+    # config/codegen-overrides.local.yaml (gitignored, merges after the
+    # tracked configs).
     # Hash-pinned build backend for the isolated release build
     # (`uv build --build-constraints … --require-hashes`); projected into every
     # repository as config/build-constraints.txt (flext-to3n7).

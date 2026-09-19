@@ -14,7 +14,7 @@ from .deps_tool_config_linters import FlextInfraModelsDepsToolConfigLinters
 from .deps_tool_config_type_checkers import FlextInfraModelsDepsToolConfigTypeCheckers
 
 
-class FlextInfraModelsDepsToolSettings(
+class FlextInfraModelsDepsToolConfig(
     FlextInfraModelsDepsToolConfigLinters, FlextInfraModelsDepsToolConfigTypeCheckers
 ):
     """Models for tool configuration loaded from YAML."""
@@ -35,10 +35,10 @@ class FlextInfraModelsDepsToolSettings(
         """Declarative policy for the unified modernize verb ``mod``."""
 
         @staticmethod
-        def _default_phases() -> FlextInfraModelsDepsToolSettings.ModPhasesConfig:
-            return FlextInfraModelsDepsToolSettings.ModPhasesConfig()
+        def _default_phases() -> FlextInfraModelsDepsToolConfig.ModPhasesConfig:
+            return FlextInfraModelsDepsToolConfig.ModPhasesConfig()
 
-        phases: FlextInfraModelsDepsToolSettings.ModPhasesConfig = m.Field(
+        phases: FlextInfraModelsDepsToolConfig.ModPhasesConfig = m.Field(
             default_factory=_default_phases,
             description="Phase toggles read from config/tooling.yaml.",
         )
@@ -499,7 +499,7 @@ class FlextInfraModelsDepsToolSettings(
             t.StrSequence,
             m.Field(description="Production roots measured by full coverage runs."),
         ]
-        fail_under: FlextInfraModelsDepsToolSettings.CoverageFailUnderConfig = m.Field(
+        fail_under: FlextInfraModelsDepsToolConfig.CoverageFailUnderConfig = m.Field(
             alias="fail-under", description="Coverage fail-under thresholds by layer."
         )
         show_missing: Annotated[
@@ -560,6 +560,34 @@ class FlextInfraModelsDepsToolSettings(
             description="Enable Vulture's internal scanner trace when requested."
         )
 
+    class MarkdownPrettierConfig(m.ArbitraryTypesModel):
+        """Prettier projection policy: ``make fmt``'s markdown formatter."""
+
+        prose_wrap: Annotated[
+            str,
+            m.Field(
+                default="always",
+                alias="prose-wrap",
+                description="Prettier proseWrap contract for markdown prose.",
+            ),
+        ]
+        tab_width: Annotated[
+            int,
+            m.Field(
+                default=4,
+                alias="tab-width",
+                description="Prettier tabWidth for non-markdown targets.",
+            ),
+        ]
+        md_tab_width: Annotated[
+            int,
+            m.Field(
+                default=2,
+                alias="md-tab-width",
+                description="Prettier tabWidth override for markdown targets.",
+            ),
+        ]
+
     class MarkdownConfig(m.ArbitraryTypesModel):
         """Markdown lint rules and excluded non-documentation surfaces."""
 
@@ -568,49 +596,64 @@ class FlextInfraModelsDepsToolSettings(
             description="Glob patterns excluded from Markdown quality checks."
         )
 
+        @staticmethod
+        def _default_prettier() -> (
+            FlextInfraModelsDepsToolConfig.MarkdownPrettierConfig
+        ):
+            """Resolve the policy owner after the enclosing model is defined."""
+            return FlextInfraModelsDepsToolConfig.MarkdownPrettierConfig()
+
+        prettier: Annotated[
+            FlextInfraModelsDepsToolConfig.MarkdownPrettierConfig,
+            m.Field(
+                default_factory=(FlextInfraModelsDepsToolConfig.MarkdownPrettierConfig),
+                description="Prettier formatting policy projected into .prettierrc.",
+            ),
+        ]
+
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
-        codespell: FlextInfraModelsDepsToolSettings.CodespellConfig = m.Field(
+        codespell: FlextInfraModelsDepsToolConfig.CodespellConfig = m.Field(
             description="Codespell settings"
         )
-        deptry: FlextInfraModelsDepsToolSettings.DeptryConfig = m.Field(
+        deptry: FlextInfraModelsDepsToolConfig.DeptryConfig = m.Field(
             description="Deptry settings"
         )
-        hatch: FlextInfraModelsDepsToolSettings.HatchConfig = m.Field(
+        hatch: FlextInfraModelsDepsToolConfig.HatchConfig = m.Field(
             description="Hatch metadata settings"
         )
-        markdown: FlextInfraModelsDepsToolSettings.MarkdownConfig = m.Field(
+        markdown: FlextInfraModelsDepsToolConfig.MarkdownConfig = m.Field(
             description="Markdown lint settings"
         )
-        ruff: FlextInfraModelsDepsToolSettings.RuffConfig = m.Field(
+        ruff: FlextInfraModelsDepsToolConfig.RuffConfig = m.Field(
             description="Ruff settings"
         )
-        mypy: FlextInfraModelsDepsToolSettings.MypyConfig = m.Field(
+        mypy: FlextInfraModelsDepsToolConfig.MypyConfig = m.Field(
             description="Mypy settings"
         )
-        pydantic_mypy: FlextInfraModelsDepsToolSettings.PydanticMypyConfig = m.Field(
+        pydantic_mypy: FlextInfraModelsDepsToolConfig.PydanticMypyConfig = m.Field(
             alias="pydantic-mypy", description="Pydantic mypy plugin configuration."
         )
-        pyright: FlextInfraModelsDepsToolSettings.PyrightConfig = m.Field(
+        pyright: FlextInfraModelsDepsToolConfig.PyrightConfig = m.Field(
             description="Pyright settings"
         )
-        pyrefly: FlextInfraModelsDepsToolSettings.PyreflyConfig = m.Field(
+        pyrefly: FlextInfraModelsDepsToolConfig.PyreflyConfig = m.Field(
             description="Pyrefly settings"
         )
-        pytest: FlextInfraModelsDepsToolSettings.PytestConfig = m.Field(
+        pytest: FlextInfraModelsDepsToolConfig.PytestConfig = m.Field(
             description="Pytest settings"
         )
-        tomlsort: FlextInfraModelsDepsToolSettings.TomlsortConfig = m.Field(
+        tomlsort: FlextInfraModelsDepsToolConfig.TomlsortConfig = m.Field(
             description="Tomlsort settings"
         )
-        vulture: FlextInfraModelsDepsToolSettings.VultureConfig = m.Field(
+        vulture: FlextInfraModelsDepsToolConfig.VultureConfig = m.Field(
             description="Vulture production-reachability settings"
         )
-        yamlfix: FlextInfraModelsDepsToolSettings.YamlfixConfig = m.Field(
+        yamlfix: FlextInfraModelsDepsToolConfig.YamlfixConfig = m.Field(
             description="Yamlfix settings"
         )
-        coverage: FlextInfraModelsDepsToolSettings.CoverageConfig = m.Field(
+        coverage: FlextInfraModelsDepsToolConfig.CoverageConfig = m.Field(
             description="Coverage configuration with per-project-type thresholds."
         )
 
@@ -625,19 +668,19 @@ class FlextInfraModelsDepsToolSettings(
     class ProjectTypeOverridesConfig(m.ArbitraryTypesModel):
         """Project-type-specific override matrix from ``config/tooling.yaml``."""
 
-        core: FlextInfraModelsDepsToolSettings.ProjectTypeOverrideConfig = m.Field(
+        core: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = m.Field(
             description="Core overrides"
         )
-        domain: FlextInfraModelsDepsToolSettings.ProjectTypeOverrideConfig = m.Field(
+        domain: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = m.Field(
             description="Domain overrides"
         )
-        platform: FlextInfraModelsDepsToolSettings.ProjectTypeOverrideConfig = m.Field(
+        platform: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = m.Field(
             description="Platform overrides"
         )
-        integration: FlextInfraModelsDepsToolSettings.ProjectTypeOverrideConfig = (
-            m.Field(description="Integration overrides")
+        integration: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = m.Field(
+            description="Integration overrides"
         )
-        app: FlextInfraModelsDepsToolSettings.ProjectTypeOverrideConfig = m.Field(
+        app: FlextInfraModelsDepsToolConfig.ProjectTypeOverrideConfig = m.Field(
             description="App overrides"
         )
 
@@ -701,22 +744,22 @@ class FlextInfraModelsDepsToolSettings(
     class ToolConfigDocument(m.ArbitraryTypesModel):
         """Root schema for canonical ``config/tooling.yaml`` policy data."""
 
-        tools: FlextInfraModelsDepsToolSettings.ToolConfigTools = m.Field(
+        tools: FlextInfraModelsDepsToolConfig.ToolConfigTools = m.Field(
             description="Tools"
         )
-        project_type_overrides: FlextInfraModelsDepsToolSettings.ProjectTypeOverridesConfig = m.Field(
+        project_type_overrides: FlextInfraModelsDepsToolConfig.ProjectTypeOverridesConfig = m.Field(
             alias="project-type-overrides",
             description="Per-project-type configuration overrides.",
         )
-        lazy_init: FlextInfraModelsDepsToolSettings.LazyInitConfig = m.Field(
+        lazy_init: FlextInfraModelsDepsToolConfig.LazyInitConfig = m.Field(
             alias="lazy-init", description="Declarative lazy-init generation policy."
         )
 
         @staticmethod
-        def _default_mod() -> FlextInfraModelsDepsToolSettings.ModConfig:
-            return FlextInfraModelsDepsToolSettings.ModConfig()
+        def _default_mod() -> FlextInfraModelsDepsToolConfig.ModConfig:
+            return FlextInfraModelsDepsToolConfig.ModConfig()
 
-        mod: FlextInfraModelsDepsToolSettings.ModConfig = m.Field(
+        mod: FlextInfraModelsDepsToolConfig.ModConfig = m.Field(
             default_factory=_default_mod,
             description="Declarative make-mod phase policy.",
         )
@@ -737,7 +780,7 @@ class FlextInfraModelsDepsToolSettings(
             t.StrTuple, m.Field(description="Resolved environment import paths")
         ]
         settings: Annotated[
-            t.VariadicTuple[FlextInfraModelsDepsToolSettings.ToolingScalarSetting],
+            t.VariadicTuple[FlextInfraModelsDepsToolConfig.ToolingScalarSetting],
             m.Field(description="Resolved environment diagnostics"),
         ]
 
@@ -776,11 +819,11 @@ class FlextInfraModelsDepsToolSettings(
             t.StrTuple, m.Field(description="Resolved Pyright import paths")
         ]
         pyright_settings: Annotated[
-            t.VariadicTuple[FlextInfraModelsDepsToolSettings.ToolingScalarSetting],
+            t.VariadicTuple[FlextInfraModelsDepsToolConfig.ToolingScalarSetting],
             m.Field(description="Resolved Pyright scalar settings"),
         ]
         pyright_execution_environments: Annotated[
-            t.VariadicTuple[FlextInfraModelsDepsToolSettings.ToolingPyrightEnvironment],
+            t.VariadicTuple[FlextInfraModelsDepsToolConfig.ToolingPyrightEnvironment],
             m.Field(description="Resolved Pyright environments"),
         ]
         ruff_src: Annotated[
@@ -795,4 +838,4 @@ class FlextInfraModelsDepsToolSettings(
         ]
 
 
-__all__: list[str] = ["FlextInfraModelsDepsToolSettings"]
+__all__: list[str] = ["FlextInfraModelsDepsToolConfig"]

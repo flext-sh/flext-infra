@@ -31,11 +31,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         if not isinstance(restructuring, p.Infra.RopeRestructure):
             msg = "rope Restructure does not satisfy its public planning contract"
             raise TypeError(msg)
-        changes: object = restructuring.get_changes(resources=list(resources))
-        if not isinstance(changes, p.Infra.RopeChangeSet):
-            msg = "rope Restructure returned an invalid ChangeSet"
-            raise TypeError(msg)
-        return changes
+        return restructuring.get_changes(resources=list(resources))
 
     @classmethod
     def create_move(

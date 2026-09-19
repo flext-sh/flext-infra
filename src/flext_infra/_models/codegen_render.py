@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import t
 
-from .deps_tool_config import FlextInfraModelsDepsToolSettings
+from .deps_tool_config import FlextInfraModelsDepsToolConfig
 
 
 class FlextInfraModelsCodegenRender:
@@ -21,7 +21,7 @@ class FlextInfraModelsCodegenRender:
         )
 
         tooling: Annotated[
-            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
+            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
             m.Field(description="Canonical validated tooling policy."),
         ]
 

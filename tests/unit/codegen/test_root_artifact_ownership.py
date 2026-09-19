@@ -68,6 +68,7 @@ class TestsFlextInfraRootArtifactOwnership:
         physical = {
             path.relative_to(template_root).as_posix().removesuffix(".j2")
             for path in (template_root / ".github").rglob("*.j2")
+            if "_fragments" not in path.relative_to(template_root).parts
         }
         declared = {
             entry.destination

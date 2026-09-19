@@ -80,9 +80,12 @@ class FlextInfraDependencyDetectionRunnersMixin:
                 return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].from_failure(
                     loaded_result
                 )
+            validation_failure: (
+                p.Result[t.Pair[t.SequenceOf[t.JsonMapping], int]] | None
+            ) = None
             if isinstance(loaded_result.value, list):
                 normalized_issues: t.MutableSequenceOf[t.JsonMapping] = []
-                for index, item in enumerate(loaded_result.value):
+                for _index, item in enumerate(loaded_result.value):
                     if not isinstance(item, Mapping):
                         return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail(
                             f"deptry JSON issue {index} must be a mapping"
@@ -104,6 +107,8 @@ class FlextInfraDependencyDetectionRunnersMixin:
                     return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail(
                         f"failed to cleanup deptry temp output: {exc}", exception=exc
                     )
+            if validation_failure is not None:
+                return validation_failure
         cmd_result: p.Cli.CommandOutput = result.value
         return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].ok((
             issues,

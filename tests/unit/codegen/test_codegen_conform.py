@@ -22,7 +22,7 @@ from flext_infra.codegen import (
 from flext_infra.docs import FlextInfraDocGenerator
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, p, u
+from tests import c, m, p, t, u
 
 from .conform_support import TestsFlextInfraConformSupport
 
@@ -50,7 +50,7 @@ class TestsFlextInfraCodegenConform:
     @staticmethod
     def _planned_hook_pyproject(
         root: Path, hook_path: str | Path | None
-    ) -> tuple[
+    ) -> t.Triple[
         FlextInfraCodegenConform, m.Infra.CodegenConformRequest, m.Infra.CodegenFilePlan
     ]:
         """Plan the canonical pyproject through the public conform owner."""
@@ -129,7 +129,7 @@ class TestsFlextInfraCodegenConform:
         service, request, first = self._planned_hook_pyproject(
             root, Path("scripts/hatch_build.py")
         )
-        root.mkdir(parents=True)
+        root.mkdir(parents=True, exist_ok=True)
         (root / c.Infra.PYPROJECT_FILENAME).write_bytes(
             tm.not_none(first.desired_content)
         )
@@ -144,10 +144,10 @@ class TestsFlextInfraCodegenConform:
         tm.that(u.Tests.codegen_file_text(second), eq=u.Tests.codegen_file_text(first))
         tm.that(u.Infra.codegen_file_requires_effect(second), eq=False)
 
-    def test_pyproject_plan_preserves_runtime_dependencies_before_conformance(
+    def test_pyproject_plan_rejects_local_path_internal_source(
         self, tmp_path: Path
     ) -> None:
-        """Render package requirements, canonicalize internal refs, then replan."""
+        """A local-path internal source has no detectable identity: fail loud."""
         service, request = TestsFlextInfraConformSupport.self_check_conform_service(
             tmp_path
         )
@@ -161,36 +161,10 @@ class TestsFlextInfraCodegenConform:
             '"flext-custom @ ../flext-custom"]\n',
             encoding="utf-8",
         )
-        first = tm.ok(service.plan(request))
-        rendered = u.Tests.codegen_file_text(
-            next(file for file in first.files if file.path == pyproject)
-        )
-        workspace = service.initial_workspace
-        assert workspace is not None
-        canonical = tm.ok(
-            u.Infra.pyproject_dependencies_conform(
-                pyproject.read_text(encoding="utf-8"),
-                providers=config.Infra.codegen.providers,
-                workspace=workspace,
-                workspace_mode=c.Infra.MakeProfile.STANDALONE,
-            )
-        )
-        dependencies = u.Tests.toml_strings_at(rendered, "project", "dependencies")
-        tm.that("custom-runtime>=0.22" in dependencies, eq=True)
-        tm.that(
-            set(u.Tests.toml_strings_at(canonical, "project", "dependencies"))
-            <= set(dependencies),
-            eq=True,
-        )
-        tm.that(rendered, lacks="../flext-custom")
-        pyproject.write_text(rendered, encoding="utf-8")
-        second = tm.ok(service.plan(request))
-        tm.that(
-            u.Tests.codegen_file_text(
-                next(file for file in second.files if file.path == pyproject)
-            ),
-            eq=rendered,
-        )
+
+        result = service.plan(request)
+
+        tm.fail(result, has="internal dependency direct source must be a git URL")
 
     def _conform_with_rendered_makefile(
         self, root: Path, help_text: str
@@ -297,6 +271,8 @@ class TestsFlextInfraCodegenConform:
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
             provider="flext-sh",
+            repository_url=f"https://github.com/flext-sh/{name}.git",
+            repository_branch="0.12.0-dev",
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
@@ -323,7 +299,7 @@ class TestsFlextInfraCodegenConform:
         )
         docs = tm.ok(
             FlextInfraDocGenerator(repository_root=root).generate(
-                m.Infra.DocsGenerateRequest(repository_root=root, apply=False)
+                m.Infra.DocsGenerateRequest(repository_root=root)
             )
         )
         tm.that(all(report.changed_files == 0 for report in docs), eq=True)

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, config, m, u
+from flext_infra.protocols import p
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -61,10 +62,14 @@ class FlextInfraReleaseOrchestratorPublishMixin:
         content = u.Cli.files_read_text(report_path)
         if content.failure:
             return r[m.Infra.BuildReport].from_failure(content)
-        try:
-            report = m.Infra.BuildReport.model_validate_json(content.value)
-        except c.ValidationError as exc:
-            return r[m.Infra.BuildReport].fail_op("validate release receipt", exc)
+        validated: p.Result[m.Infra.BuildReport] = u.validate_value(
+            m.Infra.BuildReport, content.value, from_json=True
+        )
+        if validated.failure:
+            return r[m.Infra.BuildReport].fail_op(
+                "validate release receipt", validated.error
+            )
+        report = validated.value
         if report.dry_run or report.failures or report.version != ctx.version:
             return r[m.Infra.BuildReport].fail(
                 f"release receipt is not publishable for {ctx.version}: {report_path}"

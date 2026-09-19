@@ -89,7 +89,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.that(rendered_config, lacks="Gas City contract")
         if rendered_mise is None:
             pytest.fail("standalone identity must produce the managed Mise manifest")
-        tm.that(rendered_mise, lacks="gascity")
+        tm.that(rendered_mise, lacks='[tools."github:steveyegge/gascity"]')
         tm.that(rendered_mise, has='[tools."github:marlon-costa-dc/beads"]')
 
     def test_mise_manifest_provisions_managed_make(self, tmp_path: Path) -> None:
@@ -106,8 +106,8 @@ class TestsFlextInfraCodegenBeadsProjection:
             issue_prefix="project-prefix",
         )
 
-        plan = self._plan(root)
-        rendered_mise = self._rendered(plan, ".mise.toml")
+        plan = u.Tests.governed_project_plan(root)
+        rendered_mise = u.Tests.planned_text(plan, ".mise.toml")
 
         if rendered_mise is None:
             pytest.fail("conform must produce the managed .mise.toml")
@@ -133,11 +133,16 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.that(rendered_envrc, lacks="AGENTS_GAS_CITY_ROOT")
         tm.that(rendered_envrc, lacks="dolt-state.json")
         tm.that(rendered_envrc, lacks="jq -er")
-        tm.that(rendered_envrc, has='watch_file "$checkout_root/.beads/metadata.json"')
+        tm.that(
+            rendered_envrc, has='watch_file "${checkout_root}/.beads/metadata.json"'
+        )
         tm.that(
             rendered_envrc, has="unset BEADS_DOLT_SERVER_HOST BEADS_DOLT_SERVER_PORT"
         )
         tm.that(rendered_envrc, has="unset BEADS_DOLT_AUTO_START")
+        # Caller-owned Beads routing survives activation so bd resolves the
+        # selected ledger inside a linked worktree.
+        tm.that(rendered_envrc, lacks="unset BEADS_DIR")
 
     def test_envrc_local_generated_residue_is_normalized(self, tmp_path: Path) -> None:
         """The merge keeps custom overrides and strips stale generated sections.
@@ -238,6 +243,7 @@ class TestsFlextInfraCodegenBeadsProjection:
             lacks='source_env "$HOME/.config/environment.d/projects/agent-tools.envrc"',
         )
         tm.that(rendered_envrc, has="AGENTS_GAS_CITY_ROOT must name the canonical")
+        tm.that(rendered_envrc, lacks="unset BEADS_DIR")
 
     @pytest.mark.slow
     @pytest.mark.parametrize("gascity_enabled", [True, False])

@@ -29,7 +29,14 @@ uv.lock
 # Agent hooks and operator config (runtime state, never source)
 .github/hooks/
 */.hooks.json.agents-governance.json
+.claude/settings.json
+.claude/*.agents-governance.json
+.gemini/settings.json
+.gemini/*.agents-governance.json
 .claude/settings.local.json
+
+# Operator-private local config overrides
+/config/codegen-overrides.local.yaml
 
 # Gas City skill projections (runtime state, never source)
 .agents/skills/.gc-skill-ownership.json
@@ -299,6 +306,7 @@ __pyrefly_virtual__/
 .dolt_dropped_databases/
 .doltcfg/
 .hypothesis/
+.mimosa/
 .mypy_cache/
 .omo/
 .pylance_cache/
@@ -318,6 +326,11 @@ __pyrefly_virtual__/
 .turbo/
 .venv.*/
 *.egg-info/
+_tmp_*/
+*.bak/
+*.orig/
+*.rej/
+*.swp/
 build/
 dist/
 node_modules/
@@ -359,9 +372,6 @@ CLAUDE.local.md
 !.github/workflows/ci.yml
 !.github/workflows/docs.yml
 !.github/workflows/release.yml
-!.github/workflows/_fragments/
-!.github/workflows/_fragments/cross_repo_dependency_credential
-!.github/workflows/_fragments/testmon_cache
 !.qlty/
 !.qlty/qlty.toml
 !.vscode/settings.json

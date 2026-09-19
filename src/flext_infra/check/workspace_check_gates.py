@@ -24,6 +24,8 @@ from flext_infra.gates.index_declarations import FlextInfraIndexDeclarationsGate
 from flext_infra.gates.layout import FlextInfraLayoutGate
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
+from flext_infra.gates.markdown_code import FlextInfraMarkdownCodeGate
+from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.namespace import FlextInfraNamespaceGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
@@ -81,6 +83,8 @@ class FlextInfraGateRegistry:
             FlextInfraDeferredSelfReferenceGate,
             FlextInfraBanditGate,
             FlextInfraMarkdownGate,
+            FlextInfraMarkdownFormatGate,
+            FlextInfraMarkdownCodeGate,
             FlextInfraLocCapGate,
             FlextInfraAbstractionBoundaryGate,
             FlextInfraCanonicalAliasGate,
@@ -332,11 +336,18 @@ class FlextInfraWorkspaceCheckGatesMixin:
     def _execute_gate(
         gate_instance: FlextInfraGate, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
-        """Run fix-then-check or check-only for a single gate instance."""
+        """Run fix-only under ``--apply``; check-only otherwise.
+
+        Single-pass verb law: the mutating verb runs exactly one operation per
+        gate — never a check pass before or after the fix. The fix execution
+        already reports what its tool could not repair
+        (``accept_reported_issues=True``); enforcing that residue belongs to
+        the read-only ``make check``. Gates without a fix contract fall
+        through to their read-only check, so an ``--apply`` selection over a
+        read-only gate still executes it instead of silently skipping.
+        """
         if ctx.apply_fixes and (not ctx.check_only) and gate_instance.can_fix:
-            fix_execution = gate_instance.fix(project_dir, ctx)
-            if not fix_execution.result.passed:
-                return fix_execution
+            return gate_instance.fix(project_dir, ctx)
         return gate_instance.check(project_dir, ctx)
 
 

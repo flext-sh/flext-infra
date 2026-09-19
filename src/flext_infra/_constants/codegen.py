@@ -56,6 +56,14 @@ class FlextInfraConstantsCodegen(
 
     TRANSACTION_ID_LENGTH: Final[int] = 32
 
+    LAZY_INIT_CLASS_RECEIPTS_RELPATH: Final[str] = (
+        "flext-infra/lazy-init-class-receipts.json"
+    )
+    """Regenerable class-receipt cache path under the ignored ``.state`` root."""
+
+    LAZY_INIT_CLASS_RECEIPTS_VERSION: Final[int] = 1
+    """Receipt document schema version; a mismatch discards the cache."""
+
     SRC_MODULES: Final[t.VariadicTuple[t.Quad[str, str, str, str]]] = (
         ("constants.py", "Constants", "FlextConstants", "Constants"),
         ("typings.py", "Types", "FlextTypes", "Type aliases"),

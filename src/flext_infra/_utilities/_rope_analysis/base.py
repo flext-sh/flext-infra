@@ -1,4 +1,4 @@
-"""Aggregated rope analysis domain partials composed by the public facade."""
+"""Composed rope analysis base joining the domain responsibility classes."""
 
 from __future__ import annotations
 
@@ -9,9 +9,14 @@ from .exports import FlextInfraUtilitiesRopeAnalysisExports
 from .importstate import FlextInfraUtilitiesRopeAnalysisImportState
 from .sourcescan import FlextInfraUtilitiesRopeAnalysisSourceScan
 
-__all__: t.VariadicTuple[str] = (
-    "FlextInfraUtilitiesRopeAnalysisAstHelpers",
-    "FlextInfraUtilitiesRopeAnalysisExports",
-    "FlextInfraUtilitiesRopeAnalysisImportState",
-    "FlextInfraUtilitiesRopeAnalysisSourceScan",
-)
+
+class FlextInfraUtilitiesRopeAnalysisBase(
+    FlextInfraUtilitiesRopeAnalysisAstHelpers,
+    FlextInfraUtilitiesRopeAnalysisSourceScan,
+    FlextInfraUtilitiesRopeAnalysisExports,
+    FlextInfraUtilitiesRopeAnalysisImportState,
+):
+    """Rope-backed semantic analysis composed from its domain responsibilities."""
+
+
+__all__: t.VariadicTuple[str] = ("FlextInfraUtilitiesRopeAnalysisBase",)

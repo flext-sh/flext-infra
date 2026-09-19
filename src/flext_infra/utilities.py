@@ -50,6 +50,7 @@ from ._utilities.process import FlextInfraUtilitiesProcess
 from ._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
+from ._utilities.promoted import FlextInfraUtilitiesPromoted
 from ._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from ._utilities.pyproject_conform import FlextInfraUtilitiesPyprojectConform
 from ._utilities.pyrefly import FlextInfraUtilitiesPyrefly
@@ -98,6 +99,7 @@ class FlextInfraUtilities(cli_u):
         FlextInfraUtilitiesBase,
         FlextInfraUtilitiesClassNesting,
         FlextInfraUtilitiesProcess,
+        FlextInfraUtilitiesPromoted,
         FlextInfraUtilitiesNetwork,
         FlextInfraUtilitiesResourceLimits,
         FlextInfraUtilitiesCodegen,

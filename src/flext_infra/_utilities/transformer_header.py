@@ -16,6 +16,25 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
     @classmethod
     def ensure_future_annotations(cls, source: str) -> str:
         """Return source with exactly one correctly positioned future import."""
+        module = ast.parse(source)
+        imports = [
+            node
+            for node in ast.walk(module)
+            if isinstance(node, ast.ImportFrom)
+            and node.module == "__future__"
+            and any(alias.name == "annotations" for alias in node.names)
+        ]
+        if len(imports) == 1:
+            header = (
+                module.body[1:]
+                if ast.get_docstring(module) is not None
+                else module.body
+            )
+            for node in header:
+                if not isinstance(node, ast.ImportFrom) or node.module != "__future__":
+                    break
+                if node is imports[0]:
+                    return source
         normalized = cls._remove_future_annotations_lines(source)
         body = normalized.splitlines(keepends=True)
         info = cls._parse_header(normalized)

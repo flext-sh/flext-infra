@@ -8,50 +8,10 @@ from flext_tests import tm
 
 from flext_infra import config
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from tests import c, m, t, u
-
-_FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
+from tests import m, u
 
 
-def _read_fixture(name: str) -> str:
-    fixture_name = name.replace(".py", ".pysrc") if name.endswith(".py") else name
-    return (_FIXTURES_DIR / fixture_name).read_text(encoding="utf-8")
-
-
-def _make_project_with_module(
-    tmp_path: Path, *, module_source: str, module_name: str
-) -> Path:
-    project_root = tmp_path / "project"
-    package_dir = project_root / "src" / "flext_test"
-    package_dir.mkdir(parents=True)
-    _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-    u.Tests.write_canonical_package_layout(package_dir)
-    _ = (package_dir / module_name).write_text(module_source, encoding="utf-8")
-    u.Tests.initialize_git_repo(project_root)
-    return project_root
-
-
-def _make_project_with_module_path(
-    tmp_path: Path, *, module_source: str, module_path: str
-) -> t.Pair[Path, Path]:
-    project_root = tmp_path / "project"
-    package_dir = project_root / "src" / "flext_test"
-    package_dir.mkdir(parents=True)
-    _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-    u.Tests.write_canonical_package_layout(package_dir)
-    relative = Path(module_path)
-    target = (
-        project_root / relative
-        if relative.parts[0] == c.Infra.DIR_TESTS
-        else package_dir / relative
-    )
-    target.parent.mkdir(parents=True, exist_ok=True)
-    _ = target.write_text(module_source, encoding="utf-8")
-    u.Tests.initialize_git_repo(project_root)
-    return project_root, target
-
-
-class TestsCoreValidationBehavior:
+class TestsFlextInfraCoreValidationBehavior:
     """Test suite for core validation behavior."""
 
     def test_public_project_layout_uses_flext_for_core_exception(
@@ -73,7 +33,9 @@ class TestsCoreValidationBehavior:
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
         u.Tests.write_canonical_package_layout(package_dir)
         tracked_module = package_dir / "models.py"
-        tracked_module.write_text(_read_fixture("rule0_valid.py"), encoding="utf-8")
+        tracked_module.write_text(
+            u.Tests.namespace_fixture("rule0_valid.py"), encoding="utf-8"
+        )
 
         init_result = u.Cli.run_raw(["git", "init"], cwd=project_root)
         tm.ok(init_result)
@@ -112,10 +74,10 @@ class TestsCoreValidationBehavior:
         assignments = "\n".join(
             f"        attr_{index} = {index}" for index in range(cap + 1)
         )
-        module_source = _read_fixture("rule0_valid.py").replace(
+        module_source = u.Tests.namespace_fixture("rule0_valid.py").replace(
             "        pass\n", f"        pass\n{assignments}\n"
         )
-        project_root = _make_project_with_module(
+        project_root = u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name="models.py"
         )
 
@@ -134,10 +96,10 @@ class TestsCoreValidationBehavior:
         package_dir = project_root / "src" / "flext_test"
         package_dir.mkdir(parents=True)
         _ = (package_dir / "__init__.py").write_text(
-            _read_fixture("rule0_no_class.py"), encoding="utf-8"
+            u.Tests.namespace_fixture("rule0_no_class.py"), encoding="utf-8"
         )
         _ = (package_dir / "__version__.py").write_text(
-            _read_fixture("rule0_no_class.py"), encoding="utf-8"
+            u.Tests.namespace_fixture("rule0_no_class.py"), encoding="utf-8"
         )
         u.Tests.write_canonical_package_layout(package_dir)
         u.Tests.initialize_git_repo(project_root)
@@ -156,9 +118,9 @@ class TestsCoreValidationBehavior:
 
     def test_validate_returns_report(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
-        root = _make_project_with_module(
+        root = u.Tests.namespace_project(
             tmp_path,
-            module_source=_read_fixture("rule0_valid.py"),
+            module_source=u.Tests.namespace_fixture("rule0_valid.py"),
             module_name="constants.py",
         )
         result = validator.validate_project(root)
@@ -168,9 +130,9 @@ class TestsCoreValidationBehavior:
 
     def test_violation_message_format(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
-        root = _make_project_with_module(
+        root = u.Tests.namespace_project(
             tmp_path,
-            module_source=_read_fixture("rule0_no_class.py"),
+            module_source=u.Tests.namespace_fixture("rule0_no_class.py"),
             module_name="models.py",
         )
         result = validator.validate_project(root)
@@ -181,4 +143,4 @@ class TestsCoreValidationBehavior:
         tm.that(first, has="] src/flext_test/models.py:1 — ")
 
 
-__all__: list[str] = ["TestsCoreValidationBehavior"]
+__all__: list[str] = ["TestsFlextInfraCoreValidationBehavior"]

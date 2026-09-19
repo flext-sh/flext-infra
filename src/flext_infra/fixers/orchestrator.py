@@ -208,8 +208,7 @@ class FlextInfraEnforcementFixerOrchestrator(
     ) -> type[FlextInfraFixerAdapter] | None:
         """Return the first adapter class that accepts ``fix_action``."""
         for adapter_cls in self._ADAPTER_CLASSES:
-            adapter = adapter_cls.__new__(adapter_cls)
-            if adapter.can_fix(fix_action):
+            if self._instantiate_adapter(adapter_cls).can_fix(fix_action):
                 return adapter_cls
         return None
 

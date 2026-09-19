@@ -23,6 +23,8 @@ class FlextInfraConstantsMake:
     MAKE_CONDITIONAL_RE: Final[t.RegexPattern] = re.compile(
         r"^(?:else\b|endif\b|ifeq\b|ifneq\b|ifdef\b|ifndef\b)"
     )
+    MAKE_REPOSITORY_ROOT: Final[str] = "REPOSITORY_ROOT"
+    "Make variable the workspace orchestrator passes to attached members."
 
     VERB_CHECK: Final[str] = "check"
     VERB_DEPS: Final[str] = "deps"
@@ -66,13 +68,32 @@ class FlextInfraConstantsMake:
         for gate in FlextInfraConstantsCheck.SARIF_TOOL_INFO
         if gate not in FlextInfraConstantsCheck.MUTATING_GATES
     )
-    CANONICAL_DEFAULT_GATE_IDS: Final[t.VariadicTuple[str]] = CANONICAL_GATE_IDS
+    # markdown-code and markdown-format stay allowed and explicitly invocable
+    # (`--gates markdown-code`), but are not default check gates: operator
+    # ruling 2026-09-18 (flext-uz0dt for markdown-code; flext-v4fmn for
+    # markdown-format) takes them out of the unset-CI default set pending
+    # review. markdown-format is structurally contradictory on the current
+    # generated docs: the gen render is not prettier-stable, so no commit can
+    # satisfy both `gen fixed point` and `prettier --check`.
+    CANONICAL_DEFAULT_GATE_IDS: Final[t.VariadicTuple[str]] = tuple(
+        gate
+        for gate in CANONICAL_GATE_IDS
+        if gate
+        not in {
+            FlextInfraConstantsCheck.MARKDOWN_CODE,
+            FlextInfraConstantsCheck.MARKDOWN_FORMAT,
+        }
+    )
     CANONICAL_FIXABLE_GATE_IDS: Final[t.VariadicTuple[str]] = (
         "lint",
         "markdown",
+        "markdown-code",
         "canonical-alias",
         "smells",
     )
+    # markdown-format is deliberately absent: prettier is a formatter, so the
+    # gate's mutating side is owned by `make fmt` (check = `prettier --check`),
+    # never by `make fix` — one operation per tool per verb, never repeated.
     ORCHESTRATED_VERBS: Final[t.StrSequence] = (
         "build",
         "check",

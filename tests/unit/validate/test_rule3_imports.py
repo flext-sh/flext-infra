@@ -10,28 +10,10 @@ from flext_tests import tm
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from tests import u
 
-_FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
 
+class TestsFlextInfraRule3ImportRules:
+    """Test suite for the namespace validator rule under test."""
 
-def _read_fixture(name: str) -> str:
-    fixture_name = name.replace(".py", ".pysrc") if name.endswith(".py") else name
-    return (_FIXTURES_DIR / fixture_name).read_text(encoding="utf-8")
-
-
-def _make_project_with_module(
-    tmp_path: Path, *, module_source: str, module_name: str
-) -> Path:
-    project_root = tmp_path / "project"
-    package_dir = project_root / "src" / "flext_test"
-    package_dir.mkdir(parents=True)
-    _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-    u.Tests.write_canonical_package_layout(package_dir)
-    _ = (package_dir / module_name).write_text(module_source, encoding="utf-8")
-    u.Tests.initialize_git_repo(project_root)
-    return project_root
-
-
-class TestsRule3ImportRules:
     """Test suite for namespace validator Rule 3 (import rules)."""
 
     @pytest.mark.parametrize(
@@ -67,7 +49,7 @@ class TestsRule3ImportRules:
         expected_violation_substr: str,
     ) -> None:
         validator = FlextInfraNamespaceValidator()
-        root = _make_project_with_module(
+        root = u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name=module_name
         )
         result = validator.validate_project(root)
@@ -93,7 +75,7 @@ class TestsRule3ImportRules:
             "    class Test(FlextTestUtilitiesCodegen, FlextTestUtilitiesBase):\n"
             "        pass\n"
         )
-        root = _make_project_with_module(
+        root = u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name="utilities.py"
         )
 
@@ -112,7 +94,7 @@ class TestsRule3ImportRules:
             "    class Test(FlextTestModelsDeps, FlextTestModelsBase):\n"
             "        pass\n"
         )
-        root = _make_project_with_module(
+        root = u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name="models.py"
         )
 
@@ -143,7 +125,7 @@ class TestsRule3ImportRules:
             "    def _lift(cls, data: t.JsonValue) -> t.JsonValue:\n"
             "        return data\n"
         )
-        root = _make_project_with_module(
+        root = u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name="_settings.py"
         )
 
@@ -152,8 +134,13 @@ class TestsRule3ImportRules:
         tm.ok(result)
         tm.that(result.value.passed, eq=True, msg=str(result.value))
 
-    def test_rule3_settings_owner_c_import_still_flagged(self, tmp_path: Path) -> None:
-        """D1 is bounded: ``c`` and operational facades are not covered."""
+    def test_rule3_settings_owner_c_import_allowed(self, tmp_path: Path) -> None:
+        """Operator ruling 2026-09-19: settings defaults read declared constants.
+
+        Settings owners bind Pydantic field defaults to ``c.<Ns>.CONSTANT``, so
+        the runtime ``c`` import is part of the declaration-layer carve-out;
+        operational facades stay flagged.
+        """
         validator = FlextInfraNamespaceValidator()
         module_source = (
             "from __future__ import annotations\n\n"
@@ -161,7 +148,7 @@ class TestsRule3ImportRules:
             "class FlextTestSettings(FlextTestSettingsBase):\n"
             "    pass\n"
         )
-        root = _make_project_with_module(
+        root = u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name="_settings.py"
         )
 
@@ -173,9 +160,9 @@ class TestsRule3ImportRules:
                 "reverse runtime import" in violation
                 for violation in result.value.violations
             ),
-            eq=True,
+            eq=False,
             msg=str(result.value),
         )
 
 
-__all__: list[str] = ["TestsRule3ImportRules"]
+__all__: list[str] = ["TestsFlextInfraRule3ImportRules"]

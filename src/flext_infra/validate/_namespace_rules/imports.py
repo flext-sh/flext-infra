@@ -156,14 +156,19 @@ class FlextInfraNamespaceRulesImports(FlextInfraNamespaceRulesBase):
         Settings/config owners legitimately declare nested Pydantic namespace
         models and so require the declaration facades ``m``/``t``/``u`` at
         runtime (BaseModel, Field, MappingKV, model_validator, JsonValue).
+        Operator ruling 2026-09-19: settings defaults also read declared
+        constants — ``AlgarOudMigSettings``-style layers bind
+        ``= c.<Namespace>.CONSTANT`` as Pydantic field defaults — so ``c`` is
+        allowed at runtime in settings owners exactly like the declaration
+        facades; constants are the layer whose purpose is to be consumed.
         Direct ``pydantic`` remains prohibited (ENFORCE-070); only the project
-        facades are permitted. The forward chain still applies to ``c``/``p``
-        and to every operational facade ``r/e/x/h/d/s``.
+        facades are permitted. The forward chain still applies to ``p`` and to
+        every operational facade ``r/e/x/h/d/s``.
         """
         if owner is None or imported is None or type_only:
             return None
         if owner in c.Infra.NAMESPACE_SETTINGS_IMPORT_ALLOWED_OWNERS and (
-            imported in _DECLARATION_FACADES_RUNTIME
+            imported in _DECLARATION_FACADES_RUNTIME or imported == "c"
         ):
             return None
         order = c.Infra.NAMESPACE_LAYER_ORDER

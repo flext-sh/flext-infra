@@ -319,9 +319,9 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
             if attachment.content is None:
                 msg = f"attachment content absent: {attachment.path}"
                 raise ValueError(msg)
-            name = attachment.path.relative_to(path.with_suffix(""))
-            desired[incoming / "attachments" / name] = attachment.content
-            attachment_names.append(name.as_posix())
+            relative_name = attachment.path.relative_to(path.with_suffix(""))
+            desired[incoming / "attachments" / relative_name] = attachment.content
+            attachment_names.append(relative_name.as_posix())
         original, normalized = cls.collection_source_updated(
             plan, source.updated_fields
         )

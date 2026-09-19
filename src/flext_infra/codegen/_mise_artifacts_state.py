@@ -322,22 +322,21 @@ class FlextInfraMiseArtifactsState:
         )
         if created.failure:
             return result_type.from_failure(created)
-        try:
-            return result_type.ok(
-                m.Infra.CodegenJournalDirectory.model_validate({
-                    **entry.model_dump(),
-                    "before": before,
-                    "created": created.value,
-                })
-            )
-        except c.ValidationError as exc:
+        validated: p.Result[m.Infra.CodegenJournalDirectory] = u.validate_value(
+            m.Infra.CodegenJournalDirectory,
+            {**entry.model_dump(), "before": before, "created": created.value},
+        )
+        if validated.failure:
             rolled_back = u.Cli.atomic_delete_empty_directory_guarded(created.value)
             if rolled_back.failure:
                 return result_type.fail(
-                    f"validate created directory identity failed: {exc}; "
+                    f"validate created directory identity failed: {validated.error}; "
                     f"compensation failed: {rolled_back.error}"
                 )
-            return result_type.fail_op("validate created directory identity", exc)
+            return result_type.fail_op(
+                "validate created directory identity", validated.error
+            )
+        return result_type.ok(validated.value)
 
     @classmethod
     def compensate_created_directory(

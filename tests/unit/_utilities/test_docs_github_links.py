@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import m, u
+from flext_infra import u
 
 
 class TestsFlextInfraUtilitiesDocsGithubLinks:
@@ -23,11 +23,10 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
             repos = u.Infra.docs_github_repos()
             tm.that(len(repos) > 0, eq=True)
 
-        def test_repos_are_typed_spec(self) -> None:
+        def test_repos_carry_spec_contract(self) -> None:
             repos = u.Infra.docs_github_repos()
             tm.that(
-                all(isinstance(repo, m.Infra.DocsGithubRepoSpec) for repo in repos),
-                eq=True,
+                all(repo.organization and repo.repository for repo in repos), eq=True
             )
 
         def test_repos_contain_flext(self) -> None:
@@ -38,9 +37,9 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
     class TestStaleGithubOrganizations:
         """Verify placeholder organizations that must be rewritten."""
 
-        def test_stale_organizations_is_frozenset(self) -> None:
+        def test_stale_organizations_stable_across_calls(self) -> None:
             stale = u.Infra.docs_stale_github_organizations()
-            tm.that(isinstance(stale, frozenset), eq=True)
+            tm.that(stale, eq=u.Infra.docs_stale_github_organizations())
 
         def test_stale_organizations_contains_placeholder(self) -> None:
             stale = u.Infra.docs_stale_github_organizations()
@@ -51,13 +50,13 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
 
         def test_lookup_known_repo(self) -> None:
             repo = u.Infra.docs_github_repo_lookup("flext-sh", "flext")
-            tm.that(repo is not None, eq=True)
+            assert repo is not None
             tm.that(repo.organization, eq="flext-sh")
             tm.that(repo.repository, eq="flext")
 
         def test_lookup_member_repo_returns_copy(self) -> None:
             repo = u.Infra.docs_github_repo_lookup("flext-sh", "flext-core")
-            tm.that(repo is not None, eq=True)
+            assert repo is not None
             tm.that(repo.organization, eq="flext-sh")
             tm.that(repo.repository, eq="flext-core")
             tm.that(repo.branch, eq="0.12.0-dev")
@@ -67,7 +66,7 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
             tm.that(repo is None, eq=True)
 
         def test_lookup_unknown_repo_returns_none(self) -> None:
-            repo = u.Infra.docs_github_repo_lookup("datacosmos-br", "nonexistent-repo")
+            repo = u.Infra.docs_github_repo_lookup("example-org", "nonexistent-repo")
             tm.that(repo is None, eq=True)
 
     class TestDocsExpandLocalCheckout:
@@ -105,12 +104,12 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
 
         def test_parse_valid_tree_url(self) -> None:
             match = u.Infra.docs_parse_github_doc_url(
-                "https://github.com/datacosmos-br/ai-hub/tree/dev/src/"
+                "https://github.com/example-org/example-repo/tree/feature-line/src/"
             )
             tm.that(match is not None, eq=True)
             if match is not None:
                 tm.that(match.group("kind"), eq="tree")
-                tm.that(match.group("branch"), eq="dev")
+                tm.that(match.group("branch"), eq="feature-line")
 
         def test_parse_non_github_url_returns_none(self) -> None:
             tm.that(
@@ -218,7 +217,7 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
         def test_rewrite_stale_org_non_flext_returns_none(self) -> None:
             tm.that(
                 u.Infra.docs_rewrite_github_url(
-                    "https://github.com/organization/datacosmos-br/foo"
+                    "https://github.com/organization/example-org/foo"
                 ),
                 none=True,
             )
@@ -240,24 +239,18 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
     class TestDocsGithubLocalPath:
         """Verify local checkout path resolution for governed URLs."""
 
-        def test_local_path_for_governed_repo(self) -> None:
-            local = u.Infra.docs_github_local_path(
-                "https://github.com/flext-sh/flext/blob/0.12.0-dev/README.md"
-            )
-            tm.that(local is not None, eq=True)
-            if local is not None:
-                tm.that(local, eq=Path("~/flext").expanduser() / "README.md")
-
-        def test_local_path_for_member_repo(self) -> None:
-            local = u.Infra.docs_github_local_path(
-                "https://github.com/flext-sh/flext-core/blob/0.12.0-dev/src/__init__.py"
-            )
-            tm.that(local is not None, eq=True)
-            if local is not None:
-                tm.that(
-                    local,
-                    eq=(Path("~/flext/flext-core").expanduser() / "src/__init__.py"),
+        def test_shared_policy_does_not_require_personal_checkouts(self) -> None:
+            """Standalone consumers do not depend on the policy author's home tree."""
+            for repo in u.Infra.docs_github_repos():
+                target = u.Infra.docs_canonical_github_url(
+                    repo.organization, repo.repository, "README.md"
                 )
+                assert target is not None
+                assert u.Infra.docs_github_local_path(target) is None
+                issues = u.Infra.docs_github_link_issues(
+                    file="example.md", line_number=1, raw=target, target=target
+                )
+                assert not issues
 
         def test_local_path_stale_org_returns_none(self) -> None:
             tm.that(
@@ -320,13 +313,20 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
             tm.that(len(issues), eq=0)
 
         def test_correct_url_no_branch_issue(self) -> None:
-            issues = u.Infra.docs_github_link_issues(
-                file="test.md",
-                line_number=1,
-                raw="[x](https://github.com/flext-sh/flext/blob/0.12.0-dev/README.md)",
-                target=("https://github.com/flext-sh/flext/blob/0.12.0-dev/README.md"),
+            target = tm.not_none(
+                u.Infra.docs_canonical_github_url("flext-sh", "flext", "README.md")
             )
-            tm.that(len(issues), eq=0)
+            issues = u.Infra.docs_github_link_issues(
+                file="test.md", line_number=1, raw=f"[x]({target})", target=target
+            )
+            tm.that(
+                [
+                    issue
+                    for issue in issues
+                    if issue.issue_type == "wrong_github_branch"
+                ],
+                eq=[],
+            )
 
         def test_unknown_repo_no_issues(self) -> None:
             issues = u.Infra.docs_github_link_issues(

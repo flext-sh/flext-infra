@@ -40,6 +40,8 @@ class FlextInfraConstantsCheck:
     LINT: Final[str] = "lint"
     FORMAT: Final[str] = "format"
     MARKDOWN: Final[str] = "markdown"
+    MARKDOWN_FORMAT: Final[str] = "markdown-format"
+    MARKDOWN_CODE: Final[str] = "markdown-code"
     SILENT_FAILURE: Final[str] = "silent-failure"
     SARIF_TOOL_INFO: Final[t.MappingKV[str, t.StrPair]] = MappingProxyType({
         "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
@@ -57,6 +59,8 @@ class FlextInfraConstantsCheck:
         ),
         "security": ("Bandit", "https://bandit.readthedocs.io/"),
         "markdown": ("rumdl", "https://rumdl.dev/"),
+        "markdown-format": ("Prettier", "https://prettier.io/"),
+        "markdown-code": ("Ruff", "https://docs.astral.sh/ruff/"),
         "loc-cap": ("scc", "https://github.com/boyter/scc"),
         "boundary": (
             "Flext Abstraction Boundary Auditor",
@@ -90,6 +94,10 @@ class FlextInfraConstantsCheck:
     })
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
+    CHECK_REPORT_MARKDOWN_FILENAME: Final[str] = "check-report.md"
+    "Human-readable check report written beside the SARIF report."
+    CHECK_REPORT_SARIF_FILENAME: Final[str] = "check-report.sarif"
+    "SARIF 2.1.0 check report: the machine-readable findings owner of ``check run``."
     MUTATING_GATES: Final[frozenset[str]] = frozenset({FORMAT})
     "Gates that rewrite files: owned by `fmt`/`fix`, never a read-only `check` vocabulary."
     RUFF_FORMAT_FILE_RE: Final[t.RegexPattern] = re.compile(
@@ -98,6 +106,25 @@ class FlextInfraConstantsCheck:
     MARKDOWN_RE: Final[t.RegexPattern] = re.compile(
         r"^(?P<file>.*?):(?P<line>\d+):(?P<col>\d+):\s+\[(?P<code>MD\d+)\]\s+(?P<msg>.*)$"
     )
+    MARKDOWN_FORMAT_RE: Final[t.RegexPattern] = re.compile(
+        r"^\[warn\]\s+(?P<file>\S+\.md)\s*$", re.MULTILINE
+    )
+    "Prettier ``--check`` unformatted-file line (``[warn] <file.md>``); config warns never match."
+    MARKDOWN_PY_FENCE_RE: Final[t.RegexPattern] = re.compile(
+        r"^```(?P<info>python\S*(?:\s+notest)?)\s*$\n(?P<code>.*?)^```\s*$",
+        re.MULTILINE | re.DOTALL,
+    )
+    "Canonical fenced-Python-block extractor; the flext-tests markdown validator consumes the same pattern."
+    MARKDOWN_CODE_SOURCE_FORMAT: Final[str] = "{}_b{}.py"
+    "Temp-file name for one extracted block: sanitized doc path plus block index."
+    MARKDOWN_CODE_FORMAT_FILE_RE: Final[t.RegexPattern] = re.compile(
+        r"^(?P<file>\S+):\d+:\d+:\s+unformatted:\s+"
+    )
+    "Ruff format ``--check`` concise verdict line over extracted sources."
+    MARKDOWN_CODE_FORMAT_ERROR_RE: Final[t.RegexPattern] = re.compile(
+        r"^error: Failed to format (?P<file>\S+):", re.MULTILINE
+    )
+    "Ruff format hard-failure line over extracted sources (parse errors)."
     VALID_GATE_SEVERITIES: Final[frozenset[str]] = frozenset(GateSeverity)
     "Severity levels accepted by gate output parsers — derived from GateSeverity."
     PYRIGHT_DIAGNOSTICS_KEY: Final[str] = "generalDiagnostics"
@@ -134,7 +161,14 @@ class FlextInfraConstantsCheck:
     # ADR-0018 stdlib island: the native hook client runs as `python3 -I -S`
     # and is excluded from the facade-boundary rules; the fragment matches the
     # real posix path segments (src/ai_hub/hook_client.py).
-    BOUNDARY_SKIP_PATH_FRAGMENTS: Final[t.StrSequence] = ("/ai_hub/hook_client",)
+    BOUNDARY_SKIP_PATH_FRAGMENTS: Final[t.StrSequence] = (
+        "/ai_hub/hook_client",
+        # Vendored standalone workspace tooling (cosmos-command dispatcher):
+        # it must stay importable by a bare `python3` outside any project
+        # venv, so the facade imports the boundary rules mandate are
+        # impossible by design; its stdlib usage belongs to the distributor.
+        "/scripts/lib/cosmos_command",
+    )
     BOUNDARY_BANNED_LIBS: Final[t.MappingKV[str, str]] = MappingProxyType({
         "typer": "cli.create_app_with_common_params / cli.register_command",
         "click": "flext_cli.cli application, registration, execution, and invocation methods",
@@ -265,6 +299,12 @@ class FlextInfraConstantsCheck:
     # rendered from this typed SSOT at scan time, never a hand-maintained file).
     JSCPD_BINARY: Final[str] = "jscpd"
     "Provisioned by mise from codegen.toolchain.jscpd_version; never a runner or a version here."
+
+    # --- markdown-format gate SSOT (operator 2026-09-18: prettier is the
+    # markdown formatter owned by `make fmt`; rumdl stays the linter owned by
+    # `make fix`. The binary is mise-provisioned, never a runner or version).
+    PRETTIER_BINARY: Final[str] = "prettier"
+    "Provisioned by mise from codegen.toolchain.prettier_version; never a runner or a version here."
     JSCPD_MODE: Final[str] = "strict"
     JSCPD_MIN_LINES: Final[int] = 10
     "Minimum lines for a clone (R2: 10 lines = 62 tokens per consumption-law.md)."

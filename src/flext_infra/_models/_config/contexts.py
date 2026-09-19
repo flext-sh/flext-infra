@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path, PureWindowsPath
 from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
 
 from ... import t
-from ..._constants import FlextInfraConstantsCodegenProject
+from ..._constants import (
+    FlextInfraConstantsCodegenProject,
+    FlextInfraConstantsWorkspace,
+)
 from .. import FlextInfraModelsDefaults
-from ..deps_tool_config import FlextInfraModelsDepsToolSettings
+from ..deps_tool_config import FlextInfraModelsDepsToolConfig
 from .beads import FlextInfraConfigModelsBeads
 from .contract import FlextInfraConfigModelsContract
 from .make import FlextInfraConfigModelsMake
@@ -44,19 +48,13 @@ class FlextInfraConfigModelsContexts:
             t.NonEmptyStr, m.Field(description="Installed infrastructure CLI command")
         ]
         pytest: Annotated[
-            FlextInfraModelsDepsToolSettings.PytestConfig,
+            FlextInfraModelsDepsToolConfig.PytestConfig,
             m.Field(description="Typed pytest execution policy"),
         ]
 
-    class MakefileRenderSpec(MakeCommandContext):
-        """Field-only render input for an existing repository Makefile."""
+    class ScratchRootContext(FlextInfraConfigModelsContract.ConfigContract):
+        """Shared state and scratch roots every generated environment derives."""
 
-        mise_bootstrap: Annotated[
-            FlextInfraConfigModelsContract.MiseBootstrapEnvironmentSpec,
-            m.Field(description="Generated strict Mise bootstrap environment"),
-        ]
-
-        dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         state_directory_name: Annotated[
             t.NonEmptyStr,
             m.Field(description="External runtime state directory beside checkout"),
@@ -68,6 +66,25 @@ class FlextInfraConfigModelsContexts:
         scratch_home_relative: Annotated[
             t.NonEmptyStr, m.Field(description="Home-relative scratch root")
         ]
+        scratch_identity_segment_aliases: Annotated[
+            t.VariadicTuple[t.Pair[t.NonEmptyStr, t.NonEmptyStr]],
+            m.Field(
+                description=(
+                    "Checkout path segments renamed in the home scratch mirror "
+                    "so a scratch root never contains a VCS directory"
+                )
+            ),
+        ] = FlextInfraConstantsWorkspace.SCRATCH_IDENTITY_SEGMENT_ALIASES
+
+    class MakefileRenderSpec(MakeCommandContext, ScratchRootContext):
+        """Field-only render input for an existing repository Makefile."""
+
+        mise_bootstrap: Annotated[
+            FlextInfraConfigModelsContract.MiseBootstrapEnvironmentSpec,
+            m.Field(description="Generated strict Mise bootstrap environment"),
+        ]
+
+        dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
@@ -180,7 +197,7 @@ class FlextInfraConfigModelsContexts:
             int, m.Field(gt=0, description="Forced-termination grace period")
         ]
         tooling_runtime: Annotated[
-            FlextInfraModelsDepsToolSettings.ToolingRuntimeContext,
+            FlextInfraModelsDepsToolConfig.ToolingRuntimeContext,
             m.Field(description="Resolved project/workspace tooling values"),
         ]
 
@@ -292,7 +309,7 @@ class FlextInfraConfigModelsContexts:
             m.Field(description="Resolved upstream dependency profile"),
         ]
         tooling: Annotated[
-            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
+            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
             m.Field(description="Canonical validated tooling policy"),
         ]
         environment_path_prepends: Annotated[
@@ -516,6 +533,14 @@ class FlextInfraConfigModelsContexts:
 
     class ProjectSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
+
+        dependency_revisions: Annotated[
+            Mapping[t.NonEmptyStr, Annotated[str, m.Field(pattern=r"^[0-9a-f]{40}$")]],
+            m.Field(
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
+                description="Explicit immutable revisions of provider-owned dependencies",
+            ),
+        ]
 
         # NOTE (multi-agent, flext-get3j): ProjectSpec is the sole declaration
         # owner; absence is meaningful and must never select a conventional hook.

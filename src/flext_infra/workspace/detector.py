@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
+from flext_infra.protocols import p
 
 from ..base import s
 from ._governance import FlextInfraWorkspaceGovernanceMixin
@@ -65,38 +66,6 @@ class FlextInfraWorkspaceDetector(
             )
         return None
 
-    @staticmethod
-    def _provider_owns_url(provider: m.Infra.ProviderSpec, url: str) -> bool:
-        """Require the remote identity to name this provider's organization.
-
-        Compares the normalized ``owner/repository`` identity instead of the raw
-        URL. CI rewrites private submodule origins to SSH deploy-key URLs, and
-        ``urlparse`` cannot read SCP-style Git syntax: ``git@host:org/repo.git``
-        yields an empty scheme and netloc, so comparing those fields rejected
-        every SSH remote for every provider. ``git_remote_identity`` is the
-        owner that already normalizes HTTPS, SSH and Host-alias forms — this
-        class uses it to compare declared and live origins — and the
-        organization is the discriminator, exactly as ``_provider_for_url``
-        documents.
-        """
-        organization, separator, repository = u.Infra.git_remote_identity(
-            url
-        ).partition("/")
-        return (
-            bool(separator)
-            and bool(repository)
-            and organization == provider.organization.casefold()
-        )
-
-    @staticmethod
-    def repository_is_governed(
-        repository: m.Infra.RepositoryRef, provider: m.Infra.ProviderSpec
-    ) -> bool:
-        """Require the provider key and the owned canonical URL to agree."""
-        if repository.provider != provider.name:
-            return False
-        return FlextInfraWorkspaceDetector._provider_owns_url(provider, repository.url)
-
     @classmethod
     def load_beads_spec(
         cls, repository_root: Path
@@ -114,13 +83,14 @@ class FlextInfraWorkspaceDetector(
                 f"invalid repository-local Beads configuration ({beads_path}): "
                 f"{loaded.error or 'configuration load failed'}"
             )
-        try:
-            validated = m.Infra.BeadsProjectSpec.model_validate(loaded.value.data)
-        except c.ValidationError as exc:
+        validated: p.Result[m.Infra.BeadsProjectSpec] = u.validate_value(
+            m.Infra.BeadsProjectSpec, loaded.value.data
+        )
+        if validated.failure:
             return r[m.Infra.BeadsProjectSpec].fail_op(
-                f"Beads configuration model validation ({beads_path})", exc
+                f"Beads configuration model validation ({beads_path})", validated.error
             )
-        return r[m.Infra.BeadsProjectSpec].ok(validated)
+        return r[m.Infra.BeadsProjectSpec].ok(validated.value)
 
     @staticmethod
     def _git_origin_url(repository_root: Path) -> p.Result[str]:
@@ -135,22 +105,83 @@ class FlextInfraWorkspaceDetector(
         return r[str].ok(result.value.text.strip())
 
     @classmethod
-    def _declared_provider_for_url(cls, url: str) -> m.Infra.ProviderSpec | None:
-        """Return the exact configured provider owning ``url``."""
-        for provider in config.Infra.codegen.providers:
-            if cls._provider_owns_url(provider, url):
-                return provider
-        return None
+    def load_workspace_manifest(
+        cls, repository_root: Path
+    ) -> p.Result[t.SequenceOf[m.Infra.WorkspaceManifestSpec]]:
+        """Load the checkout's own workspace manifest as a 0-or-1 sequence.
+
+        This is the single spec-load owner for ``config/workspace.yaml``: the
+        manifest is the authority for a repository's provider identity, and
+        every consumer loads it through here so validation cannot diverge.
+        Absence is an EMPTY sequence — success payloads are never ``None``.
+        """
+        manifest_path = u.Infra.workspace_manifest_path(repository_root)
+        if not manifest_path.is_file():
+            return r[t.SequenceOf[m.Infra.WorkspaceManifestSpec]].ok(())
+        loaded = u.Cli.config_load(manifest_path, expand_env=False)
+        if loaded.failure:
+            error = loaded.error
+            if error is None:
+                msg = "workspace manifest load failed without an error"
+                raise RuntimeError(msg)
+            return r[t.SequenceOf[m.Infra.WorkspaceManifestSpec]].fail(
+                f"invalid workspace manifest ({manifest_path}): {error}"
+            )
+        validated: p.Result[m.Infra.WorkspaceManifestSpec] = u.validate_value(
+            m.Infra.WorkspaceManifestSpec, loaded.value.data
+        )
+        if validated.failure:
+            return r[t.SequenceOf[m.Infra.WorkspaceManifestSpec]].fail_op(
+                f"workspace manifest model validation ({manifest_path})",
+                validated.error,
+            )
+        return r[t.SequenceOf[m.Infra.WorkspaceManifestSpec]].ok((validated.value,))
 
     @classmethod
-    def _provider_for_url(cls, url: str) -> p.Result[m.Infra.ProviderSpec]:
-        """Resolve one configured provider, failing closed without leaking the URL."""
-        declared = cls._declared_provider_for_url(url)
-        if declared is not None:
-            return r[m.Infra.ProviderSpec].ok(declared)
-        return r[m.Infra.ProviderSpec].fail(
-            "repository owner must resolve exactly once"
-        )
+    def _declared_provider_name(
+        cls, repository_root: Path, *, origin_url: str
+    ) -> p.Result[str]:
+        """Detect the provider key the repository declares for itself.
+
+        With a workspace manifest, the declaration is real only if the live
+        Git origin carries the same organization identity as the declared URL
+        (the same discrimination ``git_remote_identity`` gives every remote
+        shape). Post-G1, repositories without a manifest take their provider
+        identity from the live Git origin organization itself — no catalog,
+        no invented rows.
+        """
+        loaded = cls.load_workspace_manifest(repository_root)
+        if loaded.failure:
+            return r[str].from_failure(loaded)
+        if not loaded.value:
+            origin_organization, origin_separator, _ = u.Infra.git_remote_identity(
+                origin_url
+            ).partition("/")
+            if not origin_separator:
+                return r[str].fail(
+                    "governed repository Git origin must name an owner and "
+                    f"repository: {origin_url}"
+                )
+            return r[str].ok(origin_organization)
+        manifest = loaded.value[0]
+        manifest_path = u.Infra.workspace_manifest_path(repository_root)
+        declared = manifest.repository
+        manifest_organization, manifest_separator, _ = u.Infra.git_remote_identity(
+            declared.url
+        ).partition("/")
+        origin_organization, origin_separator, _ = u.Infra.git_remote_identity(
+            origin_url
+        ).partition("/")
+        if (
+            not manifest_separator
+            or not origin_separator
+            or manifest_organization != origin_organization
+        ):
+            return r[str].fail(
+                "workspace manifest url organization differs from the live Git "
+                f"origin ({manifest_path}): {declared.url!r} != {origin_url!r}"
+            )
+        return r[str].ok(declared.provider)
 
     @staticmethod
     def _manifest_git_contradictions(
@@ -207,35 +238,26 @@ class FlextInfraWorkspaceDetector(
     ) -> p.Result[t.Triple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]]:
         """Load a selected repository manifest and reconcile it with Git truth.
 
-        A checkout without ``config/workspace.yaml`` remains a valid observed
-        repository. Once the manifest exists, however, its complete typed
-        ``repository`` record is authoritative for repository policy and must
-        agree with the immutable identity and topology observed from Git. The
-        matched repository policy overlay's Gas City participation rides along:
-        ``True`` when the manifest is absent or declares no overlay.
+        The checkout's own manifest is mandatory for identity: its complete
+        typed ``repository`` record is authoritative for repository policy and
+        must agree with the immutable identity and topology observed from Git.
+        The matched repository policy overlay's Gas City participation rides
+        along: ``True`` when the manifest declares no overlay.
         """
         manifest_path = u.Infra.workspace_manifest_path(repository_root)
-        if not manifest_path.is_file():
-            return r[tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]].ok((
-                observed,
-                True,
-                None,
-            ))
-        loaded = u.Cli.config_load(manifest_path, expand_env=False)
+        loaded = cls.load_workspace_manifest(repository_root)
         if loaded.failure:
-            error = loaded.error
-            if error is None:
-                msg = "workspace manifest load failed without an error"
-                raise RuntimeError(msg)
             return r[
                 tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
-            ].fail(f"invalid workspace manifest ({manifest_path}): {error}")
-        try:
-            manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
-        except c.ValidationError as exc:
+            ].from_failure(loaded)
+        if not loaded.value:
             return r[
                 tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
-            ].fail_op(f"workspace manifest model validation ({manifest_path})", exc)
+            ].fail(
+                "governed repository must declare its provider and url in its "
+                f"own workspace manifest: {manifest_path} is absent"
+            )
+        manifest = loaded.value[0]
         declared = manifest.repository
         contradictions = cls._manifest_git_contradictions(declared, observed)
         if contradictions:
@@ -245,19 +267,9 @@ class FlextInfraWorkspaceDetector(
                 f"workspace manifest contradicts Git ({manifest_path}): "
                 + "; ".join(contradictions)
             )
-        provider = cls._provider_for_url(observed.url)
-        if provider.failure:
-            error = provider.error
-            if error is None:
-                msg = "repository owner resolution failed without an error"
-                raise RuntimeError(msg)
-            return r[
-                tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
-            ].fail(error)
-        if not cls.repository_is_governed(declared, provider.value):
-            return r[
-                tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
-            ].fail(f"workspace manifest repository is not governed: {manifest_path}")
+        # The manifest is the provider-identity authority: its declared URL was
+        # just reconciled against the live Git origin above, so the declared
+        # provider key rides with it and no catalog lookup may override it.
         if manifest.ledger_id is not None and manifest.ledger_id != beads.database:
             return r[
                 tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
@@ -327,34 +339,36 @@ class FlextInfraWorkspaceDetector(
                 f"subproject origin differs from its .gitmodules URL: {path.as_posix()}"
             )
         effective_url = declared_url or origin.value
-        provider_result = cls._provider_for_url(effective_url)
+        provider_result = cls._declared_provider_name(
+            repository_root, origin_url=origin.value
+        )
         if provider_result.failure:
             return r[m.Infra.RepositoryRef].from_failure(provider_result)
-        provider = provider_result.value
         role = (
             c.Infra.MakeProfile.WORKSPACE
             if (repository_root / c.Infra.GITMODULES).is_file()
             else c.Infra.MakeProfile.STANDALONE
         )
         project_name = metadata.value.project.name
-        repository = m.Infra.RepositoryRef(
-            name=project_name,
-            distribution=project_name,
-            url=effective_url,
-            path=path,
-            role=role,
-            provider=provider.name,
-            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=True,
-            editable=composed,
-            read_only=False,
-        )
-        if not cls.repository_is_governed(repository, provider):
-            return r[m.Infra.RepositoryRef].fail(
-                f"repository is not governed by provider {provider.name}: {effective_url}"
+        # The manifest is the identity authority: the provider key is the one
+        # the repository itself declares and the declared URL organization was
+        # just reconciled against the live origin, so no catalog may override
+        # either.
+        return r[m.Infra.RepositoryRef].ok(
+            m.Infra.RepositoryRef(
+                name=project_name,
+                distribution=project_name,
+                url=effective_url,
+                path=path,
+                role=role,
+                provider=provider_result.value,
+                kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
+                codegen=c.Infra.CodegenKind.CONFORM,
+                package=True,
+                editable=composed,
+                read_only=False,
             )
-        return r[m.Infra.RepositoryRef].ok(repository)
+        )
 
     @classmethod
     def _load_subprojects(
@@ -370,7 +384,15 @@ class FlextInfraWorkspaceDetector(
         subprojects: list[m.Infra.RepositoryRef] = []
         external: list[Path] = []
         seen: set[Path] = set()
-        baseline = u.Infra.repository_baseline_branch(repository_root)
+        # The workspace-declared preference owns the baseline order: a fleet
+        # integrating on a versioned release line (0.12.0-dev) is not covered
+        # by the provider's conventional fallback names alone.
+        baseline = u.Infra.repository_baseline_branch(
+            repository_root,
+            preference=(
+                config.Infra.codegen.branch_policy.integration_branch_preference
+            ),
+        )
         integration_branch = baseline.value if baseline.success else None
         for path in declared.value:
             if path in seen:
@@ -408,8 +430,9 @@ class FlextInfraWorkspaceDetector(
         fork checkout the workspace never governs: it classifies as an
         external dependency without provider or branch policy validation,
         the same contract lane provisioning already applies. Governed
-        subprojects must resolve to a declared provider and integrate on the
-        provider line or on the repository's published integration branch.
+        subprojects must declare their own identity (manifest) and integrate
+        on the workspace's detected integration line or follow the
+        superproject.
         """
         result_type = r[m.Infra.RepositoryRef | Path]
         if path.is_absolute() or not path.parts or ".." in path.parts:
@@ -434,18 +457,12 @@ class FlextInfraWorkspaceDetector(
                 return result_type.from_failure(managed)
             if managed.value.text and managed.value.text.lower() != "true":
                 return result_type.ok(path)
-        provider_result = cls._provider_for_url(declared_url)
-        if provider_result.failure:
-            return result_type.from_failure(provider_result)
-        provider = provider_result.value
         if not u.Infra.gitmodule_branch_is_governed(
-            declared_branch,
-            provider_branch=provider.branch,
-            integration_branch=integration_branch,
+            declared_branch, integration_branch=integration_branch
         ):
             return result_type.fail(
-                "governed subproject branch differs from provider policy: "
-                f"{path.as_posix()}"
+                "governed subproject branch differs from the workspace "
+                f"integration line: {path.as_posix()}"
             )
         subproject_root = (repository_root / path).resolve()
         if not subproject_root.is_relative_to(repository_root):
@@ -480,7 +497,7 @@ class FlextInfraWorkspaceDetector(
         )
         if repository.failure:
             return result_type.from_failure(repository)
-        if not u.Infra.is_fleet_umbrella(subproject_root):
+        if not u.Infra.workspace_manifest_path(subproject_root).is_file():
             return result_type.ok(repository.value)
         member_beads = cls.load_beads_spec(subproject_root)
         if member_beads.failure:
@@ -679,8 +696,11 @@ class FlextInfraWorkspaceDetector(
         # .gitmodules (sandbox escape observed under flext/.flext-runtime).
         if not (resolved_root / ".git").exists():
             return r[tuple[Path, ...]].ok(())
-        origin = cls._git_origin_url(resolved_root)
-        if origin.failure or cls._declared_provider_for_url(origin.value) is None:
+        # Governance is declared, not matched: only a checkout that declares
+        # its own workspace manifest (provider key plus canonical URL) is a
+        # governed repository; anything else is an ungoverned tree whose
+        # exclusions are none.
+        if not u.Infra.workspace_manifest_path(resolved_root).is_file():
             return r[tuple[Path, ...]].ok(())
         workspace = cls.load_workspace_spec(resolved_root)
         if workspace.failure:

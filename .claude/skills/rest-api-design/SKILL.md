@@ -7,8 +7,8 @@ metadata:
 
 # REST API Design
 
-Activate for REST resource naming, HTTP methods, status codes, pagination,
-versioning, idempotency, and error contracts. Read the
-[complete procedure](references/procedure.md). GraphQL, RPC, event schemas, and
-internal function APIs require their own contract and do not activate this
-bundle merely because they cross a boundary.
+Activate for REST resource naming, HTTP methods, status codes, pagination, versioning,
+idempotency, and error contracts. Read the
+[complete procedure](references/procedure.md). GraphQL, RPC, event schemas, and internal
+function APIs require their own contract and do not activate this bundle merely because
+they cross a boundary.

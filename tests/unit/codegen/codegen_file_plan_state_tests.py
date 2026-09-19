@@ -1,6 +1,6 @@
 """Atomic file state comparison preserves exact bytes and file presence.
 
-Copyright (c) 2026 Datacosmos. All rights reserved.
+Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 

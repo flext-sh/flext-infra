@@ -27,7 +27,7 @@ daemons. Their absence is a no-op; once an available capability is selected, its
 failure propagates unchanged. FLEXT never imports ai-hub as a library or declares
 it as a package dependency. Git repository primitives remain owned by
 `u.Infra.git_*`; GitHub provider operations remain owned by ai-hub.
-Tests run only through `make test ` with the persistent testmon cache.
+Tests run only through `make test` with the persistent testmon cache.
 
 Finish only after public runtime proof, fixed-point generation, zero residue,
 all declared gates, reviewed merge-commit landing, and integrated-state proof.

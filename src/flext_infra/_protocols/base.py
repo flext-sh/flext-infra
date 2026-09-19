@@ -203,6 +203,11 @@ class FlextInfraProtocolsBase(Protocol):
         """Scaffold-only project metadata consumed by initial generation."""
 
         @property
+        def dependency_revisions(self) -> t.StrMapping:
+            """Repository-declared immutable dependency revisions."""
+            ...
+
+        @property
         def repository_root_rel(self) -> str:
             """Declared relative path from the project to its workspace root."""
             ...
@@ -262,30 +267,6 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def external_dependency_paths(self) -> t.SequenceOf[Path]:
             """Observed external or fork Git submodule paths."""
-            ...
-
-    @runtime_checkable
-    class ProviderSpec(Protocol):
-        """Provider-owned repository and baseline contract."""
-
-        @property
-        def name(self) -> str:
-            """Provider key."""
-            ...
-
-        @property
-        def organization(self) -> str:
-            """Canonical GitHub organization."""
-            ...
-
-        @property
-        def base_url(self) -> str:
-            """Canonical provider HTTPS base URL."""
-            ...
-
-        @property
-        def branch(self) -> str:
-            """Provider-owned integration baseline."""
             ...
 
     @runtime_checkable
