@@ -19,11 +19,15 @@ class FlextInfraNamespaceRulesBase:
     @staticmethod
     def kind(node: object) -> str:
         """Return the Rope-compatible AST node kind."""
+        if not hasattr(node, "_fields"):
+            return ""
         return u.Infra.node_kind(node)
 
     @staticmethod
     def walk(node: object) -> t.SequenceOf[object]:
         """Walk a Rope-provided AST without reparsing source text."""
+        if not hasattr(node, "_fields"):
+            return ()
         return tuple(u.Infra.walk_ast_nodes(node))
 
     @classmethod

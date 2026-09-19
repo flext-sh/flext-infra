@@ -43,7 +43,7 @@ class FlextInfraTomlPhaseService(
         cls, doc: t.Cli.TomlDocument, *phases: m.Infra.Deps.Toml.PhaseConfig
     ) -> t.StrSequence:
         """Apply a declarative phase set to one TOML document."""
-        result: t.StrSequence = cls.model_construct(doc=doc, phases=phases).apply()
+        result: t.StrSequence = cls(doc=doc, phases=phases).apply()
         return result
 
     @classmethod

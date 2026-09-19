@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib.util as _importlib_util
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -14,9 +13,6 @@ from ..rope_core import FlextInfraUtilitiesRopeCore
 from ..rope_runtime import FlextInfraUtilitiesRopeRuntime
 from .base import FlextInfraUtilitiesRopeAnalysisBase
 from .nodes import FlextInfraUtilitiesRopeAnalysisNodes
-
-if TYPE_CHECKING:
-    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesRopeAnalysisImports(FlextInfraUtilitiesRopeAnalysisNodes):
@@ -193,13 +189,13 @@ class FlextInfraUtilitiesRopeAnalysisImports(FlextInfraUtilitiesRopeAnalysisNode
         return line is not None and origin is not None and origin.path == resource.path
 
     @staticmethod
-    def superclass_name(superclass: p.AttributeProbe) -> str:
+    def superclass_name(superclass: t.Infra.RopePyObject) -> str:
         """Return a superclass name from Rope objects with uneven public APIs."""
         return FlextInfraUtilitiesRopeAnalysisImports._superclass_name(superclass)
 
     @staticmethod
     def _superclass_name(
-        superclass: p.AttributeProbe, *, visited: frozenset[int] | None = None
+        superclass: t.Infra.RopePyObject, *, visited: frozenset[int] | None = None
     ) -> str:
         """Return a superclass name from Rope objects with uneven public APIs."""
         visited_ids = visited or frozenset()

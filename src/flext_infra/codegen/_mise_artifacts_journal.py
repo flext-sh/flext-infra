@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, m, u
@@ -674,7 +674,7 @@ class FlextInfraMiseArtifactsJournal:
                 mode=source.mode,
                 device=source.device,
                 inode=source.inode,
-                link_count=source.link_count,
+                link_count=1 if source.content is not None else None,
                 file_attributes=source.file_attributes,
                 reparse_tag=source.reparse_tag,
                 absent_parent=absent_parent,
@@ -808,7 +808,7 @@ class FlextInfraMiseArtifactsJournal:
                 original_mode=before.mode,
                 original_device=before.device,
                 original_inode=before.inode,
-                original_link_count=cast("Literal[1] | None", before.link_count),
+                original_link_count=1 if before.content is not None else None,
                 original_file_attributes=before.file_attributes,
                 original_reparse_tag=before.reparse_tag,
                 desired_exists=desired_exists,
@@ -822,11 +822,7 @@ class FlextInfraMiseArtifactsJournal:
                 desired_mode=None if replacement is None else replacement.mode,
                 desired_device=None if replacement is None else replacement.device,
                 desired_inode=None if replacement is None else replacement.inode,
-                desired_link_count=(
-                    None
-                    if replacement is None
-                    else cast("Literal[1]", replacement.link_count)
-                ),
+                desired_link_count=1 if replacement is not None else None,
                 desired_file_attributes=(
                     None if replacement is None else replacement.file_attributes
                 ),

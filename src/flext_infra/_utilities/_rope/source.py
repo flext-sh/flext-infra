@@ -16,7 +16,6 @@ from ..rope_runtime import FlextInfraUtilitiesRopeRuntime
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from flext_infra.protocols import p
 
 from .base import FlextInfraUtilitiesRopeAnalysisBase
 from .imports import FlextInfraUtilitiesRopeAnalysisImports
@@ -439,7 +438,7 @@ class FlextInfraUtilitiesRopeAnalysisSource(FlextInfraUtilitiesRopeAnalysisScope
         return tuple(dict.fromkeys(names))
 
     @staticmethod
-    def literal_string_sequence(node: p.AttributeProbe | None) -> t.StrSequence:
+    def literal_string_sequence(node: t.Infra.RopeAstNode | None) -> t.StrSequence:
         """Return string entries from a parsed literal sequence node."""
         if node is None:
             return ()
@@ -451,6 +450,8 @@ class FlextInfraUtilitiesRopeAnalysisSource(FlextInfraUtilitiesRopeAnalysisScope
             return ()
         values: list[str] = []
         for element in getattr(node, "elts", ()) or ():
+            if not hasattr(element, "_fields"):
+                return ()
             element_kind = FlextInfraUtilitiesRopeAnalysisNodes.node_kind(element)
             if element_kind == "Constant":
                 value = getattr(element, "value", None)
@@ -518,7 +519,7 @@ class FlextInfraUtilitiesRopeAnalysisSource(FlextInfraUtilitiesRopeAnalysisScope
 
     @staticmethod
     def mapping_entries_refs(
-        node: p.AttributeProbe | None,
+        node: t.Infra.RopeAstNode | None,
     ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
         """Return literal mapping entries plus variable references."""
         if node is None:
@@ -531,17 +532,20 @@ class FlextInfraUtilitiesRopeAnalysisSource(FlextInfraUtilitiesRopeAnalysisScope
             return FlextInfraUtilitiesRopeAnalysisSource._dict_entries_refs(node)
         if kind != "Call":
             return ((), ())
-        function_name = FlextInfraUtilitiesRopeAnalysisNodes.name_of(
-            getattr(node, "func", None)
-        )
+        func = getattr(node, "func", None)
+        function_name = FlextInfraUtilitiesRopeAnalysisNodes.name_of(func) if func is not None and hasattr(func, "_fields") else ""
         args = getattr(node, "args", ()) or ()
         if function_name in {"MappingProxyType", "build_lazy_import_map"} and args:
-            return FlextInfraUtilitiesRopeAnalysisSource.mapping_entries_refs(args[0])
+            first_arg = args[0]
+            if hasattr(first_arg, "_fields"):
+                return FlextInfraUtilitiesRopeAnalysisSource.mapping_entries_refs(first_arg)
         if function_name != "merge_lazy_imports":
             return ((), ())
         entries: list[tuple[str, t.StrSequence]] = []
         refs: list[str] = []
         for argument in args:
+            if not hasattr(argument, "_fields"):
+                continue
             next_entries, next_refs = (
                 FlextInfraUtilitiesRopeAnalysisSource.mapping_entries_refs(argument)
             )
@@ -551,7 +555,7 @@ class FlextInfraUtilitiesRopeAnalysisSource(FlextInfraUtilitiesRopeAnalysisScope
 
     @staticmethod
     def _dict_entries_refs(
-        node: p.AttributeProbe,
+        node: t.Infra.RopeAstNode,
     ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
         """Return string-sequence dict entries and unpack references."""
         keys = getattr(node, "keys", ()) or ()
@@ -560,18 +564,22 @@ class FlextInfraUtilitiesRopeAnalysisSource(FlextInfraUtilitiesRopeAnalysisScope
         refs: list[str] = []
         for key_node, value_node in zip(keys, values, strict=False):
             if key_node is None:
-                ref_name = FlextInfraUtilitiesRopeAnalysisNodes.name_of(value_node)
-                if ref_name:
-                    refs.append(ref_name)
+                if hasattr(value_node, "_fields"):
+                    ref_name = FlextInfraUtilitiesRopeAnalysisNodes.name_of(value_node)
+                    if ref_name:
+                        refs.append(ref_name)
+                continue
+            if not hasattr(key_node, "_fields"):
                 continue
             key_value = getattr(key_node, "value", None)
             if not isinstance(key_value, str):
                 continue
-            value_strings = (
-                FlextInfraUtilitiesRopeAnalysisSource.literal_string_sequence(
+            if hasattr(value_node, "_fields"):
+                value_strings = FlextInfraUtilitiesRopeAnalysisSource.literal_string_sequence(
                     value_node
                 )
-            )
+            else:
+                value_strings = ()
             if value_strings:
                 entries.append((key_value, value_strings))
         return (tuple(entries), tuple(dict.fromkeys(refs)))
@@ -1022,7 +1030,7 @@ class FlextInfraUtilitiesRopeAnalysisSource(FlextInfraUtilitiesRopeAnalysisScope
         return ""
 
     @staticmethod
-    def _statement_target_names(statement: t.Infra.RopePyObject) -> list[str]:
+    def _statement_target_names(statement: t.Infra.RopeAstNode) -> list[str]:
         """Extract target names from an Assign/AnnAssign/PEP-695 TypeAlias."""
         kind = FlextInfraUtilitiesRopeAnalysisNodes.node_kind(statement)
         if kind == "AnnAssign":

@@ -109,8 +109,8 @@ class FlextInfraUtilitiesSafety:
     @staticmethod
     def execute_safely(
         files: t.SequenceOf[Path],
-        transform: Callable[[t.SequenceOf[Path]], r[t.SequenceOf[Path]]],
-        validate: Callable[[t.SequenceOf[Path]], r[bool]],
+        transform: Callable[[t.SequenceOf[Path]], p.Result[t.SequenceOf[Path]]],
+        validate: Callable[[t.SequenceOf[Path]], p.Result[bool]],
         *,
         mode: c.Infra.ExecutionMode = c.Infra.ExecutionMode.APPLY_SAFE,
     ) -> m.Infra.SafeExecutionResult:
@@ -127,7 +127,7 @@ class FlextInfraUtilitiesSafety:
 
         bak_paths = FlextInfraUtilitiesSafety.backup_files(files)
 
-        transform_result: r[t.SequenceOf[Path]] = transform(files)
+        transform_result: p.Result[t.SequenceOf[Path]] = transform(files)
         if transform_result.failure:
             FlextInfraUtilitiesSafety.restore_files(bak_paths)
             return m.Infra.SafeExecutionResult(
@@ -143,7 +143,7 @@ class FlextInfraUtilitiesSafety:
                 mode=mode, files_backed_up=file_strs, gate_results=[], rolled_back=False
             )
 
-        validate_result: r[bool] = validate(files)
+        validate_result: p.Result[bool] = validate(files)
         if validate_result.failure:
             FlextInfraUtilitiesSafety.restore_files(bak_paths)
             return m.Infra.SafeExecutionResult(

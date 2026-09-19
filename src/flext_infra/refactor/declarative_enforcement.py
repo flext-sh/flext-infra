@@ -132,7 +132,11 @@ class FlextInfraRefactorDeclarativeEnforcement:
             raise RuntimeError(msg) from exc
         probes: list[p.AttributeProbe] = []
         parent_map = u.Infra.ast_parent_map(tree)
+        if not hasattr(tree, "_fields"):
+            return tuple(probes)
         for node in u.Infra.walk_ast_nodes(tree):
+            if not hasattr(node, "_fields"):
+                continue
             if u.Infra.node_kind(node) != "Constant":
                 continue
             value = getattr(node, "value", None)
@@ -267,11 +271,13 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def _is_exempt_literal_position(
-        cls, node: p.AttributeProbe, parent_map: t.MappingKV[int, p.AttributeProbe]
+        cls, node: t.Infra.RopeAstNode, parent_map: t.MappingKV[int, t.Infra.RopeAstNode]
     ) -> bool:
         """Return True when a Constant node lives in an exempt syntactic position."""
         parent = parent_map.get(id(node))
         if parent is None:
+            return False
+        if not hasattr(parent, "_fields"):
             return False
         parent_kind = u.Infra.node_kind(parent)
         return parent_kind in {"arguments", "arg", "keyword", "AnnAssign"} or (

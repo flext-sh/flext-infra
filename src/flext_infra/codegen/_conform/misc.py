@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from ... import c, config, m, p, r, t, u
 from ...workspace import FlextInfraWorkspaceDetector
@@ -12,8 +12,10 @@ from .bootstrap import FlextInfraCodegenConformBootstrap
 from .execute import FlextInfraCodegenConformExecute
 
 
-class FlextInfraCodegenConformMisc:
+class FlextInfraCodegenConformMisc(m.BaseModel):
     """Beads routes, docs ownership, and projection plan helpers."""
+
+    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(validate_by_name=True, validate_by_alias=True, extra="allow")
 
     request: Annotated[
         m.Infra.CodegenConformRequest | None,
@@ -21,8 +23,8 @@ class FlextInfraCodegenConformMisc:
     ] = None
     repository_root: Annotated[
         Path,
-        m.Field(default=Path(), exclude=True, description="Conform repository root"),
-    ] = Path()
+        m.Field(default_factory=Path, exclude=True, description="Conform repository root"),
+    ]
     initial_workspace: Annotated[
         m.Infra.WorkspaceSpec | None,
         m.Field(

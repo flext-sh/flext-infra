@@ -160,6 +160,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
             if timestamp.tzinfo is None:
                 return original, None
             return original, timestamp.astimezone(UTC).isoformat().replace("+00:00", "Z")
+        return original, timestamp.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
     @classmethod
     def collection_manifest(

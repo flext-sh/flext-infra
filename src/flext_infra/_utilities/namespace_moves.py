@@ -509,7 +509,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         source_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
         source_lines = source.splitlines()
         import_map: MutableMapping[str, str] = {}
-        for node in getattr(source_pymodule.get_ast(), "body", []) or []:
+        source_ast = source_pymodule.get_ast()
+        if not hasattr(source_ast, "_fields"):
+            return ()
+        for node in getattr(source_ast, "body", []) or []:
+            if not hasattr(node, "_fields"):
+                continue
             kind = FlextInfraUtilitiesRopeAnalysis.node_kind(node)
             if kind not in {"Import", "ImportFrom"}:
                 continue
@@ -529,9 +534,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         seen_imports: t.Infra.StrSet = set()
         for block in blocks:
             block_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(block)
-            for sub in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
-                block_pymodule.get_ast()
-            ):
+            block_ast = block_pymodule.get_ast()
+            if not hasattr(block_ast, "_fields"):
+                continue
+            for sub in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(block_ast):
+                if not hasattr(sub, "_fields"):
+                    continue
                 if FlextInfraUtilitiesRopeAnalysis.node_kind(sub) != "Name":
                     continue
                 import_line = import_map.get(getattr(sub, "id", ""))
@@ -546,7 +554,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         """Remove moved aliases from a literal module ``__all__`` assignment."""
         pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
         lines = source.splitlines()
-        for node in getattr(pymodule.get_ast(), "body", ()) or ():
+        module_ast = pymodule.get_ast()
+        if not hasattr(module_ast, "_fields"):
+            return source
+        for node in getattr(module_ast, "body", ()) or ():
+            if not hasattr(node, "_fields"):
+                continue
             if c.Infra.DUNDER_ALL not in (
                 FlextInfraUtilitiesRopeAnalysis.assignment_target_names(node)
             ):
@@ -700,12 +713,14 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         source_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(
             kept_source
         )
+        source_ast = source_pymodule.get_ast()
+        if not hasattr(source_ast, "_fields"):
+            return ()
         referenced_aliases = sorted({
             getattr(node, "id", "")
-            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
-                source_pymodule.get_ast()
-            )
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(node) == "Name"
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(source_ast)
+            if hasattr(node, "_fields")
+            and FlextInfraUtilitiesRopeAnalysis.node_kind(node) == "Name"
             and getattr(node, "id", "") in alias_names
         })
         referenced_aliases = [name for name in referenced_aliases if name]
@@ -759,10 +774,13 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             moved_source
         )
         runtime_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
+        moved_ast = moved_pymodule.get_ast()
+        if not hasattr(moved_ast, "_fields"):
+            return ()
         moved_aliases: set[str] = set()
-        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
-            moved_pymodule.get_ast()
-        ):
+        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(moved_ast):
+            if not hasattr(node, "_fields"):
+                continue
             if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "Name":
                 continue
             node_id = getattr(node, "id", "")
@@ -801,15 +819,22 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         source_lines = source.splitlines()
         kept_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(kept_source)
         kept_names: set[str] = set()
-        for sub in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
-            kept_pymodule.get_ast()
-        ):
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(sub) == "Name":
-                name = getattr(sub, "id", "")
-                if name:
-                    kept_names.add(name)
+        kept_ast = kept_pymodule.get_ast()
+        if hasattr(kept_ast, "_fields"):
+            for sub in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(kept_ast):
+                if not hasattr(sub, "_fields"):
+                    continue
+                if FlextInfraUtilitiesRopeAnalysis.node_kind(sub) == "Name":
+                    name = getattr(sub, "id", "")
+                    if name:
+                        kept_names.add(name)
         import_lines: t.MutableSequenceOf[str] = []
-        for node in getattr(source_pymodule.get_ast(), "body", []) or []:
+        source_ast = source_pymodule.get_ast()
+        if not hasattr(source_ast, "_fields"):
+            return tuple(import_lines)
+        for node in getattr(source_ast, "body", []) or []:
+            if not hasattr(node, "_fields"):
+                continue
             if FlextInfraUtilitiesRopeAnalysis.node_kind(node) not in {
                 "Import",
                 "ImportFrom",

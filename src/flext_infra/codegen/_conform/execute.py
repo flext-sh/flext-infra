@@ -17,23 +17,42 @@ from .. import (
 
 class _ConformExecuteRoles:
     if TYPE_CHECKING:
+        request: m.Infra.CodegenConformRequest | None
+        repository_root: Path
+        initial_workspace: m.Infra.WorkspaceSpec | None
+
+        def __init__(
+            self,
+            *,
+            repository_root: Path,
+            request: m.Infra.CodegenConformRequest | None = None,
+            initial_workspace: m.Infra.WorkspaceSpec | None = None,
+        ) -> None: ...
+
+        @staticmethod
+        def _repository_provider(
+            repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec
+        ) -> p.Result[m.Infra.ProviderSpec]: ...
 
         def plan(
             self, request: m.Infra.CodegenConformRequest
         ) -> p.Result[m.Infra.CodegenPlan]: ...
+        @staticmethod
         def _mise_config_plans(
-            self, plan: m.Infra.CodegenPlan
+            plan: m.Infra.CodegenPlan
         ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
         def _conform_workspace_beads_routes(
             self, request: m.Infra.CodegenConformRequest
         ) -> p.Result[bool]: ...
+        @classmethod
         def _owned_docs_files(
-            self,
+            cls,
             request: m.Infra.CodegenConformRequest,
             files: t.SequenceOf[m.Infra.CodegenFilePlan],
         ) -> tuple[m.Infra.CodegenFilePlan, ...]: ...
+        @classmethod
         def _owned_docs_directories(
-            self,
+            cls,
             request: m.Infra.CodegenConformRequest,
             plan: m.Infra.CodegenPlan,
             directories: t.SequenceOf[Path],
@@ -624,10 +643,12 @@ class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
         mise = FlextInfraCodegenMiseArtifacts(
             repository_root=request.root, apply_changes=False, check_only=True
         )
-        for project in session.plan.projects:
-            validated = mise.validate_artifacts(project.layout.root)
-            if validated.failure:
-                return r[bool].from_failure(validated)
+        plan = session.plan
+        if isinstance(plan, m.Infra.MiseToolchainWorkspacePlan):
+            for project in plan.projects:
+                validated = mise.validate_artifacts(project.layout.root)
+                if validated.failure:
+                    return r[bool].from_failure(validated)
         return r[bool].ok(True)
 
     @staticmethod

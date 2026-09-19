@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, override
 
 from ... import c, config, m, p, r, t, u
 from ...deps import FlextInfraPyprojectModernizer
@@ -17,15 +17,18 @@ from .misc import FlextInfraCodegenConformMisc
 
 class _ConformPlanRoles:
     if TYPE_CHECKING:
+        initial_workspace: m.Infra.WorkspaceSpec | None
 
+        @classmethod
         def _surface_contract(
-            self, surface: c.Infra.CodegenConformSurface
+            cls, surface: c.Infra.CodegenConformSurface
         ) -> m.Infra.CodegenConformSurfaceContract: ...
+        @classmethod
         def retired_projection_plans(
-            self, root: Path, profile: c.Infra.MakeProfile
+            cls, root: Path, profile: c.Infra.MakeProfile
         ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]: ...
+        @staticmethod
         def _uv_environment_plan(
-            self,
             *,
             root: Path,
             repository_root: Path,
@@ -33,10 +36,9 @@ class _ConformPlanRoles:
             workspace: m.Infra.WorkspaceSpec,
             config: m.Infra.CodegenConfigSpec,
         ) -> m.Infra.UvEnvironmentPlan: ...
+        @staticmethod
         def _scaffold_python_dirs(
-            self,
-            entries: t.SequenceOf[p.Infra.TemplateEntrySpec],
-            profile: c.Infra.MakeProfile,
+            entries: t.SequenceOf[p.Infra.TemplateEntrySpec], profile: c.Infra.MakeProfile
         ) -> t.StrSequence: ...
         def _project_render_context(
             self,
@@ -67,8 +69,8 @@ class _ConformPlanRoles:
             project_context: m.Infra.ProjectRenderContext | None,
             managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
         ) -> p.Result[str]: ...
+        @staticmethod
         def compose_project_artifact(
-            self,
             repository_root: Path,
             destination: str,
             rendered: str,
@@ -79,12 +81,18 @@ class _ConformPlanRoles:
             repository: m.Infra.RepositoryRef | None = None,
             target: m.Infra.RepositoryConformTarget | None = None,
         ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
+        @staticmethod
         def validate_custom_make(
-            self, content: str, policy: m.Infra.CustomHandlerPolicy
+            content: str, policy: m.Infra.CustomHandlerPolicy
         ) -> p.Result[bool]: ...
+        @staticmethod
         def _absent_file_plan(
-            self, root: Path, path: Path
+            root: Path, path: Path
         ) -> p.Result[m.Infra.CodegenFilePlan]: ...
+        @staticmethod
+        def _repository_provider(
+            repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec
+        ) -> p.Result[m.Infra.ProviderSpec]: ...
 
 
 class FlextInfraCodegenConformPlan(_ConformPlanRoles):
@@ -972,6 +980,7 @@ class FlextInfraCodegenConformPlan(_ConformPlanRoles):
             return project_root_rel
         return "."
 
+    @override
     @staticmethod
     def _repository_provider(
         repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec

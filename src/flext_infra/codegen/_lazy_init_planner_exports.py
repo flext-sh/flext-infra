@@ -50,7 +50,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         # surface. When the rope index does not track the package, enumerate
         # direct children from the filesystem instead of rendering an empty
         # init; emptiness here is a defect, never canonical.
-        module_entries = (
+        module_entries: list[tuple[Path, str]] = (
             [(entry.file_path, entry.module_name) for entry in package_entry.modules]
             if package_entry is not None
             else []

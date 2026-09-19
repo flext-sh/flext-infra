@@ -9,11 +9,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 
 from ..base import s
 from .namespace_rules import FlextInfraNamespaceRules
@@ -21,7 +20,7 @@ from .namespace_rules import FlextInfraNamespaceRules
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
@@ -127,7 +126,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
 
     def _parse_file(
         self, rope_project: t.Infra.RopeProject, path: Path
-    ) -> p.Result[ast.AST]:
+    ) -> p.Result[t.Infra.RopeAstNode]:
         """Return the AST module for ``path`` via rope.
 
         ``r.ok(module)`` on success. ``r.fail(reason)`` when the resource
@@ -138,17 +137,17 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         try:
             resource = u.Infra.fetch_python_resource(rope_project, path)
         except c.EXC_OS_SYNTAX as exc:
-            return r[ast.AST].fail(
+            return r[t.Infra.RopeAstNode].fail(
                 f"fetch_python_resource raised: {exc!s}", exception=exc
             )
         if resource is None:
-            return r[ast.AST].fail(f"no rope resource for {path}")
+            return r[t.Infra.RopeAstNode].fail(f"no rope resource for {path}")
         try:
             pymodule = u.Infra.get_pymodule(rope_project, resource)
         except c.EXC_OS_SYNTAX as exc:
-            return r[ast.AST].fail(f"get_pymodule raised: {exc!s}", exception=exc)
+            return r[t.Infra.RopeAstNode].fail(f"get_pymodule raised: {exc!s}", exception=exc)
         ast_module = pymodule.get_ast()
-        return r[ast.AST].ok(ast_module)
+        return r[t.Infra.RopeAstNode].ok(ast_module)
 
     @staticmethod
     def _layout_violations(package_dir: Path | None) -> t.StrSequence:

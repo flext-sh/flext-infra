@@ -101,13 +101,19 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
     ) -> list[tuple[int, int, str]]:
         """Find every ``<alias>.Core.Tests`` chain and emit ``(start, end, repl)``."""
         rewrites: list[tuple[int, int, str]] = []
+        if not hasattr(module_ast, "_fields"):
+            return rewrites
         for node in u.Infra.walk_ast_nodes(module_ast):
+            if not hasattr(node, "_fields"):
+                continue
             if (
                 u.Infra.node_kind(node) != "Attribute"
                 or getattr(node, "attr", "") != "Tests"
             ):
                 continue
             parent_attr = getattr(node, "value", None)
+            if not hasattr(parent_attr, "_fields"):
+                continue
             if (
                 parent_attr is None
                 or u.Infra.node_kind(parent_attr) != "Attribute"
@@ -115,6 +121,8 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
             ):
                 continue
             base_name = getattr(parent_attr, "value", None)
+            if not hasattr(base_name, "_fields"):
+                continue
             if base_name is None or u.Infra.node_kind(base_name) != "Name":
                 continue
             base_id = getattr(base_name, "id", "")
@@ -137,7 +145,11 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
         runtime_aliases: frozenset[str],
     ) -> bool:
         """Return whether any ``from wrapper.<sub> import <alias>`` exists."""
+        if not hasattr(module_ast, "_fields"):
+            return False
         for node in u.Infra.walk_ast_nodes(module_ast):
+            if not hasattr(node, "_fields"):
+                continue
             if u.Infra.node_kind(node) != "ImportFrom":
                 continue
             module_name = getattr(node, "module", "") or ""

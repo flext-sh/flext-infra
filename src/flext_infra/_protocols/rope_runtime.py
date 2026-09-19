@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     # flext-j47u (codex): retained only until the remaining get_ast consumers are
     # converted atomically; this import never enters the runtime dependency graph.
-    import ast
 
     from flext_infra import p, t
 
@@ -62,10 +61,21 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopePyObject]: ...
 
     @runtime_checkable
+    class RopeAstNode(Protocol):
+        """Raw AST node shape from ``RopePyModule.get_ast()``.
+
+        Minimal contract for Python ``ast.AST`` nodes as exposed by Rope.
+        Consumers access attributes via ``getattr``/``hasattr``; the protocol
+        declares the common fields that appear across all node types.
+        """
+
+        _fields: tuple[str, ...]
+
+    @runtime_checkable
     class RopeAssignment(Protocol):
         """Rope assignment shape."""
 
-        ast_node: ast.AST
+        ast_node: FlextInfraProtocolsRopeRuntime.RopeAstNode
 
     @runtime_checkable
     class RopePyName(Protocol):
@@ -140,7 +150,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
             self,
         ) -> t.MappingKV[str, FlextInfraProtocolsRopeRuntime.RopePyName]: ...
 
-        def get_ast(self) -> ast.AST: ...
+        def get_ast(self) -> FlextInfraProtocolsRopeRuntime.RopeAstNode: ...
 
         def get_scope(self) -> FlextInfraProtocolsRopeRuntime.RopeScope | None: ...
 

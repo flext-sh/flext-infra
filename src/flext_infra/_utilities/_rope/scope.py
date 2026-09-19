@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -11,9 +9,6 @@ from flext_infra.typings import t
 from ..rope_core import FlextInfraUtilitiesRopeCore
 from ..rope_runtime import FlextInfraUtilitiesRopeRuntime
 from .imports import FlextInfraUtilitiesRopeAnalysisImports
-
-if TYPE_CHECKING:
-    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesRopeAnalysisScope(FlextInfraUtilitiesRopeAnalysisImports):
@@ -123,23 +118,23 @@ class FlextInfraUtilitiesRopeAnalysisScope(FlextInfraUtilitiesRopeAnalysisImport
         return name
 
     @staticmethod
-    def is_pyclass(obj: p.AttributeProbe) -> bool:
+    def is_pyclass(obj: t.Infra.RopePyObject) -> bool:
         """Return whether a rope object is a ``PyClass`` (abstract class type)."""
         return FlextInfraUtilitiesRopeRuntime.is_abstract_class(obj)
 
     @staticmethod
-    def is_pyfunction(obj: p.AttributeProbe) -> bool:
+    def is_pyfunction(obj: t.Infra.RopePyObject) -> bool:
         """Return whether a rope object is a ``PyFunction``."""
         return FlextInfraUtilitiesRopeRuntime.is_py_function(obj)
 
     @staticmethod
-    def module_body_nodes_source(source: str) -> t.SequenceOf[p.AttributeProbe]:
+    def module_body_nodes_source(source: str) -> t.SequenceOf[t.Infra.RopeAstNode]:
         """Return top-level parsed statements for one source module."""
         _ = source
         return ()
 
     @staticmethod
-    def module_reachable_nodes_source(source: str) -> t.SequenceOf[p.AttributeProbe]:
+    def module_reachable_nodes_source(source: str) -> t.SequenceOf[t.Infra.RopeAstNode]:
         """Return parsed nodes reachable from one source module."""
         _ = source
         return ()

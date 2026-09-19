@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_core import r
@@ -83,12 +82,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
             if isinstance(loaded_result.value, list):
                 normalized_issues: t.MutableSequenceOf[t.JsonMapping] = []
                 for item in loaded_result.value:
-                    if not isinstance(item, Mapping):
-                        continue
-                    try:
-                        typed_item = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(item)
-                    except c.ValidationError:
-                        continue
+                    typed_item = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(item)
                     converted_issue = self._to_toml_config(typed_item)
                     if len(converted_issue) == len(typed_item):
                         normalized_issues.append(converted_issue)
