@@ -23,7 +23,8 @@ PROJECT_STATE_ROOT="${PROJECT_ROOT%/*}/{{ state_directory_name }}/${PROJECT_ROOT
 # enclosing repository (workspace or linked worktree).
 PROJECT_SCRATCH="${HOME}/{{ scratch_home_relative }}/{{ state_directory_name }}${PROJECT_ROOT}/{{ scratch_namespace }}"
 mkdir -p "${PROJECT_SCRATCH}"
-if command -v chattr >/dev/null 2>&1 && [[ "$(stat -f -c %T "${PROJECT_SCRATCH}")" == "btrfs" ]]; then
+  project_scratch_fs="$(stat -f -c %T "${PROJECT_SCRATCH}" 2>/dev/null || true)"
+if command -v chattr >/dev/null 2>&1 && [[ "${project_scratch_fs}" == "btrfs" ]]; then
   chattr +C "${PROJECT_SCRATCH}"
 fi
 export PROJECT_ROOT
