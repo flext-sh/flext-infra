@@ -81,5 +81,16 @@ class FlextInfraConstantsGit:
     GIT_REFS_HEADS: Final[str] = "refs/heads/"
     "Local branch ref prefix."
 
+    # --- Linked-worktree registry (filesystem discovery, no Git subprocess) ---
+
+    GIT_WORKTREES_DIRNAME: Final[str] = "worktrees"
+    "Directory under the repository's ``.git`` holding one registered entry."
+    GIT_WORKTREE_SCAN_FILE_CAP: Final[int] = 200_000
+    "Maximum entries a bounded worktree tree walk visits before degrading."
+    GIT_WORKTREE_SCAN_TIME_CAP_S: Final[float] = 30.0
+    "Maximum seconds a bounded worktree tree walk runs before degrading."
+    SECONDS_PER_DAY: Final[float] = 86400.0
+    "Seconds in one day, the idle-time denominator for stale worktrees."
+
 
 __all__: list[str] = ["FlextInfraConstantsGit"]
