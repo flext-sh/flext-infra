@@ -1,7 +1,6 @@
 # flext-infra
 
 <!-- TOC START -->
-
 - [Purpose](#purpose)
 - [Module Map](#module-map)
 - [Collection Rules](#collection-rules)
@@ -28,11 +27,11 @@ management
 ## Module Map
 
 ::: flext_infra
-options:
-members: false
-show_root_heading: false
-show_root_toc_entry: false
-show_source: false
+    options:
+      members: false
+      show_root_heading: false
+      show_root_toc_entry: false
+      show_source: false
 
 ## Collection Rules
 
@@ -59,7 +58,7 @@ slot registry verification).
 - Public extensions exposed by this project: `FlextInfra`,
   `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
-  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+183 more).
+  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+184 more).
 - Library abstraction boundaries: see AGENTS.md §2.7.
 
 ## Quality Gates

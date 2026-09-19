@@ -260,9 +260,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         )
         if make_context.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(make_context)
-        repository_provider = u.Infra.repository_provider(
-            repository, codegen.providers
-        )
+        repository_provider = u.Infra.repository_provider(repository, codegen.providers)
         if repository_provider.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(repository_provider)
         flext_provider = repository_provider.value

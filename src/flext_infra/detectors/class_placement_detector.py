@@ -210,7 +210,9 @@ class FlextInfraClassPlacementDetector:
         return tuple(classes)
 
     @staticmethod
-    def _class_body_nodes(tree: object, *, class_name: str) -> t.SequenceOf[object]:
+    def _class_body_nodes(
+        tree: object, *, class_name: str
+    ) -> t.SequenceOf[t.Infra.RopeAstNode]:
         """Return direct body nodes for the top-level class named ``class_name``."""
         module_body = getattr(tree, "body", None) or ()
         if not isinstance(module_body, (list, tuple)):
@@ -220,7 +222,13 @@ class FlextInfraClassPlacementDetector:
                 continue
             if getattr(node, "name", "") == class_name:
                 class_body = getattr(node, "body", None) or ()
-                return class_body if isinstance(class_body, (list, tuple)) else ()
+                if not isinstance(class_body, (list, tuple)):
+                    return ()
+                return tuple(
+                    body_node
+                    for body_node in class_body
+                    if u.Infra.is_ast_node(body_node)
+                )
         return ()
 
     @staticmethod
@@ -348,7 +356,7 @@ class FlextInfraClassPlacementDetector:
         """Return True when ``name`` appears in any sub-node identifier."""
         if annotation is None:
             return False
-        for sub in u.Infra.walk_ast_nodes(annotation):
+        for sub in u.Infra.walk_ast_nodes(u.Infra.ensure_ast_node(annotation)):
             if u.Infra.name_of(sub) == name:
                 return True
         return False
@@ -358,7 +366,7 @@ class FlextInfraClassPlacementDetector:
         """Return True when a ClassVar default is a literal/canonical constant."""
         if value is None:
             return True
-        kind = u.Infra.node_kind(value)
+        kind = u.Infra.node_kind(u.Infra.ensure_ast_node(value))
         if kind in {"Constant", "Name", "Attribute", "Tuple", "List", "Set", "Dict"}:
             return True
         if kind == "Call":
@@ -366,7 +374,7 @@ class FlextInfraClassPlacementDetector:
             func_name = u.Infra.name_of(func)
             if func_name in c.Infra.CLASSVAR_ALLOWED_CALLS:
                 return True
-            if u.Infra.node_kind(func) == "Attribute":
+            if u.Infra.node_kind(u.Infra.ensure_ast_node(func)) == "Attribute":
                 base = getattr(func, "value", None)
                 base_name = getattr(base, "id", "")
                 return base_name in c.Infra.CLASSVAR_ALLOWED_CALLS

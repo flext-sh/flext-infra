@@ -428,4 +428,5 @@ class FlextInfraModelsCheck:
             default_factory=tuple, description="SARIF runs"
         )
 
+
 __all__: list[str] = ["FlextInfraModelsCheck"]

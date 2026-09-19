@@ -61,7 +61,9 @@ class FlextInfraReleaseOrchestratorPublishMixin:
         content = u.Cli.files_read_text(report_path)
         if content.failure:
             return r[m.Infra.BuildReport].from_failure(content)
-        validated = u.validate_value(m.Infra.BuildReport, content.value, from_json=True)
+        validated: p.Result[m.Infra.BuildReport] = u.validate_value(
+            m.Infra.BuildReport, content.value, from_json=True
+        )
         if validated.failure:
             return r[m.Infra.BuildReport].fail_op(
                 "validate release receipt", validated.error

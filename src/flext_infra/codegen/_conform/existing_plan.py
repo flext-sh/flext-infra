@@ -282,9 +282,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
             validation = self.validate_custom_make(read.value, policy)
             if validation.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(validation)
-            planned = self.file_plan(
-                root, policy.filename, read.value
-            )
+            planned = self.file_plan(root, policy.filename, read.value)
             if planned.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
             plans.append(planned.value)
@@ -301,9 +299,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                     layout.package_dir
                     / (c.Infra.FAMILY_PUBLIC_MODULES[family] + c.Infra.EXT_PYTHON)
                 ).relative_to(root)
-                utility_plan = self.file_plan(
-                    root, relative.as_posix(), rendered
-                )
+                utility_plan = self.file_plan(root, relative.as_posix(), rendered)
                 if utility_plan.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
                         utility_plan

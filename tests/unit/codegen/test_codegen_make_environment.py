@@ -531,10 +531,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
         # PROJECT_SCRATCH_ROOT is HOME-rooted, mirroring the checkout identity
         # (absolute path with VCS directory segments renamed) under it, never
         # nested under PROJECT_STATE_ROOT.
-        tm.that(
-            makefile,
-            has="PROJECT_SCRATCH_IDENTITY := $(abspath $(PROJECT_ROOT))/",
-        )
+        tm.that(makefile, has="PROJECT_SCRATCH_IDENTITY := $(abspath $(PROJECT_ROOT))/")
         for segment, alias in c.Infra.SCRATCH_IDENTITY_SEGMENT_ALIASES:
             tm.that(makefile, has=f"$(subst /{segment}/,/{alias}/,")
         tm.that(

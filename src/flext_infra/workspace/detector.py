@@ -114,7 +114,9 @@ class FlextInfraWorkspaceDetector(
                 f"invalid repository-local Beads configuration ({beads_path}): "
                 f"{loaded.error or 'configuration load failed'}"
             )
-        validated = u.validate_value(m.Infra.BeadsProjectSpec, loaded.value.data)
+        validated: p.Result[m.Infra.BeadsProjectSpec] = u.validate_value(
+            m.Infra.BeadsProjectSpec, loaded.value.data
+        )
         if validated.failure:
             return r[m.Infra.BeadsProjectSpec].fail_op(
                 f"Beads configuration model validation ({beads_path})", validated.error
@@ -229,7 +231,9 @@ class FlextInfraWorkspaceDetector(
             return r[
                 tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
             ].fail(f"invalid workspace manifest ({manifest_path}): {error}")
-        validated = u.validate_value(m.Infra.WorkspaceManifestSpec, loaded.value.data)
+        validated: p.Result[m.Infra.WorkspaceManifestSpec] = u.validate_value(
+            m.Infra.WorkspaceManifestSpec, loaded.value.data
+        )
         if validated.failure:
             return r[
                 tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
