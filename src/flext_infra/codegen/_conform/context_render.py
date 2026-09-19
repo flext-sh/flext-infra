@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -461,22 +462,42 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         `.beads/identity.toml` is the canonical owner (`[project] id`); the
         generated marker is its projection. An absent file is not a failure —
         it means Beads has not minted an identity for this checkout yet.
+
+        Why the marker read-back: identity.toml is a gitignored per-checkout
+        file, so CI clones and fresh runners run unminted while the TRACKED
+        marker still carries the ledger identity the repository was cloned
+        with. Rendering ``project_id: null`` over it dirties the tree (the
+        generated-drift check goes red) and, worse, a pushed rewrite would
+        strand every clone's identity — the same class of loss as rig gmn's
+        2b1a0582. When identity.toml is absent, read the id back from the
+        existing marker so an unminted checkout preserves the identity it
+        cloned instead of clobbering it.
         """
         identity = repository_root / c.Infra.BEADS_DIRNAME / "identity.toml"
-        if not identity.is_file():
+        if identity.is_file():
+            source = u.Cli.files_read_text(identity)
+            if source.failure:
+                msg = f"failed to read beads identity at {identity}: {source.error}"
+                raise RuntimeError(msg)
+            payload = u.Cli.toml_mapping_from_text(source.value)
+            if payload is None:
+                msg = f"beads identity at {identity} is not valid TOML"
+                raise ValueError(msg)
+            project = payload.get("project")
+            if not isinstance(project, Mapping):
+                return None
+            value = project.get("id")
+            return value.strip() if isinstance(value, str) and value.strip() else None
+        marker = repository_root / c.Infra.BEADS_METADATA_RELPATH
+        if not marker.is_file():
             return None
-        source = u.Cli.files_read_text(identity)
-        if source.failure:
-            msg = f"failed to read beads identity at {identity}: {source.error}"
-            raise RuntimeError(msg)
-        payload = u.Cli.toml_mapping_from_text(source.value)
-        if payload is None:
-            msg = f"beads identity at {identity} is not valid TOML"
-            raise ValueError(msg)
-        project = payload.get("project")
-        if not isinstance(project, Mapping):
+        try:
+            payload = json.loads(marker.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
             return None
-        value = project.get("id")
+        if not isinstance(payload, dict):
+            return None
+        value = payload.get("project_id")
         return value.strip() if isinstance(value, str) and value.strip() else None
 
 
