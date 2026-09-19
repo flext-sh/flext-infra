@@ -113,11 +113,11 @@ class TestsFlextInfraCodegenVscode:
             '[submodule "app-a"]\n'
             "\tpath = apps/a\n"
             f"\turl = {provider.base_url.rstrip('/')}/app-a.git\n"
-            f"\tbranch = {provider.branch}\n"
+            f"\tbranch = {u.Tests.provider_branch()}\n"
             '[submodule "lib-b"]\n'
             "\tpath = libs/b\n"
             f"\turl = {provider.base_url.rstrip('/')}/lib-b.git\n"
-            f"\tbranch = {provider.branch}\n",
+            f"\tbranch = {u.Tests.provider_branch()}\n",
             encoding="utf-8",
         )
 

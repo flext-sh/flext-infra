@@ -12,8 +12,9 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, config, t, u
+from flext_infra import c, config, t
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
+from tests import u
 
 from ._support import CodegenTestSupport
 

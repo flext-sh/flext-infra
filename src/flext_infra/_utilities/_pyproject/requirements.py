@@ -179,7 +179,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
                 "internal flext dependency declares no direct git source and "
                 f"is not a workspace dependency: {dependency_name}"
             )
-        ref = str(revisions.get(dependency_name, declared_ref))
+        ref = revisions.get(dependency_name, declared_ref)
         # The declared source stays authoritative under a workspace root too:
         # uv replaces it there with the root ``workspace = true`` overlay, and
         # a member ``[tool.uv.sources]`` git entry is rejected by uv itself,

@@ -706,9 +706,9 @@ class TestsFlextInfraRepositoryLocalTopology:
         first = tm.ok(u.Infra.repository_provider(suffixed))
         second = tm.ok(u.Infra.repository_provider(bare))
 
-        tm.that(first.value, eq=second.value)
-        tm.that(first.value.name, eq=u.Tests.provider().name)
-        tm.that(first.value.organization, eq=u.Tests.provider().organization)
+        tm.that(first, eq=second)
+        tm.that(first.name, eq=u.Tests.provider().name)
+        tm.that(first.organization, eq=u.Tests.provider().organization)
 
 
 __all__: list[str] = ["TestsFlextInfraRepositoryLocalTopology"]
