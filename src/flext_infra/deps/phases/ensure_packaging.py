@@ -16,7 +16,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
-from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -133,7 +132,7 @@ class FlextInfraEnsurePackagingPhase:
             if (project_dir / data_dir).is_dir()
             and not (package_root / data_dir).is_dir()
         )
-        return FlextInfraTomlPhaseService.apply_payload_phases(
+        return u.Infra.apply_toml_phases(
             payload,
             self._phase(
                 package_name=package_name,

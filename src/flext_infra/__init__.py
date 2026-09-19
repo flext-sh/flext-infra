@@ -86,21 +86,12 @@ if TYPE_CHECKING:
     from .deps.fix_pyrefly_config import FlextInfraConfigFixer
     from .deps.modernizer import FlextInfraPyprojectModernizer
     from .deps.phases.consolidate_groups import FlextInfraConsolidateGroupsPhase
-    from .deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
-    from .deps.phases.ensure_formatting import FlextInfraEnsureFormattingToolingPhase
-    from .deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
-    from .deps.phases.ensure_namespace import FlextInfraEnsureNamespaceToolingPhase
     from .deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
-    from .deps.phases.ensure_pydantic_mypy import (
-        FlextInfraEnsurePydanticMypyConfigPhase,
-    )
     from .deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
     from .deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
-    from .deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
     from .deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-    from .deps.phases.ensure_vulture import FlextInfraEnsureVultureConfigPhase
     from .deps.phases.inject_comments import FlextInfraInjectCommentsPhase
-    from .deps.toml_phase import FlextInfraTomlPhaseService
+    from .deps.phases.tool_tables import FlextInfraToolTablesPhase
     from .detectors.class_placement_detector import FlextInfraClassPlacementDetector
     from .detectors.compatibility_alias_detector import (
         FlextInfraCompatibilityAliasDetector,
@@ -346,17 +337,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraDocValidator",
     "FlextInfraDuplicationGate",
     "FlextInfraEnforcementFixerOrchestrator",
-    "FlextInfraEnsureCoverageConfigPhase",
-    "FlextInfraEnsureFormattingToolingPhase",
-    "FlextInfraEnsureMypyConfigPhase",
-    "FlextInfraEnsureNamespaceToolingPhase",
     "FlextInfraEnsurePackagingPhase",
-    "FlextInfraEnsurePydanticMypyConfigPhase",
     "FlextInfraEnsurePyreflyConfigPhase",
     "FlextInfraEnsurePyrightConfigPhase",
-    "FlextInfraEnsurePytestConfigPhase",
     "FlextInfraEnsureRuffConfigPhase",
-    "FlextInfraEnsureVultureConfigPhase",
     "FlextInfraExtraPathsManager",
     "FlextInfraFixerAdapter",
     "FlextInfraFlextBindingService",
@@ -457,7 +441,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraTestmonDbInspector",
     "FlextInfraTextPatternScanner",
     "FlextInfraTierWhitelistGate",
-    "FlextInfraTomlPhaseService",
+    "FlextInfraToolTablesPhase",
     "FlextInfraTransformerFixerAdapter",
     "FlextInfraTypes",
     "FlextInfraUtilities",
@@ -582,23 +566,12 @@ _LAZY_IMPORTS = MappingProxyType(
             ".deps.fix_pyrefly_config": ("FlextInfraConfigFixer",),
             ".deps.modernizer": ("FlextInfraPyprojectModernizer",),
             ".deps.phases.consolidate_groups": ("FlextInfraConsolidateGroupsPhase",),
-            ".deps.phases.ensure_coverage": ("FlextInfraEnsureCoverageConfigPhase",),
-            ".deps.phases.ensure_formatting": (
-                "FlextInfraEnsureFormattingToolingPhase",
-            ),
-            ".deps.phases.ensure_mypy": ("FlextInfraEnsureMypyConfigPhase",),
-            ".deps.phases.ensure_namespace": ("FlextInfraEnsureNamespaceToolingPhase",),
             ".deps.phases.ensure_packaging": ("FlextInfraEnsurePackagingPhase",),
-            ".deps.phases.ensure_pydantic_mypy": (
-                "FlextInfraEnsurePydanticMypyConfigPhase",
-            ),
             ".deps.phases.ensure_pyrefly": ("FlextInfraEnsurePyreflyConfigPhase",),
             ".deps.phases.ensure_pyright": ("FlextInfraEnsurePyrightConfigPhase",),
-            ".deps.phases.ensure_pytest": ("FlextInfraEnsurePytestConfigPhase",),
             ".deps.phases.ensure_ruff": ("FlextInfraEnsureRuffConfigPhase",),
-            ".deps.phases.ensure_vulture": ("FlextInfraEnsureVultureConfigPhase",),
             ".deps.phases.inject_comments": ("FlextInfraInjectCommentsPhase",),
-            ".deps.toml_phase": ("FlextInfraTomlPhaseService",),
+            ".deps.phases.tool_tables": ("FlextInfraToolTablesPhase",),
             ".detectors": ("detectors",),
             ".detectors.class_placement_detector": (
                 "FlextInfraClassPlacementDetector",

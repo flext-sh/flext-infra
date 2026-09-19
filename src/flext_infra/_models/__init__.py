@@ -84,6 +84,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegen",
     "FlextInfraConfigModels",
     "FlextInfraConfigModelsArtifact",
+    "FlextInfraConfigModelsBase",
     "FlextInfraConfigModelsBeads",
     "FlextInfraConfigModelsContexts",
     "FlextInfraConfigModelsContract",

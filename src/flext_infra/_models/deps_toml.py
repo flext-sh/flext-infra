@@ -1,4 +1,4 @@
-"""TOML phase models with Builder DSL for deps configuration sync.
+"""Declarative TOML phase models with a fluent builder for deps configuration sync.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,9 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from itertools import chain
-from typing import Annotated, Literal, Self, override
+from typing import Annotated, Literal, Self
 
 from flext_core import m
 from flext_infra import c, t
@@ -71,10 +69,6 @@ class FlextInfraModelsDepsToml:
                     ),
                 ] = ()
 
-            type Operation = Annotated[
-                SetOp | ListOp | RemoveOp, m.Field(discriminator="kind")
-            ]
-
             class PhaseConfig(m.ContractModel):
                 """Declarative TOML phase with inline Builder DSL."""
 
@@ -86,17 +80,20 @@ class FlextInfraModelsDepsToml:
                     t.StrSequence, m.Field(description="Primary table path")
                 ] = ()
                 operations: Annotated[
-                    t.SequenceOf[FlextInfraModelsDepsToml.Deps.Toml.Operation],
+                    t.SequenceOf[
+                        Annotated[
+                            FlextInfraModelsDepsToml.Deps.Toml.SetOp
+                            | FlextInfraModelsDepsToml.Deps.Toml.ListOp
+                            | FlextInfraModelsDepsToml.Deps.Toml.RemoveOp,
+                            m.Field(discriminator="kind"),
+                        ]
+                    ],
                     m.Field(description="Declarative TOML operations"),
                 ] = ()
                 nested_tables: Annotated[
                     t.SequenceOf[FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig],
                     m.Field(description="Nested TOML phase configs"),
                 ] = ()
-                custom_handler: Annotated[
-                    Callable[..., t.StrSequence] | None,
-                    m.Field(exclude=True, description="Custom handler"),
-                ] = None
 
                 class Builder(
                     m.Builder.Identity["FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig"]
@@ -110,82 +107,19 @@ class FlextInfraModelsDepsToml:
                             )
                         )
 
-                    @override
-                    def build(self) -> FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig:
-                        """Return the typed immutable phase owned by this builder."""
-                        phase: FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig = (
-                            self.state
-                        )
-                        return phase
-
-                    @classmethod
-                    def _nested_operations(
-                        cls,
-                        *,
-                        values: t.SequenceOf[t.Pair[str, t.JsonValue]] = (),
-                        lists: t.SequenceOf[t.StrSequencePair] = (),
-                        deprecated_keys: t.StrSequence = (),
-                    ) -> t.VariadicTuple[FlextInfraModelsDepsToml.Deps.Toml.Operation]:
-                        """Nested operations."""
-                        return tuple(
-                            chain(
-                                (
-                                    FlextInfraModelsDepsToml.Deps.Toml.SetOp(
-                                        key=key, value=value
-                                    )
-                                    for key, value in values
-                                ),
-                                (
-                                    FlextInfraModelsDepsToml.Deps.Toml.ListOp(
-                                        key=key, values=tuple(entries)
-                                    )
-                                    for key, entries in lists
-                                ),
-                                (
-                                    FlextInfraModelsDepsToml.Deps.Toml.RemoveOp(key=key)
-                                    for key in deprecated_keys
-                                ),
-                            )
-                        )
-
-                    def operation(
-                        self,
-                        operation_type: type[m.ContractModel],
-                        /,
-                        **data: t.JsonValue
-                        | t.JsonPayload
-                        | t.SequenceOf[t.JsonPayload],
-                    ) -> Self:
-                        """Operation."""
-                        operation_item = operation_type.model_validate(data)
-                        replaced: Self = self._replace(
-                            self.state.model_copy(
-                                update={
-                                    "operations": (
-                                        *self.state.operations,
-                                        operation_item,
-                                    )
-                                }
-                            )
-                        )
-                        return replaced
-
-                    def root(self, *path: str) -> Self:
-                        """Root."""
-                        result: Self = self._path("root_path", *path)
-                        return result
-
                     def table(self, *path: str) -> Self:
-                        """Table."""
-                        result: Self = self._path("table_path", *path)
-                        return result
+                        """Select the primary table path below the root path."""
+                        return self._path("table_path", *path)
 
                     def value(self, key: str, value: t.JsonValue) -> Self:
-                        """Value."""
-                        return self.operation(
-                            FlextInfraModelsDepsToml.Deps.Toml.SetOp,
-                            key=key,
-                            value=value,
+                        """Schedule one scalar or structured value sync."""
+                        return self._set(
+                            operations=(
+                                *self.state.operations,
+                                FlextInfraModelsDepsToml.Deps.Toml.SetOp(
+                                    key=key, value=value
+                                ),
+                            )
                         )
 
                     def list(
@@ -196,21 +130,28 @@ class FlextInfraModelsDepsToml:
                         strategy: c.Infra.TomlMergeMode = c.Infra.TomlMergeMode.REPLACE,
                         sort: bool = True,
                     ) -> Self:
-                        """List."""
-                        return self.operation(
-                            FlextInfraModelsDepsToml.Deps.Toml.ListOp,
-                            key=key,
-                            values=tuple(values),
-                            strategy=strategy,
-                            sort=sort,
+                        """Schedule one string-list sync."""
+                        return self._set(
+                            operations=(
+                                *self.state.operations,
+                                FlextInfraModelsDepsToml.Deps.Toml.ListOp(
+                                    key=key,
+                                    values=tuple(values),
+                                    strategy=strategy,
+                                    sort=sort,
+                                ),
+                            )
                         )
 
                     def deprecated(self, key: str, *sub_path: str) -> Self:
-                        """Mark a key as deprecated by scheduling its removal."""
-                        return self.operation(
-                            FlextInfraModelsDepsToml.Deps.Toml.RemoveOp,
-                            key=key,
-                            table_path=tuple(sub_path),
+                        """Schedule the removal of one deprecated key."""
+                        return self._set(
+                            operations=(
+                                *self.state.operations,
+                                FlextInfraModelsDepsToml.Deps.Toml.RemoveOp(
+                                    key=key, table_path=sub_path
+                                ),
+                            )
                         )
 
                     def nested(
@@ -220,37 +161,27 @@ class FlextInfraModelsDepsToml:
                         lists: t.SequenceOf[t.StrSequencePair] = (),
                         deprecated_keys: t.StrSequence = (),
                     ) -> Self:
-                        """Nested."""
-                        nested_table = FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig(
+                        """Append one nested table phase built from inline operations."""
+                        toml = FlextInfraModelsDepsToml.Deps.Toml
+                        nested_table = toml.PhaseConfig(
                             name=self.state.name,
                             root_path=(),
-                            table_path=tuple(path),
-                            operations=tuple(
-                                self._nested_operations(
-                                    values=values,
-                                    lists=lists,
-                                    deprecated_keys=deprecated_keys,
-                                )
+                            table_path=path,
+                            operations=(
+                                *(
+                                    toml.SetOp(key=key, value=item)
+                                    for key, item in values
+                                ),
+                                *(
+                                    toml.ListOp(key=key, values=tuple(entries))
+                                    for key, entries in lists
+                                ),
+                                *(toml.RemoveOp(key=key) for key in deprecated_keys),
                             ),
                         )
-                        replaced: Self = self._replace(
-                            self.state.model_copy(
-                                update={
-                                    "nested_tables": (
-                                        *self.state.nested_tables,
-                                        nested_table,
-                                    )
-                                }
-                            )
+                        return self._set(
+                            nested_tables=(*self.state.nested_tables, nested_table)
                         )
-                        return replaced
-
-                    def handler(self, fn: Callable[..., t.StrSequence]) -> Self:
-                        """Set a custom handler function."""
-                        replaced: Self = self._replace(
-                            self.state.model_copy(update={"custom_handler": fn})
-                        )
-                        return replaced
 
 
 __all__: list[str] = ["FlextInfraModelsDepsToml"]
