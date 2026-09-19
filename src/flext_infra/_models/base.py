@@ -14,7 +14,7 @@ from flext_cli import m
 
 from flext_infra import c, t
 
-from . import FlextInfraModelsDefaults
+from . import ImmutableEmptyMapping
 from .mixins import FlextInfraModelsMixins as mm
 
 
@@ -126,7 +126,7 @@ class FlextInfraModelsBase:
         expected_sources: Annotated[
             t.MappingKV[Path, str],
             m.Field(description="Expected current source bytes keyed by updated path"),
-        ] = m.Field(default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping)
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         keep_backup: Annotated[
             bool, m.Field(description="Whether to preserve .bak copies before editing")
         ] = False

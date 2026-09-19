@@ -8,7 +8,7 @@ from typing import Annotated
 from flext_cli import m
 
 from ... import c, t
-from .. import FlextInfraModelsDefaults, FlextInfraModelsMixins as mm
+from .. import FlextInfraModelsMixins as mm, ImmutableEmptyMapping
 
 
 class FlextInfraModelsCodegenLazyInitModels:
@@ -53,18 +53,18 @@ class FlextInfraModelsCodegenLazyInitModels:
             description="Public exports for generated __init__.py.",
         )
         lazy_map: t.LazyAliasMap = m.Field(
-            default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping,
+            default_factory=ImmutableEmptyMapping,
             description="Lazy import map: export name to module/attribute target.",
         )
         type_checking_map: t.LazyAliasMap = m.Field(
-            default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping,
+            default_factory=ImmutableEmptyMapping,
             description=(
                 "Type-checking import map used to publish static package attributes "
                 "without widening the runtime/public lazy export surface."
             ),
         )
         eager_dunders: t.LazyAliasMap = m.Field(
-            default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping,
+            default_factory=ImmutableEmptyMapping,
             description=(
                 "Dunder exports that must be eagerly imported at __init__.py "
                 "load time. Required for the ``__version__.py`` submodule case "
@@ -74,7 +74,7 @@ class FlextInfraModelsCodegenLazyInitModels:
             ),
         )
         inline_constants: t.StrMapping = m.Field(
-            default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping,
+            default_factory=ImmutableEmptyMapping,
             description="Inline constants emitted directly into __init__.py.",
         )
         wildcard_runtime_modules: t.StrSequence = m.Field(

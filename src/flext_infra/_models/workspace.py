@@ -8,8 +8,8 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 
 from .. import c, t
-from . import FlextInfraModelsMixins as mm
-from ._config import FlextInfraConfigModels
+from . import FlextInfraConfigModels, FlextInfraModelsMixins as mm
+from ._defaults import FlextInfraModelsDefaults
 from ._git import FlextInfraModelsGitIdentity
 
 

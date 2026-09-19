@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, Literal, Self
+from typing import Annotated, ClassVar, Self
 
 from flext_cli import m, u
 
@@ -13,16 +13,14 @@ from ..._constants import (
     FlextInfraConstantsCodegenProject,
     FlextInfraConstantsSharedInfra,
 )
-from .. import FlextInfraModelsDefaults, FlextInfraModelsLayout
+from .. import FlextInfraModelsLayout, immutable_empty_mapping
 from .contexts import FlextInfraConfigModelsContexts
 from .contract import FlextInfraConfigModelsContract
 from .make import FlextInfraConfigModelsMake
 from .provider import FlextInfraConfigModelsProvider
-from .release import FlextInfraConfigModelsRelease
 from .render import FlextInfraConfigModelsRender
 from .scaffold import FlextInfraConfigModelsScaffold
 from .templates import FlextInfraConfigModelsTemplates
-from .workspace import FlextInfraConfigModelsWorkspace
 
 
 class FlextInfraConfigModelsArtifact:
@@ -122,7 +120,7 @@ class FlextInfraConfigModelsArtifact:
         checkout_submodules_overrides: Annotated[
             Mapping[str, str],
             m.Field(
-                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
+                default_factory=immutable_empty_mapping,
                 description=(
                     "Per-distribution override of checkout_submodules, for "
                     "projects that really do exercise their subprojects in CI"
@@ -145,7 +143,7 @@ class FlextInfraConfigModelsArtifact:
         ci_private_submodules: Annotated[
             Mapping[str, FlextInfraConfigModelsProvider.CiPrivateSubmodulesSpec],
             m.Field(
-                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
+                default_factory=immutable_empty_mapping,
                 description=(
                     "Per-distribution private submodule deploy-key contracts "
                     "rendered into generated CI before make setup"
@@ -155,7 +153,7 @@ class FlextInfraConfigModelsArtifact:
         ci_private_dependency_auth: Annotated[
             Mapping[str, FlextInfraConfigModelsProvider.CiPrivateDependencyAuthSpec],
             m.Field(
-                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
+                default_factory=immutable_empty_mapping,
                 description=(
                     "Per-distribution GitHub App identity minting installation "
                     "tokens for private git dependencies in generated CI"
@@ -165,7 +163,7 @@ class FlextInfraConfigModelsArtifact:
         ci_system_packages: Annotated[
             Mapping[str, t.VariadicTuple[t.NonEmptyStr]],
             m.Field(
-                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
+                default_factory=immutable_empty_mapping,
                 description=(
                     "Per-distribution runner packages (Ubuntu apt names) the "
                     "generated CI installs before the gates run"
@@ -461,127 +459,156 @@ class FlextInfraConfigModelsArtifact:
             m.Field(description="Ordered immutable sources consumed by composition"),
         ] = ()
 
-    class CodegenFilePlan(FlextInfraConfigModelsContract.ConfigContract):
-        """Exact before state and desired state for one managed file."""
+    class ReleaseAutomationOverrideSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """One distribution's deviation from the shared release contract."""
 
-        project: Annotated[Path, m.Field(description="Physical owning project root")]
-        path: Annotated[Path, m.Field(description="Absolute managed file path")]
-        before: Annotated[
-            m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan,
-            m.Field(
-                description=(
-                    "Descriptor-authenticated file state, or the exact absent "
-                    "parent chain captured by read-only planning"
-                )
-            ),
-        ]
-        desired_content: Annotated[
-            bytes | None,
-            m.Field(
-                strict=True,
-                description="Exact desired bytes, or None for an absent destination",
-            ),
-        ]
-        desired_mode: Annotated[
-            int | None,
-            m.Field(
-                ge=0,
-                le=0o7777,
-                strict=True,
-                description="Exact desired mode, or None for an absent destination",
-            ),
-        ]
-        source_states: Annotated[
-            t.VariadicTuple[m.Cli.AtomicFileState],
-            m.Field(
-                exclude=True,
-                description="Exact source states that produced rendered content",
-            ),
-        ] = ()
-        owner: Annotated[
-            str,
-            m.Field(description="Canonical artifact owner, empty for scaffold files"),
-        ] = ""
-        policy: Annotated[
-            Literal["full", "merge"] | None,
-            m.Field(description="Governed root artifact policy"),
+        release_branch: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(default=None, description="Branch that produces releases"),
         ] = None
+        build_command: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(default=None, description="Command that produces the artifacts"),
+        ] = None
+        version_variables: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="Extra file:variable version anchors"),
+        ] = ()
+
+    class ReleaseAutomationSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Automated semantic versioning, owned by the market tool.
+
+        Why: bump_version/parse_semver and the release orchestrator already
+        existed, but nothing DERIVED the bump -- a human passed
+        ``bump=minor`` by hand, which is exactly the judgement the commit
+        history already encodes and the one a human gets wrong. Conventional
+        Commits plus python-semantic-release replace that judgement with a
+        rule, and replace local implementation with a maintained dependency.
+
+        Declared once here so every generated pyproject carries the same
+        contract. A project that genuinely differs is expressed in
+        ``overrides``, never by editing its own pyproject.
+        """
+
+        tool: Annotated[
+            t.NonEmptyStr, m.Field(description="Release automation distribution")
+        ]
+        runner: Annotated[
+            t.NonEmptyStr, m.Field(description="Command runner that invokes the tool")
+        ]
+        commit_parser: Annotated[
+            t.NonEmptyStr, m.Field(description="Commit convention driving the bump")
+        ]
+        release_branch: Annotated[
+            t.NonEmptyStr, m.Field(description="Branch that produces releases")
+        ]
+        version_variables: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="file:variable anchors the tool rewrites"),
+        ]
+        version_toml: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(description="file:tomlpath anchors the tool rewrites"),
+        ]
+        build_command: Annotated[
+            t.NonEmptyStr, m.Field(description="Command that produces the artifacts")
+        ]
+        tag_format: Annotated[
+            t.NonEmptyStr, m.Field(description="Tag shape, shared with the workflow")
+        ]
+        changelog_file: Annotated[
+            t.NonEmptyStr, m.Field(description="Generated changelog destination")
+        ]
+        overrides: Annotated[
+            Mapping[
+                t.NonEmptyStr,
+                FlextInfraConfigModelsArtifact.ReleaseAutomationOverrideSpec,
+            ],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description="Per-distribution deviations from the shared contract",
+            ),
+        ]
 
         @u.model_validator(mode="after")
-        def _validate_publication_identity(self) -> Self:
-            """Bind one complete desired state to its exact project and target."""
-            if not self.project.is_absolute() or not self.path.is_absolute():
-                msg = "codegen project and path must be absolute"
-                raise ValueError(msg)
-            if isinstance(self.before, m.Cli.AtomicFileState):
-                if self.before.path != self.path:
-                    msg = "codegen before state belongs to another path"
+        def _validate_anchors(self) -> Self:
+            """Every anchor must name a target, or the tool rewrites nothing."""
+            for anchor in (*self.version_variables, *self.version_toml):
+                if ":" not in anchor:
+                    msg = f"release version anchor must be '<file>:<target>': {anchor}"
                     raise ValueError(msg)
-            elif (
-                self.before.target != self.path.parent
-                or not self.before.directories
-                or self.desired_content is None
-            ):
-                msg = "codegen absent parent plan is inconsistent with its destination"
-                raise ValueError(msg)
-            try:
-                self.path.relative_to(self.project)
-            except ValueError as exc:
-                msg = f"codegen path escapes owning project: {self.path}"
-                raise ValueError(msg) from exc
-            desired = (self.desired_content, self.desired_mode)
-            if any(value is None for value in desired) != all(
-                value is None for value in desired
-            ):
-                msg = (
-                    "codegen desired bytes and mode must be present or absent together"
-                )
-                raise ValueError(msg)
             return self
 
-    class CodegenPlan(FlextInfraConfigModelsContract.ConfigContract):
-        """Fully validated plan produced before any managed-file write."""
+    class ReleasePolicySpec(FlextInfraConfigModelsContract.ConfigContract):
+        """The release protocol's declared data: who publishes, what bumps, where.
 
-        request: Annotated[
-            FlextInfraConfigModelsArtifact.CodegenConformRequest,
-            m.Field(description="Validated public request"),
+        Why (aihub-ioijy.9): `ReleaseOrchestrator._build_targets` hardcoded
+        `project.name.startswith("flext-")`, so any consumer of this release
+        engine whose distribution is not named `flext-*` resolved zero targets
+        and died with "release build selected no publishable projects".
+        Publishable membership is project policy, not a naming convention.
+
+        `bump_types` maps a Conventional Commits type found in a merged
+        pull-request title to the bump it earns; a type absent from the map
+        releases nothing, and `!` in the title always earns a major bump. The
+        Conventional Commits defaults are the typed default, so a consumer
+        repository declares only what differs.
+        """
+
+        # The bump map is consumed as enum members by the strict release plan,
+        # so the contract base's value coercion is switched off here.
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            strict=False, frozen=True, extra="forbid", use_enum_values=False
+        )
+
+        publishable_prefixes: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Distribution-name prefixes eligible for build/publish. "
+                    "Empty means every resolved project is eligible."
+                ),
+            ),
         ]
-        repositories: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
-            m.Field(description="Selected repositories in deterministic order"),
+        bump_types: Annotated[
+            Mapping[t.NonEmptyStr, FlextInfraConstantsRelease.VersionBump],
+            m.Field(
+                default_factory=lambda: {
+                    "feat": FlextInfraConstantsRelease.VersionBump.MINOR,
+                    "fix": FlextInfraConstantsRelease.VersionBump.PATCH,
+                    "perf": FlextInfraConstantsRelease.VersionBump.PATCH,
+                },
+                description="Conventional Commits type -> semantic version bump",
+            ),
         ]
-        workspace: Annotated[
-            FlextInfraConfigModelsWorkspace.WorkspaceSpec,
-            m.Field(description="Workspace governing the selection"),
+        publish_url: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                default=FlextInfraConstantsRelease.PYPI_UPLOAD_URL,
+                description="Package index upload endpoint for verified artifacts",
+            ),
         ]
-        make_spec: Annotated[
-            FlextInfraConfigModelsMake.MakeSpec,
-            m.Field(description="Canonical Make contract"),
-        ]
-        uv_environments: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsRelease.UvEnvironmentPlan],
-            m.Field(description="uv plans paired with selected repositories"),
-        ]
-        files: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenFilePlan],
-            m.Field(description="All render results validated before application"),
+        build_constraints: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsArtifact.BuildConstraintSpec],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Hash-pinned build-backend requirements every release artifact "
+                    "is built with; projected to config/build-constraints.txt"
+                ),
+            ),
         ]
 
-    class CodegenResult(FlextInfraConfigModelsContract.ConfigContract):
-        """Public conformance outcome for check and apply modes."""
+    class BuildConstraintSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """One hash-pinned build requirement (``uv build --require-hashes``)."""
 
-        plan: Annotated[
-            FlextInfraConfigModelsArtifact.CodegenPlan,
-            m.Field(description="Plan that governed the operation"),
+        name: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+        version: Annotated[t.NonEmptyStr, m.Field(description="Exact version")]
+        hashes: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(min_length=1, description="Accepted sha256 digests"),
         ]
-        written_files: Annotated[
-            t.VariadicTuple[Path],
-            m.Field(description="Files atomically replaced by apply"),
-        ] = ()
-        errors: Annotated[
-            t.VariadicTuple[str],
-            m.Field(description="Fail-closed validation or write errors"),
-        ] = ()
 
     class SedPatternSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One declared literal regex substitution applied across the mod scope."""

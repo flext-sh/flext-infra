@@ -27,6 +27,12 @@ class FlextInfraUtilitiesDocsGithubLinks:
     """Governed GitHub URL helpers for docs audit and fix."""
 
     @staticmethod
+    def _config() -> config.FlextInfraConfig:
+        from flext_infra import config
+
+        return config
+
+    @staticmethod
     def docs_github_repos() -> t.VariadicTuple[m.Infra.DocsGithubRepoSpec]:
         """Return the typed GitHub repo map from make.docs SSOT."""
         return config.Infra.codegen.make.docs.github_repos

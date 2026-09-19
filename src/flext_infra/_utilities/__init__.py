@@ -397,8 +397,8 @@ _LAZY_IMPORTS = MappingProxyType(
             "._git.worktree_discovery": (
                 "FlextInfraUtilitiesGitWorktreeDiscoveryMixin",
             ),
-            "._git.worktree_facts": ("FlextInfraUtilitiesGitWorktreeFactsMixin",),
             "._git.worktree_io": ("FlextInfraUtilitiesGitWorktreeIO",),
+            "._git.worktree_facts": ("FlextInfraUtilitiesGitWorktreeFactsMixin",),
             "._git.worktree_materialization": (
                 "FlextInfraUtilitiesGitWorktreeMaterializationMixin",
             ),

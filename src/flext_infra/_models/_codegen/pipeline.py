@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m, u
 
 from ... import p, t
+from ..config import FlextInfraConfigModels
 from .fix import FlextInfraModelsCodegenFixModels
 from .scaffold import FlextInfraModelsCodegenScaffoldModels
 
@@ -24,8 +25,7 @@ class FlextInfraModelsCodegenPipelineModels:
             m.Field(description="Generation phase that produced this receipt"),
         ]
         files: Annotated[
-            # Why: every codegen phase receipt must use the sole artifact-owned class.
-            t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenFilePlan],
+            t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan],
             m.Field(description="Ordered desired publication states"),
         ]
         inputs: Annotated[

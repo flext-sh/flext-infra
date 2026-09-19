@@ -7,7 +7,7 @@ from typing import Annotated
 from flext_core import m
 from flext_infra import t
 
-from . import FlextInfraModelsDefaults
+from . import ImmutableEmptyMapping
 from .deps_tool_config_project import FlextInfraModelsDepsToolConfigProject
 
 
@@ -111,7 +111,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                 alias="ignored-rule-rationales",
                 description="Global Ruff exclusions mapped to verified architecture rationales.",
             ),
-        ] = m.Field(default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping)
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         banned_api: Annotated[
             t.StrMapping,
             m.Field(
@@ -241,7 +241,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
                     "(e.g. follow_imports='normal')."
                 ),
             ),
-        ] = m.Field(default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping)
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         overrides: Annotated[
             t.VariadicTuple[FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig],
             m.Field(

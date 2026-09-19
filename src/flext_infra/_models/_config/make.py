@@ -10,8 +10,7 @@ from flext_cli import m, u
 
 from ... import t
 from ..._constants import FlextInfraConstantsCodegenProject, FlextInfraConstantsMake
-from ..._constants.check import FlextInfraConstantsCheck
-from .. import FlextInfraModelsDefaults
+from .. import immutable_empty_mapping
 from .contract import FlextInfraConfigModelsContract
 
 
@@ -427,7 +426,7 @@ class FlextInfraConfigModelsMake:
                 t.NonEmptyStr, FlextInfraConfigModelsMake.CustomHandlerPolicyOverride
             ],
             m.Field(
-                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
+                default_factory=immutable_empty_mapping,
                 description="Per-profile overrides of the custom handler policy",
             ),
         ]

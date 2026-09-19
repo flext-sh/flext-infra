@@ -12,9 +12,8 @@ from __future__ import annotations
 import os as _os
 from typing import ClassVar
 
-from flext_cli import m
-
 from flext_core import FlextSettings
+from flext_infra.models import m
 
 from ._models.settings import FlextInfraSettingsModels
 
@@ -52,4 +51,5 @@ settings: FlextInfraSettings = FlextInfraSettings.fetch_global()
 """Process-wide infra settings singleton — ``from flext_infra import settings``."""
 
 
-__all__: list[str] = ["FlextInfraSettings", "settings"]
+settings = FlextInfraSettings()
+__all__: list[str] = ["FlextInfraSettings", "env_lookup", "settings"]
