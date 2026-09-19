@@ -87,16 +87,15 @@ class FlextInfraDependencyDetectionRunnersMixin:
                 normalized_issues: t.MutableSequenceOf[t.JsonMapping] = []
                 for _index, item in enumerate(loaded_result.value):
                     if not isinstance(item, Mapping):
-                        continue
-                    validated: p.Result[t.JsonMapping] = u.validate_value(
-                        t.Infra.INFRA_MAPPING_ADAPTER, item
-                    )
-                    if validated.failure:
-                        validation_failure = r[
-                            t.Pair[t.SequenceOf[t.JsonMapping], int]
-                        ].fail_op("validate deptry issue", validated.error)
-                        break
-                    typed_item = validated.value
+                        return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail(
+                            f"deptry JSON issue {index} must be a mapping"
+                        )
+                    try:
+                        typed_item = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(item)
+                    except c.ValidationError as exc:
+                        return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail_op(
+                            "validate deptry issue", exc
+                        )
                     converted_issue = self._to_toml_config(typed_item)
                     if len(converted_issue) == len(typed_item):
                         normalized_issues.append(converted_issue)

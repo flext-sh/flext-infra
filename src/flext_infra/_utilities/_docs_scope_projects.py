@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 
 from flext_core.result import FlextResult as r
 from flext_infra import c, t
-
 from .._models.workspace import FlextInfraModelsWorkspace
 from ._docs_scope_policy import FlextInfraUtilitiesDocsScopePolicyMixin
 from .git import FlextInfraUtilitiesGit

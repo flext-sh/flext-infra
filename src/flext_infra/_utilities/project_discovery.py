@@ -13,7 +13,10 @@ from typing import override
 
 from flext_cli import u
 
-from .. import c, config, m, t
+from .._config import FlextInfraConfig
+from ..constants import c
+from ..models import m
+from ..typings import t
 from . import FlextInfraUtilitiesGit, FlextInfraUtilitiesProjectDiscoveryCandidatesMixin
 from .workspace_manifest import FlextInfraUtilitiesWorkspaceManifest
 
@@ -260,7 +263,7 @@ class FlextInfraUtilitiesProjectDiscovery(
             raise ValueError(msg)
         state_root: Path = (
             resolved_workspace.parent
-            / config.Infra.codegen.toolchain.state_directory_name
+            / FlextInfraConfig.fetch_global().Infra.codegen.toolchain.state_directory_name
             / resolved_workspace.name
             / tool_name
         )

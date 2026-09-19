@@ -12,8 +12,8 @@ from __future__ import annotations
 import os as _os
 from typing import ClassVar
 
+from flext_cli import m
 from flext_core import FlextSettings
-from flext_infra.models import m
 
 from ._models.settings import FlextInfraSettingsModels
 
@@ -47,13 +47,8 @@ class FlextInfraSettings(FlextSettings):
         return _os.environ.get(name)
 
 
-def env_lookup(name: str) -> str | None:
-    """Module-level env_lookup for backward compatibility with utilities.base."""
-    return FlextInfraSettings.env_lookup(name)
-
-
 settings: FlextInfraSettings = FlextInfraSettings.fetch_global()
 """Process-wide infra settings singleton — ``from flext_infra import settings``."""
 
 
-__all__: list[str] = ["FlextInfraSettings", "env_lookup", "settings"]
+__all__: list[str] = ["FlextInfraSettings", "settings"]
