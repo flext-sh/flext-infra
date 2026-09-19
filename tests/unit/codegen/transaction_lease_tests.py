@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from filelock import Timeout
 from flext_tests import tm
 
 from flext_core import r
@@ -114,7 +113,9 @@ class TestsFlextInfraTransactionLease:
                 contender = FlextInfraCodegenTransaction(
                     FlextInfraCodegenMiseArtifacts(repository_root=contender_root)
                 )
-                with pytest.raises(Timeout) as failure:
+                with pytest.raises(
+                    u.Infra.JournalLeaseTimeout
+                ) as failure:
                     contender.run_locked(prepare=True, operation=self._ok_path)
                 tm.that(failure.value.lock_file, eq=str(lock_path))
                 tm.that(journal_path.read_bytes(), eq=journal_before)

@@ -7,12 +7,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import difflib
+import fcntl
+import os
 from collections.abc import Generator
 from contextlib import contextmanager
 from itertools import islice
 from typing import TYPE_CHECKING, Literal
 
-from filelock import FileLock
 from flext_cli import m as cli_m, u
 
 from flext_core import r
@@ -25,21 +26,36 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesCodegenFilePlan:
     """Derive generated-file effects from immutable planning data."""
 
+    class JournalLeaseTimeout(TimeoutError):
+        """Another process holds the journal lease; acquisition failed fast."""
+
+        def __init__(self, lock_file: Path) -> None:
+            self.lock_file = str(lock_file)
+            super().__init__(f"journal lease is held elsewhere: {self.lock_file}")
+
     @staticmethod
     @contextmanager
     def codegen_transaction_lease(journal_path: Path) -> Generator[None]:
-        """Hold native ownership without unlinking the journal's lock identity."""
+        """Hold native ownership without unlinking the journal's lock identity.
+
+        The lease is a non-blocking exclusive ``flock`` on a ``0o600`` lock
+        file that outlives the lease: closing the descriptor releases the
+        kernel lock while the file keeps its identity (stable device/inode),
+        and close-time errors propagate instead of being swallowed.
+        """
         lock_path = journal_path.with_name(f"{journal_path.name}.lock")
-        with FileLock(
-            lock_path,
-            timeout=0,
-            blocking=False,
-            mode=0o600,
-            fallback_to_soft=False,
-            preserve_lock_file=True,
-            close_error_policy="raise",
-        ):
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+        try:
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as error:
+                raise FlextInfraUtilitiesCodegenFilePlan.JournalLeaseTimeout(
+                    lock_path
+                ) from error
             yield
+        finally:
+            os.close(descriptor)
 
     @staticmethod
     def planned_file(
