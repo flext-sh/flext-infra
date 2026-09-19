@@ -298,16 +298,13 @@ class TestsFlextInfraCodegenCiMatrix:
 
     def test_docs_workflow_inits_private_submodules_when_configured(self) -> None:
         """Docs jobs that run make setup must use the same deploy-key init as CI."""
-        codegen = config.Infra.codegen
-        private = codegen.ci_private_submodules.get("cosmos-main")
-        tm.that(private is not None, eq=True)
-        assert private is not None
+        private = CodegenTestSupport.Ci.synthetic_private_submodules()
         tpl = (
             Path(__file__).resolve().parents[3]
             / "src/flext_infra/templates/project/base/.github/workflows/docs.yml.j2"
         )
         spec = CodegenTestSupport.Ci.workflow_spec(
-            dist="cosmos-main",
+            dist="example-workspace",
             make_profile=c.Infra.MakeProfile.WORKSPACE,
             repository_branch="develop",
             ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
@@ -343,6 +340,37 @@ class TestsFlextInfraCodegenCiMatrix:
         for item in updates:
             update = t.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
             tm.that(update, lacks="cooldown")
+
+    def test_dependabot_renders_cooldown_when_opted_in(self) -> None:
+        """A distribution opting into staggered updates gets a cooldown per entry.
+
+        The opt-in is per-distribution config (never fleet-wide): the default
+        render stays cooldown-free, so only the distribution that declared
+        staggered updates pays for them.
+        """
+        spec = CodegenTestSupport.Ci.workflow_spec(
+            dist="example-dist",
+            make_profile=c.Infra.MakeProfile.STANDALONE,
+            repository_branch="develop",
+            ci_trigger_branches=CodegenTestSupport.Ci.ci_trigger_branches("develop"),
+            has_devcontainer=True,
+        ).model_copy(update={"dependabot_cooldown_days": 7})
+        template = (
+            Path(__file__).resolve().parents[3]
+            / "src/flext_infra/templates/project/base/.github/dependabot.yml.j2"
+        )
+        rendered = u.Cli.template_render(template, spec)
+        tm.ok(rendered)
+        rendered_text: str = rendered.value
+        document = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            tm.ok(u.Cli.yaml_parse(rendered_text))
+        )
+        updates = t.Cli.JSON_LIST_ADAPTER.validate_python(document["updates"])
+        tm.that(len(updates), eq=3)
+        for item in updates:
+            update = t.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
+            cooldown = t.Cli.JSON_MAPPING_ADAPTER.validate_python(update["cooldown"])
+            tm.that(cooldown["default-days"], eq=7)
 
     def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
         """Generated project carries one Dockerfile per supported distro."""

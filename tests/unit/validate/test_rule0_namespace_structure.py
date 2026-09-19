@@ -10,57 +10,17 @@ from flext_tests import tm
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from tests import c, u
 
-_FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
 
-
-def _read_fixture(name: str) -> str:
-    fixture_name = name.replace(".py", ".pysrc") if name.endswith(".py") else name
-    return (_FIXTURES_DIR / fixture_name).read_text(encoding="utf-8")
-
-
-def _make_project_with_module(
-    tmp_path: Path, *, module_source: str, module_name: str
-) -> Path:
-    project_root = tmp_path / "project"
-    package_dir = project_root / "src" / "flext_test"
-    package_dir.mkdir(parents=True)
-    _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-    u.Tests.write_canonical_package_layout(package_dir)
-    _ = (package_dir / module_name).write_text(module_source, encoding="utf-8")
-    u.Tests.initialize_git_repo(project_root)
-    return project_root
-
-
-def _make_project_with_module_path(
-    tmp_path: Path, *, module_source: str, module_path: str
-) -> tuple[Path, Path]:
-    project_root = tmp_path / "project"
-    package_dir = project_root / "src" / "flext_test"
-    package_dir.mkdir(parents=True)
-    _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-    u.Tests.write_canonical_package_layout(package_dir)
-    relative = Path(module_path)
-    target = (
-        project_root / relative
-        if relative.parts[0] == c.Infra.DIR_TESTS
-        else package_dir / relative
-    )
-    target.parent.mkdir(parents=True, exist_ok=True)
-    _ = target.write_text(module_source, encoding="utf-8")
-    u.Tests.initialize_git_repo(project_root)
-    return project_root, target
-
-
-class TestsRule0NamespaceStructure:
+class TestsFlextInfraRule0NamespaceStructure:
     """Test suite for namespace validator Rule 0."""
 
     @pytest.mark.parametrize("family", tuple(c.Infra.FAMILY_SUFFIXES))
     def test_required_public_facade_alias_passes(
         self, tmp_path: Path, family: str
     ) -> None:
-        root = _make_project_with_module(
+        root = u.Tests.namespace_project(
             tmp_path,
-            module_source=_read_fixture("rule0_valid.py"),
+            module_source=u.Tests.namespace_fixture("rule0_valid.py"),
             module_name="models.py",
         )
         layout = tm.not_none(u.Infra.layout(root))
@@ -98,10 +58,10 @@ class TestsRule0NamespaceStructure:
     def test_noncanonical_facade_assignments_still_fail(
         self, tmp_path: Path, module_path: str, assignment: str
     ) -> None:
-        source = _read_fixture("rule0_valid.py").replace(
+        source = u.Tests.namespace_fixture("rule0_valid.py").replace(
             "m = FlextTestModels", assignment
         )
-        root, target = _make_project_with_module_path(
+        root, target = u.Tests.namespace_project_path(
             tmp_path, module_source=source, module_path=module_path
         )
 
@@ -118,12 +78,14 @@ class TestsRule0NamespaceStructure:
         )
 
     def test_facade_alias_before_class_is_not_canonical(self, tmp_path: Path) -> None:
-        source = _read_fixture("rule0_valid.py").replace("m = FlextTestModels", "")
+        source = u.Tests.namespace_fixture("rule0_valid.py").replace(
+            "m = FlextTestModels", ""
+        )
         source = source.replace(
             "class FlextTestModels(m):",
             "m = FlextTestModels\n\nclass FlextTestModels(m):",
         )
-        root = _make_project_with_module(
+        root = u.Tests.namespace_project(
             tmp_path, module_source=source, module_name="models.py"
         )
 
@@ -137,9 +99,9 @@ class TestsRule0NamespaceStructure:
 
     def test_rule0_valid_module_passes(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
-        root = _make_project_with_module(
+        root = u.Tests.namespace_project(
             tmp_path,
-            module_source=_read_fixture("rule0_valid.py"),
+            module_source=u.Tests.namespace_fixture("rule0_valid.py"),
             module_name="models.py",
         )
         result = validator.validate_project(root)
@@ -157,7 +119,7 @@ class TestsRule0NamespaceStructure:
             "def helper() -> int:\n"
             "    return VALUE\n"
         )
-        root = _make_project_with_module(
+        root = u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name="api.py"
         )
 
@@ -166,11 +128,30 @@ class TestsRule0NamespaceStructure:
         tm.ok(result)
         tm.that(
             any(
-                violation.startswith("[NS-000")
-                for violation in result.value.violations
+                violation.startswith("[NS-000") for violation in result.value.violations
             ),
             eq=False,
         )
+
+    @pytest.mark.parametrize(
+        "module_source",
+        [
+            pytest.param("class RuntimeService:\n    pass\n", id="class"),
+            pytest.param("def runtime_service() -> None:\n    pass\n", id="function"),
+            pytest.param("pass\n", id="module-statement"),
+        ],
+    )
+    def test_rule0_validates_statements_without_expression_values(
+        self, tmp_path: Path, module_source: str
+    ) -> None:
+        """Ordinary statements without expression values remain valid AST input."""
+        root = u.Tests.namespace_project(
+            tmp_path, module_source=module_source, module_name="runtime.py"
+        )
+
+        report = tm.ok(FlextInfraNamespaceValidator().validate_project(root))
+
+        tm.that(report.violations, empty=False)
 
     @pytest.mark.parametrize(
         ("module_source", "forbidden_violation_substr"),
@@ -200,7 +181,7 @@ class TestsRule0NamespaceStructure:
     ) -> None:
         """Rule 0 never rejects the top-level statements a namespace may carry."""
         validator = FlextInfraNamespaceValidator()
-        root = _make_project_with_module(
+        root = u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name="models.py"
         )
 
@@ -216,4 +197,4 @@ class TestsRule0NamespaceStructure:
         )
 
 
-__all__: list[str] = ["TestsRule0NamespaceStructure"]
+__all__: list[str] = ["TestsFlextInfraRule0NamespaceStructure"]

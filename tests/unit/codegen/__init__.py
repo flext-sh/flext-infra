@@ -45,6 +45,9 @@ if TYPE_CHECKING:
     from .test_ci_checkout_mode_normalization import (
         TestsFlextInfraCiCheckoutModeNormalization,
     )
+    from .test_ci_declared_secrets_contract import (
+        TestsFlextInfraCiDeclaredSecretsContract,
+    )
     from .test_ci_integration_branch_triggers import (
         TestsFlextInfraCiIntegrationBranchTriggers,
     )
@@ -106,15 +109,18 @@ if TYPE_CHECKING:
         TestsFlextInfraToolchainBeadsDistribution,
     )
     from .toolchain_go_backend_tests import TestsFlextInfraToolchainGoBackend
+    from .toolchain_make_tests import TestsFlextInfraToolchainMake
     from .toolchain_requirement_tests import TestsFlextInfraToolchainRequirement
     from .transaction_directory_journal_tests import (
         TestsFlextInfraTransactionDirectoryJournal,
     )
     from .transaction_lease_tests import TestsFlextInfraTransactionLease
+    from .workflow_comment_spacing_tests import TestsFlextInfraWorkflowCommentSpacing
     from .workflow_orphan_guard_tests import TestsFlextInfraWorkflowOrphanGuard
 __all__: tuple[str, ...] = (
     "CodegenTestSupport",
     "TestsFlextInfraCiCheckoutModeNormalization",
+    "TestsFlextInfraCiDeclaredSecretsContract",
     "TestsFlextInfraCiIntegrationBranchTriggers",
     "TestsFlextInfraCiSystemPackages",
     "TestsFlextInfraCodegenArtifactSsot",
@@ -172,11 +178,13 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraTemplateFormatterFixedPoint",
     "TestsFlextInfraToolchainBeadsDistribution",
     "TestsFlextInfraToolchainGoBackend",
+    "TestsFlextInfraToolchainMake",
     "TestsFlextInfraToolchainRequirement",
     "TestsFlextInfraTransactionDirectoryJournal",
     "TestsFlextInfraTransactionLease",
     "TestsFlextInfraUtilityFacadeProjection",
     "TestsFlextInfraVscodeOwnerMerge",
+    "TestsFlextInfraWorkflowCommentSpacing",
     "TestsFlextInfraWorkflowOrphanGuard",
     "TestsFlextInfraWorkspaceRootSetupSubmodules",
     "archive_root",
@@ -240,6 +248,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".submodule_recipe_shell_tests": ("TestsFlextInfraSubmoduleRecipeShell",),
             ".test_ci_checkout_mode_normalization": (
                 "TestsFlextInfraCiCheckoutModeNormalization",
+            ),
+            ".test_ci_declared_secrets_contract": (
+                "TestsFlextInfraCiDeclaredSecretsContract",
             ),
             ".test_ci_integration_branch_triggers": (
                 "TestsFlextInfraCiIntegrationBranchTriggers",
@@ -320,11 +331,15 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraToolchainBeadsDistribution",
             ),
             ".toolchain_go_backend_tests": ("TestsFlextInfraToolchainGoBackend",),
+            ".toolchain_make_tests": ("TestsFlextInfraToolchainMake",),
             ".toolchain_requirement_tests": ("TestsFlextInfraToolchainRequirement",),
             ".transaction_directory_journal_tests": (
                 "TestsFlextInfraTransactionDirectoryJournal",
             ),
             ".transaction_lease_tests": ("TestsFlextInfraTransactionLease",),
+            ".workflow_comment_spacing_tests": (
+                "TestsFlextInfraWorkflowCommentSpacing",
+            ),
             ".workflow_orphan_guard_tests": ("TestsFlextInfraWorkflowOrphanGuard",),
             "flext_tests": (
                 "c",

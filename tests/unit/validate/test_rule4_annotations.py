@@ -9,28 +9,10 @@ from flext_tests import tm
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from tests import u
 
-_FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
 
+class TestsFlextInfraRule4Annotations:
+    """Test suite for the namespace validator rule under test."""
 
-def _read_fixture(name: str) -> str:
-    fixture_name = name.replace(".py", ".pysrc") if name.endswith(".py") else name
-    return (_FIXTURES_DIR / fixture_name).read_text(encoding="utf-8")
-
-
-def _make_project_with_module(
-    tmp_path: Path, *, module_source: str, module_name: str
-) -> Path:
-    project_root = tmp_path / "project"
-    package_dir = project_root / "src" / "flext_test"
-    package_dir.mkdir(parents=True)
-    _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-    u.Tests.write_canonical_package_layout(package_dir)
-    _ = (package_dir / module_name).write_text(module_source, encoding="utf-8")
-    u.Tests.initialize_git_repo(project_root)
-    return project_root
-
-
-class TestsRule4Annotations:
     """Test suite for namespace validator Rule 4 (annotations)."""
 
     def test_rule4_annotated_field_factory_not_flagged_as_banned(
@@ -53,7 +35,7 @@ class TestsRule4Annotations:
             "    default_headers: typing.Annotated["
             "t.MappingKV[str, str], m.Field(default_factory=dict)] = None\n"
         )
-        root = _make_project_with_module(
+        root = u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name="_settings.py"
         )
 
@@ -75,7 +57,7 @@ class TestsRule4Annotations:
             "    def transform(self, data: dict) -> object:\n"
             "        return data\n"
         )
-        root = _make_project_with_module(
+        root = u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name="services.py"
         )
 
@@ -109,7 +91,7 @@ class TestsRule4Annotations:
             '"""Global FlextTest facade instance."""\n'
             '__all__: list[str] = ["FlextTest", "api"]\n'
         )
-        root = _make_project_with_module(
+        root = u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name="api.py"
         )
 
@@ -125,4 +107,4 @@ class TestsRule4Annotations:
         )
 
 
-__all__: list[str] = ["TestsRule4Annotations"]
+__all__: list[str] = ["TestsFlextInfraRule4Annotations"]

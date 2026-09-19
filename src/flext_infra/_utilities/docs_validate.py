@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 
 from flext_core import r
-from flext_infra import p
 from flext_infra.constants import c
 from flext_infra.typings import t
 
@@ -19,7 +18,7 @@ from .docs_scope import FlextInfraUtilitiesDocsScope
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m
+    from flext_infra import m, p
 
 
 class FlextInfraUtilitiesDocsValidate:
@@ -90,15 +89,12 @@ class FlextInfraUtilitiesDocsValidate:
         raw: t.Infra.InfraSequence,
     ) -> p.Result[t.StrSequence]:
         """Validate ``required_skills`` payload against the canonical adapter."""
-        return cast(
-            "p.Result[t.StrSequence]",
-            r[t.StrSequence]
-            .create_from_callable(
-                lambda: t.Infra.STR_SEQ_ADAPTER.validate_python(raw, strict=True),
-                error_code="required_skills_validation",
+        validated = u.validate_value(t.Infra.STR_SEQ_ADAPTER, raw, strict=True)
+        if validated.failure:
+            return r[t.StrSequence].fail_op(
+                "validate required_skills configuration", validated.error
             )
-            .map_error(lambda e: f"invalid required_skills configuration: {e}"),
-        )
+        return r[t.StrSequence].ok(validated.value)
 
     @staticmethod
     def docs_missing_required_paths(scope: m.Infra.DocScope) -> t.StrSequence:

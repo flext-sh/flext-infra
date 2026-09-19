@@ -39,6 +39,6 @@ class TestsFlextInfraRefactorRopeStubs:
             offset = u.Infra.find_definition_offset(project, resource, "Demo")
             offset = tm.not_none(offset)
             hits = u.Infra.find_occurrences(project, resource, offset)
-            tm.that(hits, empty=False)
+            tm.that(len(hits) > 0, eq=True)
         finally:
             project.close()

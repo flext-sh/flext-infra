@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_cli import t, u
 from flext_tests import tm
 
-from flext_infra import c, config
+from flext_infra import c
 
 from ._support import CodegenTestSupport
 
@@ -24,7 +24,7 @@ class TestsFlextInfraReleaseCheckoutCredentials:
     def render_release(cls) -> t.JsonMapping:
         repository_branch = "develop"
         spec = CodegenTestSupport.Ci.workflow_spec(
-            dist="cosmos-main",
+            dist="example-workspace",
             make_profile=c.Infra.MakeProfile.STANDALONE,
             repository_branch=repository_branch,
             ci_trigger_branches=CodegenTestSupport.Ci.ci_trigger_branches(
@@ -32,9 +32,9 @@ class TestsFlextInfraReleaseCheckoutCredentials:
             ),
         ).model_copy(
             update={
-                "private_submodules": config.Infra.codegen.ci_private_submodules[
-                    "cosmos-main"
-                ]
+                "private_submodules": (
+                    CodegenTestSupport.Ci.synthetic_private_submodules()
+                )
             }
         )
         rendered = tm.ok(u.Cli.template_render(cls.release_template, spec))

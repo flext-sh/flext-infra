@@ -73,9 +73,16 @@ class TestsFlextInfraMiseDistributionPolicy:
 
         tm.fail(result, has=["alternate distribution", "beads", "tools.yaml"])
 
-    def test_managed_artifacts_reject_divergent_canonical_pin(
+    def test_managed_artifacts_fleet_wins_over_divergent_canonical_pin(
         self, tmp_path: Path
     ) -> None:
+        """A project pin diverging from a tool the fleet now owns is residue.
+
+        Resilient composition (operator law 2026-09-18): promoting a project
+        tool to the fleet SSOT must never block generation in any consumer.
+        The fleet version wins and the stale local declaration is reported
+        for removal instead of failing the projection.
+        """
         root = self._workspace(tmp_path / "project")
         config_dir = root / "config"
         config_dir.mkdir()
@@ -88,7 +95,9 @@ class TestsFlextInfraMiseDistributionPolicy:
 
         result = u.Infra.compose_mise_toml(root, self._fleet_render())
 
-        tm.fail(result, has=["collides with fleet tool", beads.selector])
+        tm.ok(result)
+        tm.that(result.value, has=f'"{beads.selector}" = "{beads.version}"')
+        tm.that(result.value, lacks="divergent")
 
     def test_custom_mise_rejects_alternate_distribution(self, tmp_path: Path) -> None:
         """A hand-written tool table cannot swap a fleet identity's owner."""

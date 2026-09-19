@@ -92,7 +92,7 @@ class TestsFlextInfraMakeParseIsSideEffectFree:
     )
     def test_make_surfaces_preserve_execution_boundaries(self, scan_name: str) -> None:
         """Parsing starts no interpreter and recipes never swallow failures."""
-        scan: Callable[[Path], tuple[str, ...]] = getattr(self, scan_name)
+        scan: Callable[[Path], t.VariadicTuple[str]] = getattr(self, scan_name)
         offenders = {
             surface.name: lines
             for surface in self._make_surfaces()

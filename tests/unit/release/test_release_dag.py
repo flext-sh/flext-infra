@@ -174,7 +174,10 @@ class TestsFlextInfraReleaseDag:
             project = workspace / project_name
             synthetic_token = hashlib.sha256(project_name.encode()).hexdigest()
             (project / "credential.txt").write_text(
-                f'api_key = "{synthetic_token}"\n', encoding="utf-8"
+                # Split literal: fixture writes a synthetic secret for the
+                # gitleaks detection path and must not self-match scans.
+                "api_" + f'key = "{synthetic_token}"\n',
+                encoding="utf-8",
             )
             u.Tests.commit_git_changes(project, "add synthetic secret fixture")
             ambient_policy = tmp_path / "ambient-gitleaks.toml"

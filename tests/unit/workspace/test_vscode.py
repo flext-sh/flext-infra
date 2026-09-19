@@ -32,6 +32,7 @@ class TestsFlextInfraCodegenVscode:
             tm.ok(
                 u.Cli.json_dumps({
                     "python.languageServer": "None",
+                    "python.analysis.typeCheckingMode": "off",
                     "files.exclude": {"**/.retired-cache": True},
                     "python.analysis.diagnosticSeverityOverrides": {
                         "reportUnknownMemberType": "none"
@@ -44,7 +45,8 @@ class TestsFlextInfraCodegenVscode:
         result = FlextInfraCodegen.render_vscode_settings(project_root)
         tm.ok(result)
         doc = u.Tests.json_payload(result.value)
-        tm.that(doc["python.analysis.typeCheckingMode"], eq="strict")
+        tm.that("python.analysis.typeCheckingMode" in doc, eq=False)
+        tm.that("python.analysis.diagnosticSeverityOverrides" in doc, eq=False)
         tm.that(
             doc["python.defaultInterpreterPath"],
             eq="${workspaceFolder}/.venv/bin/python",
@@ -57,15 +59,36 @@ class TestsFlextInfraCodegenVscode:
         excludes = u.Tests.toml_mapping(doc["files.exclude"])
         tm.that("**/.retired-cache" in excludes, eq=False)
         tm.that(excludes["**/.mypy_cache"], eq=True)
-        overrides = u.Tests.toml_mapping(
-            doc["python.analysis.diagnosticSeverityOverrides"]
-        )
-        tm.that(overrides["reportUnknownMemberType"], eq="none")
-        tm.that(overrides["reportUntypedBaseClass"], eq="none")
         tm.that(
             doc["python.languageServer"],
             eq=config.Infra.codegen.vscode.scalar_settings["python.languageServer"],
         )
+
+    def test_strips_retired_keys_owning_pyright_config(self, tmp_path: Path) -> None:
+        """Strip keys owned by [tool.pyright] to avoid Pylance warnings."""
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        self._write_settings(
+            project_root,
+            tm.ok(
+                u.Cli.json_dumps({
+                    "python.analysis.typeCheckingMode": "standard",
+                    "python.analysis.diagnosticSeverityOverrides": {
+                        "reportMissingTypeStubs": "error"
+                    },
+                    "python.languageServer": "Pylance",
+                })
+            )
+            + "\n",
+        )
+
+        result = FlextInfraCodegen.render_vscode_settings(project_root)
+
+        tm.ok(result)
+        doc = u.Tests.json_payload(result.value)
+        tm.that("python.analysis.typeCheckingMode" in doc, eq=False)
+        tm.that("python.analysis.diagnosticSeverityOverrides" in doc, eq=False)
+        tm.that(doc["python.languageServer"], eq="Pylance")
 
     def test_render_reaches_fixed_point(self, tmp_path: Path) -> None:
         """Rendering a document that was already rendered produces no drift."""

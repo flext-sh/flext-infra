@@ -122,7 +122,7 @@ class TestsFlextInfraUtilitiesLogParser:
 
     @pytest.mark.parametrize("line", c.Tests.LOG_ERROR_LINES)
     def test_error_lines_follow_prefix_rule(self, line: str) -> None:
-        tm.that(c.Tests.LOG_ERROR_PREFIX_RE.match(line), none=False)
+        tm.that(c.Tests.LOG_ERROR_PREFIX_RE.match(line) is not None, eq=True)
 
 
 __all__: t.StrSequence = []

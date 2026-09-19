@@ -10,6 +10,8 @@ from flext_cli import m, u
 
 from ... import t
 from ..._constants import FlextInfraConstantsCodegenProject, FlextInfraConstantsMake
+from ..._constants.check import FlextInfraConstantsCheck
+from .. import FlextInfraModelsDefaults
 from .contract import FlextInfraConfigModelsContract
 
 
@@ -323,8 +325,11 @@ class FlextInfraConfigModelsMake:
         """Ruff CLI contract for generated Make verbs and quality gates.
 
         Operator 2026-09-08: ruff is the style and autofix rule. Every
-        invocation uses preview. ``make fmt`` also applies unsafe
-        autofixes. Never weaken ruff to keep a file; change the code.
+        invocation uses preview. Never weaken ruff to keep a file; change the
+        code. Single-pass verb law (operator 2026-09-18): ``make fmt`` runs
+        format only and ``make fix`` owns lint repair through the lint gate —
+        there is deliberately no ``lint_apply`` key, because a lint pass
+        inside fmt would repeat the lint gate's fix.
         """
 
         format_check: Annotated[
@@ -348,16 +353,6 @@ class FlextInfraConfigModelsMake:
                 )
             ),
         ]
-        lint_apply: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                description=(
-                    "Flags for make fmt's ruff check: apply the same fixes and "
-                    "print leftover findings with a zero exit (operator "
-                    "2026-09-14); leftovers still fail make check"
-                )
-            ),
-        ]
 
     class MakeSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Complete generated Makefile public and extension contract."""
@@ -365,6 +360,17 @@ class FlextInfraConfigModelsMake:
         ruff: Annotated[
             FlextInfraConfigModelsMake.MakeRuffSpec,
             m.Field(description="Ruff CLI flags for fmt/fix/check Make verbs"),
+        ]
+        fmt_gates: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=("markdown-format",),
+                description=(
+                    "Gates whose mutating side `make fmt` drives (formatters). "
+                    "The read-only side runs in `make check`; `make fix` never "
+                    "repeats them (single-pass verb law)."
+                ),
+            ),
         ]
         work_in_progress: Annotated[
             FlextInfraConfigModelsMake.MakeWorkInProgressSpec,
@@ -421,7 +427,7 @@ class FlextInfraConfigModelsMake:
                 t.NonEmptyStr, FlextInfraConfigModelsMake.CustomHandlerPolicyOverride
             ],
             m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description="Per-profile overrides of the custom handler policy",
             ),
         ]
@@ -500,6 +506,15 @@ class FlextInfraConfigModelsMake:
                 msg = (
                     "make workflow verbs are not declared public verbs: "
                     f"{', '.join(sorted(unknown_workflow))}"
+                )
+                raise ValueError(msg)
+            unknown_fmt_gates = set(self.fmt_gates) - set(
+                FlextInfraConstantsCheck.SARIF_TOOL_INFO
+            )
+            if unknown_fmt_gates:
+                msg = (
+                    "make fmt gates are not declared gate vocabulary: "
+                    f"{', '.join(sorted(unknown_fmt_gates))}"
                 )
                 raise ValueError(msg)
             if "docs" not in declared:

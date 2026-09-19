@@ -23,6 +23,8 @@ class FlextInfraConstantsMake:
     MAKE_CONDITIONAL_RE: Final[t.RegexPattern] = re.compile(
         r"^(?:else\b|endif\b|ifeq\b|ifneq\b|ifdef\b|ifndef\b)"
     )
+    MAKE_REPOSITORY_ROOT: Final[str] = "REPOSITORY_ROOT"
+    "Make variable the workspace orchestrator passes to attached members."
 
     VERB_CHECK: Final[str] = "check"
     VERB_DEPS: Final[str] = "deps"
@@ -66,13 +68,25 @@ class FlextInfraConstantsMake:
         for gate in FlextInfraConstantsCheck.SARIF_TOOL_INFO
         if gate not in FlextInfraConstantsCheck.MUTATING_GATES
     )
-    CANONICAL_DEFAULT_GATE_IDS: Final[t.VariadicTuple[str]] = CANONICAL_GATE_IDS
+    # markdown-code stays allowed and explicitly invocable (`--gates
+    # markdown-code`), but is not a default check gate: operator ruling
+    # 2026-09-18 (flext-uz0dt) takes it out of the unset-CI default set
+    # pending review.
+    CANONICAL_DEFAULT_GATE_IDS: Final[t.VariadicTuple[str]] = tuple(
+        gate
+        for gate in CANONICAL_GATE_IDS
+        if gate != FlextInfraConstantsCheck.MARKDOWN_CODE
+    )
     CANONICAL_FIXABLE_GATE_IDS: Final[t.VariadicTuple[str]] = (
         "lint",
         "markdown",
+        "markdown-code",
         "canonical-alias",
         "smells",
     )
+    # markdown-format is deliberately absent: prettier is a formatter, so the
+    # gate's mutating side is owned by `make fmt` (check = `prettier --check`),
+    # never by `make fix` — one operation per tool per verb, never repeated.
     ORCHESTRATED_VERBS: Final[t.StrSequence] = (
         "build",
         "check",
@@ -80,6 +94,7 @@ class FlextInfraConstantsMake:
         "docs",
         "fmt",
         "fix",
+        "fix-enforcement",
         "test",
     )
     ORCHESTRATOR_REMOVE_ENV_KEYS: Final[t.StrSequence] = (

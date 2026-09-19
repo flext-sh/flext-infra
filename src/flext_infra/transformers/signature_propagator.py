@@ -77,7 +77,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         pymodule = u.Infra.parse_string_module(source)
         line_offsets = self._line_offsets(source)
         edits: list[tuple[int, int, str]] = []
-        for node in u.Infra.walk_ast_nodes(pymodule.get_ast()):
+        for node in u.Infra.walk_ast_nodes(u.Infra.ensure_ast_node(pymodule.get_ast())):
             if u.Infra.node_kind(node) != "Call":
                 continue
             if u.Infra.name_of(getattr(node, "func", None)) != simple_name:

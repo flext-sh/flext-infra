@@ -18,8 +18,20 @@ from .docs import FlextInfraUtilitiesDocs
 class FlextInfraUtilitiesDocsRender:
     """Rendering helpers for generated docs content."""
 
-    _MARKDOWN_LINE_LENGTH: ClassVar[int] = 80
     _MIN_REPO_PARTS: ClassVar[int] = 2
+
+    @staticmethod
+    def docs_markdown_line_length() -> int:
+        """Read the same prose width used by the formatter and Markdown gate."""
+        rule = config.Infra.tooling.tools.markdown.rules["MD013"]
+        if not isinstance(rule, dict):
+            msg = "MD013 must declare the generated prose line length"
+            raise TypeError(msg)
+        width = rule["line_length"]
+        if not isinstance(width, int) or isinstance(width, bool) or width <= 0:
+            msg = "MD013 line_length must be a positive integer"
+            raise ValueError(msg)
+        return width
 
     @staticmethod
     def _repository_name(repo_url: str) -> str:
@@ -42,7 +54,8 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def _wrap_markdown_line(line: str) -> t.SequenceOf[str]:
         """Wrap one generated prose line without changing Markdown structure."""
-        if len(line) <= FlextInfraUtilitiesDocsRender._MARKDOWN_LINE_LENGTH:
+        width = FlextInfraUtilitiesDocsRender.docs_markdown_line_length()
+        if len(line) <= width:
             return (line,)
         stripped = line.lstrip()
         if (
@@ -66,7 +79,7 @@ class FlextInfraUtilitiesDocsRender:
                 prefix, body = f"{marker} ", remainder
                 subsequent_indent = " " * len(prefix)
         wrapper = textwrap.TextWrapper(
-            width=FlextInfraUtilitiesDocsRender._MARKDOWN_LINE_LENGTH,
+            width=width,
             initial_indent=prefix,
             subsequent_indent=subsequent_indent,
             break_long_words=False,
@@ -196,6 +209,7 @@ class FlextInfraUtilitiesDocsRender:
             title,
             [
                 f"::: {dotted_path}",
+                "",
                 "    options:",
                 "      show_root_heading: true",
                 "      show_root_full_path: false",
@@ -226,6 +240,7 @@ class FlextInfraUtilitiesDocsRender:
         """
         return [
             f"::: {scope.package_name}",
+            "",
             "    options:",
             "      members: false",
             "      show_root_heading: false",
@@ -253,8 +268,7 @@ class FlextInfraUtilitiesDocsRender:
         return [
             "## Collection Rules",
             "",
-            f"Read [`/flext/AGENTS.md`]({agents_link}) §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent FLEXT chain, Scope bootstrap, skill loading, zero-debt baseline,",
-            "slot registry verification).",
+            f"Read [`/flext/AGENTS.md`]({agents_link}) §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent FLEXT chain, Scope bootstrap, skill loading, zero-debt baseline, slot registry verification).",
         ]
 
     @staticmethod
@@ -271,11 +285,11 @@ class FlextInfraUtilitiesDocsRender:
             "## Quality Gates",
             "",
             (
-                f"Canonical `make` verbs (`gen`, `check`, `test`, `fmt`, "
-                f"`docs`) execute their declared operations directly — see "
-                f"[`/flext/AGENTS.md`]({agents_link}) "
-                f"`Build & Test` and `Required Python quality gates`."
+                "Canonical `make` verbs (`gen`, `check`, `test`, `fmt`, "
+                "`docs`) execute their declared operations directly."
             ),
+            "",
+            f"See [`/flext/AGENTS.md`]({agents_link}) for the build, test, and Python quality gates.",
         ]
 
     @staticmethod
@@ -566,6 +580,12 @@ class FlextInfraUtilitiesDocsRender:
         keywords = FlextInfraUtilitiesDocsRender._preview(
             FlextInfraUtilitiesDocsRender.as_string_sequence(data, "keywords"), limit=8
         )
+        classifiers = (
+            ", ".join(
+                FlextInfraUtilitiesDocsRender.as_string_sequence(data, "classifiers")
+            )
+            or "_none_"
+        )
         return FlextInfraUtilitiesDocsRender._render_markdown([
             f"# {(data.get('site_title', '') or scope.name)} API Overview",
             "",
@@ -575,7 +595,7 @@ class FlextInfraUtilitiesDocsRender:
             f"- Version: `{data.get('version', '')}`",
             f"- Description: {data.get('description', '') or '_not declared_'}",
             f"- Doc summary: {str(data.get('doc_summary', '')).strip() or '_not declared_'}",
-            f"- Classifiers: {FlextInfraUtilitiesDocsRender._preview(FlextInfraUtilitiesDocsRender.as_string_sequence(data, 'classifiers'), limit=6)}",
+            f"- Classifiers: {classifiers}",
             f"- Project class: `{scope.project_class}`",
             f"- Keywords: {keywords}",
             f"- Main facades: {facades}",
@@ -614,6 +634,20 @@ class FlextInfraUtilitiesDocsRender:
         return FlextInfraUtilitiesDocsRender._render_markdown(lines)
 
     @staticmethod
+    def _site_title(data: t.JsonMapping) -> str:
+        """Resolve the docs title: declared override, then project name.
+
+        The last-resort literal is deliberately brand-free: a repository that
+        declares neither a site title nor a project name must not describe
+        itself with someone else's name.
+        """
+        return (
+            str(data.get("site_title", "")).strip()
+            or str(data.get("name", "")).strip()
+            or "Workspace docs"
+        )
+
+    @staticmethod
     def docs_root_mkdocs(
         contract: t.JsonMapping, src_paths: t.SequenceOf[str] = ()
     ) -> str:
@@ -626,8 +660,10 @@ class FlextInfraUtilitiesDocsRender:
 
         # NOTE (multi-agent, flext-p4s3.2 / agent: uv_overlay_owner): preserve one
         # typed context across the sole public template-rendering boundary.
+        # The title falls back to the governed project name — never a fleet
+        # brand — so a standalone repository describes itself (ag-q6uo).
         context = m.Infra.MkdocsRenderContext(
-            site_title=str(data.get("site_title", "")).strip() or "FLEXT Workspace",
+            site_title=FlextInfraUtilitiesDocsRender._site_title(data),
             site_url=str(data.get("site_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
             repo_url=str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
             repo_name=FlextInfraUtilitiesDocsRender._repository_name(
@@ -669,7 +705,7 @@ class FlextInfraUtilitiesDocsRender:
             or "_none_"
         )
         return FlextInfraUtilitiesDocsRender._render_markdown([
-            f"# {str(data.get('site_title', '')).strip() or 'FLEXT Workspace'} API Overview",
+            f"# {FlextInfraUtilitiesDocsRender._site_title(data)} API Overview",
             "",
             c.Infra.GENERATED_HEADER,
             "",

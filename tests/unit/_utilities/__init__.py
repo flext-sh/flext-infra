@@ -11,12 +11,14 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 if TYPE_CHECKING:
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
+    from .test_docs_github_links import TestsFlextInfraUtilitiesDocsGithubLinks
     from .test_git_facet_gitpython import TestsFlextInfraGitFacet
     from .test_rope_structure import TestsFlextInfraRopeStructure
     from .test_safety import TestsFlextInfraUtilitiesSafety
 __all__: tuple[str, ...] = (
     "TestsFlextInfraGitFacet",
     "TestsFlextInfraRopeStructure",
+    "TestsFlextInfraUtilitiesDocsGithubLinks",
     "TestsFlextInfraUtilitiesSafety",
     "c",
     "d",
@@ -39,6 +41,7 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
+            ".test_docs_github_links": ("TestsFlextInfraUtilitiesDocsGithubLinks",),
             ".test_git_facet_gitpython": ("TestsFlextInfraGitFacet",),
             ".test_rope_structure": ("TestsFlextInfraRopeStructure",),
             ".test_safety": ("TestsFlextInfraUtilitiesSafety",),

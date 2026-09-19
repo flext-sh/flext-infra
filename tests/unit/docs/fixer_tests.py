@@ -68,5 +68,18 @@ class TestsFlextInfraDocsFixer:
         tm.that(item.links, eq=2)
         tm.that(item.toc, eq=1)
 
+    def test_fix_repairs_closing_fence_welded_to_code(self, tmp_path: Path) -> None:
+        """A prior malformed projection converges without per-file repair."""
+        workspace = u.Tests.create_docs_workspace(tmp_path)
+        document = workspace / "docs/welded.md"
+        document.write_text(
+            "# Example\n\n```python\nvalue = 1```\n\n## Next\n", encoding="utf-8"
+        )
+
+        result = FlextInfraDocFixer().fix(workspace, apply=True)
+
+        tm.ok(result)
+        tm.that(document.read_text(encoding="utf-8"), has="value = 1\n```\n\n## Next")
+
 
 __all__: list[str] = ["TestsFlextInfraDocsFixer"]

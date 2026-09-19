@@ -68,10 +68,7 @@ class TestsFlextInfraPlanCollection:
         )
 
         tm.that(config.sources, eq=())
-        disabled = {
-            **self._config().model_dump(),
-            "enabled": False,
-        }
+        disabled = {**self._config().model_dump(), "enabled": False}
         with pytest.raises(ValueError, match="disabled plan collection"):
             m.Infra.PlanCollectionConfig.model_validate(disabled)
         with pytest.raises(ValueError, match="requires at least one source"):
@@ -130,7 +127,7 @@ class TestsFlextInfraPlanCollection:
         source = tmp_path / "input" / "design.md"
         self._write(source, "# Source\n")
         config = self._config()
-        first = u.Infra.collect_plan_files(tmp_path, config)
+        first = u.Infra.docs_collect_plan_files(tmp_path, config)
         for plan in first.files:
             assert plan.desired_content is not None
             self._write(plan.path, plan.desired_content.decode())
@@ -145,7 +142,7 @@ class TestsFlextInfraPlanCollection:
         )
         self._write(generated, "# Hand-edited generated output\n")
 
-        repaired = u.Infra.collect_plan_files(tmp_path, config)
+        repaired = u.Infra.docs_collect_plan_files(tmp_path, config)
 
         plan = next(item for item in repaired.files if item.path == generated)
         tm.that(plan.desired_content, eq=source.read_bytes())

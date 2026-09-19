@@ -53,11 +53,12 @@ class FlextInfraConstantsSourceCode:
     }
     "Non-productive roots excluded while discovering Python analyzer surfaces."
     DOC_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
+        "crg-reports",
         "incoming",
         "legado",
         "site",
     }
-    "Live documentation excludes generated sites and historical evidence roots."
+    "Live docs exclude generated sites and immutable or historical evidence roots."
     PYPROJECT_SKIP_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
         ".claude.disabled",
         "context_test",
@@ -78,6 +79,24 @@ class FlextInfraConstantsSourceCode:
         ".beads",
         "reports",
         ".agents",
+        # Runtime tool state (Serena memories, Kilo plans): regenerated caches,
+        # never governed source — excluded from every quality-check surface.
+        ".serena",
+        ".kilo",
+        ".omo",
+        ".tmp",
+        ".snapshots",
+        ".benchmarks",
+        ".hypothesis",
+        ".vscode",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".pyrefly_cache",
+        "htmlcov",
+        "legado",
+        "site",
+        "target",
     }
     "Directories to exclude during quality checks."
     GITHUB_AGENT_PROJECTION_DIRS: Final[frozenset[str]] = frozenset({

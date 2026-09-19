@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
+from flext_infra.protocols import p
 
 from ..base import s
 from ._governance import FlextInfraWorkspaceGovernanceMixin
@@ -114,13 +115,14 @@ class FlextInfraWorkspaceDetector(
                 f"invalid repository-local Beads configuration ({beads_path}): "
                 f"{loaded.error or 'configuration load failed'}"
             )
-        try:
-            validated = m.Infra.BeadsProjectSpec.model_validate(loaded.value.data)
-        except c.ValidationError as exc:
+        validated: p.Result[m.Infra.BeadsProjectSpec] = u.validate_value(
+            m.Infra.BeadsProjectSpec, loaded.value.data
+        )
+        if validated.failure:
             return r[m.Infra.BeadsProjectSpec].fail_op(
-                f"Beads configuration model validation ({beads_path})", exc
+                f"Beads configuration model validation ({beads_path})", validated.error
             )
-        return r[m.Infra.BeadsProjectSpec].ok(validated)
+        return r[m.Infra.BeadsProjectSpec].ok(validated.value)
 
     @staticmethod
     def _git_origin_url(repository_root: Path) -> p.Result[str]:
@@ -230,12 +232,17 @@ class FlextInfraWorkspaceDetector(
             return r[
                 tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
             ].fail(f"invalid workspace manifest ({manifest_path}): {error}")
-        try:
-            manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
-        except c.ValidationError as exc:
+        validated: p.Result[m.Infra.WorkspaceManifestSpec] = u.validate_value(
+            m.Infra.WorkspaceManifestSpec, loaded.value.data
+        )
+        if validated.failure:
             return r[
                 tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
-            ].fail_op(f"workspace manifest model validation ({manifest_path})", exc)
+            ].fail_op(
+                f"workspace manifest model validation ({manifest_path})",
+                validated.error,
+            )
+        manifest = validated.value
         declared = manifest.repository
         contradictions = cls._manifest_git_contradictions(declared, observed)
         if contradictions:
@@ -480,7 +487,7 @@ class FlextInfraWorkspaceDetector(
         )
         if repository.failure:
             return result_type.from_failure(repository)
-        if not u.Infra.is_fleet_umbrella(subproject_root):
+        if not u.Infra.workspace_manifest_path(subproject_root).is_file():
             return result_type.ok(repository.value)
         member_beads = cls.load_beads_spec(subproject_root)
         if member_beads.failure:

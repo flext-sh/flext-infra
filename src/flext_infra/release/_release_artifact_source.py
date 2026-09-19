@@ -114,15 +114,15 @@ class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixi
             return r[m.Infra.SourceSnapshot].fail(
                 f"extract committed release source failed: {exc}", exception=exc
             )
-        try:
-            snapshot = m.Infra.SourceSnapshot(
-                commit_oid=oid, source_date_epoch=int(source_date_epoch)
-            )
-        except c.ValidationError as exc:
+        validated: p.Result[m.Infra.SourceSnapshot] = u.validate_value(
+            m.Infra.SourceSnapshot,
+            {"commit_oid": oid, "source_date_epoch": int(source_date_epoch)},
+        )
+        if validated.failure:
             return r[m.Infra.SourceSnapshot].fail_op(
-                "validate committed release source identity", exc
+                "validate committed release source identity", validated.error
             )
-        return r[m.Infra.SourceSnapshot].ok(snapshot)
+        return r[m.Infra.SourceSnapshot].ok(validated.value)
 
     @staticmethod
     def _write_release_text(path: Path, content: str) -> p.Result[bool]:

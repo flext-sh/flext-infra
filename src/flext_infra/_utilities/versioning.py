@@ -83,7 +83,7 @@ class FlextInfraUtilitiesVersioning:
     ) -> p.Result[str]:
         """Return the next release version for one bump kind.
 
-        A pre-release (``0.12.0rc0``) is finalized to its base release by any
+        A pre-release (``0.12.0``) is finalized to its base release by any
         real bump: the base was already reserved when the pre-release was cut,
         so the first releasable change ships it. ``none`` returns the version
         unchanged for both shapes.

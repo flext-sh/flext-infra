@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, TypeGuard
 
 from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from flext_infra.protocols import p
 
 from .asthelpers import FlextInfraUtilitiesRopeAnalysisAstHelpers
 
@@ -27,7 +26,20 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     _IMPORT_ALIAS_AS_PARTS: ClassVar[int] = 3
 
     @staticmethod
-    def literal_string_sequence(node: p.AttributeProbe | None) -> t.StrSequence:
+    def is_ast_node(obj: object) -> TypeGuard[t.Infra.RopeAstNode]:
+        """Type guard to narrow to RopeAstNode via structural `_fields` check."""
+        return hasattr(obj, "_fields")
+
+    @staticmethod
+    def ensure_ast_node(obj: object) -> t.Infra.RopeAstNode:
+        """Ensure an object is an AST node (has `_fields`), narrowing the type."""
+        if not FlextInfraUtilitiesRopeAnalysisSourceScan.is_ast_node(obj):
+            msg = f"Expected AST node with _fields, got {type(obj).__name__}"
+            raise TypeError(msg)
+        return obj
+
+    @staticmethod
+    def literal_string_sequence(node: t.Infra.RopeAstNode | None) -> t.StrSequence:
         """Return string entries from a parsed literal sequence node."""
         if node is None:
             return ()
@@ -114,7 +126,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
 
     @staticmethod
     def mapping_entries_refs(
-        node: p.AttributeProbe | None,
+        node: t.Infra.RopeAstNode | None,
     ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
         """Return literal mapping entries plus variable references."""
         if node is None:
@@ -149,7 +161,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
 
     @staticmethod
     def _dict_entries_refs(
-        node: p.AttributeProbe,
+        node: t.Infra.RopeAstNode,
     ) -> t.Pair[t.VariadicTuple[t.Pair[str, t.StrSequence]], t.StrSequence]:
         """Return string-sequence dict entries and unpack references."""
         keys = getattr(node, "keys", ()) or ()
@@ -707,7 +719,10 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         export_names = {name for name in exports if name}
         target_map: MutableMapping[str, str] = dict.fromkeys(export_names, package_name)
         pymodule = FlextInfraUtilitiesRopeAnalysisAstHelpers.parse_string_module(source)
-        module_ast = pymodule.get_ast()
+        # Why: rope exposes an untyped AST; validate it at this public boundary.
+        module_ast = FlextInfraUtilitiesRopeAnalysisSourceScan.ensure_ast_node(
+            pymodule.get_ast()
+        )
         for node in FlextInfraUtilitiesRopeAnalysisAstHelpers.walk_ast_nodes(
             module_ast
         ):

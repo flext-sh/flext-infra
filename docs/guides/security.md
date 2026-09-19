@@ -1,15 +1,18 @@
 <!-- AUTO-GENERATED FILE — regenerate through `make gen` from the workspace root. -->
-<!-- Source of truth: `docs/guides/security.md`; adjust that source, never this projection. -->
+<!-- Source of truth: `<workspace-root>/docs/guides/security.md`; adjust that workspace source, never this member projection. -->
 
 # flext-infra - Security Guide
 
 > Project profile: `flext-infra`
 
 <!-- TOC START -->
+
 - [Dependabot vulnerability governance](#dependabot-vulnerability-governance)
+
 <!-- TOC END -->
 
-Security practices are governed by project-specific policies and central architecture ADRs.
+Security practices are governed by project-specific policies and central architecture
+ADRs.
 
 Primary references:
 
@@ -25,4 +28,5 @@ Primary references:
   - inventory alerts by severity and package,
   - group remediations into waves (critical/high first),
   - expand Dependabot to track Python modules with `pyproject.toml` in the monorepo.
-- Security execution must record evidence per action (alert, fix commit, and closure status) in the bead tracker, without closing without a trail.
+- Security execution must record evidence per action (alert, fix commit, and closure
+  status) in the bead tracker, without closing without a trail.

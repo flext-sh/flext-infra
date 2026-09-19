@@ -19,12 +19,12 @@ id: config-dict-type-from-typings
 language: python
 severity: error
 files:
-- "src/**/*.py"
-- "tests/**/*.py"
+  - "src/**/*.py"
+  - "tests/**/*.py"
 rule:
   any:
-  - pattern: "model_config: ClassVar[p.ConfigDict] = $VAL"
-  - pattern: "model_config: ClassVar[t.ConfigDict] = $VAL"
+    - pattern: "model_config: ClassVar[p.ConfigDict] = $VAL"
+    - pattern: "model_config: ClassVar[t.ConfigDict] = $VAL"
 constraints:
   VAL:
     regex: "^m\\.ConfigDict\\("

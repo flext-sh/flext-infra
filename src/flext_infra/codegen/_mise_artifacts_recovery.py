@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
 from flext_infra import c, m
@@ -29,7 +29,7 @@ type _FileIdentity = tuple[
 ]
 
 type _FileOwnershipIdentity = tuple[
-    bool, int | None, int | None, str | None, int | None, int | None, int | None
+    bool | None, int | None, int | None, str | None, int | None, int | None, int | None
 ]
 
 
@@ -370,7 +370,7 @@ class FlextInfraMiseRecovery:
                 entry.rollback_reparse_tag,
             ),
         }
-        return cast("_FileOwnershipIdentity", stored[prefix])
+        return stored[prefix]
 
     @staticmethod
     def _identity(state: m.Cli.AtomicFileState) -> _FileIdentity:

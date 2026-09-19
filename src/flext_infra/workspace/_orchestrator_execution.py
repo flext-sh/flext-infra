@@ -8,6 +8,7 @@ from __future__ import annotations
 import time
 from collections.abc import MutableMapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, m, p, t, u
@@ -15,6 +16,12 @@ from flext_infra import c, m, p, t, u
 
 class FlextInfraWorkspaceOrchestratorExecutionMixin:
     """Project orchestration execution logic."""
+
+    if TYPE_CHECKING:
+
+        @property
+        def root(self) -> Path:
+            """Workspace root supplied by the composing orchestrator service."""
 
     @staticmethod
     def _project_child_env() -> t.StrMapping:
@@ -133,7 +140,13 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             else verb
         )
         proc_result = u.Cli.run_to_file(
-            [c.Infra.MAKE, "-C", project, target],
+            [
+                c.Infra.MAKE,
+                "-C",
+                project,
+                target,
+                f"{c.Infra.MAKE_REPOSITORY_ROOT}={self.root}",
+            ],
             log_path,
             env=self._project_child_env(),
             remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,

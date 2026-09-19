@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import _git, _rope, _rope_analysis
+    from . import _git, _promoted, _rope, _rope_analysis
     from ._docs_audit_detectors import FlextInfraUtilitiesDocsAuditDetectorsMixin
     from ._docs_command_contract import FlextInfraUtilitiesDocsCommandContractMixin
     from ._docs_generate_plan import FlextInfraUtilitiesDocsGeneratePlanMixin
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from ._git.worktree import FlextInfraUtilitiesGitWorktreeMixin
     from ._git.worktree_checkpoint import FlextInfraUtilitiesGitWorktreeCheckpointMixin
     from ._git.worktree_discovery import FlextInfraUtilitiesGitWorktreeDiscoveryMixin
-    from ._git.worktree_io import git_stdin
+    from ._git.worktree_io import FlextInfraUtilitiesGitWorktreeIO
     from ._git.worktree_materialization import (
         FlextInfraUtilitiesGitWorktreeMaterializationMixin,
     )
@@ -46,26 +46,23 @@ if TYPE_CHECKING:
     from ._git.worktree_removal import FlextInfraUtilitiesGitWorktreeRemovalMixin
     from ._git.worktree_roots import FlextInfraUtilitiesGitWorktreeRootsMixin
     from ._git.worktree_status import FlextInfraUtilitiesGitWorktreeStatusMixin
-    from ._mypy_supervisor import MypyDarwinSupervisor
+    from ._mypy_supervisor import FlextInfraMypyDarwinSupervisor
     from ._project_discovery_candidates import (
         FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
     )
     from ._project_discovery_shape import FlextInfraUtilitiesProjectDiscoveryShapeMixin
-    from ._rope.analysis import FlextInfraUtilitiesRopeAnalysisAnalysis
-    from ._rope.ast import FlextInfraUtilitiesRopeAnalysisAst
-    from ._rope.base import FlextInfraUtilitiesRopeAnalysisBase
-    from ._rope.imports import FlextInfraUtilitiesRopeAnalysisImports
-    from ._rope.nodes import FlextInfraUtilitiesRopeAnalysisNodes
+    from ._promoted.commands import FlextInfraUtilitiesPromotedCommands
+    from ._promoted.execution import FlextInfraUtilitiesPromotedExecution
+    from ._promoted.invocation import FlextInfraUtilitiesPromotedInvocation
+    from ._promoted.rendering import FlextInfraUtilitiesPromotedRendering
+    from ._promoted.workspace import FlextInfraUtilitiesPromotedWorkspace
     from ._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
     from ._rope.project import FlextInfraRopeProject
-    from ._rope.scope import FlextInfraUtilitiesRopeAnalysisScope
-    from ._rope.source import FlextInfraUtilitiesRopeAnalysisSource
-    from ._rope_analysis.base import (
-        FlextInfraUtilitiesRopeAnalysisAstHelpers,
-        FlextInfraUtilitiesRopeAnalysisExports,
-        FlextInfraUtilitiesRopeAnalysisImportState,
-        FlextInfraUtilitiesRopeAnalysisSourceScan,
-    )
+    from ._rope_analysis.asthelpers import FlextInfraUtilitiesRopeAnalysisAstHelpers
+    from ._rope_analysis.base import FlextInfraUtilitiesRopeAnalysisBase
+    from ._rope_analysis.exports import FlextInfraUtilitiesRopeAnalysisExports
+    from ._rope_analysis.importstate import FlextInfraUtilitiesRopeAnalysisImportState
+    from ._rope_analysis.sourcescan import FlextInfraUtilitiesRopeAnalysisSourceScan
     from ._rope_bracket_balance import FlextInfraUtilitiesRopeBracketBalanceMixin
     from ._rope_core_pymodule import FlextInfraUtilitiesRopeCorePyModuleMixin
     from ._rope_core_resources import FlextInfraUtilitiesRopeCoreResourcesMixin
@@ -128,6 +125,7 @@ if TYPE_CHECKING:
     from .process import FlextInfraUtilitiesProcess
     from .project_discovery import FlextInfraUtilitiesProjectDiscovery
     from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+    from .promoted import FlextInfraUtilitiesPromoted
     from .protected_edit import FlextInfraUtilitiesProtectedEdit
     from .protected_edit_apply import FlextInfraUtilitiesProtectedEditApply
     from .protected_edit_linting import FlextInfraUtilitiesProtectedEditLinting
@@ -174,6 +172,7 @@ if TYPE_CHECKING:
     from .worktree_provisioning import FlextInfraWorktreeProvisioning
 __all__: tuple[str, ...] = (
     "FlextInfraChangeTrackingTransformer",
+    "FlextInfraMypyDarwinSupervisor",
     "FlextInfraRopeProject",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesClassNesting",
@@ -233,6 +232,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitSemanticWorktreeMixin",
     "FlextInfraUtilitiesGitWorktreeCheckpointMixin",
     "FlextInfraUtilitiesGitWorktreeDiscoveryMixin",
+    "FlextInfraUtilitiesGitWorktreeIO",
     "FlextInfraUtilitiesGitWorktreeMaterializationMixin",
     "FlextInfraUtilitiesGitWorktreeMixin",
     "FlextInfraUtilitiesGitWorktreePatchMixin",
@@ -259,6 +259,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
     "FlextInfraUtilitiesProjectDiscoveryShapeMixin",
     "FlextInfraUtilitiesProjectManagedArtifacts",
+    "FlextInfraUtilitiesPromoted",
+    "FlextInfraUtilitiesPromotedCommands",
+    "FlextInfraUtilitiesPromotedExecution",
+    "FlextInfraUtilitiesPromotedInvocation",
+    "FlextInfraUtilitiesPromotedRendering",
+    "FlextInfraUtilitiesPromotedWorkspace",
     "FlextInfraUtilitiesProtectedEdit",
     "FlextInfraUtilitiesProtectedEditApply",
     "FlextInfraUtilitiesProtectedEditLinting",
@@ -279,17 +285,11 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRepository",
     "FlextInfraUtilitiesResourceLimits",
     "FlextInfraUtilitiesRopeAnalysis",
-    "FlextInfraUtilitiesRopeAnalysisAnalysis",
-    "FlextInfraUtilitiesRopeAnalysisAst",
     "FlextInfraUtilitiesRopeAnalysisAstHelpers",
     "FlextInfraUtilitiesRopeAnalysisBase",
     "FlextInfraUtilitiesRopeAnalysisExports",
     "FlextInfraUtilitiesRopeAnalysisImportState",
-    "FlextInfraUtilitiesRopeAnalysisImports",
     "FlextInfraUtilitiesRopeAnalysisIntrospection",
-    "FlextInfraUtilitiesRopeAnalysisNodes",
-    "FlextInfraUtilitiesRopeAnalysisScope",
-    "FlextInfraUtilitiesRopeAnalysisSource",
     "FlextInfraUtilitiesRopeAnalysisSourceScan",
     "FlextInfraUtilitiesRopeAnalysisWorkspace",
     "FlextInfraUtilitiesRopeBracketBalanceMixin",
@@ -321,11 +321,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesWorkspaceManifest",
     "FlextInfraWorktreeLifecycle",
     "FlextInfraWorktreeProvisioning",
-    "MypyDarwinSupervisor",
     "_git",
+    "_promoted",
     "_rope",
     "_rope_analysis",
-    "git_stdin",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -366,7 +365,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._git.worktree_discovery": (
                 "FlextInfraUtilitiesGitWorktreeDiscoveryMixin",
             ),
-            "._git.worktree_io": ("git_stdin",),
+            "._git.worktree_io": ("FlextInfraUtilitiesGitWorktreeIO",),
             "._git.worktree_materialization": (
                 "FlextInfraUtilitiesGitWorktreeMaterializationMixin",
             ),
@@ -374,28 +373,32 @@ _LAZY_IMPORTS = MappingProxyType(
             "._git.worktree_removal": ("FlextInfraUtilitiesGitWorktreeRemovalMixin",),
             "._git.worktree_roots": ("FlextInfraUtilitiesGitWorktreeRootsMixin",),
             "._git.worktree_status": ("FlextInfraUtilitiesGitWorktreeStatusMixin",),
-            "._mypy_supervisor": ("MypyDarwinSupervisor",),
+            "._mypy_supervisor": ("FlextInfraMypyDarwinSupervisor",),
             "._project_discovery_candidates": (
                 "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
             ),
             "._project_discovery_shape": (
                 "FlextInfraUtilitiesProjectDiscoveryShapeMixin",
             ),
+            "._promoted": ("_promoted",),
+            "._promoted.commands": ("FlextInfraUtilitiesPromotedCommands",),
+            "._promoted.execution": ("FlextInfraUtilitiesPromotedExecution",),
+            "._promoted.invocation": ("FlextInfraUtilitiesPromotedInvocation",),
+            "._promoted.rendering": ("FlextInfraUtilitiesPromotedRendering",),
+            "._promoted.workspace": ("FlextInfraUtilitiesPromotedWorkspace",),
             "._rope": ("_rope",),
-            "._rope.analysis": ("FlextInfraUtilitiesRopeAnalysisAnalysis",),
-            "._rope.ast": ("FlextInfraUtilitiesRopeAnalysisAst",),
-            "._rope.base": ("FlextInfraUtilitiesRopeAnalysisBase",),
-            "._rope.imports": ("FlextInfraUtilitiesRopeAnalysisImports",),
-            "._rope.nodes": ("FlextInfraUtilitiesRopeAnalysisNodes",),
             "._rope.pep695_patch": ("FlextInfraUtilitiesRopePep695Patch",),
             "._rope.project": ("FlextInfraRopeProject",),
-            "._rope.scope": ("FlextInfraUtilitiesRopeAnalysisScope",),
-            "._rope.source": ("FlextInfraUtilitiesRopeAnalysisSource",),
             "._rope_analysis": ("_rope_analysis",),
-            "._rope_analysis.base": (
+            "._rope_analysis.asthelpers": (
                 "FlextInfraUtilitiesRopeAnalysisAstHelpers",
-                "FlextInfraUtilitiesRopeAnalysisExports",
+            ),
+            "._rope_analysis.base": ("FlextInfraUtilitiesRopeAnalysisBase",),
+            "._rope_analysis.exports": ("FlextInfraUtilitiesRopeAnalysisExports",),
+            "._rope_analysis.importstate": (
                 "FlextInfraUtilitiesRopeAnalysisImportState",
+            ),
+            "._rope_analysis.sourcescan": (
                 "FlextInfraUtilitiesRopeAnalysisSourceScan",
             ),
             "._rope_bracket_balance": ("FlextInfraUtilitiesRopeBracketBalanceMixin",),
@@ -466,6 +469,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".project_managed_artifacts": (
                 "FlextInfraUtilitiesProjectManagedArtifacts",
             ),
+            ".promoted": ("FlextInfraUtilitiesPromoted",),
             ".protected_edit": ("FlextInfraUtilitiesProtectedEdit",),
             ".protected_edit_apply": ("FlextInfraUtilitiesProtectedEditApply",),
             ".protected_edit_linting": ("FlextInfraUtilitiesProtectedEditLinting",),

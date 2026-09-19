@@ -12,10 +12,10 @@ from typing import TypeAliasType, get_args, override
 from flext_cli import cli
 
 from .. import FlextInfraServiceBase, m, p, r, t
-from . import FlextInfraCodegenProtocolModelAnnotations as _annotations
+from ._protocol_model_annotations import FlextInfraCodegenProtocolModelAnnotations
 from ._protocol_model_render import FlextInfraCodegenProtocolModelRender
 
-_Target = _annotations.ProtocolModelTarget
+_Target = FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget
 
 
 class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
@@ -104,7 +104,7 @@ class FlextInfraCodegenProtocolModels(FlextInfraServiceBase[t.Cli.ResultValue]):
         return r[t.SequenceOf[type[m.BaseModel]]].ok(tuple(models))
 
     @classmethod
-    def _model_leaves(cls, candidate: object) -> tuple[type[m.BaseModel], ...]:
+    def _model_leaves(cls, candidate: object) -> t.VariadicTuple[type[m.BaseModel]]:
         """Expand discriminated-union aliases into their leaf models."""
         if isinstance(candidate, TypeAliasType):
             value = candidate.__value__

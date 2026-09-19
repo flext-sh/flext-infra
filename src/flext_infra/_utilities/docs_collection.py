@@ -278,7 +278,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         source_root: Path,
         source: m.Infra.PlanCollectionSource,
         path: Path,
-        artifacts: tuple[m.Cli.AtomicFileState, ...],
+        artifacts: t.VariadicTuple[m.Cli.AtomicFileState],
         desired: t.MutableMappingKV[Path, bytes],
         *,
         previous: m.Infra.PlanCollectionRevision | None,
@@ -319,9 +319,9 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
             if attachment.content is None:
                 msg = f"attachment content absent: {attachment.path}"
                 raise ValueError(msg)
-            name = attachment.path.relative_to(path.with_suffix(""))
-            desired[incoming / "attachments" / name] = attachment.content
-            attachment_names.append(name.as_posix())
+            relative_name = attachment.path.relative_to(path.with_suffix(""))
+            desired[incoming / "attachments" / relative_name] = attachment.content
+            attachment_names.append(relative_name.as_posix())
         original, normalized = cls.collection_source_updated(
             plan, source.updated_fields
         )

@@ -528,16 +528,20 @@ class TestsFlextInfraCodegenMakeEnvironment:
             eq=True,
         )
         # Root cause: storage law forbids scratch inside the versioned tree —
-        # PROJECT_SCRATCH_ROOT is HOME-rooted, mirroring the absolute checkout
-        # path under it, never nested under PROJECT_STATE_ROOT.
+        # PROJECT_SCRATCH_ROOT is HOME-rooted, mirroring the checkout identity
+        # (absolute path with VCS directory segments renamed) under it, never
+        # nested under PROJECT_STATE_ROOT.
+        tm.that(makefile, has="PROJECT_SCRATCH_IDENTITY := $(abspath $(PROJECT_ROOT))/")
+        for segment, alias in c.Infra.SCRATCH_IDENTITY_SEGMENT_ALIASES:
+            tm.that(makefile, has=f"$(subst /{segment}/,/{alias}/,")
         tm.that(
-            (
+            makefile,
+            has=(
                 f"PROJECT_SCRATCH_ROOT := $(HOME)/{toolchain.scratch_home_relative}/"
-                f"{toolchain.state_directory_name}$(abspath $(PROJECT_ROOT))/"
+                f"{toolchain.state_directory_name}"
+                "$(patsubst %/,%,$(PROJECT_SCRATCH_IDENTITY))/"
                 f"{toolchain.scratch_namespace}"
-            )
-            in makefile,
-            eq=True,
+            ),
         )
         tm.that('TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp"' in makefile, eq=True)
         # Every gate the typed owner schedules by default reaches the runtime
@@ -577,8 +581,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
 
         The Make layer no longer publishes a per-gate `WHAT=` selector with a
         `_builtin_check_<gate>` target behind it; `check` has no
-        APPLY/check-mode selector of its own — it always runs in apply mode
-        and still fails while findings remain (S1, operator law 2026-09-14).
+        APPLY/check-mode selector of its own — it is read-only and never
+        renders `--apply`, which only the `fix` handlers carry.
         Reachability is therefore proved where it now lives: the single
         generated handler passes the complete declared gate list to the typed
         `check run` owner, so a gate the owner declares cannot be left
@@ -614,6 +618,13 @@ class TestsFlextInfraCodegenMakeEnvironment:
             for gate in config.Infra.codegen.make.check_gates_default:
                 tm.that(scheduled.split(","), has=gate)
             tm.that(makefile, has='--gates "$$gates" --projects .')
+        check_invocations = tuple(
+            line for line in makefile.splitlines() if '--gates "$$gates"' in line
+        )
+        tm.that(check_invocations, empty=False)
+        for invocation in check_invocations:
+            tm.that(invocation, lacks="--apply")
+        tm.that(makefile, has="--projects . --apply --report-findings")
 
     def test_standalone_check_executes_its_declared_default_gates(
         self, tmp_path: Path
@@ -630,9 +641,9 @@ class TestsFlextInfraCodegenMakeEnvironment:
         uv = tmp_path / "bin" / "uv"
         test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
 
-        # `check` always applies unconditionally (S1, operator law
-        # 2026-09-14); the uv override rides the environment rather than the
-        # command line because UV is not a declared Make variable.
+        # `check` is read-only: it never passes --apply to the runtime. The uv
+        # override rides the environment rather than the command line because
+        # UV is not a declared Make variable.
         process = tm.ok(
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", "check"],
@@ -651,6 +662,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
         invocation = invocation_log.read_text(encoding="utf-8")
         tm.that(invocation, has="-m flext_infra check run")
         tm.that(invocation, has=f"--gates {gates} --projects .")
+        tm.that(invocation, lacks="--apply")
 
     def test_dependency_upgrade_scopes_to_declared_project_locks(
         self, tmp_path: Path
@@ -724,6 +736,9 @@ class TestsFlextInfraCodegenMakeEnvironment:
             "ifneq ($(filter setup,$(MAKECMDGOALS)),)",
             "SETUP_BOOTSTRAP_ONLY := Y",
             'if [ -n "$${GITHUB_PATH:-}" ]; then',
+            # The bootstrap shell delegates to recursive make through mise exec.
+            # The `+` prefix is required to preserve GNU Make's jobserver FDs.
+            "\t+@set -eu;",
             # Managed tools reach the setup lifecycle by RUNNING it inside the
             # bootstrapped Mise, not by the old inline PATH computation: the
             # toolchain is installed at its latest release and the lifecycle
@@ -883,6 +898,9 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that(makefile, has="_builtin-fmt: _builtin_fmt_all")
         tm.that(makefile, has="_builtin-fix: _builtin_fix_all")
         tm.that(makefile, has="_builtin-fix-enforcement: _builtin_fix_enforcement")
+        tm.that(
+            makefile, has="_builtin-self-fix-enforcement: _builtin_require_environment"
+        )
         tm.that(makefile, has="_builtin-gen: _builtin_gen_all")
         tm.that(makefile, has="_builtin-mod: _builtin_mod_apply")
         tm.that(makefile, has="mode=--apply ;;")

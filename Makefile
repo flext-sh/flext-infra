@@ -98,11 +98,15 @@ override export FLEXT_PYTEST_TARGET_RAW := tests
 PROJECT_STATE_ROOT := $(abspath $(PROJECT_ROOT)/../.flext-runtime/$(notdir $(PROJECT_ROOT)))
 # Scratch never lives inside a versioned tree: the home scratch root mirrors
 # the absolute checkout path so a sandbox is never a tracked scope of any
-# enclosing repository (workspace or linked worktree).
+# enclosing repository (workspace or linked worktree). Checkouts nested in a
+# VCS directory rename that segment, so the mirror never contains one; two
+# substitution passes rename adjacent repeated segments too.
 ifeq ($(strip $(HOME)),)
 $(error HOME is required to derive the scratch root)
 endif
-PROJECT_SCRATCH_ROOT := $(HOME)/tmp/.flext-runtime$(abspath $(PROJECT_ROOT))/scratch
+PROJECT_SCRATCH_IDENTITY := $(abspath $(PROJECT_ROOT))/
+PROJECT_SCRATCH_IDENTITY := $(subst /.git/,/_git/,$(subst /.git/,/_git/,$(PROJECT_SCRATCH_IDENTITY)))
+PROJECT_SCRATCH_ROOT := $(HOME)/tmp/.flext-runtime$(patsubst %/,%,$(PROJECT_SCRATCH_IDENTITY))/scratch
 TESTMON_DATAFILE := $(PROJECT_STATE_ROOT)/testmon/.testmondata
 export TESTMON_DATAFILE
 # === SECTION: REPOSITORY_ROOT isolation (managed) ===
@@ -200,7 +204,8 @@ export FLEXT_INFRA_PYTHON UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 .PHONY: _bootstrap_setup_tools
 
 _bootstrap_setup_tools:
-	@set -eu; \
+	# The lifecycle invokes recursive make through mise, so preserve jobserver FDs.
+	+@set -eu; \
 	uv_selector="latest"; \
 	if [ ! -f "$(SETUP_MISE)" ]; then \
 		printf 'ERROR: missing generated mise launcher: %s; run make gen\n' "$(SETUP_MISE)" >&2; \
@@ -405,6 +410,12 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 		printf 'ERROR: Mise receipt returned invalid version: %s\n' "$$receipt_runtime" >&2; exit 2; \
 	fi; \
 	printf 'mise setup receipt=%s storage=%s\n' "$$runtime_release" "$$mise_storage_root"; \
+	for stale_mise_lock in "$$project_root/mise.lock" "$$project_root/.mise.lock"; do \
+		if [ -f "$$stale_mise_lock" ]; then \
+			printf 'WARN: removing stale Mise lock %s (fleet policy is unlocked; a committed lock only blocks provenance re-resolution)\n' "$$stale_mise_lock" >&2; \
+			rm -f "$$stale_mise_lock"; \
+		fi; \
+	done; \
 	mise_checked "$$scratch/install.log" mise_exec project "$$latest_mise" -C "$$project_root" install --yes; \
 	mise_checked "$$scratch/uv-version.log" mise_exec project "$$latest_mise" -C "$$project_root" exec -- uv --version; \
 	uv_output=$$(cat "$$scratch/uv-version.log"); \
@@ -537,19 +548,6 @@ define RUN_PUBLIC
 	$(if $(filter post-$(1),$(CUSTOM_DECLARED_TARGETS)),+@$(SELF_MAKE) post-$(1))
 endef
 
-
-# Without script dispatch, a WHAT-specific custom handler still routes before
-# the builtin; anything else falls through to the canonical builtin target.
-define _dispatch
-	@set -eu; \
-	what="$(WHAT)"; \
-	custom="_custom_$(1)_$$what"; \
-	if [ -n "$$what" ] && $(SELF_MAKE) -n "$$custom" >/dev/null 2>&1; then \
-		$(SELF_MAKE) "$$custom"; \
-	else \
-		$(SELF_MAKE) "_builtin-$(1)"; \
-	fi
-endef
 
 
 define _run_for_all_projects
@@ -1039,23 +1037,26 @@ _builtin-self-test: _builtin_require_environment
 
 _builtin-self-check: _builtin_require_environment
 	@set -eu; \
-		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
+		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,markdown-format,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
 		if [ "$(strip $(CI))" = "Y" ]; then \
-			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
-			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist index-declarations smells codemod layout canonical-alias direnv duplication\n'; \
+			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,markdown-format,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
+			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown markdown-format loc-cap boundary runtime-census namespace tier-whitelist index-declarations smells codemod layout canonical-alias direnv duplication\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
-		printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
-		exit 2; \
-	fi; \
-	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects . --apply
+			printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
+			exit 2; \
+		fi; \
+		$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects .
 
 _builtin-self-fmt: _builtin_require_environment
 	@$(UV_RUN) ruff format --preview $(RUFF_PATHS)
-	@$(UV_RUN) ruff check --preview --fix --unsafe-fixes $(RUFF_PATHS)
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "markdown-format" --projects . --apply
 
 _builtin-self-fix: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,canonical-alias,smells" --projects . --apply --report-findings
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,markdown-code,canonical-alias,smells" --projects . --apply --report-findings
+
+_builtin-self-fix-enforcement: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) check fix-enforcement --repository-root "$(PROJECT_ROOT)" --safe-only --apply
 
 _builtin-self-build:
 	@$(UV) build --project "$(PROJECT_ROOT)"
@@ -1068,22 +1069,22 @@ _builtin-self-docs: _builtin_docs_all
 _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
 
-# Local gates apply their declared repairs on every invocation.
-# Both check and fix fail while findings remain.
+# Check is read-only: it runs the gates without --apply, so the tree is left
+# unchanged; fix applies the declared repairs of the fixable gates.
 # CI=Y keeps make.ci.check_gates, the strict complement of
 # make.ci.local_check_gates.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
-		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
+		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,markdown-format,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
 		if [ "$(strip $(CI))" = "Y" ]; then \
-			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
-			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist index-declarations smells codemod layout canonical-alias direnv duplication\n'; \
+			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,markdown-format,loc-cap,boundary,runtime-census,namespace,tier-whitelist,index-declarations,smells,codemod,layout,canonical-alias,direnv,duplication"; \
+			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown markdown-format loc-cap boundary runtime-census namespace tier-whitelist index-declarations smells codemod layout canonical-alias direnv duplication\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
-		printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
-		exit 2; \
-	fi; \
-	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects . --apply
+			printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
+			exit 2; \
+		fi; \
+		$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects .
 
 _builtin_test_all: _builtin_require_environment
 
@@ -1095,31 +1096,17 @@ _builtin_test_all: _builtin_require_environment
 		trap cleanup_test_tmp EXIT INT TERM; \
 		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
-# Ruff is the style/autofix rule (make.ruff in codegen.yaml). Every
-# invocation uses --preview. Never weaken ruff to keep a file; change the code.
-# fmt applies corrections and reports remaining diagnostics without failing:
-# violations are expected and their repair belongs to fix; only a real
-# tool failure (ruff exit >= 2) breaks the Make verb.
-# fmt applies corrections and reports remaining diagnostics without failing:
-# violations are expected and their repair belongs to fix; only a real
-# tool failure (ruff exit >= 2) breaks the Make verb.
-# Their reports preserve the same verdict as the underlying quality gates.
+# fmt is format-only (single-pass verb law): ruff formats Python, the
+# fmt_gates formatters run once through the checker's apply mode, and every
+# lint repair belongs to `make fix`. Only a real tool failure (exit >= 2)
+# breaks the verb; a formatter's residual findings stay reportable and are
+# enforced by `make check`.
 _builtin_fmt_all: _builtin_require_environment
-	@set -eu; \
-		$(UV_RUN) ruff format --preview $(RUFF_PATHS); \
-		if $(UV_RUN) ruff check --preview --fix --unsafe-fixes $(RUFF_PATHS); then \
-			printf 'INFO: fmt lint clean\n'; \
-		else \
-			stamprc=$$?; \
-			if [ $$stamprc -le 1 ]; then \
-				printf 'INFO: fmt diagnostics remain (report-only, repair belongs to fix)\n'; \
-			else \
-				exit $$stamprc; \
-			fi; \
-		fi
+	@$(UV_RUN) ruff format --preview $(RUFF_PATHS)
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "markdown-format" --projects . --apply
 
 _builtin_fix_all: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,canonical-alias,smells" --projects . --apply --report-findings
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "lint,markdown,markdown-code,canonical-alias,smells" --projects . --apply --report-findings
 
 # Catalog-driven enforcement fixes: every ENFORCE rule whose fix action is
 # declared safe, applied through its registered adapter.
@@ -1162,7 +1149,7 @@ _builtin_clean_generated:
 
 
 	@set -eu; \
-	for target in "$(PROJECT_ROOT)/.coverage" "$(PROJECT_ROOT)/.testmondata"; do \
+	for target in "$(PROJECT_ROOT)/.coverage" "$(PROJECT_ROOT)/.testmondata" "$(PROJECT_ROOT)/flext-infra-codegen-transaction-journal.json.lock"; do \
 		if [ -e "$$target" ]; then rm -- "$$target"; \
 		elif [ -L "$$target" ]; then rm -- "$$target"; fi; \
 	done
@@ -1172,13 +1159,6 @@ _builtin_clean_generated:
 		\( -name '*.pstats' \) \
 		-delete
 
-	@set -eu; \
-	if [ -L "$(PROJECT_SCRATCH_ROOT)" ]; then \
-		printf 'ERROR: scratch root %s must be physical, found a symlink\n' "$(PROJECT_SCRATCH_ROOT)" >&2; \
-		exit 2; \
-	elif [ -d "$(PROJECT_SCRATCH_ROOT)" ]; then \
-		find "$(PROJECT_SCRATCH_ROOT)" -depth -delete; \
-	fi
 
 # Release protocol. `plan` derives the next version from merged pull-request
 # titles and guards against any version change made outside the protocol;
@@ -1242,6 +1222,6 @@ _builtin-mod: _builtin_mod_apply
 _builtin-waza:
 	@cd "$(PROJECT_ROOT)" && "$(SETUP_MISE)" exec -- waza check --no-update-check
 _builtin-duplication:
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates duplication --projects .
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "duplication" --projects .
 
 

@@ -32,7 +32,6 @@ if TYPE_CHECKING:
         fixers,
         gates,
         maintenance,
-        promoted,
         refactor,
         release,
         services,
@@ -40,8 +39,8 @@ if TYPE_CHECKING:
         validate,
         workspace,
     )
-    from ._config import config
-    from ._settings import settings
+    from ._config import FlextInfraConfig, config
+    from ._settings import FlextInfraSettings, settings
     from .api import FlextInfra, infra
     from .base import FlextInfraServiceBase, FlextInfraServiceBase as s
     from .base_selection import FlextInfraProjectSelectionServiceBase
@@ -158,6 +157,19 @@ if TYPE_CHECKING:
     from .gates.layout import FlextInfraLayoutGate
     from .gates.loc_cap import FlextInfraLocCapGate
     from .gates.markdown import FlextInfraMarkdownGate
+    from .gates.markdown_code import FlextInfraMarkdownCodeGate
+    from .gates.markdown_code_sources import (
+        TEST_SKIP_MARKER,
+        source_name,
+        write_docstring_sources,
+        write_fenced_block_sources,
+    )
+    from .gates.markdown_format import FlextInfraMarkdownFormatGate
+    from .gates.markdown_support import (
+        FlextInfraMarkdownGateBase,
+        collect_markdown_files,
+        read_ignore_patterns,
+    )
     from .gates.mypy import FlextInfraMypyGate
     from .gates.namespace import FlextInfraNamespaceGate
     from .gates.pyrefly import FlextInfraPyreflyGate
@@ -172,6 +184,7 @@ if TYPE_CHECKING:
     from .maintenance.clean import FlextInfraCleanService
     from .maintenance.python_version import FlextInfraPythonVersionEnforcer
     from .models import FlextInfraModels, FlextInfraModels as m
+    from .promoted import FlextInfraPromoted
     from .protocols import (
         FlextInfraProtocols,
         FlextInfraProtocols as p,
@@ -203,7 +216,6 @@ if TYPE_CHECKING:
     from .services.cli_routes_validate import ValidationRoutes
     from .services.cli_routes_validate_commands import ValidationCommandRoutes
     from .services.cli_routes_workspace import WorkspaceRoutes
-    from .services.codegen import FlextInfraCodegen
     from .transformers.census_visitors import (
         FlextInfraCensusImportDiscoveryVisitor,
         FlextInfraCensusUsageCollector,
@@ -275,6 +287,7 @@ if TYPE_CHECKING:
     from .workspace.rope import FlextInfraRopeWorkspace
     from .worktree import FlextInfraWorktreeService
 __all__: tuple[str, ...] = (
+    "TEST_SKIP_MARKER",
     "CliDispatchService",
     "CliRouteBase",
     "CliRouteService",
@@ -291,7 +304,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraClassPlacementDetector",
     "FlextInfraCleanService",
     "FlextInfraCli",
-    "FlextInfraCodegen",
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConform",
     "FlextInfraCodegenConsolidator",
@@ -316,6 +328,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodemodSemanticApply",
     "FlextInfraCodemodSnapshotReconciler",
     "FlextInfraCompatibilityAliasDetector",
+    "FlextInfraConfig",
     "FlextInfraConfigFixer",
     "FlextInfraConsolidateGroupsPhase",
     "FlextInfraConstants",
@@ -377,7 +390,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraManualCommandValidator",
     "FlextInfraManualProtocolDetector",
     "FlextInfraManualTypingAliasDetector",
+    "FlextInfraMarkdownCodeGate",
+    "FlextInfraMarkdownFormatGate",
     "FlextInfraMarkdownGate",
+    "FlextInfraMarkdownGateBase",
     "FlextInfraMiseWorkspacePlanner",
     "FlextInfraModGateEngine",
     "FlextInfraModReplacements",
@@ -395,6 +411,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraPrivateImportBypassDetector",
     "FlextInfraProjectClassifier",
     "FlextInfraProjectSelectionServiceBase",
+    "FlextInfraPromoted",
     "FlextInfraProtocols",
     "FlextInfraProtocolsBase",
     "FlextInfraPyprojectModernizer",
@@ -436,6 +453,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRuntimeDevDependencyDetector",
     "FlextInfraScannerGateMixin",
     "FlextInfraServiceBase",
+    "FlextInfraSettings",
     "FlextInfraSilentFailureDetector",
     "FlextInfraSilentFailureGate",
     "FlextInfraSilentFailureValidator",
@@ -485,6 +503,7 @@ __all__: tuple[str, ...] = (
     "check",
     "codegen",
     "codemod",
+    "collect_markdown_files",
     "config",
     "d",
     "deps",
@@ -500,26 +519,29 @@ __all__: tuple[str, ...] = (
     "main",
     "maintenance",
     "p",
-    "promoted",
     "r",
+    "read_ignore_patterns",
     "refactor",
     "release",
     "s",
     "services",
     "settings",
+    "source_name",
     "t",
     "transformers",
     "u",
     "validate",
     "workspace",
+    "write_docstring_sources",
+    "write_fenced_block_sources",
     "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
-            "._config": ("config",),
-            "._settings": ("settings",),
+            "._config": ("FlextInfraConfig", "config"),
+            "._settings": ("FlextInfraSettings", "settings"),
             ".api": ("FlextInfra", "infra"),
             ".base": ("FlextInfraServiceBase", "s"),
             ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
@@ -654,6 +676,19 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates.layout": ("FlextInfraLayoutGate",),
             ".gates.loc_cap": ("FlextInfraLocCapGate",),
             ".gates.markdown": ("FlextInfraMarkdownGate",),
+            ".gates.markdown_code": ("FlextInfraMarkdownCodeGate",),
+            ".gates.markdown_code_sources": (
+                "TEST_SKIP_MARKER",
+                "source_name",
+                "write_docstring_sources",
+                "write_fenced_block_sources",
+            ),
+            ".gates.markdown_format": ("FlextInfraMarkdownFormatGate",),
+            ".gates.markdown_support": (
+                "FlextInfraMarkdownGateBase",
+                "collect_markdown_files",
+                "read_ignore_patterns",
+            ),
             ".gates.mypy": ("FlextInfraMypyGate",),
             ".gates.namespace": ("FlextInfraNamespaceGate",),
             ".gates.pyrefly": ("FlextInfraPyreflyGate",),
@@ -669,7 +704,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".maintenance.clean": ("FlextInfraCleanService",),
             ".maintenance.python_version": ("FlextInfraPythonVersionEnforcer",),
             ".models": ("FlextInfraModels", "m"),
-            ".promoted": ("promoted",),
+            ".promoted": ("FlextInfraPromoted",),
             ".protocols": ("FlextInfraProtocols", "FlextInfraProtocolsBase", "p"),
             ".refactor": ("refactor",),
             ".refactor.accessor_migration": (
@@ -708,7 +743,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".services.cli_routes_validate": ("ValidationRoutes",),
             ".services.cli_routes_validate_commands": ("ValidationCommandRoutes",),
             ".services.cli_routes_workspace": ("WorkspaceRoutes",),
-            ".services.codegen": ("FlextInfraCodegen",),
             ".transformers": ("transformers",),
             ".transformers.census_visitors": (
                 "FlextInfraCensusImportDiscoveryVisitor",
