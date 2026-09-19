@@ -740,6 +740,18 @@ class FlextInfraModelsDepsToolConfig(
                 ),
             ),
         ] = "relative_dot"
+        exports_manifest_path: Annotated[
+            str,
+            m.Field(
+                alias="exports_manifest_path",
+                description=(
+                    "Repository-relative path of the exports manifest "
+                    "consumed by the lazy-init generation contract. The "
+                    "yaml key is snake_case to match the SSOT block that "
+                    "declared it."
+                ),
+            ),
+        ] = "config/exports.yaml"
 
     class ToolConfigDocument(m.ArbitraryTypesModel):
         """Root schema for canonical ``config/tooling.yaml`` policy data."""

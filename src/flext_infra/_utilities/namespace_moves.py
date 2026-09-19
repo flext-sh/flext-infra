@@ -501,29 +501,36 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         return (source_file, target_file, tuple(moved))
 
     @staticmethod
-    def _collect_required_import_lines(
-        *, source: str, blocks: t.StrSequence
-    ) -> t.StrSequence:
-        """Collect required import lines using rope-parsed module bodies."""
-        source_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
-        source_lines = source.splitlines()
-        import_map: MutableMapping[str, str] = {}
-        for node in getattr(source_pymodule.get_ast(), "body", []) or []:
+    def _import_bindings(source: str) -> MutableMapping[str, str]:
+        """Map each name a module binds by import to the line that binds it."""
+        pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
+        lines = source.splitlines()
+        bindings: MutableMapping[str, str] = {}
+        for node in getattr(pymodule.get_ast(), "body", []) or []:
             kind = FlextInfraUtilitiesRopeAnalysis.node_kind(node)
             if kind not in {"Import", "ImportFrom"}:
                 continue
             lineno = getattr(node, "lineno", 1)
             end_lineno = getattr(node, "end_lineno", None) or lineno
-            import_line = "\n".join(source_lines[lineno - 1 : end_lineno]).strip()
+            import_line = "\n".join(lines[lineno - 1 : end_lineno]).strip()
             for alias in getattr(node, "names", []) or []:
                 alias_name = getattr(alias, "name", "")
                 alias_as = getattr(alias, "asname", None)
-                if kind == "Import":
-                    bound_name = alias_as or alias_name.split(".", 1)[0]
-                else:
-                    bound_name = alias_as or alias_name
+                bound_name = (
+                    alias_as or alias_name.split(".", 1)[0]
+                    if kind == "Import"
+                    else alias_as or alias_name
+                )
                 if bound_name:
-                    import_map[bound_name] = import_line
+                    bindings[bound_name] = import_line
+        return bindings
+
+    @staticmethod
+    def _collect_required_import_lines(
+        *, source: str, blocks: t.StrSequence
+    ) -> t.StrSequence:
+        """Collect required import lines using rope-parsed module bodies."""
+        import_map = FlextInfraUtilitiesRefactorNamespaceMoves._import_bindings(source)
         required_imports: t.MutableSequenceOf[str] = []
         seen_imports: t.Infra.StrSet = set()
         for block in blocks:
@@ -576,7 +583,20 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         alias_names: t.Infra.StrSet,
         gates: t.StrSequence | None,
     ) -> None:
-        """Move typing alias lines."""
+        """Move typing alias lines.
+
+        A module-private alias stays where it is. Promoting one to the shared
+        public typings module publishes a name its own declaration says is not
+        published: pyright then rejects every consumer with
+        ``reportPrivateUsage`` and ruff reports the alias as unused at its new
+        home, so the whole move validates red and is reverted. Filtering here
+        rather than at each caller keeps one owner for the rule.
+        """
+        alias_names = frozenset(
+            name for name in alias_names if not name.startswith("_")
+        )
+        if not alias_names:
+            return
         source = source_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         lines = source.splitlines()
         moved_lines: t.MutableSequenceOf[str] = []
@@ -633,17 +653,63 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             if target_file.exists()
             else f"{c.Infra.FUTURE_ANNOTATIONS}\n"
         )
+        # The destination may already bind a required name to a DIFFERENT
+        # module: `m` is `flext_core`'s facade there and `flext_infra`'s here.
+        # Adding the second import redefines the name (ruff F811) and dropping
+        # it silently re-points the moved alias at the wrong facade, so the
+        # move is not mechanically resolvable and is abandoned instead.
+        # A facade module may not import a later layer at runtime: the declared
+        # order is c -> t -> p -> m -> u, and the move target here is always a
+        # typings module. Carrying `from <pkg> import m` into it is both a
+        # reverse import and, for the package's own typings module, an import
+        # cycle -- observed as `ImportError: cannot import name 'm'`.
+        later_layers = {"p", "m", "u"}
+        for import_line in required_imports:
+            for _name, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
+                import_line.partition(" import ")[2]
+            ):
+                if bound in later_layers:
+                    return
+        target_bindings = FlextInfraUtilitiesRefactorNamespaceMoves._import_bindings(
+            target_source
+        )
+        for import_line in required_imports:
+            for _name, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
+                import_line.partition(" import ")[2]
+            ):
+                existing = target_bindings.get(bound)
+                if existing is not None and existing != import_line:
+                    return
         fallback_runtime_imports = FlextInfraUtilitiesRefactorNamespaceMoves._collect_missing_runtime_alias_imports(
             target_source=target_source, blocks=moved_lines
         )
         target_lines = target_source.splitlines()
+        # Three collectors contribute imports and they can name the same alias
+        # from different modules -- `m` is both flext_core's and flext_infra's
+        # facade. Emitting both redefines the name (ruff F811), so the list is
+        # deduplicated by the name each line BINDS, not by its text. The source
+        # module's own imports come first and win, because they are by
+        # construction the ones the moved declaration resolved against.
+        seen_bindings: t.Infra.StrSet = set()
+        candidate_imports: t.MutableSequenceOf[str] = []
+        for import_line in (
+            *required_imports,
+            *orphaned_imports,
+            *fallback_runtime_imports,
+        ):
+            bound_names = {
+                bound
+                for _name, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
+                    import_line.partition(" import ")[2]
+                )
+            }
+            if bound_names & seen_bindings:
+                continue
+            seen_bindings |= bound_names
+            candidate_imports.append(import_line)
         missing_imports = [
             filtered
-            for import_line in [
-                *required_imports,
-                *orphaned_imports,
-                *fallback_runtime_imports,
-            ]
+            for import_line in candidate_imports
             if import_line not in target_lines
             if (
                 filtered
@@ -667,6 +733,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 alias_names=alias_names,
             )
         )
+        if source_imports is None:
+            return
         updated_source_lines = (
             FlextInfraUtilitiesRefactorNamespaceCommon.insert_import_lines(
                 lines=kept_lines, imports=source_imports
@@ -695,8 +763,14 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         target_file: Path,
         kept_source: str,
         alias_names: t.Infra.StrSet,
-    ) -> t.StrSequence:
-        """Typing alias source imports."""
+    ) -> t.StrSequence | None:
+        """Return the import that re-binds moved aliases in the source module.
+
+        ``None`` means the destination module name cannot be resolved, which
+        the caller must treat as "do not move": returning an empty sequence
+        there silently deleted the declaration and left every reference to it
+        undefined, which is how a test module lost ``RopeWorkspace``.
+        """
         source_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(
             kept_source
         )
@@ -712,13 +786,20 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         referenced_aliases = [name for name in referenced_aliases if name]
         if not referenced_aliases:
             return ()
-        src_root = project_root / c.Infra.DEFAULT_SRC_DIR
-        try:
-            module_name = ".".join(
-                target_file.relative_to(src_root).with_suffix("").parts
-            )
-        except ValueError:
-            return ()
+        # A package module is importable by its path under `src/`; the tests
+        # package is importable by its path under the project root. Resolving
+        # only the first made every tests-tree move unresolvable.
+        module_name = ""
+        for root in (project_root / c.Infra.DEFAULT_SRC_DIR, project_root):
+            try:
+                module_name = ".".join(
+                    target_file.relative_to(root).with_suffix("").parts
+                )
+            except ValueError:
+                continue
+            break
+        if not module_name:
+            return None
         import_line = f"from {module_name} import {', '.join(referenced_aliases)}"
         return [import_line] if import_line not in kept_source.splitlines() else ()
 

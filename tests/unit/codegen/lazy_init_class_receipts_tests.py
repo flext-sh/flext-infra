@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_infra import c
+from flext_infra import c, u
 from flext_infra.codegen import (
     FlextInfraCodegenLazyInit,
     FlextInfraCodegenLazyInitClassReceipts,
@@ -56,9 +55,11 @@ class TestsFlextInfraCodegenLazyInitClassReceipts:
         writer = self._receipts(tmp_path)
         writer.record(b"class Delta:\\n", ("Delta",))
         tm.that(writer.save(), eq=True)
-        document = json.loads(self._receipt_path(tmp_path).read_bytes())
+        document = u.Cli.json_loads(self._receipt_path(tmp_path).read_bytes()).value
         document["version"] = c.Infra.LAZY_INIT_CLASS_RECEIPTS_VERSION + 1
-        self._receipt_path(tmp_path).write_text(json.dumps(document), encoding="utf-8")
+        self._receipt_path(tmp_path).write_text(
+            u.Cli.json_dumps(document).value, encoding="utf-8"
+        )
 
         reader = self._receipts(tmp_path)
         tm.that(reader.class_names(b"class Delta:\\n"), eq=None)
