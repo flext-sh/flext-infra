@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from flext_core.result import FlextResult as r
 from flext_infra import c, t
+from flext_infra._models.workspace import FlextInfraModelsWorkspace
 
 from ._docs_scope_policy import FlextInfraUtilitiesDocsScopePolicyMixin
 from .git import FlextInfraUtilitiesGit
@@ -31,7 +32,9 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
         owner = FlextInfraUtilitiesDocsScopeProjectsMixin
         discovered = owner.discover_projects(repository_root)
         if discovered.failure:
-            return r[t.SequenceOf[m.Infra.ProjectInfo]].from_failure(discovered)
+            return r[t.SequenceOf[FlextInfraModelsWorkspace.ProjectInfo]].from_failure(
+                discovered
+            )
         projects = list(discovered.value)
         root = owner.absolute_lexical(repository_root)
         if all(project.path != root for project in projects):
@@ -143,7 +146,9 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
         owner = FlextInfraUtilitiesDocsScopeProjectsMixin
         roots = owner.docs_repository_roots(repository_root)
         if roots.failure:
-            return r[t.SequenceOf[m.Infra.ProjectInfo]].from_failure(roots)
+            return r[t.SequenceOf[FlextInfraModelsWorkspace.ProjectInfo]].from_failure(
+                roots
+            )
         repository_root = roots.value[0]
         excluded = owner.excluded_roots(repository_root)
         workspace_declared_repositories = owner.workspace_declared_repository_path_set(
@@ -172,8 +177,10 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
                 continue
             projects.append(project_info)
         if not projects and root_project is not None:
-            return r[t.SequenceOf[m.Infra.ProjectInfo]].ok([root_project])
-        return r[t.SequenceOf[m.Infra.ProjectInfo]].ok(projects)
+            return r[t.SequenceOf[FlextInfraModelsWorkspace.ProjectInfo]].ok([
+                root_project
+            ])
+        return r[t.SequenceOf[FlextInfraModelsWorkspace.ProjectInfo]].ok(projects)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsScopeProjectsMixin"]

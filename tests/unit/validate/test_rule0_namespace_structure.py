@@ -121,10 +121,12 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
             tmp_path, module_source=module_source, module_name="api.py"
         )
 
-        report = self._validate_project(root)
+        self._validate_project(root)
 
         tm.that(
-            any(violation.startswith("[NS-000") for violation in report.violations),
+            any(
+                violation.startswith("[NS-000") for violation in result.value.violations
+            ),
             eq=False,
         )
 

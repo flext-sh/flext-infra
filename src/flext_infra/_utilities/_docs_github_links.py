@@ -40,7 +40,9 @@ class FlextInfraUtilitiesDocsGithubLinks:
     @staticmethod
     def docs_stale_github_organizations() -> frozenset[str]:
         """Placeholder organizations that must not appear in doc URLs."""
-        return frozenset(config.Infra.codegen.make.docs.stale_github_organizations)
+        return frozenset(
+            FlextInfraUtilitiesDocsGithubLinks._config().Infra.codegen.make.docs.stale_github_organizations
+        )
 
     @staticmethod
     def docs_github_repo_lookup(

@@ -145,7 +145,9 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         return type(node).__name__
 
     @staticmethod
-    def walk_ast_nodes(root: p.AttributeProbe) -> t.SequenceOf[t.Infra.RopeAstNode]:
+    def walk_ast_nodes(
+        root: t.Infra.RopePyObject,
+    ) -> t.SequenceOf[t.Infra.RopePyObject]:
         """Recursively yield every AST node reachable from ``root`` via ``_fields``.
 
         Equivalent to ``ast.walk`` but uses only public attribute access on

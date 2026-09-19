@@ -15,7 +15,6 @@ from .. import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
-from .plan import FlextInfraCodegenConformPlan
 
 
 class _ConformExecuteRoles:
@@ -44,39 +43,9 @@ class _ConformExecuteRoles:
             plan: m.Infra.CodegenPlan,
             directories: t.SequenceOf[Path],
         ) -> tuple[Path, ...]: ...
-        @staticmethod
-        def _repository_provider(
-            repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec
-        ) -> p.Result[m.Infra.ProviderSpec]: ...
-
-        def plan(
-            self, request: m.Infra.CodegenConformRequest
-        ) -> p.Result[m.Infra.CodegenPlan]: ...
-        @staticmethod
-        def _mise_config_plans(
-            plan: m.Infra.CodegenPlan,
-        ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
-        def _conform_workspace_beads_routes(
-            self, request: m.Infra.CodegenConformRequest
-        ) -> p.Result[bool]: ...
-        @classmethod
-        def _owned_docs_files(
-            cls,
-            request: m.Infra.CodegenConformRequest,
-            files: t.SequenceOf[m.Infra.CodegenFilePlan],
-        ) -> tuple[m.Infra.CodegenFilePlan, ...]: ...
-        @classmethod
-        def _owned_docs_directories(
-            cls,
-            request: m.Infra.CodegenConformRequest,
-            plan: m.Infra.CodegenPlan,
-            directories: t.SequenceOf[Path],
-        ) -> tuple[Path, ...]: ...
 
 
-class FlextInfraCodegenConformExecute(
-    FlextInfraCodegenConformPlan, _ConformExecuteRoles
-):
+class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
     """Transactional execution of conformance plans."""
 
     @classmethod

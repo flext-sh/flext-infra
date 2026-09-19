@@ -571,9 +571,9 @@ class FlextInfraMiseArtifactsJournal:
         return r[Path].ok(candidates.pop())
 
     @staticmethod
-    def _recorded_directory_roots(
+    def _recorded_directory_root(
         directory: m.Infra.CodegenJournalDirectory, participants: t.MappingKV[str, Path]
-    ) -> p.Result[t.VariadicTuple[Path]]:
+    ) -> p.Result[Path | None]:
         """Recover one workspace root candidate or validate an external owner."""
         relative = Path(directory.path)
         selector = relative.parts[0]

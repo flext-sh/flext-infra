@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import c, t
 
-from . import FlextInfraModelsDefaults
+from . import ImmutableEmptyMapping
 from .mixins import FlextInfraModelsMixins as mm
 
 
@@ -254,7 +254,7 @@ class FlextInfraModelsCensus:
             ] = 0
             objects_by_kind: Annotated[
                 t.IntMapping, m.Field(description="Object count per kind")
-            ] = m.Field(default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping)
+            ] = m.Field(default_factory=ImmutableEmptyMapping)
             violations: t.VariadicTuple[FlextInfraModelsCensus.Census.Violation] = (
                 m.Field(default_factory=tuple, description="Detected violations")
             )
