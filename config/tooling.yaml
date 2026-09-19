@@ -751,6 +751,7 @@ Infra:
         - cli
       reverse-import-mode: type_checking
       forward-import-form: relative_dot
+      exports_manifest_path: "config/exports.yaml"
 
 # Project-local managed-artifact additions for flext-infra itself.
 #
