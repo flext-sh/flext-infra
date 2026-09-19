@@ -191,8 +191,15 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
             project_dir, name
         )
+        origin = tm.ok(
+            u.Infra.git_remote_url(
+                m.Infra.GitRemoteUrlRequest(
+                    repo_root=project_dir, remote=c.Infra.GIT_ORIGIN
+                )
+            )
+        )
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(
-            project_dir, name
+            project_dir, name, url=origin.value.text.strip()
         )
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(project_dir))
         return workspace.model_copy(
