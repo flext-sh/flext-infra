@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 from flext_tests import tm
-from pydantic import ValidationError
+from flext_infra import e
 
 from flext_infra import FlextInfraConfig
 
@@ -143,7 +143,7 @@ class TestsFlextInfraConfigLocalOverrides:
         monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(tmp_path))
         FlextInfraConfig.reset_for_testing()
         try:
-            with pytest.raises(ValidationError, match="providers"):
+            with pytest.raises(e.ValidationError, match="providers"):
                 FlextInfraConfig.fetch_global()
         finally:
             FlextInfraConfig.reset_for_testing()

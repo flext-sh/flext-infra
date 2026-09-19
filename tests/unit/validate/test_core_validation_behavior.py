@@ -8,6 +8,7 @@ from flext_tests import tm
 
 from flext_infra import config
 from tests import m, u
+
 from ._fixtures import TestsFlextInfraValidateNamespaceBase
 
 
