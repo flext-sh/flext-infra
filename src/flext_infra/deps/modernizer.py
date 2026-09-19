@@ -66,7 +66,7 @@ class FlextInfraPyprojectModernizer(
         format_source: bool = True,
         root_modules: t.StrSequence = (),
         root_packages: t.StrSequence = (),
-        declared_python_dirs: t.StrSequence = (),
+        declared_python_dirs: t.StrSequence | None = None,
         declared_python_dirs_are_complete: bool = False,
         generated_python_roots: t.StrSequence = (),
         project_kind: str | None = None,
@@ -136,6 +136,7 @@ class FlextInfraPyprojectModernizer(
         analysis_exclusions: t.StrSequence | None = None,
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Resolve typed Jinja values from canonical or already-conformed TOML."""
+        declared_python_dirs = declared_python_dirs or ()
         if source is None:
             seed = u.Cli.toml_document()
             project = u.Cli.toml_table()

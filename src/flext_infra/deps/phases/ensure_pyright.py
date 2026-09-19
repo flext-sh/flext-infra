@@ -323,14 +323,18 @@ class FlextInfraEnsurePyrightConfigPhase:
         is_root: bool,
         repository_root: Path | None,
         project_dir: Path | None,
-        declared_python_dirs: t.StrSequence,
+        declared_python_dirs: t.StrSequence | None,
         declared_python_dirs_are_complete: bool,
-        generated_roots: t.StrSequence,
+        generated_roots: t.StrSequence | None = None,
         workspace_excluded_top_dirs: frozenset[str] | None = None,
     ) -> t.StrSequence:
         """Resolve the one analyzer-root set consumed by includes and environments."""
         declared = self._declared_environment_dirs(
-            tuple(dict.fromkeys((*declared_python_dirs, *generated_roots)))
+            tuple(
+                dict.fromkeys(
+                    (*(declared_python_dirs or ()), *(generated_roots or ()))
+                )
+            )
         )
         if (
             is_root
