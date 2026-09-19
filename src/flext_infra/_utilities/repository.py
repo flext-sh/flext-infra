@@ -25,12 +25,12 @@ class FlextInfraUtilitiesRepository:
     """Resolve detected identity and branch policy for one governed repository."""
 
     @staticmethod
-    def declared_git_source(requirement: str) -> p.Result[t.Pair[str, str] | None]:
+    def declared_git_source(requirement: str) -> p.Result[t.Pair[str, str]]:
         """Parse one requirement's declared direct Git source.
 
         Returns ``(canonical_url, ref)`` for a requirement that declares
-        ``name @ git+URL@REF``, or ``None`` when the requirement declares no
-        direct source at all. The declared line is the only authority for the
+        ``name @ git+URL@REF``, or the empty pair when the requirement declares
+        no direct source at all. The declared line is the only authority for the
         dependency's canonical URL and branch: canonicalization normalizes the
         transport scheme (``ssh://``, SCP-style, ``http``) to ``https`` and
         never invents an organization, host, or ref. A declared source that is
@@ -39,7 +39,7 @@ class FlextInfraUtilitiesRepository:
         requirement_part, _, _ = requirement.partition(";")
         head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(requirement_part.strip())
         if head_match is None:
-            return r[t.Pair[str, str] | None].fail(
+            return r[t.Pair[str, str]].fail(
                 f"invalid requirement head: {requirement}"
             )
         _, at_separator, source = requirement_part.partition("@")
@@ -47,17 +47,17 @@ class FlextInfraUtilitiesRepository:
             # Plain workspace requirement: no direct git source is declared.
             # Success payloads are never None (flext-core result law), so the
             # caller reads the empty pair as "no declared source".
-            return r[t.Pair[str, str] | None].ok(("", ""))
+            return r[t.Pair[str, str]].ok(("", ""))
         source = source.strip()
         if not source.startswith(_GIT_URL_SCHEME_PREFIX):
-            return r[t.Pair[str, str] | None].fail(
+            return r[t.Pair[str, str]].fail(
                 f"internal dependency direct source must be a git URL: {requirement}"
             )
         url, ref_separator, ref = source.rpartition("@")
         url = url.removeprefix(_GIT_URL_SCHEME_PREFIX).strip()
         ref = ref.strip()
         if not ref_separator or not ref:
-            return r[t.Pair[str, str] | None].fail(
+            return r[t.Pair[str, str]].fail(
                 f"internal dependency git source must declare a branch or ref: "
                 f"{requirement}"
             )
@@ -71,11 +71,11 @@ class FlextInfraUtilitiesRepository:
             host, _, path = url.removeprefix("git@").partition(":")
             canonical = f"https://{host}/{path}"
         else:
-            return r[t.Pair[str, str] | None].fail(
+            return r[t.Pair[str, str]].fail(
                 f"internal dependency git source scheme is not canonicalizable "
                 f"to HTTPS: {requirement}"
             )
-        return r[t.Pair[str, str] | None].ok((canonical, ref))
+        return r[t.Pair[str, str]].ok((canonical, ref))
 
     @classmethod
     def configured_repository_ref(
@@ -158,7 +158,7 @@ class FlextInfraUtilitiesRepository:
     @classmethod
     def _declared_dependency_url(
         cls, *, pyproject_path: Path, distribution: str
-    ) -> p.Result[str | None]:
+    ) -> p.Result[str]:
         """Return the pyproject-declared direct Git URL for one distribution.
 
         A plain (source-less) requirement names a workspace dependency whose
@@ -171,10 +171,10 @@ class FlextInfraUtilitiesRepository:
 
         text = u.Cli.files_read_text(pyproject_path)
         if text.failure:
-            return r[str | None].from_failure(text)
+            return r[str].from_failure(text)
         payload = u.Cli.toml_mapping_from_text(text.value)
         if payload is None:
-            return r[str | None].fail(f"pyproject is not valid TOML: {pyproject_path}")
+            return r[str].fail(f"pyproject is not valid TOML: {pyproject_path}")
         requirements: list[str] = []
         project = payload.get(c.Infra.PROJECT)
         if isinstance(project, dict):
@@ -195,38 +195,38 @@ class FlextInfraUtilitiesRepository:
                 continue
             parsed = cls.declared_git_source(requirement)
             if parsed.failure:
-                return r[str | None].from_failure(parsed)
+                return r[str].from_failure(parsed)
             url = parsed.value[0] if parsed.value else ""
             if not url:
                 continue
             if not url.startswith("https://"):
-                return r[str | None].fail(
+                return r[str].fail(
                     "declared infrastructure dependency provenance must be "
                     f"HTTPS: {requirement}"
                 )
-            return r[str | None].ok(url)
+            return r[str].ok(url)
         # No declared source: absence is an EMPTY payload, never None.
-        return r[str | None].ok("")
+        return r[str].ok("")
 
     @staticmethod
     def _manifest_declared_url(
         *, repository_root: Path, distribution: str
-    ) -> p.Result[str | None]:
+    ) -> p.Result[str]:
         """Return the workspace manifest's declared URL for one distribution."""
         from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
         loaded = FlextInfraWorkspaceDetector.load_workspace_manifest(repository_root)
         if loaded.failure:
-            return r[str | None].fail(
+            return r[str].fail(
                 loaded.error or "workspace manifest load failed without an error"
             )
         if not loaded.value:
-            return r[str | None].ok("")
+            return r[str].ok("")
         manifest = loaded.value[0]
         candidates = (manifest.repository, *manifest.members)
         for repository in candidates:
             if repository.distribution == distribution:
-                return r[str | None].ok(repository.url)
+                return r[str].ok(repository.url)
         # Absence is an EMPTY payload, never None (flext-core result law).
         return r[str | None].ok("")
 
