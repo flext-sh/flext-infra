@@ -3,7 +3,7 @@
 # Environment sources are host-provided and optional: isolated CI must still
 # activate while a city-connected host keeps their exports.
 {% for source in gascity.environment_sources -%}
-source_env_if_exists "{{ source }}"
+source_env_if_exists "{{ source | replace('$HOME/', '${HOME}/') }}"
 {% endfor -%}
 # End SECTION: beads watched inputs
 
