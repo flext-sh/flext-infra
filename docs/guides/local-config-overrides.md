@@ -1,5 +1,13 @@
 # Local config overrides (per-clone, gitignored)
 
+<!-- TOC START -->
+
+- [Contract](#contract)
+- [List-typed registries](#list-typed-registries)
+- [Example](#example)
+
+<!-- TOC END -->
+
 The flext-infra codegen ships a **public** fleet configuration: everything in
 `config/*.yaml` is tracked, published, and safe for an external adopter. Values that are
 operator-private — consumer organizations, deploy-key contracts, private workspace
