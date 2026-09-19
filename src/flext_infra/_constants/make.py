@@ -68,14 +68,21 @@ class FlextInfraConstantsMake:
         for gate in FlextInfraConstantsCheck.SARIF_TOOL_INFO
         if gate not in FlextInfraConstantsCheck.MUTATING_GATES
     )
-    # markdown-code stays allowed and explicitly invocable (`--gates
-    # markdown-code`), but is not a default check gate: operator ruling
-    # 2026-09-18 (flext-uz0dt) takes it out of the unset-CI default set
-    # pending review.
+    # markdown-code and markdown-format stay allowed and explicitly invocable
+    # (`--gates markdown-code`), but are not default check gates: operator
+    # ruling 2026-09-18 (flext-uz0dt for markdown-code; flext-v4fmn for
+    # markdown-format) takes them out of the unset-CI default set pending
+    # review. markdown-format is structurally contradictory on the current
+    # generated docs: the gen render is not prettier-stable, so no commit can
+    # satisfy both `gen fixed point` and `prettier --check`.
     CANONICAL_DEFAULT_GATE_IDS: Final[t.VariadicTuple[str]] = tuple(
         gate
         for gate in CANONICAL_GATE_IDS
-        if gate != FlextInfraConstantsCheck.MARKDOWN_CODE
+        if gate
+        not in (
+            FlextInfraConstantsCheck.MARKDOWN_CODE,
+            FlextInfraConstantsCheck.MARKDOWN_FORMAT,
+        )
     )
     CANONICAL_FIXABLE_GATE_IDS: Final[t.VariadicTuple[str]] = (
         "lint",

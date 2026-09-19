@@ -194,7 +194,7 @@ class FlextInfraClassPlacementDetector:
         tree = u.Infra.get_pymodule(rope_project, resource).get_ast()
         classes: list[m.Infra.ClassInfo] = []
         for node in getattr(tree, "body", ()) or ():
-            if u.Infra.node_kind(node) != "ClassDef":
+            if u.Infra.node_kind(u.Infra.ensure_ast_node(node)) != "ClassDef":
                 continue
             name = getattr(node, "name", "")
             if not isinstance(name, str) or not name or name.startswith("_"):
@@ -216,7 +216,7 @@ class FlextInfraClassPlacementDetector:
         if not isinstance(module_body, (list, tuple)):
             return ()
         for node in module_body:
-            if u.Infra.node_kind(node) != "ClassDef":
+            if u.Infra.node_kind(u.Infra.ensure_ast_node(node)) != "ClassDef":
                 continue
             if getattr(node, "name", "") == class_name:
                 class_body = getattr(node, "body", None) or ()
@@ -242,7 +242,7 @@ class FlextInfraClassPlacementDetector:
         )
         constants: list[m.Infra.ConstantInfo] = []
         for node in body:
-            node_kind = u.Infra.node_kind(node)
+            node_kind = u.Infra.node_kind(u.Infra.ensure_ast_node(node))
             if node_kind == "AnnAssign":
                 constant = FlextInfraClassPlacementDetector._annassign_constant(node)
             elif node_kind == "Assign":
@@ -323,7 +323,7 @@ class FlextInfraClassPlacementDetector:
         tree = pymodule.get_ast()
         aliases: list[tuple[str, int]] = []
         for node in getattr(tree, "body", []) or []:
-            kind = u.Infra.node_kind(node)
+            kind = u.Infra.node_kind(u.Infra.ensure_ast_node(node))
             if kind == "TypeAlias":
                 name = getattr(node, "name", None)
                 name_str = getattr(name, "id", str(name)) if name else ""
@@ -348,7 +348,7 @@ class FlextInfraClassPlacementDetector:
         """Return True when ``name`` appears in any sub-node identifier."""
         if annotation is None:
             return False
-        for sub in u.Infra.walk_ast_nodes(annotation):
+        for sub in u.Infra.walk_ast_nodes(u.Infra.ensure_ast_node(annotation)):
             if u.Infra.name_of(sub) == name:
                 return True
         return False
@@ -358,7 +358,7 @@ class FlextInfraClassPlacementDetector:
         """Return True when a ClassVar default is a literal/canonical constant."""
         if value is None:
             return True
-        kind = u.Infra.node_kind(value)
+        kind = u.Infra.node_kind(u.Infra.ensure_ast_node(value))
         if kind in {"Constant", "Name", "Attribute", "Tuple", "List", "Set", "Dict"}:
             return True
         if kind == "Call":
@@ -366,7 +366,7 @@ class FlextInfraClassPlacementDetector:
             func_name = u.Infra.name_of(func)
             if func_name in c.Infra.CLASSVAR_ALLOWED_CALLS:
                 return True
-            if u.Infra.node_kind(func) == "Attribute":
+            if u.Infra.node_kind(u.Infra.ensure_ast_node(func)) == "Attribute":
                 base = getattr(func, "value", None)
                 base_name = getattr(base, "id", "")
                 return base_name in c.Infra.CLASSVAR_ALLOWED_CALLS

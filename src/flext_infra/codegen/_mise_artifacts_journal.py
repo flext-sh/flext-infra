@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, cast
 
 from flext_core import r
 from flext_infra import c, m, u
@@ -14,6 +14,8 @@ from ._mise_artifacts_process import FlextInfraMiseArtifactsProcess as process
 from ._mise_artifacts_state import FlextInfraMiseArtifactsState as journal_state
 
 if TYPE_CHECKING:
+    from typing import Literal
+
     from flext_infra import p, t
 
 
@@ -170,6 +172,22 @@ class FlextInfraMiseArtifactsJournal:
                 "validate extended codegen directory journal", validated.error
             )
         return r[m.Infra.CodegenTransactionJournal].ok(validated.value)
+
+    @classmethod
+    def record_transaction_manifests(
+        cls,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+    ) -> p.Result[m.Infra.CodegenTransactionJournal]:
+        """Validate physical manifests and retain them in the transaction journal."""
+        from ._mise_artifacts_verification import FlextInfraMiseArtifactsVerification
+
+        registered = FlextInfraMiseArtifactsVerification.register_transaction_manifests(
+            layout, journal
+        )
+        if registered.failure:
+            return r[m.Infra.CodegenTransactionJournal].from_failure(registered)
+        return cls.record_directories(journal, registered.value)
 
     @classmethod
     def record_directories(
@@ -544,11 +562,10 @@ class FlextInfraMiseArtifactsJournal:
             for participant in journal.file_participants
         }
         for directory in journal.directories:
-            candidate = cls._recorded_directory_root(directory, participants)
+            candidate = cls._recorded_directory_roots(directory, participants)
             if candidate.failure:
                 return r[Path].from_failure(candidate)
-            if candidate.value is not None:
-                candidates.add(candidate.value)
+            candidates.update(candidate.value)
         if not candidates:
             return r[Path].ok(current_scope)
         if len(candidates) != 1:
@@ -556,9 +573,9 @@ class FlextInfraMiseArtifactsJournal:
         return r[Path].ok(candidates.pop())
 
     @staticmethod
-    def _recorded_directory_root(
+    def _recorded_directory_roots(
         directory: m.Infra.CodegenJournalDirectory, participants: t.MappingKV[str, Path]
-    ) -> p.Result[Path | None]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Recover one workspace root candidate or validate an external owner."""
         relative = Path(directory.path)
         selector = relative.parts[0]
@@ -574,8 +591,8 @@ class FlextInfraMiseArtifactsJournal:
                 directory_state.path == expected for directory_state in states
             )
             if valid:
-                return r[Path | None].ok(None)
-            return r[Path | None].fail(
+                return r[tuple[Path, ...]].ok(())
+            return r[tuple[Path, ...]].fail(
                 f"generation directory path is inconsistent: {directory.path}"
             )
         candidates: set[Path] = set()
@@ -584,15 +601,15 @@ class FlextInfraMiseArtifactsJournal:
             for _part in relative.parts:
                 candidate = candidate.parent
             if candidate / relative != recorded.path:
-                return r[Path | None].fail(
+                return r[tuple[Path, ...]].fail(
                     f"generation directory path is inconsistent: {directory.path}"
                 )
             candidates.add(candidate)
         if len(candidates) > 1:
-            return r[Path | None].fail(
+            return r[tuple[Path, ...]].fail(
                 f"generation directory path is inconsistent: {directory.path}"
             )
-        return r[Path | None].ok(next(iter(candidates), None))
+        return r[tuple[Path, ...]].ok(tuple(candidates))
 
     @staticmethod
     def _relocation_roots(

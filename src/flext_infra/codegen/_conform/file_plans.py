@@ -111,6 +111,20 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Plan removal of generated projections excluded from this profile."""
         planned: list[m.Infra.CodegenFilePlan] = []
+        for filename in config.Infra.codegen.toolchain.retired_dependency_artifacts:
+            path = root / filename
+            if path.is_symlink() or (path.exists() and not path.is_file()):
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"Refusing non-file dependency artifact: {path}"
+                )
+            if not path.exists():
+                continue
+            absent_plan = cls._absent_file_plan(root, path)
+            if absent_plan.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                    absent_plan
+                )
+            planned.append(absent_plan.value)
         for entry in config.Infra.codegen.templates.entries:
             if profile in entry.profiles or "{" in entry.destination:
                 continue

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import secrets
-from collections.abc import Callable, Generator, MutableMapping
+from collections.abc import Callable, Generator
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -20,6 +20,7 @@ from ._mise_artifacts_recovery import FlextInfraMiseRecovery
 from ._mise_artifacts_staging import FlextInfraMiseStaging
 from ._mise_artifacts_state import FlextInfraMiseArtifactsState as state
 from ._mise_artifacts_verification import FlextInfraMiseArtifactsVerification as verify
+from .codegen_preconditions import FlextInfraCodegenPreconditions
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -347,7 +348,9 @@ class FlextInfraCodegenTransaction:
             if file_plan.path not in config_paths
             and u.Infra.codegen_file_requires_effect(file_plan)
         )
-        source_states = self._phase_sources("conform", file_plans)
+        source_states = FlextInfraCodegenPreconditions.phase_sources(
+            "conform", file_plans
+        )
         if source_states.failure:
             return result_type.from_failure(source_states)
         mise_sources = tuple(
@@ -357,7 +360,9 @@ class FlextInfraCodegenTransaction:
         )
         all_sources = (*source_states.value, *mise_sources)
         source_barrier = verify.states_current(
-            self._unique_states(tuple(source for _phase, source in all_sources))
+            FlextInfraCodegenPreconditions.unique_states(
+                tuple(source for _phase, source in all_sources)
+            )
         )
         if source_barrier.failure:
             return result_type.from_failure(source_barrier)
@@ -466,7 +471,7 @@ class FlextInfraCodegenTransaction:
                     prepared_journal.error or "cannot prepare generation journal",
                 )
             )
-        manifested = self._register_transaction_manifests(
+        manifested = journal_io.record_transaction_manifests(
             layout, prepared_journal.value
         )
         if manifested.failure:
@@ -537,7 +542,7 @@ class FlextInfraCodegenTransaction:
         )
         if not changed:
             return result_type.ok(session)
-        aligned = self._unchanged_journal(
+        aligned = FlextInfraCodegenPreconditions.unchanged_journal(
             session, "generation journal changed between phases"
         )
         if aligned.failure:
@@ -557,14 +562,15 @@ class FlextInfraCodegenTransaction:
                         f"{relative.value}",
                     )
                 )
-        sources = self._phase_sources(phase, plans)
+        sources = FlextInfraCodegenPreconditions.phase_sources(phase, plans)
         if sources.failure:
             return result_type.from_failure(
                 self._recover_failure(layout, sources.error or "invalid phase sources")
             )
         source_states = tuple(source for _phase, source in sources.value)
         source_barrier = verify.states_current(
-            self._unique_states(source_states), journal=session.journal
+            FlextInfraCodegenPreconditions.unique_states(source_states),
+            journal=session.journal,
         )
         if source_barrier.failure:
             return result_type.from_failure(
@@ -604,7 +610,7 @@ class FlextInfraCodegenTransaction:
                     layout, extended.error or f"cannot append {phase} journal phase"
                 )
             )
-        manifested = self._register_transaction_manifests(layout, extended.value)
+        manifested = journal_io.record_transaction_manifests(layout, extended.value)
         if manifested.failure:
             return result_type.from_failure(
                 self._recover_failure(
@@ -621,7 +627,8 @@ class FlextInfraCodegenTransaction:
                 )
             )
         source_barrier = verify.states_current(
-            self._unique_states(source_states), journal=manifested.value
+            FlextInfraCodegenPreconditions.unique_states(source_states),
+            journal=manifested.value,
         )
         destination_barrier = verify.states_current(
             tuple(item.before for item in staged.value)
@@ -681,7 +688,7 @@ class FlextInfraCodegenTransaction:
             )
         if not planned.value:
             return result_type.ok(session)
-        unchanged = self._unchanged_journal(
+        unchanged = FlextInfraCodegenPreconditions.unchanged_journal(
             session, "generation journal changed before directories"
         )
         if unchanged.failure:
@@ -741,7 +748,7 @@ class FlextInfraCodegenTransaction:
                     validated.error or "generation fixed-point validation failed",
                 )
             )
-        unchanged = self._unchanged_journal(
+        unchanged = FlextInfraCodegenPreconditions.unchanged_journal(
             session, "generation journal changed before commit"
         )
         if unchanged.failure:
@@ -830,7 +837,7 @@ class FlextInfraCodegenTransaction:
                 return result_type.from_failure(failed)
             current_journal = recorded.value
             current_state = persisted.value
-        manifested = self._register_transaction_manifests(layout, current_journal)
+        manifested = journal_io.record_transaction_manifests(layout, current_journal)
         if manifested.failure:
             return result_type.from_failure(manifested)
         for previous, recorded in zip(
@@ -868,16 +875,6 @@ class FlextInfraCodegenTransaction:
         if journal_write:
             return self._handle_journal_write_failure(layout, failure)
         return self._recover_failure(layout, failure)
-
-    @staticmethod
-    def _register_transaction_manifests(
-        layout: m.Infra.MiseToolchainWorkspaceLayout,
-        journal: m.Infra.CodegenTransactionJournal,
-    ) -> p.Result[m.Infra.CodegenTransactionJournal]:
-        registered = verify.register_transaction_manifests(layout, journal)
-        if registered.failure:
-            return r[m.Infra.CodegenTransactionJournal].from_failure(registered)
-        return journal_io.record_directories(journal, registered.value)
 
     def abort_locked(
         self, session: m.Infra.CodegenTransactionSession, failure: str
@@ -936,47 +933,6 @@ class FlextInfraCodegenTransaction:
             return r[bool].fail("generation recovery has no invocation journal receipt")
         return self._recover(layout, expected=expected)
 
-    @staticmethod
-    def _phase_sources(
-        phase: str, plans: t.VariadicTuple[m.Infra.CodegenFilePlan]
-    ) -> p.Result[t.VariadicTuple[t.Pair[str, m.Cli.AtomicFileState]]]:
-        result_type = r[tuple[tuple[str, m.Cli.AtomicFileState], ...]]
-        sources: MutableMapping[Path, m.Cli.AtomicFileState] = {}
-        for plan in plans:
-            for source in plan.source_states:
-                previous = sources.get(source.path)
-                if previous is not None and previous != source:
-                    return result_type.fail(
-                        f"{phase} planner observed two states for {source.path}"
-                    )
-                sources[source.path] = source
-        return result_type.ok(tuple((phase, source) for source in sources.values()))
-
-    @staticmethod
-    def _unique_states(
-        states: t.VariadicTuple[m.Cli.AtomicFileState],
-    ) -> t.VariadicTuple[m.Cli.AtomicFileState]:
-        by_path: MutableMapping[Path, m.Cli.AtomicFileState] = {}
-        for file_state in states:
-            by_path[file_state.path] = file_state
-        return tuple(by_path.values())
-
-    @staticmethod
-    def _prepublication_barriers(
-        plan: m.Infra.MiseToolchainWorkspacePlan,
-        sources: tuple[m.Cli.AtomicFileState, ...],
-        destinations: t.VariadicTuple[m.Cli.AtomicFileState],
-    ) -> p.Result[bool]:
-        source_barrier = verify.states_current(
-            FlextInfraCodegenTransaction._unique_states(sources)
-        )
-        if source_barrier.failure:
-            return source_barrier
-        destination_barrier = verify.states_current(destinations)
-        if destination_barrier.failure:
-            return destination_barrier
-        return verify.sources(plan)
-
     def _reconcile(self, identity: m.Infra.GitIdentityReport) -> p.Result[bool]:
         layout = self._planner.journal_layout(identity)
         if layout.failure:
@@ -1015,7 +971,7 @@ class FlextInfraCodegenTransaction:
         publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
     ) -> p.Result[bool]:
         """Re-verify every pre-publication barrier, recovering on the first breach."""
-        barriers = self._prepublication_barriers(
+        barriers = FlextInfraCodegenPreconditions.prepublication_barriers(
             plan,
             tuple(source for _phase, source in all_sources),
             tuple(item.before for item in publications),
@@ -1027,25 +983,6 @@ class FlextInfraCodegenTransaction:
                 )
             )
         return r[bool].ok(True)
-
-    def _unchanged_journal(
-        self, session: m.Infra.CodegenTransactionSession, changed_error: str
-    ) -> p.Result[m.Infra.CodegenTransactionSession]:
-        """Require the complete journal receipt; a lease cannot authorize replacement."""
-        result_type = r[m.Infra.CodegenTransactionSession]
-        observed = state.journal_state(session.plan.layout)
-        observed_snapshot = (
-            None if observed.failure else state.journal_snapshot(observed.value)
-        )
-        expected = session.journal_state
-        if observed.failure or observed_snapshot != expected:
-            return result_type.fail(
-                observed.error or changed_error,
-                error_data={
-                    "recovery_error": "journal authority no longer matches the session receipt"
-                },
-            )
-        return result_type.ok(session)
 
     def _recover_failure(
         self, layout: m.Infra.MiseToolchainWorkspaceLayout, failure: str

@@ -63,8 +63,8 @@ class TestsFlextInfraCliRepositoryRootContract:
             if route.name == command
         )
         fields = route.model_cls.model_fields
-        tm.that(fields, has="repository_root")
-        tm.that(fields, lacks="workspace")
+        tm.that(tuple(fields), has="repository_root")
+        tm.that(tuple(fields), lacks="workspace")
         scope = fields["repository_root"]
         tm.that(scope.alias is None, eq=True)
         tm.that(scope.validation_alias is None, eq=True)

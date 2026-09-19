@@ -60,7 +60,7 @@ class TestsFlextInfraDocsRender:
         # flext-i6nq.10: Validate the rendered public artifact through pathspec's
         # documented text-stream boundary, without an ad-hoc extraction helper.
         match = re.search(r"exclude_docs: \|\n((?: {2}\S.*\n)+)", rendered)
-        tm.that(match, none=False)
+        tm.that(match is not None, eq=True)
         if match is None:
             pytest.fail("rendered exclude_docs block was not found")
         patterns = tuple(

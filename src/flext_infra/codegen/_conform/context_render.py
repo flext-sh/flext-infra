@@ -30,7 +30,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             if profile is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
-        gitlinks = self._managed_gitlinks(workspace, codegen)
+        gitlinks = self._managed_gitlinks(
+            workspace, codegen, repository_root=repository_root
+        )
         if gitlinks.failure:
             return r[m.Infra.MakeRenderContext].from_failure(gitlinks)
         extra_verbs = self._merge_extra_verbs(
@@ -398,34 +400,36 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 homepage=project.homepage,
                 documentation=project.documentation,
                 flext_git_base_url=flext_provider.base_url,
-                flext_git_branch=flext_provider.branch,
+                flext_git_branch=integration_branch.value,
                 repository_provider=repository.provider,
                 repository_git_url=repository.url,
-                repository_branch=u.Infra.resolve_integration_branch(
-                    workspace, repository_provider.value
-                ),
+                repository_branch=integration_branch.value,
                 year=project.year,
             )
         )
 
     @staticmethod
     def _managed_gitlinks(
-        workspace: m.Infra.WorkspaceSpec, codegen: m.Infra.CodegenConfigSpec
+        workspace: m.Infra.WorkspaceSpec,
+        codegen: m.Infra.CodegenConfigSpec,
+        *,
+        repository_root: Path,
     ) -> p.Result[t.VariadicTuple[m.Infra.ManagedGitlinkSpec]]:
-        """Resolve provider baselines only for mutable governed subprojects."""
+        """Resolve detected member baselines only for mutable governed subprojects."""
         resolved: list[m.Infra.ManagedGitlinkSpec] = []
         for repository in workspace.subprojects:
-            provider = u.Infra.repository_provider(repository, codegen.providers)
-            if provider.failure:
+            branch = u.Infra.resolve_integration_branch(
+                repository_root / repository.path,
+                preference=codegen.branch_policy.integration_branch_preference,
+            )
+            if branch.failure:
                 return r[t.VariadicTuple[m.Infra.ManagedGitlinkSpec]].from_failure(
-                    provider
+                    branch
                 )
             resolved.append(
                 m.Infra.ManagedGitlinkSpec(
                     repository=repository,
-                    branch=u.Infra.resolve_integration_branch(
-                        workspace, provider.value
-                    ),
+                    branch=branch.value,
                 )
             )
         return r[t.VariadicTuple[m.Infra.ManagedGitlinkSpec]].ok(tuple(resolved))

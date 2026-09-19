@@ -75,7 +75,8 @@ class TestsFlextInfraWorkflowCommentSpacing:
             and item.desired_content is not None
         }
 
-        tm.that(workflows, has=f"{self._WORKFLOW_PREFIX}release.yml")
+        tm.that(workflows, has=f"{self._WORKFLOW_PREFIX}ci.yml")
+        tm.that(workflows, lacks=f"{self._WORKFLOW_PREFIX}release.yml")
         tm.that(
             {
                 path: self._inline_comment_offenders(text)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from typing import TYPE_CHECKING
 
 import pytest
@@ -166,6 +167,8 @@ class TestsFlextInfraBanditAndMarkdownGates:
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
         empty_path = tmp_path / "empty-path"
         empty_path.mkdir()
+        # Source discovery needs Git; the Markdown linter remains unavailable on PATH.
+        (empty_path / "git").symlink_to(tm.not_none(shutil.which("git")))
         with tm.scope(env={"PATH": str(empty_path)}):
             result = FlextInfraMarkdownGate(tmp_path).check(
                 project_dir, u.Tests.gate_context(tmp_path)

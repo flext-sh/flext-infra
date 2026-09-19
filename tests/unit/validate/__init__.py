@@ -28,20 +28,20 @@ if TYPE_CHECKING:
     from .silent_failure_tests import TestsFlextInfraSilentFailure
     from .skill_validator_tests import TestsFlextInfraSkillValidator
     from .stub_chain_tests import TestsFlextInfraStubChain
-    from .test_core_validation_behavior import TestsCoreValidationBehavior
-    from .test_fixture_violations import TestsFixtureViolations
+    from .test_core_validation_behavior import TestsFlextInfraCoreValidationBehavior
+    from .test_fixture_violations import TestsFlextInfraFixtureViolations
     from .test_import_dag_tests import TestsFlextInfraImportDag
-    from .test_module_path_rules import TestsModulePathRules
-    from .test_pydantic_legacy_detection import TestsPydanticLegacyDetection
-    from .test_rule0_namespace_structure import TestsRule0NamespaceStructure
-    from .test_rule1_constants import TestsRule1ConstantsFacade
-    from .test_rule2_typings import TestsRule2TypingsFacade
-    from .test_rule3_imports import TestsRule3ImportRules
-    from .test_rule4_annotations import TestsRule4Annotations
+    from .test_module_path_rules import TestsFlextInfraModulePathRules
+    from .test_pydantic_legacy_detection import TestsFlextInfraPydanticLegacyDetection
+    from .test_rule0_namespace_structure import TestsFlextInfraRule0NamespaceStructure
+    from .test_rule1_constants import TestsFlextInfraRule1ConstantsFacade
+    from .test_rule2_typings import TestsFlextInfraRule2TypingsFacade
+    from .test_rule3_imports import TestsFlextInfraRule3ImportRules
+    from .test_rule4_annotations import TestsFlextInfraRule4Annotations
     from .tier_whitelist_tests import TestsFlextInfraTierWhitelist
 __all__: tuple[str, ...] = (
-    "TestsCoreValidationBehavior",
-    "TestsFixtureViolations",
+    "TestsFlextInfraCoreValidationBehavior",
+    "TestsFlextInfraFixtureViolations",
     "TestsFlextInfraFreshImport",
     "TestsFlextInfraGovernanceAuthority",
     "TestsFlextInfraImportCycles",
@@ -51,7 +51,14 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraLocDelta",
     "TestsFlextInfraManualCommand",
     "TestsFlextInfraMetadataDiscipline",
+    "TestsFlextInfraModulePathRules",
+    "TestsFlextInfraPydanticLegacyDetection",
     "TestsFlextInfraPytestDiag",
+    "TestsFlextInfraRule0NamespaceStructure",
+    "TestsFlextInfraRule1ConstantsFacade",
+    "TestsFlextInfraRule2TypingsFacade",
+    "TestsFlextInfraRule3ImportRules",
+    "TestsFlextInfraRule4Annotations",
     "TestsFlextInfraScanner",
     "TestsFlextInfraScannerHelpers",
     "TestsFlextInfraSilentFailure",
@@ -61,13 +68,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraValidateCli",
     "TestsFlextInfraValidateInit",
     "TestsFlextInfraValidateMain",
-    "TestsModulePathRules",
-    "TestsPydanticLegacyDetection",
-    "TestsRule0NamespaceStructure",
-    "TestsRule1ConstantsFacade",
-    "TestsRule2TypingsFacade",
-    "TestsRule3ImportRules",
-    "TestsRule4Annotations",
     "c",
     "d",
     "e",
@@ -106,16 +106,22 @@ _LAZY_IMPORTS = MappingProxyType(
             ".silent_failure_tests": ("TestsFlextInfraSilentFailure",),
             ".skill_validator_tests": ("TestsFlextInfraSkillValidator",),
             ".stub_chain_tests": ("TestsFlextInfraStubChain",),
-            ".test_core_validation_behavior": ("TestsCoreValidationBehavior",),
-            ".test_fixture_violations": ("TestsFixtureViolations",),
+            ".test_core_validation_behavior": (
+                "TestsFlextInfraCoreValidationBehavior",
+            ),
+            ".test_fixture_violations": ("TestsFlextInfraFixtureViolations",),
             ".test_import_dag_tests": ("TestsFlextInfraImportDag",),
-            ".test_module_path_rules": ("TestsModulePathRules",),
-            ".test_pydantic_legacy_detection": ("TestsPydanticLegacyDetection",),
-            ".test_rule0_namespace_structure": ("TestsRule0NamespaceStructure",),
-            ".test_rule1_constants": ("TestsRule1ConstantsFacade",),
-            ".test_rule2_typings": ("TestsRule2TypingsFacade",),
-            ".test_rule3_imports": ("TestsRule3ImportRules",),
-            ".test_rule4_annotations": ("TestsRule4Annotations",),
+            ".test_module_path_rules": ("TestsFlextInfraModulePathRules",),
+            ".test_pydantic_legacy_detection": (
+                "TestsFlextInfraPydanticLegacyDetection",
+            ),
+            ".test_rule0_namespace_structure": (
+                "TestsFlextInfraRule0NamespaceStructure",
+            ),
+            ".test_rule1_constants": ("TestsFlextInfraRule1ConstantsFacade",),
+            ".test_rule2_typings": ("TestsFlextInfraRule2TypingsFacade",),
+            ".test_rule3_imports": ("TestsFlextInfraRule3ImportRules",),
+            ".test_rule4_annotations": ("TestsFlextInfraRule4Annotations",),
             ".tier_whitelist_tests": ("TestsFlextInfraTierWhitelist",),
             "flext_tests": (
                 "c",

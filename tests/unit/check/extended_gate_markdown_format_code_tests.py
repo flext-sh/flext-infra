@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 class TestsFlextInfraMarkdownFormatAndCodeGates:
     """Declarative public-contract tests for the markdown formatting gates."""
 
+    FORMATTED_MARKDOWN = "# Test\n"
+    UNFORMATTED_MARKDOWN = "#    Test\n"
     FORMATTED = "# Test\n\n```python\nx = 1\n```\n"
     UNFORMATTED = "# Test\n\n```python\nx=1\n```\n"
     SYNTAX_BROKEN = "# Test\n\n```python\ndef broken(:\n    return 1\n```\n"

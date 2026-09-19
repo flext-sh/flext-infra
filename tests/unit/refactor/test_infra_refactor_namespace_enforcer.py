@@ -345,7 +345,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
 
     def test_namespace_enforce_does_not_expose_in_place_diff(self) -> None:
         """Keep in-place diff outside the namespace-enforce input contract."""
-        tm.that(m.Infra.RefactorNamespaceEnforceInput.model_fields, lacks="diff")
+        tm.that(tuple(m.Infra.RefactorNamespaceEnforceInput.model_fields), lacks="diff")
 
     def test_loose_object_detector_detects_module_logger_assignment(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject

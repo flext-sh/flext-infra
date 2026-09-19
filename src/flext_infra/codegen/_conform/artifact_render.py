@@ -265,9 +265,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 )
             )
         if destination.startswith(".github/"):
-            provider = u.Infra.repository_provider(repository, codegen.providers)
-            if provider.failure:
-                return r[p.Model].from_failure(provider)
             workspace_repositories = (
                 tuple(workspace.subprojects)
                 if target.make_profile is c.Infra.MakeProfile.WORKSPACE
@@ -278,17 +275,22 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             # repository's own integration branch is the only branch this layer
             # can name from resolved data; a fleet-wide list hardcoded here would
             # make every repository trigger on branches it does not have.
-            branch = u.Infra.resolve_integration_branch(workspace, provider.value)
+            branch = u.Infra.resolve_integration_branch(
+                repository_root,
+                preference=codegen.branch_policy.integration_branch_preference,
+            )
+            if branch.failure:
+                return r[p.Model].from_failure(branch)
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
                     dist=dist,
                     make_profile=target.make_profile,
                     gascity_enabled=target.gascity_enabled,
-                    repository_branch=branch,
+                    repository_branch=branch.value,
                     ci_trigger_branches=tuple(
                         dict.fromkeys((
                             *codegen.branch_policy.ci_trigger_branches,
-                            branch,
+                            branch.value,
                         ))
                     ),
                     python_version=codegen.toolchain.python_version,
@@ -347,7 +349,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 if profile is c.Infra.MakeProfile.WORKSPACE
                 else ()
             )
-            gitlinks = self._managed_gitlinks(workspace, codegen)
+            gitlinks = self._managed_gitlinks(
+                workspace, codegen, repository_root=repository_root
+            )
             if gitlinks.failure:
                 return r[p.Model].from_failure(gitlinks)
             return r[p.Model].ok(

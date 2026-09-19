@@ -484,7 +484,7 @@ class FlextInfraWorkspaceDetector(
         )
         if repository.failure:
             return result_type.from_failure(repository)
-        if not u.Infra.is_fleet_umbrella(subproject_root):
+        if not u.Infra.workspace_manifest_path(subproject_root).is_file():
             return result_type.ok(repository.value)
         member_beads = cls.load_beads_spec(subproject_root)
         if member_beads.failure:

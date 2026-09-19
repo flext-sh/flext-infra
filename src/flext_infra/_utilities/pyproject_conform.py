@@ -153,6 +153,7 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[str].from_failure(namespace_scope)
         sources_result = cls._sync_uv_sources(
             source,
+            providers=providers,
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
@@ -227,6 +228,7 @@ class FlextInfraUtilitiesPyprojectConform:
             if workspace_context_root
             else cls._sync_uv_sources(
                 source,
+                providers=providers,
                 project_name=project_name,
                 workspace=workspace,
                 workspace_mode=workspace_mode,
@@ -274,6 +276,9 @@ class FlextInfraUtilitiesPyprojectConform:
             project,
             c.Infra.DEPENDENCIES,
             canonicalize_all=canonicalize_all,
+            revisions=workspace.project.dependency_revisions
+            if workspace.project
+            else {},
             workspace_dependencies=workspace_dependencies,
         )
         if normalized.failure:
@@ -283,6 +288,9 @@ class FlextInfraUtilitiesPyprojectConform:
                 section,
                 group_name,
                 canonicalize_all=canonicalize_all,
+                revisions=workspace.project.dependency_revisions
+                if workspace.project
+                else {},
                 workspace_dependencies=workspace_dependencies,
             )
             if group_result.failure:
@@ -296,6 +304,7 @@ class FlextInfraUtilitiesPyprojectConform:
         key: str,
         *,
         canonicalize_all: bool,
+        revisions: t.StrMapping,
         workspace_dependencies: frozenset[str],
     ) -> p.Result[bool]:
         """Normalize one dependency array and fail on model-less entries."""
@@ -315,6 +324,9 @@ class FlextInfraUtilitiesPyprojectConform:
         for item in items:
             normalized = cls._canonical_requirement(
                 item,
+                repositories=repositories,
+                providers=providers,
+                revisions=revisions,
                 workspace_dependencies=workspace_dependencies,
             )
             if normalized.failure:
@@ -336,6 +348,9 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         requirement: str,
         *,
+        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
+        revisions: t.StrMapping,
         workspace_dependencies: frozenset[str],
     ) -> p.Result[str]:
         """Render one internal requirement from its own declared Git source.
@@ -364,20 +379,27 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[str].ok(
                 f"{head}; {marker_text}" if separator and marker_text else head
             )
-        source = FlextInfraUtilitiesRepository.declared_git_source(requirement)
-        if source.failure:
-            return r[str].from_failure(source)
-        if source.value is None:
-            return r[str].fail(
-                "internal flext dependency declares no direct git source and "
-                f"is not a workspace dependency: {dependency_name}"
-            )
-        url, ref = source.value
-        # The declared source stays authoritative under a workspace root too:
-        # uv replaces it there with the root ``workspace = true`` overlay, and
-        # a member ``[tool.uv.sources]`` git entry is rejected by uv itself,
-        # so the inline form is the only valid dual-context declaration.
-        inline = f"{head} @ git+{url}@{ref}"
+        reference_result = cls._repository_reference(
+            dependency_name, repositories=repositories, providers=providers
+        )
+        if reference_result.failure:
+            return r[str].from_failure(reference_result)
+        reference = reference_result.value
+        provider = FlextInfraUtilitiesRepository.repository_provider(
+            reference, providers
+        )
+        if provider.failure:
+            return r[str].from_failure(provider)
+        # Publishable members keep the direct Git requirement with the
+        # configured branch: uv accepts the same metadata standalone and, under
+        # a workspace root, the root ``workspace = true`` source overlay
+        # replaces it at resolution time. A member ``[tool.uv.sources]`` git
+        # entry is rejected by uv itself ("workspace member ... references a
+        # Git in tool.uv.sources"), so the inline form is the only valid
+        # dual-context declaration; branch refs re-resolve on every upgrade
+        # (root and member locks resolve the same branch at different tips).
+        branch = revisions.get(dependency_name, provider.value.branch)
+        inline = f"{head} @ git+{reference.url}@{branch}"
         return r[str].ok(
             f"{inline}; {marker_text}" if separator and marker_text else inline
         )
@@ -578,10 +600,40 @@ class FlextInfraUtilitiesPyprojectConform:
         return r[bool].ok(True)
 
     @classmethod
+    def _dependency_overrides(
+        cls,
+        workspace: p.Infra.WorkspaceSpec,
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
+    ) -> p.Result[t.VariadicTuple[str]]:
+        """Render declared pins once for direct and transitive resolution."""
+        revisions: t.StrMapping = (
+            workspace.project.dependency_revisions if workspace.project else {}
+        )
+        members = {member.distribution for member in workspace.subprojects}
+        overrides: list[str] = []
+        for name in sorted(revisions):
+            if name in members or not name.startswith("flext-"):
+                return r[tuple[str, ...]].fail(
+                    f"dependency revision must name an external provider dependency: {name}"
+                )
+            requirement = cls._canonical_requirement(
+                name,
+                repositories=(workspace.repository, *workspace.subprojects),
+                providers=providers,
+                revisions=revisions,
+                workspace_dependencies=frozenset(),
+            )
+            if requirement.failure:
+                return r[tuple[str, ...]].from_failure(requirement)
+            overrides.append(requirement.value)
+        return r[tuple[str, ...]].ok(tuple(overrides))
+
+    @classmethod
     def _sync_uv_sources(
         cls,
         document: t.Cli.TomlDocument,
         *,
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.MakeProfile,
@@ -596,6 +648,9 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
+        overrides = cls._dependency_overrides(workspace, providers)
+        if overrides.failure:
+            return r[bool].from_failure(overrides)
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
             if (
@@ -603,6 +658,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 and link_mode is None
                 and not exclude_dependencies
                 and not constraint_dependencies
+                and not overrides.value
             ):
                 return r[bool].ok(True)
             tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
@@ -613,9 +669,14 @@ class FlextInfraUtilitiesPyprojectConform:
                 and link_mode is None
                 and not exclude_dependencies
                 and not constraint_dependencies
+                and not overrides.value
             ):
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
+        if overrides.value:
+            u.Cli.toml_sync_string_list(uv, "override-dependencies", overrides.value)
+        else:
+            u.Cli.toml_remove_key_if_present(uv, "override-dependencies")
         u.Cli.toml_remove_key_if_present(uv, "required-version")
         # Constraints are SSOT-rendered: the declared config value is the only
         # source, so a removed declaration exterminates the key everywhere and
@@ -760,10 +821,12 @@ class FlextInfraUtilitiesPyprojectConform:
         uv = tool.get("uv")
         if not isinstance(uv, Mapping):
             return r[bool].fail("root pyproject must define [tool.uv]")
-        if "override-dependencies" in uv:
-            return r[bool].fail(
-                "root pyproject must not define tool.uv.override-dependencies"
-            )
+        overrides = cls._dependency_overrides(workspace, providers)
+        if overrides.failure:
+            return r[bool].from_failure(overrides)
+        declared = u.Cli.toml_as_string_list(uv.get("override-dependencies"))
+        if tuple(declared) != overrides.value:
+            return r[bool].fail("root dependency overrides differ from workspace SSOT")
         uv_workspace = uv.get("workspace")
         if not isinstance(uv_workspace, Mapping):
             return r[bool].fail("root pyproject must define [tool.uv.workspace]")

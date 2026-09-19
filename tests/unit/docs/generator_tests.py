@@ -9,8 +9,10 @@ from flext_tests import tm
 
 from flext_core import r
 from flext_infra import c, config, t
+from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
+from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
 from tests import m, u
 
 if TYPE_CHECKING:
@@ -51,6 +53,7 @@ class TestsFlextInfraDocsGenerator:
         tm.that(workspace / "flext-a/README.md" in paths, eq=True)
         tm.that(all(plan.owner == "docs" for plan in plans), eq=True)
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("selected_projects", [None, (".",), ("flext-a",)])
     @pytest.mark.parametrize("project_name", ["workspace", config.Infra.name])
     def test_workspace_package_api_and_member_docs_share_one_transaction(
@@ -358,7 +361,7 @@ class TestsFlextInfraDocsGenerator:
         tm.that(
             page,
             has=(
-                "::: flext_a\n"
+                "::: flext_a\n\n"
                 "    options:\n"
                 "      show_root_heading: true\n"
                 "      show_root_full_path: false\n"
@@ -366,6 +369,63 @@ class TestsFlextInfraDocsGenerator:
             ),
         )
         tm.that(page, lacks="::: flext_a options:")
+
+    @pytest.mark.slow
+    def test_generated_directive_builds_with_real_mkdocstrings(
+        self, tmp_path: Path
+    ) -> None:
+        """The actual documentation engine consumes the generated directive options."""
+        workspace = u.Tests.create_docs_workspace(tmp_path)
+        package = workspace / "src/docs_example"
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text(
+            '"""Documentation runtime contract."""\n', encoding="utf-8"
+        )
+        (workspace / "docs/index.md").write_text(
+            u.Infra.docs_directive_page("Runtime API", "docs_example"), encoding="utf-8"
+        )
+        (workspace / "mkdocs.yml").write_text(
+            "site_name: Documentation contract\ndocs_dir: docs\n"
+            "exclude_docs: |\n  README.md\nplugins:\n  - autorefs\n"
+            "  - mkdocstrings:\n      handlers:\n        python:\n"
+            "          paths: [src]\n",
+            encoding="utf-8",
+        )
+
+        result = FlextInfraDocBuilder(repository_root=workspace).execute()
+
+        tm.ok(result)
+        pages = tuple(workspace.rglob("index.html"))
+        assert pages
+        assert any('id="docs_example"' in page.read_text() for page in pages)
+
+    def test_generated_bundle_is_accepted_by_real_markdown_formatter(
+        self, tmp_path: Path, request: pytest.FixtureRequest
+    ) -> None:
+        """Generated prose and directives already match the provisioned formatter."""
+        workspace, generator = u.Tests.docs_workspace_generator(
+            tmp_path, project_names=("flext-a",), selected_projects=["flext-a"]
+        )
+        _ = u.Tests.publish_docs_bundle(generator)
+        project = workspace / "flext-a"
+        config_path = project / c.Infra.PRETTIER_CONFIG_FILENAME
+        config_path.write_text(
+            (request.config.rootpath / c.Infra.PRETTIER_CONFIG_FILENAME).read_text(
+                encoding="utf-8"
+            ),
+            encoding="utf-8",
+        )
+        result = u.Tests.run_gate_check(
+            FlextInfraMarkdownFormatGate, workspace, project
+        )
+        readme = project / "README.md"
+        before = readme.read_text(encoding="utf-8")
+        context = m.Infra.GateContext(
+            repository_root=workspace, reports_dir=tmp_path, apply_fixes=True
+        )
+        _ = FlextInfraMarkdownFormatGate(workspace).fix(project, context)
+        assert before == readme.read_text(encoding="utf-8")
+        assert result.result.passed, result.issues
 
     def test_generated_prose_wraps_without_reformatting_directive_blocks(
         self, tmp_path: Path
@@ -387,11 +447,14 @@ class TestsFlextInfraDocsGenerator:
             for line in rendered.splitlines()
             if line.startswith(("- Description:", "  resilient"))
         ]
-        tm.that(max(map(len, description_lines)) <= 80, eq=True)
+        tm.that(
+            max(map(len, description_lines)) <= u.Infra.docs_markdown_line_length(),
+            eq=True,
+        )
         tm.that(
             rendered,
             has=(
-                "::: flext_a\n"
+                "::: flext_a\n\n"
                 "    options:\n"
                 "      members: false\n"
                 "      show_root_heading: false\n"
