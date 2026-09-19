@@ -4,16 +4,13 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, TypeIs
+from typing import ClassVar
 
 from flext_infra.models import m
 from flext_infra.typings import t
 
 from ..rope_core import FlextInfraUtilitiesRopeCore
 from ..rope_runtime import FlextInfraUtilitiesRopeRuntime
-
-if TYPE_CHECKING:
-    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesRopeAnalysisAstHelpers:
@@ -22,9 +19,17 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
     _parse_project: ClassVar[t.Infra.RopeProject | None] = None
 
     @staticmethod
-    def is_ast_node(node: p.AttributeProbe) -> TypeIs[t.Infra.RopeAstNode]:
-        """Narrow one dynamic Rope value to its structural AST contract."""
-        return hasattr(node, "_fields")
+    def _is_ast_node(obj: object) -> TypeGuard[t.Infra.RopeAstNode]:
+        """Type guard to narrow to RopeAstNode via structural `_fields` check."""
+        return hasattr(obj, "_fields")
+
+    @staticmethod
+    def _ensure_ast_node(obj: object) -> t.Infra.RopeAstNode:
+        """Ensure an object is an AST node (has `_fields`), narrowing the type."""
+        if not FlextInfraUtilitiesRopeAnalysisAstHelpers._is_ast_node(obj):
+            msg = f"Expected AST node with _fields, got {type(obj).__name__}"
+            raise TypeError(msg)
+        return obj
 
     @staticmethod
     def resource_cache_key(

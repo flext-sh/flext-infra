@@ -26,6 +26,19 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     _IMPORT_ALIAS_AS_PARTS: ClassVar[int] = 3
 
     @staticmethod
+    def _is_ast_node(obj: object) -> TypeGuard[t.Infra.RopeAstNode]:
+        """Type guard to narrow to RopeAstNode via structural `_fields` check."""
+        return hasattr(obj, "_fields")
+
+    @staticmethod
+    def _ensure_ast_node(obj: object) -> t.Infra.RopeAstNode:
+        """Ensure an object is an AST node (has `_fields`), narrowing the type."""
+        if not FlextInfraUtilitiesRopeAnalysisSourceScan._is_ast_node(obj):
+            msg = f"Expected AST node with _fields, got {type(obj).__name__}"
+            raise TypeError(msg)
+        return obj
+
+    @staticmethod
     def literal_string_sequence(node: t.Infra.RopeAstNode | None) -> t.StrSequence:
         """Return string entries from a parsed literal sequence node."""
         if node is None:
