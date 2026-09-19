@@ -156,12 +156,12 @@ class FlextInfraDocGeneratorBundleMixin:
                         desired_mode=0o644 if normalized_content is not None else None,
                     )
                 )
-        normalized_scopes.append(
-            m.Infra.DocsScopeArtifacts(
-                scope=scope, artifacts=tuple(normalized_artifacts)
+            normalized_scopes.append(
+                m.Infra.DocsScopeArtifacts(
+                    scope=scope, artifacts=tuple(normalized_artifacts)
+                )
             )
-        )
-        offset += size
+            offset += size
         validated_bundle: p.Result[m.Infra.DocsGenerationBundle] = u.validate_value(
             m.Infra.DocsGenerationBundle,
             {
