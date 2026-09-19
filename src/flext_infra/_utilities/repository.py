@@ -78,6 +78,63 @@ class FlextInfraUtilitiesRepository:
             )
         return r[m.Infra.ProviderSpec].ok(matches[0])
 
+    @classmethod
+    def repository_page_url(
+        cls,
+        repository: p.Infra.RepositoryRef,
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
+    ) -> p.Result[str]:
+        """Return the provider HTTPS page of one repository, whatever its transport.
+
+        CI rewrites member origins to SSH deploy-key URLs, so the clone URL is
+        never a page URL: the page is the declared provider base URL plus the
+        repository segment of the transport-stable ``owner/repository`` identity.
+        """
+        provider = cls.repository_provider(repository, providers)
+        if provider.failure:
+            return r[str].from_failure(provider)
+        owner, separator, name = (
+            FlextInfraUtilitiesGitWorktreeDiscoveryMixin.git_remote_identity(
+                repository.url
+            ).partition("/")
+        )
+        if (
+            not separator
+            or not name
+            or owner != provider.value.organization.casefold()
+        ):
+            return r[str].fail(
+                "repository URL does not identify a repository of provider "
+                f"{provider.value.name}: {repository.name}"
+            )
+        return r[str].ok(f"{provider.value.base_url.rstrip('/')}/{name}")
+
+    @classmethod
+    def project_urls(
+        cls,
+        repository: p.Infra.RepositoryRef,
+        project: m.Infra.ProjectSpec | None,
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
+    ) -> p.Result[m.Infra.ProjectUrls]:
+        """Resolve ``[project.urls]`` from the manifest, never from a live pyproject.
+
+        A declared ``project`` owns homepage and documentation; a repository
+        without one publishes its provider page for both. The repository URL is
+        always the provider page of the declared repository.
+        """
+        page = cls.repository_page_url(repository, providers)
+        if page.failure:
+            return r[m.Infra.ProjectUrls].from_failure(page)
+        return r[m.Infra.ProjectUrls].ok(
+            m.Infra.ProjectUrls(
+                homepage=page.value if project is None else project.homepage,
+                documentation=(
+                    page.value if project is None else project.documentation
+                ),
+                repository=page.value,
+            )
+        )
+
     @staticmethod
     def resolve_integration_branch(
         workspace: m.Infra.WorkspaceSpec, provider: m.Infra.ProviderSpec
