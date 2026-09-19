@@ -39,9 +39,7 @@ class FlextInfraUtilitiesRepository:
         requirement_part, _, _ = requirement.partition(";")
         head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(requirement_part.strip())
         if head_match is None:
-            return r[t.Pair[str, str]].fail(
-                f"invalid requirement head: {requirement}"
-            )
+            return r[t.Pair[str, str]].fail(f"invalid requirement head: {requirement}")
         _, at_separator, source = requirement_part.partition("@")
         if not at_separator:
             # Plain workspace requirement: no direct git source is declared.

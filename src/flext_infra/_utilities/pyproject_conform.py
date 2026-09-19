@@ -413,17 +413,27 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         # SSOT required floors win over existing same-name pins: dedupe_specs
         # keeps the first occurrence, so toolchain floors must lead the merge.
-        # Otherwise stale member pins override the declared fleet floor.
+        # Otherwise stale member pins override the declared fleet floor. One
+        # exception is structural: a bare internal floor name carries no Git
+        # source and no version to enforce, so a live requirement that declares
+        # its own direct source is the authority for that dependency and the
+        # floor yields to it.
+        live_dev = u.Cli.toml_as_string_list(u.Cli.toml_value(groups, str(c.Infra.DEV)))
+        sourced_live_names = {
+            name
+            for requirement in live_dev
+            if (name := FlextInfraUtilitiesDependencies.dep_name(requirement))
+            and cls._declares_direct_source(requirement)
+        }
         required_dev = tuple(
             requirement
             for requirement in required_dev_dependencies
             if FlextInfraUtilitiesDependencies.dep_name(requirement) != project_name
+            and not cls._floor_yields_to_declared_source(
+                requirement, sourced_live_names
+            )
         )
-        dev = [
-            *required_dev,
-            *u.Cli.toml_as_string_list(u.Cli.toml_value(groups, str(c.Infra.DEV))),
-            *optional_dev,
-        ]
+        dev = [*required_dev, *live_dev, *optional_dev]
         if dev:
             u.Cli.toml_sync_string_list(
                 groups,
@@ -453,6 +463,26 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_remove_key_if_present(optional, str(c.Infra.DEV))
             if not tuple(optional):
                 u.Cli.toml_remove_key_if_present(project, c.Infra.OPTIONAL_DEPENDENCIES)
+
+    @staticmethod
+    def _declares_direct_source(requirement: str) -> bool:
+        """Whether one requirement line declares a direct ``@ source``."""
+        return "@" in requirement.partition(";")[0]
+
+    @staticmethod
+    def _floor_yields_to_declared_source(
+        requirement: str, sourced_live_names: frozenset[str] | set[str]
+    ) -> bool:
+        """Whether a bare internal floor name must yield to a declared source."""
+        name = FlextInfraUtilitiesDependencies.dep_name(requirement)
+        return (
+            name is not None
+            and name.startswith("flext-")
+            and not FlextInfraUtilitiesPyprojectConform._declares_direct_source(
+                requirement
+            )
+            and name in sourced_live_names
+        )
 
     @classmethod
     def _sync_workspace_dependency_group(
