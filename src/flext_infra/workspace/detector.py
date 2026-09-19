@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, t, u
 from flext_infra.protocols import p
 
 from ..base import s
@@ -107,58 +107,66 @@ class FlextInfraWorkspaceDetector(
     @classmethod
     def load_workspace_manifest(
         cls, repository_root: Path
-    ) -> p.Result[m.Infra.WorkspaceManifestSpec | None]:
-        """Load the checkout's own workspace manifest, or None when absent.
+    ) -> p.Result[t.SequenceOf[m.Infra.WorkspaceManifestSpec]]:
+        """Load the checkout's own workspace manifest as a 0-or-1 sequence.
 
         This is the single spec-load owner for ``config/workspace.yaml``: the
         manifest is the authority for a repository's provider identity, and
         every consumer loads it through here so validation cannot diverge.
+        Absence is an EMPTY sequence — success payloads are never ``None``.
         """
         manifest_path = u.Infra.workspace_manifest_path(repository_root)
         if not manifest_path.is_file():
-            return r[m.Infra.WorkspaceManifestSpec | None].ok(None)
+            return r[t.SequenceOf[m.Infra.WorkspaceManifestSpec]].ok(())
         loaded = u.Cli.config_load(manifest_path, expand_env=False)
         if loaded.failure:
             error = loaded.error
             if error is None:
                 msg = "workspace manifest load failed without an error"
                 raise RuntimeError(msg)
-            return r[m.Infra.WorkspaceManifestSpec | None].fail(
+            return r[t.SequenceOf[m.Infra.WorkspaceManifestSpec]].fail(
                 f"invalid workspace manifest ({manifest_path}): {error}"
             )
         validated: p.Result[m.Infra.WorkspaceManifestSpec] = u.validate_value(
             m.Infra.WorkspaceManifestSpec, loaded.value.data
         )
         if validated.failure:
-            return r[m.Infra.WorkspaceManifestSpec | None].fail_op(
+            return r[t.SequenceOf[m.Infra.WorkspaceManifestSpec]].fail_op(
                 f"workspace manifest model validation ({manifest_path})",
                 validated.error,
             )
-        return r[m.Infra.WorkspaceManifestSpec | None].ok(validated.value)
+        return r[t.SequenceOf[m.Infra.WorkspaceManifestSpec]].ok(
+            (validated.value,)
+        )
 
     @classmethod
     def _declared_provider_name(
         cls, repository_root: Path, *, origin_url: str
     ) -> p.Result[str]:
-        """Detect the provider key the repository's own manifest declares.
+        """Detect the provider key the repository declares for itself.
 
-        A governed repository must declare ``provider`` and ``url`` in its own
-        ``config/workspace.yaml``; there is no catalog to fall back to. The
-        declaration is real only if the live Git origin carries the same
-        organization identity as the declared URL — the same discrimination
-        ``git_remote_identity`` gives every remote shape (HTTPS, SSH, and
-        Host-alias forms).
+        With a workspace manifest, the declaration is real only if the live
+        Git origin carries the same organization identity as the declared URL
+        (the same discrimination ``git_remote_identity`` gives every remote
+        shape). Post-G1, repositories without a manifest take their provider
+        identity from the live Git origin organization itself — no catalog,
+        no invented rows.
         """
-        manifest_path = u.Infra.workspace_manifest_path(repository_root)
         loaded = cls.load_workspace_manifest(repository_root)
         if loaded.failure:
             return r[str].from_failure(loaded)
-        manifest = loaded.value
-        if manifest is None:
-            return r[str].fail(
-                "governed repository must declare its provider and url in its "
-                f"own workspace manifest: {manifest_path} is absent"
+        if not loaded.value:
+            origin_organization, origin_separator, _ = (
+                u.Infra.git_remote_identity(origin_url).partition("/")
             )
+            if not origin_separator:
+                return r[str].fail(
+                    "governed repository Git origin must name an owner and "
+                    f"repository: {origin_url}"
+                )
+            return r[str].ok(origin_organization)
+        manifest = loaded.value[0]
+        manifest_path = u.Infra.workspace_manifest_path(repository_root)
         declared = manifest.repository
         manifest_organization, manifest_separator, _ = (
             u.Infra.git_remote_identity(declared.url).partition("/")
@@ -244,14 +252,14 @@ class FlextInfraWorkspaceDetector(
             return r[
                 tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
             ].from_failure(loaded)
-        manifest = loaded.value
-        if manifest is None:
+        if not loaded.value:
             return r[
                 tuple[m.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
             ].fail(
                 "governed repository must declare its provider and url in its "
                 f"own workspace manifest: {manifest_path} is absent"
             )
+        manifest = loaded.value[0]
         declared = manifest.repository
         contradictions = cls._manifest_git_contradictions(declared, observed)
         if contradictions:
@@ -378,7 +386,15 @@ class FlextInfraWorkspaceDetector(
         subprojects: list[m.Infra.RepositoryRef] = []
         external: list[Path] = []
         seen: set[Path] = set()
-        baseline = u.Infra.repository_baseline_branch(repository_root)
+        # The workspace-declared preference owns the baseline order: a fleet
+        # integrating on a versioned release line (0.12.0-dev) is not covered
+        # by the provider's conventional fallback names alone.
+        baseline = u.Infra.repository_baseline_branch(
+            repository_root,
+            preference=(
+                config.Infra.codegen.branch_policy.integration_branch_preference
+            ),
+        )
         integration_branch = baseline.value if baseline.success else None
         for path in declared.value:
             if path in seen:

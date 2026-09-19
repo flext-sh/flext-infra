@@ -48,7 +48,10 @@ class FlextInfraUtilitiesRepository:
             )
         _, at_separator, source = requirement_part.partition("@")
         if not at_separator:
-            return r[t.Pair[str, str] | None].ok(None)
+            # Plain workspace requirement: no direct git source is declared.
+            # Success payloads are never None (flext-core result law), so the
+            # caller reads the empty pair as "no declared source".
+            return r[t.Pair[str, str] | None].ok(("", ""))
         source = source.strip()
         if not source.startswith(_GIT_URL_SCHEME_PREFIX):
             return r[t.Pair[str, str] | None].fail(
@@ -149,14 +152,14 @@ class FlextInfraUtilitiesRepository:
             )
             if declared.failure:
                 return r[str].from_failure(declared)
-            if declared.value is not None:
+            if declared.value:
                 return r[str].ok(declared.value)
         manifest = cls._manifest_declared_url(
             repository_root=repository_root, distribution=distribution
         )
         if manifest.failure:
             return r[str].from_failure(manifest)
-        if manifest.value is not None:
+        if manifest.value:
             return r[str].ok(manifest.value)
         return r[str].fail(
             f"infrastructure repository {distribution} is undeclared by this "
@@ -209,16 +212,17 @@ class FlextInfraUtilitiesRepository:
             parsed = cls.declared_git_source(requirement)
             if parsed.failure:
                 return r[str | None].from_failure(parsed)
-            if parsed.value is None:
+            url = parsed.value[0] if parsed.value else ""
+            if not url:
                 continue
-            url, _ref = parsed.value
             if not url.startswith("https://"):
                 return r[str | None].fail(
                     "declared infrastructure dependency provenance must be "
                     f"HTTPS: {requirement}"
                 )
             return r[str | None].ok(url)
-        return r[str | None].ok(None)
+        # No declared source: absence is an EMPTY payload, never None.
+        return r[str | None].ok("")
 
     @staticmethod
     def _manifest_declared_url(
@@ -234,14 +238,15 @@ class FlextInfraUtilitiesRepository:
             return r[str | None].fail(
                 loaded.error or "workspace manifest load failed without an error"
             )
-        if loaded.value is None:
-            return r[str | None].ok(None)
-        manifest = loaded.value
+        if not loaded.value:
+            return r[str | None].ok("")
+        manifest = loaded.value[0]
         candidates = (manifest.repository, *manifest.members)
         for repository in candidates:
             if repository.distribution == distribution:
                 return r[str | None].ok(repository.url)
-        return r[str | None].ok(None)
+        # Absence is an EMPTY payload, never None (flext-core result law).
+        return r[str | None].ok("")
 
     @staticmethod
     def repository_provider(
