@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_infra import r
+from flext_core import r
 from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
 from tests import c, m, u
 

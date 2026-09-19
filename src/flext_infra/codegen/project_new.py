@@ -9,7 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from .. import c, m, r, s, u
+from flext_core import r
+
+from .. import c, config, m, u
+from ._execution import FlextInfraCodegenExecutionBase
 from .conform import FlextInfraCodegenConform
 
 # New file per operator live
@@ -20,7 +23,7 @@ if TYPE_CHECKING:
     from .. import p
 
 
-class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
+class FlextInfraCodegenProjectNew(FlextInfraCodegenExecutionBase[m.Infra.CodegenResult]):
     """Scaffold one new repository of a declared governance kind."""
 
     name: Annotated[

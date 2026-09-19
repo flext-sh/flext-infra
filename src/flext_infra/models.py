@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from flext_cli import m
 
-from ._models._config.base import FlextInfraConfigModels
+from ._models._config import FlextInfraConfigModels
 from ._models.base import FlextInfraModelsBase
 from ._models.census import FlextInfraModelsCensus
 from ._models.check import FlextInfraModelsCheck

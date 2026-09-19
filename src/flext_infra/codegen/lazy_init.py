@@ -12,11 +12,13 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, Annotated, override
 
-from .. import c, config, m, r, s, u
+from flext_core import r
+
+from .. import c, config, m, u
 from ..workspace.rope import FlextInfraRopeWorkspace
-from ._lazy_init_class_receipts import FlextInfraCodegenLazyInitClassReceipts
+from ._execution import FlextInfraCodegenExecutionBase
 from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
 from .lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 
@@ -26,7 +28,9 @@ if TYPE_CHECKING:
     from .. import p, t
 
 
-class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixin):
+class FlextInfraCodegenLazyInit(
+    FlextInfraCodegenExecutionBase[bool], FlextInfraCodegenLazyInitGenerationMixin
+):
     """Plan ``__init__.py`` artifacts with PEP 562 lazy imports.
 
     Scans sibling ``.py`` files in each package directory, discovers their
@@ -34,6 +38,9 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
     Processes bottom-up so child packages are generated before parents.
     """
 
+    target_module: Annotated[
+        str, m.Field(description="Optional package module restricted to one lazy-init plan")
+    ] = ""
     _modified_files: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
     _duplicate_class_names: int = u.PrivateAttr(default_factory=lambda: 0)
 

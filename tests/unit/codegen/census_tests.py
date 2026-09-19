@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import r
+from flext_core import r
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from tests import m, u
 

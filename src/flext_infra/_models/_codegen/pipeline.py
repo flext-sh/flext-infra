@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m, u
 
 from ... import p, t
-from .._config import FlextInfraConfigModelsArtifact
+from .._config import FlextInfraConfigModels
 from .fix import FlextInfraModelsCodegenFixModels
 from .scaffold import FlextInfraModelsCodegenScaffoldModels
 

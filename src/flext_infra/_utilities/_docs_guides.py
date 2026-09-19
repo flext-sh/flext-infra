@@ -139,13 +139,17 @@ class FlextInfraUtilitiesDocsGuidesMixin:
                 "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
                 "from the workspace root. -->\n"
                 f"<!-- Source of truth: `docs/guides/{path.name}`; "
-                "adjust that source, never this projection. -->"
+                "adjust that workspace source, never this member projection. -->"
             )
-            if content.startswith((
-                ownership + "\n\n",
-                previous_ownership + "\n\n",
-                legacy_ownership + "\n\n",
-            )):
+            legacy_marker = (
+                content.startswith(
+                    "<!-- AUTO-GENERATED FILE — regenerate through `make gen`"
+                )
+                and f"docs/guides/{path.name}" in content.partition("\n\n")[0]
+            )
+            if content.startswith(
+                (ownership + "\n\n", previous_ownership + "\n\n", legacy_ownership)
+            ) or legacy_marker:
                 owned.add(path)
         artifacts: list[DocsRenderedArtifactTuple] = []
         expected_paths = {destination_root / path.name for path in sources}

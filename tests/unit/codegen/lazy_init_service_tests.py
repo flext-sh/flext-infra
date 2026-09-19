@@ -452,14 +452,14 @@ class TestsFlextInfraCodegenLazyInitService:
         apply_service.target_module = "flext_test_project"
         apply_service.apply_changes = True
 
-        apply_result = FlextInfraCodegenLazyInit.execute_command(apply_service)
+        apply_result = apply_service.execute()
         applied_init = init_path.read_bytes()
         materialized = u.Tests.materialize_lazy_init(apply_service)
         check_service = u.Tests.create_lazy_init_service(repository_root)
         check_service.target_module = "flext_test_project"
         check_service.check_only = True
 
-        check_result = FlextInfraCodegenLazyInit.execute_command(check_service)
+        check_result = check_service.execute()
 
         tm.that(apply_result.success, eq=False)
         tm.that(apply_result.error, has="publication is owned by codegen conform")

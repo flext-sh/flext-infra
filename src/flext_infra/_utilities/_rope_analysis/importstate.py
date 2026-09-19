@@ -556,7 +556,8 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
                 return ()
             source_class_bases = {
                 class_info.name: class_info.bases
-                for class_info in FlextInfraUtilitiesRopeAnalysisAstHelpers.class_info_from_source(
+                for class_info
+                in FlextInfraUtilitiesRopeAnalysisAstHelpers.class_info_from_source(
                     resource.read()
                 )
             }

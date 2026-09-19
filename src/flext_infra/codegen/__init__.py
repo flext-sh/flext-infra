@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from ._conform.pyproject_policy import FlextInfraCodegenConformPyprojectPolicy
     from ._conform.scaffold_plan import FlextInfraCodegenConformScaffoldPlan
     from ._consolidator_steps import FlextInfraCodegenConsolidatorStepsMixin
+    from ._execution import FlextInfraCodegenExecutionBase
     from ._fixer_passes import FlextInfraCodegenFixerPassesMixin
     from ._fixer_results import FlextInfraCodegenFixerResultsMixin
     from ._fixer_workspace import FlextInfraCodegenFixerWorkspaceMixin
@@ -104,6 +105,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenConformScaffoldPlan",
     "FlextInfraCodegenConsolidator",
     "FlextInfraCodegenConsolidatorStepsMixin",
+    "FlextInfraCodegenExecutionBase",
     "FlextInfraCodegenFixer",
     "FlextInfraCodegenFixerPassesMixin",
     "FlextInfraCodegenFixerResultsMixin",
@@ -192,6 +194,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._conform.pyproject_policy": ("FlextInfraCodegenConformPyprojectPolicy",),
             "._conform.scaffold_plan": ("FlextInfraCodegenConformScaffoldPlan",),
             "._consolidator_steps": ("FlextInfraCodegenConsolidatorStepsMixin",),
+            "._execution": ("FlextInfraCodegenExecutionBase",),
             "._fixer_passes": ("FlextInfraCodegenFixerPassesMixin",),
             "._fixer_results": ("FlextInfraCodegenFixerResultsMixin",),
             "._fixer_workspace": ("FlextInfraCodegenFixerWorkspaceMixin",),

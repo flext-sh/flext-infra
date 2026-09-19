@@ -89,12 +89,17 @@ class FlextInfraUtilitiesDocsValidate:
         raw: t.Infra.InfraSequence,
     ) -> p.Result[t.StrSequence]:
         """Validate ``required_skills`` payload against the canonical adapter."""
-        validated = u.validate_value(t.Infra.STR_SEQ_ADAPTER, raw, strict=True)
-        if validated.failure:
-            return r[t.StrSequence].fail_op(
-                "validate required_skills configuration", validated.error
+        try:
+            validated: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(
+                raw, strict=True
             )
-        return r[t.StrSequence].ok(validated.value)
+        except c.EXC_BROAD_RUNTIME as exc:
+            return r[t.StrSequence].fail(
+                f"invalid required_skills configuration: {exc}",
+                error_code="required_skills_validation",
+                exception=exc,
+            )
+        return r[t.StrSequence].ok(validated)
 
     @staticmethod
     def docs_missing_required_paths(scope: m.Infra.DocScope) -> t.StrSequence:

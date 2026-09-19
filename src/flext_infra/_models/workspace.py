@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 
 from .. import c, t
-from . import FlextInfraModelsDefaults, FlextInfraModelsMixins as mm
+from . import FlextInfraModelsMixins as mm, ImmutableEmptyMapping
 from ._config import FlextInfraConfigModels
 from ._git import FlextInfraModelsGitIdentity
 

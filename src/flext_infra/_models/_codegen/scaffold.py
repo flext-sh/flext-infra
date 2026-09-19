@@ -80,10 +80,11 @@ class FlextInfraModelsCodegenScaffoldModels:
         ]
         project_module: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Public project package owning the facade aliases"),
+            m.Field(description="Owning package imported by generated test modules"),
         ]
         test_module: Annotated[
-            bool, m.Field(description="Whether modules render as test facades")
+            bool,
+            m.Field(description="Whether this directory renders test module skeletons"),
         ]
         dry_run: Annotated[
             bool, m.Field(description="Whether to report creations without writing")

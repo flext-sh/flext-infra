@@ -20,6 +20,8 @@ from .workspace import FlextInfraConfigModelsWorkspace
 class FlextInfraConfigModels(
     FlextInfraConfigModelsContract,
     FlextInfraConfigModelsProvider,
+    FlextInfraConfigModelsRender,
+    FlextInfraConfigModelsRoot,
     FlextInfraConfigModelsScaffold,
     FlextInfraConfigModelsStatic,
     FlextInfraConfigModelsMake,

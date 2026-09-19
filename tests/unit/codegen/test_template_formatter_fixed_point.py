@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ... import tm, u
-from ._support import CodegenTestSupport
+from flext_tests import tm
+
+from ... import m, u
 
 
 class TestsFlextInfraTemplateFormatterFixedPoint:

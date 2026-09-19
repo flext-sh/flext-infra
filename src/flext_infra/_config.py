@@ -11,7 +11,7 @@ from typing import ClassVar, override
 
 from flext_cli.config import FlextCliConfig
 
-from ._models._config.base import FlextInfraConfigModels
+from ._models._config import FlextInfraConfigModels
 
 
 class FlextInfraConfig(FlextCliConfig):

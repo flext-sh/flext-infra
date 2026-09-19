@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import r
-from tests import c, m
+from flext_core import r
+from tests import c, m, t, u
 from tests.utilities_replay import TestsFlextInfraUtilitiesReplayRunnerMixin
 
 

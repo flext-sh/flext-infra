@@ -206,6 +206,10 @@ class FlextInfraConfigModelsContexts:
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor tool value")
         ]
+        make_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Resolved Make toolchain version for generated commands"),
+        ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
         ]
@@ -824,6 +828,13 @@ class FlextInfraConfigModelsContexts:
         ci_enabled: Annotated[
             bool, m.Field(description="Whether conform owns the CI projection")
         ]
+        publishes_release: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description="Whether conform renders release-protocol artifacts",
+            ),
+        ] = False
         gascity_enabled: Annotated[
             bool,
             m.Field(

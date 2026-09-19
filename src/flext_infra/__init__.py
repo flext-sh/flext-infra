@@ -20,8 +20,6 @@ from .__version__ import (
 )
 
 if TYPE_CHECKING:
-    from flext_cli import d, e, h, r, x
-
     from . import (
         check,
         codegen,
@@ -505,22 +503,18 @@ __all__: tuple[str, ...] = (
     "codemod",
     "collect_markdown_files",
     "config",
-    "d",
     "deps",
     "detectors",
     "docs",
     "docs_main",
-    "e",
     "fixers",
     "gates",
-    "h",
     "infra",
     "m",
     "main",
     "maintenance",
     "p",
-    "r",
-    "read_ignore_patterns",
+    "promoted",
     "refactor",
     "release",
     "s",
@@ -532,9 +526,6 @@ __all__: tuple[str, ...] = (
     "u",
     "validate",
     "workspace",
-    "write_docstring_sources",
-    "write_fenced_block_sources",
-    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -834,7 +825,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
             ".workspace.rope": ("FlextInfraRopeWorkspace",),
             ".worktree": ("FlextInfraWorktreeService",),
-            "flext_cli": ("d", "e", "h", "r", "x"),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

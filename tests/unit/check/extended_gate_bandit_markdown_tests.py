@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, m, t
+from flext_core import r
+from flext_infra import m, p, t
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from tests import TestsFlextInfraUtilities as u

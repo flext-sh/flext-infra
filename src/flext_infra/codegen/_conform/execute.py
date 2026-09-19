@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, Final, Self
 
-from ... import c, config, m, p, r, t, u
+from flext_core import r
+
+from ... import c, config, m, p, t, u
 from ...docs import FlextInfraDocGenerator
 from ...workspace import FlextInfraWorkspaceDetector
 from .. import (
@@ -18,6 +20,18 @@ from .plan import FlextInfraCodegenConformPlan
 
 class _ConformExecuteRoles:
     if TYPE_CHECKING:
+        request: m.Infra.CodegenConformRequest | None
+        repository_root: Path
+        initial_workspace: m.Infra.WorkspaceSpec | None
+
+        def plan(self, request: m.Infra.CodegenConformRequest) -> p.Result[m.Infra.CodegenPlan]: ...
+        def _mise_config_plans(self, plan: m.Infra.CodegenPlan) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
+        def _conform_workspace_beads_routes(self, request: m.Infra.CodegenConformRequest) -> p.Result[bool]: ...
+        def _owned_docs_files(self, request: m.Infra.CodegenConformRequest, files: t.SequenceOf[m.Infra.CodegenFilePlan]) -> tuple[m.Infra.CodegenFilePlan, ...]: ...
+        def _owned_docs_directories(self, request: m.Infra.CodegenConformRequest, plan: m.Infra.CodegenPlan, directories: t.SequenceOf[Path]) -> tuple[Path, ...]: ...
+        @staticmethod
+        def _repository_provider(repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec) -> p.Result[m.Infra.ProviderSpec]: ...
+
 
         def plan(
             self, request: m.Infra.CodegenConformRequest
@@ -48,7 +62,7 @@ class FlextInfraCodegenConformExecute(
 
     @classmethod
     def execute_request(
-        cls,
+        cls: type[Self],
         request: m.Infra.CodegenConformRequest,
         initial_workspace: m.Infra.WorkspaceSpec | None = None,
         *,
@@ -109,7 +123,9 @@ class FlextInfraCodegenConformExecute(
                 return r[m.Infra.CodegenResult].from_failure(committed)
             initialized_git = True
         service = cls(
-            repository_root=root, request=request, initial_workspace=initial_workspace
+            repository_root=root,
+            request=request,
+            initial_workspace=initial_workspace,
         )
         result = service.execute()
         if result.success:
@@ -146,7 +162,7 @@ class FlextInfraCodegenConformExecute(
             return self._execute_managed(request)
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY:
             mise_owner = FlextInfraCodegenMiseArtifacts(
-                repository_root=request.root, apply_changes=True, check_only=False
+                repository_root=request.root
             )
             transaction = FlextInfraCodegenTransaction(mise_owner)
             return transaction.run_locked(
@@ -228,8 +244,6 @@ class FlextInfraCodegenConformExecute(
         mode = c.Infra.CodegenConformMode(request.mode)
         mise_owner = FlextInfraCodegenMiseArtifacts(
             repository_root=request.root,
-            apply_changes=mode is c.Infra.CodegenConformMode.APPLY,
-            check_only=mode is c.Infra.CodegenConformMode.CHECK,
         )
         transaction = FlextInfraCodegenTransaction(mise_owner)
         return transaction.run_locked(
@@ -642,10 +656,15 @@ class FlextInfraCodegenConformExecute(
         if docs_fixed_point.failure:
             return r[bool].from_failure(docs_fixed_point)
         mise = FlextInfraCodegenMiseArtifacts(
-            repository_root=request.root, apply_changes=False, check_only=True
+            repository_root=request.root
         )
-        for project in session.plan.layout.projects:
-            validated = mise.validate_artifacts(project.root)
+        plan = session.plan
+        if isinstance(plan, m.Infra.MiseToolchainWorkspacePlan):
+            project_layouts = (p.layout for p in plan.projects)
+        else:
+            project_layouts = plan.layout.projects
+        for project_layout in project_layouts:
+            validated = mise.validate_artifacts(project_layout.root)
             if validated.failure:
                 return r[bool].from_failure(validated)
         return r[bool].ok(True)

@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
+from flext_core import e
 from flext_infra import c, m, t, u
 
 from .base_gate import FlextInfraGate

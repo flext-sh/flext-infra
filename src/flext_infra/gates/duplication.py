@@ -9,7 +9,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_core import r
+from flext_core import e, r
 from flext_infra import c, m, t, u
 
 from .base_gate import FlextInfraGate

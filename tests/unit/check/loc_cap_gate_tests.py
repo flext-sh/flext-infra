@@ -13,7 +13,8 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, config
+from flext_core import r
+from flext_infra import config
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
 from tests import u
 

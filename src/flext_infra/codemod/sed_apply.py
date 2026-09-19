@@ -12,7 +12,9 @@ from typing import override
 
 from flext_cli import cli
 
-from .. import FlextInfraServiceBase, c, config, m, p, r, t, u
+from flext_core import r
+
+from .. import FlextInfraServiceBase, c, config, m, p, t, u
 
 
 class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):

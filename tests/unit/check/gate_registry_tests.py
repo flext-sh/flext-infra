@@ -8,10 +8,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import config
+from flext_tests import tm
+
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates import FlextInfraCanonicalAliasGate
-from tests import c, m, t, tm
+from tests import c, m, t
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -13,7 +13,8 @@ import pytest
 from flext_cli import u as cli_u
 from flext_tests import tm
 
-from flext_infra import c, main, r
+from flext_core import r
+from flext_infra import c, main
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from tests import u as test_u
 

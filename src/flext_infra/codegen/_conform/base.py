@@ -2,6 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Annotated
+
+from flext_core import s
+
+from ... import m
+from .._conform_gitignore import FlextInfraCodegenConformGitignoreMixin
+from .bootstrap import FlextInfraCodegenConformBootstrap
 from .execute import FlextInfraCodegenConformExecute
 
 
@@ -14,6 +22,23 @@ class FlextInfraCodegenConformBase(FlextInfraCodegenConformExecute):
     context render <- artifact render <- existing plan <- scaffold plan <- plan
     <- execute.
     """
+
+    request: Annotated[
+        m.Infra.CodegenConformRequest | None,
+        m.Field(default=None, exclude=True, description="Validated conform request"),
+    ] = None
+    repository_root: Annotated[
+        Path,
+        m.Field(default=Path(), exclude=True, description="Conform repository root"),
+    ] = Path()
+    initial_workspace: Annotated[
+        m.Infra.WorkspaceSpec | None,
+        m.Field(
+            default=None,
+            exclude=True,
+            description="Validated scaffold specification included in the atomic plan",
+        ),
+    ] = None
 
 
 __all__: list[str] = ["FlextInfraCodegenConformBase"]

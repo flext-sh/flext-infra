@@ -18,7 +18,9 @@ from bisect import bisect_right
 from fnmatch import fnmatch
 from pathlib import Path
 
-from .. import c, m, p, r, t, u
+from flext_core import r
+
+from .. import c, m, p, t, u
 
 
 class FlextInfraModTextGateEngine:

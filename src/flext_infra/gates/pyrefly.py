@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING, ClassVar, override
 
+from flext_core import e
 from flext_infra import c, m, u
 
 from .base_gate import FlextInfraGate
