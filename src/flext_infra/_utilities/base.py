@@ -45,7 +45,7 @@ class FlextInfraUtilitiesBase:
         Only an unset variable falls back to ``default``; a set but blank value
         stays blank so callers can reject it explicitly.
         """
-        value = _settings_env_lookup(name)
+        value = FlextInfraSettings.env_lookup(name)
         return default.strip() if value is None else value.strip()
 
     @staticmethod

@@ -85,7 +85,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
             ) = None
             if isinstance(loaded_result.value, list):
                 normalized_issues: t.MutableSequenceOf[t.JsonMapping] = []
-                for _index, item in enumerate(loaded_result.value):
+                for index, item in enumerate(loaded_result.value):
                     if not isinstance(item, Mapping):
                         return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail(
                             f"deptry JSON issue {index} must be a mapping"

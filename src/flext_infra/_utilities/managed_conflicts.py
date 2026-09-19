@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, m, t
-from .._config import FlextInfraConfig
 
+from .._config import FlextInfraConfig
 from .base import FlextInfraUtilitiesBase
 
 if TYPE_CHECKING:
