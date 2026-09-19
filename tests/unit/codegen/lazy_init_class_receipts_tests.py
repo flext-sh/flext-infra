@@ -82,9 +82,7 @@ class TestsFlextInfraCodegenLazyInitReceiptScan:
         (package / "__init__.py").write_text('"""Test package."""\n', encoding="utf-8")
         (package / f"{name}.py").write_text(body, encoding="utf-8")
 
-    def test_scan_outcome_is_stable_across_receipt_runs(
-        self, tmp_path: Path
-    ) -> None:
+    def test_scan_outcome_is_stable_across_receipt_runs(self, tmp_path: Path) -> None:
         """Cold and warm scans agree on identical bytes (flext-8hctr semantics).
 
         The scan's scope_path guard currently selects no objects, so both runs

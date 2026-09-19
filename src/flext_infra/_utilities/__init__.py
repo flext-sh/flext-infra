@@ -353,7 +353,6 @@ __all__: tuple[str, ...] = (
     "_rope",
     "_rope_analysis",
     "_semantic_cutover",
-    "git_stdin",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

@@ -6,9 +6,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests.unit.validate._fixtures import (
-    TestsFlextInfraValidateNamespaceBase,
-)
+from tests.unit.validate._fixtures import TestsFlextInfraValidateNamespaceBase
 
 
 class TestsFlextInfraRule4Annotations(TestsFlextInfraValidateNamespaceBase):
@@ -87,9 +85,7 @@ class TestsFlextInfraRule4Annotations(TestsFlextInfraValidateNamespaceBase):
         result = self.validator.validate_project(root)
 
         tm.ok(result)
-        self._assert_no_violation_contains(
-            root, "module alias/data declaration"
-        )
+        self._assert_no_violation_contains(root, "module alias/data declaration")
 
 
 __all__: list[str] = ["TestsFlextInfraRule4Annotations"]

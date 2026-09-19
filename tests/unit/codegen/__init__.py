@@ -31,6 +31,10 @@ if TYPE_CHECKING:
     from .lazy_init_bootstrap_package_tests import (
         TestsFlextInfraLazyInitBootstrapPackage,
     )
+    from .lazy_init_class_receipts_tests import (
+        TestsFlextInfraCodegenLazyInitClassReceipts,
+        TestsFlextInfraCodegenLazyInitReceiptScan,
+    )
     from .lazy_init_file_plan_tests import TestsFlextInfraCodegenLazyInitFilePlans
     from .lazy_init_generation_tests import TestsFlextInfraCodegenGeneration
     from .lazy_init_process_tests import TestsFlextInfraLazyInitProcessing
@@ -143,7 +147,9 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCodegenLayoutGitignore",
     "TestsFlextInfraCodegenLayoutMakeRoot",
     "TestsFlextInfraCodegenLazyInit",
+    "TestsFlextInfraCodegenLazyInitClassReceipts",
     "TestsFlextInfraCodegenLazyInitFilePlans",
+    "TestsFlextInfraCodegenLazyInitReceiptScan",
     "TestsFlextInfraCodegenLazyInitService",
     "TestsFlextInfraCodegenLinkedWorktreeManifest",
     "TestsFlextInfraCodegenMain",
@@ -234,6 +240,10 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".lazy_init_bootstrap_package_tests": (
                 "TestsFlextInfraLazyInitBootstrapPackage",
+            ),
+            ".lazy_init_class_receipts_tests": (
+                "TestsFlextInfraCodegenLazyInitClassReceipts",
+                "TestsFlextInfraCodegenLazyInitReceiptScan",
             ),
             ".lazy_init_file_plan_tests": ("TestsFlextInfraCodegenLazyInitFilePlans",),
             ".lazy_init_generation_tests": ("TestsFlextInfraCodegenGeneration",),

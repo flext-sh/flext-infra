@@ -35,7 +35,7 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
                 encoding="utf-8",
             )
 
-        report = self.validator.validate_project(root)
+        report = self._validate_project(root)
 
         tm.that(report.passed, eq=True, msg=str(report.violations))
         tm.that(report.violations, empty=True)
@@ -65,7 +65,7 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
             tmp_path, module_source=source, module_path=module_path
         )
 
-        report = self.validator.validate_project(root)
+        report = self._validate_project(root)
 
         tm.that(report.passed, eq=False)
         tm.that(
@@ -89,7 +89,7 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
             tmp_path, module_source=source, module_name="models.py"
         )
 
-        report = self.validator.validate_project(root)
+        report = self._validate_project(root)
 
         tm.that(report.passed, eq=False)
         tm.that(
@@ -103,10 +103,9 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
             module_source=u.Tests.namespace_fixture("rule0_valid.py"),
             module_name="models.py",
         )
-        result = self.validator.validate_project(root)
-        tm.that(result.success, eq=True)
-        tm.that(result.value.passed, eq=True)
-        tm.that(result.value.violations, empty=True)
+        report = self._validate_project(root)
+        tm.that(report.passed, eq=True)
+        tm.that(report.violations, empty=True)
 
     def test_rule0_does_not_flag_non_namespace_runtime_module(
         self, tmp_path: Path
@@ -121,13 +120,10 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
             tmp_path, module_source=module_source, module_name="api.py"
         )
 
-        result = self.validator.validate_project(root)
+        report = self._validate_project(root)
 
-        tm.ok(result)
         tm.that(
-            any(
-                violation.startswith("[NS-000") for violation in result.value.violations
-            ),
+            any(violation.startswith("[NS-000") for violation in report.violations),
             eq=False,
         )
 
@@ -147,7 +143,7 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
             tmp_path, module_source=module_source, module_name="runtime.py"
         )
 
-        report = self.validator.validate_project(root)
+        report = self._validate_project(root)
 
         tm.that(report.violations, empty=False)
 
@@ -182,13 +178,12 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
             tmp_path, module_source=module_source, module_name="models.py"
         )
 
-        result = self.validator.validate_project(root)
+        report = self._validate_project(root)
 
-        tm.ok(result)
         tm.that(
             any(
                 forbidden_violation_substr in violation
-                for violation in result.value.violations
+                for violation in report.violations
             ),
             eq=False,
         )

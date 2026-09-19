@@ -93,12 +93,7 @@ class TestsFlextInfraNamespaceProjectFixture:
         )
 
     @staticmethod
-    def create_project(
-        tmp_path: Path,
-        *,
-        module_source: str,
-        module_name: str,
-    ) -> Path:
+    def create_project(tmp_path: Path, *, module_source: str, module_name: str) -> Path:
         """Create a test project with a single module."""
         return u.Tests.namespace_project(
             tmp_path, module_source=module_source, module_name=module_name
@@ -106,10 +101,7 @@ class TestsFlextInfraNamespaceProjectFixture:
 
     @staticmethod
     def create_project_at_path(
-        tmp_path: Path,
-        *,
-        module_source: str,
-        module_path: str,
+        tmp_path: Path, *, module_source: str, module_path: str
     ) -> tuple[Path, Path]:
         """Create a test project at a specific module path."""
         return u.Tests.namespace_project_path(

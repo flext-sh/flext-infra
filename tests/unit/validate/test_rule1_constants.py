@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from tests.unit.validate._fixtures import (
     TestsFlextInfraNamespaceProjectFixture,
     TestsFlextInfraValidateNamespaceBase,

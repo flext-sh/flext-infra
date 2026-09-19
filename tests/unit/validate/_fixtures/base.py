@@ -11,7 +11,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from tests import u
+from tests import m, u
 
 
 class TestsFlextInfraValidateNamespaceBase:
@@ -27,11 +27,7 @@ class TestsFlextInfraValidateNamespaceBase:
         return FlextInfraNamespaceValidator()
 
     def _create_namespace_project(
-        self,
-        tmp_path: Path,
-        *,
-        module_source: str,
-        module_name: str,
+        self, tmp_path: Path, *, module_source: str, module_name: str
     ) -> Path:
         """Create a namespace test project with the given module source."""
         return u.Tests.namespace_project(
@@ -39,18 +35,14 @@ class TestsFlextInfraValidateNamespaceBase:
         )
 
     def _create_namespace_project_path(
-        self,
-        tmp_path: Path,
-        *,
-        module_source: str,
-        module_path: str,
+        self, tmp_path: Path, *, module_source: str, module_path: str
     ) -> tuple[Path, Path]:
         """Create a namespace test project at a specific module path."""
         return u.Tests.namespace_project_path(
             tmp_path, module_source=module_source, module_path=module_path
         )
 
-    def _validate_project(self, root: Path):
+    def _validate_project(self, root: Path) -> m.Infra.ValidationReport:
         """Run validator on project and return successful result."""
         result = self.validator.validate_project(root)
         tm.ok(result)
@@ -81,9 +73,7 @@ class TestsFlextInfraValidateNamespaceBase:
         if expected_violation_count is not None:
             tm.that(len(report.violations), eq=expected_violation_count)
 
-    def _assert_violation_contains(
-        self, root: Path, substring: str
-    ) -> None:
+    def _assert_violation_contains(self, root: Path, substring: str) -> None:
         """Assert that at least one violation contains the given substring."""
         report = self._validate_project(root)
         tm.that(
@@ -92,9 +82,7 @@ class TestsFlextInfraValidateNamespaceBase:
             msg=f"Expected violation containing '{substring}' not found in: {report.violations}",
         )
 
-    def _assert_no_violation_contains(
-        self, root: Path, substring: str
-    ) -> None:
+    def _assert_no_violation_contains(self, root: Path, substring: str) -> None:
         """Assert that no violation contains the given substring."""
         report = self._validate_project(root)
         tm.that(

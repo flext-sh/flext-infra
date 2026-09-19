@@ -205,11 +205,6 @@ if TYPE_CHECKING:
     from .services.cli_routes_validate import ValidationRoutes
     from .services.cli_routes_validate_commands import ValidationCommandRoutes
     from .services.cli_routes_workspace import WorkspaceRoutes
-    from .services.codegen import FlextInfraCodegen
-    from .transformers.census_visitors import (
-        FlextInfraCensusImportDiscoveryVisitor,
-        FlextInfraCensusUsageCollector,
-    )
     from .transformers.class_reconstructor import FlextInfraRefactorClassReconstructor
     from .transformers.compatibility_alias import FlextInfraRefactorCompatibilityAlias
     from .transformers.dataclass_modelizer import FlextInfraRefactorDataclassModelizer

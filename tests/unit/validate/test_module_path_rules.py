@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from tests import c, m, u
+from tests import c
 from tests.unit.validate._fixtures import TestsFlextInfraValidateNamespaceBase
 
 
@@ -33,7 +33,7 @@ class TestsFlextInfraModulePathRules(TestsFlextInfraValidateNamespaceBase):
                 f"{target_alias} = TestsFlextTest{suffix}\n"
             ),
         )
-        report = self.validator.validate_project(root)
+        report = self._validate_project(root)
         tm.that(report.passed, eq=valid_alias, msg=str(report.violations))
 
     @pytest.mark.parametrize(
@@ -207,14 +207,12 @@ class TestsFlextInfraModulePathRules(TestsFlextInfraValidateNamespaceBase):
         )
         self._assert_file_in_inventory(root, target)
 
-        result = self.validator.validate_project(root)
+        report = self._validate_project(root)
 
-        tm.ok(result)
         if expect_passed is not None:
-            tm.that(result.value.passed, eq=expect_passed, msg=str(result.value))
+            tm.that(report.passed, eq=expect_passed, msg=str(report.violations))
         tm.that(
-            any(violation_substr in v for v in result.value.violations),
-            eq=expect_violation,
+            any(violation_substr in v for v in report.violations), eq=expect_violation
         )
 
 

@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Shared test fixtures and base classes for namespace validator tests."""
+"""Tests.unit.validate. Fixtures package."""
 
 from __future__ import annotations
 
@@ -9,26 +9,47 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import tm
-
-    from .assertions import TestsFlextInfraValidateAssertions
-    from .base import TestsFlextInfraValidateNamespaceBase
-    from .project import TestsFlextInfraNamespaceProjectFixture
-
+    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraNamespaceProjectFixture",
-    "TestsFlextInfraValidateAssertions",
-    "TestsFlextInfraValidateNamespaceBase",
+    "c",
+    "d",
+    "e",
+    "h",
+    "m",
+    "p",
+    "r",
+    "s",
+    "t",
+    "td",
+    "tf",
+    "tk",
     "tm",
+    "tv",
+    "u",
+    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
-            ".base": ("TestsFlextInfraValidateNamespaceBase",),
-            ".project": ("TestsFlextInfraNamespaceProjectFixture",),
-            ".assertions": ("TestsFlextInfraValidateAssertions",),
-            "flext_tests": ("tm",),
+            "flext_tests": (
+                "c",
+                "d",
+                "e",
+                "h",
+                "m",
+                "p",
+                "r",
+                "s",
+                "t",
+                "td",
+                "tf",
+                "tk",
+                "tm",
+                "tv",
+                "u",
+                "x",
+            )
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,
