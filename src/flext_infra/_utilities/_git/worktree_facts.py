@@ -1,117 +1,244 @@
-"""Worktree registry facts — filesystem discovery and staleness measurement."""
+"""Canonical Git responsibility mixin for ``u.Infra``.
+
+Filesystem-only worktree facts: registered worktrees come straight from
+``.git/worktrees/<entry>/gitdir`` with no Git subprocess, staleness is the
+bounded newest mtime, and the layout/dependency vocabulary arrives as typed
+policy. Retirement is never executed here: a stale worktree only yields
+``contents-remove`` plans for its rebuildable dependency directories.
+"""
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Mapping, MutableMapping
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Literal
 
-from flext_core import r
-from flext_infra import m, t
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 
-if TYPE_CHECKING:
-    from flext_infra import p
+from .worktree_measure import FlextInfraUtilitiesGitWorktreeMeasureMixin
 
 
-class FlextInfraUtilitiesGitWorktreeFactsMixin:
-    """Measure registered worktrees without shelling out to git.
-
-    Discovery reads ``.git/worktrees/<id>/gitdir`` directly: the pointer file
-    names the worktree's own ``.git`` entry, so the worktree root is its
-    parent. Broken pointers and missing roots are skipped, never fatal.
-    Consumers own retirement policy; this mixin only reports facts.
-    """
-
-    _DAY_SECONDS: float = 86400.0
+class FlextInfraUtilitiesGitWorktreeFactsMixin(
+    FlextInfraUtilitiesGitWorktreeMeasureMixin
+):
+    """Own FS-only worktree facts discovery and stale-deps planning."""
 
     @classmethod
-    def git_registered_worktrees(
+    def git_registered_worktrees_fs(
         cls, repository_root: Path
-    ) -> p.Result[t.VariadicTuple[t.Pair[Path, str]]]:
-        """Return (root, branch) for every registered worktree, sorted by root."""
-        registry = repository_root / ".git" / "worktrees"
+    ) -> t.VariadicTuple[t.Pair[Path, str]]:
+        """Resolve registered worktrees from ``.git/worktrees`` without Git.
+
+        The ``gitdir`` pointer names the worktree's own ``.git`` file, so the
+        worktree root is its parent. Branch text comes from the registry HEAD;
+        detached entries yield an empty branch. Broken or unreadable entries
+        are report cells, not failures, skipped silently in stable sorted
+        order.
+        """
+        registry = (
+            repository_root.expanduser()
+            / c.Infra.GIT_DIR
+            / c.Infra.GIT_WORKTREES_DIRNAME
+        )
         if not registry.is_dir():
-            return r[tuple[tuple[t.Pair[Path, str], ...]]].ok(())
+            return ()
         resolved: list[t.Pair[Path, str]] = []
-        seen: set[Path] = set()
         for entry in sorted(registry.iterdir()):
-            gitdir = entry / "gitdir"
-            try:
-                pointer = Path(gitdir.read_text(encoding="utf-8").strip())
-            except (OSError, ValueError):
+            pointer = cls._worktree_gitdir_pointer(entry)
+            if pointer is None:
                 continue
             worktree_root = pointer.parent
-            if not worktree_root.is_dir() or worktree_root in seen:
+            if not worktree_root.is_dir():
                 continue
-            seen.add(worktree_root)
-            branch = ""
-            try:
-                head = (entry / "HEAD").read_text(encoding="utf-8").strip()
-            except OSError:
-                head = ""
-            if head.startswith("ref: refs/heads/"):
-                branch = head.removeprefix("ref: refs/heads/")
-            resolved.append((worktree_root, branch))
-        return r[tuple[tuple[t.Pair[Path, str], ...]]].ok(tuple(resolved))
+            resolved.append((worktree_root, cls._worktree_registry_branch(entry)))
+        return tuple(resolved)
 
     @classmethod
-    def git_collect_worktree_facts(
-        cls,
-        *,
-        repository_root: Path,
-        tool_internal: t.StrSequence,
-        deps_dirs: t.StrSequence,
-        activity_window_days: int,
-        now: float,
-        tree_stats: Callable[[Path], m.Infra.GitTreeStats],
-    ) -> p.Result[m.Infra.WorktreesReport]:
-        """Measure every registered worktree into one facts report.
+    def collect_worktree_facts(
+        cls, query: m.Infra.WorktreeFactsQuery
+    ) -> t.Pair[
+        t.VariadicTuple[m.Infra.WorktreeFact],
+        t.VariadicTuple[m.Infra.PruneAction],
+    ]:
+        """Measure every registered worktree and plan stale-deps pruning.
 
-        Classification marks a worktree ``tool_internal`` when its path sits
-        under any ``tool_internal`` fragment; dependency bytes count only
-        existing non-symlink ``deps_dirs`` children; staleness compares the
-        newest mtime against ``now`` and the activity window. A fact is a
-        retirement candidate purely when stale — executing retirement belongs
-        to a consumer, never to this mixin.
+        Correlation is optional and degrades to empty. A stale worktree is
+        flagged ``retire_candidate`` and each non-symlinked deps directory
+        becomes one ``contents-remove`` action owned by ``worktrees``.
+        Nothing is executed here.
         """
-        registered = cls.git_registered_worktrees(repository_root)
-        if registered.failure:
-            return r[m.Infra.WorktreesReport].from_failure(registered)
         facts: list[m.Infra.WorktreeFact] = []
-        for worktree_root, branch in registered.value:
-            stats = tree_stats(worktree_root)
-            deps_bytes = 0
-            for deps_dir in deps_dirs:
-                candidate = worktree_root / deps_dir
-                if candidate.is_dir() and not candidate.is_symlink():
-                    deps_bytes += tree_stats(candidate).total_bytes
-            kind: str = (
-                "tool_internal"
-                if any(
-                    str(worktree_root).endswith(internal)
-                    or f"/{internal}/" in f"{worktree_root}/"
-                    for internal in tool_internal
+        actions: list[m.Infra.PruneAction] = []
+        seen: set[Path] = set()
+        for repo_root in sorted(query.repo_roots, key=lambda path: path.as_posix()):
+            for worktree_root, branch in cls.git_registered_worktrees_fs(repo_root):
+                if worktree_root in seen:
+                    continue
+                seen.add(worktree_root)
+                facts.append(
+                    cls._worktree_fact(
+                        m.Infra.WorktreeCandidate(
+                            path=worktree_root, repo=repo_root, branch=branch
+                        ),
+                        query,
+                        actions,
+                    )
                 )
-                else "sibling"
-            )
-            stale_days = max(0.0, (now - stats.newest_mtime) / cls._DAY_SECONDS)
-            stale = stale_days > activity_window_days
-            facts.append(
-                m.Infra.WorktreeFact(
-                    name=worktree_root.name,
-                    path=worktree_root,
-                    repo=repository_root,
-                    kind=kind,
-                    bytes=stats.total_bytes,
-                    deps_bytes=deps_bytes,
-                    stale_days=stale_days,
-                    exact=stats.exact,
-                    branch=branch,
-                    retire_candidate=stale,
+        return tuple(facts), tuple(actions)
+
+    @classmethod
+    def worktrees_report(
+        cls,
+        query: m.Infra.WorktreeFactsQuery,
+        *,
+        mode: str = "manual",
+        apply: bool = False,
+    ) -> m.Infra.WorktreesReport:
+        """Assemble the facts report and its plan-only stale-deps actions."""
+        facts, actions = cls.collect_worktree_facts(query)
+        return m.Infra.WorktreesReport(
+            facts=facts,
+            plan=m.Infra.PrunePlan(
+                generated_at=datetime.fromtimestamp(query.now, tz=UTC),
+                mode=mode,
+                apply=apply,
+                actions=actions,
+                total_reclaim_bytes=sum(action.reclaim_bytes for action in actions),
+            ),
+        )
+
+    @classmethod
+    def _worktree_fact(
+        cls,
+        candidate: m.Infra.WorktreeCandidate,
+        query: m.Infra.WorktreeFactsQuery,
+        actions: list[m.Infra.PruneAction],
+    ) -> m.Infra.WorktreeFact:
+        """Build one fact and append its planned stale-deps actions."""
+        worktree_root = candidate.path
+        total_bytes, newest_mtime, exact = cls._worktree_measure(worktree_root)
+        deps: list[t.Pair[Path, int]] = []
+        for deps_dir in query.policy.deps_dirs:
+            deps_path = worktree_root / deps_dir
+            if deps_path.is_dir() and not deps_path.is_symlink():
+                deps.append((deps_path, cls._worktree_measure(deps_path)[0]))
+        stale_days = max(0.0, (query.now - newest_mtime) / c.Infra.SECONDS_PER_DAY)
+        stale = stale_days > query.activity_window_days
+        fact = m.Infra.WorktreeFact(
+            name=worktree_root.name,
+            path=worktree_root,
+            repo=candidate.repo,
+            kind=cls._worktree_kind(worktree_root, query.policy),
+            bytes=total_bytes,
+            deps_bytes=sum(size for _path, size in deps),
+            stale_days=stale_days,
+            exact=exact,
+            retire_candidate=stale,
+        )
+        correlated = cls._worktree_correlate(fact, candidate, query)
+        if stale:
+            for deps_path, size in deps:
+                actions.append(
+                    m.Infra.PruneAction(
+                        kind="contents-remove",
+                        path=deps_path,
+                        reason=(
+                            f"STO-WT-STALE-DEPS: {worktree_root.name} idle "
+                            f"{stale_days:.1f}d > {query.activity_window_days}d"
+                        ),
+                        owner="worktrees",
+                        reclaim_bytes=size,
+                    )
                 )
+        return correlated
+
+    @staticmethod
+    def _worktree_gitdir_pointer(entry: Path) -> Path | None:
+        """Read one registry ``gitdir`` pointer, or ``None`` when unreadable."""
+        text = ""
+        try:
+            text = (
+                (entry / "gitdir").read_text(encoding=c.Cli.ENCODING_DEFAULT).strip()
             )
-        return r[m.Infra.WorktreesReport].ok(
-            m.Infra.WorktreesReport(facts=tuple(facts))
+        except (OSError, ValueError):
+            text = ""
+        return Path(text) if text else None
+
+    @staticmethod
+    def _worktree_registry_branch(entry: Path) -> str:
+        """Read the checked-out branch from a registry HEAD, else empty text."""
+        head = ""
+        try:
+            head = (entry / "HEAD").read_text(encoding=c.Cli.ENCODING_DEFAULT).strip()
+        except OSError:
+            head = ""
+        prefix = f"ref: {c.Infra.GIT_REFS_HEADS}"
+        return head.removeprefix(prefix) if head.startswith(prefix) else ""
+
+    @staticmethod
+    def _worktree_kind(
+        worktree_root: Path, policy: m.Infra.WorktreeFactsPolicy
+    ) -> Literal["sibling", "tool_internal"]:
+        """Classify a worktree as tool-internal or sibling from policy patterns."""
+        text = f"{worktree_root}/"
+        internal = any(
+            str(worktree_root).endswith(pattern) or f"/{pattern}/" in text
+            for pattern in policy.tool_internal
+        )
+        return "tool_internal" if internal else "sibling"
+
+    @classmethod
+    def _worktree_bead_index(
+        cls, rows: t.VariadicTuple[t.JsonMapping]
+    ) -> t.MappingKV[str, t.MappingKV[str, t.JsonMapping]]:
+        """Index optional bead rows by work dir and branch for correlation."""
+        by_dir: MutableMapping[str, t.JsonMapping] = {}
+        by_branch: MutableMapping[str, t.JsonMapping] = {}
+        for row in rows:
+            metadata = row.get("metadata")
+            if not isinstance(metadata, Mapping):
+                continue
+            work_dir = str(
+                metadata.get("gc.work_dir") or metadata.get("work_dir") or ""
+            )
+            if work_dir:
+                by_dir.setdefault(work_dir, row)
+            branch = str(metadata.get("branch") or metadata.get("gc.work_branch") or "")
+            if branch:
+                by_branch.setdefault(branch, row)
+        return {"by_dir": by_dir, "by_branch": by_branch}
+
+    @classmethod
+    def _worktree_correlate(
+        cls,
+        fact: m.Infra.WorktreeFact,
+        candidate: m.Infra.WorktreeCandidate,
+        query: m.Infra.WorktreeFactsQuery,
+    ) -> m.Infra.WorktreeFact:
+        """Attach optional bead/PR/actor evidence to one fact."""
+        index = cls._worktree_bead_index(query.bead_rows)
+        row = (
+            index.get("by_branch", {}).get(candidate.branch)
+            if candidate.branch
+            else None
+        )
+        if row is None:
+            row = index.get("by_dir", {}).get(str(fact.path))
+        if row is None and candidate.branch.startswith("polecat/"):
+            row = {"id": candidate.branch.removeprefix("polecat/")}
+        evidence = (query.actor_evidence or {}).get(str(fact.path), ("", ""))
+        pr = row.get("pr_number") if row else None
+        return fact.model_copy(
+            update={
+                "branch": candidate.branch,
+                "bead": str(row.get("id", "")) if row else "",
+                "pr_number": pr if isinstance(pr, int) else None,
+                "actor": evidence[0],
+                "session_id": evidence[1],
+            }
         )
 
 
