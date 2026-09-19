@@ -77,6 +77,13 @@ class TestsFlextInfraCodegenLazyInitClassReceipts:
 class TestsFlextInfraCodegenLazyInitReceiptScan:
     """The duplicate scan is receipt-cached with unchanged results."""
 
+    def _receipt_path(self, tmp_path: Path) -> Path:
+        return (
+            tmp_path
+            / c.Infra.TRANSACTION_STATE_DIRNAME
+            / c.Infra.LAZY_INIT_CLASS_RECEIPTS_RELPATH
+        )
+
     def _write_module(self, package: Path, name: str, body: str) -> None:
         package.mkdir(parents=True, exist_ok=True)
         (package / "__init__.py").write_text('"""Test package."""\n', encoding="utf-8")
