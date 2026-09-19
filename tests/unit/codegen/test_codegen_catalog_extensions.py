@@ -53,6 +53,54 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(resolved.url, eq=f"{provider.base_url}/{source.distribution}.git")
         tm.that(source.internal_distribution_prefix, eq="flext-")
 
+    def test_flext_line_follows_the_declared_infra_source_not_the_consumer(
+        self, tmp_path: Path
+    ) -> None:
+        """Every internal floor renders from the infra dependency's own source."""
+        codegen = config.Infra.codegen
+        provider = u.Tests.provider()
+        branch = u.Tests.provider_branch()
+        root = tmp_path / "other-org-consumer"
+        root.mkdir()
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
+            f'dependencies = ["flext-core @ git+{provider.base_url}/flext-core.git@'
+            f'{branch}"]\n'
+            "[dependency-groups]\n"
+            f'codegen = ["flext-infra @ git+{provider.base_url}/flext-infra.git@'
+            f'{branch}"]\n',
+            encoding="utf-8",
+        )
+        line = tm.ok(
+            u.Infra.flext_integration_line(codegen=codegen, repository_root=root)
+        )
+        tm.that(line.provider, eq=codegen.infra_repository.provider)
+        tm.that(line.branch, eq=branch)
+        tm.that(line.base_url, eq=provider.base_url)
+        tm.that(line.organization, eq=provider.organization)
+
+    def test_flext_line_fails_loud_on_conflicting_infra_sources(
+        self, tmp_path: Path
+    ) -> None:
+        """Family members declared from two lines in one document are a defect."""
+        codegen = config.Infra.codegen
+        provider = u.Tests.provider()
+        branch = u.Tests.provider_branch()
+        root = tmp_path / "split-consumer"
+        root.mkdir()
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
+            f'dependencies = ["flext-infra @ git+{provider.base_url}/flext-infra.git@'
+            f'{branch}"]\n'
+            "[dependency-groups]\n"
+            'codegen = ["flext-infra @ git+https://github.com/other-org/'
+            'flext-infra.git@dev"]\n',
+            encoding="utf-8",
+        )
+        result = u.Infra.flext_integration_line(codegen=codegen, repository_root=root)
+        tm.that(result.failure, eq=True)
+        tm.that(result.error, has="conflicting flext-* line sources")
+
     def test_infra_repository_identity_fails_loud_when_undeclared(
         self, tmp_path: Path
     ) -> None:
