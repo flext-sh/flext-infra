@@ -67,10 +67,10 @@ class TestsFlextInfraLazyInitAliasInheritance:
         )
 
         tm.that(
-            generated.splitlines(),
-            has="    from flext_test_inherit_parent import c, m, p",
+            generated.splitlines(), has="    from flext_test_inherit_parent import m, p"
         )
-        tm.that(generated, lacks="from flext_test_inherit_parent import c, m, p, ")
+        tm.that(generated, has="FlextTestInheritChildConstants as c")
+        tm.that(generated, lacks="from flext_test_inherit_parent import c")
 
     def test_declared_parent_resolving_nowhere_fails_loud(self, tmp_path: Path) -> None:
         """A declared parent that resolves nowhere in the environment is a typed failure."""

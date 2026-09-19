@@ -41,6 +41,10 @@ class FlextInfraUtilitiesCodegenFacades:
         # that adds no local utilities (src/flext: `class FlextRootUtilities(u)`),
         # and there is simply nothing to project onto it.
         if owners_exist and not facade_exists:
+            # Conform preflights its family directories before rendering files.
+            # An empty directory contains no owner requiring a public surface.
+            if not any(owners_dir.iterdir()):
+                return None
             message = f"utility owners in {pkg_dir} have no public facade"
             raise ValueError(message)
         if not owners_exist:

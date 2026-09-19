@@ -200,6 +200,9 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             .removesuffix(c.Infra.FAMILY_SUFFIXES.get(layer, ""))
             .removeprefix(c.Infra.PKG_PREFIX_UNDERSCORE.rstrip("_").capitalize())
         )
+        test_facade = filepath.parent == Path(c.Infra.DIR_TESTS)
+        if test_facade:
+            namespace = "Tests"
         nested = tuple(
             node
             for node in (getattr(outer, "body", ()) or ())
@@ -215,7 +218,9 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
                 f"{filepath}:{cls.line(outer)} — facade must declare one nested "
                 f"{namespace} MRO"
             )
-        elif len(getattr(nested[0], "bases", ()) or ()) < c.Infra.FACADE_MINIMUM_BASES:
+        elif len(getattr(nested[0], "bases", ()) or ()) < (
+            1 if test_facade else c.Infra.FACADE_MINIMUM_BASES
+        ):
             messages.append(
                 f"{filepath}:{cls.line(nested[0])} — {namespace} must explicitly "
                 "compose its private family through multiple inheritance"
@@ -247,18 +252,23 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         spec = c.Infra.NAMESPACE_FAMILY_EXPECTED_ALIAS.get(filepath.name)
         if spec is None:
             spec = c.Infra.NAMESPACE_PLATFORM_FACADE_SINGLETONS.get(filepath.name)
-        if spec is None or filepath.parent != Path(c.Infra.DEFAULT_SRC_DIR).joinpath(
+        test_facade = (
+            filepath.parent == Path(c.Infra.DIR_TESTS)
+            and filepath.name in c.Infra.NAMESPACE_FAMILY_EXPECTED_ALIAS
+        )
+        source_facade = filepath.parent == Path(c.Infra.DEFAULT_SRC_DIR).joinpath(
             *package_name.split(".")
-        ):
+        )
+        if spec is None or not (test_facade or source_facade):
             return False
         alias, suffix = spec
         canonical_alias = u.Infra.package_alias(package_name=package_name)
-        accepted_aliases = {alias, canonical_alias}
+        accepted_aliases = {alias} if test_facade else {alias, canonical_alias}
         classes = cls.outer_classes(tree)
         # Secondary support classes at module level are allowed (see the loop
         # in check_structure); only the facade class itself must exist with the
         # canonical stem+suffix name.
-        facade_class_name = f"{class_stem}{suffix}"
+        facade_class_name = f"{'Tests' if test_facade else ''}{class_stem}{suffix}"
         facade_classes = [
             node for node in classes if getattr(node, "name", "") == facade_class_name
         ]

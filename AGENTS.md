@@ -94,7 +94,10 @@ Provisioning and dependency updates run exclusively through `make setup`. Fix it
 configuration/templates when the lifecycle is wrong; do not install, resolve or
 synchronize dependencies manually. The current operator contract removes `APPLY`,
 `uv.lock` and `mise.lock` throughout producers and consumers. Git dependencies follow
-each repository's declared integration branch tip. Publish the validated change through
+each repository's declared integration branch tip unless `project.dependency_revisions`
+in `config/workspace.yaml` declares a full commit SHA for that external provider
+dependency. Codegen renders these pins into every dependency group and the matching uv
+transitive overrides; local workspace members cannot be overridden. Publish the validated change through
 a merge-commit PR into that integration branch and verify the remote merge SHA before
 claiming delivery.
 

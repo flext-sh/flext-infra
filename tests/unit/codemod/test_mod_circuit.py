@@ -154,7 +154,9 @@ class TestsFlextInfraModCliRoute:
         rules_root = mod_workspace / "codemod" / c.Cli.RULES_DIR_NAME
         tm.ok(u.Cli.ensure_dir(rules_root))
         tm.ok(
-            u.Cli.atomic_write_text_file(config_path, "ruleDirs:\n  - codemod/rules\n")
+            u.Cli.atomic_write_text_file(
+                config_path, "ruleDirs:\n  - codemod/rules\ntestConfigs: []\n"
+            )
         )
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -199,7 +201,7 @@ class TestsFlextInfraModCliRoute:
         ).decode(c.Cli.ENCODING_DEFAULT)
 
         tm.that(exit_code, eq=0)
-        tm.that(updated, eq="value = tuple()\n")
+        tm.that(updated, eq="from __future__ import annotations\nvalue = tuple()\n")
 
     def test_scan_keeps_prefix_rule_ids_exact(self, mod_workspace: Path) -> None:
         config_path = mod_workspace / c.Infra.CODEMOD_CONFIG_FILENAME

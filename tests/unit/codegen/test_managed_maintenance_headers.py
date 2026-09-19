@@ -108,6 +108,8 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         tm.that(template, has="make.fmt_gates")
         tm.that(template, has="make.check_gates_fixable")
         tm.that(template, lacks="lint_apply")
+        tm.that("--preview" in make.ruff.format_check, eq=True)
+        tm.that("--preview" in make.ruff.lint_check, eq=True)
 
 
 __all__: list[str] = ["TestsFlextInfraManagedMaintenanceHeaders"]

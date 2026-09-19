@@ -53,6 +53,8 @@ unexpected runtime exceptions into success or ad-hoc error dictionaries.
 ```python
 from __future__ import annotations
 
+from math import isclose
+
 from flext_core import p, r
 
 
@@ -63,7 +65,7 @@ def safe_divide(a: float, b: float) -> p.Result[float]:
 
 
 assert safe_divide(10, 2).success
-assert safe_divide(10, 2).value == 5.0
+assert isclose(safe_divide(10, 2).value, 5.0)
 assert safe_divide(10, 0).failure
 ```
 

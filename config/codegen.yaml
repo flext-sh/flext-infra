@@ -440,15 +440,12 @@ Infra:
           - organization: flext-sh
             repository: flext
             branch: 0.12.0-dev
-            local_checkout: ~/flext
           - organization: flext-sh
             repository: flext-core
             branch: 0.12.0-dev
-            local_checkout: ~/flext/flext-core
           - organization: flext-sh
             repository: flext-infra
             branch: 0.12.0-dev
-            local_checkout: ~/flext/flext-infra
       # Private cross-repo doc-link entries (operator checkouts outside this
       # public registry) belong in config/codegen-overrides.local.yaml; the
       # lookup appends local entries and resolves first match.
@@ -948,12 +945,6 @@ Infra:
       - path: .github/workflows/release.yml
         owner: codegen
         policy: full
-      - path: .github/workflows/_fragments/cross_repo_dependency_credential
-        owner: codegen
-        policy: full
-      - path: .github/workflows/_fragments/testmon_cache
-        owner: codegen
-        policy: full
       - path: .beads/config.yaml
         owner: codegen
         policy: full
@@ -1181,10 +1172,10 @@ Infra:
             project: flext-cli
           # click floor mirrors the shared fleet lock (8.3.3); meltano upstream
           # already caps click<8.4 for the workspace resolver.
-            runtime: [click>=8.3.3, typer>=0.27.2, jinja2>=3.1.6, jsonschema>=4.26.0, tomlkit>=0.15.1, ruamel.yaml>=0.19.1, defusedxml>=0.7.1, openpyxl>=3.1.5, python-docx>=1.2.0, python-pptx>=1.0.2]
+            runtime: [click>=8.5.0, typer>=0.27.2, jinja2>=3.1.6, jsonschema>=4.26.0, tomlkit>=0.15.1, ruamel.yaml>=0.19.1, defusedxml>=0.7.1, openpyxl>=3.1.5, python-docx>=1.2.0, python-pptx>=1.0.2]
           - upstream: flext_cli
             project: flext-infra
-            runtime: [flext-cli, defusedxml>=0.7.1, filelock>=3.32.7, GitPython>=3.1.62, jinja2>=3.1.6, libcst>=1.9.0, Markdown>=3.10.3, rope>=1.14.0, pytest>=9.1.1, mkdocs>=1.6.1]
+            runtime: [flext-cli, defusedxml>=0.7.1, filelock>=4.0.0, GitPython>=3.1.62, jinja2>=3.1.6, libcst>=1.9.0, Markdown>=3.10.3, rope>=1.14.0, pytest>=9.1.1, mkdocs>=1.6.1]
           - upstream: flext_cli
             project: flext-tests
             runtime: [flext-cli, flext-infra, pytest>=9.1.1, pytest-timeout>=2.4.0, docker>=7.2.0, python-on-whales>=0.81.0]
@@ -1980,16 +1971,6 @@ Infra:
           delegate: render
           overwrite: true
           requires_release_protocol: true
-        - source: base/.github/workflows/_fragments/cross_repo_dependency_credential.j2
-          destination: .github/workflows/_fragments/cross_repo_dependency_credential
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/.github/workflows/_fragments/testmon_cache.j2
-          destination: .github/workflows/_fragments/testmon_cache
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: false
         - source: base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2
           destination: tests/fixtures/ci/docker/ubuntu.Dockerfile
           profiles: [workspace, standalone]

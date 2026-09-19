@@ -42,7 +42,10 @@ class TestsFlextInfraFixerInternals:
             u.Infra.build_toc("# Main\n\nNo sections here.\n"), has="No sections found"
         )
 
-    def test_fix_keeps_closing_fence_on_its_own_line(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("separator", ["\n", "\n\n", "\n\n\n"])
+    def test_fix_keeps_closing_fence_on_its_own_line(
+        self, tmp_path: Path, separator: str
+    ) -> None:
         workspace = u.Tests.create_docs_workspace(tmp_path, include_fixable_link=True)
         sample = workspace / "docs/fenced.md"
         sample.write_text(
@@ -52,7 +55,7 @@ class TestsFlextInfraFixerInternals:
             "import os\n"
             "import sys\n\n"
             "print(sys.version)\n"
-            "```\n\n"
+            f"```{separator}"
             "## After The Block\n",
             encoding="utf-8",
         )
@@ -62,7 +65,7 @@ class TestsFlextInfraFixerInternals:
         tm.ok(result)
         fixed = sample.read_text(encoding="utf-8")
         tm.that(fixed, lacks=")```")
-        tm.that(fixed, has="\n```\n")
+        tm.that(fixed, has=f"\n```{separator}## After The Block")
         tm.that(fixed, has="## After The Block")
 
     def test_fix_updates_docs_readme_when_apply_is_enabled(

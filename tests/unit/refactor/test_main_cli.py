@@ -590,8 +590,8 @@ class TestsFlextInfraRefactorMainCli:
         test_source = test_file.read_text(encoding="utf-8")
         tm.that(service_source, lacks="only_for_tests")
         tm.that(test_source, has="only_for_tests")
-        tm.that(self._parse_source_ast(service_source), ok=True)
-        tm.that(self._parse_source_ast(test_source), ok=True)
+        tm.ok(self._parse_source_ast(service_source))
+        tm.ok(self._parse_source_ast(test_source))
 
         self._assert_no_unused_functions(workspace)
 
@@ -620,9 +620,9 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(init_source, has="build_lazy_import_map(")
         tm.that(init_source, has="helper_used")
         tm.that(helpers_source, has="helper_used")
-        tm.that(self._parse_source_ast(init_source), ok=True)
-        tm.that(self._parse_source_ast(helpers_source), ok=True)
-        tm.that(self._parse_source_ast(test_source), ok=True)
+        tm.ok(self._parse_source_ast(init_source))
+        tm.ok(self._parse_source_ast(helpers_source))
+        tm.ok(self._parse_source_ast(test_source))
 
         self._assert_no_unused_functions(workspace)
 
@@ -657,7 +657,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(service_source, lacks="only_for_tests")
         tm.that(service_source, lacks="@log_entry")
         tm.that(service_source, has="def log_entry")
-        tm.that(self._parse_source_ast(service_source), ok=True)
+        tm.ok(self._parse_source_ast(service_source))
 
     def test_refactor_census_strip_module_all_entry_multi_line(self) -> None:
         source = (
@@ -716,7 +716,7 @@ class TestsFlextInfraRefactorMainCli:
         service_source = service_file.read_text(encoding="utf-8")
         tm.that(service_source, lacks="def only_for_cleanup")
         tm.that(service_source, lacks="from collections.abc import Sequence")
-        tm.that(self._parse_source_ast(service_source), ok=True)
+        tm.ok(self._parse_source_ast(service_source))
 
         self._assert_no_unused_functions(workspace)
 

@@ -62,6 +62,9 @@ class TestsFlextInfraPromotedExecutionContract:
         @staticmethod
         def _write_discoverable_command(tmp_path: Path) -> Path:
             """Write one header-bearing command discoverable by the dispatcher."""
+            (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+                "[project]\nname = 'probe'\n", encoding="utf-8"
+            )
             command_path = (
                 tmp_path
                 / c.Infra.DIR_SCRIPTS

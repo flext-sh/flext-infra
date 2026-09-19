@@ -101,7 +101,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
     ) -> list[tuple[int, int, str]]:
         """Find every ``<alias>.Core.Tests`` chain and emit ``(start, end, repl)``."""
         rewrites: list[tuple[int, int, str]] = []
-        for node in u.Infra.walk_ast_nodes(module_ast):
+        for node in u.Infra.walk_ast_nodes(u.Infra.ensure_ast_node(module_ast)):
             if (
                 u.Infra.node_kind(node) != "Attribute"
                 or getattr(node, "attr", "") != "Tests"
@@ -137,7 +137,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
         runtime_aliases: frozenset[str],
     ) -> bool:
         """Return whether any ``from wrapper.<sub> import <alias>`` exists."""
-        for node in u.Infra.walk_ast_nodes(module_ast):
+        for node in u.Infra.walk_ast_nodes(u.Infra.ensure_ast_node(module_ast)):
             if u.Infra.node_kind(node) != "ImportFrom":
                 continue
             module_name = getattr(node, "module", "") or ""

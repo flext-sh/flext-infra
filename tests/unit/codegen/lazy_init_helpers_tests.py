@@ -466,8 +466,9 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(alias_positions, eq=tuple(sorted(alias_positions)))
         tm.that(
             init_content.splitlines(),
-            has="    from flext_cli import c, d, e, h, m, p, r, s, t, u, x",
+            has="    from flext_cli import d, e, h, m, p, r, s, t, u, x",
         )
+        tm.that(init_content, has="FlextMeltanoConstants as c")
         tm.that(exports_content, has='"flext_cli": (')
         tm.that(exports_content, has='".constants": (')
 
