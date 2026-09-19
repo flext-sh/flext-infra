@@ -49,11 +49,11 @@ class TestsFlextInfraSemanticPhaseContract:
             files=frozenset({path}),
             entries=(finding,),
         )
-        FlextInfraCodemodSemanticApply.apply(root, report)
+        tm.ok(FlextInfraCodemodSemanticApply.apply(root, report))
         published = path.read_text(encoding="utf-8")
         tm.that(published, has="from __future__ import annotations")
         tm.that(published, has=f"    class {owner}Member")
-        FlextInfraCodemodSemanticApply.apply(root, report)
+        tm.ok(FlextInfraCodemodSemanticApply.apply(root, report))
         tm.that(path.read_text(encoding="utf-8"), eq=published)
 
     def test_nesting_replans_proposed_sources_without_publishing(
@@ -66,13 +66,37 @@ class TestsFlextInfraSemanticPhaseContract:
             path, class_name=owner, alias="c", extra_class_names=(f"{owner}Member",)
         )
         original = path.read_text(encoding="utf-8")
+        nesting = c.Infra.SemanticCutoverPhase.CLASS_NESTING
         with infra.rope_workspace(root) as rope:
-            edits = u.Infra.plan_class_nesting_cutover(
-                rope_workspace=rope, sources={path: original}
+            planned = u.Infra.plan_semantic_cutover(
+                nesting, rope_workspace=rope, sources={path: original}
             )
-            tm.that(len(edits), eq=1)
-            remaining = u.Infra.plan_class_nesting_cutover(
-                rope_workspace=rope, sources={path: edits[0].updated_source}
+            tm.ok(planned)
+            tm.that(len(planned.value), eq=1)
+            tm.that(
+                planned.value[0].changes, eq=(f"nested {owner}Member under {owner}",)
             )
-        tm.that(remaining, empty=True)
+            remaining = u.Infra.plan_semantic_cutover(
+                nesting,
+                rope_workspace=rope,
+                sources={path: planned.value[0].updated_source},
+            )
+        tm.ok(remaining)
+        tm.that(remaining.value, empty=True)
         tm.that(path.read_text(encoding="utf-8"), eq=original)
+
+    def test_nesting_reports_every_module_without_an_owner_as_a_failure(
+        self, tmp_path: Path
+    ) -> None:
+        """A module without its declared owner fails the plan instead of raising."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "models.py"
+        source = "class FirstCandidate:\n    pass\n\nclass SecondCandidate:\n    pass\n"
+        path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                rope_workspace=rope,
+                sources={path: source},
+            )
+        tm.fail(planned, has="requires exactly one declared module owner")

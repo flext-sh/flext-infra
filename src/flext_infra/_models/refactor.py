@@ -10,18 +10,15 @@ from typing import Annotated, ClassVar
 from flext_cli import m, u
 
 from .. import t
-from .mixins import FlextInfraModelsMixins as mm
-from .refactor_ast_grep import FlextInfraModelsRefactorGrep
-from .refactor_census import FlextInfraModelsRefactorCensus
-from .refactor_namespace_enforcer import FlextInfraModelsNamespaceEnforcer
-from .refactor_violations import FlextInfraModelsRefactorViolations
+from . import (
+    FlextInfraModelsMixins as mm,
+    FlextInfraModelsNamespaceEnforcer,
+    FlextInfraModelsRefactorGrep,
+)
 
 
 class FlextInfraModelsRefactor(
-    FlextInfraModelsRefactorGrep,
-    FlextInfraModelsNamespaceEnforcer,
-    FlextInfraModelsRefactorCensus,
-    FlextInfraModelsRefactorViolations,
+    FlextInfraModelsRefactorGrep, FlextInfraModelsNamespaceEnforcer
 ):
     """Models for refactor workflows and related tools.
 

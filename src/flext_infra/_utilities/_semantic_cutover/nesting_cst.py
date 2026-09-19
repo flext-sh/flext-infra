@@ -6,17 +6,19 @@ from typing import TYPE_CHECKING
 
 import libcst as cst
 
-from .class_nesting_references import FlextInfraUtilitiesClassNestingReferences
+from .nesting_references import FlextInfraUtilitiesSemanticCutoverNestingReferences
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraUtilitiesClassNestingCst(FlextInfraUtilitiesClassNestingReferences):
+class FlextInfraUtilitiesSemanticCutoverNestingCst(
+    FlextInfraUtilitiesSemanticCutoverNestingReferences
+):
     """Move proven top-level class nodes under one existing owner class."""
 
     @classmethod
-    def rewrite_class_nesting_source(
+    def _rewrite_class_nesting_source(
         cls,
         source: str,
         *,
@@ -26,7 +28,7 @@ class FlextInfraUtilitiesClassNestingCst(FlextInfraUtilitiesClassNestingReferenc
         definitions: t.StrMapping,
     ) -> str:
         """Return a binding-proven structural rewrite without filesystem effects."""
-        rewritten = cls.rewrite_class_nesting_references(
+        rewritten = cls._rewrite_class_nesting_references(
             source,
             module_name=module_name,
             is_package_init=is_package_init,
@@ -156,4 +158,4 @@ class FlextInfraUtilitiesClassNestingCst(FlextInfraUtilitiesClassNestingReferenc
         return ((), tuple(body))
 
 
-__all__: list[str] = ["FlextInfraUtilitiesClassNestingCst"]
+__all__: list[str] = ["FlextInfraUtilitiesSemanticCutoverNestingCst"]

@@ -10,13 +10,13 @@ from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor
 from libcst.metadata import MetadataWrapper, ParentNodeProvider, QualifiedNameProvider
 
-from .._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
+from ..qualified_names import FlextInfraUtilitiesQualifiedNames
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesPrivateImportCst:
+class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
     """Preserve source layout while moving consumers to public facades."""
 
     class _DeclaredExports(cst.CSTTransformer):
@@ -31,7 +31,7 @@ class FlextInfraUtilitiesPrivateImportCst:
         ) -> cst.BaseSmallStatement | cst.FlattenSentinel[cst.BaseSmallStatement]:
             if original_node.relative or isinstance(updated_node.names, cst.ImportStar):
                 return updated_node
-            dotted_name = FlextInfraUtilitiesPrivateImportCst._Transformer.dotted_name
+            dotted_name = FlextInfraUtilitiesQualifiedNames.dotted_name
             module = dotted_name(original_node.module)
             if not any(
                 f"{module}.{dotted_name(item.name)}" in self.exports
@@ -67,13 +67,13 @@ class FlextInfraUtilitiesPrivateImportCst:
             return cst.FlattenSentinel(statements)
 
     @classmethod
-    def relocate_declared_exports(
+    def _relocate_declared_exports(
         cls, source: str, exports: t.MappingKV[str, t.Pair[str, str]]
     ) -> str:
         """Keep lexical scopes and ``as`` aliases while selecting public owners."""
         return cst.parse_module(source).visit(cls._DeclaredExports(exports)).code
 
-    class _Transformer(cst.CSTTransformer):
+    class _PrivateImportTransformer(cst.CSTTransformer):
         METADATA_DEPENDENCIES = (ParentNodeProvider, QualifiedNameProvider)
 
         def __init__(
@@ -90,18 +90,6 @@ class FlextInfraUtilitiesPrivateImportCst:
             self.obsolete_imports = obsolete_imports
             self.replacements = replacements
             self.public_imports = dict(public_imports)
-
-        @staticmethod
-        def dotted_name(node: cst.BaseExpression | None) -> str | None:
-            """Return a static dotted name or ``None`` for dynamic expressions."""
-            if isinstance(node, cst.Name):
-                return node.value
-            if isinstance(node, cst.Attribute):
-                parent = FlextInfraUtilitiesPrivateImportCst._Transformer.dotted_name(
-                    node.value
-                )
-                return f"{parent}.{node.attr.value}" if parent else None
-            return None
 
         @override
         def leave_Name(
@@ -149,7 +137,7 @@ class FlextInfraUtilitiesPrivateImportCst:
             self, original_node: cst.ImportFrom, updated_node: cst.ImportFrom
         ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
             """Relativize same-owner imports or remove cross-owner bindings."""
-            module = self.dotted_name(original_node.module)
+            module = FlextInfraUtilitiesQualifiedNames.dotted_name(original_node.module)
             module_name = module or ""
             relative_module = self.relative_imports.get(module_name)
             if relative_module is not None:
@@ -176,34 +164,19 @@ class FlextInfraUtilitiesPrivateImportCst:
             retained = [
                 imported
                 for imported in updated_node.names
-                if self.dotted_name(imported.name) not in removed
-                and not (
-                    self.dotted_name(imported.name) in canonical
-                    and imported.asname is None
+                if (
+                    name := FlextInfraUtilitiesQualifiedNames.dotted_name(imported.name)
                 )
+                not in removed
+                and not (name in canonical and imported.asname is None)
             ]
-            if retained:
-                last_index = len(retained) - 1
-                normalized: list[cst.ImportAlias] = []
-                for index, imported in enumerate(retained):
-                    if index == last_index and not updated_node.lpar:
-                        normalized.append(
-                            imported.with_changes(comma=cst.MaybeSentinel.DEFAULT)
-                        )
-                    elif index < last_index and not isinstance(
-                        imported.comma, cst.Comma
-                    ):
-                        normalized.append(
-                            imported.with_changes(
-                                comma=cst.Comma(
-                                    whitespace_after=cst.SimpleWhitespace(" ")
-                                )
-                            )
-                        )
-                    else:
-                        normalized.append(imported)
-                return updated_node.with_changes(names=tuple(normalized))
-            return cst.RemoveFromParent()
+            if not retained:
+                return cst.RemoveFromParent()
+            return updated_node.with_changes(
+                names=FlextInfraUtilitiesQualifiedNames.normalized_import_aliases(
+                    retained, parenthesized=bool(updated_node.lpar)
+                )
+            )
 
     class _TypeCheckingImports(cst.CSTTransformer):
         """Insert one canonical group for facades used only by annotations."""
@@ -239,7 +212,7 @@ class FlextInfraUtilitiesPrivateImportCst:
             )
 
     @classmethod
-    def rewrite_private_import_source(
+    def _rewrite_private_import_source(
         cls,
         source: str,
         *,
@@ -251,7 +224,7 @@ class FlextInfraUtilitiesPrivateImportCst:
         runtime_public_imports: frozenset[str],
     ) -> str:
         """Return a binding-proven rewrite with required public imports."""
-        transformer = cls._Transformer(
+        transformer = cls._PrivateImportTransformer(
             relative_imports=relative_imports,
             removals=removals,
             obsolete_imports=obsolete_imports,
@@ -278,4 +251,4 @@ class FlextInfraUtilitiesPrivateImportCst:
         return rewritten.code
 
 
-__all__: list[str] = ["FlextInfraUtilitiesPrivateImportCst"]
+__all__: list[str] = ["FlextInfraUtilitiesSemanticCutoverPrivateImportCst"]

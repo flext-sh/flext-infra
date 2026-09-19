@@ -351,16 +351,6 @@ class FlextInfraConstantsSourceCode:
         return re.compile(rf"^class\s+{re.escape(class_name)}\b", re.MULTILINE)
 
     @staticmethod
-    def compile_attr_access(name: str) -> t.RegexPattern:
-        r"""Compile ``\b<name>\.(\w+)`` for one-level attribute access detection."""
-        return re.compile(rf"\b{re.escape(name)}\.(\w+)")
-
-    @staticmethod
-    def compile_double_attr_access(name: str) -> t.RegexPattern:
-        r"""Compile ``\b<name>\.(\w+)\.(\w+)`` for two-level attribute access."""
-        return re.compile(rf"\b{re.escape(name)}\.(\w+)\.(\w+)")
-
-    @staticmethod
     def compile_from_import_paren_open(module_name: str) -> t.RegexPattern:
         """Compile ``from <module_name> import (`` (no anchor) — used on stripped lines."""
         return re.compile(rf"from\s+{re.escape(module_name)}\s+import\s*\(")
@@ -492,12 +482,6 @@ class FlextInfraConstantsSourceCode:
         r"\bcast\s*\(\s*[^,]+\s*,\s*([^)]+)\s*\)"
     )
     "Regex: ``cast(Type, value)`` call — captures the value to retain."
-    AS_KEYWORD_RE: Final[t.RegexPattern] = re.compile(r"\s+as\s+")
-    "Regex: ``<sp>as<sp>`` keyword for splitting import-as forms."
-    FROM_IMPORT_SIMPLE_RE: Final[t.RegexPattern] = re.compile(
-        r"^from\s+([\w.]+)\s+import\s+(.+?)$", re.MULTILINE
-    )
-    "Regex: simple from-import line (no trailing-comment strip)."
     FROM_IMPORT_LINE_TRIM_RE: Final[t.RegexPattern] = re.compile(
         r"from\s+([\w.]+)\s+import\s+(.+?)(?:\s*#.*)?$"
     )
