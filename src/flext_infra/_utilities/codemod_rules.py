@@ -371,6 +371,11 @@ class FlextInfraUtilitiesCodemodRules:
                         return r[t.SequenceOf[m.Infra.CodemodRule]].from_failure(
                             canonical
                         )
+                    declared = cls._declared_expected(parsed_rule.value)
+                    if declared.failure:
+                        return r[t.SequenceOf[m.Infra.CodemodRule]].fail(
+                            f"{declared.error}: {resource}"
+                        )
                     rules.append(
                         m.Infra.CodemodRule(
                             id=rule_id,
@@ -378,9 +383,39 @@ class FlextInfraUtilitiesCodemodRules:
                             provider=provider,
                             resource=resource,
                             fixable="fix" in parsed_rule.value,
+                            expected=declared.value[0] if declared.value else None,
                         )
                     )
         return r[t.SequenceOf[m.Infra.CodemodRule]].ok(tuple(rules))
+
+    @staticmethod
+    def _declared_expected(
+        document: t.MappingKV[str, object],
+    ) -> p.Result[t.VariadicTuple[int]]:
+        """Read one rule's declared finding-count receipt from its metadata.
+
+        The receipt is the same contract the sed-by-list phase already owns
+        (``ModTextRule.expected``): a rule that declares how many findings it
+        must produce turns a silent drift — a guard that stopped matching, a
+        pattern that started over-matching — into a loud failure. ast-grep
+        rejects unknown top-level keys, so the declaration lives under the
+        ``metadata`` mapping it does accept. Absence is the empty tuple: a
+        declared `expected: 0` is a real receipt ("this rule must never match
+        again") and must not collapse into "no receipt declared".
+        """
+        metadata = document.get(c.Infra.CODEMOD_RULE_METADATA_KEY)
+        if metadata is None:
+            return r[tuple[int, ...]].ok(())
+        if not isinstance(metadata, Mapping):
+            return r[tuple[int, ...]].fail("ast-grep rule metadata must be a mapping")
+        expected = metadata.get(c.Infra.CODEMOD_TEXT_KEY_EXPECTED)
+        if expected is None:
+            return r[tuple[int, ...]].ok(())
+        if not isinstance(expected, int) or isinstance(expected, bool) or expected < 0:
+            return r[tuple[int, ...]].fail(
+                "ast-grep rule expected receipt must be a non-negative integer"
+            )
+        return r[tuple[int, ...]].ok((expected,))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesCodemodRules"]

@@ -51,6 +51,16 @@ class FlextInfraModelsRefactorGrep:
         fixable: Annotated[
             bool, m.Field(description="Whether the rule declares an automated fix")
         ]
+        expected: Annotated[
+            int | None,
+            m.Field(
+                ge=0,
+                description=(
+                    "Declared finding-count receipt from the rule's metadata; "
+                    "absent when the rule declares none"
+                ),
+            ),
+        ] = None
 
     class CodemodRuleset(m.ArbitraryTypesModel):
         """One provider config and its elected, conflict-free rule IDs."""

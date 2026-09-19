@@ -20,3 +20,8 @@ rule:
 message: >-
   Packaged resources are hard-linked by installers; read them with
   files_read_binary, not with the single-owner atomic state primitive.
+metadata:
+  # Receipt: the fleet-wide red gen came from exactly one call site, repaired
+  # in this lane. Any new match is a regression and fails the scan loudly
+  # instead of being rewritten or silently counted.
+  expected: 0

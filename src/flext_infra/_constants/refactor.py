@@ -132,6 +132,9 @@ class FlextInfraConstantsRefactor:
     CODEMOD_TEXT_KEY_REPLACE: Final[str] = "replace"
     CODEMOD_TEXT_KEY_FLAGS: Final[str] = "flags"
     CODEMOD_TEXT_KEY_EXPECTED: Final[str] = "expected"
+    # ast-grep rejects unknown top-level keys, so an ast-grep rule declares
+    # its finding-count receipt under the `metadata` mapping it does accept.
+    CODEMOD_RULE_METADATA_KEY: Final[str] = "metadata"
     CODEMOD_TEXT_FLAG_NAMES: Final[t.MappingKV[str, int]] = MappingProxyType({
         "IGNORECASE": re.IGNORECASE,
         "MULTILINE": re.MULTILINE,
