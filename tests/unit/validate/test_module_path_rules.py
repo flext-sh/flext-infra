@@ -7,13 +7,11 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from tests import c, m, u
+from tests.unit.validate._fixtures import TestsFlextInfraValidateNamespaceBase
 
 
-class TestsFlextInfraModulePathRules:
-    """Namespace rules key on the module path a project actually declares."""
-
+class TestsFlextInfraModulePathRules(TestsFlextInfraValidateNamespaceBase):
     """Namespace rules key on the module path a project actually declares."""
 
     @pytest.mark.parametrize("family", ["c", "t", "p", "m", "u"])
@@ -25,7 +23,7 @@ class TestsFlextInfraModulePathRules:
         module = c.Infra.FAMILY_PUBLIC_MODULES[family]
         suffix = c.Infra.FAMILY_SUFFIXES[family]
         target_alias = family if valid_alias else "unrelated"
-        root, _ = u.Tests.namespace_project_path(
+        root, _ = self._create_namespace_project_path(
             tmp_path,
             module_path=f"tests/{module}.py",
             module_source=(
@@ -35,7 +33,7 @@ class TestsFlextInfraModulePathRules:
                 f"{target_alias} = TestsFlextTest{suffix}\n"
             ),
         )
-        report = tm.ok(FlextInfraNamespaceValidator().validate_project(root))
+        report = self.validator.validate_project(root)
         tm.that(report.passed, eq=valid_alias, msg=str(report.violations))
 
     @pytest.mark.parametrize(
@@ -204,8 +202,7 @@ class TestsFlextInfraModulePathRules:
         expect_passed: bool | None,
     ) -> None:
         """Namespace rules key on the module path a project actually declares."""
-        validator = FlextInfraNamespaceValidator()
-        root, target = u.Tests.namespace_project_path(
+        root, target = self._create_namespace_project_path(
             tmp_path, module_source=module_source, module_path=module_path
         )
         files = u.Infra.iter_python_files(
@@ -218,7 +215,7 @@ class TestsFlextInfraModulePathRules:
             msg=f"namespace fixture omitted from source inventory: {target}; {files.value}",
         )
 
-        result = validator.validate_project(root)
+        result = self.validator.validate_project(root)
 
         tm.ok(result)
         if expect_passed is not None:

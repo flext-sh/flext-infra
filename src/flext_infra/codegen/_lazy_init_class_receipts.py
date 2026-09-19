@@ -64,8 +64,7 @@ class FlextInfraCodegenLazyInitClassReceipts:
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)
             written = u.Cli.atomic_write_text_file(
-                self._path,
-                json.dumps(document, indent=1, sort_keys=True) + "\n",
+                self._path, json.dumps(document, indent=1, sort_keys=True) + "\n"
             )
         except OSError as exc:
             return r[bool].fail_op("lazy-init class receipt save", exc)

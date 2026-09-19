@@ -301,6 +301,12 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
             if cached is not None:
                 class_names: t.StrSequence = cached
             else:
+                # flext-8hctr: rope's scope_path carries the object's own
+                # qualified tail (a top-level class yields its own name), so
+                # this guard currently skips every object and the scan returns
+                # no collisions; 59 structural part-file convention groups fire
+                # fleet-wide if the predicate is naively corrected. Receipts
+                # key whatever this filter selects by content hash.
                 class_names = tuple(
                     obj.name
                     for obj in rope.objects(

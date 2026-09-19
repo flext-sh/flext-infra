@@ -23,10 +23,10 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
     """Typed project identity, spec, and manifest-seed fixture helpers."""
 
     @staticmethod
-    def provider() -> m.Infra.ProviderIdentitySpec:
-        """Return the declared fixture provider identity."""
+    def provider(name: str = FIXTURE_PROVIDER_NAME) -> m.Infra.ProviderIdentitySpec:
+        """Return the declared fixture provider identity for one provider key."""
         return m.Infra.ProviderIdentitySpec(
-            name=FIXTURE_PROVIDER_NAME,
+            name=name,
             organization=FIXTURE_PROVIDER_ORGANIZATION,
             base_url=FIXTURE_PROVIDER_BASE_URL,
         )

@@ -6,13 +6,12 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from tests import u
+from tests.unit.validate._fixtures import (
+    TestsFlextInfraValidateNamespaceBase,
+)
 
 
-class TestsFlextInfraRule4Annotations:
-    """Test suite for the namespace validator rule under test."""
-
+class TestsFlextInfraRule4Annotations(TestsFlextInfraValidateNamespaceBase):
     """Test suite for namespace validator Rule 4 (annotations)."""
 
     def test_rule4_annotated_field_factory_not_flagged_as_banned(
@@ -26,7 +25,6 @@ class TestsFlextInfraRule4Annotations:
         The ``dict`` there is a runtime factory value, not a type declaration,
         so NS-CONTRACT must not flag it.
         """
-        validator = FlextInfraNamespaceValidator()
         module_source = (
             "from __future__ import annotations\n\n"
             "import typing\n\n"
@@ -35,11 +33,11 @@ class TestsFlextInfraRule4Annotations:
             "    default_headers: typing.Annotated["
             "t.MappingKV[str, str], m.Field(default_factory=dict)] = None\n"
         )
-        root = u.Tests.namespace_project(
+        root = self._create_namespace_project(
             tmp_path, module_source=module_source, module_name="_settings.py"
         )
 
-        result = validator.validate_project(root)
+        result = self.validator.validate_project(root)
 
         tm.ok(result)
         tm.that(
@@ -50,28 +48,20 @@ class TestsFlextInfraRule4Annotations:
 
     def test_rule4_banned_annotation_still_flagged(self, tmp_path: Path) -> None:
         """D1-precision non-regression: genuine banned annotations are flagged."""
-        validator = FlextInfraNamespaceValidator()
         module_source = (
             "from __future__ import annotations\n\n"
             "class FlextTestServices:\n"
             "    def transform(self, data: dict) -> object:\n"
             "        return data\n"
         )
-        root = u.Tests.namespace_project(
+        root = self._create_namespace_project(
             tmp_path, module_source=module_source, module_name="services.py"
         )
 
-        result = validator.validate_project(root)
+        result = self.validator.validate_project(root)
 
         tm.ok(result)
-        tm.that(
-            any(
-                "banned annotation" in violation
-                for violation in result.value.violations
-            ),
-            eq=True,
-            msg=str(result.value),
-        )
+        self._assert_violation_contains(root, "banned annotation")
 
     def test_rule4_canonical_singleton_with_trailing_docstring_allowed(
         self, tmp_path: Path
@@ -82,7 +72,6 @@ class TestsFlextInfraRule4Annotations:
         (the flext-api api.py / _settings.py shape). A trailing module-alias
         declaration is still forbidden; only a docstring or ``__all__`` may follow.
         """
-        validator = FlextInfraNamespaceValidator()
         module_source = (
             "from __future__ import annotations\n\n"
             "class FlextTest:\n"
@@ -91,19 +80,15 @@ class TestsFlextInfraRule4Annotations:
             '"""Global FlextTest facade instance."""\n'
             '__all__: list[str] = ["FlextTest", "api"]\n'
         )
-        root = u.Tests.namespace_project(
+        root = self._create_namespace_project(
             tmp_path, module_source=module_source, module_name="api.py"
         )
 
-        result = validator.validate_project(root)
+        result = self.validator.validate_project(root)
 
         tm.ok(result)
-        tm.that(
-            not any(
-                "module alias/data declaration" in v for v in result.value.violations
-            ),
-            eq=True,
-            msg=str(result.value),
+        self._assert_no_violation_contains(
+            root, "module alias/data declaration"
         )
 
 

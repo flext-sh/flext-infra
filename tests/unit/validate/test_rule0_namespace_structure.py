@@ -7,18 +7,18 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from tests import c, u
+from tests.unit.validate._fixtures import TestsFlextInfraValidateNamespaceBase
 
 
-class TestsFlextInfraRule0NamespaceStructure:
+class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBase):
     """Test suite for namespace validator Rule 0."""
 
     @pytest.mark.parametrize("family", tuple(c.Infra.FAMILY_SUFFIXES))
     def test_required_public_facade_alias_passes(
         self, tmp_path: Path, family: str
     ) -> None:
-        root = u.Tests.namespace_project(
+        root = self._create_namespace_project(
             tmp_path,
             module_source=u.Tests.namespace_fixture("rule0_valid.py"),
             module_name="models.py",
@@ -35,7 +35,7 @@ class TestsFlextInfraRule0NamespaceStructure:
                 encoding="utf-8",
             )
 
-        report = tm.ok(FlextInfraNamespaceValidator().validate_project(root))
+        report = self.validator.validate_project(root)
 
         tm.that(report.passed, eq=True, msg=str(report.violations))
         tm.that(report.violations, empty=True)
@@ -61,11 +61,11 @@ class TestsFlextInfraRule0NamespaceStructure:
         source = u.Tests.namespace_fixture("rule0_valid.py").replace(
             "m = FlextTestModels", assignment
         )
-        root, target = u.Tests.namespace_project_path(
+        root, target = self._create_namespace_project_path(
             tmp_path, module_source=source, module_path=module_path
         )
 
-        report = tm.ok(FlextInfraNamespaceValidator().validate_project(root))
+        report = self.validator.validate_project(root)
 
         tm.that(report.passed, eq=False)
         tm.that(
@@ -85,11 +85,11 @@ class TestsFlextInfraRule0NamespaceStructure:
             "class FlextTestModels(m):",
             "m = FlextTestModels\n\nclass FlextTestModels(m):",
         )
-        root = u.Tests.namespace_project(
+        root = self._create_namespace_project(
             tmp_path, module_source=source, module_name="models.py"
         )
 
-        report = tm.ok(FlextInfraNamespaceValidator().validate_project(root))
+        report = self.validator.validate_project(root)
 
         tm.that(report.passed, eq=False)
         tm.that(
@@ -98,13 +98,12 @@ class TestsFlextInfraRule0NamespaceStructure:
         )
 
     def test_rule0_valid_module_passes(self, tmp_path: Path) -> None:
-        validator = FlextInfraNamespaceValidator()
-        root = u.Tests.namespace_project(
+        root = self._create_namespace_project(
             tmp_path,
             module_source=u.Tests.namespace_fixture("rule0_valid.py"),
             module_name="models.py",
         )
-        result = validator.validate_project(root)
+        result = self.validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(result.value.passed, eq=True)
         tm.that(result.value.violations, empty=True)
@@ -112,18 +111,17 @@ class TestsFlextInfraRule0NamespaceStructure:
     def test_rule0_does_not_flag_non_namespace_runtime_module(
         self, tmp_path: Path
     ) -> None:
-        validator = FlextInfraNamespaceValidator()
         module_source = (
             "from __future__ import annotations\n\n"
             "VALUE = 1\n\n"
             "def helper() -> int:\n"
             "    return VALUE\n"
         )
-        root = u.Tests.namespace_project(
+        root = self._create_namespace_project(
             tmp_path, module_source=module_source, module_name="api.py"
         )
 
-        result = validator.validate_project(root)
+        result = self.validator.validate_project(root)
 
         tm.ok(result)
         tm.that(
@@ -145,11 +143,11 @@ class TestsFlextInfraRule0NamespaceStructure:
         self, tmp_path: Path, module_source: str
     ) -> None:
         """Ordinary statements without expression values remain valid AST input."""
-        root = u.Tests.namespace_project(
+        root = self._create_namespace_project(
             tmp_path, module_source=module_source, module_name="runtime.py"
         )
 
-        report = tm.ok(FlextInfraNamespaceValidator().validate_project(root))
+        report = self.validator.validate_project(root)
 
         tm.that(report.violations, empty=False)
 
@@ -180,12 +178,11 @@ class TestsFlextInfraRule0NamespaceStructure:
         self, tmp_path: Path, module_source: str, forbidden_violation_substr: str
     ) -> None:
         """Rule 0 never rejects the top-level statements a namespace may carry."""
-        validator = FlextInfraNamespaceValidator()
-        root = u.Tests.namespace_project(
+        root = self._create_namespace_project(
             tmp_path, module_source=module_source, module_name="models.py"
         )
 
-        result = validator.validate_project(root)
+        result = self.validator.validate_project(root)
 
         tm.ok(result)
         tm.that(

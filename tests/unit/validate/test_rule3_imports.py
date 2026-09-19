@@ -7,13 +7,15 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from tests import u
+from tests import m, u
+from tests.unit.validate._fixtures import (
+    TestsFlextInfraNamespaceProjectFixture,
+    TestsFlextInfraValidateAssertions,
+    TestsFlextInfraValidateNamespaceBase,
+)
 
 
-class TestsFlextInfraRule3ImportRules:
-    """Test suite for the namespace validator rule under test."""
-
+class TestsFlextInfraRule3ImportRules(TestsFlextInfraValidateNamespaceBase):
     """Test suite for namespace validator Rule 3 (import rules)."""
 
     @pytest.mark.parametrize(
@@ -48,60 +50,30 @@ class TestsFlextInfraRule3ImportRules:
         module_name: str,
         expected_violation_substr: str,
     ) -> None:
-        validator = FlextInfraNamespaceValidator()
-        root = u.Tests.namespace_project(
+        root = self._create_namespace_project(
             tmp_path, module_source=module_source, module_name=module_name
         )
-        result = validator.validate_project(root)
-        tm.ok(result)
-        tm.that(result.value.passed, eq=False)
-        tm.that(
-            any(
-                expected_violation_substr in violation
-                for violation in result.value.violations
-            ),
-            eq=True,
-        )
+        self._assert_invalid(root, expected_violation_substr=expected_violation_substr)
 
     def test_rule3_utilities_facade_import_remains_allowed(
         self, tmp_path: Path
     ) -> None:
-        validator = FlextInfraNamespaceValidator()
-        module_source = (
-            "from __future__ import annotations\n\n"
-            "from flext_cli import u\n"
-            "from flext_test import FlextTestUtilitiesCodegen\n\n"
-            "class FlextTestUtilities(u):\n"
-            "    class Test(FlextTestUtilitiesCodegen, FlextTestUtilitiesBase):\n"
-            "        pass\n"
+        fixture = TestsFlextInfraNamespaceProjectFixture()
+        root = fixture.create_project(
+            tmp_path,
+            module_source=fixture.valid_utilities_module(),
+            module_name="utilities.py",
         )
-        root = u.Tests.namespace_project(
-            tmp_path, module_source=module_source, module_name="utilities.py"
-        )
-
-        result = validator.validate_project(root)
-
-        tm.ok(result)
-        tm.that(result.value.passed, eq=True)
+        self._assert_valid(root)
 
     def test_rule3_models_facade_import_remains_allowed(self, tmp_path: Path) -> None:
-        validator = FlextInfraNamespaceValidator()
-        module_source = (
-            "from __future__ import annotations\n"
-            "from flext_cli import m\n"
-            "from flext_test import FlextTestModelsDeps\n\n"
-            "class FlextTestModels(m):\n"
-            "    class Test(FlextTestModelsDeps, FlextTestModelsBase):\n"
-            "        pass\n"
+        fixture = TestsFlextInfraNamespaceProjectFixture()
+        root = fixture.create_project(
+            tmp_path,
+            module_source=fixture.valid_models_module(),
+            module_name="models.py",
         )
-        root = u.Tests.namespace_project(
-            tmp_path, module_source=module_source, module_name="models.py"
-        )
-
-        result = validator.validate_project(root)
-
-        tm.ok(result)
-        tm.that(result.value.passed, eq=True)
+        self._assert_valid(root)
 
     def test_rule3_settings_owner_declaration_facade_runtime_imports_allowed(
         self, tmp_path: Path
@@ -113,26 +85,13 @@ class TestsFlextInfraRule3ImportRules:
         from the declaration facades at runtime; the fleet's canonical pattern
         (flext-auth/_settings.py, flext-api/_settings.py) depends on this.
         """
-        validator = FlextInfraNamespaceValidator()
-        module_source = (
-            "from __future__ import annotations\n\n"
-            "from flext_test import m, t, u\n\n"
-            "class FlextTestSettings(FlextTestSettingsBase):\n"
-            "    class _Test(m.BaseModel):\n"
-            "        bag: t.MappingKV[str, str] = m.Field(default_factory=dict)\n"
-            "    @u.model_validator(mode='before')\n"
-            "    @classmethod\n"
-            "    def _lift(cls, data: t.JsonValue) -> t.JsonValue:\n"
-            "        return data\n"
+        fixture = TestsFlextInfraNamespaceProjectFixture()
+        root = fixture.create_project(
+            tmp_path,
+            module_source=fixture.valid_settings_module(),
+            module_name="_settings.py",
         )
-        root = u.Tests.namespace_project(
-            tmp_path, module_source=module_source, module_name="_settings.py"
-        )
-
-        result = validator.validate_project(root)
-
-        tm.ok(result)
-        tm.that(result.value.passed, eq=True, msg=str(result.value))
+        self._assert_valid(root)
 
     def test_rule3_settings_owner_c_import_allowed(self, tmp_path: Path) -> None:
         """Operator ruling 2026-09-19: settings defaults read declared constants.
@@ -141,28 +100,17 @@ class TestsFlextInfraRule3ImportRules:
         the runtime ``c`` import is part of the declaration-layer carve-out;
         operational facades stay flagged.
         """
-        validator = FlextInfraNamespaceValidator()
-        module_source = (
-            "from __future__ import annotations\n\n"
-            "from flext_test import c\n\n"
-            "class FlextTestSettings(FlextTestSettingsBase):\n"
-            "    pass\n"
-        )
-        root = u.Tests.namespace_project(
-            tmp_path, module_source=module_source, module_name="_settings.py"
+        fixture = TestsFlextInfraNamespaceProjectFixture()
+        root = fixture.create_project(
+            tmp_path,
+            module_source=fixture.settings_with_c_import(),
+            module_name="_settings.py",
         )
 
-        result = validator.validate_project(root)
+        result = self.validator.validate_project(root)
 
         tm.ok(result)
-        tm.that(
-            any(
-                "reverse runtime import" in violation
-                for violation in result.value.violations
-            ),
-            eq=False,
-            msg=str(result.value),
-        )
+        self._assert_no_violation_contains(root, "reverse runtime import")
 
 
 __all__: list[str] = ["TestsFlextInfraRule3ImportRules"]

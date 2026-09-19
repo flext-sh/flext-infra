@@ -7,13 +7,11 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from tests import u
+from tests.unit.validate._fixtures import TestsFlextInfraValidateNamespaceBase
 
 
-class TestsFlextInfraPydanticLegacyDetection:
-    """Test suite for the namespace validator rule under test."""
-
+class TestsFlextInfraPydanticLegacyDetection(TestsFlextInfraValidateNamespaceBase):
     """Test suite for Pydantic legacy decorator/method detection."""
 
     @pytest.mark.parametrize(
@@ -174,7 +172,7 @@ class TestsFlextInfraPydanticLegacyDetection:
     def test_pydantic_decorator_binding_provenance(
         self, tmp_path: Path, imports: str, body: str, *, legacy: bool
     ) -> None:
-        root = u.Tests.namespace_project(
+        root = self._create_namespace_project(
             tmp_path,
             module_source=(
                 "from __future__ import annotations\n"
@@ -185,7 +183,7 @@ class TestsFlextInfraPydanticLegacyDetection:
             module_name="validation.py",
         )
 
-        report = tm.ok(FlextInfraNamespaceValidator().validate_project(root))
+        report = self.validator.validate_project(root)
 
         tm.that(report.passed, eq=not legacy, msg=str(report.violations))
         tm.that(
@@ -205,7 +203,7 @@ class TestsFlextInfraPydanticLegacyDetection:
     def test_pydantic_method_detection_requires_unambiguous_member(
         self, tmp_path: Path, call: str, *, legacy: bool
     ) -> None:
-        root = u.Tests.namespace_project(
+        root = self._create_namespace_project(
             tmp_path,
             module_source=(
                 "from __future__ import annotations\n\n"
@@ -216,7 +214,7 @@ class TestsFlextInfraPydanticLegacyDetection:
             module_name="client.py",
         )
 
-        report = tm.ok(FlextInfraNamespaceValidator().validate_project(root))
+        report = self.validator.validate_project(root)
 
         tm.that(
             sum("legacy Pydantic member" in item for item in report.violations),

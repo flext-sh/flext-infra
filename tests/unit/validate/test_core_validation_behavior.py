@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_infra import config
 from flext_tests import tm
 
-from flext_infra import config
-from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from tests import m, u
+from tests.unit.validate._fixtures import TestsFlextInfraValidateNamespaceBase
 
 
-class TestsFlextInfraCoreValidationBehavior:
+class TestsFlextInfraCoreValidationBehavior(TestsFlextInfraValidateNamespaceBase):
     """Test suite for core validation behavior."""
 
     def test_public_project_layout_uses_flext_for_core_exception(
@@ -26,7 +26,6 @@ class TestsFlextInfraCoreValidationBehavior:
         tm.that(layout.class_stem, eq="Flext")
 
     def test_validate_tracked_git_files(self, tmp_path: Path) -> None:
-        validator = FlextInfraNamespaceValidator()
         project_root = tmp_path / "project"
         package_dir = project_root / "src" / "flext_test"
         package_dir.mkdir(parents=True)
@@ -57,7 +56,7 @@ class TestsFlextInfraCoreValidationBehavior:
         tm.ok(add_result)
         tm.that(u.Cli.process_succeeded(add_result.value.outcome), eq=True)
 
-        result = validator.validate_project(project_root)
+        result = self.validator.validate_project(project_root)
 
         tm.ok(result)
         tm.that(result.value.passed, eq=True)
@@ -77,11 +76,11 @@ class TestsFlextInfraCoreValidationBehavior:
         module_source = u.Tests.namespace_fixture("rule0_valid.py").replace(
             "        pass\n", f"        pass\n{assignments}\n"
         )
-        project_root = u.Tests.namespace_project(
+        root = self._create_namespace_project(
             tmp_path, module_source=module_source, module_name="models.py"
         )
 
-        result = FlextInfraNamespaceValidator().validate_project(project_root)
+        result = self.validator.validate_project(root)
 
         tm.ok(result)
         locator = f"exceed the {cap} limit"
@@ -91,7 +90,6 @@ class TestsFlextInfraCoreValidationBehavior:
 
     def test_initializer_and_version_roles_are_scanned(self, tmp_path: Path) -> None:
         """Role-specific validation must not pass because discovery is empty."""
-        validator = FlextInfraNamespaceValidator()
         project_root = tmp_path / "project"
         package_dir = project_root / "src" / "flext_test"
         package_dir.mkdir(parents=True)
@@ -110,32 +108,30 @@ class TestsFlextInfraCoreValidationBehavior:
         )
         tm.that(files, has=package_dir / "__init__.py")
         tm.that(files, has=package_dir / "__version__.py")
-        result = validator.validate_project(project_root)
+        result = self.validator.validate_project(project_root)
         tm.that(result.success, eq=True)
         tm.that(result.value.passed, eq=True)
         tm.that(result.value.violations, empty=True)
         tm.that(result.value.summary, has="files checked")
 
     def test_validate_returns_report(self, tmp_path: Path) -> None:
-        validator = FlextInfraNamespaceValidator()
-        root = u.Tests.namespace_project(
+        root = self._create_namespace_project(
             tmp_path,
             module_source=u.Tests.namespace_fixture("rule0_valid.py"),
             module_name="constants.py",
         )
-        result = validator.validate_project(root)
+        result = self.validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(result.value, is_=m.Infra.ValidationReport)
         tm.that(result.value.summary, has="files checked")
 
     def test_violation_message_format(self, tmp_path: Path) -> None:
-        validator = FlextInfraNamespaceValidator()
-        root = u.Tests.namespace_project(
+        root = self._create_namespace_project(
             tmp_path,
             module_source=u.Tests.namespace_fixture("rule0_no_class.py"),
             module_name="models.py",
         )
-        result = validator.validate_project(root)
+        result = self.validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(len(result.value.violations), gt=0)
         first = result.value.violations[0]

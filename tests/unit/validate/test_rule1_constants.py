@@ -6,32 +6,23 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from tests import u
+from tests.unit.validate._fixtures import (
+    TestsFlextInfraNamespaceProjectFixture,
+    TestsFlextInfraValidateNamespaceBase,
+)
 
 
-class TestsFlextInfraRule1ConstantsFacade:
-    """Test suite for the namespace validator rule under test."""
-
+class TestsFlextInfraRule1ConstantsFacade(TestsFlextInfraValidateNamespaceBase):
     """Test suite for namespace validator Rule 1 (constants facade)."""
 
     def test_rule1_valid_constants_passes(self, tmp_path: Path) -> None:
-        validator = FlextInfraNamespaceValidator()
-        module_source = (
-            "from __future__ import annotations\n\n"
-            "from flext_core import c\n\n"
-            "from flext_test._constants.base import FlextTestConstantsBase\n"
-            "from flext_test._constants.domain import FlextTestConstantsDomain\n\n\n"
-            "class FlextTestConstants(c):\n"
-            "    class Test(FlextTestConstantsBase, FlextTestConstantsDomain):\n"
-            "        pass\n"
+        fixture = TestsFlextInfraNamespaceProjectFixture()
+        root = fixture.create_project(
+            tmp_path,
+            module_source=fixture.valid_constants_module(),
+            module_name="constants.py",
         )
-        root = u.Tests.namespace_project(
-            tmp_path, module_source=module_source, module_name="constants.py"
-        )
-        result = validator.validate_project(root)
-        tm.that(result.success, eq=True)
-        tm.that(result.value.passed, eq=True)
+        self._assert_valid(root)
 
 
 __all__: list[str] = ["TestsFlextInfraRule1ConstantsFacade"]

@@ -119,17 +119,9 @@ class FlextInfraMarkdownFormatGate(FlextInfraMarkdownGateBase):
             for line in (result.stdout + "\n" + result.stderr).splitlines()
             if (match := c.Infra.MARKDOWN_FORMAT_RE.match(line.strip()))
         ]
-        if not u.Cli.process_succeeded(result.outcome) and not issues:
-            issues.append(
-                self._command_error_issue(
-                    result,
-                    tool=c.Infra.PRETTIER_BINARY,
-                    file=str(project_dir),
-                    line=1,
-                    column=1,
-                )
-            )
-        return u.Cli.process_succeeded(result.outcome), issues
+        return self._finalize_parse_result(
+            result, project_dir, issues, c.Infra.PRETTIER_BINARY
+        )
 
 
 __all__: list[str] = ["FlextInfraMarkdownFormatGate"]
