@@ -13,17 +13,12 @@ from .. import t
 from . import (
     FlextInfraModelsMixins as mm,
     FlextInfraModelsNamespaceEnforcer,
-    FlextInfraModelsRefactorCensus,
     FlextInfraModelsRefactorGrep,
-    FlextInfraModelsRefactorViolations,
 )
 
 
 class FlextInfraModelsRefactor(
-    FlextInfraModelsRefactorGrep,
-    FlextInfraModelsNamespaceEnforcer,
-    FlextInfraModelsRefactorCensus,
-    FlextInfraModelsRefactorViolations,
+    FlextInfraModelsRefactorGrep, FlextInfraModelsNamespaceEnforcer
 ):
     """Models for refactor workflows and related tools.
 

@@ -149,7 +149,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         )
         declarative_rules = self._declarative_rules_for_selection(rule_names)
         if any(self._rule_requires_stub_file(rule) for rule in declarative_rules):
-            modules = (*modules, *self._stub_modules(rope, modules, project_names))
+            modules = (*modules, *self._stub_modules(rope, modules))
         return modules
 
     @classmethod
@@ -157,9 +157,8 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         cls,
         rope: p.Infra.RopeWorkspaceDsl,
         modules: t.SequenceOf[m.Infra.RopeModuleIndexEntry],
-        project_names: t.StrSequence | None,
     ) -> t.VariadicTuple[m.Infra.RopeModuleIndexEntry]:
-        """Return synthetic module entries for selected workspace ``.pyi`` files."""
+        """Return ``.pyi`` entries for the projects owning the selected modules."""
         known_paths = frozenset(module.file_path.resolve() for module in modules)
         roots = tuple(
             sorted({
@@ -168,11 +167,8 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
                 if module.project_root is not None
             })
         )
-        project_filter = frozenset(project_names or ())
         entries: list[m.Infra.RopeModuleIndexEntry] = []
         for root in roots:
-            if project_filter and root.name not in project_filter:
-                continue
             src_root = root / c.Infra.DEFAULT_SRC_DIR
             if not src_root.is_dir():
                 continue

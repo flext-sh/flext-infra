@@ -69,9 +69,7 @@ if TYPE_CHECKING:
     from .promoted import FlextInfraModelsPromoted
     from .refactor import FlextInfraModelsRefactor
     from .refactor_ast_grep import FlextInfraModelsRefactorGrep
-    from .refactor_census import FlextInfraModelsRefactorCensus
     from .refactor_namespace_enforcer import FlextInfraModelsNamespaceEnforcer
-    from .refactor_violations import FlextInfraModelsRefactorViolations
     from .release import FlextInfraModelsRelease
     from .rope import FlextInfraModelsRope
     from .rope_move import FlextInfraModelsRopeMove
@@ -137,9 +135,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsNamespaceEnforcer",
     "FlextInfraModelsPromoted",
     "FlextInfraModelsRefactor",
-    "FlextInfraModelsRefactorCensus",
     "FlextInfraModelsRefactorGrep",
-    "FlextInfraModelsRefactorViolations",
     "FlextInfraModelsRelease",
     "FlextInfraModelsRope",
     "FlextInfraModelsRopeMove",
@@ -223,9 +219,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".promoted": ("FlextInfraModelsPromoted",),
             ".refactor": ("FlextInfraModelsRefactor",),
             ".refactor_ast_grep": ("FlextInfraModelsRefactorGrep",),
-            ".refactor_census": ("FlextInfraModelsRefactorCensus",),
             ".refactor_namespace_enforcer": ("FlextInfraModelsNamespaceEnforcer",),
-            ".refactor_violations": ("FlextInfraModelsRefactorViolations",),
             ".release": ("FlextInfraModelsRelease",),
             ".rope": ("FlextInfraModelsRope",),
             ".rope_move": ("FlextInfraModelsRopeMove",),

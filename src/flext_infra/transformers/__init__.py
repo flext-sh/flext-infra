@@ -15,12 +15,7 @@ if TYPE_CHECKING:
         publish_semantic_file_plan,
         publish_semantic_file_plans,
     )
-    from ._tier0_transformer import FlextInfraTier0TransformerMixin
     from ._typing_rewrite import FlextInfraRefactorTypingUnifierRewriteMixin
-    from .census_visitors import (
-        FlextInfraCensusImportDiscoveryVisitor,
-        FlextInfraCensusUsageCollector,
-    )
     from .class_reconstructor import FlextInfraRefactorClassReconstructor
     from .compatibility_alias import FlextInfraRefactorCompatibilityAlias
     from .dataclass_modelizer import FlextInfraRefactorDataclassModelizer
@@ -38,13 +33,9 @@ if TYPE_CHECKING:
     from .smells.base import FlextInfraSmellFixer
     from .smells.boolean_logic import FlextInfraBooleanLogicFixer
     from .symbol_propagator import FlextInfraRefactorSymbolPropagator
-    from .tier0_import_fixer import FlextInfraTransformerTier0ImportFixer
     from .typing_unifier import FlextInfraRefactorTypingUnifier
-    from .violation_census_visitor import FlextInfraViolationCensusVisitor
 __all__: tuple[str, ...] = (
     "FlextInfraBooleanLogicFixer",
-    "FlextInfraCensusImportDiscoveryVisitor",
-    "FlextInfraCensusUsageCollector",
     "FlextInfraEnsureCanonicalTImportMixin",
     "FlextInfraRefactorClassReconstructor",
     "FlextInfraRefactorCompatibilityAlias",
@@ -64,9 +55,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorTypingUnifier",
     "FlextInfraRefactorTypingUnifierRewriteMixin",
     "FlextInfraSmellFixer",
-    "FlextInfraTier0TransformerMixin",
-    "FlextInfraTransformerTier0ImportFixer",
-    "FlextInfraViolationCensusVisitor",
     "publish_semantic_file_plan",
     "publish_semantic_file_plans",
     "smells",
@@ -80,12 +68,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "publish_semantic_file_plan",
                 "publish_semantic_file_plans",
             ),
-            "._tier0_transformer": ("FlextInfraTier0TransformerMixin",),
             "._typing_rewrite": ("FlextInfraRefactorTypingUnifierRewriteMixin",),
-            ".census_visitors": (
-                "FlextInfraCensusImportDiscoveryVisitor",
-                "FlextInfraCensusUsageCollector",
-            ),
             ".class_reconstructor": ("FlextInfraRefactorClassReconstructor",),
             ".compatibility_alias": ("FlextInfraRefactorCompatibilityAlias",),
             ".dataclass_modelizer": ("FlextInfraRefactorDataclassModelizer",),
@@ -104,9 +87,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".smells.base": ("FlextInfraSmellFixer",),
             ".smells.boolean_logic": ("FlextInfraBooleanLogicFixer",),
             ".symbol_propagator": ("FlextInfraRefactorSymbolPropagator",),
-            ".tier0_import_fixer": ("FlextInfraTransformerTier0ImportFixer",),
             ".typing_unifier": ("FlextInfraRefactorTypingUnifier",),
-            ".violation_census_visitor": ("FlextInfraViolationCensusVisitor",),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,
