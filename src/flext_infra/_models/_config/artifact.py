@@ -183,10 +183,6 @@ class FlextInfraConfigModelsArtifact:
             FlextInfraConfigModelsProvider.RepositorySourceSpec,
             m.Field(description="Canonical infrastructure repository identity"),
         ]
-        providers: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsProvider.ProviderSpec],
-            m.Field(min_length=1, description="Ordered FLEXT-owned Git providers"),
-        ]
         branch_policy: Annotated[
             FlextInfraConfigModelsProvider.BranchPolicySpec,
             m.Field(description="Global branch policy (CI triggers, integration line)"),

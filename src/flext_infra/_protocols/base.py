@@ -265,30 +265,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class ProviderSpec(Protocol):
-        """Provider-owned repository and baseline contract."""
-
-        @property
-        def name(self) -> str:
-            """Provider key."""
-            ...
-
-        @property
-        def organization(self) -> str:
-            """Canonical GitHub organization."""
-            ...
-
-        @property
-        def base_url(self) -> str:
-            """Canonical provider HTTPS base URL."""
-            ...
-
-        @property
-        def branch(self) -> str:
-            """Provider-owned integration baseline."""
-            ...
-
-    @runtime_checkable
     class WorkspaceEnvironmentRequest(Protocol):
         """Read-only workspace environment validation request."""
 

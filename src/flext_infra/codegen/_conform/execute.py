@@ -419,6 +419,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         )
         if with_docs.failure:
             return r[m.Infra.CodegenResult].from_failure(with_docs)
+        verified_plan: list[m.Infra.CodegenPlan] = []
         published = transaction.commit_locked(
             with_docs.value,
             lambda: self._validate_managed_fixed_point(
@@ -427,6 +428,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                 transaction,
                 owned_lazy_analysis,
                 docs_analysis,
+                verified_plan,
             ),
         )
         if published.failure:
@@ -434,14 +436,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         routes = self._conform_workspace_beads_routes(request)
         if routes.failure:
             return r[m.Infra.CodegenResult].from_failure(routes)
-        verified = self.plan(request)
-        if verified.failure:
-            return r[m.Infra.CodegenResult].from_failure(verified)
         allowed = self._allow_direnv_after_apply(request, published.value)
         if allowed.failure:
             return r[m.Infra.CodegenResult].from_failure(allowed)
         return r[m.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(plan=verified.value, written_files=published.value)
+            m.Infra.CodegenResult(
+                plan=verified_plan[0], written_files=published.value
+            )
         )
 
     def _prepare_scaffold_directories(
@@ -578,12 +579,20 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         transaction: FlextInfraCodegenTransaction,
         lazy_analysis: m.Infra.CodegenPhaseAnalysis,
         docs_analysis: m.Infra.CodegenPhaseAnalysis,
+        verified_plan: list[m.Infra.CodegenPlan],
     ) -> p.Result[bool]:
-        """Replan conform against live bytes before the journal can commit."""
+        """Replan conform against live bytes before the journal can commit.
+
+        This re-plan is the cycle's authoritative final plan: nothing that
+        changes generated content publishes between it and the journal commit,
+        so the caller reuses ``verified_plan`` as its result instead of
+        planning the whole fleet a second time.
+        """
         u.Cli.info("stage=verify-fixed-point")
         verified = self.plan(request)
         if verified.failure:
             return r[bool].from_failure(verified)
+        verified_plan.append(verified.value)
         residual = tuple(
             file
             for file in verified.value.files

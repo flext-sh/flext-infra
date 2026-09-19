@@ -48,7 +48,6 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
         """Conform one pyproject source."""
         return u.Infra.pyproject_conform(
             source,
-            providers=codegen.providers,
             workspace=workspace,
             workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,

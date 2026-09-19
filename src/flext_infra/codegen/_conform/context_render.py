@@ -260,10 +260,19 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         )
         if make_context.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(make_context)
-        repository_provider = u.Infra.repository_provider(repository, codegen.providers)
+        repository_provider = u.Infra.repository_provider(repository)
         if repository_provider.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(repository_provider)
         flext_provider = repository_provider.value
+        # The integration branch is a Git fact, not a configured pin: the
+        # published baseline wins, and a checkout that has published nothing
+        # yet integrates on the branch its HEAD carries.
+        integration_branch = u.Infra.resolve_integration_branch(
+            repository_root,
+            preference=codegen.branch_policy.integration_branch_preference,
+        )
+        if integration_branch.failure:
+            return r[m.Infra.ProjectRenderContext].from_failure(integration_branch)
         packaged_data_dirs = (
             tuple(
                 data_dir

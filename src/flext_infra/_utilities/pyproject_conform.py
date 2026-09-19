@@ -115,7 +115,6 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         pyproject_content: str,
         *,
-        providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.MakeProfile,
         toolchain: p.Infra.ToolchainSpec,
@@ -139,7 +138,6 @@ class FlextInfraUtilitiesPyprojectConform:
         normalized = cls._normalize_requirements(
             source,
             project_name=project_name,
-            providers=providers,
             workspace=workspace,
             workspace_mode=workspace_mode,
             canonicalize_all=True,
@@ -180,7 +178,6 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         pyproject_content: str,
         *,
-        providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.MakeProfile,
     ) -> p.Result[str]:
@@ -203,15 +200,12 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace_mode=workspace_mode,
         )
         if workspace_context_root:
-            sources_result = cls._validate_root_uv_sources(
-                source, workspace=workspace, providers=providers
-            )
+            sources_result = cls._validate_root_uv_sources(source, workspace=workspace)
             if sources_result.failure:
                 return r[str].from_failure(sources_result)
         normalized = cls._normalize_requirements(
             source,
             project_name=project_name,
-            providers=providers,
             workspace=workspace,
             workspace_mode=workspace_mode,
             canonicalize_all=False,
@@ -257,13 +251,11 @@ class FlextInfraUtilitiesPyprojectConform:
         document: t.Cli.TomlDocument,
         *,
         project_name: str,
-        providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.MakeProfile,
         canonicalize_all: bool,
     ) -> p.Result[bool]:
         """Render internal requirements for root workspace or detached operation."""
-        available = (workspace.repository, *workspace.subprojects)
         # Only the root expresses the active workspace overlay in its own
         # requirements. A publishable project keeps its configured Git source
         # so the same pyproject remains resolvable in a standalone checkout; uv
@@ -281,8 +273,6 @@ class FlextInfraUtilitiesPyprojectConform:
         normalized = cls._normalize_requirement_field(
             project,
             c.Infra.DEPENDENCIES,
-            repositories=available,
-            providers=providers,
             canonicalize_all=canonicalize_all,
             workspace_dependencies=workspace_dependencies,
         )
@@ -292,8 +282,6 @@ class FlextInfraUtilitiesPyprojectConform:
             group_result = cls._normalize_requirement_field(
                 section,
                 group_name,
-                repositories=available,
-                providers=providers,
                 canonicalize_all=canonicalize_all,
                 workspace_dependencies=workspace_dependencies,
             )
@@ -307,8 +295,6 @@ class FlextInfraUtilitiesPyprojectConform:
         container: t.Cli.TomlDocument | t.Cli.TomlTable,
         key: str,
         *,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
-        providers: t.SequenceOf[m.Infra.ProviderSpec],
         canonicalize_all: bool,
         workspace_dependencies: frozenset[str],
     ) -> p.Result[bool]:
@@ -329,8 +315,6 @@ class FlextInfraUtilitiesPyprojectConform:
         for item in items:
             normalized = cls._canonical_requirement(
                 item,
-                repositories=repositories,
-                providers=providers,
                 workspace_dependencies=workspace_dependencies,
             )
             if normalized.failure:
@@ -352,11 +336,16 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         requirement: str,
         *,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
-        providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace_dependencies: frozenset[str],
     ) -> p.Result[str]:
-        """Render one internal requirement from its local topology reference."""
+        """Render one internal requirement from its own declared Git source.
+
+        The requirement line is the only authority for an internal
+        dependency's canonical URL and branch: it is parsed and canonicalized
+        (transport scheme only), never rewritten from provider policy. A
+        source-less internal dependency that the active workspace overlay does
+        not own is a loud failure.
+        """
         dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
         if dependency_name is None or not dependency_name.startswith("flext-"):
             return r[str].ok(requirement.strip())
@@ -375,65 +364,23 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[str].ok(
                 f"{head}; {marker_text}" if separator and marker_text else head
             )
-        reference_result = cls._repository_reference(
-            dependency_name, repositories=repositories, providers=providers
-        )
-        if reference_result.failure:
-            return r[str].from_failure(reference_result)
-        reference = reference_result.value
-        provider = FlextInfraUtilitiesRepository.repository_provider(
-            reference, providers
-        )
-        if provider.failure:
-            return r[str].from_failure(provider)
-        # Publishable members keep the direct Git requirement with the
-        # configured branch: uv accepts the same metadata standalone and, under
-        # a workspace root, the root ``workspace = true`` source overlay
-        # replaces it at resolution time. A member ``[tool.uv.sources]`` git
-        # entry is rejected by uv itself ("workspace member ... references a
-        # Git in tool.uv.sources"), so the inline form is the only valid
-        # dual-context declaration; branch refs re-resolve on every upgrade
-        # (root and member locks resolve the same branch at different tips).
-        branch = provider.value.branch
-        inline = f"{head} @ git+{reference.url}@{branch}"
+        source = FlextInfraUtilitiesRepository.declared_git_source(requirement)
+        if source.failure:
+            return r[str].from_failure(source)
+        if source.value is None:
+            return r[str].fail(
+                "internal flext dependency declares no direct git source and "
+                f"is not a workspace dependency: {dependency_name}"
+            )
+        url, ref = source.value
+        # The declared source stays authoritative under a workspace root too:
+        # uv replaces it there with the root ``workspace = true`` overlay, and
+        # a member ``[tool.uv.sources]`` git entry is rejected by uv itself,
+        # so the inline form is the only valid dual-context declaration.
+        inline = f"{head} @ git+{url}@{ref}"
         return r[str].ok(
             f"{inline}; {marker_text}" if separator and marker_text else inline
         )
-
-    @staticmethod
-    def _repository_reference(
-        distribution: str,
-        *,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
-        providers: t.SequenceOf[m.Infra.ProviderSpec],
-    ) -> p.Result[p.Infra.RepositoryRef]:
-        """Return one unambiguous reference for a distribution.
-
-        A distribution the workspace does not declare is still resolvable: its
-        canonical source is the provider contract plus its own name. That is
-        derived from generic policy, never from a catalog of projects that
-        flext-infra is forbidden to own.
-        """
-        matches = tuple(
-            repository
-            for repository in repositories
-            if repository.distribution == distribution
-        )
-        if not matches:
-            return r.ok(
-                FlextInfraUtilitiesRepository.derived_repository_ref(
-                    distribution, provider=providers[0]
-                )
-            )
-        reference = matches[0]
-        if any(
-            item.url != reference.url or item.provider != reference.provider
-            for item in matches[1:]
-        ):
-            return r.fail(
-                f"repository catalog conflicts for distribution: {distribution}"
-            )
-        return r.ok(reference)
 
     @classmethod
     def _sync_dependency_groups(
@@ -766,33 +713,42 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_remove_key_if_present(tool, "uv")
         return r[bool].ok(True)
 
-    @classmethod
-    def _resolved_root_sources(
-        cls,
-        *,
-        workspace: p.Infra.WorkspaceSpec,
-        providers: t.SequenceOf[m.Infra.ProviderSpec],
-    ) -> p.Result[MutableMapping[str, MutableMapping[str, t.JsonValue]]]:
-        """Resolve the workspace source overlay from typed metadata."""
-        candidates = (workspace.repository, *workspace.subprojects)
-        for distribution in dict.fromkeys(item.distribution for item in candidates):
-            reference_result = cls._repository_reference(
-                distribution, repositories=candidates, providers=providers
-            )
-            if reference_result.failure:
-                return r[
-                    MutableMapping[str, MutableMapping[str, t.JsonValue]]
-                ].from_failure(reference_result)
-        return r[MutableMapping[str, MutableMapping[str, t.JsonValue]]].ok({
-            member.distribution: {"workspace": True} for member in workspace.subprojects
-        })
+    @staticmethod
+    def raw_requirement_values(raw: object) -> list[str]:
+        """Collect raw requirement strings from a dependencies value or group table.
+
+        ``project.dependencies`` is one array while ``optional-dependencies``
+        and ``dependency-groups`` are tables of arrays; this is the single
+        owner of that shape for read-only requirement scans.
+        """
+        if isinstance(raw, Mapping):
+            values: list[str] = []
+            for group in raw.values():
+                values.extend(
+                    FlextInfraUtilitiesPyprojectConform.raw_requirement_values(group)
+                )
+            return values
+        if isinstance(raw, (list, tuple)):
+            return [item for item in raw if isinstance(item, str)]
+        return []
 
     @staticmethod
+    def _resolved_root_sources(
+        *,
+        workspace: p.Infra.WorkspaceSpec,
+    ) -> MutableMapping[str, MutableMapping[str, t.JsonValue]]:
+        """Resolve the workspace source overlay from the declared topology."""
+        return {
+            member.distribution: {"workspace": True}
+            for member in workspace.subprojects
+        }
+
+    @classmethod
     def _validate_root_uv_sources(
+        cls,
         document: t.Cli.TomlDocument,
         *,
         workspace: p.Infra.WorkspaceSpec,
-        providers: t.SequenceOf[m.Infra.ProviderSpec],
     ) -> p.Result[bool]:
         """Validate the root overlay without rewriting out-of-order TOML tables."""
         payload = u.Cli.toml_as_mapping(document)
@@ -829,12 +785,7 @@ class FlextInfraUtilitiesPyprojectConform:
         sources = uv.get("sources")
         if not isinstance(sources, Mapping):
             return r[bool].fail("root pyproject must define [tool.uv.sources]")
-        resolved_result = FlextInfraUtilitiesPyprojectConform._resolved_root_sources(
-            workspace=workspace, providers=providers
-        )
-        if resolved_result.failure:
-            return r[bool].from_failure(resolved_result)
-        expected_sources = resolved_result.value
+        expected_sources = cls._resolved_root_sources(workspace=workspace)
         if tuple(sources) != tuple(expected_sources):
             return r[bool].fail("root uv workspace sources differ from workspace SSOT")
         for source_name, expected_source in expected_sources.items():
@@ -899,17 +850,21 @@ class FlextInfraUtilitiesPyprojectConform:
                     "workspace dependency declares a conflicting direct source: "
                     f"{dependency_name}"
                 )
-            # Standalone provenance is catalog-owned: [tool.uv.sources] is
+            # Standalone provenance is manifest-owned: [tool.uv.sources] is
             # rendered from the workspace member URL, so the requirement line
-            # stays a plain distribution name and the catalog URL must be
+            # stays a plain distribution name and the manifest URL must be
             # HTTPS (fail-closed against ssh/file:// provenance).
             member = next(
-                (m for m in workspace.subprojects if m.distribution == dependency_name),
+                (
+                    item
+                    for item in workspace.subprojects
+                    if item.distribution == dependency_name
+                ),
                 None,
             )
             if member is not None and not member.url.startswith("https://"):
                 return r[bool].fail(
-                    "internal dependency catalog provenance must be HTTPS: "
+                    "internal dependency manifest provenance must be HTTPS: "
                     f"{dependency_name} ({member.url})"
                 )
         return r[bool].ok(True)

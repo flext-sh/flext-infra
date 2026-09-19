@@ -1,4 +1,10 @@
-"""Canonical repository-to-provider resolution utilities."""
+"""Detected repository identity and integration-branch resolution utilities.
+
+flext-infra ships no provider registry: every repository's provider identity
+is detected from that repository's own declarations (its workspace manifest,
+its live Git origin, and its declared dependency sources), and every branch
+is detected from live Git or declared explicitly by a caller.
+"""
 
 from __future__ import annotations
 
@@ -10,96 +16,304 @@ from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
 
+from .dependencies import FlextInfraUtilitiesDependencies
+
+_GIT_URL_SCHEME_PREFIX = "git+"
+
 
 class FlextInfraUtilitiesRepository:
-    """Resolve provider-owned policy for one governed repository."""
+    """Resolve detected identity and branch policy for one governed repository."""
 
     @staticmethod
-    def derived_repository_ref(
-        distribution: str,
-        *,
-        provider: m.Infra.ProviderSpec,
-        role: c.Infra.MakeProfile = c.Infra.MakeProfile.STANDALONE,
-        kind: c.Infra.ProjectKind = c.Infra.ProjectKind.INTERNAL_FLEXT,
-    ) -> m.Infra.RepositoryRef:
-        """Derive one repository reference from generic provider policy.
+    def declared_git_source(
+        requirement: str,
+    ) -> p.Result[t.Pair[str, str] | None]:
+        """Parse one requirement's declared direct Git source.
 
-        flext-infra owns no catalog of the projects it serves, so a governed
-        distribution that the live workspace does not declare is still
-        resolvable: its canonical source is the provider contract plus its own
-        distribution name. Nothing here is looked up; everything is derived.
+        Returns ``(canonical_url, ref)`` for a requirement that declares
+        ``name @ git+URL@REF``, or ``None`` when the requirement declares no
+        direct source at all. The declared line is the only authority for the
+        dependency's canonical URL and branch: canonicalization normalizes the
+        transport scheme (``ssh://``, SCP-style, ``http``) to ``https`` and
+        never invents an organization, host, or ref. A declared source that is
+        not a Git URL, or a Git URL without a ref, fails loudly.
         """
-        return m.Infra.RepositoryRef(
-            name=distribution,
-            distribution=distribution,
-            url=f"{provider.base_url.rstrip('/')}/{distribution}.git",
-            path=Path(distribution),
-            role=role,
-            provider=provider.name,
-            kind=kind,
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=True,
-            editable=True,
-            read_only=False,
+        requirement_part, _, _ = requirement.partition(";")
+        head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(
+            requirement_part.strip()
         )
+        if head_match is None:
+            return r[t.Pair[str, str] | None].fail(
+                f"invalid requirement head: {requirement}"
+            )
+        _, at_separator, source = requirement_part.partition("@")
+        if not at_separator:
+            return r[t.Pair[str, str] | None].ok(None)
+        source = source.strip()
+        if not source.startswith(_GIT_URL_SCHEME_PREFIX):
+            return r[t.Pair[str, str] | None].fail(
+                f"internal dependency direct source must be a git URL: {requirement}"
+            )
+        url, ref_separator, ref = source.rpartition("@")
+        url = url.removeprefix(_GIT_URL_SCHEME_PREFIX).strip()
+        ref = ref.strip()
+        if not ref_separator or not ref:
+            return r[t.Pair[str, str] | None].fail(
+                f"internal dependency git source must declare a branch or ref: "
+                f"{requirement}"
+            )
+        if url.startswith("https://"):
+            canonical = url
+        elif url.startswith("http://"):
+            canonical = f"https://{url.removeprefix('http://')}"
+        elif url.startswith("ssh://"):
+            canonical = f"https://{url.removeprefix('ssh://').removeprefix('git@')}"
+        elif url.startswith("git@") and ":" in url:
+            host, _, path = url.removeprefix("git@").partition(":")
+            canonical = f"https://{host}/{path}"
+        else:
+            return r[t.Pair[str, str] | None].fail(
+                f"internal dependency git source scheme is not canonicalizable "
+                f"to HTTPS: {requirement}"
+            )
+        return r[t.Pair[str, str] | None].ok((canonical, ref))
 
     @classmethod
     def configured_repository_ref(
-        cls, *, codegen: m.Infra.CodegenConfigSpec
+        cls,
+        *,
+        codegen: m.Infra.CodegenConfigSpec,
+        repository_root: Path,
     ) -> p.Result[m.Infra.RepositoryRef]:
-        """Derive one repository from the unique provider selected by config."""
+        """Detect one reference for the infrastructure distribution.
+
+        The URL is detected — never looked up in a catalog — from the first
+        declaration the checkout carries: its own project identity (the
+        checkout is the infrastructure repository, so its live Git origin
+        speaks), a declared direct Git dependency source for the distribution,
+        or its workspace manifest ``repository``/``members`` declaration. A
+        checkout that declares none fails loudly.
+        """
+        from flext_infra import u
+
         source = codegen.infra_repository
-        matches = tuple(
-            provider
-            for provider in codegen.providers
-            if provider.name == source.provider
+        distribution = source.distribution
+        detected = cls._detected_infra_url(
+            repository_root=repository_root, distribution=distribution
         )
-        if len(matches) != 1:
-            return r[m.Infra.RepositoryRef].fail(
-                "configured repository provider must resolve exactly once: "
-                f"{source.provider}"
-            )
-        (provider,) = matches
+        if detected.failure:
+            return r[m.Infra.RepositoryRef].from_failure(detected)
         return r[m.Infra.RepositoryRef].ok(
-            cls.derived_repository_ref(source.distribution, provider=provider)
+            m.Infra.RepositoryRef(
+                name=distribution,
+                distribution=distribution,
+                url=detected.value,
+                path=Path(distribution),
+                role=c.Infra.MakeProfile.STANDALONE,
+                provider=source.provider,
+                kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
+                codegen=c.Infra.CodegenKind.CONFORM,
+                package=True,
+                editable=True,
+                read_only=False,
+            )
         )
+
+    @classmethod
+    def _detected_infra_url(
+        cls, *, repository_root: Path, distribution: str
+    ) -> p.Result[str]:
+        """Detect the infrastructure distribution's canonical URL, fail loud."""
+        from flext_infra import u
+
+        metadata = u.Infra.read_project_metadata_result(repository_root)
+        if (
+            metadata.success
+            and metadata.value.project.name == distribution
+        ):
+            origin = u.Infra.git_remote_url(
+                m.Infra.GitRemoteUrlRequest(
+                    repo_root=repository_root, remote=c.Infra.GIT_DEFAULT_REMOTE
+                )
+            )
+            if origin.failure or not origin.value.text.strip():
+                return r[str].fail(
+                    "the infrastructure checkout must publish a Git origin: "
+                    f"{repository_root}"
+                )
+            return r[str].ok(origin.value.text.strip())
+        pyproject_path = repository_root / c.Infra.PYPROJECT_FILENAME
+        if pyproject_path.is_file():
+            declared = cls._declared_dependency_url(
+                pyproject_path=pyproject_path, distribution=distribution
+            )
+            if declared.failure:
+                return r[str].from_failure(declared)
+            if declared.value is not None:
+                return r[str].ok(declared.value)
+        manifest = cls._manifest_declared_url(
+            repository_root=repository_root, distribution=distribution
+        )
+        if manifest.failure:
+            return r[str].from_failure(manifest)
+        if manifest.value is not None:
+            return r[str].ok(manifest.value)
+        return r[str].fail(
+            f"infrastructure repository {distribution} is undeclared by this "
+            f"checkout: no project identity, no direct git dependency source, "
+            f"and no workspace manifest entry: {repository_root}"
+        )
+
+    @classmethod
+    def _declared_dependency_url(
+        cls, *, pyproject_path: Path, distribution: str
+    ) -> p.Result[str | None]:
+        """Return the pyproject-declared direct Git URL for one distribution.
+
+        A plain (source-less) requirement names a workspace dependency whose
+        URL the workspace manifest owns, so it is not a failure here; only a
+        declared direct source carries a URL this layer can use.
+        """
+        from flext_infra import u
+
+        from .pyproject_conform import FlextInfraUtilitiesPyprojectConform
+
+        text = u.Cli.files_read_text(pyproject_path)
+        if text.failure:
+            return r[str | None].from_failure(text)
+        payload = u.Cli.toml_mapping_from_text(text.value)
+        if payload is None:
+            return r[str | None].fail(
+                f"pyproject is not valid TOML: {pyproject_path}"
+            )
+        requirements: list[str] = []
+        project = payload.get(c.Infra.PROJECT)
+        if isinstance(project, dict):
+            for key in (c.Infra.DEPENDENCIES, c.Infra.OPTIONAL_DEPENDENCIES):
+                requirements.extend(
+                    FlextInfraUtilitiesPyprojectConform.raw_requirement_values(
+                        project.get(key)
+                    )
+                )
+        groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
+        if isinstance(groups, dict):
+            for group in groups.values():
+                requirements.extend(
+                    FlextInfraUtilitiesPyprojectConform.raw_requirement_values(group)
+                )
+        for requirement in requirements:
+            if (
+                FlextInfraUtilitiesDependencies.dep_name(requirement) != distribution
+            ):
+                continue
+            parsed = cls.declared_git_source(requirement)
+            if parsed.failure:
+                return r[str | None].from_failure(parsed)
+            if parsed.value is None:
+                continue
+            url, _ref = parsed.value
+            if not url.startswith("https://"):
+                return r[str | None].fail(
+                    "declared infrastructure dependency provenance must be "
+                    f"HTTPS: {requirement}"
+                )
+            return r[str | None].ok(url)
+        return r[str | None].ok(None)
+
+    @staticmethod
+    def _manifest_declared_url(
+        *, repository_root: Path, distribution: str
+    ) -> p.Result[str | None]:
+        """Return the workspace manifest's declared URL for one distribution."""
+        from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+        loaded = FlextInfraWorkspaceDetector.load_workspace_manifest(
+            repository_root
+        )
+        if loaded.failure:
+            return r[str | None].fail(
+                loaded.error or "workspace manifest load failed without an error"
+            )
+        if loaded.value is None:
+            return r[str | None].ok(None)
+        manifest = loaded.value
+        candidates = (manifest.repository, *manifest.members)
+        for repository in candidates:
+            if repository.distribution == distribution:
+                return r[str | None].ok(repository.url)
+        return r[str | None].ok(None)
 
     @staticmethod
     def repository_provider(
-        repository: p.Infra.RepositoryRef, providers: t.SequenceOf[m.Infra.ProviderSpec]
-    ) -> p.Result[m.Infra.ProviderSpec]:
-        """Return the unique typed provider declared by ``repository.provider``."""
-        matches = tuple(
-            provider for provider in providers if provider.name == repository.provider
-        )
-        if len(matches) != 1:
-            return r[m.Infra.ProviderSpec].fail(
-                f"repository provider must resolve exactly once: {repository.provider}"
-            )
-        return r[m.Infra.ProviderSpec].ok(matches[0])
+        repository: p.Infra.RepositoryRef,
+    ) -> p.Result[m.Infra.ProviderIdentitySpec]:
+        """Detect the provider identity a repository declares for itself.
 
-    @staticmethod
+        The name is the key the repository's own manifest declares and the
+        organization and base URL are read from that same declaration's
+        canonical URL through the ``git_remote_identity`` normalizer. Nothing
+        is matched against configured rows and no branch is fabricated here.
+        """
+        from flext_infra import u
+
+        url = repository.url.strip()
+        organization, separator, _ = u.Infra.git_remote_identity(url).partition("/")
+        if not separator:
+            return r[m.Infra.ProviderIdentitySpec].fail(
+                f"repository url must name an owner and repository: {url}"
+            )
+        if not url.startswith("https://"):
+            return r[m.Infra.ProviderIdentitySpec].fail(
+                f"provider identity requires a canonical HTTPS declaration url: {url}"
+            )
+        return r[m.Infra.ProviderIdentitySpec].ok(
+            m.Infra.ProviderIdentitySpec(
+                name=repository.provider,
+                organization=organization,
+                base_url=url.removesuffix(".git").rsplit("/", 1)[0],
+            )
+        )
+
+    @classmethod
     def resolve_integration_branch(
-        workspace: m.Infra.WorkspaceSpec, provider: m.Infra.ProviderSpec
-    ) -> str:
-        """Return the provider-owned integration branch."""
-        del workspace
-        provider_branch: str = provider.branch
-        return provider_branch
+        cls, repository_root: Path, *, preference: t.StrSequence
+    ) -> p.Result[str]:
+        """Detect the integration branch one repository actually integrates on.
+
+        The published remote-tracking baseline wins; a checkout that has
+        published nothing yet (project creation, a fresh scaffold) integrates
+        on the branch its HEAD carries. Both answers are Git facts; when
+        neither exists the failure is loud and no default is invented.
+        """
+        from flext_infra import u
+
+        baseline = cls.repository_baseline_branch(
+            repository_root, preference=tuple(preference) or None
+        )
+        if baseline.success:
+            return r[str].ok(baseline.value)
+        current = u.Infra.git_current_branch(
+            m.Infra.GitRepoRequest(repo_root=repository_root)
+        )
+        if current.success and current.value.text.strip():
+            return r[str].ok(current.value.text.strip())
+        return r[str].fail(
+            "integration branch must be published or checked out by Git: "
+            f"{repository_root}: {baseline.error or current.error}"
+        )
 
     @staticmethod
     def gitmodule_branch_is_governed(
         declared_branch: str,
         *,
-        provider_branch: str,
         integration_branch: str | None = None,
     ) -> bool:
-        """Accept follow-superproject (``.``) or the resolved integration line."""
+        """Accept follow-superproject (``.``) or the detected integration line."""
         if declared_branch == c.Infra.FOLLOW_SUPERPROJECT_BRANCH:
             return True
-        if declared_branch == provider_branch:
-            return True
-        return integration_branch is not None and declared_branch == integration_branch
+        return (
+            integration_branch is not None and declared_branch == integration_branch
+        )
 
     @classmethod
     def repository_baseline_branch(
@@ -110,19 +324,19 @@ class FlextInfraUtilitiesRepository:
     ) -> p.Result[str]:
         """Return the integration baseline the repository actually publishes.
 
-        A provider declares one default branch, but managed repositories under
-        the same provider legitimately integrate on different branches. The
-        baseline is therefore derived from live Git: the published
-        remote-tracking integration branch wins.
+        Managed repositories under the same provider legitimately integrate
+        on different branches. The baseline is therefore derived from live
+        Git: the published remote-tracking integration branch wins.
 
         ``preference`` is the ordered set of names to try, owned by
         ``codegen.branch_policy.integration_branch_preference`` so a workspace
         declares its own release line instead of asking for a constant in this
         package. Omitting it uses the built-in conventional ordering.
 
-        ``fallback`` carries the provider default for a repository that cannot
-        have published anything yet (project creation). Without it, a checkout
-        with no integration branch fails closed instead of guessing.
+        ``fallback`` carries an explicitly declared default for a repository
+        that cannot have published anything yet (project creation). Without
+        it, a checkout with no integration branch fails closed instead of
+        guessing.
         """
         from flext_infra import u
 

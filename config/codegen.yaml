@@ -248,17 +248,11 @@ Infra:
           name: flext-infra
         dependencies: [flext-tests]
 
-    providers:
-      - name: flext-sh
-        organization: flext-sh
-        base_url: https://github.com/flext-sh
-        branch: 0.12.0-dev
-    # Additional consumer organizations are operator-private registry entries:
-    # declare them in config/codegen-overrides.local.yaml, a gitignored
-    # per-clone file merged after the tracked configs (scalars win, dict keys
-    # add, lists concatenate). They are never committed to this public
-    # repository; every governed standalone repository keeps referencing its
-    # provider by name from its own config/workspace.yaml.
+    # No provider registry exists: a repository's provider identity is
+    # detected from its own config/workspace.yaml (provider key plus canonical
+    # URL) and from each internal dependency's declared direct Git source.
+    # Nothing here catalogs organizations, and nothing resolves a provider by
+    # matching a Git origin against configured rows.
     branch_policy:
       # Pushes to these branches trigger the generated CI workflow. The renderer
       # adds the repository's own integration branch to this list; it never

@@ -34,29 +34,28 @@ class FlextInfraConfig(FlextCliConfig):
     LOCAL_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.local.yaml"
     """Optional gitignored per-clone override file, merged after every tracked config.
 
-    Operator-private values (provider registry entries, project overrides, CI
-    submodule credentials) that must never be committed to this public
-    repository are declared here instead. The file goes through the exact
-    tracked-file pipeline — strict duplicate-key loader, deep merge with list
-    concatenation, full model validation — and merges last, so its scalars win
-    and its dict entries (e.g. ``ci_private_submodules``, ``project_overrides``)
-    add cleanly beside the public ones. List-typed registries concatenate: a
-    name that must resolve exactly once (``providers``) may only be declared
-    here if the tracked files do not already carry it. Read once when the
-    config singleton is first fetched; an absent file is a no-op.
+    Operator-private values (project overrides, CI submodule credentials) that
+    must never be committed to this public repository are declared here
+    instead. The file goes through the exact tracked-file pipeline — strict
+    duplicate-key loader, deep merge with list concatenation, full model
+    validation — and merges last, so its scalars win and its dict entries
+    (e.g. ``ci_private_submodules``, ``project_overrides``) add cleanly beside
+    the public ones. Read once when the config singleton is first fetched; an
+    absent file is a no-op.
     """
 
     ORG_OVERRIDES_FILENAME: ClassVar[str] = "codegen-org.yaml"
     """Tracked org-layer declarations of the repository being governed.
 
-    A private organization that consumes this generator registers its own
-    provider entries and doc checkouts in ``config/codegen-org.yaml`` at the
-    root of ITS repository — org data is allowed there because the file is
-    tracked by the org's own (private) repository, never by this public one.
-    The generator merges it when invoked from that repository root (the
-    generated Makefiles always run there, so CI resolves the same values
-    local runs do). Same strict pipeline; merged after the operator's local
-    file; absent file is a no-op.
+    A private organization that consumes this generator declares its own doc
+    checkouts in ``config/codegen-org.yaml`` at the root of ITS repository —
+    org data is allowed there because the file is tracked by the org's own
+    (private) repository, never by this public one. The generator merges it
+    when invoked from that repository root (the generated Makefiles always run
+    there, so CI resolves the same values local runs do). Same strict
+    pipeline; merged after the operator's local file; absent file is a no-op.
+    Provider identity is never declared here: it is detected from each
+    repository's own ``config/workspace.yaml`` and dependency declarations.
     """
 
     @classmethod

@@ -53,7 +53,11 @@ class FlextInfraDocGeneratorBundleMixin:
     def _prepare_request(
         cls, request: m.Infra.DocsGenerateRequest
     ) -> p.Result[m.Infra.DocsGenerationBundle]:
-        """Render and source-verify one canonical docs artifact inventory."""
+        """Render one canonical docs artifact inventory from the frozen snapshot.
+
+        Source-state race verification is owned by ``docs_file_plans``, the
+        single pre-publication barrier of the docs cycle.
+        """
         roots = u.Infra.docs_repository_roots(request.repository_root)
         if roots.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(roots)
@@ -152,18 +156,12 @@ class FlextInfraDocGeneratorBundleMixin:
                         desired_mode=0o644 if normalized_content is not None else None,
                     )
                 )
-            normalized_scopes.append(
-                m.Infra.DocsScopeArtifacts(
-                    scope=scope, artifacts=tuple(normalized_artifacts)
-                )
+        normalized_scopes.append(
+            m.Infra.DocsScopeArtifacts(
+                scope=scope, artifacts=tuple(normalized_artifacts)
             )
-            offset += size
-        scope_roots = tuple(scoped.scope.path for scoped in normalized_scopes)
-        stable = u.Infra.docs_verify_sources(
-            repository_root, sources.value, extra_roots=scope_roots
         )
-        if stable.failure:
-            return r[m.Infra.DocsGenerationBundle].from_failure(stable)
+        offset += size
         validated_bundle: p.Result[m.Infra.DocsGenerationBundle] = u.validate_value(
             m.Infra.DocsGenerationBundle,
             {
