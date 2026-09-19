@@ -109,10 +109,10 @@ class FlextInfraMiseRecovery:
             original = self._classify_entry_identity(entry, "original")
             desired = self._classify_entry_identity(entry, "desired")
             rollback = self._classify_entry_identity(entry, "rollback")
-            if journal.state == "committed":
-                operation = "noop"
-            elif identity == original or (
-                journal.state == "recovering" and identity == rollback
+            if (
+                journal.state == "committed"
+                or identity == original
+                or (journal.state == "recovering" and identity == rollback)
             ):
                 operation = "noop"
             elif identity == desired:
