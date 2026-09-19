@@ -44,7 +44,7 @@ class FlextInfraMiseStaging:
     def _stage_projects(
         self,
         plan: m.Infra.MiseToolchainWorkspacePlan,
-        seed_launchers: t.VariadicTuple[m.Cli.AtomicFileState],
+        seed_launchers: t.VariadicTuple[bytes],
     ) -> p.Result[
         t.Pair[
             t.VariadicTuple[m.Infra.CodegenStagedFile],
@@ -83,7 +83,7 @@ class FlextInfraMiseStaging:
         project: m.Infra.MiseToolchainProjectState,
         *,
         stage_root: Path,
-        seed_launchers: t.VariadicTuple[m.Cli.AtomicFileState],
+        seed_launchers: t.VariadicTuple[bytes],
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicDirectoryState]]:
         """Build one project and retain its guarded directory creation receipts."""
         result_type = r[tuple[m.Cli.AtomicDirectoryState, ...]]
@@ -106,12 +106,10 @@ class FlextInfraMiseStaging:
         )
         if config_write.failure:
             return result_type.from_failure(config_write)
-        for source, (name, mode) in zip(
+        for content, (name, mode) in zip(
             seed_launchers, c.Infra.ARTIFACT_SPECS, strict=True
         ):
-            if source.content is None:
-                return result_type.fail(f"Mise launcher seed content is absent: {name}")
-            copied = process.write_new(stage_root / name, source.content, mode)
+            copied = process.write_new(stage_root / name, content, mode)
             if copied.failure:
                 return result_type.from_failure(copied)
         return result_type.ok(tuple(created.value))
