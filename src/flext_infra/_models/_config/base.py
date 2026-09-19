@@ -20,16 +20,16 @@ from .workspace import FlextInfraConfigModelsWorkspace
 class FlextInfraConfigModels(
     FlextInfraConfigModelsContract,
     FlextInfraConfigModelsProvider,
+    FlextInfraConfigModelsRender,
+    FlextInfraConfigModelsRoot,
     FlextInfraConfigModelsScaffold,
     FlextInfraConfigModelsStatic,
     FlextInfraConfigModelsMake,
     FlextInfraConfigModelsBeads,
     FlextInfraConfigModelsTemplates,
     FlextInfraConfigModelsContexts,
-    FlextInfraConfigModelsRender,
     FlextInfraConfigModelsWorkspace,
     FlextInfraConfigModelsRelease,
     FlextInfraConfigModelsArtifact,
-    FlextInfraConfigModelsRoot,
 ):
     """Every config family joined in dependency order, foundations first."""

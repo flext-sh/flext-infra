@@ -11,7 +11,6 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import u
-from flext_infra import u
 
 
 class TestsFlextInfraUtilitiesDocsGithubLinks:
@@ -30,7 +29,6 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
             tm.that(all(identities), eq=True)
             tm.that(len(identities), eq=len(repos))
             tm.that(
-                all(repo.organization and repo.repository for repo in repos), eq=True
                 all(repo.organization and repo.repository for repo in repos), eq=True
             )
 

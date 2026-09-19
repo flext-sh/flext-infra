@@ -338,7 +338,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         ):
             return u.Infra.analyzer_python_roots(
                 repository_root,
-                generated_roots,
+                generated_roots or (),
                 workspace_excluded_top_dirs=workspace_excluded_top_dirs,
             )
         if declared_python_dirs_are_complete:

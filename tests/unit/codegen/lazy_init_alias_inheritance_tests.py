@@ -1,4 +1,4 @@
-"""Facade-parent alias inheritance sources only from the indexed workspace."""
+"""Generated initializers expose only symbols declared in their directory."""
 
 from __future__ import annotations
 
@@ -10,21 +10,10 @@ from tests import c, u
 
 
 class TestsFlextInfraLazyInitAliasInheritance:
-    """A parent's exported letters come only from the indexed workspace scan.
+    """Parent imports never become child initializer exports."""
 
-    Regression coverage for flext-b3xmn: root/member lazy-init renders used to
-    union in ``u.Infra.installed_package_exports`` (ambient ``importlib``
-    introspection of whatever happens to be installed) whenever a declared
-    facade parent was not indexed by the current Rope workspace scan. That
-    made generated ``__init__.py`` content diverge between a local editable
-    venv and a pinned CI checkout. The fix removes the ambient union/fallback
-    and fails loud instead.
-    """
-
-    def test_child_inherits_exactly_the_indexed_parent_letters(
-        self, tmp_path: Path
-    ) -> None:
-        """An indexed parent's exact alias set is what the child inherits."""
+    def test_child_does_not_reexport_parent_letters(self, tmp_path: Path) -> None:
+        """The child initializer exposes declarations from its own directory only."""
         repository_root, child_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-test-inherit",
@@ -66,14 +55,12 @@ class TestsFlextInfraLazyInitAliasInheritance:
             encoding=c.Cli.ENCODING_DEFAULT
         )
 
-        tm.that(
-            generated.splitlines(), has="    from flext_test_inherit_parent import m, p"
-        )
-        tm.that(generated, has="FlextTestInheritChildConstants as c")
-        tm.that(generated, lacks="from flext_test_inherit_parent import c")
+        tm.that(generated, lacks="from flext_test_inherit_parent import")
+        tm.that(generated, lacks='"c",')
+        tm.that(generated, has='"FlextTestInheritChildConstants",')
 
-    def test_declared_parent_resolving_nowhere_fails_loud(self, tmp_path: Path) -> None:
-        """A declared parent that resolves nowhere in the environment is a typed failure."""
+    def test_unknown_parent_is_not_an_initializer_export(self, tmp_path: Path) -> None:
+        """A child does not make an unknown parent's aliases public."""
         repository_root, child_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-test-ghost",
@@ -88,16 +75,13 @@ class TestsFlextInfraLazyInitAliasInheritance:
             encoding=c.Infra.ENCODING_DEFAULT,
         )
 
-        planned = u.Tests.plan_lazy_init(repository_root)
-
-        tm.that(planned.failure, eq=True)
-        tm.that(
-            planned.error,
-            contains=(
-                "lazy-init: declared facade parent 'flext_ghost_parent_zzz'"
-                " resolves nowhere in the active environment"
-            ),
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        generated = child_root.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
         )
+
+        tm.that(generated, lacks="flext_ghost_parent_zzz")
+        tm.that(generated, lacks='"c",')
 
 
 __all__: list[str] = ["TestsFlextInfraLazyInitAliasInheritance"]

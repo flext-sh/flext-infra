@@ -6,7 +6,7 @@ from collections.abc import MutableSequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import r
+from flext_core import r
 from tests import m, p, t
 
 

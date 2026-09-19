@@ -6,7 +6,8 @@ import operator
 from collections.abc import MutableMapping
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, t, u
+from flext_core import r
+from flext_infra import c, config, m, p, t, u
 
 
 class FlextInfraWorkspaceCheckReportsMixin:

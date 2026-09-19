@@ -4,26 +4,20 @@ from __future__ import annotations
 
 from pathlib import Path
 
-<<<<<<< HEAD
-from flext_infra import r
-from tests import c, m
-=======
-from flext_infra import p, r
+from flext_core import r
 from tests import c, m, t, u
->>>>>>> d84644f0698f06d81f3be10cc3de2865455841a9
 from tests.utilities_replay import TestsFlextInfraUtilitiesReplayRunnerMixin
 
 
 class TestsFlextInfraUtilitiesReplaySequenceMixin:
-<<<<<<< HEAD
-    """Command replay and typed fixture factory helpers."""
-=======
     """In-order command replay and typed fixture factory helpers."""
 
     class SequenceRunner(TestsFlextInfraUtilitiesReplayRunnerMixin.DeptryRunner):
         """Protocol-compatible runner that replays command results in order."""
 
-        def __init__(self, results: t.SequenceOf[p.Result[m.Cli.CommandOutput]]) -> None:
+        def __init__(
+            self, results: t.SequenceOf[p.Result[m.Cli.CommandOutput]]
+        ) -> None:
             """Store ordered command results for replay."""
             self._results = list(results)
             self._index = 0
@@ -44,7 +38,6 @@ class TestsFlextInfraUtilitiesReplaySequenceMixin:
         def _command_result(self) -> p.Result[m.Cli.CommandOutput]:
             """Replay the next stored result instead of a single one."""
             return self._next_result()
->>>>>>> d84644f0698f06d81f3be10cc3de2865455841a9
 
     @staticmethod
     def command_runner(
@@ -73,8 +66,6 @@ class TestsFlextInfraUtilitiesReplaySequenceMixin:
         )
 
     @staticmethod
-<<<<<<< HEAD
-=======
     def sequence_runner(
         *results: p.Result[m.Cli.CommandOutput],
     ) -> TestsFlextInfraUtilitiesReplaySequenceMixin.SequenceRunner:
@@ -107,7 +98,6 @@ class TestsFlextInfraUtilitiesReplaySequenceMixin:
         }).unwrap()
 
     @staticmethod
->>>>>>> d84644f0698f06d81f3be10cc3de2865455841a9
     def create_command_output(
         *, stdout: str = "", stderr: str = "", exit_code: int = 0, duration: float = 0.0
     ) -> m.Cli.CommandOutput:

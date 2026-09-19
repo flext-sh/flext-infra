@@ -9,7 +9,8 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
+from flext_core import r
+from flext_infra import c, m, p, t
 
 from . import FlextInfraUtilitiesRopeCore, FlextInfraUtilitiesRopeRuntime
 from .rope_analysis import FlextInfraUtilitiesRopeAnalysis
