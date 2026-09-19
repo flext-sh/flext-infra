@@ -404,6 +404,11 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 repository_provider=repository.provider,
                 repository_git_url=repository.url,
                 repository_branch=integration_branch.value,
+                # Only the workspace-context root may render internal
+                # dependencies bare: pyproject_conform rejects direct `@`
+                # sources for workspace members at the root, where the
+                # [tool.uv.sources] workspace overlay owns the source.
+                workspace_context_root=profile is c.Infra.MakeProfile.WORKSPACE,
                 year=project.year,
             )
         )
