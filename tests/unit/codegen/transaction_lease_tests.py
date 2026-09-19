@@ -113,7 +113,7 @@ class TestsFlextInfraTransactionLease:
                 contender = FlextInfraCodegenTransaction(
                     FlextInfraCodegenMiseArtifacts(repository_root=contender_root)
                 )
-                with pytest.raises(u.Infra.JournalLeaseTimeout) as failure:
+                with pytest.raises(u.Infra.JournalLeaseTimeoutError) as failure:
                     contender.run_locked(prepare=True, operation=self._ok_path)
                 tm.that(failure.value.lock_file, eq=str(lock_path))
                 tm.that(journal_path.read_bytes(), eq=journal_before)

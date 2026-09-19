@@ -430,6 +430,9 @@ class FlextInfraMiseArtifactsState:
             if entry.manifest is None:
                 # A created directory receipt owns only that empty directory,
                 # never descendants discovered after an interrupted stage.
+                if cls._hosts_lease_lock(layout, transaction_root):
+                    removed_temporary_roots.add(entry.path)
+                    continue
                 removed = u.Cli.atomic_delete_empty_directory_guarded(entry.created)
             else:
                 observed = verify.authorized_cleanup_manifest(layout, journal, entry)
@@ -459,10 +462,42 @@ class FlextInfraMiseArtifactsState:
                 return r[bool].fail(
                     f"journaled directory exists without durable identity: {entry.path}"
                 )
+            if cls._hosts_lease_lock(layout, target.value):
+                # The journal lease lock file persists by identity across
+                # transactions, so its home directory is durable state the
+                # cleanup must leave in place rather than delete empty.
+                continue
             removed = u.Cli.atomic_delete_empty_directory_guarded(entry.created)
             if removed.failure:
                 return r[bool].from_failure(removed)
         return r[bool].ok(True)
+
+    @staticmethod
+    def _hosts_lease_lock(
+        layout: m.Infra.MiseToolchainWorkspaceLayout, directory: Path
+    ) -> bool:
+        """Whether the directory houses persistent state the cleanup must keep.
+
+        The journal lease lock and the lazy-init class-receipt cache are
+        persistent residents of the ignored state root: both survive
+        transactions by design (the lock keeps its file identity across runs;
+        the receipts are the content-addressed cache), so a directory
+        containing either is durable state, never a transient cleanup target.
+        """
+        candidates = [
+            layout.journal_path.with_name(f"{layout.journal_path.name}.lock")
+        ]
+        state_root = next(
+            (
+                ancestor
+                for ancestor in (directory, *directory.parents)
+                if ancestor.name == c.Infra.TRANSACTION_STATE_DIRNAME
+            ),
+            None,
+        )
+        if state_root is not None:
+            candidates.append(state_root / c.Infra.LAZY_INIT_CLASS_RECEIPTS_RELPATH)
+        return any(path.is_relative_to(directory) for path in candidates)
 
     @classmethod
     def validate_transaction_roots(
