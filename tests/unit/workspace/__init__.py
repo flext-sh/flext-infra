@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from .test_worktree_add_is_unprovisioned import (
         TestsFlextInfraWorktreeAddIsUnprovisioned,
     )
+    from .test_worktree_facts import TestsFlextInfraWorktreeFacts
     from .test_worktree_provisioning_gitlinks import (
         TestsFlextInfraWorktreeProvisioningGitlinks,
     )
@@ -58,6 +59,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraWorkspaceMain",
     "TestsFlextInfraWorktreeAddIsUnprovisioned",
     "TestsFlextInfraWorktreeBinding",
+    "TestsFlextInfraWorktreeFacts",
     "TestsFlextInfraWorktreeProvisioningGitlinks",
     "TestsFlextInfraWorktreeSecurityBoundaries",
     "c",
@@ -111,6 +113,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_worktree_add_is_unprovisioned": (
                 "TestsFlextInfraWorktreeAddIsUnprovisioned",
             ),
+            ".test_worktree_facts": ("TestsFlextInfraWorktreeFacts",),
             ".test_worktree_provisioning_gitlinks": (
                 "TestsFlextInfraWorktreeProvisioningGitlinks",
             ),
