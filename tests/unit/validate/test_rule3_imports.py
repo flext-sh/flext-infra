@@ -8,9 +8,8 @@ import pytest
 from flext_tests import tm
 
 from tests import m, u
-from tests.unit.validate._fixtures import (
+from .._fixtures import (
     TestsFlextInfraNamespaceProjectFixture,
-    TestsFlextInfraValidateAssertions,
     TestsFlextInfraValidateNamespaceBase,
 )
 

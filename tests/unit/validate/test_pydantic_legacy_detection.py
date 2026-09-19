@@ -8,7 +8,7 @@ import pytest
 from flext_tests import tm
 
 from tests import u
-from tests.unit.validate._fixtures import TestsFlextInfraValidateNamespaceBase
+from .._fixtures import TestsFlextInfraValidateNamespaceBase
 
 
 class TestsFlextInfraPydanticLegacyDetection(TestsFlextInfraValidateNamespaceBase):
@@ -183,7 +183,7 @@ class TestsFlextInfraPydanticLegacyDetection(TestsFlextInfraValidateNamespaceBas
             module_name="validation.py",
         )
 
-        report = self.validator.validate_project(root)
+        report = self._validate_project(root)
 
         tm.that(report.passed, eq=not legacy, msg=str(report.violations))
         tm.that(
@@ -214,7 +214,7 @@ class TestsFlextInfraPydanticLegacyDetection(TestsFlextInfraValidateNamespaceBas
             module_name="client.py",
         )
 
-        report = self.validator.validate_project(root)
+        report = self._validate_project(root)
 
         tm.that(
             sum("legacy Pydantic member" in item for item in report.violations),

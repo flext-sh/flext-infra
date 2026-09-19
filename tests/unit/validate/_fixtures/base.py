@@ -11,7 +11,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from tests import u
+from tests import m, u
 
 
 class TestsFlextInfraValidateNamespaceBase:

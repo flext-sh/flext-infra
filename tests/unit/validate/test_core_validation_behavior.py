@@ -8,7 +8,7 @@ from flext_infra import config
 from flext_tests import tm
 
 from tests import m, u
-from tests.unit.validate._fixtures import TestsFlextInfraValidateNamespaceBase
+from .._fixtures import TestsFlextInfraValidateNamespaceBase
 
 
 class TestsFlextInfraCoreValidationBehavior(TestsFlextInfraValidateNamespaceBase):

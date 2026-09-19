@@ -8,7 +8,7 @@ import pytest
 from flext_tests import tm
 
 from tests import u
-from tests.unit.validate._fixtures import TestsFlextInfraValidateNamespaceBase
+from .._fixtures import TestsFlextInfraValidateNamespaceBase
 
 
 class TestsFlextInfraFixtureViolations(TestsFlextInfraValidateNamespaceBase):
