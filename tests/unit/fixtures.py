@@ -275,7 +275,39 @@ def mod_workspace(tmp_path: Path) -> Path:
     tm.ok(
         u.Cli.atomic_write_text_file(
             workspace / "sample.py",
-            "u.Infra.serialization_lock_execute(paths, timeout)\n",
+            # The fixture owns every name it uses and carries exactly one
+            # defect: the governance rule the tests exercise. Undefined names
+            # or an unresolvable import would make the diagnostic gates red for
+            # a reason unrelated to the rule, and mod's own contract is that
+            # the tree is clean before and after.
+            (
+                '"""Public refactor-mod fixture module with one governance defect."""\n'
+                "\n"
+                "from __future__ import annotations\n"
+                "\n"
+                "\n"
+                "class _FixtureInfra:\n"
+                '    """Stand-in infra namespace owning every name the fixture uses."""\n'
+                "\n"
+                "    @staticmethod\n"
+                "    def serialization_lock_execute(\n"
+                "        paths: tuple[str, ...], timeout: float\n"
+                "    ) -> None:\n"
+                '        """Accept the governed call shape without any effect."""\n'
+                "\n"
+                "\n"
+                "class _FixtureFacade:\n"
+                '    """Stand-in utilities facade exposing the infra namespace."""\n'
+                "\n"
+                "    Infra = _FixtureInfra\n"
+                "\n"
+                "\n"
+                "u = _FixtureFacade()\n"
+                "paths: tuple[str, ...] = ()\n"
+                "timeout: float = 1.0\n"
+                "\n"
+                "u.Infra.serialization_lock_execute(paths, timeout)\n"
+            ),
         )
     )
     package_dir = workspace / "src" / project.project.name.replace("-", "_")

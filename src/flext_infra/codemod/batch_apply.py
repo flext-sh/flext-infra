@@ -69,7 +69,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         transaction_paths = FlextInfraCodemodSemanticApply.plan_transaction_paths(
             root, current
         )
-        while current.findings or transaction_paths:
+        while current.actionable or transaction_paths:
             iteration += 1
             fingerprint = tuple(
                 sorted(
@@ -145,7 +145,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             t.VariadicTuple[tuple[str, str, int, str, str]], int
         ] = {}
         iteration = 0
-        while current_text.findings:
+        while current_text.actionable:
             iteration += 1
             text_fingerprint = FlextInfraCodemodBatchApply._text_fingerprint(
                 current_text.entries
@@ -173,19 +173,40 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 cli.display_text("mod: apply sed-by-list rule cascade")
                 FlextInfraModTextGateEngine.scan(root, fix=True).unwrap()
             current_text = FlextInfraModTextGateEngine.scan(root, fix=False).unwrap()
-            if not current_text.actionable and current_text.findings:
-                detection_only = {finding.rule_id for finding in current_text.entries}
-                return r[t.Cli.ResultValue].fail(
-                    "mod text phase retains detection-only findings without a "
-                    f"rewrite: {', '.join(sorted(detection_only))}"
-                )
+        if current_text.findings:
+            # Same contract as the AST phase: a text rule without a rewrite is
+            # a declared defect for the owner, reported and never acted on here.
+            detection_only = sorted({
+                finding.rule_id for finding in current_text.entries
+            })
+            cli.display_text(
+                f"mod: {current_text.findings} detection-only sed-by-list "
+                f"finding(s) remain for owner repair: {', '.join(detection_only)}"
+            )
         cli.display_text(
             "mod: require canonical formatting and zero Ruff, Pyrefly, and LSP diagnostics"
         )
         validated = FlextInfraModGateEngine.validate(root)
         if validated.failure:
             return r[t.Cli.ResultValue].from_failure(validated)
-        cli.display_text("mod: AST fixed point verified with zero findings")
+        # Repair reports what it could not rewrite; judgement belongs to the
+        # verdict verb. A detection-only rule declares a defect whose repair is
+        # the owner's, by construction: it carries no `fix`, so no iteration of
+        # this loop can ever consume it. Failing here made the repair verb
+        # return the check verb's verdict and stalled the canonical chain on a
+        # finding it was never able to act on.
+        remaining = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+        if remaining.detection_only:
+            detection_rules = sorted({
+                finding.rule_id
+                for finding in remaining.entries
+                if not finding.actionable
+            })
+            cli.display_text(
+                f"mod: {remaining.detection_only} detection-only finding(s) remain "
+                f"for owner repair: {', '.join(detection_rules)}"
+            )
+        cli.display_text("mod: AST fixed point verified with zero actionable findings")
         return r[t.Cli.ResultValue].ok(True)
 
     @staticmethod

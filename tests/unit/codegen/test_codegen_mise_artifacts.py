@@ -39,6 +39,15 @@ class TestsFlextInfraCodegenMiseArtifacts:
 
         tm.fail(FlextInfraCodegenMiseArtifacts.validate_launchers(tmp_path))
 
+    def test_resource_read_accepts_installer_hard_links(self, tmp_path: Path) -> None:
+        """A hard-linked package file (uv cache + venv) is readable as a resource."""
+        owner = tmp_path / "seed"
+        owner.write_bytes(b"#!/bin/sh\n")
+        linked = tmp_path / "linked"
+        linked.hardlink_to(owner)
+        tm.that(linked.stat().st_nlink, eq=2)
+        tm.that(tm.ok(u.Cli.files_read_binary(linked)), eq=b"#!/bin/sh\n")
+
     @classmethod
     def _write_launchers(cls, root: Path) -> None:
         """Write minimal launchers carrying the unlocked resolution contract.
