@@ -40,8 +40,8 @@ restart this skill.
 
 The bounded route is:
 
-`search-first` -> `yagni` -> `ssot` -> `optional solid` -> `implement + simplify`
--> `optional dry` -> `recheck yagni/ssot/solid` -> `simplify` -> `runtime` -> `gates`
+`search-first` -> `yagni` -> `ssot` -> `optional solid` -> `implement + simplify` ->
+`optional dry` -> `recheck yagni/ssot/solid` -> `simplify` -> `runtime` -> `gates`
 
 Do not add packages, helpers, abstractions, adapters, registries, or future modes
 without a current consumer and reachable runtime. Never preserve a parallel owner or

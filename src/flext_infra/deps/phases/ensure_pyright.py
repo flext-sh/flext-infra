@@ -329,9 +329,7 @@ class FlextInfraEnsurePyrightConfigPhase:
     ) -> t.StrSequence:
         """Resolve the one analyzer-root set consumed by includes and environments."""
         declared = self._declared_environment_dirs(
-            tuple(
-                dict.fromkeys((*declared_python_dirs, *generated_roots))
-            )
+            tuple(dict.fromkeys((*declared_python_dirs, *generated_roots)))
         )
         if (
             is_root

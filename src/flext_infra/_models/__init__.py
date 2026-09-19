@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from ._config.workspace import FlextInfraConfigModelsWorkspace
     from ._defaults import FlextInfraModelsDefaults
     from ._git.identity import FlextInfraModelsGitIdentity
+    from ._git.worktree_facts import FlextInfraModelsGitWorktreeFacts
     from .base import FlextInfraModelsBase
     from .census import FlextInfraModelsCensus
     from .check import FlextInfraModelsCheck
@@ -129,6 +130,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsGates",
     "FlextInfraModelsGit",
     "FlextInfraModelsGitIdentity",
+    "FlextInfraModelsGitWorktreeFacts",
     "FlextInfraModelsLayout",
     "FlextInfraModelsMiseToolchain",
     "FlextInfraModelsMiseToolchainBase",
@@ -163,7 +165,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._codegen.transaction": ("FlextInfraModelsCodegenTransactionModels",),
             "._config": ("_config",),
             "._config.artifact": ("FlextInfraConfigModelsArtifact",),
-            "._config.base": ("FlextInfraConfigModels",),
+            "._config.base": ("FlextInfraConfigModelsBase",),
             "._config.beads": ("FlextInfraConfigModelsBeads",),
             "._config.contexts": ("FlextInfraConfigModelsContexts",),
             "._config.contract": ("FlextInfraConfigModelsContract",),
@@ -179,6 +181,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._defaults": ("FlextInfraModelsDefaults",),
             "._git": ("_git",),
             "._git.identity": ("FlextInfraModelsGitIdentity",),
+            "._git.worktree_facts": ("FlextInfraModelsGitWorktreeFacts",),
             ".base": ("FlextInfraModelsBase",),
             ".census": ("FlextInfraModelsCensus",),
             ".check": ("FlextInfraModelsCheck",),
