@@ -21,19 +21,6 @@ class FlextInfraConfigModelsStatic:
             m.Field(description="Ordered production source directory names"),
         ]
 
-    type StaticRuleSpec = Annotated[
-        StaticImportModuleRule
-        | StaticImportMemberRule
-        | StaticAttributeRule
-        | StaticCallRule
-        | StaticCallKeywordRule
-        | StaticAnnotationRule
-        | StaticBareExceptRule
-        | StaticAnnotatedStringRule
-        | StaticCommentRule,
-        m.Field(discriminator="operator"),
-    ]
-
     class StaticRule(FlextInfraConfigModelsContract.ConfigContract):
         """Shared immutable metadata for one Rope static-analysis rule."""
 
@@ -98,6 +85,19 @@ class FlextInfraConfigModelsStatic:
 
         operator: Literal["comment"] = m.Field(description="Operator")
         marker: t.NonEmptyStr = m.Field(description="Rejected comment marker")
+
+    type StaticRuleSpec = Annotated[
+        StaticImportModuleRule
+        | StaticImportMemberRule
+        | StaticAttributeRule
+        | StaticCallRule
+        | StaticCallKeywordRule
+        | StaticAnnotationRule
+        | StaticBareExceptRule
+        | StaticAnnotatedStringRule
+        | StaticCommentRule,
+        m.Discriminator("operator"),
+    ]
 
     class StaticEnforcementSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Complete validated static policy evaluated only through Rope facts."""

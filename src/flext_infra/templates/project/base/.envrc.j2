@@ -20,11 +20,24 @@ VENV_DIR="${PROJECT_ROOT}/.venv"
 PROJECT_STATE_ROOT="${PROJECT_ROOT%/*}/{{ state_directory_name }}/${PROJECT_ROOT##*/}"
 # Scratch never lives inside a versioned tree: the home scratch root mirrors
 # the absolute checkout path so a sandbox is never a tracked scope of any
-# enclosing repository (workspace or linked worktree).
-PROJECT_SCRATCH="${HOME}/{{ scratch_home_relative }}/{{ state_directory_name }}${PROJECT_ROOT}/{{ scratch_namespace }}"
+# enclosing repository (workspace or linked worktree). Checkouts nested in a
+# VCS directory rename that segment, so the mirror never contains one.
+PROJECT_SCRATCH_IDENTITY="${PROJECT_ROOT}/"
+{% for segment, alias in scratch_identity_segment_aliases -%}
+scratch_segment="/{{ segment }}/"
+scratch_alias="/{{ alias }}/"
+while [[ "${PROJECT_SCRATCH_IDENTITY}" == *"${scratch_segment}"* ]]; do
+  PROJECT_SCRATCH_IDENTITY="${PROJECT_SCRATCH_IDENTITY//"${scratch_segment}"/"${scratch_alias}"}"
+done
+{% endfor -%}
+PROJECT_SCRATCH_IDENTITY="${PROJECT_SCRATCH_IDENTITY%/}"
+PROJECT_SCRATCH="${HOME}/{{ scratch_home_relative }}/{{ state_directory_name }}${PROJECT_SCRATCH_IDENTITY}/{{ scratch_namespace }}"
 mkdir -p "${PROJECT_SCRATCH}"
-if command -v chattr >/dev/null 2>&1 && [[ "$(stat -f -c %T "${PROJECT_SCRATCH}")" == "btrfs" ]]; then
-  chattr +C "${PROJECT_SCRATCH}"
+if command -v chattr >/dev/null 2>&1; then
+  project_scratch_fs="$(stat -f -c %T "${PROJECT_SCRATCH}" 2>/dev/null || true)"
+  if [[ "${project_scratch_fs}" == "btrfs" ]]; then
+    chattr +C "${PROJECT_SCRATCH}"
+  fi
 fi
 export PROJECT_ROOT
 export TMPDIR="${PROJECT_SCRATCH}"
@@ -38,8 +51,8 @@ export PYTHONUNBUFFERED=1
 
 # === SECTION: mise activation (managed) ===
 # Source: typed generated Mise storage contract; setup owns installation.
-if [[ -v {{ mise_bootstrap.storage_root_variable }} ]] && [[ -n "${{ mise_bootstrap.storage_root_variable }}" ]]; then
-  MISE_STORAGE_ROOT="${{ mise_bootstrap.storage_root_variable }}"
+if [[ -v {{ mise_bootstrap.storage_root_variable }} ]] && [[ -n "${{ '{' }}{{ mise_bootstrap.storage_root_variable }}{{ '}' }}" ]]; then
+  MISE_STORAGE_ROOT="${{ '{' }}{{ mise_bootstrap.storage_root_variable }}{{ '}' }}"
 elif [[ -v XDG_DATA_HOME ]] && [[ -n "${XDG_DATA_HOME}" ]]; then
   MISE_STORAGE_ROOT="${XDG_DATA_HOME}/mise"
 elif [[ -v HOME ]] && [[ -n "${HOME}" ]]; then
@@ -55,7 +68,7 @@ esac
 export {{ mise_bootstrap.storage_root_variable }}="${MISE_STORAGE_ROOT}"
 {% for name, relative in mise_bootstrap.persistent_environment if name == "MISE_SHIMS_DIR" -%}
 export {{ name }}="${MISE_STORAGE_ROOT}{% if relative != "." %}/{{ relative }}{% endif %}"
-PATH_add "${{ name }}"
+PATH_add "${{ '{' }}{{ name }}{{ '}' }}"
 {% endfor -%}
 # End SECTION: mise activation
 
@@ -82,6 +95,7 @@ fi
 # End SECTION: virtual environment
 
 {% if gascity is not none %}
+{%- if gascity.backend == "gascity" %}
 # Repository policy permits this capability; the caller's explicit city
 # identity selects its runtime. Standalone activation owns no inherited ledger.
 if [[ -v {{ gascity.identity_var }} ]]; then
@@ -94,7 +108,28 @@ else
   unset BEADS_DOLT_SERVER_DATABASE BEADS_DOLT_SERVER_MODE
   unset BEADS_DOLT_AUTO_START
 fi
-{% endif %}
+{%- elif gascity.backend == "local" %}
+# Repository-owned Beads base: bd owns the local Dolt server lifecycle
+# through .beads/config.yaml; inherited orchestration endpoints never apply.
+checkout_root="$(pwd -P)"
+watch_file "${checkout_root}/{{ gascity.beads_metadata_relpath }}"
+{% for var in gascity.unset_vars -%}
+unset {{ var }}
+{% endfor -%}
+unset BEADS_DOLT_SERVER_HOST BEADS_DOLT_SERVER_PORT
+unset BEADS_DOLT_SERVER_DATABASE BEADS_DOLT_SERVER_MODE
+unset BEADS_DOLT_AUTO_START
+{%- else %}
+# No Beads identity in this repository: inherited orchestration and Beads
+# endpoint variables never leak into the activation.
+{% for var in gascity.unset_vars -%}
+unset {{ var }}
+{% endfor -%}
+unset BEADS_DOLT_SERVER_HOST BEADS_DOLT_SERVER_PORT
+unset BEADS_DOLT_SERVER_DATABASE BEADS_DOLT_SERVER_MODE
+unset BEADS_DOLT_AUTO_START
+{%- endif %}
+{%- endif %}
 
 # === SECTION: local overrides (managed) ===
 # Source: template. Repository-local, tracked overrides load last and win;

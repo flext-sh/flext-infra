@@ -53,7 +53,11 @@ class FlextInfraDocGeneratorBundleMixin:
     def _prepare_request(
         cls, request: m.Infra.DocsGenerateRequest
     ) -> p.Result[m.Infra.DocsGenerationBundle]:
-        """Render and source-verify one canonical docs artifact inventory."""
+        """Render one canonical docs artifact inventory from the frozen snapshot.
+
+        Source-state race verification is owned by ``docs_file_plans``, the
+        single pre-publication barrier of the docs cycle.
+        """
         roots = u.Infra.docs_repository_roots(request.repository_root)
         if roots.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(roots)
@@ -138,7 +142,9 @@ class FlextInfraDocGeneratorBundleMixin:
                     normalized_content = c.Infra.FENCE_NOTEST_RE.sub(
                         r"```\1", normalized_content
                     )
-                    normalized_content = u.Infra.docs_update_toc(normalized_content)[0]
+                    normalized_content = u.Infra.docs_contract_update_toc(
+                        normalized_content
+                    )[0]
                 normalized_artifacts.append(
                     m.Infra.DocsRenderedArtifact(
                         relative_path=target.relative_to(project),
@@ -156,23 +162,19 @@ class FlextInfraDocGeneratorBundleMixin:
                 )
             )
             offset += size
-        scope_roots = tuple(scoped.scope.path for scoped in normalized_scopes)
-        stable = u.Infra.docs_verify_sources(
-            repository_root, sources.value, extra_roots=scope_roots
+        validated_bundle: p.Result[m.Infra.DocsGenerationBundle] = u.validate_value(
+            m.Infra.DocsGenerationBundle,
+            {
+                "scopes": tuple(normalized_scopes),
+                "source_states": sources.value,
+                "repository_root": repository_root,
+            },
         )
-        if stable.failure:
-            return r[m.Infra.DocsGenerationBundle].from_failure(stable)
-        try:
-            bundle = m.Infra.DocsGenerationBundle(
-                scopes=tuple(normalized_scopes),
-                source_states=sources.value,
-                repository_root=repository_root,
-            )
-        except c.ValidationError as exc:
+        if validated_bundle.failure:
             return r[m.Infra.DocsGenerationBundle].fail_op(
-                "docs generation bundle validation", exc
+                "docs generation bundle validation", validated_bundle.error
             )
-        return r[m.Infra.DocsGenerationBundle].ok(bundle)
+        return r[m.Infra.DocsGenerationBundle].ok(validated_bundle.value)
 
 
 __all__: list[str] = ["FlextInfraDocGeneratorBundleMixin"]

@@ -66,9 +66,14 @@ class FlextInfraModelsMixins:
         @property
         def project_names(self) -> t.StrSequence | None:
             """Normalized project names from repeated selectors."""
-            from flext_infra import u
-
-            return u.Infra.normalize_sequence_values(self.projects)
+            names = tuple(
+                item.strip()
+                for value in (self.projects or ())
+                for group in (value or "").split(",")
+                for item in group.split()
+                if item.strip()
+            )
+            return names or None
 
     class ReadMixin(ScopeMixin):
         """Read-only commands — report file + output directory only.
@@ -88,16 +93,16 @@ class FlextInfraModelsMixins:
         @property
         def report_path(self) -> Path | None:
             """Resolved report path when provided."""
-            from flext_infra import u
-
-            return u.Infra.normalize_optional_path(self.report)
+            if self.report is None:
+                return None
+            return Path(self.report).resolve()
 
         @property
         def output_dir_path(self) -> Path | None:
             """Resolved output directory when provided."""
-            from flext_infra import u
-
-            return u.Infra.normalize_optional_path(self.output_dir)
+            if self.output_dir is None:
+                return None
+            return Path(self.output_dir).resolve()
 
     class WriteMixin(ScopeMixin):
         """Canonical write contract — apply/dry-run + safety gates.
@@ -207,11 +212,6 @@ class FlextInfraModelsMixins:
 
         detail: Annotated[str, m.Field(description="Error detail")] = ""
 
-    class ConfidenceLevelMixin:
-        """Shared confidence field for refactor diagnostics."""
-
-        confidence: Annotated[str, m.Field(description="Confidence level")] = "low"
-
     # ═══════════════════ PROJECT NAME / PATH VARIANTS ═══════════════════
 
     class ProjectNameMixin:
@@ -223,11 +223,6 @@ class FlextInfraModelsMixins:
         """Shared required project entry name field."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Project name")]
-
-    class ProjectNameFieldMixin:
-        """Shared required project_name field."""
-
-        project_name: Annotated[t.NonEmptyStr, m.Field(description="Project name")]
 
     class RepositoryRootPathMixin:
         """Shared repository root path field."""

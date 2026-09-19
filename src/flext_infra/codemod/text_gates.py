@@ -15,7 +15,6 @@ from __future__ import annotations
 import functools
 import re
 from bisect import bisect_right
-from collections.abc import Mapping
 from fnmatch import fnmatch
 from pathlib import Path
 
@@ -29,8 +28,8 @@ class FlextInfraModTextGateEngine:
     def load_rules(cls, root: Path) -> p.Result[t.VariadicTuple[m.Infra.ModTextRule]]:
         """Load package and workspace text rules into one validated tuple."""
         sources = (
-            Path(__file__).parent / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
-            root / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+            Path(__file__).parent / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
+            root / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
         )
         rules: list[m.Infra.ModTextRule] = []
         seen: set[str] = set()
@@ -40,10 +39,6 @@ class FlextInfraModTextGateEngine:
             parsed = u.Cli.yaml_parse(source.read_text(encoding=c.Cli.ENCODING_DEFAULT))
             if parsed.failure:
                 return r[t.VariadicTuple[m.Infra.ModTextRule]].from_failure(parsed)
-            if not isinstance(parsed.value, Mapping):
-                return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(
-                    f"text rule file must be a YAML mapping: {source}"
-                )
             listing = parsed.value.get(c.Infra.CODEMOD_TEXT_RULES_KEY)
             if not isinstance(listing, list):
                 return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(
@@ -142,19 +137,24 @@ class FlextInfraModTextGateEngine:
         files: set[Path] = set()
         actionable = 0
         for target in targets:
-            if not target.endswith(c.Infra.EXT_PYTHON):
-                continue
-            path = root / target
-            source = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            updated, target_entries, target_actionable = cls._rewrite_source(
-                source, target, rules
+            candidate = root / target
+            paths = (
+                tuple(sorted(candidate.rglob(f"*{c.Infra.EXT_PYTHON}")))
+                if candidate.is_dir()
+                else (candidate,)
             )
-            entries.extend(target_entries)
-            actionable += target_actionable
-            if target_entries:
-                files.add(Path(target))
-            if fix and updated != source:
-                path.write_text(updated, encoding=c.Cli.ENCODING_DEFAULT)
+            for path in paths:
+                relative = path.relative_to(root).as_posix()
+                source = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                updated, target_entries, target_actionable = cls._rewrite_source(
+                    source, relative, rules
+                )
+                entries.extend(target_entries)
+                actionable += target_actionable
+                if target_entries:
+                    files.add(Path(relative))
+                if fix and updated != source:
+                    path.write_text(updated, encoding=c.Cli.ENCODING_DEFAULT)
         report = m.Infra.ModTextReport(
             findings=len(entries),
             actionable=actionable,

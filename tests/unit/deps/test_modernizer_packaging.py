@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Literal
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, config, main as infra_main
+from flext_infra import c, main as infra_main
 from tests import t, u
 
 if TYPE_CHECKING:
@@ -20,14 +20,14 @@ class TestsFlextInfraDepsModernizerPackaging:
     @staticmethod
     def _declared_roots() -> t.Pair[t.NonEmptyStr, t.NonEmptyStr]:
         """Derive arbitrary valid roots from the typed project fixture owner."""
-        package_name = u.Tests.project_spec(config.Infra.name).package_name
+        package_name = u.Tests.project_spec("flext-packaging-fixture").package_name
         return f"{package_name}_entry", f"{package_name}_client"
 
     def _prepare_project(
         self, root: Path, *, materialize_module: bool, materialize_package: bool
     ) -> t.Pair[t.NonEmptyStr, t.NonEmptyStr]:
         """Materialize one provider-governed project through shared typed fixtures."""
-        _ = u.Tests.standalone_workspace(root, config.Infra.name)
+        _ = u.Tests.standalone_workspace(root, "flext-packaging-fixture")
         root_module, root_package = self._declared_roots()
         source_root = root / c.Infra.DEFAULT_SRC_DIR
         if materialize_module:
@@ -44,9 +44,18 @@ class TestsFlextInfraDepsModernizerPackaging:
             )
         _ = u.Tests.write_standalone_workspace_manifest(
             root,
-            config.Infra.name,
+            "flext-packaging-fixture",
             root_modules=[root_module],
             root_packages=[root_package],
+        )
+        u.Tests.git_bootstrap(
+            root,
+            (
+                "remote",
+                "set-url",
+                c.Infra.GIT_ORIGIN,
+                u.Tests.repository_ref("flext-packaging-fixture").url,
+            ),
         )
         u.Tests.copy_tracked_mise_seeds(root)
         return root_module, root_package
@@ -86,7 +95,7 @@ class TestsFlextInfraDepsModernizerPackaging:
         sdist = u.Tests.toml_table_at(
             manifest, c.Infra.TOOL, "hatch", "build", "targets", "sdist"
         )
-        primary_package = u.Tests.project_spec(config.Infra.name).package_name
+        primary_package = u.Tests.project_spec("flext-packaging-fixture").package_name
         package_paths = {
             f"{c.Infra.DEFAULT_SRC_DIR}/{primary_package}",
             f"{c.Infra.DEFAULT_SRC_DIR}/{root_package}",

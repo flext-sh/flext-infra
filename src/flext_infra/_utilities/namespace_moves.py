@@ -528,9 +528,10 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         seen_imports: t.Infra.StrSet = set()
         for block in blocks:
             block_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(block)
-            for sub in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
+            block_ast = FlextInfraUtilitiesRopeAnalysis.ensure_ast_node(
                 block_pymodule.get_ast()
-            ):
+            )
+            for sub in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(block_ast):
                 if FlextInfraUtilitiesRopeAnalysis.node_kind(sub) != "Name":
                     continue
                 import_line = import_map.get(getattr(sub, "id", ""))
@@ -699,11 +700,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         source_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(
             kept_source
         )
+        source_ast = FlextInfraUtilitiesRopeAnalysis.ensure_ast_node(
+            source_pymodule.get_ast()
+        )
         referenced_aliases = sorted({
             getattr(node, "id", "")
-            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
-                source_pymodule.get_ast()
-            )
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(source_ast)
             if FlextInfraUtilitiesRopeAnalysis.node_kind(node) == "Name"
             and getattr(node, "id", "") in alias_names
         })
@@ -755,11 +757,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         moved_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(
             moved_source
         )
+        moved_ast = FlextInfraUtilitiesRopeAnalysis.ensure_ast_node(
+            moved_pymodule.get_ast()
+        )
         runtime_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
         moved_aliases: set[str] = set()
-        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
-            moved_pymodule.get_ast()
-        ):
+        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(moved_ast):
             if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "Name":
                 continue
             node_id = getattr(node, "id", "")
@@ -795,18 +798,22 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     ) -> t.StrSequence:
         """Collect orphaned import lines via rope-parsed bodies."""
         source_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
+        source_ast = FlextInfraUtilitiesRopeAnalysis.ensure_ast_node(
+            source_pymodule.get_ast()
+        )
         source_lines = source.splitlines()
         kept_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(kept_source)
-        kept_names: set[str] = set()
-        for sub in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
+        kept_ast = FlextInfraUtilitiesRopeAnalysis.ensure_ast_node(
             kept_pymodule.get_ast()
-        ):
+        )
+        kept_names: set[str] = set()
+        for sub in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(kept_ast):
             if FlextInfraUtilitiesRopeAnalysis.node_kind(sub) == "Name":
                 name = getattr(sub, "id", "")
                 if name:
                     kept_names.add(name)
         import_lines: t.MutableSequenceOf[str] = []
-        for node in getattr(source_pymodule.get_ast(), "body", []) or []:
+        for node in getattr(source_ast, "body", []) or []:
             if FlextInfraUtilitiesRopeAnalysis.node_kind(node) not in {
                 "Import",
                 "ImportFrom",

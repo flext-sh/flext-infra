@@ -49,7 +49,7 @@ if TYPE_CHECKING:
         tool_config_document,
     )
     from .fixtures_git import real_git_repo
-    from .runner_service import RealSubprocessRunner
+    from .test_check_report_contract import TestsFlextInfraCheckReportContract
     from .test_cli_repository_root_contract import (
         TestsFlextInfraCliRepositoryRootContract,
     )
@@ -96,7 +96,7 @@ if TYPE_CHECKING:
     from .test_version_diag2 import TestsFlextInfraVersionDiagExtra
     from .workspace_factory import TestsFlextInfraWorkspaceFactory
 __all__: tuple[str, ...] = (
-    "RealSubprocessRunner",
+    "TestsFlextInfraCheckReportContract",
     "TestsFlextInfraCliRepositoryRootContract",
     "TestsFlextInfraCprofileEntry",
     "TestsFlextInfraCustomHandlerPolicyIsProfileAware",
@@ -210,7 +210,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".promoted": ("promoted",),
             ".refactor": ("refactor",),
             ".release": ("release",),
-            ".runner_service": ("RealSubprocessRunner",),
+            ".test_check_report_contract": ("TestsFlextInfraCheckReportContract",),
             ".test_cli_repository_root_contract": (
                 "TestsFlextInfraCliRepositoryRootContract",
             ),

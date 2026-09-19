@@ -223,16 +223,12 @@ class FlextInfraUtilitiesRopeImports:
         file_paths: t.SequenceOf[Path],
         preserve_canonical_aliases: bool = False,
     ) -> p.Result[bool]:
-        """Apply one centralized Rope+Ruff import cleanup for touched files.
+        """Normalize imports with Ruff and preserve semantic facade references.
 
-        Runs Rope's import organizer per file first, then lets Ruff remove
-        orphaned imports and normalize import ordering/formatting once across the
-        touched path set. Returns whether an import cleanup changed any file.
-
-        When ``preserve_canonical_aliases`` is set, runtime-alias imports from
-        ``flext_core`` / ``flext_infra`` (e.g. ``from flext_core import c, m``)
-        are restored after Ruff only when still referenced semantically, including
-        forward references that Ruff cannot see inside string annotations.
+        Ruff owns removal and ordering because it understands quoted typing
+        expressions, including cast arguments. Rope's unused-import pass drops
+        imports used only in those expressions before Ruff can inspect them.
+        Rope still resolves canonical aliases when their preservation is requested.
         """
         existing_paths = tuple(path.resolve() for path in file_paths if path.is_file())
         if not existing_paths:
@@ -245,19 +241,9 @@ class FlextInfraUtilitiesRopeImports:
                 )
             except ValueError as exc:
                 return r[bool].fail(str(exc), exception=exc)
-        rope_changed = False
-        for file_path in existing_paths:
-            resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
-                rope_project, file_path
-            )
-            if resource is None:
-                continue
-            organize_result = cls.organize_imports(rope_project, resource, apply=True)
-            if organize_result.failure:
-                return r[bool].from_failure(organize_result)
-            rope_changed = rope_changed or organize_result.unwrap()
+        before = {path: path.read_bytes() for path in existing_paths}
         normalized_paths = tuple(str(path) for path in existing_paths)
-        check_result = u.Cli.run_raw(
+        check_result = u.Cli.run_checked(
             ["ruff", "check", "--fix", "--select", "I,F401", *normalized_paths],
             timeout=c.Infra.TIMEOUT_SHORT,
         )
@@ -269,13 +255,14 @@ class FlextInfraUtilitiesRopeImports:
             )
             if restore_result.failure:
                 return r[bool].from_failure(restore_result)
-            rope_changed = rope_changed or restore_result.unwrap()
-        format_result = u.Cli.run_raw(
+        format_result = u.Cli.run_checked(
             ["ruff", "format", *normalized_paths], timeout=c.Infra.TIMEOUT_SHORT
         )
         if format_result.failure:
             return r[bool].from_failure(format_result)
-        return r[bool].ok(rope_changed)
+        return r[bool].ok(
+            any(path.read_bytes() != before[path] for path in existing_paths)
+        )
 
     @classmethod
     def _collect_canonical_alias_imports(
@@ -900,6 +887,144 @@ class FlextInfraUtilitiesRopeImports:
                     msg = cleanup_result.error or "rope import cleanup failed"
                     raise RuntimeError(msg)
             _ = updated
+
+    # ------------------------------------------------------------------
+    # Layer alignment (ADR-014 §3b/ADR-017; rope-native, replaces the
+    # retired libcst draft — cross-layer from-imports take relative form)
+    # ------------------------------------------------------------------
+
+    _DEFAULT_IMPORT_LAYER_ORDER: t.StrSequence = (
+        "settings",
+        "config",
+        "c",
+        "t",
+        "p",
+        "m",
+        "u",
+        "base",
+        "services",
+        "api",
+        "cli",
+    )
+
+    @classmethod
+    def layer_of_module(cls, module_name: str, order: t.StrSequence) -> str | None:
+        """Return the canonical layer of a project module path."""
+        for segment in reversed(module_name.split(".")):
+            for layer in order:
+                if segment in {layer, f"_{layer}"}:
+                    return layer
+        return None
+
+    @staticmethod
+    def _absolute_from_import(source_module: str, module_name: str, level: int) -> str:
+        """Resolve one from-import target to its absolute module name."""
+        if level == 0:
+            return module_name
+        parts = source_module.split(".")
+        base = parts[: max(len(parts) - level, 0)]
+        return ".".join(part for part in (*base, module_name) if part)
+
+    @staticmethod
+    def _relative_from_import(
+        source_module: str, target_module: str
+    ) -> t.Pair[int, str]:
+        """Return the (level, tail) relative form from one module to another."""
+        src_parts = source_module.split(".")
+        tgt_parts = target_module.split(".")
+        common = 0
+        for source_part, target_part in zip(src_parts[:-1], tgt_parts, strict=False):
+            if source_part != target_part:
+                break
+            common += 1
+        # Dots climb from the source module to the common ancestor: one dot
+        # is the containing package itself, so the level is the full source
+        # depth minus the shared prefix length (flext_a.b.c -> flext_a.t is
+        # two dots; the package __init__ flext_a.b -> flext_a.t is one).
+        level = max(len(src_parts) - common, 1)
+        tail = ".".join(tgt_parts[common:])
+        return (level, tail)
+
+    @classmethod
+    def align_module_imports(
+        cls,
+        *,
+        rope_project: t.Infra.RopeProject,
+        repository_root: Path,
+        index: m.Infra.RopeWorkspaceIndex,
+        project_package: str,
+        config: m.Infra.LazyInitConfig | None = None,
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
+        """Plan relative-form rewrites for cross-layer project from-imports."""
+        order: t.StrSequence = (
+            tuple(config.import_layer_order)
+            if config is not None
+            else cls._DEFAULT_IMPORT_LAYER_ORDER
+        )
+        file_plans: list[m.Infra.CodegenFilePlan] = []
+        for entry in sorted(
+            index.modules_by_path.values(), key=lambda item: str(item.file_path)
+        ):
+            if entry.is_package_init or not entry.module_name:
+                continue
+            file_path = entry.file_path
+            if not file_path.is_file():
+                continue
+            source_module = entry.module_name
+            source_layer = cls.layer_of_module(source_module, order)
+            if source_layer is None:
+                continue
+            resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
+                rope_project, file_path
+            )
+            if resource is None:
+                continue
+            module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
+                rope_project, resource
+            )
+            changed = False
+            for import_stmt in cls.import_statements(module_imports):
+                import_info = import_stmt.import_info
+                if not FlextInfraUtilitiesRopeRuntime.is_from_import(import_info):
+                    continue
+                module_name = import_info.module_name or ""
+                absolute = cls._absolute_from_import(
+                    source_module, module_name, import_info.level or 0
+                )
+                if not absolute or not (
+                    absolute == project_package
+                    or absolute.startswith(project_package + ".")
+                ):
+                    continue
+                target_layer = cls.layer_of_module(absolute, order)
+                if target_layer is None or target_layer == source_layer:
+                    continue
+                level, tail = cls._relative_from_import(source_module, absolute)
+                if (import_info.level or 0) == level and module_name == tail:
+                    continue
+                import_stmt.import_info = FlextInfraUtilitiesRopeRuntime.from_import(
+                    tail, level, list(import_info.names_and_aliases)
+                )
+                changed = True
+            if not changed:
+                continue
+            updated_source = module_imports.get_changed_source()
+            original_source = resource.read()
+            if updated_source is None or updated_source == original_source:
+                continue
+            before = u.Cli.atomic_read_binary_file_state(file_path, required=False)
+            if before.failure:
+                return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].from_failure(before)
+            file_plans.append(
+                m.Infra.CodegenFilePlan(
+                    project=repository_root,
+                    path=file_path.resolve(),
+                    before=before.value,
+                    desired_content=updated_source.encode("utf-8"),
+                    desired_mode=0o644,
+                )
+            )
+        return r[t.VariadicTuple[m.Infra.CodegenFilePlan]].ok(tuple(file_plans))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeImports"]

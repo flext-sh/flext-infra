@@ -3,15 +3,14 @@
 Conservative AST rewrites:
 
 - ``class Config:`` inside ``BaseModel`` → ``model_config = ConfigDict(...)``.
-- ``.dict(...)`` → ``.model_dump(...)``.
-- ``.json(...)`` → ``.model_dump_json(...)``.
 - ``.parse_obj(...)`` → ``.model_validate(...)``.
-- ``.schema(...)`` → ``.model_json_schema(...)``.
+- ``.schema_json(...)`` → ``.model_json_schema(...)``.
 - ``@validator`` → ``@field_validator`` with ``mode="before"/"after"``.
 - ``@root_validator`` → ``@model_validator`` with ``mode="before"/"after"``.
 - ``__fields__`` / ``__field_defaults__`` → ``model_fields`` / ``model_config``.
 
-The transformer only rewrites when the result is unambiguous.
+Common methods such as ``dict``, ``json``, ``schema`` and ``copy`` stay unchanged:
+an unresolved receiver does not establish that the method belongs to Pydantic.
 """
 
 from __future__ import annotations

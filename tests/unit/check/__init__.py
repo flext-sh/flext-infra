@@ -26,6 +26,9 @@ if TYPE_CHECKING:
     from .extended_gate_bandit_markdown_tests import (
         TestsFlextInfraBanditAndMarkdownGates,
     )
+    from .extended_gate_markdown_format_code_tests import (
+        TestsFlextInfraMarkdownFormatAndCodeGates,
+    )
     from .extended_gate_mypy_pyright_tests import TestsFlextInfraTypeGates
     from .extended_models_tests import TestsFlextInfraModels
     from .extended_project_runners_tests import TestsFlextInfraExtendedProjectRunners
@@ -33,7 +36,6 @@ if TYPE_CHECKING:
         TestsFlextInfraWorkspaceCheckerResolveGates,
     )
     from .extended_run_projects_tests import TestsFlextInfraRunProjects
-    from .extended_runners_extra_tests import TestsFlextInfraExtendedRunnerExtras
     from .extended_runners_ruff_tests import TestsFlextInfraRealGateRunners
     from .extended_workspace_init_tests import TestsFlextInfraWorkspaceInit
     from .fix_pyrefly_config_tests import TestsFlextInfraFixPyreflyConfig
@@ -60,11 +62,11 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraExtendedConfigFixer",
     "TestsFlextInfraExtendedConfigFixerErrors",
     "TestsFlextInfraExtendedProjectRunners",
-    "TestsFlextInfraExtendedRunnerExtras",
     "TestsFlextInfraFixPyreflyConfig",
     "TestsFlextInfraGateErrorReporting",
     "TestsFlextInfraGateRegistry",
     "TestsFlextInfraLocCapGate",
+    "TestsFlextInfraMarkdownFormatAndCodeGates",
     "TestsFlextInfraModels",
     "TestsFlextInfraRealGateRunners",
     "TestsFlextInfraRunProjects",
@@ -114,6 +116,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".extended_gate_bandit_markdown_tests": (
                 "TestsFlextInfraBanditAndMarkdownGates",
             ),
+            ".extended_gate_markdown_format_code_tests": (
+                "TestsFlextInfraMarkdownFormatAndCodeGates",
+            ),
             ".extended_gate_mypy_pyright_tests": ("TestsFlextInfraTypeGates",),
             ".extended_models_tests": ("TestsFlextInfraModels",),
             ".extended_project_runners_tests": (
@@ -123,7 +128,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraWorkspaceCheckerResolveGates",
             ),
             ".extended_run_projects_tests": ("TestsFlextInfraRunProjects",),
-            ".extended_runners_extra_tests": ("TestsFlextInfraExtendedRunnerExtras",),
             ".extended_runners_ruff_tests": ("TestsFlextInfraRealGateRunners",),
             ".extended_workspace_init_tests": ("TestsFlextInfraWorkspaceInit",),
             ".fix_pyrefly_config_tests": ("TestsFlextInfraFixPyreflyConfig",),

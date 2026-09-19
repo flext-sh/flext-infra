@@ -357,7 +357,6 @@ class FlextInfraConstantsBase(
     "Project selector naming the repository root itself."
     RK_ID: Final[str] = "id"
     RK_URL: Final[str] = "url"
-    RK_CLASS_NESTING: Final[str] = "class_nesting"
     RK_CONFIDENCE: Final[str] = "confidence"
     RK_FIX_ACTION: Final[str] = "fix_action"
     RK_DESCRIPTION: Final[str] = "description"

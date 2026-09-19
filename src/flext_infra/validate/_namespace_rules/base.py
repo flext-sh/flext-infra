@@ -19,12 +19,12 @@ class FlextInfraNamespaceRulesBase:
     @staticmethod
     def kind(node: object) -> str:
         """Return the Rope-compatible AST node kind."""
-        return u.Infra.node_kind(node)
+        return u.Infra.node_kind(u.Infra.ensure_ast_node(node))
 
     @staticmethod
     def walk(node: object) -> t.SequenceOf[object]:
         """Walk a Rope-provided AST without reparsing source text."""
-        return tuple(u.Infra.walk_ast_nodes(node))
+        return tuple(u.Infra.walk_ast_nodes(u.Infra.ensure_ast_node(node)))
 
     @classmethod
     def outer_classes(cls, tree: object) -> t.SequenceOf[object]:

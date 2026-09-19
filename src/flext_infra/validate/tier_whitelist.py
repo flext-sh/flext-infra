@@ -22,7 +22,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c
+from flext_infra import c, u
 
 from ._rope_import_boundary import FlextInfraRopeImportBoundaryBase
 
@@ -95,13 +95,11 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
             if part in excluded_dirs:
                 return False
 
-        # Skip git submodule directories
-        repo = _file_path.parent
-        while repo != repository_root:
-            if (repo / ".git").is_file():
-                return False
-            repo = repo.parent
-        return True
+        # Skip files owned by governed member repositories (submodules).
+        member_roots = frozenset(u.Infra.governed_project_roots(repository_root)) - {
+            repository_root.resolve()
+        }
+        return not any(parent in member_roots for parent in _file_path.parents)
 
     @override
     def _is_allowlisted(

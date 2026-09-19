@@ -7,11 +7,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from filelock import Timeout
 from flext_tests import tm
 
 from flext_core import r
-from flext_infra import config, m, p, u
+from flext_infra import c, config, m, p, u
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
@@ -114,7 +113,7 @@ class TestsFlextInfraTransactionLease:
                 contender = FlextInfraCodegenTransaction(
                     FlextInfraCodegenMiseArtifacts(repository_root=contender_root)
                 )
-                with pytest.raises(Timeout) as failure:
+                with pytest.raises(u.Infra.JournalLeaseTimeoutError) as failure:
                     contender.run_locked(prepare=True, operation=self._ok_path)
                 tm.that(failure.value.lock_file, eq=str(lock_path))
                 tm.that(journal_path.read_bytes(), eq=journal_before)
@@ -147,6 +146,32 @@ class TestsFlextInfraTransactionLease:
             )
         )
         tm.that(lock_path.stat().st_ino, eq=lock_after.st_ino)
+
+    def test_file_participant_lease_lives_in_ignored_state_directory(
+        self, tmp_path: Path
+    ) -> None:
+        """Leasing a publication root adds no entry beside its tracked content."""
+        root = test_u.Tests.git_repository(tmp_path)
+        test_u.Tests.copy_tracked_mise_seeds(root)
+        before = {path.name for path in root.iterdir()}
+        transaction = FlextInfraCodegenTransaction(
+            FlextInfraCodegenMiseArtifacts(repository_root=root)
+        )
+
+        tm.ok(transaction.run_files_locked({"@docs-0": root}, self._ok_path))
+        tm.ok(transaction.run_files_locked({"@docs-0": root}, self._ok_path))
+
+        tm.that(
+            {path.name for path in root.iterdir()} - before,
+            eq={c.Infra.TRANSACTION_STATE_DIRNAME},
+        )
+        tm.that(
+            [
+                path.name
+                for path in (root / c.Infra.TRANSACTION_STATE_DIRNAME).iterdir()
+            ],
+            eq=[f"{c.Infra.JOURNAL_NAME}.lock"],
+        )
 
     def test_operation_error_escapes_unchanged_and_releases_lease(
         self, tmp_path: Path

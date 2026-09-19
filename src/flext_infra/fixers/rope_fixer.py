@@ -23,10 +23,11 @@ from flext_infra.detectors.inline_import_detector import FlextInfraInlineImportD
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
-from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
 )
+
+from .base import FlextInfraFixerAdapter
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -154,13 +155,6 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         if file_path.name == c.Infra.INIT_PY:
             return package_name
         return f"{package_name}.{file_path.stem}" if package_name else ""
-
-    @staticmethod
-    def _module_file_for_name(module_name: str, *, project_root: Path) -> Path:
-        """Return the source file path for an importable module name."""
-        src_dir: str = c.Infra.DEFAULT_SRC_DIR
-        module_path = Path(*module_name.split(".")).with_suffix(".py")
-        return project_root / src_dir / module_path
 
     @staticmethod
     def _constants_module_for_file(

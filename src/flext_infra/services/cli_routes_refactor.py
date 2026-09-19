@@ -6,6 +6,8 @@ import functools
 from typing import ClassVar
 
 from flext_infra import m, t
+from flext_infra.codegen.protocol_models import FlextInfraCodegenProtocolModels
+from flext_infra.codemod.ast_scan import FlextInfraCodemodAstScan
 from flext_infra.codemod.batch_apply import FlextInfraCodemodBatchApply
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
@@ -86,6 +88,15 @@ class RefactorRoutes(CliRouteBase):
             ),
         ),
         m.Cli.ResultCommandRoute(
+            name="protocol-models",
+            help_text=(
+                "Assemble the member's generated structural protocols from "
+                "its validated models; dry-run reports drift"
+            ),
+            model_cls=FlextInfraCodegenProtocolModels,
+            handler=FlextInfraCodegenProtocolModels.execute_command,
+        ),
+        m.Cli.ResultCommandRoute(
             name="mod",
             help_text=(
                 "Apply ast-grep rules, prove fixed point, then require Ruff, "
@@ -93,6 +104,16 @@ class RefactorRoutes(CliRouteBase):
             ),
             model_cls=FlextInfraCodemodBatchApply,
             handler=FlextInfraCodemodBatchApply.execute_command,
+        ),
+        m.Cli.ResultCommandRoute(
+            name="ast",
+            help_text=(
+                "Run the ast engine standalone: ast-grep cascade plus "
+                "sed-by-list cascade (scan report; --apply reaches the "
+                "mechanical fixed point)"
+            ),
+            model_cls=FlextInfraCodemodAstScan,
+            handler=FlextInfraCodemodAstScan.execute_command,
         ),
     )
 

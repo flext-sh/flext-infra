@@ -15,8 +15,6 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._models.refactor_census import FlextInfraModelsRefactorCensus as mrc
-from .base import FlextInfraUtilitiesBase
 from .protected_edit import FlextInfraUtilitiesProtectedEdit
 from .rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from .rope_core import FlextInfraUtilitiesRopeCore
@@ -35,39 +33,6 @@ _UNSUPPORTED_SIMPLE_REMOVAL_CODE: Final[str] = "CENSUS_UNSUPPORTED_SIMPLE_REMOVA
 
 class FlextInfraUtilitiesRefactorCensus:
     """Census and source introspection helpers for refactor tools."""
-
-    @staticmethod
-    def identify_project_by_roots(
-        file_path: Path, project_roots: t.SequenceOf[Path]
-    ) -> str:
-        """Identify project name for a file path (most-specific root wins)."""
-        matching_roots = [
-            root for root in project_roots if file_path.is_relative_to(root)
-        ]
-        if not matching_roots:
-            unknown: str = c.Infra.DEFAULT_UNKNOWN
-            return unknown
-        best = max(matching_roots, key=FlextInfraUtilitiesBase.path_depth)
-        name: str = best.name
-        return name
-
-    @staticmethod
-    def build_flext_target(
-        family: str, core_project: str = c.Infra.PKG_CORE
-    ) -> mrc.FLEXTFamilyTarget:
-        """Create a generic target settings from a family code."""
-        if family not in c.Infra.FLEXT_FAMILIES:
-            msg = f"Invalid FLEXT family {family}"
-            raise ValueError(msg)
-        sf = c.Infra.FAMILY_SUFFIXES[family]
-        return mrc.FLEXTFamilyTarget(
-            family=family,
-            class_suffix=sf,
-            package_dir=c.Infra.FLEXT_FAMILY_PACKAGE_DIRS[family],
-            facade_module=c.Infra.FLEXT_FAMILY_FACADE_MODULES[family],
-            facade_class_prefix=f"Flext{sf}",
-            core_project=core_project,
-        )
 
     @staticmethod
     def export_pydantic_json(model_payload: m.BaseModel, export_path: Path) -> None:

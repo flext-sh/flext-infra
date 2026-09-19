@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_core import r
+from flext_infra import c
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from tests import m, u
 
@@ -142,6 +143,60 @@ class TestsFlextInfraDocsGeneratorGuides:
         tm.that(prepared.error or "", has="protected custom guide")
         tm.that(destination.read_text(encoding="utf-8"), eq="# Custom\n")
 
+    def test_previous_generated_guide_header_is_adopted_by_current_owner(
+        self, tmp_path: Path
+    ) -> None:
+        workspace, generator = u.Tests.docs_workspace_generator(
+            tmp_path, project_names=("flext-a",), selected_projects=["flext-a"]
+        )
+        source = workspace / "docs/guides/operator.md"
+        source.write_text("# Operator\n\nCurrent.\n", encoding="utf-8")
+        destination = workspace / "flext-a/docs/guides/operator.md"
+        destination.parent.mkdir(parents=True)
+        destination.write_text(
+            "<!-- AUTO-GENERATED FILE — regenerate through `make gen` from the workspace root. -->\n"
+            "<!-- Source of truth: `docs/guides/operator.md`; adjust that source, never this projection. -->\n\n"
+            "# flext-a - Operator\n\n> Project profile: `flext-a`\n\nPrevious.\n",
+            encoding="utf-8",
+        )
+
+        plan = next(
+            item
+            for item in u.Tests.plan_docs_bundle(generator)
+            if item.path == destination
+        )
+
+        tm.that(
+            plan.desired_content or b"",
+            has=b"`<workspace-root>/docs/guides/operator.md`",
+        )
+
+    def test_legacy_generated_guide_header_is_adopted_by_current_owner(
+        self, tmp_path: Path
+    ) -> None:
+        """Adopt only the historical generator marker, never unmarked custom text."""
+        workspace, generator = u.Tests.docs_workspace_generator(
+            tmp_path, project_names=("flext-a",), selected_projects=["flext-a"]
+        )
+        source = workspace / "docs/guides/operator.md"
+        source.write_text("# Operator\n\nCurrent.\n", encoding="utf-8")
+        destination = workspace / "flext-a/docs/guides/operator.md"
+        destination.parent.mkdir(parents=True)
+        destination.write_text(
+            "<!-- AUTO-GENERATED FILE — regenerate through `make gen` from the workspace root. -->\n"
+            "<!-- Source of truth: `docs/guides/operator.md`; adjust that source, never this projection. -->\n\n"
+            "# flext-a - Operator\n\n> Project profile: `flext-a`\n\nPrevious.\n",
+            encoding="utf-8",
+        )
+
+        plan = next(
+            item
+            for item in u.Tests.plan_docs_bundle(generator)
+            if item.path == destination
+        )
+
+        tm.that(plan.desired_content or b"", has=b"Current.")
+
     def test_root_guide_snapshot_change_rejects_prepared_bundle(
         self, tmp_path: Path
     ) -> None:
@@ -157,7 +212,7 @@ class TestsFlextInfraDocsGeneratorGuides:
         planned = generator.plan_files(bundle)
 
         tm.fail(planned)
-        tm.that(planned.error or "", has="docs source changed during planning")
+        tm.that(planned.error or "", has=c.Infra.DOCS_SOURCE_STATE_RACE_MARKER)
         tm.that((workspace / "flext-a/docs/guides/operator.md").exists(), eq=False)
 
     def test_guide_parent_identity_change_rejects_prepared_bundle(
@@ -178,7 +233,7 @@ class TestsFlextInfraDocsGeneratorGuides:
         planned = generator.plan_files(bundle)
 
         tm.fail(planned)
-        tm.that(planned.error or "", has="docs source changed during planning")
+        tm.that(planned.error or "", has=c.Infra.DOCS_SOURCE_STATE_RACE_MARKER)
 
     def test_stale_guide_ownership_change_rejects_prepared_delete(
         self, tmp_path: Path
@@ -198,7 +253,7 @@ class TestsFlextInfraDocsGeneratorGuides:
         planned = generator.plan_files(bundle)
 
         tm.fail(planned)
-        tm.that(planned.error or "", has="docs source changed during planning")
+        tm.that(planned.error or "", has=c.Infra.DOCS_SOURCE_STATE_RACE_MARKER)
         tm.that(destination.read_text(encoding="utf-8"), eq="# Now custom\n")
 
     def test_standalone_guides_never_read_parent_or_project_their_own_heading(

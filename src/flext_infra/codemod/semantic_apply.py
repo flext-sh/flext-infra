@@ -7,7 +7,7 @@ from pathlib import Path
 
 from flext_cli import cli
 
-from .. import c, infra, m, t, u
+from .. import c, config, infra, m, p, r, t, u
 from ..transformers import publish_semantic_file_plans
 
 
@@ -17,7 +17,7 @@ class FlextInfraCodemodSemanticApply:
     @classmethod
     def plan_transaction_paths(
         cls, root: Path, preflight: m.Infra.ModScanReport
-    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Return one immutable Rope callback for the mod loop's progress identity."""
         original = cls._source_inventory(root, preflight)
         from .._utilities.codegen_path_cutover import (
@@ -42,95 +42,137 @@ class FlextInfraCodemodSemanticApply:
         cli.display_text(f"mod: Rope transaction paths changed_files={len(changed)}")
 
     @classmethod
-    def apply(cls, root: Path, preflight: m.Infra.ModScanReport) -> None:
-        """Apply every semantic cutover selected by the canonical mod circuit."""
+    def apply(cls, root: Path, preflight: m.Infra.ModScanReport) -> p.Result[bool]:
+        """Apply every semantic cutover selected by the canonical mod circuit.
+
+        Every planner failure (per module) is returned as a failed Result so the
+        mod circuit reports it without a traceback and publishes nothing.
+        """
         original = cls._source_inventory(root, preflight)
         working = dict(original)
         changed: set[Path] = set()
 
+        # Phase 0: Import alignment (rope-native; toggle in tooling.yaml).
+        # Runs first so rope plans against disk truth that still equals the
+        # in-memory working map.
+        alignment = cls._phase_import_alignment(root, working)
+        if alignment.failure:
+            return r[bool].from_failure(alignment)
+        cls._apply_plan(working, alignment.value, changed)
+
         # Phase 1: Future annotations
         future_annotations = cls._phase_future_annotations(root, preflight, working)
         cls._apply_plan(working, future_annotations, changed)
-        cls._check_residue(
-            "future-annotations",
-            cls._phase_future_annotations(root, preflight, working),
-        )
-
-        # Phase 2: Class nesting establishes the final declaration scopes.
+        counts: MutableMapping[str, int] = {
+            "import_alignment_files": len(alignment.value),
+            "future_annotations": len(future_annotations),
+        }
         with infra.rope_workspace(root) as rope_workspace:
-            nesting = u.Infra.plan_class_nesting_cutover(
-                rope_workspace=rope_workspace, sources=working
-            )
-        cls._apply_plan(working, nesting, changed)
-        with infra.rope_workspace(root) as rope_workspace:
-            cls._check_residue(
-                "class-nesting",
-                u.Infra.plan_class_nesting_cutover(
-                    rope_workspace=rope_workspace, sources=working
+            residue = cls._check_residue(
+                "future-annotations",
+                r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
+                    cls._phase_future_annotations(root, preflight, working)
                 ),
             )
-
-        # Phase 3: Normalize references after nesting has rewritten their owners.
-        # Normalizing first leaves definition-time references introduced by the
-        # structural phase and rejects an otherwise convergent transaction.
-        deferred = cls._deferred_model_edits(working)
-        cls._apply_plan(working, deferred, changed)
-        cls._check_residue("deferred-models", cls._deferred_model_edits(working))
-
-        # Phase 4: Compatibility aliases
-        alias_findings = tuple(
-            finding
-            for finding in preflight.entries
-            if finding.rule_id == "ban-compat-alias"
-            and finding.file.name == c.Infra.API_PY
-        )
-        aliases = u.Infra.plan_api_alias_cutover(
-            root=root, sources=working, findings=alias_findings
-        )
-        cls._apply_plan(working, aliases, changed)
-        cls._check_residue(
-            "compat-alias",
-            u.Infra.plan_api_alias_cutover(
-                root=root, sources=working, findings=alias_findings
-            ),
-        )
-
-        # Phase 5: Private imports
-        private_findings = tuple(
-            finding
-            for finding in preflight.entries
-            if finding.rule_id == "ban-private-import"
-        )
-        private_imports = u.Infra.plan_private_import_cutover(
-            root=root, sources=working, findings=private_findings
-        )
-        cls._apply_plan(working, private_imports, changed)
-        cls._check_residue(
-            "private-import",
-            u.Infra.plan_private_import_cutover(
-                root=root, sources=working, findings=private_findings
-            ),
-        )
-
+            # Phase 2: Class nesting establishes the final declaration scopes.
+            # Phase 3: Normalize references after nesting has rewritten their
+            # owners; normalizing first leaves definition-time references the
+            # structural phase introduces and rejects a convergent transaction.
+            # Phases 4-5: Compatibility aliases, then private imports.
+            for phase in c.Infra.SemanticCutoverPhase:
+                if residue.failure:
+                    return r[bool].from_failure(residue)
+                planned = u.Infra.plan_semantic_cutover(
+                    phase,
+                    rope_workspace=rope_workspace,
+                    sources=working,
+                    findings=preflight.entries,
+                )
+                if planned.failure:
+                    return r[bool].from_failure(planned)
+                cls._apply_plan(working, planned.value, changed)
+                counts[phase] = len(planned.value)
+                residue = cls._check_residue(
+                    phase,
+                    u.Infra.plan_semantic_cutover(
+                        phase,
+                        rope_workspace=rope_workspace,
+                        sources=working,
+                        findings=preflight.entries,
+                    ),
+                )
+                if phase is c.Infra.SemanticCutoverPhase.CLASS_NESTING:
+                    deferred = cls._deferred_model_edits(working)
+                    cls._apply_plan(working, deferred, changed)
+                    counts["deferred_models"] = len(deferred)
+                    residue = residue.flat_map(
+                        lambda _: cls._check_residue(
+                            "deferred-models",
+                            r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]].ok(
+                                cls._deferred_model_edits(working)
+                            ),
+                        )
+                    )
+            if residue.failure:
+                return r[bool].from_failure(residue)
         cli.display_text(
             "mod: semantic cutover "
-            f"future_annotations={len(future_annotations)} "
-            f"deferred_models={len(deferred)} nesting_files={len(nesting)} "
-            f"alias_files={len(aliases)} "
-            f"private_import_files={len(private_imports)}"
+            + " ".join(f"{name}={count}" for name, count in counts.items())
         )
-        cls._verify_fixed_point(root, working, preflight)
+        verified = cls._verify_fixed_point(root, working, preflight)
+        if verified.failure:
+            return verified
         cls._publish(root, original, working, changed)
-
-        # Final fixed-point verification for all phases
-        cls._verify_fixed_point(
+        # Final fixed-point verification against the published sources.
+        return cls._verify_fixed_point(
             root, dict(cls._source_inventory(root, preflight)), preflight
+        )
+
+    @classmethod
+    def _phase_import_alignment(
+        cls, root: Path, working: t.MappingKV[Path, str]
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
+        """Plan rope-native cross-layer import alignment when tooling enables it."""
+        planned_edits = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
+        if not config.Infra.tooling.mod.phases.import_alignment:
+            return planned_edits.ok(())
+        with infra.rope_workspace(root) as rope_workspace:
+            project_package = (
+                rope_workspace.workspace_index.project_package_by_root.get(
+                    str(root.resolve())
+                )
+            )
+            if project_package is None:
+                return planned_edits.ok(())
+            planned = u.Infra.align_module_imports(
+                rope_project=rope_workspace.rope_project,
+                repository_root=root.resolve(),
+                index=rope_workspace.workspace_index,
+                project_package=project_package,
+                config=config.Infra.tooling.lazy_init,
+            )
+        if planned.failure:
+            return planned_edits.fail(
+                f"import-alignment failed to plan: {planned.error}"
+            )
+        return planned_edits.ok(
+            tuple(
+                m.Infra.SemanticMigrationEdit(
+                    file_path=plan.path,
+                    original_source=working[plan.path],
+                    updated_source=(plan.desired_content or b"").decode(
+                        c.Cli.ENCODING_DEFAULT
+                    ),
+                )
+                for plan in planned.value
+                if plan.path in working
+            )
         )
 
     @staticmethod
     def _phase_future_annotations(
         root: Path, preflight: m.Infra.ModScanReport, working: MutableMapping[Path, str]
-    ) -> list[m.Infra.SemanticMigrationEdit]:
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Plan the future-annotations phase; the pipeline applies the edits."""
         future_annotations: list[m.Infra.SemanticMigrationEdit] = []
         for file_path in sorted({
@@ -162,17 +204,21 @@ class FlextInfraCodemodSemanticApply:
                         changes=("inserted canonical future annotations import",),
                     )
                 )
-        return future_annotations
+        return tuple(future_annotations)
 
     @staticmethod
     def _check_residue(
-        phase: str, edits: t.SequenceOf[m.Infra.SemanticMigrationEdit]
-    ) -> None:
-        """Reject edits replanned by the completed phase's own transformer."""
-        if edits:
-            files = ", ".join(edit.file_path.as_posix() for edit in edits)
-            msg = f"{phase} phase left residue after application: {files}"
-            raise RuntimeError(msg)
+        phase: str, planned: p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
+    ) -> p.Result[bool]:
+        """Reject a replan failure or edits replanned by a completed phase."""
+        if planned.failure:
+            return r[bool].from_failure(planned)
+        if planned.value:
+            files = ", ".join(edit.file_path.as_posix() for edit in planned.value)
+            return r[bool].fail(
+                f"{phase} phase left residue after application: {files}"
+            )
+        return r[bool].ok(True)
 
     @classmethod
     def _verify_fixed_point(
@@ -180,36 +226,31 @@ class FlextInfraCodemodSemanticApply:
         root: Path,
         working: MutableMapping[Path, str],
         preflight: m.Infra.ModScanReport,
-    ) -> None:
+    ) -> p.Result[bool]:
         """Replan every phase against the proposed or reread published sources."""
-        cls._check_residue(
+        edits = r[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]
+        verified = cls._check_residue(
             "future-annotations",
-            cls._phase_future_annotations(root, preflight, working),
-        )
-        cls._check_residue("deferred-models", cls._deferred_model_edits(working))
-        with infra.rope_workspace(root) as rope_workspace:
-            nesting_residue = u.Infra.plan_class_nesting_cutover(
-                rope_workspace=rope_workspace, sources=working
+            edits.ok(cls._phase_future_annotations(root, preflight, working)),
+        ).flat_map(
+            lambda _: cls._check_residue(
+                "deferred-models", edits.ok(cls._deferred_model_edits(working))
             )
-        cls._check_residue("class-nesting", nesting_residue)
-        cls._check_residue(
-            "compat-alias",
-            u.Infra.plan_api_alias_cutover(
-                root=root, sources=working, findings=preflight.entries
-            ),
         )
-        cls._check_residue(
-            "private-import",
-            u.Infra.plan_private_import_cutover(
-                root=root,
-                sources=working,
-                findings=tuple(
-                    finding
-                    for finding in preflight.entries
-                    if finding.rule_id == "ban-private-import"
-                ),
-            ),
-        )
+        with infra.rope_workspace(root) as rope_workspace:
+            for phase in c.Infra.SemanticCutoverPhase:
+                if verified.failure:
+                    return verified
+                verified = cls._check_residue(
+                    phase,
+                    u.Infra.plan_semantic_cutover(
+                        phase,
+                        rope_workspace=rope_workspace,
+                        sources=working,
+                        findings=preflight.entries,
+                    ),
+                )
+        return verified
 
     @staticmethod
     def _source_inventory(

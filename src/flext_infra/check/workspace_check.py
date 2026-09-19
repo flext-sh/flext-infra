@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.base import FlextInfraServiceBase
 
+from ..base import FlextInfraServiceBase
 from ._workspace_check_reports import FlextInfraWorkspaceCheckReportsMixin
 from .workspace_check_gates import (
     FlextInfraGateRegistry,
@@ -109,12 +109,8 @@ class FlextInfraWorkspaceChecker(
         if failed_projects:
             failed_names = ", ".join(project.project for project in failed_projects)
             total_findings = sum(project.total_errors for project in failed_projects)
-            # Operator contract (2026-09-15): quality findings feed the generator,
-            # they never fail the canonical Make verb. Gates that RAN always
-            # complete; their findings live in the reports (md/sarif/logs) and in
-            # this console summary. Only pipeline/infra crashes fail the verb.
-            u.Cli.info(
-                f"quality findings reported for: {failed_names} "
+            return r[bool].fail(
+                f"quality checks failed for: {failed_names} "
                 f"({total_findings} findings; see the check summary and reports)"
             )
         return r[bool].ok(True)
@@ -194,7 +190,9 @@ class FlextInfraWorkspaceChecker(
             effective_ctx,
             fail_fast=fail_fast,
         )
-        return self._write_reports_and_summary(resolved_gates, report_base, outcome)
+        return self._write_reports_and_summary(
+            resolved_gates, report_base, outcome, repository_root=self._repository_root
+        )
 
     def _project_targets(
         self, projects: t.StrSequence | t.SequenceOf[m.Infra.CheckProjectTarget]

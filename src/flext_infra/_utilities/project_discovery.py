@@ -13,7 +13,10 @@ from typing import override
 
 from flext_cli import u
 
-from .. import c, config, m, t
+from .._config import FlextInfraConfig
+from ..constants import c
+from ..models import m
+from ..typings import t
 from . import FlextInfraUtilitiesGit, FlextInfraUtilitiesProjectDiscoveryCandidatesMixin
 from .workspace_manifest import FlextInfraUtilitiesWorkspaceManifest
 
@@ -211,15 +214,19 @@ class FlextInfraUtilitiesProjectDiscovery(
         resolved_root = repository_root.resolve()
         refactor_config = cls.load_refactor_config(resolved_root)
         scan_dirs = refactor_config.project_scan_dirs
-        targets = {
-            target.relative_to(resolved_root).as_posix()
-            for project in cls.governed_project_roots(resolved_root)
-            for target in (
-                *(project / directory for directory in scan_dirs),
-                *project.glob(f"*{c.Infra.EXT_PYTHON}"),
-            )
-            if target.exists()
-        }
+        targets: set[str] = set()
+        for project in cls.governed_project_roots(resolved_root):
+            # Python files directly in the project root (e.g., conftest.py)
+            for target in project.glob(f"*{c.Infra.EXT_PYTHON}"):
+                if target.exists():
+                    targets.add(target.relative_to(resolved_root).as_posix())
+            # Recursively scan configured directories for Python files
+            for directory in scan_dirs:
+                scan_dir = project / directory
+                if scan_dir.exists():
+                    for target in scan_dir.rglob(f"*{c.Infra.EXT_PYTHON}"):
+                        if target.is_file():
+                            targets.add(target.relative_to(resolved_root).as_posix())
         return tuple(sorted(targets))
 
     @classmethod
@@ -256,7 +263,7 @@ class FlextInfraUtilitiesProjectDiscovery(
             raise ValueError(msg)
         state_root: Path = (
             resolved_workspace.parent
-            / config.Infra.codegen.toolchain.state_directory_name
+            / FlextInfraConfig.fetch_global().Infra.codegen.toolchain.state_directory_name
             / resolved_workspace.name
             / tool_name
         )

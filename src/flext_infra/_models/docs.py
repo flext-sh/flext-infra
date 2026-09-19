@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import c, t
 
-from .config import FlextInfraConfigModels
+from ._config.base import FlextInfraConfigModels
 from .docs_collection import FlextInfraModelsDocsCollection
 from .docs_generation import FlextInfraModelsDocsGeneration
 
@@ -183,10 +183,6 @@ class FlextInfraModelsDocs(
         repository: Annotated[
             FlextInfraConfigModels.RepositoryRef | None,
             m.Field(description="Exact repository catalog model"),
-        ] = None
-        provider: Annotated[
-            FlextInfraConfigModels.ProviderSpec | None,
-            m.Field(description="Exact Git provider model"),
         ] = None
         package_name: Annotated[str, m.Field(description="Documented package name")]
         doc_summary: Annotated[str, m.Field(description="Package docstring summary")]

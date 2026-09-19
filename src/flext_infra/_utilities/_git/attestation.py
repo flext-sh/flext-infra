@@ -99,7 +99,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
     def _toolchain_digest(cls, repo_root: Path, commit_sha: str | None = None) -> str:
         repo = cls._repo(repo_root)
         commit = repo.commit(commit_sha) if commit_sha is not None else repo.head.commit
-        names = (".mise.toml", ".python-version", "pyproject.toml", "uv.lock")
+        names = (".mise.toml", ".python-version", "pyproject.toml")
         tracked: list[str] = []
         for name in names:
             try:

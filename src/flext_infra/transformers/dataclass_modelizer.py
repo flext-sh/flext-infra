@@ -186,11 +186,7 @@ class FlextInfraRefactorDataclassModelizer(FlextInfraRopeTransformer):
             """Return whether one annotated field type is serializable."""
             if not isinstance(item.target, ast.Name):
                 return False
-            try:
-                annotation_text = ast.unparse(item.annotation)
-            except (ValueError, RecursionError):
-                return False
-            return _is_serializable_annotation(annotation_text)
+            return _is_serializable_annotation(ast.unparse(item.annotation))
 
         def _rewrite_to_frozen_model(
             self, node: ast.ClassDef, decorator: ast.Call | ast.Name

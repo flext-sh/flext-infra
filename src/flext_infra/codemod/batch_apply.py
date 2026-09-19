@@ -46,7 +46,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     f"({text_pending.actionable} actionable), across "
                     f"{len(rules)} rule file(s)"
                 )
-            FlextInfraModGateEngine.validate(self.repository_root).unwrap()
+            validated = FlextInfraModGateEngine.validate(self.repository_root)
+            if validated.failure:
+                return r[t.Cli.ResultValue].from_failure(validated)
             cli.display_text("mod: no pending ast-grep or sed-by-list fixes")
             return r[t.Cli.ResultValue].ok(True)
         return self._execute_apply(self.repository_root, rules)
@@ -116,7 +118,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 cli.display_text(f"mod: apply {len(rules)} ast-grep rule file(s)")
                 FlextInfraModGateEngine.scan(root, fix=True).unwrap()
             after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-            FlextInfraCodemodBatchApply._validate_fix_match(current, after_ast)
+            FlextInfraCodemodBatchApply.validate_fix_match(current, after_ast)
             transaction_paths = FlextInfraCodemodSemanticApply.plan_transaction_paths(
                 root, after_ast
             )
@@ -132,29 +134,24 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             owned = FlextInfraModReplacements.require_authored(after_ast)
             if owned.failure:
                 return r[t.Cli.ResultValue].from_failure(owned)
-            FlextInfraCodemodSemanticApply.apply(root, after_ast)
+            semantic = FlextInfraCodemodSemanticApply.apply(root, after_ast)
+            if semantic.failure:
+                return r[t.Cli.ResultValue].from_failure(semantic)
             current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
         current_text = FlextInfraModTextGateEngine.scan(
             root, fix=False, validate_receipts=True
         ).unwrap()
-        seen_text: dict[tuple[tuple[str, str, int, str, str], ...], int] = {}
+        seen_text: t.MutableMappingKV[
+            t.VariadicTuple[tuple[str, str, int, str, str]], int
+        ] = {}
         iteration = 0
         while current_text.findings:
             iteration += 1
-            fingerprint = tuple(
-                sorted(
-                    (
-                        finding.rule_id,
-                        finding.file.as_posix(),
-                        finding.line,
-                        finding.text,
-                        finding.replacement,
-                    )
-                    for finding in current_text.entries
-                )
+            text_fingerprint = FlextInfraCodemodBatchApply._text_fingerprint(
+                current_text.entries
             )
-            if fingerprint in seen_text:
-                prev_iter = seen_text[fingerprint]
+            if text_fingerprint in seen_text:
+                prev_iter = seen_text[text_fingerprint]
                 stalled = {
                     finding.rule_id
                     for finding in current_text.entries
@@ -166,7 +163,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     f"{', '.join(sorted(stalled)) or 'none'}; changes retained "
                     "for mandatory owner repair"
                 )
-            seen_text[fingerprint] = iteration
+            seen_text[text_fingerprint] = iteration
             cli.display_text(
                 f"mod: text phase iteration {iteration} — "
                 f"{current_text.findings} sed-by-list finding(s), "
@@ -185,15 +182,34 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         cli.display_text(
             "mod: require canonical formatting and zero Ruff, Pyrefly, and LSP diagnostics"
         )
-        FlextInfraModGateEngine.validate(root).unwrap()
+        validated = FlextInfraModGateEngine.validate(root)
+        if validated.failure:
+            return r[t.Cli.ResultValue].from_failure(validated)
         cli.display_text("mod: AST fixed point verified with zero findings")
         return r[t.Cli.ResultValue].ok(True)
 
     @staticmethod
-    def _validate_fix_match(
+    def _text_fingerprint(
+        entries: t.VariadicTuple[m.Infra.ModTextFinding],
+    ) -> tuple[tuple[str, str, int, str, str], ...]:
+        """Build a sorted fingerprint of all text findings."""
+        items: list[tuple[str, str, int, str, str]] = [
+            (
+                entry.rule_id,
+                entry.file.as_posix(),
+                entry.line,
+                entry.text,
+                entry.replacement,
+            )
+            for entry in entries
+        ]
+        return tuple(sorted(items))
+
+    @staticmethod
+    def validate_fix_match(
         before: m.Infra.ModScanReport, after_apply: m.Infra.ModScanReport
     ) -> None:
-        """Validate that applied fixes match expected changes (fix!=match)."""
+        """Reject unresolved rewrites while preserving valid rule cascades."""
         # Check that actionable findings were actually resolved
         before_actionable = {
             (f.rule_id, f.file.as_posix(), f.text, f.replacement)
@@ -215,13 +231,18 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"findings in rules {sorted(rule_ids)} across files {sorted(files)}"
             )
             raise RuntimeError(msg)
-        # Check that new actionable findings weren't introduced
+        # A completed rule may enable a later rule in the declared cascade.
+        # Those later-rule findings are consumed by the next fixed-point iteration.
         new_actionable = after_apply_actionable - before_actionable
-        if new_actionable:
-            rule_ids = {r for r, _, _, _ in new_actionable}
-            files = {p for _, p, _, _ in new_actionable}
+        prior_rule_ids = {rule_id for rule_id, _, _, _ in before_actionable}
+        unexpected = {
+            finding for finding in new_actionable if finding[0] in prior_rule_ids
+        }
+        if unexpected:
+            rule_ids = {r for r, _, _, _ in unexpected}
+            files = {p for _, p, _, _ in unexpected}
             msg = (
-                f"fix!=match: ast-grep apply introduced {len(new_actionable)} new actionable "
+                f"fix!=match: ast-grep apply introduced {len(unexpected)} new actionable "
                 f"findings in rules {sorted(rule_ids)} across files {sorted(files)}"
             )
             raise RuntimeError(msg)

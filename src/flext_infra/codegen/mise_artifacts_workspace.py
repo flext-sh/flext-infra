@@ -38,6 +38,15 @@ class FlextInfraMiseWorkspacePlanner:
                 f"Git submodule has no Mise coordination root: {requested}"
             )
         scope_root = superproject_root.expanduser().absolute()
+        # A linked worktree nested under the superproject directory is not the
+        # superproject's gitlink checkout: it coordinates through its own
+        # per-worktree Git directory, never the superproject's shared journal.
+        gitlinks = u.Infra.git_index_gitlink_paths(scope_root)
+        if gitlinks.failure:
+            return r[m.Infra.GitIdentityReport].from_failure(gitlinks)
+        member = identity.value.repo_root.relative_to(superproject_root)
+        if member.as_posix() not in gitlinks.value:
+            return identity
         physical_scope = self._physical_directory(scope_root)
         if physical_scope.failure:
             return r[m.Infra.GitIdentityReport].from_failure(physical_scope)

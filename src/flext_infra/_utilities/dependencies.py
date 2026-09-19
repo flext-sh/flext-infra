@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, MutableMapping
-from importlib.metadata import requires
+from importlib.metadata import distributions, requires
 from importlib.resources import files
 from pathlib import Path
 from types import MappingProxyType
@@ -251,7 +251,7 @@ class FlextInfraUtilitiesDependencies:
 
     @staticmethod
     def constraint_specifier(version: str) -> str:
-        """Return the resolved lock version as an open-ended dependency floor.
+        """Return the resolved installed version as an open-ended dependency floor.
 
         PEP 440 permits a local version label only with ``==`` or ``!=``, so a
         floor built straight from a locally tagged resolution is rejected by
@@ -260,7 +260,7 @@ class FlextInfraUtilitiesDependencies:
 
         A prerelease resolution is not a floor either: publishing ``>=X.Yb1``
         forces every downstream consumer onto that beta, which is how the fleet
-        ended up pinned to ``pydantic>=2.14.0b1`` from a single local lock. The
+        ended up pinned to ``pydantic>=2.14.0b1`` from a single runtime resolution. The
         empty string means "this resolution cannot serve as a public floor", and
         every caller keeps the declared constraint instead of rewriting it.
         """
@@ -276,55 +276,39 @@ class FlextInfraUtilitiesDependencies:
         return f">={public_version}"
 
     @classmethod
-    def locked_dependency_versions(
-        cls, lock_path: Path, *, sources: t.StrSequence = ("registry",)
-    ) -> t.MappingKV[str, str]:
-        """Return normalized package versions from one ``uv.lock`` file.
-
-        ``sources`` selects the lock source kinds to read (``registry`` by
-        default; ``git`` yields the siblings consumed through a pinned ref).
-        """
-        result: t.MappingKV[str, str] = {}
-        if lock_path.is_file():
-            raw_text = lock_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            payload_source = u.Cli.toml_mapping_from_text(raw_text)
-            if payload_source is not None:
-                payload = FlextInfraUtilitiesPyproject.validate_infra_payload(
-                    payload_source
-                )
-                raw_packages = payload.get("package")
-                if isinstance(raw_packages, list):
-                    versions: MutableMapping[str, str] = {}
-                    for raw_package in raw_packages:
-                        if not isinstance(raw_package, Mapping):
-                            continue
-                        raw_source = raw_package.get("source")
-                        if not isinstance(raw_source, Mapping) or not any(
-                            kind in raw_source for kind in sources
-                        ):
-                            continue
-                        raw_name = raw_package.get("name")
-                        raw_version = raw_package.get(c.Infra.VERSION)
-                        if not isinstance(raw_name, str) or not isinstance(
-                            raw_version, str
-                        ):
-                            continue
-                        dependency_name = cls.dep_name(raw_name)
-                        if dependency_name is None:
-                            continue
-                        versions[dependency_name] = raw_version.strip()
-                    result = dict(versions)
-        return result
+    def resolved_dependency_versions(cls) -> t.MappingKV[str, str]:
+        """Read registry versions from the provisioned runtime, never release provenance."""
+        versions: dict[str, str] = {}
+        for distribution in distributions():
+            if distribution.read_text("direct_url.json") is not None:
+                continue
+            name = distribution.metadata.get("Name")
+            if name is None:
+                msg = "Installed distribution has no Name metadata"
+                raise TypeError(msg)
+            normalized = cls.dep_name(name)
+            if normalized is None:
+                msg = f"Invalid installed distribution name: {name}"
+                raise ValueError(msg)
+            version = distribution.version
+            if normalized in versions and versions[normalized] != version:
+                msg = f"Ambiguous installed version: {normalized}"
+                raise ValueError(msg)
+            versions[normalized] = version
+        if not versions:
+            msg = "No registry packages found in the provisioned runtime"
+            raise ValueError(msg)
+        return versions
 
     @classmethod
     def rewrite_requirement_constraint(
         cls,
         requirement: str,
         *,
-        locked_versions: t.MappingKV[str, str],
+        resolved_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence = (),
     ) -> str | None:
-        """Rewrite one PEP 621 requirement to the resolved uv.lock floor."""
+        """Rewrite one PEP 621 requirement to the resolved runtime floor."""
         result: str | None = None
         raw_text = requirement.strip()
         if raw_text:
@@ -341,7 +325,7 @@ class FlextInfraUtilitiesDependencies:
                         dependency_name is not None
                         and dependency_name not in internal_set
                     ):
-                        locked_version = locked_versions.get(dependency_name)
+                        locked_version = resolved_versions.get(dependency_name)
                         if locked_version is not None:
                             try:
                                 parsed = Requirement(requirement_part.strip())

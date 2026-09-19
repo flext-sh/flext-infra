@@ -34,6 +34,16 @@ class FlextInfraConfigModelsTemplates:
         overwrite: Annotated[
             bool, m.Field(description="Whether the template owns existing content")
         ] = False
+        requires_release_protocol: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description=(
+                    "Whether this projection requires the repository's explicit "
+                    "release-protocol opt-in"
+                ),
+            ),
+        ] = False
 
     class TemplatesSpec(FlextInfraConfigModelsContract.ConfigContract):
         """New-project scaffold root and its complete ordered manifest."""

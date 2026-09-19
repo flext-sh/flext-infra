@@ -31,22 +31,6 @@ class FlextInfraProtocolsDocs(Protocol):
         def provider(self) -> str: ...
 
     @runtime_checkable
-    class DocsProviderSpec(Protocol):
-        """Git provider fields consumed by documentation."""
-
-        @property
-        def name(self) -> str: ...
-
-        @property
-        def organization(self) -> str: ...
-
-        @property
-        def base_url(self) -> str: ...
-
-        @property
-        def branch(self) -> str: ...
-
-    @runtime_checkable
     class DocsExportBinding(Protocol):
         """Public export binding fields."""
 
@@ -65,9 +49,6 @@ class FlextInfraProtocolsDocs(Protocol):
 
         @property
         def repository(self) -> FlextInfraProtocolsDocs.DocsRepositoryRef | None: ...
-
-        @property
-        def provider(self) -> FlextInfraProtocolsDocs.DocsProviderSpec | None: ...
 
         @property
         def package_name(self) -> str: ...

@@ -11,11 +11,11 @@ from typing import ClassVar
 
 from flext_cli import u
 
-from flext_infra import config
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
+from .._config import FlextInfraConfig
 from .discovery import FlextInfraUtilitiesDiscovery
 from .resource_limits import FlextInfraUtilitiesResourceLimits
 
@@ -85,7 +85,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         }
         return tuple(
             gate
-            for gate in config.Infra.codegen.make.ci.check_gates
+            for gate in FlextInfraConfig.fetch_global().Infra.codegen.make.ci.check_gates
             if gate in lint_tool_gates
         )
 

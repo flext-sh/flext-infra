@@ -84,7 +84,10 @@ class TestsFlextInfraDocsMainCommands:
             repository_root=workspace, selected_projects=["flext-a"], apply_changes=True
         ).execute()
         tm.ok(after)
-        tm.that((workspace / "flext-a/TODOS.md").exists(), eq=True)
+        tm.that(
+            (workspace / "flext-a/.reports/docs/validate-report.md").exists(), eq=True
+        )
+        tm.that((workspace / "flext-a/TODOS.md").exists(), eq=False)
 
     def test_builder_execute_fails_when_mkdocs_is_missing(self, tmp_path: Path) -> None:
         workspace = u.Tests.create_docs_workspace(tmp_path)

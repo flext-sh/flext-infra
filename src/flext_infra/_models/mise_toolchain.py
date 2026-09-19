@@ -7,8 +7,6 @@ from typing import Annotated, Literal, Self
 
 from flext_core import m, t, u
 
-from ._defaults import immutable_empty_mapping
-
 
 class FlextInfraModelsMiseToolchain:
     """Mise toolchain and beads configuration models."""
@@ -194,7 +192,7 @@ class FlextInfraModelsMiseToolchain:
         Language runtimes and native tools are declared as moving ``latest``
         selectors or a major.minor line. No mise.lock: setup resolves the
         newest published release. Python linters/type-checkers remain owned
-        by pyproject and uv.lock.
+        by pyproject manifests.
         """
 
         # Selector families rejected while their capabilities are suspended.
@@ -293,6 +291,10 @@ class FlextInfraModelsMiseToolchain:
         uv_version: Annotated[
             t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
         ]
+        retired_dependency_artifacts: Annotated[
+            t.VariadicTuple[Literal["uv.lock", "mise.lock", ".mise.lock"]],
+            m.Field(description="Exact dependency artifacts retired by generation"),
+        ]
         mise_lockfile: Annotated[
             bool,
             m.Field(
@@ -342,6 +344,23 @@ class FlextInfraModelsMiseToolchain:
             t.NonEmptyStr,
             m.Field(description="Moving jscpd release selector, e.g. 'latest'"),
         ]
+        prettier_selector: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                default="npm:prettier",
+                description=(
+                    "Mise selector for prettier. Override toolchain.prettier_selector; "
+                    "never the .mise.toml key."
+                ),
+            ),
+        ]
+        prettier_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                default="latest",
+                description="Moving prettier release selector, e.g. 'latest'",
+            ),
+        ]
         waza_selector: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -387,6 +406,16 @@ class FlextInfraModelsMiseToolchain:
                 )
             ),
         ]
+        make_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Moving Make release selector (latest); mise provisions make "
+                    "so direnv always resolves a real binary rather than a stale "
+                    "host shim. Override toolchain.make_version; never pin."
+                )
+            ),
+        ]
         beads: Annotated[
             FlextInfraModelsMiseToolchain.BeadsToolSpec,
             m.Field(description="Official Beads CLI installed through mise"),
@@ -400,26 +429,6 @@ class FlextInfraModelsMiseToolchain:
             m.Field(
                 min_length=1,
                 description="Toolchain field names protected from alternate distributions",
-            ),
-        ]
-        dependency_cooldown_exclusions: Annotated[
-            t.VariadicTuple[t.NonEmptyStr],
-            m.Field(
-                default=(),
-                description=(
-                    "Package distributions frozen at their current floor by the "
-                    "fleet-wide dependency cooldown policy; absent frees all packages"
-                ),
-            ),
-        ] = ()
-        dependency_cooldown_overrides: Annotated[
-            t.MappingKV[str, str],
-            m.Field(
-                default_factory=immutable_empty_mapping,
-                description=(
-                    "Per-package cooldown cutoff dates overriding the fleet default; "
-                    "maps distribution name to a PEP 440 version cutoff string"
-                ),
             ),
         ]
 
@@ -450,6 +459,7 @@ class FlextInfraModelsMiseToolchain:
         @property
         def python_selector(self) -> str:
             """Mise/pyenv-style selector for the configured Python minor line."""
+            return self.python_version
 
     class BeadsEndpointSpec(_ConfigContract):
         """Static network endpoint projected into Beads configuration."""
@@ -463,6 +473,21 @@ class FlextInfraModelsMiseToolchain:
                 description="Beads server TCP port declared by deployment",
             ),
         ]
+
+    class MiseTomlRenderSpec(ToolchainSpec):
+        """Toolchain render context for ``.mise.toml`` plus per-project gates.
+
+        The template consumes flat toolchain field names, so the context is the
+        fleet ToolchainSpec narrowed by the per-project Gas City participation
+        resolved from the workspace manifest overlay.
+        """
+
+        gascity_enabled: Annotated[
+            bool,
+            m.Field(
+                description=("Whether the gc tool block is projected into .mise.toml.")
+            ),
+        ] = True
 
     class MiseBootstrapEnvironmentSpec(_ConfigContract):
         """Validated environment contract rendered into generated Mise setup."""

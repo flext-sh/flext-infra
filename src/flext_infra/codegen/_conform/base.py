@@ -1,45 +1,19 @@
-"""Codegen conformance facade: joins the mixin modules via MRO."""
+"""Codegen conformance base: the final class of the linear responsibility chain."""
 
 from __future__ import annotations
 
-from typing import Annotated
-
-from ... import m, s
-from .._conform_gitignore import FlextInfraCodegenConformGitignoreMixin
-from .bootstrap import FlextInfraCodegenConformBootstrap
 from .execute import FlextInfraCodegenConformExecute
-from .misc import FlextInfraCodegenConformMisc
-from .plan import FlextInfraCodegenConformPlan
-from .render import FlextInfraCodegenConformRender
 
 
-class FlextInfraCodegenConform(
-    FlextInfraCodegenConformGitignoreMixin,
-    FlextInfraCodegenConformBootstrap,
-    FlextInfraCodegenConformPlan,
-    FlextInfraCodegenConformExecute,
-    FlextInfraCodegenConformRender,
-    FlextInfraCodegenConformMisc,
-    s[m.Infra.CodegenResult],
-):
-    """Plan every selected output, then atomically write only a clean plan."""
+class FlextInfraCodegenConformBase(FlextInfraCodegenConformExecute):
+    """Plan every selected output, then atomically write only a clean plan.
 
-    # This is the only
-    # orchestrator for Make/toolchain/source conformance. Rendering stays in
-    # flext-cli; Git-source TOML policy and attached detection are composed from
-    # their separately owned u.Infra/workspace services.
-    request: Annotated[
-        m.Infra.CodegenConformRequest | None,
-        m.Field(default=None, exclude=True, description="Validated conform request"),
-    ] = None
-    initial_workspace: Annotated[
-        m.Infra.WorkspaceSpec | None,
-        m.Field(
-            default=None,
-            exclude=True,
-            description="Validated scaffold specification included in the atomic plan",
-        ),
-    ] = None
+    The chain is linear in dependency order, so every responsibility statically
+    inherits what it calls: bootstrap (service root, request state) <- gitignore
+    <- docs ownership <- beads routes <- file plans <- pyproject policy <-
+    context render <- artifact render <- existing plan <- scaffold plan <- plan
+    <- execute.
+    """
 
 
-__all__: list[str] = ["FlextInfraCodegenConform"]
+__all__: list[str] = ["FlextInfraCodegenConformBase"]

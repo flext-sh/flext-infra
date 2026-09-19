@@ -249,7 +249,7 @@ class TestsFlextInfraInfraRopeService:
     @pytest.mark.parametrize(
         ("family_alias", "module_name"), tuple(c.Infra.FAMILY_PUBLIC_MODULES.items())
     )
-    def test_class_nesting_plan_uses_declared_family_owner(
+    def test_class_nesting_cutover_uses_declared_family_owner(
         self, tmp_path: Path, family_alias: str, module_name: str
     ) -> None:
         """Plan every facade family from semantic objects and its declared owner."""
@@ -268,35 +268,19 @@ class TestsFlextInfraInfraRopeService:
         )
 
         with flext_infra.infra.rope_workspace(repository_root) as rope:
-            convention = rope.convention(module_path)
-            violations_result = u.Infra.class_nesting_plan(rope, module_path)
-
-        tm.that(violations_result.failure, eq=False)
-        violations = tm.not_none(violations_result.unwrap())
-        tm.that(len(violations), eq=1)
-        violation = violations[0]
-        tm.that(violation.class_name, eq=extra_class_name)
-        tm.that(violation.target_namespace, eq=convention.module_policy.expected_family)
-        tm.that(violation.file, eq=module_path.relative_to(repository_root).as_posix())
-
-    def test_class_nesting_plan_rejects_missing_declared_owner(
-        self, tmp_path: Path
-    ) -> None:
-        """Fail when semantic policy cannot elect exactly one module owner."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        module_path = package_root / "models.py"
-        tm.ok(
-            u.Cli.files_write_text(
-                module_path,
-                "class FirstCandidate:\n    pass\n\nclass SecondCandidate:\n    pass\n",
+            owner = rope.convention(module_path).module_policy.expected_family
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                rope_workspace=rope,
+                sources={module_path: module_path.read_text(encoding="utf-8")},
             )
+
+        tm.ok(planned)
+        tm.that(len(planned.value), eq=1)
+        tm.that(planned.value[0].file_path, eq=module_path.resolve())
+        tm.that(
+            planned.value[0].changes, eq=(f"nested {extra_class_name} under {owner}",)
         )
-
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
-            result = u.Infra.class_nesting_plan(rope, module_path)
-
-        tm.that(result.failure, eq=True)
-        tm.that(result.error or "", has="requires exactly one declared module owner")
 
     def test_open_workspace_keeps_the_requested_repository_boundary(
         self, tmp_path: Path
@@ -439,6 +423,22 @@ class TestsFlextInfraInfraRopeService:
             tm.that(convention.module_policy.expected_alias, eq="m")
             project_layout = tm.not_none(convention.project_layout)
             tm.that(project_layout.class_stem, eq="FlextDemo")
+
+    def test_api_module_alias_comes_only_from_declared_exports(
+        self, tmp_path: Path
+    ) -> None:
+        """A root ``api.py`` without a declared alias never gets a synthesized one."""
+        repository_root, api_path = self._demo_module(
+            tmp_path,
+            c.Infra.API_PY,
+            '"""Api."""\n\n__all__: list[str] = ["FlextDemo"]\n\n'
+            "class FlextDemo:\n    pass\n",
+        )
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
+            layout = tm.not_none(rope.layout(repository_root))
+            policy = rope.convention(api_path).module_policy
+        tm.that(policy.expected_alias, none=True)
+        tm.that(layout.package_alias, ne=policy.expected_alias)
 
     def test_workspace_dsl_exposes_direct_modules_source_and_objects(
         self, tmp_path: Path

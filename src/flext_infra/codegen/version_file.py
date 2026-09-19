@@ -55,7 +55,7 @@ class FlextInfraCodegenVersionFile(s[bool]):
         generated = 0
         skipped = 0
 
-        for project_info in discovered.value:
+        for project_info in self._filtered_projects(discovered.value):
             metadata_result = u.Infra.read_project_metadata_result(project_info.path)
             if metadata_result.failure:
                 return r[bool].from_failure(metadata_result)
@@ -64,9 +64,6 @@ class FlextInfraCodegenVersionFile(s[bool]):
 
             if class_name == FlextVersion.__name__:
                 skipped += 1
-                continue
-
-            if self.project_filter and meta.project.name != self.project_filter:
                 continue
 
             src_pkg = project_info.path / "src" / meta.package_name

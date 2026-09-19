@@ -72,6 +72,71 @@ class FlextInfraUtilitiesQualifiedNames:
                 self._collect(node.decorator)
 
     @staticmethod
+    def dotted_name(node: cst.BaseExpression | None) -> str | None:
+        """Return a static dotted name, or ``None`` for a dynamic expression."""
+        if isinstance(node, cst.Name):
+            return node.value
+        if isinstance(node, cst.Attribute):
+            parent = FlextInfraUtilitiesQualifiedNames.dotted_name(node.value)
+            return f"{parent}.{node.attr.value}" if parent else None
+        return None
+
+    @staticmethod
+    def without_exports(
+        value: cst.BaseExpression, names: t.Infra.Container[str]
+    ) -> cst.BaseExpression:
+        """Drop ``names`` from a literal ``__all__`` list or tuple expression."""
+        if not isinstance(value, cst.List | cst.Tuple):
+            return value
+        return value.with_changes(
+            elements=tuple(
+                element
+                for element in value.elements
+                if not isinstance(element.value, cst.SimpleString)
+                or not isinstance(element.value.evaluated_value, str)
+                or element.value.evaluated_value not in names
+            )
+        )
+
+    @staticmethod
+    def filter_exports[N: (cst.Assign, cst.AnnAssign)](
+        node: N, names: t.Infra.Container[str]
+    ) -> N:
+        """Drop ``names`` from an ``__all__`` assignment; other assignments pass."""
+        targets = (
+            tuple(target.target for target in node.targets)
+            if isinstance(node, cst.Assign)
+            else (node.target,)
+        )
+        if (
+            len(targets) != 1
+            or not isinstance(targets[0], cst.Name)
+            or targets[0].value != "__all__"
+            or node.value is None
+        ):
+            return node
+        return node.with_changes(
+            value=FlextInfraUtilitiesQualifiedNames.without_exports(node.value, names)
+        )
+
+    @staticmethod
+    def normalized_import_aliases(
+        aliases: t.SequenceOf[cst.ImportAlias], *, parenthesized: bool
+    ) -> t.VariadicTuple[cst.ImportAlias]:
+        """Repair separators after import aliases were dropped or rewritten."""
+        last_index = len(aliases) - 1
+        return tuple(
+            alias.with_changes(comma=cst.MaybeSentinel.DEFAULT)
+            if index == last_index and not parenthesized
+            else alias.with_changes(
+                comma=cst.Comma(whitespace_after=cst.SimpleWhitespace(" "))
+            )
+            if index < last_index and not isinstance(alias.comma, cst.Comma)
+            else alias
+            for index, alias in enumerate(aliases)
+        )
+
+    @staticmethod
     def rebinds_name_in_place(parent: p.AttributeProbe, node: cst.CSTNode) -> bool:
         """Return whether ``parent`` spells ``node`` as a binding, not a reference.
 

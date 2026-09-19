@@ -74,6 +74,20 @@ class FlextInfraConstantsRefactor:
         DETECTION_ONLY = "detection_only"
         NON_ACTIONABLE_WITH_FIX = "non_actionable_with_fix"
 
+    @unique
+    class SemanticCutoverPhase(StrEnum):
+        """Semantic ``make mod`` cutovers planned by ``u.Infra.plan_semantic_cutover``."""
+
+        CLASS_NESTING = "class-nesting"
+        COMPAT_ALIAS = "compat-alias"
+        PRIVATE_IMPORT = "private-import"
+
+    SEMANTIC_CUTOVER_RULE_IDS: Final[t.MappingKV[str, str]] = MappingProxyType({
+        SemanticCutoverPhase.COMPAT_ALIAS: "ban-compat-alias",
+        SemanticCutoverPhase.PRIVATE_IMPORT: "ban-private-import",
+    })
+    "ast-grep rule whose findings select each finding-driven semantic cutover."
+
     RK_REFACTOR: Final[str] = "refactor"
     RK_PROJECT_SCAN_DIRS: Final[str] = "project_scan_dirs"
     RK_FILE_EXTENSIONS: Final[str] = "file_extensions"
@@ -85,10 +99,6 @@ class FlextInfraConstantsRefactor:
     RK_SIGNATURE_MIGRATIONS: Final[str] = "signature_migrations"
     RK_METHOD_ORDER: Final[str] = "method_order"
     RK_ORDER: Final[str] = "order"
-    RK_TIER0_MODULES: Final[str] = "tier0_modules"
-    RK_CORE_ALIASES: Final[str] = "core_aliases"
-    RK_CORE_PACKAGE: Final[str] = "core_package"
-    RK_ALIAS_TO_SUBMODULE: Final[str] = "alias_to_submodule"
     RK_ALLOW_ALIASES: Final[str] = "allow_aliases"
     RK_ALLOW_TARGET_SUFFIXES: Final[str] = "allow_target_suffixes"
     CODEMOD_RESOURCE_DIRNAME: Final[str] = "codemod"
@@ -111,6 +121,8 @@ class FlextInfraConstantsRefactor:
     # Declarative sed-by-list rules: one list entry drives one regex rewrite
     # across the governed scan surface with an exact expected-count receipt.
     CODEMOD_TEXT_RULES_FILENAME: Final[str] = "text_rules.yml"
+    # Declarative text-rule path derived from the filename SSOT.
+    CODEMOD_TEXT_RULES_RELPATH: Final[Path] = Path(CODEMOD_TEXT_RULES_FILENAME)
     CODEMOD_TEXT_RULES_KEY: Final[str] = "rules"
     CODEMOD_TEXT_KEY_ID: Final[str] = "id"
     CODEMOD_TEXT_KEY_DESCRIPTION: Final[str] = "description"
@@ -167,7 +179,6 @@ class FlextInfraConstantsRefactor:
         PATTERN_CORRECTIONS = "pattern_corrections"
         TYPING_UNIFICATION = "typing_unification"
         TYPING_ANNOTATION_FIX = "typing_annotation_fix"
-        TIER0_IMPORT_FIX = "tier0_import_fix"
         SYMBOL_PROPAGATION = "symbol_propagation"
         SIGNATURE_PROPAGATION = "signature_propagation"
 
@@ -238,9 +249,6 @@ class FlextInfraConstantsRefactor:
                 frozenset(),
                 frozenset(),
             ),
-        ),
-        RefactorRuleKind.TIER0_IMPORT_FIX: (
-            (frozenset({"fix_tier0_imports"}), frozenset(), frozenset(), frozenset()),
         ),
         RefactorRuleKind.SYMBOL_PROPAGATION: (
             (
@@ -373,22 +381,6 @@ class FlextInfraConstantsRefactor:
     "Canonical facade file name → expected (alias, suffix) pair."
     FLEXT_FAMILIES: Final[frozenset[str]] = frozenset({"c", "t", "p", "m", "u"})
     "All FLEXT families."
-    FLEXT_FAMILY_PACKAGE_DIRS: Final[t.StrMapping] = MappingProxyType({
-        "c": "flext_core/constants.py",
-        "t": "flext_core/typings.py",
-        "p": "flext_core/protocols.py",
-        "m": "flext_core/models",
-        "u": "flext_core/_utilities",
-    })
-    "Family letter → relative package dir/file."
-    FLEXT_FAMILY_FACADE_MODULES: Final[t.StrMapping] = MappingProxyType({
-        "c": "flext_core/constants.py",
-        "t": "flext_core/typings.py",
-        "p": "flext_core/protocols.py",
-        "m": "flext_core/models.py",
-        "u": "flext_core/utilities.py",
-    })
-    "Family letter → facade module path."
     DOMAIN_PACKAGES: Final[frozenset[str]] = frozenset({
         "flext-ldap",
         "flext-ldif",
@@ -412,18 +404,6 @@ class FlextInfraConstantsRefactor:
         "FlextDbt",
     )
     "Class name prefixes that identify integration projects."
-    CONFIDENCE_TO_SCORE: Final[t.MappingKV[str, float]] = MappingProxyType({
-        "high": 0.95,
-        "medium": 0.75,
-        "low": 0.55,
-    })
-    "Confidence level → numeric score mapping for violations."
-    CONFIDENCE_RANKS: Final[t.IntMapping] = MappingProxyType({
-        "low": 0,
-        "medium": 1,
-        "high": 2,
-    })
-    "Confidence level → priority rank mapping."
     MODEL_TOKENS: Final[t.StrSequence] = (
         "model",
         "schema",
@@ -589,18 +569,6 @@ class FlextInfraConstantsRefactor:
         "_tests.py",
     })
     "Pytest module suffixes exempt from production loose-object structure checks."
-
-    # --- Census mode StrEnum (was: class Census plain strings) ---
-    @unique
-    class CensusMode(StrEnum):
-        """Canonical census usage mode identifiers."""
-
-        ALIAS_FLAT = "alias_flat"
-        "Usage via u.method_name (flat alias)."
-        ALIAS_NS = "alias_namespaced"
-        "Usage via u.ClassName.method_name (namespaced)."
-        DIRECT = "direct"
-        "Usage via FlextUtilitiesXxx.method_name (direct)."
 
     ACCESSOR_WARNING_PREFIXES: Final[frozenset[str]] = frozenset({
         "get_",

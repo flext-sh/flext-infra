@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from .. import c, config, m, r, s, u
+from .. import c, m, r, s, u
 from .conform import FlextInfraCodegenConform
 
 # New file per operator live
@@ -58,11 +58,35 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
         str, m.Field(default="", description="Project description (default: derived).")
     ] = ""
     provider: Annotated[
-        str, m.Field(min_length=1, description="Configured Git provider key.")
+        str,
+        m.Field(
+            min_length=1,
+            description=(
+                "Provider key written into the new repository's own manifest; "
+                "flext-infra keeps no provider catalog to resolve it from."
+            ),
+        ),
     ]
     repository_url: Annotated[
-        str, m.Field(description="Canonical Git clone URL for the new repository.")
-    ] = ""
+        str,
+        m.Field(
+            description=(
+                "Canonical HTTPS Git clone URL for the new repository. There is "
+                "nothing to detect for a repository that does not exist yet, so "
+                "the caller must declare it."
+            )
+        ),
+    ]
+    repository_branch: Annotated[
+        str,
+        m.Field(
+            description=(
+                "Integration branch the new repository initializes on. Git owns "
+                "no answer for an unborn repository, so the caller must declare "
+                "it."
+            )
+        ),
+    ]
     license: Annotated[
         str, m.Field(min_length=1, description="SPDX project license identifier.")
     ]
@@ -80,34 +104,24 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
         """Build one typed manifest and delegate all output to conform."""
         if self.effective_dry_run:
             return r[m.Infra.CodegenResult].fail("codegen new requires apply mode")
-        provider = next(
-            (
-                item
-                for item in config.Infra.codegen.providers
-                if item.name == self.provider
-            ),
-            None,
-        )
-        # The URL comes from the caller or is derived from the provider
-        # contract. flext-infra keeps no catalog of existing projects to
-        # consult, so scaffolding a new project needs no prior knowledge of it.
+        # Every identity fact is an explicit caller declaration: for a
+        # repository that does not exist yet there is nothing to detect and no
+        # catalog to consult.
+        repository_url = self.repository_url.strip()
+        if not repository_url:
+            return r[m.Infra.CodegenResult].fail(
+                "repository URL is required: declare --repository-url"
+            )
+        repository_branch = self.repository_branch.strip()
+        if not repository_branch:
+            return r[m.Infra.CodegenResult].fail(
+                "repository branch is required: declare --repository-branch"
+            )
         package_name = self.package_name or self.name.replace("-", "_")
         class_stem = u.derive_class_stem(self.name)
         derived_namespace = class_stem.removeprefix("Flext")
         project_namespace = self.project_namespace or derived_namespace or class_stem
         alias = u.Infra.package_alias(package_name=package_name)
-        provider_url = (
-            f"{provider.base_url}/{self.name}.git" if provider is not None else ""
-        )
-        repository_url = self.repository_url or provider_url
-        if not repository_url:
-            return r[m.Infra.CodegenResult].fail(
-                f"repository URL is required for provider: {self.provider}"
-            )
-        if provider is None:
-            return r[m.Infra.CodegenResult].fail(
-                f"repository branch is required for provider: {self.provider}"
-            )
         repository_page = repository_url.removesuffix(".git")
         repository = m.Infra.RepositoryRef(
             name=self.name,
@@ -160,7 +174,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         return FlextInfraCodegenConform.execute_request(
-            request, initial_workspace=workspace
+            request, initial_workspace=workspace, initial_branch=repository_branch
         )
 
 

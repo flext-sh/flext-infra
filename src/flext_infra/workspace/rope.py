@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import MutableMapping
 from keyword import iskeyword
+from operator import attrgetter
 from pathlib import Path
 from time import perf_counter
 from types import TracebackType
@@ -12,7 +13,8 @@ from typing import Annotated, ClassVar, Self, override
 
 from flext_core import r
 from flext_infra import c, m, p, t, u
-from flext_infra.base import s
+
+from ..base import s
 
 
 class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
@@ -201,22 +203,21 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     def modules(
         self, *, project_names: t.StrSequence | None = None
     ) -> t.SequenceOf[m.Infra.RopeModuleIndexEntry]:
-        """Return sorted module entries, optionally filtered by project names."""
-
-        def module_path(entry: m.Infra.RopeModuleIndexEntry) -> str:
-            return entry.file_path.as_posix()
-
-        modules = tuple(
-            sorted(self.workspace_index.modules_by_path.values(), key=module_path)
-        )
-        if not project_names:
-            return modules
-        project_filter = frozenset(project_names)
+        """Return path-sorted module entries, optionally only the named projects'."""
+        selected = frozenset(project_names or ())
         return tuple(
-            entry
-            for entry in modules
-            if entry.project_root is not None
-            and entry.project_root.name in project_filter
+            sorted(
+                (
+                    entry
+                    for entry in self.workspace_index.modules_by_path.values()
+                    if not selected
+                    or (
+                        entry.project_root is not None
+                        and entry.project_root.name in selected
+                    )
+                ),
+                key=attrgetter("file_path"),
+            )
         )
 
     def source(self, file_path: Path) -> str:

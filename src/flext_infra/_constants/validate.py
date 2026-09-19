@@ -78,6 +78,9 @@ class FlextInfraConstantsSharedInfra:
         "dependencies",
     })
     SKILL_REPORT_SKIPPED_FILES: Final[frozenset[str]] = frozenset({".gitkeep"})
+    PYTHON_IMPORT_NAME_RE: Final[t.RegexPattern] = re.compile(
+        r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$"
+    )
     SKILL_OWNER_MARKER_RE: Final[t.RegexPattern] = re.compile(
         r"^# Owner-Skill:\s+(.agents/skills/([a-z0-9][-a-z0-9]*)/SKILL\.md)\s*$"
     )
@@ -163,6 +166,9 @@ class FlextInfraConstantsSharedInfra:
     PRE_COMMIT_CONFIG_FILENAME: Final[str] = ".pre-commit-config.yaml"
     MARKDOWNLINT_CONFIG_FILENAME: Final[str] = ".markdownlint.json"
     MARKDOWNLINT_IGNORE_FILENAME: Final[str] = ".markdownlintignore"
+    PRETTIER_CONFIG_FILENAME: Final[str] = ".prettierrc"
+    PRETTIER_IGNORE_FILENAME: Final[str] = ".prettierignore"
+    "Generated markdown-formatting projections (SSOT: tooling.tools.markdown)."
     "Hook-config projection whose presence decides whether a checkout runs hooks."
     BEADS_CONFIG_RELPATH: Final[str] = ".beads/config.yaml"
     BEADS_METADATA_RELPATH: Final[str] = ".beads/metadata.json"
