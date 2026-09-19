@@ -33,7 +33,11 @@ class FlextInfraCodegenLazyInitClassReceipts:
         )
         self._entries: dict[str, list[str]] = {}
         self._dirty = False
-        self._load()
+        loaded = self._load()
+        if loaded.failure:
+            u.Cli.warning(
+                f"lazy-init: discarding unreadable class receipts: {loaded.error}"
+            )
 
     @staticmethod
     def content_key(content: bytes) -> str:
@@ -75,28 +79,35 @@ class FlextInfraCodegenLazyInitClassReceipts:
         self._dirty = False
         return r[bool].ok(True)
 
-    def _load(self) -> None:
+    def _load(self) -> p.Result[bool]:
         """Populate entries from disk; every failure mode fails open to empty."""
+        read = u.Cli.atomic_read_binary_file_state(self._path, required=False)
+        if read.failure:
+            return r[bool].ok(True)
+        content = read.value.content
+        if content is None:
+            return r[bool].ok(True)
         try:
-            raw = self._path.read_bytes()
-        except OSError:
-            return
-        try:
-            document = json.loads(raw)
-        except ValueError:
-            return
+            document = json.loads(content)
+        except ValueError as exc:
+            return r[bool].fail_op("lazy-init class receipt parse", exc)
         if not isinstance(document, dict):
-            return
+            return r[bool].fail_op(
+                "lazy-init class receipt parse", "document is not an object"
+            )
         if document.get("version") != c.Infra.LAZY_INIT_CLASS_RECEIPTS_VERSION:
-            return
+            return r[bool].ok(True)
         entries = document.get("entries")
         if not isinstance(entries, dict):
-            return
+            return r[bool].fail_op(
+                "lazy-init class receipt parse", "entries is not an object"
+            )
         self._entries = {
             key: list(value)
             for key, value in entries.items()
             if isinstance(key, str) and isinstance(value, list)
         }
+        return r[bool].ok(True)
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitClassReceipts"]
