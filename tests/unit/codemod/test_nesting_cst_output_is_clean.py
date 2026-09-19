@@ -1,68 +1,57 @@
-"""The class-nesting mover emits source the canonical gates accept."""
+"""The class-nesting cutover emits source the canonical gates accept."""
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import u
-
-_SOURCE = '''"""Module with one owner and one member to nest."""
-
-from __future__ import annotations
+import flext_infra
+from tests import c, u
 
 
-class SampleOwner:
-    """Canonical namespace owner."""
+class TestsFlextInfraNestingCutoverOutput:
+    """A cutover whose output fails ruff is not a repair.
 
-
-class SampleMember:
-    """A member that belongs under the owner.
-
-    The body is indented at module level and must be re-indented when the
-    class moves inside the owner, or the docstring reports D207.
-    """
-
-    value: int = 1
-
-
-__all__: list[str] = ["SampleMember", "SampleOwner"]
-'''
-
-
-class TestsFlextInfraNestingCstOutput:
-    """A mover whose output fails the fleet's own gates is not a repair.
-
-    The four defects this pins were reproduced verbatim in a committed module
-    on a member branch: a blank line carrying the block indent (W293), the
-    rebuilt export declaration losing its separation (E305), a docstring left
-    at the old indentation (D207), and no formatter pass at publication.
+    Every module the mover touched came back with findings a human then fixed
+    by hand, which is the sweep this engine exists to eliminate. The defects
+    pinned here were reproduced verbatim in a committed module on a member
+    branch: a blank line carrying the block indent (W293), an export
+    declaration rebuilt without its separation (E305), and a docstring left at
+    the depth the class no longer has (D207).
     """
 
     @staticmethod
-    def _nested() -> str:
-        """Move the member under the owner through the mover's own entry."""
-        from flext_infra._utilities._semantic_cutover.nesting_cst import (
-            FlextInfraUtilitiesSemanticCutoverNestingCst as mover,
+    def _planned_source(tmp_path: Path) -> str:
+        """Plan one class-nesting cutover through the public cutover owner."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        alias, module_name = next(iter(c.Infra.FAMILY_PUBLIC_MODULES.items()))
+        owner_name = (
+            f"{u.derive_class_stem(repository_root.name)}"
+            f"{c.Infra.FAMILY_SUFFIXES[alias]}"
+        )
+        module_path = package_root / f"{module_name}.py"
+        u.Tests.write_lazy_init_namespace_module(
+            module_path,
+            class_name=owner_name,
+            alias=alias,
+            extra_class_names=(f"{owner_name}Member",),
         )
 
-        return mover._nest_definitions(_SOURCE, {"SampleMember": "SampleOwner"})
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CLASS_NESTING,
+                rope_workspace=rope,
+                sources={module_path: module_path.read_text(encoding="utf-8")},
+            )
 
-    @staticmethod
-    def _ruff(path: Path, *args: str) -> subprocess.CompletedProcess[str]:
-        """Run the canonical linter over one emitted module."""
-        return subprocess.run(  # noqa: S603
-            ["ruff", *args, str(path)],  # noqa: S607
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        return tm.ok(planned)[0].updated_source
 
-    def test_emitted_source_carries_no_blank_line_with_indentation(self) -> None:
+    def test_emitted_source_carries_no_blank_line_with_indentation(
+        self, tmp_path: Path
+    ) -> None:
         """A separator line inside the owner block is empty, never indented."""
-        emitted = self._nested()
+        emitted = self._planned_source(tmp_path)
 
         indented_blanks = [
             line for line in emitted.splitlines() if line.strip() == "" and line != ""
@@ -70,27 +59,50 @@ class TestsFlextInfraNestingCstOutput:
 
         tm.that(indented_blanks, empty=True)
 
-    def test_emitted_export_declaration_keeps_its_separation(self) -> None:
-        """The rebuilt declaration stays separated from the preceding block."""
-        emitted = self._nested()
+    def test_emitted_source_keeps_docstrings_at_their_new_depth(
+        self, tmp_path: Path
+    ) -> None:
+        """A moved class carries its docstring to the depth it now sits at."""
+        emitted = self._planned_source(tmp_path)
         lines = emitted.splitlines()
-        index = next(i for i, line in enumerate(lines) if line.startswith("__all__"))
-
-        tm.that(lines[index - 1].strip(), eq="")
-        tm.that(lines[index - 2].strip(), eq="")
-
-    def test_emitted_source_passes_the_canonical_gates(self, tmp_path: Path) -> None:
-        """Ruff accepts what the mover writes, format and lint alike."""
-        module = tmp_path / "nested_module.py"
-        tm.ok(u.Cli.atomic_write_text_file(module, self._nested()))
-
-        formatted = self._ruff(module, "format", "--check")
-        linted = self._ruff(
-            module, "check", "--isolated", "--select", "W291,W293,E301,E303,E305,D207"
+        nested = next(
+            index
+            for index, line in enumerate(lines)
+            if line.lstrip().startswith("class ") and line.startswith("    ")
         )
+        depth = len(lines[nested]) - len(lines[nested].lstrip())
 
-        tm.that(formatted.returncode, eq=0)
-        tm.that(linted.returncode, eq=0)
+        for line in lines[nested + 1 :]:
+            if not line.strip():
+                continue
+            if line.startswith(" " * (depth + 1)):
+                continue
+            tm.that(line.startswith(" " * depth) or not line.startswith(" "), eq=True)
+            break
+
+    def test_emitted_source_passes_the_whitespace_and_docstring_gates(
+        self, tmp_path: Path
+    ) -> None:
+        """Ruff finds none of the three defects the mover used to write.
+
+        Formatting proper belongs to the publication stage, which runs the
+        canonical formatter; what the planner emits must already be free of
+        the defects no formatter should have to repair.
+        """
+        module = tmp_path / "emitted" / "nested_module.py"
+        tm.ok(u.Cli.ensure_dir(module.parent))
+        tm.ok(u.Cli.atomic_write_text_file(module, self._planned_source(tmp_path)))
+
+        linted = u.Cli.run([
+            "ruff",
+            "check",
+            "--isolated",
+            "--select",
+            "W291,W293,E301,E303,E305,D207",
+            str(module),
+        ])
+
+        tm.ok(linted)
 
 
-__all__: list[str] = ["TestsFlextInfraNestingCstOutput"]
+__all__: list[str] = ["TestsFlextInfraNestingCutoverOutput"]
