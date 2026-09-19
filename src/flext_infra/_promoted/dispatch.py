@@ -30,22 +30,33 @@ class FlextInfraPromotedDispatch(FlextInfraPromotedDiscovery):
         """Run the promoted command dispatcher."""
         args = tuple(sys.argv[1:] if argv is None else argv)
         try:
-            workspace = spec or u.Infra.promoted_discovered_workspace_spec()
-            u.Infra.promoted_ensure_local_python(workspace)
-            registry = cls.discover(script_roots=script_roots, spec=workspace)
-            if args[:1] == (c.Infra.PromotedSelector.VALIDATE,):
-                return c.Infra.ScriptExitCode.PASS
-            requested_what = (settings.Infra.dispatch_what or "").strip()
-            if args and args[0] not in c.Infra.PROMOTED_HELP_ARGS:
-                return cls.dispatch(registry, args[0], requested_what)
-            sys.stdout.write(
-                u.Infra.promoted_render_help(registry, requested_what)
-                + c.Infra.PromotedJoin.LINES
-            )
-            return c.Infra.ScriptExitCode.PASS
+            return cls._run(args, script_roots=script_roots, spec=spec)
         except c.Infra.PromotedRegistryError as exc:
             u.Cli.error(exc.message)
             return c.Infra.ScriptExitCode.USAGE
+
+    @classmethod
+    def _run(
+        cls,
+        args: Sequence[str],
+        *,
+        script_roots: Sequence[Path] | None,
+        spec: p.Infra.Promoted.WorkspaceSpec | None,
+    ) -> int:
+        """Discover the registry, then validate, dispatch, or render help."""
+        workspace = spec or u.Infra.promoted_discovered_workspace_spec()
+        u.Infra.promoted_ensure_local_python(workspace)
+        registry = cls.discover(script_roots=script_roots, spec=workspace)
+        if args[:1] == (c.Infra.PromotedSelector.VALIDATE,):
+            return c.Infra.ScriptExitCode.PASS
+        requested_what = (settings.Infra.dispatch_what or "").strip()
+        if args and args[0] not in c.Infra.PROMOTED_HELP_ARGS:
+            return cls.dispatch(registry, args[0], requested_what)
+        sys.stdout.write(
+            u.Infra.promoted_render_help(registry, requested_what)
+            + c.Infra.PromotedJoin.LINES
+        )
+        return c.Infra.ScriptExitCode.PASS
 
     @staticmethod
     def dispatch(
