@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 import libcst as cst
 
@@ -81,7 +81,13 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
             raise ValueError(msg)
         owner = owner_nodes[0]
         nested = tuple(
-            extras[name].with_changes(leading_lines=(cst.EmptyLine(),))
+            # An empty separator line carries no indentation: libcst's default
+            # emits the block's indent on a blank line, which is W293 on every
+            # class this mover nests.
+            cls._reindented(
+                extras[name].with_changes(leading_lines=(cst.EmptyLine(indent=False),)),
+                module.default_indent,
+            )
             for name in definitions
         )
         if isinstance(owner.body, cst.IndentedBlock):
@@ -120,14 +126,8 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
         nested_owner = owner.with_changes(body=body)
         return module.with_changes(
             body=tuple(
-                cst.parse_statement(f'__all__: list[str] = ["{owner_name}"]\n')
-                if isinstance(node, cst.SimpleStatementLine)
-                and any(
-                    isinstance(statement, cst.AnnAssign)
-                    and isinstance(statement.target, cst.Name)
-                    and statement.target.value == "__all__"
-                    for statement in node.body
-                )
+                cls._rewritten_exports(node, owner_name)
+                if cls._declares_exports(node)
                 else nested_owner
                 if node is owner
                 else node
@@ -137,6 +137,80 @@ class FlextInfraUtilitiesSemanticCutoverNestingCst(
                 )
             )
         ).code
+
+    @classmethod
+    def _reindented(cls, node: cst.ClassDef, indent: str) -> cst.ClassDef:
+        """Re-indent every multi-line string literal the moved class carries.
+
+        Moving a class one level deeper changes the indentation of its code but
+        not the bytes of its string literals: a multi-line docstring keeps its
+        continuation lines and closing quotes at the old depth, which is D207
+        on every class this mover nests. The literal is the only thing that has
+        to be rewritten, and only after its first line.
+        """
+        return cst.ensure_type(node.visit(cls._StringReindenter(indent)), cst.ClassDef)
+
+    class _StringReindenter(cst.CSTTransformer):
+        """Add one indentation level to the continuation lines of a literal."""
+
+        def __init__(self, indent: str) -> None:
+            """Record the indentation unit the enclosing module declares."""
+            super().__init__()
+            self._indent = indent
+
+        @override
+        def leave_SimpleString(
+            self, original_node: cst.SimpleString, updated_node: cst.SimpleString
+        ) -> cst.SimpleString:
+            """Deepen every line of a multi-line literal but the first."""
+            if "\n" not in updated_node.value:
+                return updated_node
+            head, _, tail = updated_node.value.partition("\n")
+            deepened = "\n".join(
+                f"{self._indent}{line}" if line.strip() else line
+                for line in tail.split("\n")
+            )
+            return updated_node.with_changes(value=f"{head}\n{deepened}")
+
+    @staticmethod
+    def _declares_exports(node: cst.BaseStatement) -> bool:
+        """Whether one module-level statement declares ``__all__``."""
+        return isinstance(node, cst.SimpleStatementLine) and any(
+            isinstance(statement, cst.AnnAssign)
+            and isinstance(statement.target, cst.Name)
+            and statement.target.value == "__all__"
+            for statement in node.body
+        )
+
+    @staticmethod
+    def _rewritten_exports(
+        node: cst.BaseStatement, owner_name: str
+    ) -> cst.BaseStatement:
+        """Rewrite the export list to the owner, keeping the node's own shape.
+
+        Parsing a fresh statement discarded two things the original carried:
+        its ``leading_lines``, so the rebuilt declaration lost the blank lines
+        separating it from the preceding block (E305 on every moved module),
+        and its declared annotation, so a module using a tuple annotation was
+        silently rewritten to a list. Only the value changes here.
+        """
+        rewritten = cst.parse_statement(f'__all__ = ["{owner_name}"]\n')
+        if not isinstance(node, cst.SimpleStatementLine) or not isinstance(
+            rewritten, cst.SimpleStatementLine
+        ):
+            return rewritten
+        source = rewritten.body[0]
+        if not isinstance(source, cst.Assign):
+            return rewritten
+        body = tuple(
+            statement.with_changes(value=source.value)
+            if isinstance(statement, cst.AnnAssign)
+            and isinstance(statement.target, cst.Name)
+            and statement.target.value == "__all__"
+            else statement
+            for statement in node.body
+        )
+        return node.with_changes(body=body)
 
     @staticmethod
     def _split_docstring(
