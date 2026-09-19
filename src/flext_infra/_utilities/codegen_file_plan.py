@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesCodegenFilePlan:
     """Derive generated-file effects from immutable planning data."""
 
-    class JournalLeaseTimeout(TimeoutError):
+    class JournalLeaseTimeoutError(TimeoutError):
         """Another process holds the journal lease; acquisition failed fast."""
 
         def __init__(self, lock_file: Path) -> None:
@@ -50,7 +50,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
             try:
                 fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except OSError as error:
-                raise FlextInfraUtilitiesCodegenFilePlan.JournalLeaseTimeout(
+                raise FlextInfraUtilitiesCodegenFilePlan.JournalLeaseTimeoutError(
                     lock_path
                 ) from error
             yield
