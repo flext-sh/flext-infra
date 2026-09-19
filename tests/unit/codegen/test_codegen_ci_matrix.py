@@ -484,8 +484,7 @@ class TestsFlextInfraCodegenCiMatrix:
     ) -> None:
         """Blocking CI covers integration; matrix defaults to dispatch-only."""
         root = self._render_project(tmp_path / "external")
-        provider = config.Infra.codegen.providers[0]
-        branch = provider.branch
+        branch = u.Tests.provider_branch()
         blocking = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )

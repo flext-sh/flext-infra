@@ -32,6 +32,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan, _ConformExec
         cls,
         request: m.Infra.CodegenConformRequest,
         initial_workspace: m.Infra.WorkspaceSpec | None = None,
+        *,
+        initial_branch: str | None = None,
     ) -> p.Result[m.Infra.CodegenResult]:
         """Execute one already validated public CLI request."""
         root = request.root.expanduser().resolve()
@@ -48,16 +50,18 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan, _ConformExec
                 return r[m.Infra.CodegenResult].from_failure(created)
             bootstrap = tuple(created.value)
         if initial_workspace is not None and not (root / c.Infra.GIT_DIR).exists():
-            provider = u.Infra.repository_provider(
-                initial_workspace.repository, config.Infra.codegen.providers
-            )
-            if provider.failure:
-                return r[m.Infra.CodegenResult].from_failure(provider)
+            # Git owns no answer for an unborn repository: the caller declares
+            # the integration branch and a missing declaration fails loudly.
+            if not initial_branch or not initial_branch.strip():
+                return r[m.Infra.CodegenResult].fail(
+                    "initial branch is required to initialize the repository "
+                    "Git: declare --repository-branch"
+                )
             initialized = u.Cli.run_checked([
                 c.Infra.GIT,
                 "init",
                 "--initial-branch",
-                provider.value.branch,
+                initial_branch.strip(),
                 str(root),
             ])
             if initialized.failure:

@@ -8,14 +8,12 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
+from pydantic import ValidationError
 
 from flext_infra import FlextInfraConfig
-
-if TYPE_CHECKING:
-    import pytest
 
 
 class TestsFlextInfraConfigLocalOverrides:
@@ -94,12 +92,46 @@ class TestsFlextInfraConfigLocalOverrides:
 
         CI runs the generator from the governed repository root, where no
         operator-local file exists: the org layer is what lets a private
-        organization's provider resolve on a runner.
+        organization declare its own doc checkouts on a runner. A provider
+        registry is not part of that surface — provider identity is detected
+        from each repository's own workspace manifest, and a org-layer
+        ``providers`` block now fails validation loudly.
         """
         self._copy_tracked_configs(tmp_path)
         org_root = tmp_path / "org-repo"
         (org_root / "config").mkdir(parents=True)
         (org_root / "config" / "codegen-org.yaml").write_text(
+            "Infra:\n"
+            "  codegen:\n"
+            "    make:\n"
+            "      docs:\n"
+            "        github_repos:\n"
+            "          - organization: example-org\n"
+            "            repository: example-docs\n"
+            "            branch: main\n"
+            "            local_checkout: ~/example-docs\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(tmp_path))
+        monkeypatch.chdir(org_root)
+        FlextInfraConfig.reset_for_testing()
+        try:
+            fresh = FlextInfraConfig.fetch_global()
+            orgs = [
+                entry.organization
+                for entry in fresh.Infra.codegen.make.docs.github_repos
+            ]
+            tm.that("example-org" in orgs, eq=True)
+            tm.that("flext-sh" in orgs, eq=True)
+        finally:
+            FlextInfraConfig.reset_for_testing()
+
+    def test_provider_registry_declaration_fails_validation(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The exterminated provider registry cannot come back through a merge."""
+        self._copy_tracked_configs(tmp_path)
+        (tmp_path / "codegen-overrides.local.yaml").write_text(
             "Infra:\n"
             "  codegen:\n"
             "    providers:\n"
@@ -110,12 +142,9 @@ class TestsFlextInfraConfigLocalOverrides:
             encoding="utf-8",
         )
         monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(tmp_path))
-        monkeypatch.chdir(org_root)
         FlextInfraConfig.reset_for_testing()
         try:
-            fresh = FlextInfraConfig.fetch_global()
-            names = [provider.name for provider in fresh.Infra.codegen.providers]
-            tm.that("example-org" in names, eq=True)
-            tm.that("flext-sh" in names, eq=True)
+            with pytest.raises(ValidationError, match="providers"):
+                FlextInfraConfig.fetch_global()
         finally:
             FlextInfraConfig.reset_for_testing()

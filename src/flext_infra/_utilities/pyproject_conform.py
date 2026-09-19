@@ -153,7 +153,6 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[str].from_failure(namespace_scope)
         sources_result = cls._sync_uv_sources(
             source,
-            providers=providers,
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
@@ -228,7 +227,6 @@ class FlextInfraUtilitiesPyprojectConform:
             if workspace_context_root
             else cls._sync_uv_sources(
                 source,
-                providers=providers,
                 project_name=project_name,
                 workspace=workspace,
                 workspace_mode=workspace_mode,
@@ -324,8 +322,6 @@ class FlextInfraUtilitiesPyprojectConform:
         for item in items:
             normalized = cls._canonical_requirement(
                 item,
-                repositories=repositories,
-                providers=providers,
                 revisions=revisions,
                 workspace_dependencies=workspace_dependencies,
             )
@@ -348,8 +344,6 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         requirement: str,
         *,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
-        providers: t.SequenceOf[m.Infra.ProviderSpec],
         revisions: t.StrMapping,
         workspace_dependencies: frozenset[str],
     ) -> p.Result[str]:
@@ -357,9 +351,11 @@ class FlextInfraUtilitiesPyprojectConform:
 
         The requirement line is the only authority for an internal
         dependency's canonical URL and branch: it is parsed and canonicalized
-        (transport scheme only), never rewritten from provider policy. A
-        source-less internal dependency that the active workspace overlay does
-        not own is a loud failure.
+        (transport scheme only), never rewritten from provider policy. The
+        workspace manifest may pin the ref to an explicit immutable revision —
+        a declared SHA, never an invented default. A source-less internal
+        dependency that the active workspace overlay does not own is a loud
+        failure.
         """
         dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
         if dependency_name is None or not dependency_name.startswith("flext-"):
@@ -379,27 +375,21 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[str].ok(
                 f"{head}; {marker_text}" if separator and marker_text else head
             )
-        reference_result = cls._repository_reference(
-            dependency_name, repositories=repositories, providers=providers
-        )
-        if reference_result.failure:
-            return r[str].from_failure(reference_result)
-        reference = reference_result.value
-        provider = FlextInfraUtilitiesRepository.repository_provider(
-            reference, providers
-        )
-        if provider.failure:
-            return r[str].from_failure(provider)
-        # Publishable members keep the direct Git requirement with the
-        # configured branch: uv accepts the same metadata standalone and, under
-        # a workspace root, the root ``workspace = true`` source overlay
-        # replaces it at resolution time. A member ``[tool.uv.sources]`` git
-        # entry is rejected by uv itself ("workspace member ... references a
-        # Git in tool.uv.sources"), so the inline form is the only valid
-        # dual-context declaration; branch refs re-resolve on every upgrade
-        # (root and member locks resolve the same branch at different tips).
-        branch = revisions.get(dependency_name, provider.value.branch)
-        inline = f"{head} @ git+{reference.url}@{branch}"
+        source = FlextInfraUtilitiesRepository.declared_git_source(requirement)
+        if source.failure:
+            return r[str].from_failure(source)
+        if source.value is None:
+            return r[str].fail(
+                "internal flext dependency declares no direct git source and "
+                f"is not a workspace dependency: {dependency_name}"
+            )
+        url, declared_ref = source.value
+        ref = str(revisions.get(dependency_name, declared_ref))
+        # The declared source stays authoritative under a workspace root too:
+        # uv replaces it there with the root ``workspace = true`` overlay, and
+        # a member ``[tool.uv.sources]`` git entry is rejected by uv itself,
+        # so the inline form is the only valid dual-context declaration.
+        inline = f"{head} @ git+{url}@{ref}"
         return r[str].ok(
             f"{inline}; {marker_text}" if separator and marker_text else inline
         )
@@ -600,32 +590,66 @@ class FlextInfraUtilitiesPyprojectConform:
         return r[bool].ok(True)
 
     @classmethod
+    def _document_requirement_lines(
+        cls, document: t.Cli.TomlDocument
+    ) -> p.Result[list[str]]:
+        """Collect every declared requirement line of one pyproject document."""
+        payload = u.Cli.toml_as_mapping(document)
+        if payload is None:
+            return r[list[str]].fail("pyproject document is not a TOML mapping")
+        requirements: list[str] = []
+        project = payload.get(c.Infra.PROJECT)
+        if isinstance(project, Mapping):
+            for key in (c.Infra.DEPENDENCIES, c.Infra.OPTIONAL_DEPENDENCIES):
+                requirements.extend(cls.raw_requirement_values(project.get(key)))
+        groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
+        if isinstance(groups, Mapping):
+            for group in groups.values():
+                requirements.extend(cls.raw_requirement_values(group))
+        return r[list[str]].ok(requirements)
+
+    @classmethod
     def _dependency_overrides(
         cls,
         workspace: p.Infra.WorkspaceSpec,
-        providers: t.SequenceOf[m.Infra.ProviderSpec],
+        *,
+        requirements: t.SequenceOf[str],
     ) -> p.Result[t.VariadicTuple[str]]:
-        """Render declared pins once for direct and transitive resolution."""
+        """Render declared immutable revisions as uv override-dependencies.
+
+        A manifest-declared revision pins one external provider-owned
+        dependency to an explicit SHA. The URL is still detected — from that
+        dependency's own declared direct Git source in the same document —
+        so a pin without a declared source fails loudly instead of borrowing
+        an URL from any catalog.
+        """
         revisions: t.StrMapping = (
             workspace.project.dependency_revisions if workspace.project else {}
         )
         members = {member.distribution for member in workspace.subprojects}
+        declared: dict[str, str] = {}
+        for requirement in requirements:
+            name = FlextInfraUtilitiesDependencies.dep_name(requirement)
+            if name in revisions:
+                declared[name] = requirement
         overrides: list[str] = []
         for name in sorted(revisions):
             if name in members or not name.startswith("flext-"):
                 return r[tuple[str, ...]].fail(
                     f"dependency revision must name an external provider dependency: {name}"
                 )
-            requirement = cls._canonical_requirement(
-                name,
-                repositories=(workspace.repository, *workspace.subprojects),
-                providers=providers,
-                revisions=revisions,
-                workspace_dependencies=frozenset(),
+            source = FlextInfraUtilitiesRepository.declared_git_source(
+                declared.get(name, name)
             )
-            if requirement.failure:
-                return r[tuple[str, ...]].from_failure(requirement)
-            overrides.append(requirement.value)
+            if source.failure:
+                return r[tuple[str, ...]].from_failure(source)
+            if source.value is None:
+                return r[tuple[str, ...]].fail(
+                    "pinned dependency declares no direct git source to detect "
+                    f"its URL from: {name}"
+                )
+            url, _ref = source.value
+            overrides.append(f"{name} @ git+{url}@{revisions[name]}")
         return r[tuple[str, ...]].ok(tuple(overrides))
 
     @classmethod
@@ -633,7 +657,6 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         document: t.Cli.TomlDocument,
         *,
-        providers: t.SequenceOf[m.Infra.ProviderSpec],
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.MakeProfile,
@@ -648,7 +671,12 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
-        overrides = cls._dependency_overrides(workspace, providers)
+        declared_requirements = cls._document_requirement_lines(document)
+        if declared_requirements.failure:
+            return r[bool].from_failure(declared_requirements)
+        overrides = cls._dependency_overrides(
+            workspace, requirements=declared_requirements.value
+        )
         if overrides.failure:
             return r[bool].from_failure(overrides)
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
@@ -821,7 +849,12 @@ class FlextInfraUtilitiesPyprojectConform:
         uv = tool.get("uv")
         if not isinstance(uv, Mapping):
             return r[bool].fail("root pyproject must define [tool.uv]")
-        overrides = cls._dependency_overrides(workspace, providers)
+        declared_requirements = cls._document_requirement_lines(document)
+        if declared_requirements.failure:
+            return r[bool].from_failure(declared_requirements)
+        overrides = cls._dependency_overrides(
+            workspace, requirements=declared_requirements.value
+        )
         if overrides.failure:
             return r[bool].from_failure(overrides)
         declared = u.Cli.toml_as_string_list(uv.get("override-dependencies"))

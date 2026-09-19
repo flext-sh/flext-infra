@@ -436,14 +436,18 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         def write_python_project(cls, root: Path, distribution: str) -> Path:
             """Write the minimum typed project used by real Git fixtures.
 
-            ``[project.urls].Repository`` is part of that minimum: it is the
-            declared identity the declaration-only Makefile projection reads when a
-            repository ships no ``config/workspace.yaml``, and every governed
-            repository publishes it.
+            The internal dependency declares its own direct Git source: the
+            requirement line is the authority conform canonicalizes, and a
+            source-less internal dependency fails loudly.
             """
             root.mkdir(parents=True, exist_ok=True)
             pyproject = root / "pyproject.toml"
             repository_url = cls.governed_repository_url(distribution)
+            provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
+            internal_source = (
+                f"git+{provider.base_url.rstrip('/')}/flext-core.git@"
+                f"{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}"
+            )
             # A governed project always declares its description: the derived
             # render identity reads it and rejects an empty one, exactly as it
             # does for a real checkout.
@@ -455,7 +459,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                 f'description = "{distribution} governed fixture"\n'
                 'requires-python = ">=3.13,<3.14"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
-                'dependencies = ["flext-core>=0.1.0"]\n'
+                f'dependencies = ["flext-core @ {internal_source}"]\n'
                 f'[project.urls]\nRepository = "{repository_url}"\n',
                 encoding="utf-8",
             )
@@ -466,7 +470,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
 
         @staticmethod
         def governed_repository_url(distribution: str) -> str:
-            """Build a fixture repository URL from the configured provider."""
+            """Build a fixture repository URL from the declared fixture provider."""
             provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
             return f"{provider.base_url.rstrip('/')}/{distribution}.git"
 
@@ -520,13 +524,21 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             cls, parent: Path, member: Path, *, distribution: str, relative_path: str
         ) -> None:
             """Declare and commit ``member`` as a real gitlink submodule of ``parent``."""
-            provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
+            _ = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
             (parent / c.Infra.GITMODULES).write_text(
                 f'[submodule "{distribution}"]\n'
                 f"\tpath = {relative_path}\n"
                 f"\turl = {cls.governed_repository_url(distribution)}\n"
-                f"\tbranch = {provider.branch}\n",
+                "\tbranch = "
+                f"{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}\n",
                 encoding="utf-8",
+            )
+            # A workspace parent declares its own role as workspace: the
+            # manifest must agree with the topology the detector observes.
+            TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(
+                parent,
+                parent.name,
+                role=c.Infra.MakeProfile.WORKSPACE,
             )
             member_head = TestsFlextInfraUtilitiesGitMixin.git_capture(
                 member, "rev-parse", c.Infra.GIT_HEAD
@@ -595,10 +607,12 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                     issue_prefix=issue_prefix,
                     custom_issue_types=custom_issue_types,
                 )
+            TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(
+                root, distribution
+            )
             TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(
                 root, origin_url=cls.governed_repository_url(distribution)
             )
-            provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
             baseline = tm.ok(
                 u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=root)
             )
@@ -613,7 +627,8 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                     [
                         c.Infra.GIT,
                         "update-ref",
-                        f"refs/remotes/origin/{provider.branch}",
+                        "refs/remotes/origin/"
+                        f"{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}",
                         baseline,
                     ],
                     cwd=root,
@@ -623,8 +638,8 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
 
         @classmethod
         def write_gitmodules(cls, root: Path, projects: t.VariadicTuple[str]) -> Path:
-            """Declare governed subprojects from the configured provider contract."""
-            provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
+            """Declare governed subprojects with the declared fixture contract."""
+            _ = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
             path = root / c.Infra.GITMODULES
             path.write_text(
                 "".join(
@@ -632,11 +647,17 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                         f'[submodule "{project}"]\n'
                         f"\tpath = {project}\n"
                         f"\turl = {cls.governed_repository_url(project)}\n"
-                        f"\tbranch = {provider.branch}\n"
+                        "\tbranch = "
+                        f"{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}\n"
                     )
                     for project in projects
                 ),
                 encoding="utf-8",
+            )
+            # Declaring members makes this root a workspace: its own manifest
+            # must declare the same role or the detector rejects the drift.
+            TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(
+                root, root.name, role=c.Infra.MakeProfile.WORKSPACE
             )
             return path
 

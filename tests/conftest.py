@@ -207,7 +207,6 @@ def infra_git_repo(infra_test_workspace: Path) -> Path:
     baseline_file = repo / ".infra-baseline"
     baseline_file.write_text("baseline\n", encoding="utf-8")
     u.Tests.write_project_beads_config(repo, config.Infra.name)
-    provider = u.Tests.provider()
     upstream = u.Tests.repository_ref(config.Infra.name).url
     origin = infra_test_workspace / "origin.git"
     origin.mkdir(parents=True, exist_ok=True)
@@ -217,7 +216,7 @@ def infra_git_repo(infra_test_workspace: Path) -> Path:
         repo, ("config", "--local", f"url.{origin}.insteadOf", upstream)
     )
     u.Tests.git_bootstrap(
-        repo, ("push", "-q", c.Infra.GIT_ORIGIN, f"HEAD:refs/heads/{provider.branch}")
+        repo, ("push", "-q", c.Infra.GIT_ORIGIN, f"HEAD:refs/heads/{u.Tests.provider_branch()}")
     )
     u.Tests.git_bootstrap(
         repo,
@@ -225,7 +224,8 @@ def infra_git_repo(infra_test_workspace: Path) -> Path:
             "fetch",
             "-q",
             c.Infra.GIT_ORIGIN,
-            f"+refs/heads/{provider.branch}:refs/remotes/origin/{provider.branch}",
+            f"+refs/heads/{u.Tests.provider_branch()}:refs/remotes/origin/"
+            f"{u.Tests.provider_branch()}",
         ),
     )
     return repo

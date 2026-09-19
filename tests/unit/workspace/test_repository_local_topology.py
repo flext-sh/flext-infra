@@ -480,7 +480,7 @@ class TestsFlextInfraRepositoryLocalTopology:
         provider = u.Tests.provider()
         fields = {
             "url": f"\turl = {provider.base_url}/fixture-child.git\n",
-            "branch": f"\tbranch = {provider.branch}\n",
+            "branch": f"\tbranch = {u.Tests.provider_branch()}\n",
         }
         fields.pop(missing_key)
         (root / c.Infra.GITMODULES).write_text(
@@ -502,11 +502,11 @@ class TestsFlextInfraRepositoryLocalTopology:
             '[submodule "first"]\n'
             "\tpath = fixture-child\n"
             f"\turl = {provider.base_url}/fixture-child.git\n"
-            f"\tbranch = {provider.branch}\n"
+            f"\tbranch = {u.Tests.provider_branch()}\n"
             '[submodule "second"]\n'
             "\tpath = fixture-child\n"
             f"\turl = {provider.base_url}/fixture-child.git\n"
-            f"\tbranch = {provider.branch}\n",
+            f"\tbranch = {u.Tests.provider_branch()}\n",
             encoding="utf-8",
         )
 
@@ -538,7 +538,7 @@ class TestsFlextInfraRepositoryLocalTopology:
             '[submodule "fixture-child"]\n'
             f"\tpath = {declared_path}\n"
             f"\turl = {provider.base_url}/fixture-child.git\n"
-            f"\tbranch = {provider.branch}\n",
+            f"\tbranch = {u.Tests.provider_branch()}\n",
             encoding="utf-8",
         )
 
@@ -593,14 +593,14 @@ class TestsFlextInfraRepositoryLocalTopology:
         gitmodules = root / c.Infra.GITMODULES
         gitmodules.write_text(
             gitmodules.read_text(encoding="utf-8").replace(
-                u.Tests.provider().branch, "unexpected-integration"
+                u.Tests.provider_branch(), "unexpected-integration"
             ),
             encoding="utf-8",
         )
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.fail(result, has="branch differs from provider policy")
+        tm.fail(result, has="branch differs from the workspace integration line")
 
     def test_declared_unmanaged_gitlink_classifies_as_external_dependency(
         self, tmp_path: Path
@@ -642,7 +642,7 @@ class TestsFlextInfraRepositoryLocalTopology:
                     c.Infra.GIT,
                     "update-ref",
                     "-d",
-                    f"refs/remotes/origin/{provider.branch}",
+                    f"refs/remotes/origin/{u.Tests.provider_branch()}",
                 ],
                 cwd=root,
             )
@@ -672,7 +672,7 @@ class TestsFlextInfraRepositoryLocalTopology:
             '[submodule "fixture-child"]\n'
             "\tpath = fixture-child\n"
             f"\turl = {provider.base_url}/different-child.git\n"
-            f"\tbranch = {provider.branch}\n",
+            f"\tbranch = {u.Tests.provider_branch()}\n",
             encoding="utf-8",
         )
 
@@ -690,30 +690,28 @@ class TestsFlextInfraRepositoryLocalTopology:
             '[submodule "fixture-child"]\n'
             "\tpath = fixture-child\n"
             f"\turl = git@{raw_host_marker}:unknown-owner/fixture-child.git\n"
-            f"\tbranch = {u.Tests.provider().branch}\n",
+            f"\tbranch = {u.Tests.provider_branch()}\n",
             encoding="utf-8",
         )
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.fail(result, has="repository owner must resolve exactly once")
+        tm.fail(result, has="subproject origin differs from its .gitmodules URL")
         tm.that(result.error or "", lacks=raw_host_marker)
 
-    def test_governed_remote_identity_normalizes_the_git_suffix(self) -> None:
+    def test_detected_provider_identity_normalizes_the_git_suffix(self) -> None:
         """Accept equivalent provider URLs with or without the clone suffix."""
-        provider = u.Tests.provider()
-        repository = u.Tests.repository_ref("fixture-project").model_copy(
-            update={
-                "url": u.Tests.repository_ref("fixture-project").url.removesuffix(
-                    ".git"
-                )
-            }
+        suffixed = u.Tests.repository_ref("fixture-project")
+        bare = suffixed.model_copy(
+            update={"url": suffixed.url.removesuffix(".git")}
         )
 
-        tm.that(
-            FlextInfraWorkspaceDetector.repository_is_governed(repository, provider),
-            eq=True,
-        )
+        first = tm.ok(u.Infra.repository_provider(suffixed))
+        second = tm.ok(u.Infra.repository_provider(bare))
+
+        tm.that(first.value, eq=second.value)
+        tm.that(first.value.name, eq=u.Tests.provider().name)
+        tm.that(first.value.organization, eq=u.Tests.provider().organization)
 
 
 __all__: list[str] = ["TestsFlextInfraRepositoryLocalTopology"]

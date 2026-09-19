@@ -54,11 +54,14 @@ class FlextInfraWorkspaceCheckReportsMixin:
 
     @staticmethod
     def _generate_sarif(
-        results: t.SequenceOf[m.Infra.ProjectResult], gates: t.StrSequence
+        results: t.SequenceOf[m.Infra.ProjectResult],
+        gates: t.StrSequence,
+        *,
+        repository_root: Path,
     ) -> m.Infra.SarifReport:
         """Build the SARIF 2.1.0 report model from workspace gate results."""
         repository = u.Infra.configured_repository_ref(
-            codegen=config.Infra.codegen
+            codegen=config.Infra.codegen, repository_root=repository_root
         ).unwrap()
         rules_by_id: MutableMapping[str, m.Infra.SarifRule] = {}
         sarif_results: list[m.Infra.SarifResult] = []
@@ -105,11 +108,14 @@ class FlextInfraWorkspaceCheckReportsMixin:
             )
         )
 
-    @staticmethod
+    @classmethod
     def _write_reports_and_summary(
+        cls,
         resolved_gates: t.StrSequence,
         report_base: Path,
         outcome: p.Infra.WorkspaceLoopOutcome,
+        *,
+        repository_root: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
         """Write markdown/SARIF reports and print summary to output."""
         results = outcome.results
@@ -124,8 +130,8 @@ class FlextInfraWorkspaceCheckReportsMixin:
         if md_write_result.failure:
             return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(md_write_result)
         sarif_path = report_base / c.Infra.CHECK_REPORT_SARIF_FILENAME
-        sarif_report = FlextInfraWorkspaceCheckReportsMixin._generate_sarif(
-            results, resolved_gates
+        sarif_report = cls._generate_sarif(
+            results, resolved_gates, repository_root=repository_root
         )
         try:
             u.Infra.export_pydantic_json(sarif_report, sarif_path)
