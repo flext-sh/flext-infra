@@ -22,6 +22,7 @@ from .rope_core import FlextInfraUtilitiesRopeCore
 from .rope_imports import FlextInfraUtilitiesRopeImports
 from .rope_runtime import FlextInfraUtilitiesRopeRuntime
 from .rope_source import FlextInfraUtilitiesRopeSource
+from .transformer_header import FlextInfraUtilitiesTransformerHeader
 
 
 class FlextInfraUtilitiesRefactorNamespaceMoves:

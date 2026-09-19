@@ -11,6 +11,7 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 if TYPE_CHECKING:
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
+    from . import _fixtures
     from .fresh_import_tests import TestsFlextInfraFreshImport
     from .governance_authority_tests import TestsFlextInfraGovernanceAuthority
     from .import_cycles_tests import TestsFlextInfraImportCycles
@@ -68,6 +69,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraValidateCli",
     "TestsFlextInfraValidateInit",
     "TestsFlextInfraValidateMain",
+    "_fixtures",
     "c",
     "d",
     "e",
@@ -89,6 +91,7 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
+            "._fixtures": ("_fixtures",),
             ".fresh_import_tests": ("TestsFlextInfraFreshImport",),
             ".governance_authority_tests": ("TestsFlextInfraGovernanceAuthority",),
             ".import_cycles_tests": ("TestsFlextInfraImportCycles",),

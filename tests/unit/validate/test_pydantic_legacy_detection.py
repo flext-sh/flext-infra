@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from tests.unit.validate._fixtures import TestsFlextInfraValidateNamespaceBase
+from ._fixtures import TestsFlextInfraValidateNamespaceBase
 
 
 class TestsFlextInfraPydanticLegacyDetection(TestsFlextInfraValidateNamespaceBase):

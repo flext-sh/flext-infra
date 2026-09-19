@@ -9,6 +9,8 @@ from flext_cli import u
 from flext_infra import m, p, r, t
 from flext_infra.constants import c
 
+from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
+
 
 class FlextInfraUtilitiesGitignore:
     """Gitignore rendering utilities."""

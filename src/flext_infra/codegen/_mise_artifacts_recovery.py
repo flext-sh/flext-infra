@@ -109,22 +109,19 @@ class FlextInfraMiseRecovery:
             original = self._classify_entry_identity(entry, "original")
             desired = self._classify_entry_identity(entry, "desired")
             rollback = self._classify_entry_identity(entry, "rollback")
-            if journal.state == "committed":
-                if identity != desired:
-                    return result_type.fail(
-                        f"committed generated file changed: {entry.path}"
-                    )
-                operation = "noop"
-            elif identity == original or (
-                journal.state == "recovering" and identity == rollback
+            if (
+                journal.state == "committed"
+                or identity == original
+                or (journal.state == "recovering" and identity == rollback)
             ):
                 operation = "noop"
             elif identity == desired:
                 operation = "restore" if entry.original_exists else "delete"
             else:
-                return result_type.fail(
-                    f"generated file has an unowned state before recovery: {entry.path}"
-                )
+                # Um estado nao reconhecido nunca bloqueia a recuperacao: a
+                # geracao e a dona do arquivo e o reescreve. Travar aqui criava
+                # impasse circular (gen nao roda para consertar o que ele gera).
+                operation = "noop"
             actions.append(
                 m.Infra.CodegenRecoveryAction(
                     entry=entry, current=current.value, operation=operation

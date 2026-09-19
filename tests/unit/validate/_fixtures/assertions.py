@@ -114,3 +114,6 @@ class TestsFlextInfraValidateAssertions:
             eq=True,
             msg=f"Expected violation with prefix '[{prefix}' not found in: {result.value.violations}",
         )
+
+
+__all__: list[str] = ["TestsFlextInfraValidateAssertions"]

@@ -196,16 +196,10 @@ class TestsFlextInfraDepsModernizerPyright:
         )
         u.Tests.declare_workspace_projects(tmp_path, ("flext-core", "flext-api"))
         u.Tests.write_project_beads_config(tmp_path, "workspace")
-        doc = u.Cli.toml_document()
-
-        _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
-            doc, is_root=True, repository_root=tmp_path
+        pyright = self._applied(
+            tool_config_document, is_root=True, repository_root=tmp_path
         )
-
-        pyright = self._pyright_baseline(doc)
-        if pyright is None:
-            return
-        envs = u.Cli.toml_unwrap_item(pyright["executionEnvironments"])
+        envs = pyright["executionEnvironments"]
         tm.that(envs, is_=Sequence)
         if not isinstance(envs, Sequence):
             return

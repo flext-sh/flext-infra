@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests.unit.validate._fixtures import (
+from ._fixtures import (
     TestsFlextInfraNamespaceProjectFixture,
     TestsFlextInfraValidateNamespaceBase,
 )

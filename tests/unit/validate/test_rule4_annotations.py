@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests.unit.validate._fixtures import TestsFlextInfraValidateNamespaceBase
+from ._fixtures import TestsFlextInfraValidateNamespaceBase
 
 
 class TestsFlextInfraRule4Annotations(TestsFlextInfraValidateNamespaceBase):

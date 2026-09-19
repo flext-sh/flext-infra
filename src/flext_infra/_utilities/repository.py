@@ -215,9 +215,7 @@ class FlextInfraUtilitiesRepository:
 
         loaded = FlextInfraWorkspaceDetector.load_workspace_manifest(repository_root)
         if loaded.failure:
-            return r[str].fail(
-                loaded.error or "workspace manifest load failed without an error"
-            )
+            return r[str].from_failure(loaded)
         if not loaded.value:
             return r[str].ok("")
         manifest = loaded.value[0]
