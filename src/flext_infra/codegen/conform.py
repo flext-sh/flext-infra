@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from ._conform.base import FlextInfraCodegenConformBase
+from ._conform import FlextInfraCodegenConformBase
 
 
 class FlextInfraCodegenConform(FlextInfraCodegenConformBase):

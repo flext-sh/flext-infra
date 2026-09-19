@@ -14,7 +14,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     """Conformance plan selection and repository topology resolution."""
 
     def plan(
-        self, request: m.Infra.CodegenConformRequest
+        self: p.Infra.CodegenConform, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenPlan]:
         """Build and validate the complete selection without writing."""
         config_spec = config.Infra.codegen
