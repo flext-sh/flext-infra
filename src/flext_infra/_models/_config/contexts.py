@@ -514,7 +514,8 @@ class FlextInfraConfigModelsContexts:
             t.NonEmptyStr, m.Field(description="FLEXT Git provider branch")
         ]
         repository_provider: Annotated[
-            t.NonEmptyStr, m.Field(description="Repository provider catalog key")
+            t.NonEmptyStr,
+            m.Field(description="Provider key the repository declares for itself"),
         ]
         repository_git_url: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical repository Git clone URL")
@@ -522,6 +523,18 @@ class FlextInfraConfigModelsContexts:
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical repository Git branch")
         ]
+        workspace_context_root: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether this render is the workspace-context root: true "
+                    "means internal dependencies render as bare names and the "
+                    "[tool.uv.sources] workspace overlay owns their source; "
+                    "false (standalone/publishable members) renders direct Git "
+                    "requirement sources."
+                )
+            ),
+        ] = False
         year: Annotated[int, m.Field(description="Copyright year")]
 
         @m.field_validator("hatch_build_hook_path")
@@ -693,7 +706,11 @@ class FlextInfraConfigModelsContexts:
         ] = "root"
         provider: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Provider key from the codegen configuration"),
+            m.Field(
+                description=(
+                    "Provider key the declaring repository's own manifest carries"
+                )
+            ),
         ]
         kind: Annotated[
             FlextInfraConstantsCodegenProject.ProjectKind,

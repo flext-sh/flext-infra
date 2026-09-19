@@ -11,7 +11,11 @@ dependency lists are CUSTOM afterwards, so the declaration then rules. -#}
 {%- macro flext_requirement(item) -%}
 {%- set bare = item is string and item.startswith("flext-") and item.replace("-", "").replace("_", "").isalnum() -%}
 {%- if bare -%}
+{%- if workspace_context_root -%}
+"{{ item }}"
+{%- else -%}
 "{{ item }} @ git+{{ flext_git_base_url }}/{{ item }}.git@{{ flext_git_branch }}"
+{%- endif -%}
 {%- else -%}
 {{ item | tojson }}
 {%- endif -%}
