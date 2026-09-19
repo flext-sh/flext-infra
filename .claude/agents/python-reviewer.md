@@ -41,6 +41,7 @@ practices.
 
 When invoked:
 
+
 1. Run `git diff -- '*.py'` to see recent Python file changes
 2. Run the exact project-owned Python runtime and review gates. Missing required tooling
    or a nonzero command blocks review; never install or select an alternate checker
@@ -52,6 +53,7 @@ When invoked:
 
 ### CRITICAL — Security
 
+
 - **SQL Injection**: f-strings in queries — use parameterized queries
 - **Command Injection**: unvalidated input in shell commands — use subprocess with list
   args
@@ -61,17 +63,20 @@ When invoked:
 
 ### CRITICAL — Error Handling
 
+
 - **Bare except**: `except: pass` — catch specific exceptions
 - **Swallowed exceptions**: silent failures — log and handle
 - **Missing context managers**: manual file/resource management — use `with`
 
 ### HIGH — Type Hints
 
+
 - Public functions without type annotations
 - Using `Any` when specific types are possible
 - Missing `Optional` for nullable parameters
 
 ### HIGH — Pythonic Patterns
+
 
 - Use list comprehensions over C-style loops
 - Use `isinstance()` not `type() ==`
@@ -81,6 +86,7 @@ When invoked:
 
 ### HIGH — Code Quality
 
+
 - Functions > 50 lines, > 5 parameters (use dataclass)
 - Deep nesting (> 4 levels)
 - Duplicate code patterns
@@ -88,11 +94,13 @@ When invoked:
 
 ### HIGH — Concurrency
 
+
 - Shared state without locks — use `threading.Lock`
 - Mixing sync/async incorrectly
 - N+1 queries in loops — batch query
 
 ### MEDIUM — Best Practices
+
 
 - PEP 8: import order, naming, spacing
 - Missing docstrings on public functions
