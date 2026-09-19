@@ -317,11 +317,11 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionVerify)
         attachment_names: list[str] = []
         for attachment in artifacts[1:]:
             if attachment.content is None:
-                msg = f"attachment content absent: {attachment.path}"
+                msg = f"attachment content absent: {path}"
                 raise ValueError(msg)
-            relative_name = attachment.path.relative_to(path.with_suffix(""))
-            desired[incoming / "attachments" / relative_name] = attachment.content
-            attachment_names.append(relative_name.as_posix())
+            attachment_path = attachment.path.relative_to(path.with_suffix(""))
+            desired[incoming / "attachments" / attachment_path] = attachment.content
+            attachment_names.append(attachment_path.as_posix())
         original, normalized = cls.collection_source_updated(
             plan, source.updated_fields
         )

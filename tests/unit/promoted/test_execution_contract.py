@@ -8,8 +8,6 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import m
-from flext_infra._models.settings import FlextInfraSettingsModels
-from flext_infra._settings import _FlextInfraSettings
 from flext_infra.promoted.dispatcher import dispatch
 from flext_infra.promoted.registry import Registry
 from tests import t, u
@@ -104,28 +102,33 @@ class TestsFlextInfraPromotedExecutionContract:
             self, tmp_path: Path, ambient_value: str | None
         ) -> None:
             """Unrelated ambient input never changes the declared operation."""
-            registry, marker = self._write_registry(tmp_path)
-            # Create a settings instance with the desired WHAT value (public constructor path)
-            test_settings = _FlextInfraSettings(
-                Infra=FlextInfraSettingsModels.Infra.model_validate({"WHAT": "all"})
+            registry, marker = self._write_registry(
+                tmp_path, c.Infra.PromotedSelector.ALL
             )
-            # Temporarily override the module-level settings singleton
-            import flext_infra._settings as settings_module
-            import flext_infra.promoted.base as base_module
-            import flext_infra.promoted.dispatcher as dispatcher_module
+            environment = (
+                {} if ambient_value is None else {"UNDECLARED_INPUT": ambient_value}
+            )
+            with tm.scope(
+                env=environment, remove_env_keys=("HELP", "OPTIONS", "UNDECLARED_INPUT")
+            ):
+                exit_code = FlextInfraPromoted.dispatch(
+                    registry, "probe", c.Infra.PromotedSelector.ALL
+                )
+            tm.that(exit_code, eq=0)
+            tm.that(marker.exists(), eq=True)
 
-            original_settings = settings_module.settings
-            original_dispatcher_settings = dispatcher_module.settings
-            original_base_settings = base_module.settings
-
+        @pytest.mark.parametrize("ambient_value", [None, "arbitrary"])
+        def test_dispatch_executes_settings_declared_operation(
+            self, tmp_path: Path, ambient_value: str | None
+        ) -> None:
+            """WHAT declared through the live settings singleton reaches dispatch."""
+            marker = self._write_discoverable_command(tmp_path)
+            settings_cls = type(settings)
+            settings_cls.update_global(Infra={"WHAT": c.Infra.PromotedSelector.ALL})
             try:
-                settings_module.settings = test_settings
-                dispatcher_module.settings = test_settings
-                base_module.settings = test_settings
-
-                environment = {"WHAT": "all"}
-                if ambient_value is not None:
-                    environment["UNDECLARED_INPUT"] = ambient_value
+                environment = (
+                    {} if ambient_value is None else {"UNDECLARED_INPUT": ambient_value}
+                )
                 with tm.scope(
                     env=environment,
                     remove_env_keys=("HELP", "OPTIONS", "UNDECLARED_INPUT"),

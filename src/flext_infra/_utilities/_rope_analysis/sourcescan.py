@@ -129,12 +129,18 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         if kind != "Call":
             return ((), ())
         func = getattr(node, "func", None)
-        function_name = FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(func) if func is not None and hasattr(func, "_fields") else ""
+        function_name = (
+            FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(func)
+            if func is not None and hasattr(func, "_fields")
+            else ""
+        )
         args = getattr(node, "args", ()) or ()
         if function_name in {"MappingProxyType", "build_lazy_import_map"} and args:
             first_arg = args[0]
             if hasattr(first_arg, "_fields"):
-                return FlextInfraUtilitiesRopeAnalysisSourceScan.mapping_entries_refs(first_arg)
+                return FlextInfraUtilitiesRopeAnalysisSourceScan.mapping_entries_refs(
+                    first_arg
+                )
         if function_name != "merge_lazy_imports":
             return ((), ())
         entries: list[tuple[str, t.StrSequence]] = []
@@ -161,7 +167,9 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
         for key_node, value_node in zip(keys, values, strict=False):
             if key_node is None:
                 if hasattr(value_node, "_fields"):
-                    ref_name = FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(value_node)
+                    ref_name = FlextInfraUtilitiesRopeAnalysisAstHelpers.name_of(
+                        value_node
+                    )
                     if ref_name:
                         refs.append(ref_name)
                 continue
@@ -171,8 +179,10 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
             if not isinstance(key_value, str):
                 continue
             if hasattr(value_node, "_fields"):
-                value_strings = FlextInfraUtilitiesRopeAnalysisSourceScan.literal_string_sequence(
-                    value_node
+                value_strings = (
+                    FlextInfraUtilitiesRopeAnalysisSourceScan.literal_string_sequence(
+                        value_node
+                    )
                 )
             else:
                 value_strings = ()

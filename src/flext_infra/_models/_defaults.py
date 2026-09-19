@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
+from types import MappingProxyType
 from typing import Never, override
 
 from flext_cli import m
@@ -33,8 +34,15 @@ class FlextInfraModelsDefaults:
 
     @staticmethod
     def immutable_empty_mapping() -> Mapping[str, Never]:
-        """Return a fresh immutable default for string-keyed model mappings."""
-        return FlextInfraModelsDefaults.ImmutableEmptyMapping[str, Never]()
+        """Return a fresh immutable empty mapping for any ``Mapping[str, X]`` field.
+
+        The proxy holds no values, so its value type is ``Never``: mapping
+        covariance makes the result assignable to every concrete
+        ``Mapping[str, X]`` a field declares without inventing key/value
+        types the empty factory never produces.
+        """
+        empty: dict[str, Never] = {}
+        return MappingProxyType(empty)
 
     @staticmethod
     def tool_version_field(description: str) -> t.Infra.ModelFieldSpec:

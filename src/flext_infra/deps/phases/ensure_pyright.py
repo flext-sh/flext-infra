@@ -57,7 +57,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         source_path: str,
         project_root: str,
         source_dir: str,
-        member_src_paths: t.StrSequence = (),
+        member_src_paths: t.SequenceOf[str] = (),
     ) -> t.StrSequence:
         """``src/`` owns only its own path; every other discovered dir also imports from src + root."""
         if env_dir == source_dir:

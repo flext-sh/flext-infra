@@ -263,29 +263,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         )
         if make_context.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(make_context)
-        # The integration branch is a Git fact, not a configured pin: the
-        # published baseline wins, and a checkout that has published nothing
-        # yet integrates on the branch its HEAD carries.
-        integration_branch = u.Infra.resolve_integration_branch(
-            repository_root,
-            preference=codegen.branch_policy.integration_branch_preference,
-        )
-        if integration_branch.failure:
-            return r[m.Infra.ProjectRenderContext].from_failure(integration_branch)
-        # Internal flext-* floors render from the FLEXT line the checkout
-        # consumes (the infrastructure dependency's own source), never from
-        # the consumer's organization or branch: a repository in another org
-        # otherwise renders a mixed family and uv rejects conflicting URLs.
-        flext_line = u.Infra.flext_integration_line(
-            codegen=codegen, repository_root=repository_root
-        )
-        if flext_line.failure:
-            return r[m.Infra.ProjectRenderContext].from_failure(flext_line)
-        flext_git_base_url = flext_line.value.base_url
-        if flext_git_base_url is None:
-            return r[m.Infra.ProjectRenderContext].fail(
-                "detected FLEXT line carries no provider base URL"
-            )
+        repository_provider = u.Infra.repository_provider(repository, codegen.providers)
+        if repository_provider.failure:
+            return r[m.Infra.ProjectRenderContext].from_failure(repository_provider)
         packaged_data_dirs = (
             tuple(
                 data_dir

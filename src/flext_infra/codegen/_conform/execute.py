@@ -40,7 +40,7 @@ class _ConformExecuteRoles:
         ) -> p.Result[m.Infra.CodegenPlan]: ...
         @staticmethod
         def _mise_config_plans(
-            plan: m.Infra.CodegenPlan
+            plan: m.Infra.CodegenPlan,
         ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
         def _conform_workspace_beads_routes(
             self, request: m.Infra.CodegenConformRequest

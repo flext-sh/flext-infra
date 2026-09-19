@@ -210,7 +210,9 @@ class FlextInfraClassPlacementDetector:
         return tuple(classes)
 
     @staticmethod
-    def _class_body_nodes(tree: object, *, class_name: str) -> t.SequenceOf[object]:
+    def _class_body_nodes(
+        tree: object, *, class_name: str
+    ) -> t.SequenceOf[t.Infra.RopeAstNode]:
         """Return direct body nodes for the top-level class named ``class_name``."""
         module_body = getattr(tree, "body", None) or ()
         if not isinstance(module_body, (list, tuple)):
@@ -220,7 +222,13 @@ class FlextInfraClassPlacementDetector:
                 continue
             if getattr(node, "name", "") == class_name:
                 class_body = getattr(node, "body", None) or ()
-                return class_body if isinstance(class_body, (list, tuple)) else ()
+                if not isinstance(class_body, (list, tuple)):
+                    return ()
+                return tuple(
+                    body_node
+                    for body_node in class_body
+                    if u.Infra.is_ast_node(body_node)
+                )
         return ()
 
     @staticmethod

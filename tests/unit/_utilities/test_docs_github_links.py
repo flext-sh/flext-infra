@@ -11,6 +11,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import u
+from flext_infra import u
 
 
 class TestsFlextInfraUtilitiesDocsGithubLinks:
@@ -23,9 +24,13 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
             repos = u.Infra.docs_github_repos()
             tm.that(len(repos) > 0, eq=True)
 
-        def test_repos_carry_spec_contract(self) -> None:
+        def test_repos_carry_distinct_governed_identities(self) -> None:
             repos = u.Infra.docs_github_repos()
+            identities = {(repo.organization, repo.repository) for repo in repos}
+            tm.that(all(identities), eq=True)
+            tm.that(len(identities), eq=len(repos))
             tm.that(
+                all(repo.organization and repo.repository for repo in repos), eq=True
                 all(repo.organization and repo.repository for repo in repos), eq=True
             )
 
@@ -37,9 +42,10 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
     class TestStaleGithubOrganizations:
         """Verify placeholder organizations that must be rewritten."""
 
-        def test_stale_organizations_stable_across_calls(self) -> None:
+        def test_stale_organizations_exclude_governed_org(self) -> None:
             stale = u.Infra.docs_stale_github_organizations()
-            tm.that(stale, eq=u.Infra.docs_stale_github_organizations())
+            tm.that("flext-sh" in stale, eq=False)
+            tm.that(all(org for org in stale), eq=True)
 
         def test_stale_organizations_contains_placeholder(self) -> None:
             stale = u.Infra.docs_stale_github_organizations()
@@ -50,16 +56,18 @@ class TestsFlextInfraUtilitiesDocsGithubLinks:
 
         def test_lookup_known_repo(self) -> None:
             repo = u.Infra.docs_github_repo_lookup("flext-sh", "flext")
-            assert repo is not None
-            tm.that(repo.organization, eq="flext-sh")
-            tm.that(repo.repository, eq="flext")
+            tm.that(repo is not None, eq=True)
+            if repo is not None:
+                tm.that(repo.organization, eq="flext-sh")
+                tm.that(repo.repository, eq="flext")
 
         def test_lookup_member_repo_returns_copy(self) -> None:
             repo = u.Infra.docs_github_repo_lookup("flext-sh", "flext-core")
-            assert repo is not None
-            tm.that(repo.organization, eq="flext-sh")
-            tm.that(repo.repository, eq="flext-core")
-            tm.that(repo.branch, eq="0.12.0-dev")
+            tm.that(repo is not None, eq=True)
+            if repo is not None:
+                tm.that(repo.organization, eq="flext-sh")
+                tm.that(repo.repository, eq="flext-core")
+                tm.that(repo.branch, eq="0.12.0-dev")
 
         def test_lookup_unknown_org_returns_none(self) -> None:
             repo = u.Infra.docs_github_repo_lookup("unknown", "repo")

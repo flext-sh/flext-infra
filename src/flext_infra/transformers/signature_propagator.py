@@ -75,9 +75,10 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
     ) -> str:
         """Rewrite keyword arguments in calls to ``simple_name`` via rope-located ranges."""
         pymodule = u.Infra.parse_string_module(source)
+        module_ast = u.Infra.ensure_ast_node(pymodule.get_ast())
         line_offsets = self._line_offsets(source)
         edits: list[tuple[int, int, str]] = []
-        for node in u.Infra.walk_ast_nodes(u.Infra.ensure_ast_node(pymodule.get_ast())):
+        for node in u.Infra.walk_ast_nodes(module_ast):
             if u.Infra.node_kind(node) != "Call":
                 continue
             func = getattr(node, "func", None)

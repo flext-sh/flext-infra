@@ -19,8 +19,8 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
 
     Composed into FlextInfraWrapperRootNamespaceRefactor via inheritance;
     borrows repository_root + the include-init / dry-run flags + the wrapper
-    package set from the facade via FLEXT. ``module_ast`` is typed ``object`` to
-    mirror the public rope-AST utility facade, which
+    package set from the facade via FLEXT. ``module_ast`` is narrowed to the
+    rope-AST protocol at the parsing boundary via ``ensure_ast_node``, which
     deliberately avoids ``import ast`` at the consumer layer (tracked: flext-6flt).
     """
 
@@ -59,7 +59,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
             return
         source = u.Cli.files_read_text(file_path).unwrap()
         pymodule = u.Infra.parse_string_module(source)
-        module_ast = pymodule.get_ast()
+        module_ast = u.Infra.ensure_ast_node(pymodule.get_ast())
         line_offsets = self._build_line_offsets(source)
         core_rewrites = self._collect_core_test_rewrites(
             module_ast, line_offsets=line_offsets, runtime_aliases=runtime_aliases
@@ -94,7 +94,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
 
     def _collect_core_test_rewrites(
         self,
-        module_ast: object,
+        module_ast: t.Infra.RopeAstNode,
         *,
         line_offsets: list[int],
         runtime_aliases: frozenset[str],
@@ -135,7 +135,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
 
     def _has_wrapper_import_candidate(
         self,
-        module_ast: object,
+        module_ast: t.Infra.RopeAstNode,
         *,
         wrapper_submodules: frozenset[str],
         runtime_aliases: frozenset[str],

@@ -1,7 +1,6 @@
 # flext-infra Documentation
 
 <!-- TOC START -->
-
 - [Start Here](#start-here)
 - [Public Surface Summary](#public-surface-summary)
 - [Collection Rules](#collection-rules)
@@ -31,7 +30,6 @@ docstrings.
 ## Public Surface Summary
 
 ::: flext_infra
-
     options:
       members: false
       show_root_heading: false

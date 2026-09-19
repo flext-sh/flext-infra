@@ -74,7 +74,7 @@ class FlextInfraConfigModelsContexts:
                     "so a scratch root never contains a VCS directory"
                 )
             ),
-        ] = FlextInfraConstantsWorkspace.SCRATCH_IDENTITY_SEGMENT_ALIASES
+        ] = tuple(FlextInfraConstantsWorkspace.SCRATCH_IDENTITY_SEGMENT_ALIASES)
 
     class MakefileRenderSpec(MakeCommandContext, ScratchRootContext):
         """Field-only render input for an existing repository Makefile."""

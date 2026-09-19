@@ -52,9 +52,7 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
         empty = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                self._workflow_spec(
-                    workspace_repositories=(), has_devcontainer=False
-                ),
+                self._workflow_spec(workspace_repositories=(), has_devcontainer=False),
             )
         )
         repository = u.Tests.repository_ref("member", path=Path("member"))
@@ -74,18 +72,13 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
         without = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                self._workflow_spec(
-                    workspace_repositories=(),
-                    has_devcontainer=False,
-                ),
+                self._workflow_spec(workspace_repositories=(), has_devcontainer=False),
             )
         )
         with_devcontainer = tm.ok(
             u.Cli.template_render(
                 self._TEMPLATES / ".github/dependabot.yml.j2",
-                self._workflow_spec(
-                    workspace_repositories=(), has_devcontainer=True
-                ),
+                self._workflow_spec(workspace_repositories=(), has_devcontainer=True),
             )
         )
 

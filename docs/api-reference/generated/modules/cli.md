@@ -1,7 +1,6 @@
 # flext_infra.cli
 
 <!-- TOC START -->
-
 - No sections found
 
 <!-- TOC END -->
@@ -9,7 +8,6 @@
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
 ::: flext_infra.cli
-
     options:
       show_root_heading: true
       show_root_full_path: false
