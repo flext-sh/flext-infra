@@ -102,3 +102,15 @@ class TestsFlextInfraValidateNamespaceBase:
             eq=False,
             msg=f"Unexpected violation containing '{substring}' found in: {report.violations}",
         )
+
+    def _assert_file_in_inventory(self, root: Path, target: Path) -> None:
+        """Assert that a target file is in the source inventory."""
+        files = u.Infra.iter_python_files(
+            m.Infra.SourceScanRequest(project_roots=(root,))
+        )
+        tm.ok(files)
+        tm.that(
+            target in files.value,
+            eq=True,
+            msg=f"namespace fixture omitted from source inventory: {target}; {files.value}",
+        )

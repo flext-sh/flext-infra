@@ -90,7 +90,7 @@ class TestsFlextInfraValidateAssertions:
             tmp_path, module_source=module_source, module_path=module_path
         )
         files = u.Infra.iter_python_files(
-            u.Tests.source_scan_request(project_roots=(root,))
+            self.source_scan_request(project_roots=(root,))
         )
         tm.ok(files)
         tm.that(

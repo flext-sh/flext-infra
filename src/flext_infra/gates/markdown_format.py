@@ -80,13 +80,13 @@ class FlextInfraMarkdownFormatGate(FlextInfraMarkdownGateBase):
     ) -> t.StrSequence:
         """Build the read-only ``prettier --check`` pass."""
         _ = ctx
-        return (
-            *self._binary_args(),
-            "--check",
-            *self._resolve_config_args(project_dir),
-            *self._resolve_ignore_args(project_dir),
-            *check_dirs,
-        )
+        args: list[str] = []
+        args.extend(self._binary_args())
+        args.append("--check")
+        args.extend(self._resolve_config_args(project_dir))
+        args.extend(self._resolve_ignore_args(project_dir))
+        args.extend(check_dirs)
+        return tuple(args)
 
     @override
     def _build_fix_command(
@@ -94,13 +94,13 @@ class FlextInfraMarkdownFormatGate(FlextInfraMarkdownGateBase):
     ) -> t.StrSequence:
         """Build the single mutating pass: ``prettier --write``."""
         _ = ctx
-        return (
-            *self._binary_args(),
-            "--write",
-            *self._resolve_config_args(project_dir),
-            *self._resolve_ignore_args(project_dir),
-            *targets,
-        )
+        args: list[str] = []
+        args.extend(self._binary_args())
+        args.append("--write")
+        args.extend(self._resolve_config_args(project_dir))
+        args.extend(self._resolve_ignore_args(project_dir))
+        args.extend(targets)
+        return tuple(args)
 
     @override
     def _parse_check_output(

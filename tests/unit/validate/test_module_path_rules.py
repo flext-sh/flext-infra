@@ -205,15 +205,7 @@ class TestsFlextInfraModulePathRules(TestsFlextInfraValidateNamespaceBase):
         root, target = self._create_namespace_project_path(
             tmp_path, module_source=module_source, module_path=module_path
         )
-        files = u.Infra.iter_python_files(
-            m.Infra.SourceScanRequest(project_roots=(root,))
-        )
-        tm.ok(files)
-        tm.that(
-            target in files.value,
-            eq=True,
-            msg=f"namespace fixture omitted from source inventory: {target}; {files.value}",
-        )
+        self._assert_file_in_inventory(root, target)
 
         result = self.validator.validate_project(root)
 
