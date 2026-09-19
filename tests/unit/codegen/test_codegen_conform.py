@@ -13,11 +13,13 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
+from flext_core import r
 from flext_infra import config, main
 from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenProjectNew,
+    FlextInfraMiseWorkspacePlanner,
 )
 from flext_infra.docs import FlextInfraDocGenerator
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
@@ -28,9 +30,186 @@ from .conform_support import TestsFlextInfraConformSupport
 
 pytestmark = [pytest.mark.slow]
 
+_LIFECYCLE_EXCEPTION = OSError("conform operation raised after begin")
+
+
+class _FlextInfraCodegenConformLifecycleProbe(FlextInfraCodegenConform):
+    """Inject one public planning outcome after the real transaction begins."""
+
+    def plan(
+        self, request: m.Infra.CodegenConformRequest
+    ) -> p.Result[m.Infra.CodegenPlan]:
+        """Exercise recovery from real journal, staging, and CAS state changes."""
+        planned = super().plan(request)
+        if planned.failure:
+            return planned
+        identity = tm.ok(
+            u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=request.root))
+        )
+        journal_path = FlextInfraMiseWorkspacePlanner.journal_path(identity)
+        if not journal_path.is_file():
+            return planned
+        scenario = request.root.name
+        if scenario == "cas":
+            marker = request.root / ".lifecycle-cas"
+            if marker.read_bytes() != b"before\n":
+                return planned
+            before = tm.ok(u.Cli.atomic_read_binary_file_state(marker, required=True))
+            marker.write_bytes(b"foreign\n")
+            failed = u.Cli.atomic_write_binary_file_guarded(
+                before, b"owned\n", permission_mode=tm.not_none(before.mode)
+            )
+            tm.fail(failed)
+            return r[m.Infra.CodegenPlan].from_failure(failed)
+        journal_bytes = journal_path.read_bytes()
+        journal = m.Infra.CodegenTransactionJournal.model_validate_json(journal_bytes)
+        if scenario.endswith("-mixed"):
+            staging = next(
+                tm.not_none(directory.created).path
+                for directory in journal.directories
+                if directory.disposition == "temporary"
+                and directory.created is not None
+            )
+            (staging / "foreign.bin").write_bytes(b"foreign staging\n")
+        if scenario.endswith("-changed"):
+            journal_path.write_bytes(journal_bytes + b"\n")
+        elif scenario.endswith("-replaced"):
+            preserved = journal_path.with_suffix(".preserved")
+            journal_path.rename(preserved)
+            journal_path.write_bytes(preserved.read_bytes())
+            journal_path.chmod(preserved.stat().st_mode)
+        if scenario.startswith("exception-"):
+            raise _LIFECYCLE_EXCEPTION
+        return r[m.Infra.CodegenPlan].fail("conform operation failed after begin")
+
 
 class TestsFlextInfraCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
+
+    @staticmethod
+    def _lifecycle_fixture(
+        tmp_path: Path, scenario: str
+    ) -> tuple[
+        Path,
+        m.Infra.CodegenConformRequest,
+        Path,
+        bytes,
+        Path,
+    ]:
+        """Create one conformed tree, then introduce one recoverable publication."""
+        root = u.Tests.git_repository(tmp_path, name=scenario)
+        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
+        workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
+        request = u.Tests.conform_request(
+            root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        tm.ok(FlextInfraCodegenConform.execute_request(request, workspace))
+        u.Tests.commit_git_changes(root, "Seed conformed lifecycle fixture")
+        published = root / c.Infra.MAKEFILE_FILENAME
+        original = published.read_bytes() + b"\n# recoverable drift\n"
+        published.write_bytes(original)
+        if scenario == "cas":
+            (root / ".lifecycle-cas").write_bytes(b"before\n")
+        identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root)))
+        journal = FlextInfraMiseWorkspacePlanner.journal_path(identity)
+        return root, request, published, original, journal
+
+    @pytest.mark.parametrize(
+        "scenario",
+        [
+            "failure-changed",
+            "exception-replaced",
+            "failure-mixed",
+            "cas",
+            "lazy-failure",
+            "docs-failure",
+        ],
+    )
+    def test_public_apply_recovers_only_authenticated_prepared_state(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        scenario: str,
+    ) -> None:
+        """Exercise post-begin failures through real filesystem and CAS state."""
+        root, request, published, original, journal = self._lifecycle_fixture(
+            tmp_path, scenario
+        )
+        if scenario == "lazy-failure":
+            package = root / "src" / "flext_demo"
+            obsolete = package / next(
+                iter(sorted(c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES))
+            )
+            obsolete.symlink_to(root / "README.md")
+        elif scenario == "docs-failure":
+            docs_config = root / c.Infra.DIR_DOCS / c.Infra.DOCS_CONFIG_FILENAME
+            docs_config.write_text("{invalid", encoding="utf-8")
+        _ = capsys.readouterr()
+        execute = (
+            FlextInfraCodegenConform.execute_request
+            if scenario.endswith("-failure")
+            else _FlextInfraCodegenConformLifecycleProbe.execute_request
+        )
+
+        if scenario.startswith("exception-"):
+            with pytest.raises(OSError, match="raised after begin") as raised:
+                execute(request)
+            tm.that(raised.value is _LIFECYCLE_EXCEPTION, eq=True)
+        else:
+            failed = execute(request)
+            expected = {
+                "cas": "atomic source changed",
+                "docs-failure": "JSON",
+                "lazy-failure": "refusing obsolete root-support symlink",
+            }.get(scenario, "failed after begin")
+            tm.fail(failed, has=expected)
+
+        retained = scenario in {
+            "exception-replaced",
+            "failure-changed",
+            "failure-mixed",
+        }
+        tm.that(journal.exists(), eq=retained)
+        tm.that(published.read_bytes() == original, eq=not retained)
+        if scenario == "failure-changed":
+            tm.that(journal.read_bytes().endswith(b"\n"), eq=True)
+        elif scenario == "exception-replaced":
+            preserved = journal.with_suffix(".preserved")
+            tm.that(preserved.read_bytes(), eq=journal.read_bytes())
+            tm.that(preserved.stat().st_ino == journal.stat().st_ino, eq=False)
+        elif scenario == "failure-mixed":
+            tm.that(
+                tuple(path.read_bytes() for path in tmp_path.rglob("foreign.bin")),
+                eq=(b"foreign staging\n",),
+            )
+        elif scenario == "cas":
+            tm.that(capsys.readouterr().out, lacks="mode=converge")
+
+    def test_public_scaffold_exception_restores_bootstrap_state(
+        self, tmp_path: Path
+    ) -> None:
+        """A raised prepared operation removes invocation-owned root and Git state."""
+        root = tmp_path / "exception-scaffold"
+        repository = u.Tests.repository_ref("exception-scaffold")
+        workspace = m.Infra.WorkspaceSpec(
+            name=repository.name,
+            beads=u.Tests.beads_project(repository.name),
+            repository=repository,
+            project=u.Tests.project_spec(repository.name),
+        )
+        request = u.Tests.conform_request(
+            root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+
+        with pytest.raises(OSError, match="raised after begin") as raised:
+            _FlextInfraCodegenConformLifecycleProbe.execute_request(request, workspace)
+
+        tm.that(raised.value is _LIFECYCLE_EXCEPTION, eq=True)
+        tm.that(root.exists(), eq=False)
 
     def test_pyproject_plan_preserves_runtime_dependencies_before_conformance(
         self, tmp_path: Path

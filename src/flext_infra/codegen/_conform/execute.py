@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 
 from ... import c, config, m, p, r, t, u
 from ...docs import FlextInfraDocGenerator
@@ -110,29 +110,46 @@ class FlextInfraCodegenConformExecute(
         service = cls(
             repository_root=root, request=request, initial_workspace=initial_workspace
         )
-        result = service.execute()
+        try:
+            result = service.execute()
+        except Exception as exc:
+            rollback = cls._rollback_request_bootstrap(
+                root, initialized_git=initialized_git, directories=bootstrap
+            )
+            if rollback.failure:
+                exc.add_note(f"scaffold bootstrap rollback failed: {rollback.error}")
+            raise
         if result.success:
             return result
-        if initialized_git:
-            inventory = u.Cli.atomic_inventory_physical_tree(root / c.Infra.GIT_DIR)
-            if inventory.failure:
-                return r[m.Infra.CodegenResult].fail(
-                    f"{result.error or 'generation failed'}; "
-                    f"scaffold Git rollback inventory failed: {inventory.error}"
-                )
-            cleaned = u.Cli.atomic_cleanup_physical_tree_guarded(inventory.value)
-            if cleaned.failure:
-                return r[m.Infra.CodegenResult].fail(
-                    f"{result.error or 'generation failed'}; "
-                    f"scaffold Git rollback failed: {cleaned.error}"
-                )
-        rollback = cls._rollback_scaffold_directories(bootstrap)
+        rollback = cls._rollback_request_bootstrap(
+            root, initialized_git=initialized_git, directories=bootstrap
+        )
         if rollback.failure:
             return r[m.Infra.CodegenResult].fail(
                 f"{result.error or 'generation failed'}; "
-                f"scaffold root rollback failed: {rollback.error}"
+                f"scaffold bootstrap rollback failed: {rollback.error}"
             )
         return result
+
+    @classmethod
+    def _rollback_request_bootstrap(
+        cls,
+        root: Path,
+        *,
+        initialized_git: bool,
+        directories: t.VariadicTuple[m.Cli.AtomicDirectoryState],
+    ) -> p.Result[bool]:
+        """Undo only Git and root directories created by this invocation."""
+        if initialized_git:
+            inventory = u.Cli.atomic_inventory_physical_tree(root / c.Infra.GIT_DIR)
+            if inventory.failure:
+                return r[bool].fail(
+                    f"Git rollback inventory failed: {inventory.error}"
+                )
+            cleaned = u.Cli.atomic_cleanup_physical_tree_guarded(inventory.value)
+            if cleaned.failure:
+                return r[bool].fail(f"Git rollback failed: {cleaned.error}")
+        return cls._rollback_scaffold_directories(directories)
 
     def execute(self) -> p.Result[m.Infra.CodegenResult]:
         """Run check or apply and require a verified fixed point."""
@@ -243,32 +260,19 @@ class FlextInfraCodegenConformExecute(
         scope_root: Path,
         transaction: FlextInfraCodegenTransaction,
     ) -> p.Result[m.Infra.CodegenResult]:
-        """Materialize scaffold parents, then run one locked generation cycle.
-
-        A mid-cycle source mutation by another actor surfaces as the atomic
-        CAS signature. The cycle re-plans from the current tree (bounded),
-        converging with concurrent writers instead of aborting the whole
-        fleet generation; anything else fails through unchanged.
-        """
+        """Materialize scaffold parents, then run one locked generation cycle."""
         prepared = self._prepare_scaffold_directories(request)
         if prepared.failure:
             return r[m.Infra.CodegenResult].from_failure(prepared)
-        attempts = 0
-        result = r[m.Infra.CodegenResult].fail("unreached")
-        while attempts < self._SOURCE_RACE_CYCLES:
-            attempts += 1
+        try:
             result = self._execute_managed_locked_prepared(
                 request, scope_root, transaction
             )
-            if result.success:
-                return result
-            if not self._is_source_race(result.error):
-                break
-            u.Cli.info(
-                "stage=publish mode=converge "
-                f"attempt={attempts}/{self._SOURCE_RACE_CYCLES} "
-                "reason=atomic source changed; re-planning from current tree"
-            )
+        except Exception as exc:
+            rollback = self._rollback_scaffold_directories(prepared.value)
+            if rollback.failure:
+                exc.add_note(f"scaffold directory rollback failed: {rollback.error}")
+            raise
         if result.success:
             return result
         rollback = self._rollback_scaffold_directories(prepared.value)
@@ -278,22 +282,6 @@ class FlextInfraCodegenConformExecute(
                 f"scaffold directory rollback failed: {rollback.error}"
             )
         return result
-
-    _SOURCE_RACE_CYCLES: Final[int] = 3
-    """Bounded convergence attempts after a mid-cycle source mutation."""
-
-    _SOURCE_RACE_MARKERS: Final[t.VariadicTuple[str]] = (
-        "atomic source changed",
-        "atomic destination parent is missing",
-        "atomic source has conflicting snapshots",
-    )
-    """Failure signatures meaning the tree mutated under one locked cycle."""
-
-    @classmethod
-    def _is_source_race(cls, error: str | None) -> bool:
-        """Return whether one failure signature is a mid-cycle source mutation."""
-        message = error or ""
-        return any(marker in message for marker in cls._SOURCE_RACE_MARKERS)
 
     def _lazy_phase(
         self, request: m.Infra.CodegenConformRequest
@@ -392,19 +380,32 @@ class FlextInfraCodegenConformExecute(
         session = transaction.begin_locked(scope_root, config_plans.value, plan.files)
         if session.failure:
             return r[m.Infra.CodegenResult].from_failure(session)
+        return transaction.publish_prepared_locked(
+            session.value,
+            lambda current: self._publish_managed_locked(
+                request, plan, docs_include_root, transaction, current
+            ),
+        )
+
+    def _publish_managed_locked(
+        self,
+        request: m.Infra.CodegenConformRequest,
+        plan: m.Infra.CodegenPlan,
+        docs_include_root: bool,
+        transaction: FlextInfraCodegenTransaction,
+        session: m.Infra.CodegenTransactionSession,
+    ) -> p.Result[m.Infra.CodegenResult]:
+        """Complete every post-begin phase through prepared-state recovery."""
         lazy_analysis = self._lazy_phase(request)
         if lazy_analysis.failure:
-            aborted = transaction.abort_locked(
-                session.value, lazy_analysis.error or "lazy-init planning failed"
-            )
-            return r[m.Infra.CodegenResult].from_failure(aborted)
+            return r[m.Infra.CodegenResult].from_failure(lazy_analysis)
         conform_paths = frozenset(f.path for f in plan.files)
         lazy_plans = tuple(
             p for p in lazy_analysis.value.files if p.path not in conform_paths
         )
         lazy_analysis_ = lazy_analysis.value.model_copy(update={"files": lazy_plans})
         extended = transaction.append_phase_locked(
-            session.value, lazy_analysis.value.phase, lazy_plans
+            session, lazy_analysis.value.phase, lazy_plans
         )
         if extended.failure:
             return r[m.Infra.CodegenResult].from_failure(extended)
@@ -415,17 +416,10 @@ class FlextInfraCodegenConformExecute(
         )
         docs_bundle = docs_generator.prepare_bundle()
         if docs_bundle.failure:
-            aborted = transaction.abort_locked(
-                extended.value, docs_bundle.error or "docs preparation failed"
-            )
-            return r[m.Infra.CodegenResult].from_failure(aborted)
+            return r[m.Infra.CodegenResult].from_failure(docs_bundle)
         docs_directories = docs_generator.required_directories(docs_bundle.value)
         if docs_directories.failure:
-            aborted = transaction.abort_locked(
-                extended.value,
-                docs_directories.error or "docs directory planning failed",
-            )
-            return r[m.Infra.CodegenResult].from_failure(aborted)
+            return r[m.Infra.CodegenResult].from_failure(docs_directories)
         owned_docs_directories = self._owned_docs_directories(
             request, plan, docs_directories.value
         )
@@ -436,10 +430,7 @@ class FlextInfraCodegenConformExecute(
             return r[m.Infra.CodegenResult].from_failure(with_directories)
         docs_plans = docs_generator.plan_files(docs_bundle.value)
         if docs_plans.failure:
-            aborted = transaction.abort_locked(
-                with_directories.value, docs_plans.error or "docs planning failed"
-            )
-            return r[m.Infra.CodegenResult].from_failure(aborted)
+            return r[m.Infra.CodegenResult].from_failure(docs_plans)
         owned_docs_files = self._owned_docs_files(request, docs_plans.value)
         docs_analysis = m.Infra.CodegenPhaseAnalysis(
             phase="docs", files=owned_docs_files, inputs=docs_bundle.value.source_states
