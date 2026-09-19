@@ -9,10 +9,12 @@ from __future__ import annotations
 from ._git.attestation import FlextInfraUtilitiesGitAttestationMixin
 from ._git.scope import FlextInfraUtilitiesGitScopeMixin
 from ._git.semantic_submodule import FlextInfraUtilitiesGitSemanticSubmoduleMixin
+from ._git.worktree_facts import FlextInfraUtilitiesGitWorktreeFactsMixin
 
 
 class FlextInfraUtilitiesGit(
     FlextInfraUtilitiesGitAttestationMixin,
+    FlextInfraUtilitiesGitWorktreeFactsMixin,
     FlextInfraUtilitiesGitScopeMixin,
     FlextInfraUtilitiesGitSemanticSubmoduleMixin,
 ):

@@ -6,8 +6,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests import t
 from flext_infra import c, u
+from tests import t
 
 from ._support import CodegenTestSupport
 
