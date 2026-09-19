@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from operator import itemgetter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from flext_infra import c, u
 
@@ -32,12 +32,22 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         super().__init__(on_change=on_change)
         self._migrations = migrations
 
-    def apply_to_source(self, source: str) -> str:
-        """Apply all migrations to source text and return transformed source."""
+    @override
+    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
+        """Apply every migration and report the source plus what changed.
+
+        The transformer contract is the pair every orchestrated transformer
+        returns; this one returned a bare string, so it could never be driven
+        by the shared orchestrator and the capability stayed unreachable.
+        """
+        self.changes.clear()
         result = source
         for migration in self._migrations:
+            before = result
             result = self._apply_migration(result, migration)
-        return result
+            if result != before:
+                self.changes.append(f"signature migration applied: {migration.id}")
+        return result, list(self.changes)
 
     def _apply_migration(
         self, source: str, migration: m.Infra.SignatureMigration
