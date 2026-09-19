@@ -5,96 +5,21 @@ from __future__ import annotations
 import time
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 from ... import c, config, m, p, r, t, u
 from ...deps import FlextInfraPyprojectModernizer
 from ...services.codegen import FlextInfraCodegen
 from ...workspace import FlextInfraWorkspaceDetector
 from ...workspace.environment_contracts import FlextInfraWorkspaceEnvironmentContracts
-from ._request_fields import FlextInfraCodegenConformRequestFields
 from .misc import FlextInfraCodegenConformMisc
 
 
-class _ConformPlanRoles:
-    if TYPE_CHECKING:
-
-        def _surface_contract(
-            self, surface: c.Infra.CodegenConformSurface
-        ) -> m.Infra.CodegenConformSurfaceContract: ...
-        def retired_projection_plans(
-            self, root: Path, profile: c.Infra.MakeProfile
-        ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]: ...
-        def _uv_environment_plan(
-            self,
-            *,
-            root: Path,
-            repository_root: Path,
-            target: m.Infra.RepositoryConformTarget,
-            workspace: m.Infra.WorkspaceSpec,
-            config: m.Infra.CodegenConfigSpec,
-        ) -> m.Infra.UvEnvironmentPlan: ...
-        def _scaffold_python_dirs(
-            self,
-            entries: t.SequenceOf[p.Infra.TemplateEntrySpec],
-            profile: c.Infra.MakeProfile,
-        ) -> t.StrSequence: ...
-        def _project_render_context(
-            self,
-            repository: m.Infra.RepositoryRef,
-            target: m.Infra.RepositoryConformTarget,
-            workspace: m.Infra.WorkspaceSpec,
-            codegen: m.Infra.CodegenConfigSpec,
-            *,
-            tooling_runtime: m.Infra.ToolingRuntimeContext,
-            repository_root: Path,
-            managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
-            use_committed_artifacts: bool = True,
-        ) -> p.Result[m.Infra.ProjectRenderContext]: ...
-        def _rendered_artifact_source(
-            self,
-            *,
-            templates_root: Path,
-            template_relpath: Path,
-            failure_prefix: str,
-            dist: str,
-            repository: m.Infra.RepositoryRef,
-            repository_root: Path,
-            target: m.Infra.RepositoryConformTarget,
-            workspace: m.Infra.WorkspaceSpec,
-            codegen: m.Infra.CodegenConfigSpec,
-            destination: str,
-            tooling_runtime: m.Infra.ToolingRuntimeContext,
-            project_context: m.Infra.ProjectRenderContext | None = None,
-            managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
-        ) -> p.Result[str]: ...
-        def compose_project_artifact(
-            self,
-            repository_root: Path,
-            destination: str,
-            rendered: str,
-            *,
-            managed_artifacts: m.Infra.ProjectManagedArtifactsSnapshot | None = None,
-            workspace: m.Infra.WorkspaceSpec | None = None,
-            codegen: m.Infra.CodegenConfigSpec | None = None,
-            repository: m.Infra.RepositoryRef | None = None,
-            target: m.Infra.RepositoryConformTarget | None = None,
-        ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
-        def validate_custom_make(
-            self, content: str, policy: m.Infra.CustomHandlerPolicy
-        ) -> p.Result[bool]: ...
-        def _absent_file_plan(
-            self, root: Path, path: Path
-        ) -> p.Result[m.Infra.CodegenFilePlan]: ...
-
-
-class FlextInfraCodegenConformPlan(
-    FlextInfraCodegenConformRequestFields, _ConformPlanRoles
-):
+class FlextInfraCodegenConformPlan:
     """Conformance planning across scaffold and existing repositories."""
 
     def plan(
-        self, request: m.Infra.CodegenConformRequest
+        self: p.Infra.CodegenConform, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenPlan]:
         """Build and validate the complete selection without writing."""
         config_spec = config.Infra.codegen
@@ -288,7 +213,7 @@ class FlextInfraCodegenConformPlan(
         )
 
     def _plan_scaffold_repository(
-        self,
+        self: p.Infra.CodegenConform,
         *,
         root: Path,
         repository: m.Infra.RepositoryRef,
@@ -457,7 +382,7 @@ class FlextInfraCodegenConformPlan(
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
     def _plan_existing_repository(
-        self,
+        self: p.Infra.CodegenConform,
         *,
         root: Path,
         repository_root: Path,
@@ -550,7 +475,7 @@ class FlextInfraCodegenConformPlan(
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
     def _plan_existing_templates(
-        self,
+        self: p.Infra.CodegenConform,
         *,
         root: Path,
         repository: m.Infra.RepositoryRef,
@@ -698,7 +623,7 @@ class FlextInfraCodegenConformPlan(
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
     def _plan_existing_custom(
-        self,
+        self: p.Infra.CodegenConform,
         root: Path,
         config: m.Infra.CodegenConfigSpec,
         *,

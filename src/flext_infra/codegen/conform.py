@@ -5,6 +5,6 @@ Implementation lives in ``flext_infra.codegen._conform.base`` via MRO compositio
 
 from __future__ import annotations
 
-from ._conform.base import FlextInfraCodegenConform
+from ._conform import FlextInfraCodegenConform
 
 __all__: list[str] = ["FlextInfraCodegenConform"]

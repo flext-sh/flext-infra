@@ -5,38 +5,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from typing import TYPE_CHECKING
-
 from ... import c, config, m, p, r, t, u
 from ...deps import FlextInfraEnsureRuffConfigPhase
-from ._request_fields import FlextInfraCodegenConformRequestFields
 from .bootstrap import FlextInfraCodegenConformBootstrap
 from .misc import FlextInfraCodegenConformMisc
 
 
-class _ConformRenderRoles:
-    if TYPE_CHECKING:
-
-        def _gitignore_sections(
-            self, codegen: m.Infra.CodegenConfigSpec, *, profile: c.Infra.MakeProfile, project_name: str | None = None, workspace: m.Infra.WorkspaceSpec | None = None, project_patterns: t.StrSequence = ()
-        ) -> t.VariadicTuple[m.Infra.ScaffoldGitignoreSectionSpec]: ...
-        def _mise_bootstrap_environment(self) -> m.Infra.MiseBootstrapEnvironmentSpec: ...
-        def _repository_provider(
-            self, repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec
-        ) -> p.Result[m.Infra.ProviderSpec]: ...
-        def _repository_root_rel(self, workspace: m.Infra.WorkspaceSpec) -> str: ...
-        def _merge_extra_verbs(
-            self,
-            declared: t.VariadicTuple[m.Infra.MakeVerbSpec],
-            discovered: t.VariadicTuple[m.Infra.MakeVerbSpec],
-            canonical_names: frozenset[str],
-        ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]: ...
-        def _discover_script_verbs(self, repository_root: Path) -> t.VariadicTuple[m.Infra.MakeVerbSpec]: ...
-
-
-class FlextInfraCodegenConformRender(
-    FlextInfraCodegenConformRequestFields, _ConformRenderRoles
-):
+class FlextInfraCodegenConformRender:
     """Artifact composition and render context projection."""
 
     @staticmethod
@@ -132,7 +107,7 @@ class FlextInfraCodegenConformRender(
         )
 
     def _rendered_artifact_source(
-        self,
+        self: p.Infra.CodegenConform,
         *,
         templates_root: Path,
         template_relpath: Path,
@@ -180,7 +155,7 @@ class FlextInfraCodegenConformRender(
         return rendered
 
     def _artifact_render_context(
-        self,
+        self: p.Infra.CodegenConform,
         *,
         dist: str,
         repository: m.Infra.RepositoryRef,
@@ -459,7 +434,7 @@ class FlextInfraCodegenConformRender(
         return r[p.Model].ok(context_result.value)
 
     def make_render_context(
-        self,
+        self: p.Infra.CodegenConform,
         repository: m.Infra.RepositoryRef,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
@@ -624,7 +599,7 @@ class FlextInfraCodegenConformRender(
         )
 
     def _project_render_context(
-        self,
+        self: p.Infra.CodegenConform,
         repository: m.Infra.RepositoryRef,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
