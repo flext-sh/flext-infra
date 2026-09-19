@@ -3,7 +3,7 @@ snapshots:
   output.outcome.raw_return_code != 0:
     fixed: not cls.process_succeeded(output.outcome)
     labels:
-    - source: output.outcome.raw_return_code != 0
-      style: primary
-      start: 0
-      end: 35
+      - source: output.outcome.raw_return_code != 0
+        style: primary
+        start: 0
+        end: 35

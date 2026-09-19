@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
+from flext_infra import u
 from flext_infra.docs.server import FlextInfraDocServer
-from flext_infra.utilities import u
 from tests import c, m, u as tu
 
 if TYPE_CHECKING:

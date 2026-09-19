@@ -2,7 +2,7 @@ id: no-assert-true
 snapshots:
   assert True:
     labels:
-    - source: assert True
-      style: primary
-      start: 0
-      end: 11
+      - source: assert True
+        style: primary
+        start: 0
+        end: 11

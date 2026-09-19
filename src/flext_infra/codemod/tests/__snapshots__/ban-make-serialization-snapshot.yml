@@ -4,16 +4,16 @@ snapshots:
     class MakeSerializationSpec(BaseModel):
         pass
   : labels:
-    - source: |-
-        class MakeSerializationSpec(BaseModel):
-            pass
-      style: primary
-      start: 0
-      end: 48
+      - source: |-
+          class MakeSerializationSpec(BaseModel):
+              pass
+        style: primary
+        start: 0
+        end: 48
   ? |
     u.Infra.serialization_lock_execute(paths, timeout)
   : labels:
-    - source: u.Infra.serialization_lock_execute(paths, timeout)
-      style: primary
-      start: 0
-      end: 50
+      - source: u.Infra.serialization_lock_execute(paths, timeout)
+        style: primary
+        start: 0
+        end: 50

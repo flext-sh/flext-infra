@@ -13,8 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-from flext_infra import c, m, t, u
-from flext_infra.base import s
+from flext_infra import c, m, s, t, u
 
 from ._skill_rule_runner import FlextInfraSkillRuleRunnerMixin
 

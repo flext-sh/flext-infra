@@ -8,8 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal, Self, override
 
 from flext_core import r
-from flext_infra import m, u
-from flext_infra.base import s
+from flext_infra import m, s, u
 
 if TYPE_CHECKING:
     from flext_infra import p

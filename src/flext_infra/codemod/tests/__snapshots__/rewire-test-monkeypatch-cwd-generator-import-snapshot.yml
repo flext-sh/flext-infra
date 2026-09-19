@@ -20,22 +20,22 @@ snapshots:
       def isolate_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
           monkeypatch.chdir(tmp_path)
     labels:
-    - source: from __future__ import annotations
-      style: primary
-      start: 0
-      end: 34
-    - source: monkeypatch.chdir(tmp_path)
-      style: secondary
-      start: 159
-      end: 186
-    - source: |
-        from __future__ import annotations
+      - source: from __future__ import annotations
+        style: primary
+        start: 0
+        end: 34
+      - source: monkeypatch.chdir(tmp_path)
+        style: secondary
+        start: 159
+        end: 186
+      - source: |
+          from __future__ import annotations
 
-        import pytest
+          import pytest
 
-        @pytest.fixture(autouse=True)
-        def isolate_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-            monkeypatch.chdir(tmp_path)
-      style: secondary
-      start: 0
-      end: 187
+          @pytest.fixture(autouse=True)
+          def isolate_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+              monkeypatch.chdir(tmp_path)
+        style: secondary
+        start: 0
+        end: 187

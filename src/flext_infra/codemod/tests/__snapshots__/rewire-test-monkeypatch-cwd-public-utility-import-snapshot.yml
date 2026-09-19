@@ -16,20 +16,20 @@ snapshots:
       def isolate_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
           monkeypatch.chdir(tmp_path)
     labels:
-    - source: import pytest
-      style: primary
-      start: 0
-      end: 13
-    - source: monkeypatch.chdir(tmp_path)
-      style: secondary
-      start: 123
-      end: 150
-    - source: |
-        import pytest
+      - source: import pytest
+        style: primary
+        start: 0
+        end: 13
+      - source: monkeypatch.chdir(tmp_path)
+        style: secondary
+        start: 123
+        end: 150
+      - source: |
+          import pytest
 
-        @pytest.fixture(autouse=True)
-        def isolate_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-            monkeypatch.chdir(tmp_path)
-      style: secondary
-      start: 0
-      end: 151
+          @pytest.fixture(autouse=True)
+          def isolate_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+              monkeypatch.chdir(tmp_path)
+        style: secondary
+        start: 0
+        end: 151

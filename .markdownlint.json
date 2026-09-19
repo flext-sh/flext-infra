@@ -14,12 +14,7 @@
   "MD025": false,
   "MD031": false,
   "MD033": {
-    "allowed_elements": [
-      "br",
-      "details",
-      "summary",
-      "kbd"
-    ]
+    "allowed_elements": ["br", "details", "summary", "kbd"]
   },
   "MD036": false,
   "MD040": false,

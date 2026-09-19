@@ -7,16 +7,16 @@ snapshots:
       if loaded.failure:
           return r[m.Sample.Config].from_failure(loaded)
     labels:
-    - source: r[m.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)
-      style: primary
-      start: 30
-      end: 90
-    - source: |-
-        if loaded.failure:
-            return r[m.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)
-      style: secondary
-      start: 0
-      end: 90
+      - source: r[m.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)
+        style: primary
+        start: 30
+        end: 90
+      - source: |-
+          if loaded.failure:
+              return r[m.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)
+        style: secondary
+        start: 0
+        end: 90
   ? |
     if loaded.failure:
         return r[p.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)
@@ -24,16 +24,16 @@ snapshots:
       if loaded.failure:
           return r[p.Sample.Config].from_failure(loaded)
     labels:
-    - source: r[p.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)
-      style: primary
-      start: 30
-      end: 90
-    - source: |-
-        if loaded.failure:
-            return r[p.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)
-      style: secondary
-      start: 0
-      end: 90
+      - source: r[p.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)
+        style: primary
+        start: 30
+        end: 90
+      - source: |-
+          if loaded.failure:
+              return r[p.Sample.Config].fail(loaded.error or c.Sample.ERR_CONFIG)
+        style: secondary
+        start: 0
+        end: 90
   ? |
     if result.failure:
         return r[str].fail(result.error or "read failed")
@@ -41,13 +41,13 @@ snapshots:
       if result.failure:
           return r[str].from_failure(result)
     labels:
-    - source: r[str].fail(result.error or "read failed")
-      style: primary
-      start: 30
-      end: 72
-    - source: |-
-        if result.failure:
-            return r[str].fail(result.error or "read failed")
-      style: secondary
-      start: 0
-      end: 72
+      - source: r[str].fail(result.error or "read failed")
+        style: primary
+        start: 30
+        end: 72
+      - source: |-
+          if result.failure:
+              return r[str].fail(result.error or "read failed")
+        style: secondary
+        start: 0
+        end: 72

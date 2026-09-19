@@ -2,13 +2,13 @@ id: ban-direct-gitpython
 snapshots:
   from git import Repo, GitCommandError:
     labels:
-    - source: from git import Repo, GitCommandError
-      style: primary
-      start: 0
-      end: 37
+      - source: from git import Repo, GitCommandError
+        style: primary
+        start: 0
+        end: 37
   import git:
     labels:
-    - source: import git
-      style: primary
-      start: 0
-      end: 10
+      - source: import git
+        style: primary
+        start: 0
+        end: 10

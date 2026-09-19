@@ -5,41 +5,41 @@ snapshots:
 
     logger = getLogger(__name__)
   : labels:
-    - source: getLogger(__name__)
-      style: primary
-      start: 40
-      end: 59
-    - source: from logging import getLogger
-      style: secondary
-      start: 0
-      end: 29
-    - source: |
-        from logging import getLogger
+      - source: getLogger(__name__)
+        style: primary
+        start: 40
+        end: 59
+      - source: from logging import getLogger
+        style: secondary
+        start: 0
+        end: 29
+      - source: |
+          from logging import getLogger
 
-        logger = getLogger(__name__)
-      style: secondary
-      start: 0
-      end: 60
-    - source: |
-        from logging import getLogger
+          logger = getLogger(__name__)
+        style: secondary
+        start: 0
+        end: 60
+      - source: |
+          from logging import getLogger
 
-        logger = getLogger(__name__)
-      style: secondary
-      start: 0
-      end: 60
+          logger = getLogger(__name__)
+        style: secondary
+        start: 0
+        end: 60
   ? |
     import logging
 
     logger = logging.getLogger(__name__)
   : labels:
-    - source: logging.getLogger(__name__)
-      style: primary
-      start: 25
-      end: 52
-    - source: |
-        import logging
+      - source: logging.getLogger(__name__)
+        style: primary
+        start: 25
+        end: 52
+      - source: |
+          import logging
 
-        logger = logging.getLogger(__name__)
-      style: secondary
-      start: 0
-      end: 53
+          logger = logging.getLogger(__name__)
+        style: secondary
+        start: 0
+        end: 53

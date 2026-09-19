@@ -9,18 +9,18 @@ snapshots:
 
       logger = u.fetch_logger(__name__)
     labels:
-    - source: structlog.get_logger()
-      style: primary
-      start: 35
-      end: 57
-    - source: from flext_core import u
-      style: secondary
-      start: 0
-      end: 24
-    - source: |
-        from flext_core import u
+      - source: structlog.get_logger()
+        style: primary
+        start: 35
+        end: 57
+      - source: from flext_core import u
+        style: secondary
+        start: 0
+        end: 24
+      - source: |
+          from flext_core import u
 
-        logger = structlog.get_logger()
-      style: secondary
-      start: 0
-      end: 58
+          logger = structlog.get_logger()
+        style: secondary
+        start: 0
+        end: 58

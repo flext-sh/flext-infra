@@ -18,8 +18,7 @@ from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-from flext_infra import c, config, m, u
-from flext_infra.base import s
+from flext_infra import c, config, m, s, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t

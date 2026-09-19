@@ -9,21 +9,21 @@ snapshots:
 
       cli.display_text("message")
     labels:
-    - source: print("message")
-      style: primary
-      start: 27
-      end: 43
-    - source: from flext_cli import cli
-      style: secondary
-      start: 0
-      end: 25
-    - source: |
-        from flext_cli import cli
+      - source: print("message")
+        style: primary
+        start: 27
+        end: 43
+      - source: from flext_cli import cli
+        style: secondary
+        start: 0
+        end: 25
+      - source: |
+          from flext_cli import cli
 
-        print("message")
-      style: secondary
-      start: 0
-      end: 44
+          print("message")
+        style: secondary
+        start: 0
+        end: 44
   ? |
     from flext_cli import cli
 
@@ -33,18 +33,18 @@ snapshots:
 
       cli.display_text("message")
     labels:
-    - source: u.Cli.print("message")
-      style: primary
-      start: 27
-      end: 49
-    - source: from flext_cli import cli
-      style: secondary
-      start: 0
-      end: 25
-    - source: |
-        from flext_cli import cli
+      - source: u.Cli.print("message")
+        style: primary
+        start: 27
+        end: 49
+      - source: from flext_cli import cli
+        style: secondary
+        start: 0
+        end: 25
+      - source: |
+          from flext_cli import cli
 
-        u.Cli.print("message")
-      style: secondary
-      start: 0
-      end: 50
+          u.Cli.print("message")
+        style: secondary
+        start: 0
+        end: 50

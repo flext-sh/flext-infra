@@ -18,7 +18,6 @@ name: ci-matrix
   workflow_dispatch: {}
 # End SECTION: triggers
 
-
 # === SECTION: permissions (managed) ===
 # Source: template (minimal read-only permissions)
 permissions:
@@ -92,7 +91,7 @@ jobs:
       # catch platform-specific failures, and `make help` exercises none of
       # the gates. The linux job already runs it.
       - name: Canonical check
-        run: CI=Y make check 
+        run: CI=Y make check
   # End SECTION: macos
 
   # === SECTION: windows (managed) ===
@@ -119,5 +118,5 @@ jobs:
       # the gates. The linux job already runs it.
       - name: Canonical check
         shell: bash
-        run: CI=Y make check 
+        run: CI=Y make check
 # End SECTION: windows

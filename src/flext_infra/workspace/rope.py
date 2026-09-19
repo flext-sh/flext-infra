@@ -10,8 +10,7 @@ from types import TracebackType
 from typing import Annotated, ClassVar, Self, override
 
 from flext_core import r
-from flext_infra import c, m, p, t, u
-from flext_infra.base import s
+from flext_infra import c, m, p, s, t, u
 
 
 class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):

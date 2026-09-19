@@ -13,13 +13,13 @@ snapshots:
           logger.warning("boom")
           raise
     labels:
-    - source: |-
-        except:
-            logger.warning("boom")
-            raise
-      style: primary
-      start: 17
-      end: 61
+      - source: |-
+          except:
+              logger.warning("boom")
+              raise
+        style: primary
+        start: 17
+        end: 61
   ? |
     try:
         risky()
@@ -31,12 +31,12 @@ snapshots:
       except Exception:
           pass
     labels:
-    - source: |-
-        except:
-            pass
-      style: primary
-      start: 17
-      end: 33
+      - source: |-
+          except:
+              pass
+        style: primary
+        start: 17
+        end: 33
   ? |
     try:
         risky()
@@ -52,9 +52,9 @@ snapshots:
       finally:
           done()
     labels:
-    - source: |-
-        except:
-            pass
-      style: primary
-      start: 17
-      end: 33
+      - source: |-
+          except:
+              pass
+        style: primary
+        start: 17
+        end: 33

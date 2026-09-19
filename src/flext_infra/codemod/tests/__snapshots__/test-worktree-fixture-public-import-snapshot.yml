@@ -5,7 +5,7 @@ snapshots:
   : fixed: |
       from tests import WorktreeFixture
     labels:
-    - source: from tests.unit.workspace.worktree_fixture import WorktreeFixture
-      style: primary
-      start: 0
-      end: 65
+      - source: from tests.unit.workspace.worktree_fixture import WorktreeFixture
+        style: primary
+        start: 0
+        end: 65

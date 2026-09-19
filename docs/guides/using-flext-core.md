@@ -6,6 +6,7 @@
 > Project profile: `flext-infra`
 
 <!-- TOC START -->
+
 - [Aliases](#aliases)
 - [Result flow](#result-flow)
 - [Settings](#settings)
@@ -15,9 +16,11 @@
 - [Good practices](#good-practices)
 - [Bad practices](#bad-practices)
 - [Related](#related)
+
 <!-- TOC END -->
 
-`flext_core` is the base package for result flow, settings, container wiring, logging, and service runtime.
+`flext_core` is the base package for result flow, settings, container wiring, logging,
+and service runtime.
 
 ## Aliases
 
@@ -25,22 +28,22 @@ Import canonical aliases from the package root:
 
 The examples below import only the aliases they consume from `flext_core`.
 
-| Alias | Purpose |
-| ------- | --------- |
-| `c` | constants / constants namespace |
-| `d` | decorators |
-| `e` | errors / exceptions |
-| `h` | handlers |
-| `m` | models / Pydantic helpers |
-| `p` | protocols |
-| `r` | result (`FlextResult`) |
-| `s` | service / runtime (`FlextService`) |
-| `t` | typings |
-| `u` | utilities |
-| `x` | mixins / execution |
+| Alias | Purpose                            |
+| ----- | ---------------------------------- |
+| `c`   | constants / constants namespace    |
+| `d`   | decorators                         |
+| `e`   | errors / exceptions                |
+| `h`   | handlers                           |
+| `m`   | models / Pydantic helpers          |
+| `p`   | protocols                          |
+| `r`   | result (`FlextResult`)             |
+| `s`   | service / runtime (`FlextService`) |
+| `t`   | typings                            |
+| `u`   | utilities                          |
+| `x`   | mixins / execution                 |
 
-**Important:** `s` is the service/runtime alias. Settings classes (`FlextSettings`, `FlextCliSettings`,
-`FlextTestsSettings`) have no short alias.
+**Important:** `s` is the service/runtime alias. Settings classes (`FlextSettings`,
+`FlextCliSettings`, `FlextTestsSettings`) have no short alias.
 
 ## Result flow
 
@@ -129,14 +132,15 @@ assert result.value == "Hello!"
 
 - Use aliases instead of importing nested modules directly.
 - Use `r[T]` for fallible paths.
-- Reset singletons in tests with `FlextSettings.reset_for_testing()` and `FlextContainer.reset_for_testing()`.
+- Reset singletons in tests with `FlextSettings.reset_for_testing()` and
+  `FlextContainer.reset_for_testing()`.
 - Remember: `s` = service/runtime, never settings.
 
 ## Bad practices
 
-Do not instantiate the base service to execute domain logic: its `execute()`
-raises `NotImplementedError`. Implement the typed operation in a concrete service,
-and obtain its singleton through `fetch_global()`.
+Do not instantiate the base service to execute domain logic: its `execute()` raises
+`NotImplementedError`. Implement the typed operation in a concrete service, and obtain
+its singleton through `fetch_global()`.
 
 ## Related
 

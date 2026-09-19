@@ -10,9 +10,8 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
-from flext_cli import m, u
 
-from flext_infra import c
+from flext_infra import c, m, u
 from flext_infra.utilities import FlextInfraUtilitiesCodegenFilePlan
 
 _GATES: Mapping[str, Mapping[str, int]] = {"lint": {"time-seconds": 30}}

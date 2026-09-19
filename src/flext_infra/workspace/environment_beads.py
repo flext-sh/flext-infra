@@ -10,8 +10,7 @@ from __future__ import annotations
 
 from typing import ClassVar, override
 
-from flext_infra import c, m, p, r, t, u
-from flext_infra.base import s
+from flext_infra import c, m, p, r, s, t, u
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironmentMixin
 from flext_infra.workspace.environment_contracts import (
     FlextInfraWorkspaceEnvironmentContracts,

@@ -21,11 +21,11 @@ snapshots:
           marker = True
 
     labels:
-    - source: |-
-        class FlextCliUtilitiesRuntimeProcessOutcomeMixin:
-            """Map one completed lifecycle to its public result contract."""
+      - source: |-
+          class FlextCliUtilitiesRuntimeProcessOutcomeMixin:
+              """Map one completed lifecycle to its public result contract."""
 
-            marker = True
-      style: primary
-      start: 0
-      end: 138
+              marker = True
+        style: primary
+        start: 0
+        end: 138
