@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Self, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 from flext_infra import c, m, s, t
@@ -43,7 +43,7 @@ class FlextInfraOrchestratorService(
         return self.repository_root.resolve()
 
     @classmethod
-    def execute_command(cls, params: Self) -> p.Result[bool]:
+    def execute_command(cls, params: s[bool]) -> p.Result[bool]:
         """Execute the already validated internal orchestration request."""
         return params.execute()
 

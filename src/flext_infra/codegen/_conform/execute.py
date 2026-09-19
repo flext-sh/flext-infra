@@ -22,23 +22,29 @@ class _ConformExecuteRoles:
         def plan(
             self, request: m.Infra.CodegenConformRequest
         ) -> p.Result[m.Infra.CodegenPlan]: ...
+
+        @staticmethod
         def _mise_config_plans(
-            self, plan: m.Infra.CodegenPlan
+            plan: m.Infra.CodegenPlan,
         ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
+
         def _conform_workspace_beads_routes(
             self, request: m.Infra.CodegenConformRequest
         ) -> p.Result[bool]: ...
+
+        @staticmethod
         def _owned_docs_files(
-            self,
             request: m.Infra.CodegenConformRequest,
             files: t.SequenceOf[m.Infra.CodegenFilePlan],
-        ) -> tuple[m.Infra.CodegenFilePlan, ...]: ...
+        ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]: ...
+
+        @classmethod
         def _owned_docs_directories(
-            self,
+            cls,
             request: m.Infra.CodegenConformRequest,
             plan: m.Infra.CodegenPlan,
             directories: t.SequenceOf[Path],
-        ) -> tuple[Path, ...]: ...
+        ) -> t.VariadicTuple[Path]: ...
 
 
 class FlextInfraCodegenConformExecute(

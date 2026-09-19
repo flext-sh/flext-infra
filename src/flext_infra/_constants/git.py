@@ -83,6 +83,8 @@ class FlextInfraConstantsGit:
 
     # --- Linked-worktree registry (filesystem discovery, no Git subprocess) ---
 
+    WORKTREE_LINE: Final[str] = "worktree "
+    "Canonical ``git worktree list --porcelain`` line prefix for a worktree entry."
     GIT_WORKTREES_DIRNAME: Final[str] = "worktrees"
     "Directory under the repository's ``.git`` holding one registered entry."
     GIT_WORKTREE_SCAN_FILE_CAP: Final[int] = 200_000

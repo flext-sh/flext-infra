@@ -165,9 +165,7 @@ class FlextInfraModelsWorktree:
         session_id: Annotated[str, m.Field(description="Attributed session id")] = ""
         retire_candidate: Annotated[
             bool,
-            m.Field(
-                description="Retirement candidate; execution never happens here"
-            ),
+            m.Field(description="Retirement candidate; execution never happens here"),
         ] = False
 
     class PruneAction(m.ContractModel):
