@@ -628,7 +628,6 @@ class TestsFlextInfraRepositoryLocalTopology:
     ) -> None:
         """Accept a governed checkout declared on the published integration line."""
         root = u.Tests.WorktreeFixture.governed_workspace(tmp_path, "integration-line")
-        provider = u.Tests.provider()
         baseline = tm.ok(u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
@@ -702,9 +701,7 @@ class TestsFlextInfraRepositoryLocalTopology:
     def test_detected_provider_identity_normalizes_the_git_suffix(self) -> None:
         """Accept equivalent provider URLs with or without the clone suffix."""
         suffixed = u.Tests.repository_ref("fixture-project")
-        bare = suffixed.model_copy(
-            update={"url": suffixed.url.removesuffix(".git")}
-        )
+        bare = suffixed.model_copy(update={"url": suffixed.url.removesuffix(".git")})
 
         first = tm.ok(u.Infra.repository_provider(suffixed))
         second = tm.ok(u.Infra.repository_provider(bare))

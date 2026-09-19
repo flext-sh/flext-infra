@@ -536,9 +536,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             # A workspace parent declares its own role as workspace: the
             # manifest must agree with the topology the detector observes.
             TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(
-                parent,
-                parent.name,
-                role=c.Infra.MakeProfile.WORKSPACE,
+                parent, parent.name, role=c.Infra.MakeProfile.WORKSPACE
             )
             member_head = TestsFlextInfraUtilitiesGitMixin.git_capture(
                 member, "rev-parse", c.Infra.GIT_HEAD
@@ -627,8 +625,10 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                     [
                         c.Infra.GIT,
                         "update-ref",
-                        "refs/remotes/origin/"
-                        f"{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}",
+                        (
+                            "refs/remotes/origin/"
+                            f"{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}"
+                        ),
                         baseline,
                     ],
                     cwd=root,

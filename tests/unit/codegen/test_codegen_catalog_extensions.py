@@ -61,8 +61,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         root = tmp_path / "undeclared-checkout"
         root.mkdir()
         (root / "pyproject.toml").write_text(
-            '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
-            "dependencies = []\n",
+            '[project]\nname = "acme-platform"\nversion = "0.1.0"\ndependencies = []\n',
             encoding="utf-8",
         )
 

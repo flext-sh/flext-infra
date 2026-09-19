@@ -135,9 +135,7 @@ class FlextInfraWorkspaceDetector(
                 f"workspace manifest model validation ({manifest_path})",
                 validated.error,
             )
-        return r[t.SequenceOf[m.Infra.WorkspaceManifestSpec]].ok(
-            (validated.value,)
-        )
+        return r[t.SequenceOf[m.Infra.WorkspaceManifestSpec]].ok((validated.value,))
 
     @classmethod
     def _declared_provider_name(
@@ -156,9 +154,9 @@ class FlextInfraWorkspaceDetector(
         if loaded.failure:
             return r[str].from_failure(loaded)
         if not loaded.value:
-            origin_organization, origin_separator, _ = (
-                u.Infra.git_remote_identity(origin_url).partition("/")
-            )
+            origin_organization, origin_separator, _ = u.Infra.git_remote_identity(
+                origin_url
+            ).partition("/")
             if not origin_separator:
                 return r[str].fail(
                     "governed repository Git origin must name an owner and "
@@ -168,12 +166,12 @@ class FlextInfraWorkspaceDetector(
         manifest = loaded.value[0]
         manifest_path = u.Infra.workspace_manifest_path(repository_root)
         declared = manifest.repository
-        manifest_organization, manifest_separator, _ = (
-            u.Infra.git_remote_identity(declared.url).partition("/")
-        )
-        origin_organization, origin_separator, _ = (
-            u.Infra.git_remote_identity(origin_url).partition("/")
-        )
+        manifest_organization, manifest_separator, _ = u.Infra.git_remote_identity(
+            declared.url
+        ).partition("/")
+        origin_organization, origin_separator, _ = u.Infra.git_remote_identity(
+            origin_url
+        ).partition("/")
         if (
             not manifest_separator
             or not origin_separator
@@ -460,8 +458,7 @@ class FlextInfraWorkspaceDetector(
             if managed.value.text and managed.value.text.lower() != "true":
                 return result_type.ok(path)
         if not u.Infra.gitmodule_branch_is_governed(
-            declared_branch,
-            integration_branch=integration_branch,
+            declared_branch, integration_branch=integration_branch
         ):
             return result_type.fail(
                 "governed subproject branch differs from the workspace "

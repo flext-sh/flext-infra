@@ -216,7 +216,13 @@ def infra_git_repo(infra_test_workspace: Path) -> Path:
         repo, ("config", "--local", f"url.{origin}.insteadOf", upstream)
     )
     u.Tests.git_bootstrap(
-        repo, ("push", "-q", c.Infra.GIT_ORIGIN, f"HEAD:refs/heads/{u.Tests.provider_branch()}")
+        repo,
+        (
+            "push",
+            "-q",
+            c.Infra.GIT_ORIGIN,
+            f"HEAD:refs/heads/{u.Tests.provider_branch()}",
+        ),
     )
     u.Tests.git_bootstrap(
         repo,
@@ -224,8 +230,10 @@ def infra_git_repo(infra_test_workspace: Path) -> Path:
             "fetch",
             "-q",
             c.Infra.GIT_ORIGIN,
-            f"+refs/heads/{u.Tests.provider_branch()}:refs/remotes/origin/"
-            f"{u.Tests.provider_branch()}",
+            (
+                f"+refs/heads/{u.Tests.provider_branch()}:refs/remotes/origin/"
+                f"{u.Tests.provider_branch()}"
+            ),
         ),
     )
     return repo

@@ -49,8 +49,7 @@ class TestsFlextInfraConfigLocalOverrides:
         """
         self._copy_tracked_configs(tmp_path)
         (tmp_path / "codegen-overrides.local.yaml").write_text(
-            "Infra:\n  codegen:\n    loc_cap:\n      max_lines: 500\n",
-            encoding="utf-8",
+            "Infra:\n  codegen:\n    loc_cap:\n      max_lines: 500\n", encoding="utf-8"
         )
         monkeypatch.setenv("FLEXT_INFRA_CONFIG_DIR", str(tmp_path))
         FlextInfraConfig.reset_for_testing()

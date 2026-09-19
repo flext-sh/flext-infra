@@ -69,9 +69,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         rendered = tm.ok(
             u.Infra.pyproject_dependencies_conform(
-                source,
-                workspace=workspace,
-                workspace_mode=self._ROLE.STANDALONE,
+                source, workspace=workspace, workspace_mode=self._ROLE.STANDALONE
             )
         )
         for section, key in (
@@ -90,9 +88,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
         second = tm.ok(
             u.Infra.pyproject_dependencies_conform(
-                rendered,
-                workspace=workspace,
-                workspace_mode=self._ROLE.STANDALONE,
+                rendered, workspace=workspace, workspace_mode=self._ROLE.STANDALONE
             )
         )
         tm.that(second, eq=rendered)
@@ -139,9 +135,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         rendered = tm.ok(
             u.Infra.pyproject_dependencies_conform(
-                root_source,
-                workspace=workspace,
-                workspace_mode=self._ROLE.WORKSPACE,
+                root_source, workspace=workspace, workspace_mode=self._ROLE.WORKSPACE
             )
         )
 
@@ -170,9 +164,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         rendered = tm.ok(
             u.Infra.pyproject_dependencies_conform(
-                external,
-                workspace=workspace,
-                workspace_mode=self._ROLE.STANDALONE,
+                external, workspace=workspace, workspace_mode=self._ROLE.STANDALONE
             )
         )
 
@@ -266,9 +258,7 @@ workspace = true
 """
         root_rendered = tm.ok(
             u.Infra.pyproject_dependencies_conform(
-                root_source,
-                workspace=workspace,
-                workspace_mode=self._ROLE.WORKSPACE,
+                root_source, workspace=workspace, workspace_mode=self._ROLE.WORKSPACE
             )
         )
         consumer_rendered = tm.ok(
@@ -344,9 +334,7 @@ workspace = true
 
         rendered = tm.ok(
             u.Infra.pyproject_dependencies_conform(
-                member_source,
-                workspace=workspace,
-                workspace_mode=self._ROLE.STANDALONE,
+                member_source, workspace=workspace, workspace_mode=self._ROLE.STANDALONE
             )
         )
 

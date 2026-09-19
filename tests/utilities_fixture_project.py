@@ -164,9 +164,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
         provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
         manifest = repository / "config" / "workspace.yaml"
         manifest.parent.mkdir(parents=True, exist_ok=True)
-        resolved_url = url or (
-            f"{provider.base_url.rstrip('/')}/{distribution}.git"
-        )
+        resolved_url = url or (f"{provider.base_url.rstrip('/')}/{distribution}.git")
         manifest.write_text(
             f"version: {WORKSPACE_MANIFEST_VERSION}\n"
             f"name: {distribution}\n"

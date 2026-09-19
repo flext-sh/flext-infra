@@ -427,10 +427,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     branch
                 )
             resolved.append(
-                m.Infra.ManagedGitlinkSpec(
-                    repository=repository,
-                    branch=branch.value,
-                )
+                m.Infra.ManagedGitlinkSpec(repository=repository, branch=branch.value)
             )
         return r[t.VariadicTuple[m.Infra.ManagedGitlinkSpec]].ok(tuple(resolved))
 

@@ -25,9 +25,7 @@ class FlextInfraUtilitiesRepository:
     """Resolve detected identity and branch policy for one governed repository."""
 
     @staticmethod
-    def declared_git_source(
-        requirement: str,
-    ) -> p.Result[t.Pair[str, str] | None]:
+    def declared_git_source(requirement: str) -> p.Result[t.Pair[str, str] | None]:
         """Parse one requirement's declared direct Git source.
 
         Returns ``(canonical_url, ref)`` for a requirement that declares
@@ -39,9 +37,7 @@ class FlextInfraUtilitiesRepository:
         not a Git URL, or a Git URL without a ref, fails loudly.
         """
         requirement_part, _, _ = requirement.partition(";")
-        head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(
-            requirement_part.strip()
-        )
+        head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(requirement_part.strip())
         if head_match is None:
             return r[t.Pair[str, str] | None].fail(
                 f"invalid requirement head: {requirement}"
@@ -83,10 +79,7 @@ class FlextInfraUtilitiesRepository:
 
     @classmethod
     def configured_repository_ref(
-        cls,
-        *,
-        codegen: m.Infra.CodegenConfigSpec,
-        repository_root: Path,
+        cls, *, codegen: m.Infra.CodegenConfigSpec, repository_root: Path
     ) -> p.Result[m.Infra.RepositoryRef]:
         """Detect one reference for the infrastructure distribution.
 
@@ -97,8 +90,6 @@ class FlextInfraUtilitiesRepository:
         or its workspace manifest ``repository``/``members`` declaration. A
         checkout that declares none fails loudly.
         """
-        from flext_infra import u
-
         source = codegen.infra_repository
         distribution = source.distribution
         detected = cls._detected_infra_url(
@@ -130,10 +121,7 @@ class FlextInfraUtilitiesRepository:
         from flext_infra import u
 
         metadata = u.Infra.read_project_metadata_result(repository_root)
-        if (
-            metadata.success
-            and metadata.value.project.name == distribution
-        ):
+        if metadata.success and metadata.value.project.name == distribution:
             origin = u.Infra.git_remote_url(
                 m.Infra.GitRemoteUrlRequest(
                     repo_root=repository_root, remote=c.Infra.GIT_DEFAULT_REMOTE
@@ -186,9 +174,7 @@ class FlextInfraUtilitiesRepository:
             return r[str | None].from_failure(text)
         payload = u.Cli.toml_mapping_from_text(text.value)
         if payload is None:
-            return r[str | None].fail(
-                f"pyproject is not valid TOML: {pyproject_path}"
-            )
+            return r[str | None].fail(f"pyproject is not valid TOML: {pyproject_path}")
         requirements: list[str] = []
         project = payload.get(c.Infra.PROJECT)
         if isinstance(project, dict):
@@ -205,9 +191,7 @@ class FlextInfraUtilitiesRepository:
                     FlextInfraUtilitiesPyprojectConform.raw_requirement_values(group)
                 )
         for requirement in requirements:
-            if (
-                FlextInfraUtilitiesDependencies.dep_name(requirement) != distribution
-            ):
+            if FlextInfraUtilitiesDependencies.dep_name(requirement) != distribution:
                 continue
             parsed = cls.declared_git_source(requirement)
             if parsed.failure:
@@ -231,9 +215,7 @@ class FlextInfraUtilitiesRepository:
         """Return the workspace manifest's declared URL for one distribution."""
         from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
-        loaded = FlextInfraWorkspaceDetector.load_workspace_manifest(
-            repository_root
-        )
+        loaded = FlextInfraWorkspaceDetector.load_workspace_manifest(repository_root)
         if loaded.failure:
             return r[str | None].fail(
                 loaded.error or "workspace manifest load failed without an error"
@@ -309,16 +291,12 @@ class FlextInfraUtilitiesRepository:
 
     @staticmethod
     def gitmodule_branch_is_governed(
-        declared_branch: str,
-        *,
-        integration_branch: str | None = None,
+        declared_branch: str, *, integration_branch: str | None = None
     ) -> bool:
         """Accept follow-superproject (``.``) or the detected integration line."""
         if declared_branch == c.Infra.FOLLOW_SUPERPROJECT_BRANCH:
             return True
-        return (
-            integration_branch is not None and declared_branch == integration_branch
-        )
+        return integration_branch is not None and declared_branch == integration_branch
 
     @classmethod
     def repository_baseline_branch(

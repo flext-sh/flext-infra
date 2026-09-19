@@ -321,9 +321,7 @@ class FlextInfraUtilitiesPyprojectConform:
         normalized_items: t.MutableSequenceOf[str] = []
         for item in items:
             normalized = cls._canonical_requirement(
-                item,
-                revisions=revisions,
-                workspace_dependencies=workspace_dependencies,
+                item, revisions=revisions, workspace_dependencies=workspace_dependencies
             )
             if normalized.failure:
                 return r[bool].from_failure(normalized)
@@ -610,10 +608,7 @@ class FlextInfraUtilitiesPyprojectConform:
 
     @classmethod
     def _dependency_overrides(
-        cls,
-        workspace: p.Infra.WorkspaceSpec,
-        *,
-        requirements: t.SequenceOf[str],
+        cls, workspace: p.Infra.WorkspaceSpec, *, requirements: t.SequenceOf[str]
     ) -> p.Result[t.VariadicTuple[str]]:
         """Render declared immutable revisions as uv override-dependencies.
 
@@ -823,21 +818,16 @@ class FlextInfraUtilitiesPyprojectConform:
 
     @staticmethod
     def _resolved_root_sources(
-        *,
-        workspace: p.Infra.WorkspaceSpec,
+        *, workspace: p.Infra.WorkspaceSpec
     ) -> MutableMapping[str, MutableMapping[str, t.JsonValue]]:
         """Resolve the workspace source overlay from the declared topology."""
         return {
-            member.distribution: {"workspace": True}
-            for member in workspace.subprojects
+            member.distribution: {"workspace": True} for member in workspace.subprojects
         }
 
     @classmethod
     def _validate_root_uv_sources(
-        cls,
-        document: t.Cli.TomlDocument,
-        *,
-        workspace: p.Infra.WorkspaceSpec,
+        cls, document: t.Cli.TomlDocument, *, workspace: p.Infra.WorkspaceSpec
     ) -> p.Result[bool]:
         """Validate the root overlay without rewriting out-of-order TOML tables."""
         payload = u.Cli.toml_as_mapping(document)

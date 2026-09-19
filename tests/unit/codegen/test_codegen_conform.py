@@ -164,9 +164,7 @@ class TestsFlextInfraCodegenConform:
 
         result = service.plan(request)
 
-        tm.fail(
-            result, has="internal dependency direct source must be a git URL"
-        )
+        tm.fail(result, has="internal dependency direct source must be a git URL")
 
     def _conform_with_rendered_makefile(
         self, root: Path, help_text: str

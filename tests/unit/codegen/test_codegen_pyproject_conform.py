@@ -265,12 +265,10 @@ workspace = true
         workspace = self._workspace()
         member = workspace.subprojects[0]
         declared = (
-            f"{member.distribution} @ git+{member.url}@"
-            f"{test_u.Tests.provider_branch()}"
+            f"{member.distribution} @ git+{member.url}@{test_u.Tests.provider_branch()}"
         )
         result = u.Infra.pyproject_dependencies_conform(
-            "[project]\nname = \"external-consumer\"\n"
-            f'dependencies = ["{declared}"]\n',
+            f'[project]\nname = "external-consumer"\ndependencies = ["{declared}"]\n',
             workspace=workspace,
             workspace_mode=c.Infra.MakeProfile.STANDALONE,
         )

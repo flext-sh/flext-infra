@@ -79,10 +79,10 @@ class FlextInfraConstantsMake:
         gate
         for gate in CANONICAL_GATE_IDS
         if gate
-        not in (
+        not in {
             FlextInfraConstantsCheck.MARKDOWN_CODE,
             FlextInfraConstantsCheck.MARKDOWN_FORMAT,
-        )
+        }
     )
     CANONICAL_FIXABLE_GATE_IDS: Final[t.VariadicTuple[str]] = (
         "lint",
