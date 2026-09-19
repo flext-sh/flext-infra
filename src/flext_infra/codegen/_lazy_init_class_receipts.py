@@ -91,7 +91,9 @@ class FlextInfraCodegenLazyInitClassReceipts:
             return r[bool].ok(True)
         parsed = u.Cli.json_loads(content)
         if parsed.failure:
-            return r[bool].fail_op("lazy-init class receipt parse", parsed.error or "json parse failed")
+            return r[bool].fail_op(
+                "lazy-init class receipt parse", parsed.error or "json parse failed"
+            )
         document = parsed.value
         if not isinstance(document, dict):
             return r[bool].fail_op(

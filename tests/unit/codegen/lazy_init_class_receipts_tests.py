@@ -55,9 +55,7 @@ class TestsFlextInfraCodegenLazyInitClassReceipts:
         writer = self._receipts(tmp_path)
         writer.record(b"class Delta:\\n", ("Delta",))
         tm.that(writer.save(), eq=True)
-        document = u.Cli.json_loads(
-            self._receipt_path(tmp_path).read_bytes()
-        ).value
+        document = u.Cli.json_loads(self._receipt_path(tmp_path).read_bytes()).value
         document["version"] = c.Infra.LAZY_INIT_CLASS_RECEIPTS_VERSION + 1
         self._receipt_path(tmp_path).write_text(
             u.Cli.json_dumps(document).value, encoding="utf-8"
