@@ -10,7 +10,10 @@
   "ruff.lint.preview": true,
   "ruff.nativeServer": true,
   "shellcheck.useWorkspaceRootAsCwd": true,
-  "python-envs.workspaceSearchPaths": ["./.venv", "./*/.venv"],
+  "python-envs.workspaceSearchPaths": [
+    "./.venv",
+    "./*/.venv"
+  ],
   "files.exclude": {
     "**/__pycache__": true,
     "**/__pyrefly_virtual__": true,
@@ -175,8 +178,12 @@
   "git.repositoryScanMaxDepth": 2,
   "githubPullRequests.autoRepositoryDetection": true,
   "githubPullRequests.ignoreSubmodules": false,
-  "ruff.interpreter": ["${workspaceFolder}/.venv/bin/python"],
-  "ruff.path": ["${workspaceFolder}/.venv/bin/ruff"],
+  "ruff.interpreter": [
+    "${workspaceFolder}/.venv/bin/python"
+  ],
+  "ruff.path": [
+    "${workspaceFolder}/.venv/bin/ruff"
+  ],
   "markdownlint.lintWorkspaceGlobs": [
     "!**/.git/**",
     "!**/.planning/**",
