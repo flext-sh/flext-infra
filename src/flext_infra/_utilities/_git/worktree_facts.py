@@ -101,7 +101,7 @@ class FlextInfraUtilitiesGitWorktreeFactsMixin:
                     name=worktree_root.name,
                     path=worktree_root,
                     repo=repository_root,
-                    kind=kind,  # type: ignore[arg-type]
+                    kind=kind,
                     bytes=stats.total_bytes,
                     deps_bytes=deps_bytes,
                     stale_days=stale_days,

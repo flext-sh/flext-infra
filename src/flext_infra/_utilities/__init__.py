@@ -91,23 +91,6 @@ if TYPE_CHECKING:
     from ._semantic_cutover.private_imports import (
         FlextInfraUtilitiesSemanticCutoverPrivateImports,
     )
-    from ._semantic_cutover.alias_cst import FlextInfraUtilitiesSemanticCutoverAliasCst
-    from ._semantic_cutover.aliases import FlextInfraUtilitiesSemanticCutoverAliases
-    from ._semantic_cutover.base import FlextInfraUtilitiesSemanticCutoverBase
-    from ._semantic_cutover.edits import FlextInfraUtilitiesSemanticCutoverEdits
-    from ._semantic_cutover.nesting import FlextInfraUtilitiesSemanticCutoverNesting
-    from ._semantic_cutover.nesting_cst import (
-        FlextInfraUtilitiesSemanticCutoverNestingCst,
-    )
-    from ._semantic_cutover.nesting_references import (
-        FlextInfraUtilitiesSemanticCutoverNestingReferences,
-    )
-    from ._semantic_cutover.private_import_cst import (
-        FlextInfraUtilitiesSemanticCutoverPrivateImportCst,
-    )
-    from ._semantic_cutover.private_imports import (
-        FlextInfraUtilitiesSemanticCutoverPrivateImports,
-    )
     from .base import FlextInfraUtilitiesBase
     from .census import FlextInfraUtilitiesRefactorCensus
     from .codegen import FlextInfraUtilitiesCodegen
@@ -193,7 +176,6 @@ if TYPE_CHECKING:
     from .rope_source import FlextInfraUtilitiesRopeSource
     from .rope_structure import FlextInfraUtilitiesRopeStructure
     from .safety import FlextInfraUtilitiesSafety
-    from .semantic_cutover import FlextInfraUtilitiesSemanticCutover
     from .semantic_cutover import FlextInfraUtilitiesSemanticCutover
     from .silent_failure_ast import FlextInfraUtilitiesSilentFailureAst
     from .silent_failure_ast_base import FlextInfraUtilitiesSilentFailureAstBase
@@ -357,16 +339,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticCutoverNestingReferences",
     "FlextInfraUtilitiesSemanticCutoverPrivateImportCst",
     "FlextInfraUtilitiesSemanticCutoverPrivateImports",
-    "FlextInfraUtilitiesSemanticCutover",
-    "FlextInfraUtilitiesSemanticCutoverAliasCst",
-    "FlextInfraUtilitiesSemanticCutoverAliases",
-    "FlextInfraUtilitiesSemanticCutoverBase",
-    "FlextInfraUtilitiesSemanticCutoverEdits",
-    "FlextInfraUtilitiesSemanticCutoverNesting",
-    "FlextInfraUtilitiesSemanticCutoverNestingCst",
-    "FlextInfraUtilitiesSemanticCutoverNestingReferences",
-    "FlextInfraUtilitiesSemanticCutoverPrivateImportCst",
-    "FlextInfraUtilitiesSemanticCutoverPrivateImports",
     "FlextInfraUtilitiesSilentFailureAst",
     "FlextInfraUtilitiesSilentFailureAstBase",
     "FlextInfraUtilitiesSilentFailureAstRules",
@@ -495,30 +467,6 @@ _LAZY_IMPORTS = MappingProxyType(
             "._semantic_cutover.private_imports": (
                 "FlextInfraUtilitiesSemanticCutoverPrivateImports",
             ),
-            "._semantic_cutover": ("_semantic_cutover",),
-            "._semantic_cutover.alias_cst": (
-                "FlextInfraUtilitiesSemanticCutoverAliasCst",
-            ),
-            "._semantic_cutover.aliases": (
-                "FlextInfraUtilitiesSemanticCutoverAliases",
-            ),
-            "._semantic_cutover.base": ("FlextInfraUtilitiesSemanticCutoverBase",),
-            "._semantic_cutover.edits": ("FlextInfraUtilitiesSemanticCutoverEdits",),
-            "._semantic_cutover.nesting": (
-                "FlextInfraUtilitiesSemanticCutoverNesting",
-            ),
-            "._semantic_cutover.nesting_cst": (
-                "FlextInfraUtilitiesSemanticCutoverNestingCst",
-            ),
-            "._semantic_cutover.nesting_references": (
-                "FlextInfraUtilitiesSemanticCutoverNestingReferences",
-            ),
-            "._semantic_cutover.private_import_cst": (
-                "FlextInfraUtilitiesSemanticCutoverPrivateImportCst",
-            ),
-            "._semantic_cutover.private_imports": (
-                "FlextInfraUtilitiesSemanticCutoverPrivateImports",
-            ),
             ".base": ("FlextInfraUtilitiesBase",),
             ".census": ("FlextInfraUtilitiesRefactorCensus",),
             ".codegen": ("FlextInfraUtilitiesCodegen",),
@@ -610,7 +558,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".rope_source": ("FlextInfraUtilitiesRopeSource",),
             ".rope_structure": ("FlextInfraUtilitiesRopeStructure",),
             ".safety": ("FlextInfraUtilitiesSafety",),
-            ".semantic_cutover": ("FlextInfraUtilitiesSemanticCutover",),
             ".semantic_cutover": ("FlextInfraUtilitiesSemanticCutover",),
             ".silent_failure_ast": ("FlextInfraUtilitiesSilentFailureAst",),
             ".silent_failure_ast_base": ("FlextInfraUtilitiesSilentFailureAstBase",),
