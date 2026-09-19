@@ -199,7 +199,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             )
         )
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(
-            project_dir, name, url=origin.value.text.strip()
+            project_dir, name, url=origin.text.strip()
         )
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(project_dir))
         return workspace.model_copy(
