@@ -134,8 +134,13 @@ class TestsFlextInfraRule3ImportRules:
         tm.ok(result)
         tm.that(result.value.passed, eq=True, msg=str(result.value))
 
-    def test_rule3_settings_owner_c_import_still_flagged(self, tmp_path: Path) -> None:
-        """D1 is bounded: ``c`` and operational facades are not covered."""
+    def test_rule3_settings_owner_c_import_allowed(self, tmp_path: Path) -> None:
+        """Operator ruling 2026-09-19: settings defaults read declared constants.
+
+        Settings owners bind Pydantic field defaults to ``c.<Ns>.CONSTANT``, so
+        the runtime ``c`` import is part of the declaration-layer carve-out;
+        operational facades stay flagged.
+        """
         validator = FlextInfraNamespaceValidator()
         module_source = (
             "from __future__ import annotations\n\n"
@@ -155,7 +160,7 @@ class TestsFlextInfraRule3ImportRules:
                 "reverse runtime import" in violation
                 for violation in result.value.violations
             ),
-            eq=True,
+            eq=False,
             msg=str(result.value),
         )
 

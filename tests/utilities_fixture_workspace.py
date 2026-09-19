@@ -191,6 +191,9 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
             project_dir, name
         )
+        TestsFlextInfraUtilitiesProjectFixtureMixin.write_workspace_manifest(
+            project_dir, name
+        )
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(project_dir))
         return workspace.model_copy(
             update={

@@ -271,6 +271,8 @@ class TestsFlextInfraCodegenConform:
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
             provider="flext-sh",
+            repository_url=f"https://github.com/flext-sh/{name}.git",
+            repository_branch="0.12.0-dev",
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
