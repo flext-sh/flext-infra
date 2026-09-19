@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -67,9 +66,12 @@ class FlextInfraCodegenLazyInitClassReceipts:
         }
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)
-            written = u.Cli.atomic_write_text_file(
-                self._path, json.dumps(document, indent=1, sort_keys=True) + "\n"
-            )
+            dump = u.Cli.json_dumps(document, sort_keys=True, indent=1)
+            if dump.failure:
+                return r[bool].fail_op(
+                    "lazy-init class receipt save", dump.error or "json dump failed"
+                )
+            written = u.Cli.atomic_write_text_file(self._path, dump.value + "\n")
         except OSError as exc:
             return r[bool].fail_op("lazy-init class receipt save", exc)
         if written.failure:
@@ -87,10 +89,10 @@ class FlextInfraCodegenLazyInitClassReceipts:
         content = read.value.content
         if content is None:
             return r[bool].ok(True)
-        try:
-            document = json.loads(content)
-        except ValueError as exc:
-            return r[bool].fail_op("lazy-init class receipt parse", exc)
+        parsed = u.Cli.json_loads(content)
+        if parsed.failure:
+            return r[bool].fail_op("lazy-init class receipt parse", parsed.error or "json parse failed")
+        document = parsed.value
         if not isinstance(document, dict):
             return r[bool].fail_op(
                 "lazy-init class receipt parse", "document is not an object"
