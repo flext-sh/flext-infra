@@ -13,7 +13,9 @@ from ._git.identity import FlextInfraModelsGitIdentity
 from ._git.worktree_facts import FlextInfraModelsGitWorktreeFacts
 
 
-class FlextInfraModelsGit(FlextInfraModelsGitIdentity, FlextInfraModelsGitWorktreeFacts):
+class FlextInfraModelsGit(
+    FlextInfraModelsGitIdentity, FlextInfraModelsGitWorktreeFacts
+):
     """Declaration-only models for Git facade and FlextInfraGitService.
 
     Composed via FLEXT with FlextInfraModelsGitIdentity (GitIdentityReport).
