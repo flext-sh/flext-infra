@@ -106,30 +106,38 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         last_failure: p.Result[m.Infra.CodegenPhaseAnalysis] | None = None
         for attempt in range(max_retries + 1):
             try:
-                with FlextInfraRopeWorkspace.open_workspace(
-                    self.repository_root, rope_repository_root=self.repository_root
-                ) as rope:
-                    result = self._plan_open_workspace(rope)
-                    if result.success:
-                        return result
-                    # Retry only on snapshot verification failure (concurrent change)
-                    if "lazy-init source changed during planning" in str(
-                        result.failure
-                    ):
-                        if attempt < max_retries:
-                            u.Cli.info(
-                                f"lazy-init: concurrent change detected (attempt {attempt + 1}/{max_retries + 1}), retrying..."
-                            )
-                            last_failure = result
-                            continue
-                    return result
+                result = self._plan_attempt()
             except c.EXC_OS_VALUE as exc:
                 return r[m.Infra.CodegenPhaseAnalysis].fail_op(
                     "lazy-init planning", exc
                 )
+            if result.success:
+                return result
+            # Retry only on snapshot verification failure (a concurrent input
+            # change). `failure` is the boolean predicate, so the previous form
+            # matched the marker against "True" and never retried; the message
+            # lives in `error`.
+            concurrent_change = "lazy-init source changed during planning" in (
+                result.error or ""
+            )
+            if concurrent_change and attempt < max_retries:
+                u.Cli.info(
+                    "lazy-init: concurrent change detected "
+                    f"(attempt {attempt + 1}/{max_retries + 1}), retrying"
+                )
+                last_failure = result
+                continue
+            return result
         return last_failure or r[m.Infra.CodegenPhaseAnalysis].fail(
             "lazy-init planning failed after retries"
         )
+
+    def _plan_attempt(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Run one planning cycle inside its own Rope workspace."""
+        with FlextInfraRopeWorkspace.open_workspace(
+            self.repository_root, rope_repository_root=self.repository_root
+        ) as rope:
+            return self._plan_open_workspace(rope)
 
     def _plan_open_workspace(
         self, rope: FlextInfraRopeWorkspace

@@ -282,6 +282,33 @@ class FlextInfraModGateEngine:
         return r[bool].ok(True)
 
     @staticmethod
+    def _validate_expected_receipts(
+        rules: t.SequenceOf[m.Infra.CodemodRule], report: m.Infra.ModScanReport
+    ) -> p.Result[bool]:
+        """Require every declared finding-count receipt to match exactly.
+
+        Same contract the sed-by-list phase owns for text rules: a rule that
+        declares how many findings it must produce turns silent drift into a
+        loud failure. A guard that stops matching, or a pattern that starts
+        over-matching after an unrelated edit, is otherwise invisible — the
+        cascade simply rewrites more or less than its author proved. Rules
+        that declare no receipt are unconstrained.
+        """
+        counts: dict[str, int] = {}
+        for entry in report.entries:
+            counts[entry.rule_id] = counts.get(entry.rule_id, 0) + 1
+        for rule in rules:
+            if rule.expected is None:
+                continue
+            observed = counts.get(rule.id, 0)
+            if observed != rule.expected:
+                return r[bool].fail(
+                    f"ast-grep rule {rule.id} declares {rule.expected} "
+                    f"finding(s), scan produced {observed}"
+                )
+        return r[bool].ok(True)
+
+    @staticmethod
     def _parse_findings(
         stdout: str,
         root: Path,
@@ -542,6 +569,9 @@ class FlextInfraModGateEngine:
             files=frozenset(files),
             entries=tuple(entries),
         )
+        declared = cls._validate_expected_receipts(plan.rules, complete_report)
+        if declared.failure:
+            return r[m.Infra.ModScanReport].from_failure(declared)
         receipt = u.Infra.publish_mod_scan_evidence(
             root,
             complete_report,

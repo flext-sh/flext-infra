@@ -32,25 +32,26 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         if not manifest_path.is_file():
             u.Cli.info(f"lazy-init: manifest not found at {manifest_path}")
             return None
-        try:
-            import yaml
-
-            manifest = yaml.safe_load(
-                manifest_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            )
-            if not isinstance(manifest, dict):
-                return None
-            package_exports = manifest.get(self._current_package_for_manifest())
-            if not isinstance(package_exports, list):
-                return None
-            result = frozenset(str(name) for name in package_exports)
-            u.Cli.info(
-                f"lazy-init: loaded manifest for {self._current_package_for_manifest()} with {len(result)} exports"
-            )
-            return result
-        except Exception as e:
-            u.Cli.info(f"lazy-init: manifest load failed: {e}")
+        # The manifest is a declared contract, so it is read through the
+        # canonical YAML owner and every defect escapes. The previous form
+        # imported yaml inside a try, caught bare `Exception` and returned
+        # `None`, which turned a malformed or unreadable contract into "no
+        # contract declared" — the silent-failure shape the project bans.
+        loaded = u.Cli.files_read_yaml(manifest_path)
+        if loaded.failure:
             return None
+        manifest = loaded.value
+        if not isinstance(manifest, dict):
+            return None
+        package = self._current_package_for_manifest()
+        package_exports = manifest.get(package)
+        if not isinstance(package_exports, list):
+            return None
+        result = frozenset(str(name) for name in package_exports)
+        u.Cli.info(
+            f"lazy-init: loaded manifest for {package} with {len(result)} exports"
+        )
+        return result
 
     def _current_package_for_manifest(self) -> str:
         """Return the package key used in the exports manifest.

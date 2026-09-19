@@ -90,16 +90,16 @@ class FlextInfraUtilitiesRepository:
         """
         source = codegen.infra_repository
         distribution = source.distribution
-        detected = cls._detected_infra_url(
-            repository_root=repository_root, distribution=distribution
+        line = cls.flext_integration_line(
+            codegen=codegen, repository_root=repository_root
         )
-        if detected.failure:
-            return r[m.Infra.RepositoryRef].from_failure(detected)
+        if line.failure:
+            return r[m.Infra.RepositoryRef].from_failure(line)
         return r[m.Infra.RepositoryRef].ok(
             m.Infra.RepositoryRef(
                 name=distribution,
                 distribution=distribution,
-                url=detected.value,
+                url=f"{line.value.base_url}/{distribution}.git",
                 path=Path(distribution),
                 role=c.Infra.MakeProfile.STANDALONE,
                 provider=source.provider,
@@ -112,10 +112,58 @@ class FlextInfraUtilitiesRepository:
         )
 
     @classmethod
-    def _detected_infra_url(
-        cls, *, repository_root: Path, distribution: str
-    ) -> p.Result[str]:
-        """Detect the infrastructure distribution's canonical URL, fail loud."""
+    def flext_integration_line(
+        cls, *, codegen: m.Infra.CodegenConfigSpec, repository_root: Path
+    ) -> p.Result[m.Infra.WorkspaceIntegrationSpec]:
+        """Detect the FLEXT line (provider base URL and branch) a checkout consumes.
+
+        The line is a fact of the infrastructure dependency, never of the
+        consumer's own identity: every internal ``flext-*`` floor renders from
+        it, so a repository living in another organization still resolves the
+        whole family from one source. It is detected, never cataloged, from the
+        first declaration the checkout carries — the infrastructure checkout's
+        own origin and integration branch, a declared direct Git source for
+        the distribution (URL and ref), or the owning workspace manifest's
+        member entry on that workspace's integration branch. Two declared
+        sources that disagree, or none at all, fail loudly.
+        """
+        from flext_infra import u
+
+        source = codegen.infra_repository
+        distribution = source.distribution
+        preference = codegen.branch_policy.integration_branch_preference
+        detected = cls._detected_infra_source(
+            repository_root=repository_root,
+            distribution=distribution,
+            preference=preference,
+        )
+        if detected.failure:
+            return r[m.Infra.WorkspaceIntegrationSpec].from_failure(detected)
+        url, ref = detected.value
+        suffix = f"/{distribution}.git"
+        if not url.endswith(suffix):
+            return r[m.Infra.WorkspaceIntegrationSpec].fail(
+                f"infrastructure source must be the {distribution} repository: {url}"
+            )
+        organization, separator, _ = u.Infra.git_remote_identity(url).partition("/")
+        if not separator:
+            return r[m.Infra.WorkspaceIntegrationSpec].fail(
+                f"infrastructure source must name an owner and repository: {url}"
+            )
+        return r[m.Infra.WorkspaceIntegrationSpec].ok(
+            m.Infra.WorkspaceIntegrationSpec(
+                provider=source.provider,
+                branch=ref,
+                organization=organization,
+                base_url=url.removesuffix(suffix),
+            )
+        )
+
+    @classmethod
+    def _detected_infra_source(
+        cls, *, repository_root: Path, distribution: str, preference: t.StrSequence
+    ) -> p.Result[t.Pair[str, str]]:
+        """Detect the infrastructure distribution's canonical URL and ref."""
         from flext_infra import u
 
         metadata = u.Infra.read_project_metadata_result(repository_root)
@@ -126,42 +174,77 @@ class FlextInfraUtilitiesRepository:
                 )
             )
             if origin.failure or not origin.value.text.strip():
-                return r[str].fail(
+                return r[t.Pair[str, str]].fail(
                     "the infrastructure checkout must publish a Git origin: "
                     f"{repository_root}"
                 )
-            return r[str].ok(origin.value.text.strip())
+            branch = cls.resolve_integration_branch(
+                repository_root, preference=preference
+            )
+            if branch.failure:
+                return r[t.Pair[str, str]].from_failure(branch)
+            canonical = cls._canonical_https_url(origin.value.text.strip())
+            if canonical.failure:
+                return r[t.Pair[str, str]].from_failure(canonical)
+            return r[t.Pair[str, str]].ok((canonical.value, branch.value))
         pyproject_path = repository_root / c.Infra.PYPROJECT_FILENAME
         if pyproject_path.is_file():
-            declared = cls._declared_dependency_url(
-                pyproject_path=pyproject_path, distribution=distribution
+            declared = cls._declared_dependency_source(
+                pyproject_path=pyproject_path,
+                distribution=distribution,
+                prefix=f"{distribution.partition('-')[0]}-",
             )
             if declared.failure:
-                return r[str].from_failure(declared)
-            if declared.value:
-                return r[str].ok(declared.value)
+                return r[t.Pair[str, str]].from_failure(declared)
+            if declared.value[0]:
+                return declared
         manifest = cls._manifest_declared_url(
             repository_root=repository_root, distribution=distribution
         )
         if manifest.failure:
-            return r[str].from_failure(manifest)
+            return r[t.Pair[str, str]].from_failure(manifest)
         if manifest.value:
-            return r[str].ok(manifest.value)
-        return r[str].fail(
+            branch = cls.resolve_integration_branch(
+                repository_root, preference=preference
+            )
+            if branch.failure:
+                return r[t.Pair[str, str]].from_failure(branch)
+            return r[t.Pair[str, str]].ok((manifest.value, branch.value))
+        return r[t.Pair[str, str]].fail(
             f"infrastructure repository {distribution} is undeclared by this "
             f"checkout: no project identity, no direct git dependency source, "
             f"and no workspace manifest entry: {repository_root}"
         )
 
-    @classmethod
-    def _declared_dependency_url(
-        cls, *, pyproject_path: Path, distribution: str
-    ) -> p.Result[str]:
-        """Return the pyproject-declared direct Git URL for one distribution.
+    @staticmethod
+    def _canonical_https_url(url: str) -> p.Result[str]:
+        """Canonicalize one Git remote URL to its HTTPS form, fail loud."""
+        if url.startswith("https://"):
+            return r[str].ok(url)
+        if url.startswith("http://"):
+            return r[str].ok(f"https://{url.removeprefix('http://')}")
+        if url.startswith("ssh://"):
+            return r[str].ok(
+                f"https://{url.removeprefix('ssh://').removeprefix('git@')}"
+            )
+        if url.startswith("git@") and ":" in url:
+            host, _, path = url.removeprefix("git@").partition(":")
+            return r[str].ok(f"https://{host}/{path}")
+        return r[str].fail(f"git remote url is not canonicalizable to HTTPS: {url}")
 
-        A plain (source-less) requirement names a workspace dependency whose
-        URL the workspace manifest owns, so it is not a failure here; only a
-        declared direct source carries a URL this layer can use.
+    @classmethod
+    def _declared_dependency_source(
+        cls, *, pyproject_path: Path, distribution: str, prefix: str
+    ) -> p.Result[t.Pair[str, str]]:
+        """Return the family line the pyproject declares, as a source for one member.
+
+        Every declared direct Git source of an internal ``{prefix}*``
+        dependency names the same line: one provider base URL and one ref. A
+        plain (source-less) requirement names a workspace dependency whose URL
+        the workspace manifest owns, so it is not a failure here. Members
+        declared from different lines in one document are a loud failure —
+        the family renders from one source — and the detected line is
+        returned as the source of ``distribution``.
         """
         from flext_infra import u
 
@@ -169,10 +252,12 @@ class FlextInfraUtilitiesRepository:
 
         text = u.Cli.files_read_text(pyproject_path)
         if text.failure:
-            return r[str].from_failure(text)
+            return r[t.Pair[str, str]].from_failure(text)
         payload = u.Cli.toml_mapping_from_text(text.value)
         if payload is None:
-            return r[str].fail(f"pyproject is not valid TOML: {pyproject_path}")
+            return r[t.Pair[str, str]].fail(
+                f"pyproject is not valid TOML: {pyproject_path}"
+            )
         requirements: list[str] = []
         project = payload.get(c.Infra.PROJECT)
         if isinstance(project, dict):
@@ -188,23 +273,40 @@ class FlextInfraUtilitiesRepository:
                 requirements.extend(
                     FlextInfraUtilitiesPyprojectConform.raw_requirement_values(group)
                 )
+        lines: dict[t.Pair[str, str], str] = {}
         for requirement in requirements:
-            if FlextInfraUtilitiesDependencies.dep_name(requirement) != distribution:
+            name = FlextInfraUtilitiesDependencies.dep_name(requirement)
+            if name is None or not name.startswith(prefix):
                 continue
             parsed = cls.declared_git_source(requirement)
             if parsed.failure:
-                return r[str].from_failure(parsed)
-            url = parsed.value[0] if parsed.value else ""
+                return r[t.Pair[str, str]].from_failure(parsed)
+            url, ref = parsed.value
             if not url:
                 continue
             if not url.startswith("https://"):
-                return r[str].fail(
-                    "declared infrastructure dependency provenance must be "
-                    f"HTTPS: {requirement}"
+                return r[t.Pair[str, str]].fail(
+                    "declared internal dependency provenance must be HTTPS: "
+                    f"{requirement}"
                 )
-            return r[str].ok(url)
+            suffix = f"/{name}.git"
+            if not url.endswith(suffix):
+                return r[t.Pair[str, str]].fail(
+                    f"internal dependency source must be the {name} repository: "
+                    f"{requirement}"
+                )
+            lines.setdefault((url.removesuffix(suffix), ref), requirement)
+        if len(lines) > 1:
+            declared = "; ".join(sorted(lines.values()))
+            return r[t.Pair[str, str]].fail(
+                f"{pyproject_path.name} declares conflicting {prefix}* line sources "
+                f"(one family, one provider and ref): {declared}"
+            )
+        if lines:
+            (base_url, ref), _ = next(iter(lines.items()))
+            return r[t.Pair[str, str]].ok((f"{base_url}/{distribution}.git", ref))
         # No declared source: absence is an EMPTY payload, never None.
-        return r[str].ok("")
+        return r[t.Pair[str, str]].ok(("", ""))
 
     @staticmethod
     def _manifest_declared_url(

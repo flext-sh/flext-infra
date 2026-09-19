@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from .worktree_materialization import (
         FlextInfraUtilitiesGitWorktreeMaterializationMixin,
     )
+    from .worktree_measure import FlextInfraUtilitiesGitWorktreeMeasureMixin
     from .worktree_patch import FlextInfraUtilitiesGitWorktreePatchMixin
     from .worktree_removal import FlextInfraUtilitiesGitWorktreeRemovalMixin
     from .worktree_roots import FlextInfraUtilitiesGitWorktreeRootsMixin
@@ -49,6 +50,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitWorktreeFactsMixin",
     "FlextInfraUtilitiesGitWorktreeIO",
     "FlextInfraUtilitiesGitWorktreeMaterializationMixin",
+    "FlextInfraUtilitiesGitWorktreeMeasureMixin",
     "FlextInfraUtilitiesGitWorktreeMixin",
     "FlextInfraUtilitiesGitWorktreePatchMixin",
     "FlextInfraUtilitiesGitWorktreeRemovalMixin",
@@ -78,6 +80,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".worktree_materialization": (
                 "FlextInfraUtilitiesGitWorktreeMaterializationMixin",
             ),
+            ".worktree_measure": ("FlextInfraUtilitiesGitWorktreeMeasureMixin",),
             ".worktree_patch": ("FlextInfraUtilitiesGitWorktreePatchMixin",),
             ".worktree_removal": ("FlextInfraUtilitiesGitWorktreeRemovalMixin",),
             ".worktree_roots": ("FlextInfraUtilitiesGitWorktreeRootsMixin",),

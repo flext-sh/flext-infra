@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 
     from .test_docs_github_links import TestsFlextInfraUtilitiesDocsGithubLinks
     from .test_git_facet_gitpython import TestsFlextInfraGitFacet
-    from .test_git_worktree_facts import TestsGitWorktreeFacts
     from .test_rope_structure import TestsFlextInfraRopeStructure
     from .test_safety import TestsFlextInfraUtilitiesSafety
 __all__: tuple[str, ...] = (
@@ -21,7 +20,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraRopeStructure",
     "TestsFlextInfraUtilitiesDocsGithubLinks",
     "TestsFlextInfraUtilitiesSafety",
-    "TestsGitWorktreeFacts",
     "c",
     "d",
     "e",
@@ -45,7 +43,6 @@ _LAZY_IMPORTS = MappingProxyType(
         MappingProxyType({
             ".test_docs_github_links": ("TestsFlextInfraUtilitiesDocsGithubLinks",),
             ".test_git_facet_gitpython": ("TestsFlextInfraGitFacet",),
-            ".test_git_worktree_facts": ("TestsGitWorktreeFacts",),
             ".test_rope_structure": ("TestsFlextInfraRopeStructure",),
             ".test_safety": ("TestsFlextInfraUtilitiesSafety",),
             "flext_tests": (
