@@ -65,6 +65,11 @@ class FlextInfraCodegenConformBeadsRoutes(FlextInfraCodegenConformDocsOwnership)
             Path(c.Infra.BEADS_METADATA_RELPATH).name,
             c.Infra.BEADS_LOCAL_VERSION_FILENAME,
             c.Infra.BEADS_LAST_TOUCHED_FILENAME,
+            # Passive bd runtime exports: the bd client rewrites these from
+            # the rig's Dolt ledger on every interaction, so they are
+            # regenerable projections of ledger truth, never composed output.
+            "issues.jsonl",
+            "interactions.jsonl",
         })
         route = root / c.Infra.BEADS_DIRNAME
         if route.is_symlink():
