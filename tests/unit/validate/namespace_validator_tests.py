@@ -119,9 +119,7 @@ class TestsFlextInfraNamespaceValidator:
         )
 
     def test_facade_alias_before_class_is_not_canonical(self, tmp_path: Path) -> None:
-        source = self._read_fixture("rule0_valid.py").replace(
-            "m = FlextTestModels", ""
-        )
+        source = self._read_fixture("rule0_valid.py").replace("m = FlextTestModels", "")
         source = source.replace(
             "class FlextTestModels(m):",
             "m = FlextTestModels\n\nclass FlextTestModels(m):",

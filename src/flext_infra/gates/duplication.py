@@ -219,9 +219,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 f"workspace manifest model validation ({manifest_path})",
                 validated.error,
             )
-        return r[t.StrSequence].ok(
-            tuple(validated.value.repository.duplication_trees)
-        )
+        return r[t.StrSequence].ok(tuple(validated.value.repository.duplication_trees))
 
     def _scope_paths(self) -> t.StrSequence:
         """Resolve canonical source, test, config, and template roots once."""
