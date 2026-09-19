@@ -286,15 +286,13 @@ class FlextInfraUtilitiesCodegen(
             match = c.Infra.DETECTION_FINAL_DECL_RE.match(line)
             if match is None:
                 continue
-            parsed.append(
-                (
-                    match.group("name"),
-                    match.group("ann"),
-                    match.group("value").strip(),
-                    ".".join(name for name, _ in class_stack),
-                    line_number,
-                )
-            )
+            parsed.append((
+                match.group("name"),
+                match.group("ann"),
+                match.group("value").strip(),
+                ".".join(name for name, _ in class_stack),
+                line_number,
+            ))
         return tuple(parsed)
 
     @staticmethod
