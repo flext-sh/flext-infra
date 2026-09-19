@@ -86,5 +86,4 @@ class FlextInfraConfig(FlextCliConfig):
 config: FlextInfraConfig = FlextInfraConfig.fetch_global()
 """Pre-instantiated frozen config singleton — ``from flext_infra import config``."""
 
-
 __all__: list[str] = ["FlextInfraConfig", "config"]
