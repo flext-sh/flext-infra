@@ -20,7 +20,7 @@ class TestsFlextInfraCodegenCensusModels:
 
     def test_named_groups_present(self) -> None:
         match = c.Infra.VIOLATION_PATTERN.match("[NS-001-001] src/file.py:10 — msg")
-        tm.that(match, none=False)
+        tm.that(match is not None, eq=True)
         if match is not None:
             tm.that(set(match.groupdict()), eq={"rule", "module", "line", "message"})
 

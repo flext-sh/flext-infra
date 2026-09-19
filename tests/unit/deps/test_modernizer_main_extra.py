@@ -90,10 +90,10 @@ class TestsFlextInfraDepsModernizerMainExtra:
             modernizer.run()
         tm.that(str(raised.value), has=str(selected_pyproject))
 
-    def test_run_rewrite_constraints_requires_uv_lock(
+    def test_run_rewrite_constraints_uses_provisioned_runtime(
         self, modernizer_workspace: Path
     ) -> None:
-        """Reject constraint rewriting when the lock SSOT is unavailable."""
+        """Rewriting does not require a persisted dependency resolution."""
         modernizer = FlextInfraPyprojectModernizer(
             repository_root=modernizer_workspace,
             apply_changes=True,
@@ -101,13 +101,13 @@ class TestsFlextInfraDepsModernizerMainExtra:
             skip_comments=True,
             skip_check=True,
         )
+        tm.that(modernizer.run(), eq=0)
+        tm.that((modernizer_workspace / "uv.lock").exists(), eq=False)
 
-        tm.that(modernizer.run(), eq=2)
-
-    def test_run_rewrite_constraints_preserves_attached_submodule_lock(
+    def test_run_rewrite_constraints_keeps_attached_submodule_manifest(
         self, modernizer_workspace: Path
     ) -> None:
-        """Treat an attached Git submodule lock as inactive standalone metadata."""
+        """Read runtime versions without creating a dependency lock in a member."""
         source_repository = modernizer_workspace.parent / "flext-core-source"
         source_repository.mkdir()
         (source_repository / c.Infra.PYPROJECT_FILENAME).write_text(
@@ -116,18 +116,6 @@ class TestsFlextInfraDepsModernizerMainExtra:
         package_init = source_repository / "src" / "flext_core" / "__init__.py"
         package_init.parent.mkdir(parents=True)
         package_init.write_text('"""FLEXT Core test package."""\n', encoding="utf-8")
-        member_lock_content = (
-            "version = 1\n"
-            "[manifest]\n"
-            'members = ["flext-core"]\n'
-            "[[package]]\n"
-            'name = "typing-extensions"\n'
-            'version = "4.15.0"\n'
-            'source = { registry = "https://pypi.org/simple" }\n'
-        )
-        (source_repository / c.Infra.UV_LOCK_FILENAME).write_text(
-            member_lock_content, encoding="utf-8"
-        )
         u.Tests.initialize_git_repo(source_repository)
 
         (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).write_text(
@@ -136,18 +124,6 @@ class TestsFlextInfraDepsModernizerMainExtra:
                 'dependencies = ["requests>=2.0"]\n\n'
                 "[tool.uv.workspace]\n"
                 'members = ["flext-core"]\n'
-            ),
-            encoding="utf-8",
-        )
-        (modernizer_workspace / c.Infra.UV_LOCK_FILENAME).write_text(
-            (
-                "version = 1\n"
-                "[manifest]\n"
-                'members = ["workspace", "flext-core"]\n'
-                "[[package]]\n"
-                'name = "requests"\n'
-                'version = "2.32.4"\n'
-                'source = { registry = "https://pypi.org/simple" }\n'
             ),
             encoding="utf-8",
         )
@@ -163,7 +139,6 @@ class TestsFlextInfraDepsModernizerMainExtra:
                 "flext-core",
             ),
         )
-        member_lock = modernizer_workspace / "flext-core" / c.Infra.UV_LOCK_FILENAME
 
         exit_code = FlextInfraPyprojectModernizer(
             repository_root=modernizer_workspace,
@@ -174,7 +149,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         ).run()
 
         tm.that(exit_code, eq=0)
-        tm.that(member_lock.read_text(encoding="utf-8"), eq=member_lock_content)
+        tm.that((modernizer_workspace / "flext-core" / "uv.lock").exists(), eq=False)
         tm.that(
             (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
                 encoding="utf-8"
@@ -182,7 +157,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
             has='"requests>=2.0"',
         )
 
-    def test_run_apply_rewrites_dependency_constraints_from_uv_lock(
+    def test_run_apply_rewrites_dependency_constraints_from_runtime(
         self, modernizer_workspace: Path
     ) -> None:
         """Rewrite registry constraints while preserving internal dependencies."""
@@ -199,34 +174,6 @@ class TestsFlextInfraDepsModernizerMainExtra:
                 'rich = ">=10"\n'
                 'pendulum = { version = ">=2.0", extras = ["test"] }\n'
                 'flext-core = { path = "../flext-core", develop = true }\n'
-            ),
-            encoding="utf-8",
-        )
-        (modernizer_workspace / "uv.lock").write_text(
-            (
-                "version = 1\n"
-                "[manifest]\n"
-                'members = ["workspace", "flext-core"]\n'
-                "[[package]]\n"
-                'name = "requests"\n'
-                'version = "2.32.4"\n'
-                'source = { registry = "https://pypi.org/simple" }\n'
-                "[[package]]\n"
-                'name = "httpx"\n'
-                'version = "0.28.1"\n'
-                'source = { registry = "https://pypi.org/simple" }\n'
-                "[[package]]\n"
-                'name = "rich"\n'
-                'version = "14.2.0"\n'
-                'source = { registry = "https://pypi.org/simple" }\n'
-                "[[package]]\n"
-                'name = "pendulum"\n'
-                'version = "3.1.0"\n'
-                'source = { registry = "https://pypi.org/simple" }\n'
-                "[[package]]\n"
-                'name = "flext-core"\n'
-                'version = "0.12.0-dev"\n'
-                'source = { editable = "." }\n'
             ),
             encoding="utf-8",
         )
@@ -247,25 +194,13 @@ class TestsFlextInfraDepsModernizerMainExtra:
     def test_run_apply_rewrites_constraints_as_open_floor(
         self, modernizer_workspace: Path
     ) -> None:
-        """Use uv.lock as the floor without imposing an artificial upper bound."""
+        """Use installed versions as floors without imposing an artificial upper bound."""
         (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
                 'name = "workspace"\n'
                 'version = "0.1.0"\n'
                 'dependencies = ["requests>=2.0"]\n'
-            ),
-            encoding="utf-8",
-        )
-        (modernizer_workspace / "uv.lock").write_text(
-            (
-                "version = 1\n"
-                "[manifest]\n"
-                'members = ["workspace"]\n'
-                "[[package]]\n"
-                'name = "requests"\n'
-                'version = "2.32.4"\n'
-                'source = { registry = "https://pypi.org/simple" }\n'
             ),
             encoding="utf-8",
         )
@@ -319,7 +254,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         result = modernizer.conform_source(source, path=tmp_path / "pyproject.toml")
 
         error = tm.fail(result)
-        tm.that(error, has=["taplo format failed (1)", str(tmp_path / ".taplo.toml")])
+        tm.that(error, has=["taplo format failed (1)", "invalid configuration", "/x/["])
         tm.that(
             error, lacks=["couldn't exec process", "pyproject tooling render failed"]
         )

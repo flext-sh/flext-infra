@@ -240,14 +240,29 @@ class FlextInfraModelsCheck:
         ]
 
     # -- SARIF 2.1.0 report models -----------------------------------------
+    # Each model keeps flat fields; ``model_serializer`` emits the nested SARIF
+    # shape and the matching ``AliasPath`` validation aliases read that same
+    # shape back, so an emitted report validates into the model it came from.
 
     class SarifRule(m.ContractModel):
         """Compact SARIF rule descriptor."""
 
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(validate_by_name=True)
+
         id: Annotated[str, m.Field(description="Rule identifier")]
-        short_description: Annotated[str, m.Field(description="Rule short description")]
+        short_description: Annotated[
+            str,
+            m.Field(
+                validation_alias=m.AliasPath("shortDescription", "text"),
+                description="Rule short description",
+            ),
+        ]
         help_uri: Annotated[
-            str, m.Field(description="Documentation URL of the tool behind the gate")
+            str,
+            m.Field(
+                validation_alias="helpUri",
+                description="Documentation URL of the tool behind the gate",
+            ),
         ]
 
         @u.model_serializer
@@ -262,11 +277,40 @@ class FlextInfraModelsCheck:
     class SarifLocation(m.ContractModel):
         """Compact SARIF location source span."""
 
-        uri: Annotated[str, m.Field(description="Artifact URI")]
-        start_line: Annotated[int, m.Field(description="Start line (1-based)")]
-        start_column: Annotated[int, m.Field(description="Start column (1-based)")]
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(validate_by_name=True)
+
+        uri: Annotated[
+            str,
+            m.Field(
+                validation_alias=m.AliasPath(
+                    "physicalLocation", "artifactLocation", "uri"
+                ),
+                description="Artifact URI",
+            ),
+        ]
+        start_line: Annotated[
+            int,
+            m.Field(
+                validation_alias=m.AliasPath("physicalLocation", "region", "startLine"),
+                description="Start line (1-based)",
+            ),
+        ]
+        start_column: Annotated[
+            int,
+            m.Field(
+                validation_alias=m.AliasPath(
+                    "physicalLocation", "region", "startColumn"
+                ),
+                description="Start column (1-based)",
+            ),
+        ]
         uri_base_id: str = m.Field(
-            "%SRCROOT%", description="URI base identifier", validate_default=True
+            "%SRCROOT%",
+            validation_alias=m.AliasPath(
+                "physicalLocation", "artifactLocation", "uriBaseId"
+            ),
+            description="URI base identifier",
+            validate_default=True,
         )
 
         @u.model_serializer
@@ -288,9 +332,19 @@ class FlextInfraModelsCheck:
     class SarifResult(m.ContractModel):
         """SARIF result entry."""
 
-        rule_id: Annotated[str, m.Field(description="Rule identifier")]
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(validate_by_name=True)
+
+        rule_id: Annotated[
+            str, m.Field(validation_alias="ruleId", description="Rule identifier")
+        ]
         level: Annotated[str, m.Field(description="Result level (error/warning)")]
-        message: Annotated[str, m.Field(description="Result message")]
+        message: Annotated[
+            str,
+            m.Field(
+                validation_alias=m.AliasPath("message", "text"),
+                description="Result message",
+            ),
+        ]
         locations: list[FlextInfraModelsCheck.SarifLocation] = m.Field(
             description="Result locations"
         )
@@ -310,12 +364,25 @@ class FlextInfraModelsCheck:
     class SarifRun(m.ContractModel):
         """SARIF run entry."""
 
-        tool_name: Annotated[str, m.Field(description="Tool name")]
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(validate_by_name=True)
+
+        tool_name: Annotated[
+            str,
+            m.Field(
+                validation_alias=m.AliasPath("tool", "driver", "name"),
+                description="Tool name",
+            ),
+        ]
         information_uri: str = m.Field(
-            "", description="Tool documentation URL", validate_default=True
+            "",
+            validation_alias=m.AliasPath("tool", "driver", "informationUri"),
+            description="Tool documentation URL",
+            validate_default=True,
         )
         rules: t.VariadicTuple[FlextInfraModelsCheck.SarifRule] = m.Field(
-            default_factory=tuple, description="Rule descriptors"
+            default_factory=tuple,
+            validation_alias=m.AliasPath("tool", "driver", "rules"),
+            description="Rule descriptors",
         )
         results: t.VariadicTuple[FlextInfraModelsCheck.SarifResult] = m.Field(
             default_factory=tuple, description="Run results"
@@ -340,9 +407,11 @@ class FlextInfraModelsCheck:
             }
 
     class SarifReport(m.ArbitraryTypesModel):
-        """Complete SARIF 2.1.0 report."""
+        """Complete SARIF 2.1.0 report; serializes and validates the same JSON."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            validate_by_name=True, serialize_by_alias=True
+        )
 
         schema_uri: c.Infra.SarifSchema = m.Field(
             c.Infra.SarifSchema.V2_1_0,

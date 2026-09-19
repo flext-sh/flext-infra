@@ -7,12 +7,7 @@ repo_name: {{ repo_name }}
 repo_url: {{ repo_url }}
 {{ mk.site_components(exclude_docs_block, exclude_plugin_block, mkdocstrings_paths_block) }}
 
-nav:
-  - Home: index.md
-  - Projects: projects/generated/catalog.md
-  - API Reference:
-      - Index: api-reference/README.md
-      - API Overview: api-reference/generated/overview.md
-
+# MkDocs discovers the complete documentation tree, including maintained pages.
+# A fixed three-page nav silently omitted guides, standards, and decisions.
 {{ mk.not_in_nav_block() }}
 {{ mk.validation_block() }}

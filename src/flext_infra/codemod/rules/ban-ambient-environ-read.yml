@@ -12,6 +12,7 @@ files:
 ignores:
   - "**/settings.py"
   - "**/_settings/**"
+  - "**/_settings.py"
 rule:
   any:
     - pattern: os.environ[$KEY]

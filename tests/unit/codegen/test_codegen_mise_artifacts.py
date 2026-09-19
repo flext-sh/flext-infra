@@ -212,6 +212,17 @@ class TestsFlextInfraCodegenMiseArtifacts:
 
         tm.ok(result, eq=True)
 
+    def test_shipped_jscpd_plan_uses_only_configured_route(self) -> None:
+        """The generated plan must contain only the typed jscpd route."""
+        toolchain = config.Infra.codegen.toolchain
+        plan = test_u.Tests.toml_payload(
+            (Path(__file__).parents[3] / ".mise.toml").read_text(encoding="utf-8")
+        )
+        tools = test_u.Tests.toml_mapping(plan["tools"])
+
+        tm.that(tools.get(toolchain.jscpd_selector), eq=toolchain.jscpd_version)
+        tm.that("npm:jscpd" in tools, eq=False)
+
     def test_unix_launcher_requires_executable_mode(self, tmp_path: Path) -> None:
         root = self._project(tmp_path / "project")
         (root / "bin" / "mise").chmod(0o644)

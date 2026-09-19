@@ -16,10 +16,15 @@ Infra:
         rules:
           default: true
           MD001: false
+          # MD013 prose and code lengths are THE markdown line contract: the
+          # prettier projection (printWidth) and the .prettierrc render read
+          # MD013.line_length, converging with ruff/yamlfix at 88. Headings
+          # stay at 200 because no tool can reflow a heading — a shorter limit
+          # would only manufacture unfixable findings.
           MD013:
-            line_length: 500
+            line_length: 88
             heading_line_length: 200
-            code_block_line_length: 500
+            code_block_line_length: 88
             tables: false
           MD022: false
           MD023: false
@@ -37,10 +42,20 @@ Infra:
           MD057: false
           MD060: false
           MD076: false
+        # Prettier formatting policy (markdown-format gate): rendered into the
+        # managed .prettierrc. prettier --write is owned by `make fmt` and
+        # prettier --check by `make check`; `make fix` never runs it.
+        prettier:
+          prose-wrap: always
+          tab-width: 4
+          md-tab-width: 2
         exclude:
           # AGENTS.md is a tool-managed projection (beads integration + codex
           # setup blocks): gating generated output is a projection defect.
+          # CLAUDE.md is its symlink and would rewrite the projection through
+          # the link.
           - AGENTS.md
+          - CLAUDE.md
           - .kilo/**
           - .omo/**
           - .tmp/**
@@ -63,6 +78,14 @@ Infra:
           - legado/**
           - .github/**
           - site/**
+          # target/ is a fully generated build tree (mise/rust-style outputs):
+          # formatting generated output is a projection defect.
+          - target/**
+          # Provider-surface projections and runtime state owned by ai-hub:
+          # never a lint/format surface.
+          - .agents/**
+          - .gemini/**
+          - .beads/**
           # Gen-emitted table projections whose emitter lives outside the
           # codegen surface; MD058 (blank lines around tables) is upstream of
           # the projection and cannot be repaired at the projection itself.
@@ -756,3 +779,8 @@ ManagedArtifacts:
       # and raises when rope changes its internals), so this exemption covers the
       # ruff rule alone. Removing it reports exactly 12 SLF001, all under _rope/.
       src/flext_infra/_utilities/_rope/**/*.py: [private-member-access]
+
+mod:
+  phases:
+    # Component toggles for make mod (rule: toggles are data, not flags).
+    import-alignment: true

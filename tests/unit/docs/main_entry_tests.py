@@ -106,7 +106,7 @@ class TestsFlextInfraDocsMainEntry:
                 "--projects",
                 "flext-a",
             ]),
-            eq=1,
+            eq=2,
         )
         tm.that((workspace / ".reports/docs/generate-report.md").exists(), eq=False)
         tm.that(

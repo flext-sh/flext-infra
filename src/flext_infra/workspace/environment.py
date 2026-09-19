@@ -42,19 +42,33 @@ class FlextInfraWorkspaceEnvironmentMixin:
     def _sync_envrc(
         cls, request: m.Infra.WorkspaceEnvironmentSyncRequest
     ) -> p.Result[bool]:
-        """Write canonical ``.envrc`` when absent, generated, or forced."""
+        """Write canonical ``.envrc`` when absent, generated, or forced.
+
+        The rendered activation tier is declarative per repository: a
+        governed Beads identity with ``gascity_enabled`` renders the city
+        server wiring, one with city participation disabled renders the
+        repository-local ``bd`` base, and a repository without any Beads
+        identity renders only the terminal unset chain. A programmatic
+        ``request.beads`` spec always carries its own backend.
+        """
         gascity = request.beads
         identity = (
             request.repository_root / c.CONFIG_DIR_NAME / c.Infra.BEADS_CONFIG_FILENAME
         )
-        if gascity is None and identity.is_file():
-            workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
-                request.repository_root
-            )
-            if workspace.failure:
-                return r[bool].from_failure(workspace)
-            if workspace.value.gascity_enabled:
-                gascity = m.Infra.BeadsWorkspaceEnvironmentSpec()
+        if gascity is None:
+            if not identity.is_file():
+                gascity = m.Infra.BeadsWorkspaceEnvironmentSpec(backend="none")
+            else:
+                workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+                    request.repository_root
+                )
+                if workspace.failure:
+                    return r[bool].from_failure(workspace)
+                gascity = (
+                    m.Infra.BeadsWorkspaceEnvironmentSpec()
+                    if workspace.value.gascity_enabled
+                    else m.Infra.BeadsWorkspaceEnvironmentSpec(backend="local")
+                )
         rendered = cls._render_environment_template(
             c.Infra.ENVRC_FILENAME, gascity=gascity
         )

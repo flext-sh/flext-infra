@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -10,14 +11,12 @@ from flext_tests import tm
 from flext_infra import c, config, m, u
 from tests import u as test_u
 
-_PROVIDER_SPEC = config.Infra.codegen.providers[0]
-
 
 class TestsFlextInfraCodegenPyprojectConform:
     def _repository(
         self, distribution: str, *, role: c.Infra.MakeProfile, path: str
     ) -> m.Infra.RepositoryRef:
-        provider = config.Infra.codegen.providers[0]
+        provider = test_u.Tests.provider()
         return m.Infra.RepositoryRef(
             name=distribution,
             distribution=distribution,
@@ -70,7 +69,6 @@ class TestsFlextInfraCodegenPyprojectConform:
             u.Infra.pyproject_conform(
                 '[project]\nname = "member"\nversion = "1.0"\n'
                 'requires-python = ">=3.13"\ndependencies = []\n',
-                providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
@@ -78,9 +76,24 @@ class TestsFlextInfraCodegenPyprojectConform:
             )
         )
         (root / "pyproject.toml").write_text(rendered, encoding="utf-8")
-        tm.ok(u.Cli.run_checked(["uv", "lock", "--offline"], cwd=parent))
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    "uv",
+                    "pip",
+                    "install",
+                    "--dry-run",
+                    "--offline",
+                    "--python",
+                    sys.executable,
+                    "-r",
+                    str(root / "pyproject.toml"),
+                ],
+                cwd=parent,
+            )
+        )
         tm.that((root / "uv.lock").exists(), eq=False)
-        tm.that((parent / "uv.lock").is_file(), eq=True)
+        tm.that((parent / "uv.lock").exists(), eq=False)
 
     @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
     def test_global_constraints_apply_without_direct_runtime_requirements(
@@ -93,7 +106,6 @@ class TestsFlextInfraCodegenPyprojectConform:
         first = tm.ok(
             u.Infra.pyproject_conform(
                 content,
-                providers=config.Infra.codegen.providers,
                 workspace=self._workspace(),
                 workspace_mode=profile,
                 toolchain=config.Infra.codegen.toolchain,
@@ -111,7 +123,6 @@ class TestsFlextInfraCodegenPyprojectConform:
         second = tm.ok(
             u.Infra.pyproject_conform(
                 first,
-                providers=config.Infra.codegen.providers,
                 workspace=self._workspace(),
                 workspace_mode=profile,
                 toolchain=config.Infra.codegen.toolchain,
@@ -189,7 +200,6 @@ class TestsFlextInfraCodegenPyprojectConform:
         conformed = tm.ok(
             u.Infra.pyproject_conform(
                 overlaid,
-                providers=config.Infra.codegen.providers,
                 workspace=self._workspace(),
                 workspace_mode=c.Infra.MakeProfile.WORKSPACE,
                 toolchain=config.Infra.codegen.toolchain,
@@ -224,7 +234,6 @@ members = ["flext-core"]
 [tool.uv.sources.flext-core]
 workspace = true
 """,
-            providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.MakeProfile.WORKSPACE,
         )
@@ -238,19 +247,35 @@ workspace = true
             eq=("flext-core",),
         )
 
-    def test_standalone_uses_catalog_git_provenance(self) -> None:
+    def test_standalone_requires_declared_git_source(self) -> None:
+        """A source-less internal dependency outside the workspace overlay fails."""
         workspace = self._workspace()
-        member = workspace.subprojects[0]
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
-            providers=config.Infra.codegen.providers,
+            workspace=workspace,
+            workspace_mode=c.Infra.MakeProfile.STANDALONE,
+        )
+        tm.fail(
+            result,
+            has="declares no direct git source and is not a workspace dependency",
+        )
+
+    def test_standalone_canonicalizes_the_declared_git_source(self) -> None:
+        """The declared requirement line is the only URL and branch authority."""
+        workspace = self._workspace()
+        member = workspace.subprojects[0]
+        declared = (
+            f"{member.distribution} @ git+{member.url}@{test_u.Tests.provider_branch()}"
+        )
+        result = u.Infra.pyproject_dependencies_conform(
+            f'[project]\nname = "external-consumer"\ndependencies = ["{declared}"]\n',
             workspace=workspace,
             workspace_mode=c.Infra.MakeProfile.STANDALONE,
         )
         rendered = tm.ok(result)
         tm.that(
             test_u.Tests.toml_strings_at(rendered, "project", "dependencies"),
-            eq=(f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}",),
+            eq=(declared,),
         )
 
     def test_dependency_conformance_removes_only_legacy_uv_constraint(self) -> None:
@@ -265,7 +290,6 @@ constraint-dependencies = ["uv>=0", "requests<3"]
         first = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 source,
-                providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.MakeProfile.STANDALONE,
             )
@@ -273,7 +297,6 @@ constraint-dependencies = ["uv>=0", "requests<3"]
         second = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 first,
-                providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.MakeProfile.STANDALONE,
             )
@@ -300,7 +323,6 @@ constraint-dependencies = ["uv>=0"]
         conformed = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 source,
-                providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.MakeProfile.STANDALONE,
             )
@@ -310,7 +332,7 @@ constraint-dependencies = ["uv>=0"]
         tm.that(uv_config["link-mode"], eq="copy")
         tm.that("constraint-dependencies" not in uv_config, eq=True)
 
-    def test_standalone_rejects_non_https_catalog_provenance(self) -> None:
+    def test_standalone_rejects_non_https_manifest_provenance(self) -> None:
         workspace = self._workspace()
         member = workspace.subprojects[0].model_copy(
             update={"url": "git@github.com:flext-sh/flext-core.git"}
@@ -318,7 +340,6 @@ constraint-dependencies = ["uv>=0"]
         invalid_workspace = workspace.model_copy(update={"subprojects": (member,)})
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
-            providers=config.Infra.codegen.providers,
             workspace=invalid_workspace,
             workspace_mode=c.Infra.MakeProfile.STANDALONE,
         )
@@ -330,13 +351,13 @@ constraint-dependencies = ["uv>=0"]
         result = u.Infra.pyproject_dependencies_conform(
             (
                 '[project]\nname = "workspace"\n'
-                f'dependencies = ["{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}"]\n'
+                f'dependencies = ["{member.distribution} @ git+{member.url}@'
+                f'{test_u.Tests.provider_branch()}"]\n'
                 "\n[tool.uv.workspace]\n"
                 'members = ["flext-core"]\n'
                 "\n[tool.uv.sources.flext-core]\n"
                 "workspace = true\n"
             ),
-            providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.MakeProfile.WORKSPACE,
         )
@@ -348,9 +369,13 @@ constraint-dependencies = ["uv>=0"]
             update={"uv_link_mode": "copy"}
         )
         required_dev = config.Infra.codegen.scaffold.project.dev
-        source = """[project]
+        declared_member_source = (
+            f"flext-core @ git+{workspace.subprojects[0].url}@"
+            f"{test_u.Tests.provider_branch()}"
+        )
+        source = f"""[project]
 name = "external-consumer"
-dependencies = ["flext-core @ ../flext-core", "requests>=2"]
+dependencies = ["{declared_member_source}", "requests>=2"]
 
 [dependency-groups]
 dev = ["custom-tool>=1"]
@@ -358,14 +383,13 @@ dev = ["custom-tool>=1"]
 [tool.uv]
 required-version = ">=0"
 exclude-newer = "7 days"
-exclude-newer-package = { cryptography = false }
+exclude-newer-package = {{ cryptography = false }}
 [tool.pyrefly]
 python-interpreter-path = "../.venv/bin/python"
 """
         first = tm.ok(
             u.Infra.pyproject_conform(
                 source,
-                providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=toolchain,
@@ -375,7 +399,6 @@ python-interpreter-path = "../.venv/bin/python"
         second = tm.ok(
             u.Infra.pyproject_conform(
                 first,
-                providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=toolchain,
@@ -419,7 +442,7 @@ python-interpreter-path = "../.venv/bin/python"
             test_u.Tests.toml_strings_at(first, "project", "dependencies")[0],
             eq=(
                 f"{workspace.subprojects[0].distribution} @ "
-                f"git+{workspace.subprojects[0].url}@{_PROVIDER_SPEC.branch}"
+                f"git+{workspace.subprojects[0].url}@{test_u.Tests.provider_branch()}"
             ),
         )
 
@@ -432,7 +455,6 @@ python-interpreter-path = "../.venv/bin/python"
             u.Infra.pyproject_conform(
                 '[project]\nname = "external-consumer"\n'
                 'version = "0.0.1"\ndependencies = []\n',
-                providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
@@ -455,7 +477,6 @@ dev = ["rumdl>=0.2.46", "custom-tool>=1"]
         conformed = tm.ok(
             u.Infra.pyproject_conform(
                 source,
-                providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=toolchain,
@@ -482,7 +503,6 @@ dependencies = []
         conformed = tm.ok(
             u.Infra.pyproject_conform(
                 source,
-                providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
@@ -555,7 +575,6 @@ skips = ["B101"]
         conformed = tm.ok(
             u.Infra.pyproject_conform(
                 first,
-                providers=config.Infra.codegen.providers,
                 workspace=self._workspace(),
                 workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
@@ -570,8 +589,10 @@ skips = ["B101"]
         )
         repeated = tm.ok(u.Infra.overlay_preserved(rendered, conformed))
         tm.that(
-            test_u.Tests.toml_strings_at(repeated, "project", "dependencies"),
-            eq=test_u.Tests.toml_strings_at(conformed, "project", "dependencies"),
+            frozenset(
+                test_u.Tests.toml_strings_at(repeated, "project", "dependencies")
+            ),
+            eq=expected_requirements,
         )
         dev = test_u.Tests.toml_strings_at(conformed, "dependency-groups", "dev")
         tm.that("custom-audit>=1" in dev, eq=True)

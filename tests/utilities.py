@@ -110,6 +110,45 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def namespace_fixture(name: str) -> str:
+            """Read a non-importable source fixture for namespace validation."""
+            fixture = (
+                Path(name).with_suffix(".pysrc") if name.endswith(".py") else Path(name)
+            )
+            return (
+                Path(__file__).parent / "fixtures" / "namespace_validator" / fixture
+            ).read_text(encoding="utf-8")
+
+        @staticmethod
+        def namespace_project(
+            tmp_path: Path, *, module_source: str, module_name: str
+        ) -> Path:
+            """Create a tracked canonical project with one overridden module."""
+            root, _ = TestsFlextInfraUtilities.Tests.namespace_project_path(
+                tmp_path, module_source=module_source, module_path=module_name
+            )
+            return root
+
+        @staticmethod
+        def namespace_project_path(
+            tmp_path: Path, *, module_source: str, module_path: str
+        ) -> t.Pair[Path, Path]:
+            """Create canonical facades and track the source or test module."""
+            project_root = tmp_path / "project"
+            package_dir = project_root / "src" / "flext_test"
+            package_dir.mkdir(parents=True)
+            _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+            TestsFlextInfraUtilities.Tests.write_canonical_package_layout(package_dir)
+            relative = Path(module_path)
+            target = (
+                project_root if relative.parts[0] == c.Infra.DIR_TESTS else package_dir
+            ) / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            _ = target.write_text(module_source, encoding="utf-8")
+            TestsFlextInfraUtilities.Tests.initialize_git_repo(project_root)
+            return project_root, target
+
+        @staticmethod
         def write_canonical_package_layout(package_dir: Path) -> None:
             """Materialize the complete facade layout a governed package declares.
 

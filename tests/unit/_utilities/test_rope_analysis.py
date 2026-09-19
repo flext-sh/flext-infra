@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import ast
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import u
@@ -16,6 +18,19 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraRopeAnalysis:
     """Behavior contract for Rope-backed semantic analysis."""
+
+    def test_ast_boundary_validates_before_traversal(self) -> None:
+        """Accept actual ASTs and reject unrelated external runtime objects."""
+        source_tree = ast.parse("value = 1")
+        tree = u.Infra.ensure_ast_node(source_tree)
+        tm.that(u.Infra.node_kind(tree), eq="Module")
+        nodes = u.Infra.walk_ast_nodes(tree)
+        tm.that(len(nodes), eq=len(list(ast.walk(source_tree))))
+        parents = u.Infra.ast_parent_map(tree)
+        child = u.Infra.ensure_ast_node(source_tree.body[0])
+        tm.that(u.Infra.is_module_level_node(child, parents), eq=True)
+        with pytest.raises(TypeError, match="Expected AST node"):
+            u.Infra.ensure_ast_node(object())
 
     def test_facade_scanner_reads_facade_with_imported_superclass(
         self, tmp_path: Path

@@ -1,6 +1,34 @@
 {% from "base_test_report_recipe.j2" import test_report_recipe -%}
 {% from "submodule_setup_recipe.j2" import submodule_setup_recipe -%}
 {% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe -%}
+{# ---- Shared command bases --------------------------------------------------
+   Every verb states only its delta (which gate list, which mode); the checker
+   invocation, the CI gate filter, the empty-gates guard, and the fmt/fix
+   bodies are each rendered from ONE definition so no verb or profile can
+   drift from another. #}
+{%- macro gates_csv(names) -%}{{ names|join(",") }}{%- endmacro -%}
+{%- macro gates_banner(names) -%}{{ names|join(" ") }}{%- endmacro -%}
+{%- macro check_run(gates, extra="") -%}$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "{{ gates }}" --projects .{{ extra }}{%- endmacro -%}
+{%- macro local_check_body() -%}
+{{ "\t" }}@set -eu; \
+		gates="{{ gates_csv(make.check_gates_default) }}"; \
+		if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
+			gates="{{ gates_csv(make.ci.check_gates) }}"; \
+			printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates: {{ gates_banner(make.ci.check_gates) }}\n'; \
+		fi; \
+		if [ -z "$$gates" ]; then \
+			printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
+			exit 2; \
+		fi; \
+		{{ check_run("$$gates") }}
+{%- endmacro -%}
+{%- macro fmt_body() -%}
+{{ "\t" }}@$(UV_RUN) ruff format {{ make.ruff.format_apply | join(" ") }} $(RUFF_PATHS)
+{{ "\t" }}@{{ check_run(gates_csv(make.fmt_gates), " --apply") }}
+{%- endmacro -%}
+{%- macro fix_body() -%}
+{{ "\t" }}@{{ check_run(gates_csv(make.check_gates_fixable), " --apply --report-findings") }}
+{%- endmacro -%}
 # @flext-generated: continuous
 # @flext-owner: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
 # @flext-adjust: edit the owner configuration or template; never this projection
@@ -101,11 +129,17 @@ override export FLEXT_PYTEST_TARGET_RAW := {{ make.testmon_cache.target_director
 PROJECT_STATE_ROOT := $(abspath $(PROJECT_ROOT)/../{{ state_directory_name }}/$(notdir $(PROJECT_ROOT)))
 # Scratch never lives inside a versioned tree: the home scratch root mirrors
 # the absolute checkout path so a sandbox is never a tracked scope of any
-# enclosing repository (workspace or linked worktree).
+# enclosing repository (workspace or linked worktree). Checkouts nested in a
+# VCS directory rename that segment, so the mirror never contains one; two
+# substitution passes rename adjacent repeated segments too.
 ifeq ($(strip $(HOME)),)
 $(error HOME is required to derive the scratch root)
 endif
-PROJECT_SCRATCH_ROOT := $(HOME)/{{ scratch_home_relative }}/{{ state_directory_name }}$(abspath $(PROJECT_ROOT))/{{ scratch_namespace }}
+PROJECT_SCRATCH_IDENTITY := $(abspath $(PROJECT_ROOT))/
+{% for segment, alias in scratch_identity_segment_aliases -%}
+PROJECT_SCRATCH_IDENTITY := $(subst /{{ segment }}/,/{{ alias }}/,$(subst /{{ segment }}/,/{{ alias }}/,$(PROJECT_SCRATCH_IDENTITY)))
+{% endfor -%}
+PROJECT_SCRATCH_ROOT := $(HOME)/{{ scratch_home_relative }}/{{ state_directory_name }}$(patsubst %/,%,$(PROJECT_SCRATCH_IDENTITY))/{{ scratch_namespace }}
 TESTMON_DATAFILE := $(PROJECT_STATE_ROOT)/{{ make.testmon_cache.namespace }}/{{ make.testmon_cache.database_filename }}
 export TESTMON_DATAFILE
 # === SECTION: REPOSITORY_ROOT isolation (managed) ===
@@ -324,19 +358,6 @@ define _dispatch
 		WHAT="" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$(1)"; \
 	fi
 endef
-{% else %}
-# Without script dispatch, a WHAT-specific custom handler still routes before
-# the builtin; anything else falls through to the canonical builtin target.
-define _dispatch
-	@set -eu; \
-	what="$(WHAT)"; \
-	custom="_custom_$(1)_$$what"; \
-	if [ -n "$$what" ] && $(SELF_MAKE) -n "$$custom" >/dev/null 2>&1; then \
-		$(SELF_MAKE) "$$custom"; \
-	else \
-		$(SELF_MAKE) "_builtin-$(1)"; \
-	fi
-endef
 {% endif %}
 
 define _run_for_all_projects
@@ -481,24 +502,16 @@ _builtin-self-test: _builtin_require_environment
 ) }}
 
 _builtin-self-check: _builtin_require_environment
-	@set -eu; \
-		gates="{% for gate in make.check_gates_default %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
-		if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
-			gates="{% for gate in make.ci.check_gates %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
-			printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates:{% for allowed in make.ci.check_gates %} {{ allowed }}{% endfor %}\n'; \
-		fi; \
-		if [ -z "$$gates" ]; then \
-		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
-		exit 2; \
-	fi; \
-	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects . --apply
+{{ local_check_body() }}
 
 _builtin-self-fmt: _builtin_require_environment
-	@$(UV_RUN) ruff format {{ make.ruff.format_apply | join(" ") }} $(RUFF_PATHS)
-	@$(UV_RUN) ruff check {{ make.ruff.lint_apply | join(" ") }} $(RUFF_PATHS)
+{{ fmt_body() }}
 
 _builtin-self-fix: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "{% for gate in make.check_gates_fixable %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}" --projects . --apply --report-findings
+{{ fix_body() }}
+
+_builtin-self-fix-enforcement: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) check fix-enforcement --repository-root "$(PROJECT_ROOT)" --safe-only --apply
 
 _builtin-self-build:
 	@$(UV) build --project "$(PROJECT_ROOT)"
@@ -511,9 +524,10 @@ _builtin-self-docs: _builtin_docs_all
 _builtin_build_artifacts:
 	@$(WORKSPACE_ORCHESTRATE) --verb build $(WORKSPACE_PROJECT_ARGS)
 
-# Check applies supported fixes and fails while findings remain. The workspace
-# delegates the same operation to each member; CI={{ make.ci.value }} keeps
-# make.ci.check_gates in each generated member handler.
+# Check is read-only: it validates and reports, never rewrites the tree (fix
+# and fmt own mutation). The workspace delegates the same operation to each
+# member; CI={{ make.ci.value }} keeps make.ci.check_gates in each generated
+# member handler.
 _builtin_check_all: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS)
 
@@ -532,22 +546,12 @@ _builtin_fix_enforcement: _builtin_require_environment
 _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
 
-# Local gates apply their declared repairs on every invocation.
-# Both check and fix fail while findings remain.
+# Check is read-only: it runs the gates without --apply, so the tree is left
+# unchanged; fix applies the declared repairs of the fixable gates.
 # CI={{ make.ci.value }} keeps make.ci.check_gates, the strict complement of
 # make.ci.local_check_gates.
 _builtin_check_all: _builtin_require_environment
-	@set -eu; \
-		gates="{% for gate in make.check_gates_default %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
-		if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
-			gates="{% for gate in make.ci.check_gates %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}"; \
-			printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates:{% for allowed in make.ci.check_gates %} {{ allowed }}{% endfor %}\n'; \
-		fi; \
-		if [ -z "$$gates" ]; then \
-		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
-		exit 2; \
-	fi; \
-	$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "$$gates" --projects . --apply
+{{ local_check_body() }}
 
 _builtin_test_all: _builtin_require_environment
 {{ test_report_recipe(
@@ -555,16 +559,16 @@ _builtin_test_all: _builtin_require_environment
     invocation_namespace=make.testmon_cache.invocation_namespace,
 ) }}
 
-# Ruff is the style/autofix rule (make.ruff in codegen.yaml). Every
-# invocation uses --preview. Never weaken ruff to keep a file; change the code.
-# fmt and fix apply corrections and fail while diagnostics remain.
-# Their reports preserve the same verdict as the underlying quality gates.
+# fmt is format-only (single-pass verb law): ruff formats Python, the
+# fmt_gates formatters run once through the checker's apply mode, and every
+# lint repair belongs to `make fix`. Only a real tool failure (exit >= 2)
+# breaks the verb; a formatter's residual findings stay reportable and are
+# enforced by `make check`.
 _builtin_fmt_all: _builtin_require_environment
-	@$(UV_RUN) ruff format {{ make.ruff.format_apply | join(" ") }} $(RUFF_PATHS)
-	@$(UV_RUN) ruff check {{ make.ruff.lint_apply | join(" ") }} $(RUFF_PATHS)
+{{ fmt_body() }}
 
 _builtin_fix_all: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "{% for gate in make.check_gates_fixable %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}" --projects . --apply --report-findings
+{{ fix_body() }}
 
 # Catalog-driven enforcement fixes: every ENFORCE rule whose fix action is
 # declared safe, applied through its registered adapter.
@@ -617,13 +621,6 @@ _builtin_clean_generated:
 		\( {% for pattern in make.clean.trace_globs %}-name '{{ pattern }}'{% if not loop.last %} -o {% endif %}{% endfor %} \) \
 		-delete
 {% endif %}
-	@set -eu; \
-	if [ -L "$(PROJECT_SCRATCH_ROOT)" ]; then \
-		printf 'ERROR: scratch root %s must be physical, found a symlink\n' "$(PROJECT_SCRATCH_ROOT)" >&2; \
-		exit 2; \
-	elif [ -d "$(PROJECT_SCRATCH_ROOT)" ]; then \
-		find "$(PROJECT_SCRATCH_ROOT)" -depth -delete; \
-	fi
 
 # Release protocol. `plan` derives the next version from merged pull-request
 # titles and guards against any version change made outside the protocol;
@@ -687,7 +684,7 @@ _builtin-mod: _builtin_mod_apply
 _builtin-waza:
 	@cd "$(PROJECT_ROOT)" && "$(SETUP_MISE)" exec -- waza check --no-update-check
 _builtin-duplication:
-	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates duplication --projects .
+	@{{ check_run("duplication") }}
 
 {% if script_dispatch %}
 # Repository-owned script verbs route through the promoted command framework:

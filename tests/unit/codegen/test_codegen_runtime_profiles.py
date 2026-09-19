@@ -134,7 +134,6 @@ class TestsFlextInfraCodegenRuntimeProfiles:
                 '[project]\nname = "sample-member"\ndependencies = '
                 + tm.ok(u.Cli.json_dumps([*profile.runtime]))
                 + "\n",
-                providers=config.Infra.codegen.providers,
                 workspace=tm.ok(
                     FlextInfraWorkspaceDetector.load_workspace_spec(member)
                 ),

@@ -39,7 +39,9 @@ class TestsFlextInfraCodegenRepositoryRootFanout:
         tm.that(rendered, has="$(WORKSPACE_ORCHESTRATE) --verb check")
         tm.that(rendered, has="$(WORKSPACE_ORCHESTRATE) --verb test")
         tm.that(rendered, has="MAKE_PROFILE := workspace")
-        tm.that(rendered, has="$(FLEXT_INFRA_PYTHON) -m flext_infra")
+        tm.that(
+            rendered, has="PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra"
+        )
 
     def test_repository_root_gate_verbs_fan_out_via_orchestrator(
         self, tmp_path: Path

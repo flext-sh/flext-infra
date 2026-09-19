@@ -20,7 +20,7 @@ class FlextInfraUtilitiesCodegenPathCutover:
         *,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         sources: t.MappingKV[Path, str],
-    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Migrate exact owner calls, preserving homonyms and root-only callers."""
         from flext_infra import m, p
 

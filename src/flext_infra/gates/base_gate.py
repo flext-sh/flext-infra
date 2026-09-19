@@ -137,17 +137,36 @@ class FlextInfraGate:
             severity="ERROR",
         )
 
+    def _finalize_parse_result(
+        self,
+        result: p.Cli.CommandOutput,
+        project_dir: Path,
+        issues: t.SequenceOf[m.Infra.Issue],
+        tool: str,
+    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
+        """Apply the standard tool-error fallback to parsed issues.
+
+        If the tool exited unsuccessfully and no issues were parsed, synthesize a
+        TOOL_ERROR issue so the failure is visible rather than silently passing.
+        """
+        if not u.Cli.process_succeeded(result.outcome) and not issues:
+            issues = (
+                *issues,
+                self._command_error_issue(
+                    result, tool=tool, file=str(project_dir), line=1, column=1
+                ),
+            )
+        return u.Cli.process_succeeded(result.outcome), issues
+
     @staticmethod
-    def _malformed_report_issue(
-        exc: c.ValidationError, *, tool: str, file: str
-    ) -> m.Infra.Issue:
+    def _malformed_report_issue(detail: str, *, tool: str, file: str) -> m.Infra.Issue:
         """Report a checker whose structured report failed typed validation."""
         return m.Infra.Issue(
             file=file,
             line=0,
             column=0,
             code="TOOL_ERROR",
-            message=f"{tool} report is not a valid structured report: {exc}",
+            message=f"{tool} report is not a valid structured report: {detail}",
             severity="ERROR",
         )
 

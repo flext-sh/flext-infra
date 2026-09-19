@@ -177,19 +177,13 @@ class FlextInfraPyprojectModernizerRunMixin:
         canonical_dev: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(
             u.Infra.canonical_dev_dependencies_from_payload(root_state.payload)
         )
-        locked_versions: t.MappingKV[str, str] = {}
+        resolved_versions: t.MappingKV[str, str] = {}
         internal_names: t.StrSequence = ()
         if self.rewrite_constraints:
             if root_project_name is None:
                 u.Cli.error("root project name required for constraint rewriting")
                 return 2
-            lock_path = self.root / c.Infra.UV_LOCK_FILENAME
-            locked_versions = u.Infra.locked_dependency_versions(lock_path)
-            if not locked_versions:
-                u.Cli.error(
-                    f"missing or invalid {c.Infra.UV_LOCK_FILENAME} at {lock_path}"
-                )
-                return 2
+            resolved_versions = u.Infra.resolved_dependency_versions()
             internal_names = tuple(
                 sorted(
                     set(u.Infra.workspace_project_paths(self.root))
@@ -202,12 +196,15 @@ class FlextInfraPyprojectModernizerRunMixin:
         if self.rewrite_constraints:
             if not dry_run:
                 profile_changes = (
-                    FlextInfraDepsFloorProfileWriter.rewrite_profiles_from_lock(
-                        locked_versions=locked_versions, internal_names=internal_names
+                    FlextInfraDepsFloorProfileWriter.rewrite_profiles_from_resolution(
+                        resolved_versions=resolved_versions,
+                        internal_names=internal_names,
                     )
                 )
                 if profile_changes:
-                    u.Cli.info("deps: dependency_profiles floors updated from lock")
+                    u.Cli.info(
+                        "deps: dependency_profiles floors updated from the provisioned runtime"
+                    )
                     for change in profile_changes:
                         u.Cli.info(f"  - {change}")
             return 0

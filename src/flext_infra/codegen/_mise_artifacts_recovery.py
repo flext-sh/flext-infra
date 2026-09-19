@@ -28,6 +28,10 @@ type _FileIdentity = tuple[
     int | None,
 ]
 
+type _FileOwnershipIdentity = tuple[
+    bool | None, int | None, int | None, str | None, int | None, int | None, int | None
+]
+
 
 class FlextInfraMiseRecovery:
     """Restore only full states attributable to one durable journal."""
@@ -101,10 +105,10 @@ class FlextInfraMiseRecovery:
             current = files.read_state(target.value, required=False)
             if current.failure:
                 return result_type.from_failure(current)
-            identity = self._identity(current.value)
-            original = self._entry_identity(entry, "original")
-            desired = self._entry_identity(entry, "desired")
-            rollback = self._entry_identity(entry, "rollback")
+            identity = self._classify_identity(current.value)
+            original = self._classify_entry_identity(entry, "original")
+            desired = self._classify_entry_identity(entry, "desired")
+            rollback = self._classify_entry_identity(entry, "rollback")
             if journal.state == "committed":
                 if identity != desired:
                     return result_type.fail(
@@ -318,6 +322,55 @@ class FlextInfraMiseRecovery:
             if identity not in expected:
                 return r[bool].fail(f"generated file was not restored: {entry.path}")
         return r[bool].ok(True)
+
+    @staticmethod
+    def _classify_identity(state: m.Cli.AtomicFileState) -> _FileOwnershipIdentity:
+        """Classify by durable content and parent identity, never per-copy inode."""
+        return (
+            state.content is not None,
+            state.parent_device,
+            state.parent_inode,
+            None if state.content is None else files.digest(state.content),
+            state.mode,
+            state.file_attributes,
+            state.reparse_tag,
+        )
+
+    @staticmethod
+    def _classify_entry_identity(
+        entry: m.Infra.CodegenJournalEntry,
+        prefix: Literal["original", "desired", "rollback"],
+    ) -> _FileOwnershipIdentity:
+        stored = {
+            "original": (
+                entry.original_exists,
+                entry.original_parent_device,
+                entry.original_parent_inode,
+                entry.original_sha256,
+                entry.original_mode,
+                entry.original_file_attributes,
+                entry.original_reparse_tag,
+            ),
+            "desired": (
+                entry.desired_exists,
+                entry.desired_parent_device,
+                entry.desired_parent_inode,
+                entry.desired_sha256,
+                entry.desired_mode,
+                entry.desired_file_attributes,
+                entry.desired_reparse_tag,
+            ),
+            "rollback": (
+                entry.rollback_exists,
+                entry.rollback_parent_device,
+                entry.rollback_parent_inode,
+                entry.rollback_sha256,
+                entry.rollback_mode,
+                entry.rollback_file_attributes,
+                entry.rollback_reparse_tag,
+            ),
+        }
+        return stored[prefix]
 
     @staticmethod
     def _identity(state: m.Cli.AtomicFileState) -> _FileIdentity:

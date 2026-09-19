@@ -16,19 +16,17 @@ from typing import TYPE_CHECKING, override
 
 from .. import c, config, m, r, s, u
 from ..workspace.rope import FlextInfraRopeWorkspace
+from ._lazy_init_class_receipts import FlextInfraCodegenLazyInitClassReceipts
 from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
-from ._lazy_init_import_alignment import FlextInfraCodegenLazyInitImportAlignmentMixin
 from .lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 
 if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+
     from .. import p, t
 
 
-class FlextInfraCodegenLazyInit(
-    s[bool],
-    FlextInfraCodegenLazyInitGenerationMixin,
-    FlextInfraCodegenLazyInitImportAlignmentMixin,
-):
+class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixin):
     """Plan ``__init__.py`` artifacts with PEP 562 lazy imports.
 
     Scans sibling ``.py`` files in each package directory, discovers their
@@ -164,7 +162,16 @@ class FlextInfraCodegenLazyInit(
         snapshots = self._snapshot_planner_inputs(workspace_index)
         if snapshots.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(snapshots)
-        duplicates = self._detect_duplicate_class_names(rope, package_dirs=package_dirs)
+        receipts = FlextInfraCodegenLazyInitClassReceipts(resolved_repository_root)
+        duplicates = self._detect_duplicate_class_names(
+            rope,
+            package_dirs=package_dirs,
+            snapshots=snapshots.value,
+            receipts=receipts,
+        )
+        saved = receipts.save()
+        if saved.failure:
+            u.Cli.warning(f"lazy-init: class receipt save failed: {saved.error}")
         if duplicates:
             self._duplicate_class_names = len(duplicates)
             details = "; ".join(
@@ -187,27 +194,16 @@ class FlextInfraCodegenLazyInit(
                 "lazy-init public export ownership is ambiguous: "
                 f"{planner.collision_count} collision(s)"
             )
-        project_package = workspace_index.project_package_by_root.get(
-            str(resolved_repository_root)
-        )
-        alignment_plans: t.VariadicTuple[m.Infra.CodegenFilePlan] = ()
-        if project_package is not None:
-            aligned = self.align_imports(
-                rope_workspace=rope,
-                index=workspace_index,
-                project_package=project_package,
-                package_dirs=package_dirs,
-                config=config.Infra.tooling.lazy_init,
-            )
-            if aligned.failure:
-                return r[m.Infra.CodegenPhaseAnalysis].from_failure(aligned)
-            alignment_plans = aligned.value
         file_plans = self._build_file_plans(
             package_plans, index=workspace_index, snapshots=snapshots.value
         )
         if file_plans.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(file_plans)
-        all_plans = file_plans.value + alignment_plans
+        # One writer per destination (render purity, v4 §2.1): templates own
+        # every generated surface; alignment is a semantic phase of ``make
+        # mod`` (codemod/semantic_apply.py phase 0), never a second writer
+        # inside the gen transaction.
+        all_plans = file_plans.value
         stable = self._verify_snapshots(snapshots.value)
         if stable.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(stable)
@@ -256,7 +252,11 @@ class FlextInfraCodegenLazyInit(
 
     @staticmethod
     def _detect_duplicate_class_names(
-        rope: FlextInfraRopeWorkspace, *, package_dirs: t.SequenceOf[Path]
+        rope: FlextInfraRopeWorkspace,
+        *,
+        package_dirs: t.SequenceOf[Path],
+        snapshots: MutableMapping[Path, m.Cli.AtomicFileState],
+        receipts: FlextInfraCodegenLazyInitClassReceipts,
     ) -> t.MappingKV[str, t.StrSequence]:
         """Return class-name collisions.
 
@@ -264,6 +264,10 @@ class FlextInfraCodegenLazyInit(
         - ``src/`` modules: duplicates forbidden across the entire workspace.
         - ``tests/``/``scripts/``/``examples/``/``docs/`` modules: duplicates
           forbidden only within the same owning project (they do not escape).
+
+        Per-module class names are content-addressed receipts: identical bytes
+        resolve from the cache instead of a Rope parse, and only the scan's
+        final duplicate set is computed globally per run.
         """
         scoped_modules: defaultdict[t.StrPair, set[str]] = defaultdict(set)
         selected_package_dirs = frozenset(path.resolve() for path in package_dirs)
@@ -288,14 +292,36 @@ class FlextInfraCodegenLazyInit(
                 if is_private_scope and entry.project_root is not None
                 else ""
             )
-            for obj in rope.objects(
-                entry.file_path, include_local_scopes=False, include_references=False
-            ):
-                if obj.kind != "class" or obj.scope_path:
-                    continue
-                name = obj.name
-                if len(name) < c.Infra.DUPLICATE_CLASS_MIN_LEN or not name[0].isupper():
-                    continue
+            snapshot = snapshots.get(entry.file_path.resolve())
+            cached = (
+                receipts.class_names(snapshot.content)
+                if snapshot is not None and snapshot.content is not None
+                else None
+            )
+            if cached is not None:
+                class_names: t.StrSequence = cached
+            else:
+                # flext-8hctr: rope's scope_path carries the object's own
+                # qualified tail (a top-level class yields its own name), so
+                # this guard currently skips every object and the scan returns
+                # no collisions; 59 structural part-file convention groups fire
+                # fleet-wide if the predicate is naively corrected. Receipts
+                # key whatever this filter selects by content hash.
+                class_names = tuple(
+                    obj.name
+                    for obj in rope.objects(
+                        entry.file_path,
+                        include_local_scopes=False,
+                        include_references=False,
+                    )
+                    if obj.kind == "class"
+                    and not obj.scope_path
+                    and len(obj.name) >= c.Infra.DUPLICATE_CLASS_MIN_LEN
+                    and obj.name[0].isupper()
+                )
+                if snapshot is not None and snapshot.content is not None:
+                    receipts.record(snapshot.content, class_names)
+            for name in class_names:
                 scoped_modules[name, scope_key].add(entry.module_name)
         return {
             f"[{Path(scope_key).name}] {name}"

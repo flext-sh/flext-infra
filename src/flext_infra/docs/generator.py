@@ -9,9 +9,9 @@ from flext_core import r
 from flext_infra import c, m, t, u
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
-from flext_infra.docs.base import FlextInfraDocServiceBase
 
 from ._generator_bundle import FlextInfraDocGeneratorBundleMixin
+from .base import FlextInfraDocServiceBase
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -102,7 +102,7 @@ class FlextInfraDocGenerator(
         self,
         request: m.Infra.DocsGenerateRequest,
         bundle: m.Infra.DocsGenerationBundle,
-        plans: tuple[m.Infra.CodegenFilePlan, ...],
+        plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
     ) -> p.Result[bool]:
         """Require exact untouched sources and a fresh unchanged render."""
         outputs = {plan.path for plan in plans}
@@ -133,7 +133,7 @@ class FlextInfraDocGenerator(
     def _generation_reports(
         self,
         bundle: m.Infra.DocsGenerationBundle,
-        committed_plans: tuple[m.Infra.CodegenFilePlan, ...],
+        committed_plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
         written: frozenset[Path],
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Report only destinations committed by the shared transaction."""
@@ -189,17 +189,13 @@ class FlextInfraDocGenerator(
     def required_directories(
         self, bundle: m.Infra.DocsGenerationBundle
     ) -> p.Result[t.VariadicTuple[Path]]:
-        """Derive target parent chains from the exact prepared render bundle."""
+        """Derive target parent chains from the exact prepared render bundle.
+
+        Source-state race verification is owned by ``docs_file_plans``.
+        """
         # Why (X-47): the physical workspace root is not necessarily
         # `bundle.scopes[0]` once the root is excluded as an output scope
         # (DECLARED conform scope); use the bundle's own authenticated root.
-        stable = u.Infra.docs_verify_sources(
-            bundle.repository_root,
-            bundle.source_states,
-            extra_roots=tuple(scoped.scope.path for scoped in bundle.scopes),
-        )
-        if stable.failure:
-            return r[tuple[Path, ...]].from_failure(stable)
         return u.Infra.docs_required_directories(bundle)
 
     def prepare_bundle(self) -> p.Result[m.Infra.DocsGenerationBundle]:

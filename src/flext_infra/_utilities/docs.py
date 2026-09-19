@@ -108,17 +108,17 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
     @staticmethod
     def anchorize(text: str) -> str:
         """Convert heading text to the anchor consumed by MkDocs."""
-        return FlextInfraUtilitiesDocsContract.docs_anchorize(text)
+        return FlextInfraUtilitiesDocsContract.docs_contract_anchorize(text)
 
     @staticmethod
     def build_toc(content: str) -> str:
         """Generate a TOC block from ## and ### headings in content."""
-        return FlextInfraUtilitiesDocsContract.docs_build_toc(content)
+        return FlextInfraUtilitiesDocsContract.docs_contract_build_toc(content)
 
     @staticmethod
     def update_toc(content: str) -> t.StrIntPair:
         """Insert or replace the TOC in content, returning (updated, changed)."""
-        return FlextInfraUtilitiesDocsContract.docs_update_toc(content)
+        return FlextInfraUtilitiesDocsContract.docs_contract_update_toc(content)
 
     @staticmethod
     def run_scoped(

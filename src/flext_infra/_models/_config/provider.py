@@ -14,15 +14,25 @@ from .contract import FlextInfraConfigModelsContract
 class FlextInfraConfigModelsProvider:
     """Provider, repository source, and CI private-submodule models."""
 
-    class ProviderSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """One GitHub organization and its mandatory branch policy."""
+    class ProviderIdentitySpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Git provider identity detected from one repository's own declarations.
 
-        name: Annotated[t.NonEmptyStr, m.Field(description="Provider key")]
+        flext-infra ships no provider registry: the name is the key the
+        repository's own ``config/workspace.yaml`` declares, and the
+        organization and base URL are read from that same declaration's
+        canonical URL. No branch lives here — a branch is detected from live
+        Git or declared by an explicit caller, never invented from policy.
+        """
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Declared provider key")]
         organization: Annotated[
-            t.NonEmptyStr, m.Field(description="GitHub organization")
+            t.NonEmptyStr,
+            m.Field(description="Git organization detected from the declared URL"),
         ]
-        base_url: Annotated[t.NonEmptyStr, m.Field(description="GitHub HTTPS base URL")]
-        branch: Annotated[t.NonEmptyStr, m.Field(description="Provider branch")]
+        base_url: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="HTTPS base URL detected from the declared URL"),
+        ]
 
     class RepositorySourceSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Portable repository identity derived through one declared provider."""

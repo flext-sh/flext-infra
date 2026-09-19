@@ -7,7 +7,7 @@ from pathlib import Path
 
 from flext_cli import cli
 
-from .. import c, infra, m, t, u
+from .. import c, config, infra, m, t, u
 from ..transformers import publish_semantic_file_plans
 
 
@@ -17,7 +17,7 @@ class FlextInfraCodemodSemanticApply:
     @classmethod
     def plan_transaction_paths(
         cls, root: Path, preflight: m.Infra.ModScanReport
-    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+    ) -> t.VariadicTuple[m.Infra.SemanticMigrationEdit]:
         """Return one immutable Rope callback for the mod loop's progress identity."""
         original = cls._source_inventory(root, preflight)
         from .._utilities.codegen_path_cutover import (
@@ -47,6 +47,42 @@ class FlextInfraCodemodSemanticApply:
         original = cls._source_inventory(root, preflight)
         working = dict(original)
         changed: set[Path] = set()
+
+        # Phase 0: Import alignment (rope-native; toggle in tooling.yaml).
+        # Runs first so rope plans against disk truth that still equals the
+        # in-memory working map.
+        alignment_files: t.VariadicTuple[Path] = ()
+        if config.Infra.tooling.mod.phases.import_alignment:
+            with infra.rope_workspace(root) as rope_workspace:
+                project_package = (
+                    rope_workspace.workspace_index.project_package_by_root.get(
+                        str(root.resolve())
+                    )
+                )
+                if project_package is not None:
+                    planned = u.Infra.align_module_imports(
+                        rope_project=rope_workspace.rope_project,
+                        repository_root=root.resolve(),
+                        index=rope_workspace.workspace_index,
+                        project_package=project_package,
+                        config=config.Infra.tooling.lazy_init,
+                    )
+                    if planned.failure:
+                        msg = f"import-alignment failed to plan: {planned.error}"
+                        raise RuntimeError(msg)
+                    alignment_edits = tuple(
+                        m.Infra.SemanticMigrationEdit(
+                            file_path=plan.path,
+                            original_source=working[plan.path],
+                            updated_source=(plan.desired_content or b"").decode(
+                                "utf-8"
+                            ),
+                        )
+                        for plan in planned.value
+                        if plan.path in working
+                    )
+                    alignment_files = tuple(edit.file_path for edit in alignment_edits)
+                    cls._apply_plan(working, alignment_edits, changed)
 
         # Phase 1: Future annotations
         future_annotations = cls._phase_future_annotations(root, preflight, working)
@@ -117,7 +153,8 @@ class FlextInfraCodemodSemanticApply:
             f"future_annotations={len(future_annotations)} "
             f"deferred_models={len(deferred)} nesting_files={len(nesting)} "
             f"alias_files={len(aliases)} "
-            f"private_import_files={len(private_imports)}"
+            f"private_import_files={len(private_imports)} "
+            f"import_alignment_files={len(alignment_files)}"
         )
         cls._verify_fixed_point(root, working, preflight)
         cls._publish(root, original, working, changed)

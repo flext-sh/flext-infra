@@ -2,7 +2,7 @@
 site_name: flext-infra Documentation
 site_description: Generated documentation for flext-infra
 site_url: https://github.com/flext-sh/flext-infra/blob/main/README.md
-repo_name: flext-sh/flext
+repo_name: flext-sh/flext-infra
 repo_url: https://github.com/flext-sh/flext-infra
 edit_uri: edit/main/flext-infra/
 docs_dir: docs

@@ -21,8 +21,8 @@ class FlextInfraMiseArtifactsFiles:
     @classmethod
     def transaction_participants(
         cls, layout: m.Infra.MiseToolchainWorkspaceLayout
-    ) -> tuple[
-        m.Infra.MiseToolchainProjectLayout | m.Infra.CodegenFileParticipant, ...
+    ) -> t.VariadicTuple[
+        m.Infra.MiseToolchainProjectLayout | m.Infra.CodegenFileParticipant
     ]:
         """Return only explicitly registered publication owners."""
         return (*layout.projects, *layout.file_participants)

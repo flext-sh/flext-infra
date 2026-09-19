@@ -38,7 +38,7 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         self, project_dir: Path, profile: c.Infra.MakeProfile
     ) -> p.Result[t.Infra.LayoutStatus]:
         """Write the canonical rendered gitignore for a governed project."""
-        rendered = self.render_project_gitignore(
+        rendered = u.Infra.render_project_gitignore(
             config.Infra.codegen,
             profile=profile,
             project_name=FlextInfraCodegenLayoutPlanMixin.layout_project_name(

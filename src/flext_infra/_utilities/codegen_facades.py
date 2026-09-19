@@ -41,6 +41,10 @@ class FlextInfraUtilitiesCodegenFacades:
         # that adds no local utilities (src/flext: `class FlextRootUtilities(u)`),
         # and there is simply nothing to project onto it.
         if owners_exist and not facade_exists:
+            # Conform preflights its family directories before rendering files.
+            # An empty directory contains no owner requiring a public surface.
+            if not any(owners_dir.iterdir()):
+                return None
             message = f"utility owners in {pkg_dir} have no public facade"
             raise ValueError(message)
         if not owners_exist:
@@ -177,15 +181,20 @@ class FlextInfraUtilitiesCodegenFacades:
             for node in tree.body:
                 if not isinstance(node, ast.ClassDef):
                     continue
-                methods = frozenset(
-                    member.name
-                    for member in node.body
-                    if (
-                        isinstance(member, ast.FunctionDef | ast.AsyncFunctionDef)
-                        if family == "u"
-                        else isinstance(member, ast.ClassDef)
+                if family == "u":
+                    members = tuple(
+                        member
+                        for member in node.body
+                        if isinstance(member, ast.FunctionDef | ast.AsyncFunctionDef)
                     )
-                    and not member.name.startswith("_")
+                else:
+                    members = tuple(
+                        member
+                        for member in node.body
+                        if isinstance(member, ast.ClassDef)
+                    )
+                methods = frozenset(
+                    member.name for member in members if not member.name.startswith("_")
                 )
                 owners.append((path.stem, node.name, methods))
                 ancestors[node.name] = frozenset(

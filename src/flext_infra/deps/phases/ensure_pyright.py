@@ -52,14 +52,22 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
 
     def _extra_paths_for_env(
-        self, *, env_dir: str, source_path: str, project_root: str, source_dir: str
+        self,
+        *,
+        env_dir: str,
+        source_path: str,
+        project_root: str,
+        source_dir: str,
+        member_src_paths: t.StrSequence = (),
     ) -> t.StrSequence:
         """``src/`` owns only its own path; every other discovered dir also imports from src + root."""
         if env_dir == source_dir:
-            return [source_path]
-        if source_path != project_root:
-            return [project_root, source_path]
-        return [project_root]
+            paths = [source_path]
+        elif source_path != project_root:
+            paths = [project_root, source_path]
+        else:
+            paths = [project_root]
+        return [*paths, *member_src_paths]
 
     def _envs_for_dirs(
         self,
@@ -145,6 +153,10 @@ class FlextInfraEnsurePyrightConfigPhase:
             m.Infra.PyrightConfig.ExecutionEnvironment
         ] = []
         root_source_path = self._project_source_path()
+        member_src_paths = tuple(
+            f"{member}/src"
+            for member in u.Infra.workspace_project_paths(repository_root)
+        )
         # Specific roots precede the broad source environment.
         expected_envs.extend(
             self._diagnostic_override_envs(
@@ -165,6 +177,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                         source_path=root_source_path,
                         project_root=rules.project_root,
                         source_dir=rules.source_dir,
+                        member_src_paths=member_src_paths,
                     ),
                     rules=rules,
                 )
@@ -310,14 +323,16 @@ class FlextInfraEnsurePyrightConfigPhase:
         is_root: bool,
         repository_root: Path | None,
         project_dir: Path | None,
-        declared_python_dirs: t.StrSequence,
+        declared_python_dirs: t.StrSequence | None,
         declared_python_dirs_are_complete: bool,
-        generated_roots: t.StrSequence,
+        generated_roots: t.StrSequence | None = None,
         workspace_excluded_top_dirs: frozenset[str] | None = None,
     ) -> t.StrSequence:
         """Resolve the one analyzer-root set consumed by includes and environments."""
         declared = self._declared_environment_dirs(
-            tuple(dict.fromkeys((*declared_python_dirs, *generated_roots)))
+            tuple(
+                dict.fromkeys((*(declared_python_dirs or ()), *(generated_roots or ())))
+            )
         )
         if (
             is_root

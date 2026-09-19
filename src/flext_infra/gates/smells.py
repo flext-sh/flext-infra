@@ -10,8 +10,9 @@ from typing import TYPE_CHECKING, ClassVar, override
 from flext_core import r
 from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
-from flext_infra.transformers.smells.base import FlextInfraSmellFixer
 from flext_infra.transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
+
+from ..transformers.smells.base import FlextInfraSmellFixer
 
 # flext-0ftd.3.5: the empty package initializer is not a compatibility export;
 # consume the declaration at its canonical owner after the lazy-init cutover.

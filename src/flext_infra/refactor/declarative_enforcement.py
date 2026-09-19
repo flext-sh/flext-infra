@@ -131,8 +131,8 @@ class FlextInfraRefactorDeclarativeEnforcement:
             )
             raise RuntimeError(msg) from exc
         probes: list[p.AttributeProbe] = []
-        parent_map = u.Infra.ast_parent_map(tree)
-        for node in u.Infra.walk_ast_nodes(tree):
+        parent_map = u.Infra.ast_parent_map(u.Infra.ensure_ast_node(tree))
+        for node in u.Infra.walk_ast_nodes(u.Infra.ensure_ast_node(tree)):
             if u.Infra.node_kind(node) != "Constant":
                 continue
             value = getattr(node, "value", None)
@@ -267,7 +267,9 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def _is_exempt_literal_position(
-        cls, node: p.AttributeProbe, parent_map: t.MappingKV[int, p.AttributeProbe]
+        cls,
+        node: t.Infra.RopeAstNode,
+        parent_map: t.MappingKV[int, t.Infra.RopeAstNode],
     ) -> bool:
         """Return True when a Constant node lives in an exempt syntactic position."""
         parent = parent_map.get(id(node))

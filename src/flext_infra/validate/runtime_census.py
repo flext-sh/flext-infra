@@ -21,11 +21,12 @@ from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-from flext_infra import c, config, m, u
-from flext_infra.base import s
+from flext_infra import c, config, m, t, u
+
+from ..base import s
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraRuntimeCensusValidator(s[bool]):
@@ -130,17 +131,38 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             )
         ]
 
-    def _project_report(self, project: p.Infra.ProjectInfo) -> m.Infra.ValidationReport:
+    def _project_report(
+        self, project: p.Infra.ProjectInfo
+    ) -> p.Result[m.Infra.ValidationReport]:
         """Run the runtime census for one project and return a merged report."""
         package_name = self._package_name_for_project(project)
         if package_name is None:
-            return m.Infra.ValidationReport(
-                passed=True,
-                violations=(),
-                summary=f"{project.name}: no importable package found",
+            return r[m.Infra.ValidationReport].ok(
+                m.Infra.ValidationReport(
+                    passed=True,
+                    violations=(),
+                    summary=f"{project.name}: no importable package found",
+                )
             )
-        module_names = self._walk_modules(package_name)
-        real_modules = list(module_names)
+        # Operator stability contract (2026-09-16): an unimportable package is
+        # a census violation to report, never a verb crash.
+        walked = r[t.SequenceOf[str]].create_from_callable(
+            lambda: self._walk_modules(package_name)
+        )
+        if walked.failure:
+            return r[m.Infra.ValidationReport].ok(
+                m.Infra.ValidationReport(
+                    passed=False,
+                    violations=(
+                        (
+                            f"{package_name}: package import failed: "
+                            f"{type(walked.exception).__name__}: {walked.error}"
+                        ),
+                    ),
+                    summary=f"{project.name}: package import failed",
+                )
+            )
+        real_modules = list(walked.value)
         if self.target_module is not None:
             real_modules = [
                 name
@@ -157,7 +179,27 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         ]
         all_reports: list[m.Infra.ValidationReport] = []
         for module_name in real_modules:
-            all_reports.extend(self._check_module(module_name))
+            # Operator stability contract (2026-09-16): a module that cannot
+            # import is a census violation to report, never a verb crash —
+            # findings feed the generator, the Make verb completes.
+            checked = r[t.SequenceOf[m.Infra.ValidationReport]].create_from_callable(
+                lambda name=module_name: self._check_module(name)
+            )
+            if checked.success:
+                all_reports.extend(checked.value)
+            else:
+                all_reports.append(
+                    m.Infra.ValidationReport(
+                        passed=False,
+                        violations=(
+                            (
+                                f"{module_name}: import failed: "
+                                f"{type(checked.exception).__name__}: {checked.error}"
+                            ),
+                        ),
+                        summary=f"{module_name}: import failed",
+                    )
+                )
         merged_violations = tuple(
             violation for report in all_reports for violation in report.violations
         )
@@ -167,8 +209,10 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             if not passed
             else f"{project.name}: runtime census passed ({len(real_modules)} module(s))"
         )
-        return m.Infra.ValidationReport(
-            passed=passed, violations=merged_violations, summary=summary
+        return r[m.Infra.ValidationReport].ok(
+            m.Infra.ValidationReport(
+                passed=passed, violations=merged_violations, summary=summary
+            )
         )
 
     def build_report(self) -> p.Result[m.Infra.ValidationReport]:
@@ -184,7 +228,10 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             )
         merged_violations: list[str] = []
         for project in projects:
-            report = self._project_report(project)
+            report_result = self._project_report(project)
+            if report_result.failure:
+                return r[m.Infra.ValidationReport].from_failure(report_result)
+            report = report_result.value
             merged_violations.extend(report.violations)
         passed = not merged_violations
         summary = (

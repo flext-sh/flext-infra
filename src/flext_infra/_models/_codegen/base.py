@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from ..codegen_journal import FlextInfraModelsCodegenJournal
 from ..codegen_render import FlextInfraModelsCodegenRender
 from ..codegen_toolchain import FlextInfraModelsCodegenToolchain
 from .fix import FlextInfraModelsCodegenFixModels
@@ -13,10 +12,9 @@ from .scaffold import FlextInfraModelsCodegenScaffoldModels
 from .transaction import FlextInfraModelsCodegenTransactionModels
 
 
-class FlextInfraModelsCodegen(
+class FlextInfraCodegen(
     FlextInfraModelsCodegenRender,
     FlextInfraModelsCodegenToolchain,
-    FlextInfraModelsCodegenJournal,
     FlextInfraModelsCodegenJournalModels,
     FlextInfraModelsCodegenTransactionModels,
     FlextInfraModelsCodegenScaffoldModels,
@@ -25,3 +23,6 @@ class FlextInfraModelsCodegen(
     FlextInfraModelsCodegenPipelineModels,
 ):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
+
+
+__all__: list[str] = ["FlextInfraCodegen"]

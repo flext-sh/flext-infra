@@ -1,3 +1,5 @@
-from ._codegen import FlextInfraModelsCodegen
+from __future__ import annotations
 
-__all__: list[str] = ["FlextInfraModelsCodegen"]
+from ._codegen import FlextInfraCodegen
+
+__all__: list[str] = ["FlextInfraCodegen"]

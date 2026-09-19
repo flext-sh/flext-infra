@@ -14,8 +14,8 @@ from collections.abc import MutableMapping
 from typing import Annotated, override
 
 from flext_infra import m, p, r, t, u
-from flext_infra.base import FlextInfraServiceBase
 
+from ..base import FlextInfraServiceBase
 from ._toml_phase_ops import FlextInfraTomlPhaseOps
 
 
@@ -43,7 +43,7 @@ class FlextInfraTomlPhaseService(
         cls, doc: t.Cli.TomlDocument, *phases: m.Infra.Deps.Toml.PhaseConfig
     ) -> t.StrSequence:
         """Apply a declarative phase set to one TOML document."""
-        result: t.StrSequence = cls.model_construct(doc=doc, phases=phases).apply()
+        result: t.StrSequence = cls(doc=doc, phases=phases).apply()
         return result
 
     @classmethod
@@ -60,14 +60,7 @@ class FlextInfraTomlPhaseService(
     @override
     def execute(self) -> p.Result[t.StrSequence]:
         """Apply all phases and return one flat change list."""
-        return r[t.StrSequence].create_from_callable(
-            lambda: tuple(
-                change
-                for phase in self.phases
-                for change in self._apply_phase(phase, parent_path=())
-            ),
-            error_code="toml_phase_execute",
-        )
+        return r[t.StrSequence].ok(self.apply())
 
     def apply(self) -> t.StrSequence:
         """Apply phases and return one flat change list."""

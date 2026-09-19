@@ -22,11 +22,20 @@ if TYPE_CHECKING:
         FlextInfraCodegenGenerationTypeCheckingMixin,
     )
     from ._codegen_staging import stage_file_plans
+    from ._conform._request_fields import FlextInfraCodegenConformRequestFields
+    from ._conform.artifact_render import FlextInfraCodegenConformArtifactRender
+    from ._conform.base import FlextInfraCodegenConformBase
+    from ._conform.beads_routes import FlextInfraCodegenConformBeadsRoutes
     from ._conform.bootstrap import FlextInfraCodegenConformBootstrap
+    from ._conform.context_render import FlextInfraCodegenConformContextRender
+    from ._conform.docs_ownership import FlextInfraCodegenConformDocsOwnership
     from ._conform.execute import FlextInfraCodegenConformExecute
-    from ._conform.misc import FlextInfraCodegenConformMisc
+    from ._conform.existing_plan import FlextInfraCodegenConformExistingPlan
+    from ._conform.file_plans import FlextInfraCodegenConformFilePlans
+    from ._conform.gitignore import FlextInfraCodegenConformGitignore
     from ._conform.plan import FlextInfraCodegenConformPlan
-    from ._conform.render import FlextInfraCodegenConformRender
+    from ._conform.pyproject_policy import FlextInfraCodegenConformPyprojectPolicy
+    from ._conform.scaffold_plan import FlextInfraCodegenConformScaffoldPlan
     from ._consolidator_steps import FlextInfraCodegenConsolidatorStepsMixin
     from ._fixer_passes import FlextInfraCodegenFixerPassesMixin
     from ._fixer_results import FlextInfraCodegenFixerResultsMixin
@@ -55,6 +64,8 @@ if TYPE_CHECKING:
     from ._mise_artifacts_state import FlextInfraMiseArtifactsState
     from ._mise_artifacts_verification import FlextInfraMiseArtifactsVerification
     from ._pipeline_stages import FlextInfraCodegenPipelineStagesMixin
+    from ._protocol_model_annotations import FlextInfraCodegenProtocolModelAnnotations
+    from ._protocol_model_render import FlextInfraCodegenProtocolModelRender
     from .census import FlextInfraCodegenCensus
     from .codegen_generation import FlextInfraCodegenGeneration
     from .codegen_transaction import FlextInfraCodegenTransaction
@@ -70,17 +81,27 @@ if TYPE_CHECKING:
     from .mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
     from .pipeline import FlextInfraCodegenPipeline
     from .project_new import FlextInfraCodegenProjectNew
+    from .protocol_models import FlextInfraCodegenProtocolModels
     from .py_typed import FlextInfraCodegenPyTyped
     from .scaffolder import FlextInfraCodegenScaffolder
     from .version_file import FlextInfraCodegenVersionFile
 __all__: tuple[str, ...] = (
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConform",
+    "FlextInfraCodegenConformArtifactRender",
+    "FlextInfraCodegenConformBase",
+    "FlextInfraCodegenConformBeadsRoutes",
     "FlextInfraCodegenConformBootstrap",
+    "FlextInfraCodegenConformContextRender",
+    "FlextInfraCodegenConformDocsOwnership",
     "FlextInfraCodegenConformExecute",
-    "FlextInfraCodegenConformMisc",
+    "FlextInfraCodegenConformExistingPlan",
+    "FlextInfraCodegenConformFilePlans",
+    "FlextInfraCodegenConformGitignore",
     "FlextInfraCodegenConformPlan",
-    "FlextInfraCodegenConformRender",
+    "FlextInfraCodegenConformPyprojectPolicy",
+    "FlextInfraCodegenConformRequestFields",
+    "FlextInfraCodegenConformScaffoldPlan",
     "FlextInfraCodegenConsolidator",
     "FlextInfraCodegenConsolidatorStepsMixin",
     "FlextInfraCodegenFixer",
@@ -111,6 +132,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenPipeline",
     "FlextInfraCodegenPipelineStagesMixin",
     "FlextInfraCodegenProjectNew",
+    "FlextInfraCodegenProtocolModelAnnotations",
+    "FlextInfraCodegenProtocolModelRender",
+    "FlextInfraCodegenProtocolModels",
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenQualityGate",
     "FlextInfraCodegenScaffolder",
@@ -153,11 +177,20 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             "._codegen_staging": ("stage_file_plans",),
             "._conform": ("_conform",),
+            "._conform._request_fields": ("FlextInfraCodegenConformRequestFields",),
+            "._conform.artifact_render": ("FlextInfraCodegenConformArtifactRender",),
+            "._conform.base": ("FlextInfraCodegenConformBase",),
+            "._conform.beads_routes": ("FlextInfraCodegenConformBeadsRoutes",),
             "._conform.bootstrap": ("FlextInfraCodegenConformBootstrap",),
+            "._conform.context_render": ("FlextInfraCodegenConformContextRender",),
+            "._conform.docs_ownership": ("FlextInfraCodegenConformDocsOwnership",),
             "._conform.execute": ("FlextInfraCodegenConformExecute",),
-            "._conform.misc": ("FlextInfraCodegenConformMisc",),
+            "._conform.existing_plan": ("FlextInfraCodegenConformExistingPlan",),
+            "._conform.file_plans": ("FlextInfraCodegenConformFilePlans",),
+            "._conform.gitignore": ("FlextInfraCodegenConformGitignore",),
             "._conform.plan": ("FlextInfraCodegenConformPlan",),
-            "._conform.render": ("FlextInfraCodegenConformRender",),
+            "._conform.pyproject_policy": ("FlextInfraCodegenConformPyprojectPolicy",),
+            "._conform.scaffold_plan": ("FlextInfraCodegenConformScaffoldPlan",),
             "._consolidator_steps": ("FlextInfraCodegenConsolidatorStepsMixin",),
             "._fixer_passes": ("FlextInfraCodegenFixerPassesMixin",),
             "._fixer_results": ("FlextInfraCodegenFixerResultsMixin",),
@@ -186,6 +219,10 @@ _LAZY_IMPORTS = MappingProxyType(
             "._mise_artifacts_state": ("FlextInfraMiseArtifactsState",),
             "._mise_artifacts_verification": ("FlextInfraMiseArtifactsVerification",),
             "._pipeline_stages": ("FlextInfraCodegenPipelineStagesMixin",),
+            "._protocol_model_annotations": (
+                "FlextInfraCodegenProtocolModelAnnotations",
+            ),
+            "._protocol_model_render": ("FlextInfraCodegenProtocolModelRender",),
             ".census": ("FlextInfraCodegenCensus",),
             ".codegen_generation": ("FlextInfraCodegenGeneration",),
             ".codegen_transaction": ("FlextInfraCodegenTransaction",),
@@ -201,6 +238,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".mise_artifacts_workspace": ("FlextInfraMiseWorkspacePlanner",),
             ".pipeline": ("FlextInfraCodegenPipeline",),
             ".project_new": ("FlextInfraCodegenProjectNew",),
+            ".protocol_models": ("FlextInfraCodegenProtocolModels",),
             ".py_typed": ("FlextInfraCodegenPyTyped",),
             ".scaffolder": ("FlextInfraCodegenScaffolder",),
             ".version_file": ("FlextInfraCodegenVersionFile",),

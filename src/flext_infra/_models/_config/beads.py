@@ -122,12 +122,20 @@ class FlextInfraConfigModelsBeads:
     class BeadsWorkspaceEnvironmentSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Declarative contract for one generated beads-workspace .envrc.
 
-        Defaults encode the canonical Gas City + Beads wiring: the sync owns
-        the file end to end while every credential-free fact stays declarative
-        here, and the single identity variable (``AGENTS_GAS_CITY_ROOT``) keeps
-        failing loudly when the canonical checkout is not declared.
+        The ``backend`` field selects the declared activation tier rendered
+        from this spec: ``gascity`` wires the inherited city Dolt server
+        through the single identity variable (``AGENTS_GAS_CITY_ROOT``) and
+        fails loudly when the canonical checkout is not declared or its
+        publication is unhealthy, ``local`` leaves ``bd`` owning a
+        repository-local Dolt base through ``.beads/config.yaml`` with every
+        inherited endpoint variable cleared, and ``none`` renders only the
+        terminal unset chain for a repository without a Beads identity.
         """
 
+        backend: Annotated[
+            Literal["gascity", "local", "none"],
+            m.Field(description="Declared beads activation tier"),
+        ] = "gascity"
         environment_sources: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Environment files sourced on activation"),
@@ -144,13 +152,16 @@ class FlextInfraConfigModelsBeads:
             t.NonEmptyStr,
             m.Field(description="Beads metadata path relative to the workspace"),
         ] = ".beads/metadata.json"
+        # BEADS_DIR is caller-owned routing and never cleared: bd discovers the
+        # checkout's tracked .beads by itself, and a linked worktree whose
+        # caller selects a ledger keeps that selection (clearing it broke bd
+        # inside worktrees).
         unset_vars: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Inherited orchestration variables cleared on entry"),
         ] = (
             "GT_ROOT",
             "GT_TOWN_ROOT",
-            "BEADS_DIR",
             "BEADS_DOLT_PORT",
             "BEADS_DOLT_DATA_DIR",
             "BEADS_DOLT_SHARED_SERVER",

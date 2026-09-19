@@ -54,7 +54,7 @@ class TestsFlextInfraDocsMain:
                     "--projects",
                     "flext-a",
                 ])
-                == 1
+                == 2
             ),
             eq=True,
         )
