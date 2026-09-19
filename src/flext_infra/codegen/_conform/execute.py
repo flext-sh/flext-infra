@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from ... import c, config, m, p, r, t, u
 from ...docs import FlextInfraDocGenerator
@@ -24,7 +24,7 @@ class _ConformExecuteRoles:
         def _owned_docs_files(self, request: m.Infra.CodegenConformRequest, files: t.SequenceOf[m.Infra.CodegenFilePlan]) -> tuple[m.Infra.CodegenFilePlan, ...]: ...
         def _owned_docs_directories(self, request: m.Infra.CodegenConformRequest, plan: m.Infra.CodegenPlan, directories: t.SequenceOf[Path]) -> tuple[Path, ...]: ...
 
-class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
+class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan, _ConformExecuteRoles):
     """Transactional execution of conformance plans."""
 
     @classmethod
