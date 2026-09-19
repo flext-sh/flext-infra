@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -29,22 +28,19 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin)
 
         Only the canonical three-way work-tree probe may classify a path as
         outside Git; a genuine probe or open failure raises instead of being
-        reported as absence. A missing git binary classifies as outside Git:
-        sanitized gate environments run with an empty PATH, and scope
-        selection must degrade to filesystem walking there, never raise.
+        reported as absence. Git is a required dependency of this scope probe;
+        unavailable executables must fail rather than hide tracked-file scope.
         """
         resolved_scope = Path(scope_root).resolve()
-        if shutil.which(c.Infra.GIT) is None:
+        probe = FlextInfraUtilitiesGitSemanticIdentityMixin.git_is_inside_work_tree
+        probed = probe(m.Infra.GitRepoRequest(repo_root=resolved_scope))
+        if probed.failure:
+            raise OSError(probed.error or "failed to probe Git work tree")
+        if not probed.value.value:
             return None
         opened = cls._open_repo(resolved_scope)
         if opened.failure:
-            probe = FlextInfraUtilitiesGitSemanticIdentityMixin.git_is_inside_work_tree
-            probed = probe(m.Infra.GitRepoRequest(repo_root=resolved_scope))
-            if probed.failure:
-                raise OSError(probed.error or "failed to probe Git work tree")
-            if probed.value.value:
-                raise OSError(opened.error or "failed to open git repository")
-            return None
+            raise OSError(opened.error or "failed to open git repository")
         working_tree_dir = opened.value.working_tree_dir
         if working_tree_dir is None:
             msg = f"opened Git repository has no worktree: {scope_root}"

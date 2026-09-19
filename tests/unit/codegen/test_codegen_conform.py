@@ -22,7 +22,7 @@ from flext_infra.codegen import (
 from flext_infra.docs import FlextInfraDocGenerator
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, p, u
+from tests import c, m, p, t, u
 
 from .conform_support import TestsFlextInfraConformSupport
 
@@ -50,7 +50,7 @@ class TestsFlextInfraCodegenConform:
     @staticmethod
     def _planned_hook_pyproject(
         root: Path, hook_path: str | Path | None
-    ) -> tuple[
+    ) -> t.Triple[
         FlextInfraCodegenConform, m.Infra.CodegenConformRequest, m.Infra.CodegenFilePlan
     ]:
         """Plan the canonical pyproject through the public conform owner."""
@@ -129,7 +129,7 @@ class TestsFlextInfraCodegenConform:
         service, request, first = self._planned_hook_pyproject(
             root, Path("scripts/hatch_build.py")
         )
-        root.mkdir(parents=True)
+        root.mkdir(parents=True, exist_ok=True)
         (root / c.Infra.PYPROJECT_FILENAME).write_bytes(
             tm.not_none(first.desired_content)
         )
@@ -323,7 +323,7 @@ class TestsFlextInfraCodegenConform:
         )
         docs = tm.ok(
             FlextInfraDocGenerator(repository_root=root).generate(
-                m.Infra.DocsGenerateRequest(repository_root=root, apply=False)
+                m.Infra.DocsGenerateRequest(repository_root=root)
             )
         )
         tm.that(all(report.changed_files == 0 for report in docs), eq=True)

@@ -595,12 +595,18 @@ class FlextInfraModelsDepsToolConfig(
         exclude: t.StrTuple = m.Field(
             description="Glob patterns excluded from Markdown quality checks."
         )
+
+        @staticmethod
+        def _default_prettier() -> (
+            FlextInfraModelsDepsToolConfig.MarkdownPrettierConfig
+        ):
+            """Resolve the policy owner after the enclosing model is defined."""
+            return FlextInfraModelsDepsToolConfig.MarkdownPrettierConfig()
+
         prettier: Annotated[
             FlextInfraModelsDepsToolConfig.MarkdownPrettierConfig,
             m.Field(
-                default_factory=(
-                    FlextInfraModelsDepsToolConfig.MarkdownPrettierConfig
-                ),
+                default_factory=(FlextInfraModelsDepsToolConfig.MarkdownPrettierConfig),
                 description="Prettier formatting policy projected into .prettierrc.",
             ),
         ]

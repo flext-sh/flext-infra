@@ -207,8 +207,8 @@ class FlextInfraModelsDocsCollection:
     class PlanCollectionBundle(m.ArbitraryTypesModel):
         """Read-only planning result consumed by the existing publisher."""
 
-        files: tuple[FlextInfraConfigModelsArtifact.CodegenFilePlan, ...] = m.Field(
-            description="Effects for the existing docs transaction"
+        files: t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenFilePlan] = (
+            m.Field(description="Effects for the existing docs transaction")
         )
         source_states: t.VariadicTuple[cli_m.Cli.AtomicFileState] = m.Field(
             description="Authenticated inputs and ownership reads including absence"

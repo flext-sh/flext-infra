@@ -8,53 +8,35 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from tests import m, t, u
+from tests import c, m, u
 
 
-class TestsModulePathRules:
+class TestsFlextInfraModulePathRules:
     """Namespace rules key on the module path a project actually declares."""
 
-    _FIXTURES_DIR = (
-        Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
-    )
+    """Namespace rules key on the module path a project actually declares."""
 
-    def _read_fixture(self, name: str) -> str:
-
-        fixture_name = name.replace(".py", ".pysrc") if name.endswith(".py") else name
-
-        return (self._FIXTURES_DIR / fixture_name).read_text(encoding="utf-8")
-
-    def _make_project_with_module_path(
-        self, tmp_path: Path, *, module_source: str, module_path: str
-    ) -> t.Pair[Path, Path]:
-
-        project_root = tmp_path / "project"
-
-        package_dir = project_root / "src" / "flext_test"
-
-        package_dir.mkdir(parents=True)
-
-        _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-
-        u.Tests.write_canonical_package_layout(package_dir)
-
-        relative = Path(module_path)
-
-        target = (
-            project_root / relative
-            if relative.parts[0] == "tests"
-            else package_dir / relative
+    @pytest.mark.parametrize("family", ["c", "t", "p", "m", "u"])
+    @pytest.mark.parametrize("valid_alias", [True, False])
+    def test_test_facade_namespace_and_alias(
+        self, tmp_path: Path, family: str, *, valid_alias: bool
+    ) -> None:
+        """Test facades own Tests and their exact family alias, never loose aliases."""
+        module = c.Infra.FAMILY_PUBLIC_MODULES[family]
+        suffix = c.Infra.FAMILY_SUFFIXES[family]
+        target_alias = family if valid_alias else "unrelated"
+        root, _ = u.Tests.namespace_project_path(
+            tmp_path,
+            module_path=f"tests/{module}.py",
+            module_source=(
+                f"from flext_test import {family}\n\n"
+                f"class TestsFlextTest{suffix}({family}):\n"
+                f"    class Tests({family}.Tests):\n        pass\n\n"
+                f"{target_alias} = TestsFlextTest{suffix}\n"
+            ),
         )
-
-        target.parent.mkdir(parents=True, exist_ok=True)
-
-        _ = target.write_text(module_source, encoding="utf-8")
-
-        u.Tests.initialize_git_repo(project_root)
-
-        return project_root, target
-
-    """Namespace rules key on the module path a project actually declares."""
+        report = tm.ok(FlextInfraNamespaceValidator().validate_project(root))
+        tm.that(report.passed, eq=valid_alias, msg=str(report.violations))
 
     @pytest.mark.parametrize(
         (
@@ -118,7 +100,7 @@ class TestsModulePathRules:
                 "if TYPE_CHECKING:\n"
                 "    from tests import u\n\n"
                 "class TestsFlextTestTypes(t):\n"
-                "    class TestsFlextTest(TestsFlextTestTypesBase, "
+                "    class Tests(TestsFlextTestTypesBase, "
                 "TestsFlextTestTypesDomain):\n"
                 "        pass\n",
                 "runtime namespace import",
@@ -168,7 +150,7 @@ class TestsModulePathRules:
                 "tests/models.py",
                 "from tests import c, t, p, m\n\n"
                 "class TestsFlextTestModels(m):\n"
-                "    class TestsFlextTest(c, t, p):\n"
+                "    class Tests(c, t, p):\n"
                 "        pass\n",
                 "facade must inherit canonical",
                 False,
@@ -179,7 +161,7 @@ class TestsModulePathRules:
                 "tests/utilities.py",
                 "from tests import c, t, p, m, u\n\n"
                 "class TestsFlextTestUtilities(u):\n"
-                "    class TestsFlextTest(c, t, p):\n"
+                "    class Tests(c, t, p):\n"
                 "        pass\n",
                 "facade must inherit canonical",
                 False,
@@ -191,7 +173,7 @@ class TestsModulePathRules:
                 "from tests import m\n"
                 "from tests._models.domain import TestsFlextTestModelsDomain\n\n"
                 "class TestsFlextTestModels(m):\n"
-                "    class TestsFlextTest(TestsFlextTestModelsDomain, "
+                "    class Tests(TestsFlextTestModelsDomain, "
                 "TestsFlextTestModelsBase):\n"
                 "        pass\n",
                 "test support module",
@@ -223,7 +205,7 @@ class TestsModulePathRules:
     ) -> None:
         """Namespace rules key on the module path a project actually declares."""
         validator = FlextInfraNamespaceValidator()
-        root, target = self._make_project_with_module_path(
+        root, target = u.Tests.namespace_project_path(
             tmp_path, module_source=module_source, module_path=module_path
         )
         files = u.Infra.iter_python_files(
@@ -247,4 +229,4 @@ class TestsModulePathRules:
         )
 
 
-__all__: list[str] = ["TestsModulePathRules"]
+__all__: list[str] = ["TestsFlextInfraModulePathRules"]

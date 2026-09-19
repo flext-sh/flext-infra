@@ -208,7 +208,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
         Walks the parent chain; a node nested inside any ClassDef/FunctionDef is
         NOT module-level. Shared SSOT for placement detectors.
         """
-        current = node
+        current = cls.ensure_ast_node(node)
         while True:
             parent = parent_map.get(id(current))
             if parent is None:

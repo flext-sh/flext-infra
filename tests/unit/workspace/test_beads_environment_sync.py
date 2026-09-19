@@ -111,7 +111,7 @@ class TestsFlextInfraBeadsEnvironmentSync:
         tm.that(content, lacks="AGENTS_GAS_CITY_ROOT")
         tm.that(content, lacks="dolt-state.json")
         tm.that(content, lacks="jq -er")
-        tm.that(content, has='watch_file "$checkout_root/.beads/metadata.json"')
+        tm.that(content, has='watch_file "${checkout_root}/.beads/metadata.json"')
         tm.that(content, has="unset BEADS_DOLT_SERVER_HOST BEADS_DOLT_SERVER_PORT")
         tm.that(content, has="unset BEADS_DOLT_AUTO_START")
         tm.that(content, lacks="unset BEADS_DIR")

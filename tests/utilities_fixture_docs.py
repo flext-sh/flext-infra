@@ -93,20 +93,21 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
         # identity and is idempotent. A workspace that declares members in
         # .gitmodules must realize each member as a governed repository whose
         # origin matches the declared URL ("owner must resolve exactly once").
+        # Initialize children first so the parent's initial index records
+        # gitlinks rather than ordinary files inside the declared members.
+        for name in project_names:
+            TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(
+                workspace / name,
+                origin_url=TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
+                    name
+                ).url,
+            )
         TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(
             workspace,
             origin_url=TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
                 "workspace"
             ).url,
         )
-        if project_names:
-            for name in project_names:
-                TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(
-                    workspace / name,
-                    origin_url=TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
-                        name
-                    ).url,
-                )
 
         return workspace
 

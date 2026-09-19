@@ -7,13 +7,16 @@ ignore-projection reader live here exactly once.
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from flext_infra import c, u
 
+from .base_gate import FlextInfraGate
+
 if TYPE_CHECKING:
-    from flext_infra import t
+    from flext_infra import m, t
 
 
 def collect_markdown_files(project_dir: Path) -> list[Path]:
@@ -53,4 +56,38 @@ def read_ignore_patterns(project_dir: Path, ignore_filename: str) -> t.StrSequen
     return tuple(patterns)
 
 
-__all__: list[str] = ["collect_markdown_files", "read_ignore_patterns"]
+class FlextInfraMarkdownGateBase(FlextInfraGate):
+    """Share file selection and empty-surface handling for Markdown tools."""
+
+    @override
+    def _get_check_dirs(
+        self, project_dir: Path, ctx: m.Infra.GateContext
+    ) -> t.StrSequence:
+        """Return the governed Markdown paths relative to their repository."""
+        _ = ctx
+        return [
+            str(path.relative_to(project_dir))
+            for path in collect_markdown_files(project_dir)
+        ]
+
+    @override
+    def check(
+        self, project_dir: Path, ctx: m.Infra.GateContext
+    ) -> m.Infra.GateExecution:
+        """Validate the selected Markdown files or report an empty surface."""
+        started = time.monotonic()
+        check_dirs = self._get_check_dirs(project_dir, ctx)
+        if not check_dirs:
+            return self._neutral_skip_result(
+                project_dir,
+                started,
+                message=f"{self.gate_id}: no markdown files to check",
+            )
+        return self._execute_check_command(project_dir, ctx, check_dirs, started)
+
+
+__all__: list[str] = [
+    "FlextInfraMarkdownGateBase",
+    "collect_markdown_files",
+    "read_ignore_patterns",
+]

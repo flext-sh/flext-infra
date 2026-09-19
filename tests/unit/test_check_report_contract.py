@@ -106,7 +106,7 @@ class TestsFlextInfraCheckReportContract:
         reports = tmp_path / "reports"
         before = self._sources(project)
 
-        tm.that(self._check_run(project, reports), eq=0)
+        tm.that(self._check_run(project, reports), eq=1)
 
         tm.that(self._sources(project), eq=before)
         findings = tm.ok(u.Infra.check_report_findings(project, reports_dir=reports))

@@ -28,7 +28,11 @@ if TYPE_CHECKING:
         write_fenced_block_sources,
     )
     from .markdown_format import FlextInfraMarkdownFormatGate
-    from .markdown_support import collect_markdown_files, read_ignore_patterns
+    from .markdown_support import (
+        FlextInfraMarkdownGateBase,
+        collect_markdown_files,
+        read_ignore_patterns,
+    )
     from .mypy import FlextInfraMypyGate
     from .namespace import FlextInfraNamespaceGate
     from .pyrefly import FlextInfraPyreflyGate
@@ -54,6 +58,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraMarkdownCodeGate",
     "FlextInfraMarkdownFormatGate",
     "FlextInfraMarkdownGate",
+    "FlextInfraMarkdownGateBase",
     "FlextInfraMypyGate",
     "FlextInfraNamespaceGate",
     "FlextInfraPyreflyGate",
@@ -94,7 +99,11 @@ _LAZY_IMPORTS = MappingProxyType(
                 "write_fenced_block_sources",
             ),
             ".markdown_format": ("FlextInfraMarkdownFormatGate",),
-            ".markdown_support": ("collect_markdown_files", "read_ignore_patterns"),
+            ".markdown_support": (
+                "FlextInfraMarkdownGateBase",
+                "collect_markdown_files",
+                "read_ignore_patterns",
+            ),
             ".mypy": ("FlextInfraMypyGate",),
             ".namespace": ("FlextInfraNamespaceGate",),
             ".pyrefly": ("FlextInfraPyreflyGate",),

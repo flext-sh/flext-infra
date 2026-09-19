@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path, PureWindowsPath
 from typing import Annotated, ClassVar, Literal
 
@@ -532,6 +533,14 @@ class FlextInfraConfigModelsContexts:
 
     class ProjectSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
+
+        dependency_revisions: Annotated[
+            Mapping[t.NonEmptyStr, Annotated[str, m.Field(pattern=r"^[0-9a-f]{40}$")]],
+            m.Field(
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
+                description="Explicit immutable revisions of provider-owned dependencies",
+            ),
+        ]
 
         # NOTE (multi-agent, flext-get3j): ProjectSpec is the sole declaration
         # owner; absence is meaningful and must never select a conventional hook.

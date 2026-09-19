@@ -165,7 +165,11 @@ if TYPE_CHECKING:
         write_fenced_block_sources,
     )
     from .gates.markdown_format import FlextInfraMarkdownFormatGate
-    from .gates.markdown_support import collect_markdown_files, read_ignore_patterns
+    from .gates.markdown_support import (
+        FlextInfraMarkdownGateBase,
+        collect_markdown_files,
+        read_ignore_patterns,
+    )
     from .gates.mypy import FlextInfraMypyGate
     from .gates.namespace import FlextInfraNamespaceGate
     from .gates.pyrefly import FlextInfraPyreflyGate
@@ -389,6 +393,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraMarkdownCodeGate",
     "FlextInfraMarkdownFormatGate",
     "FlextInfraMarkdownGate",
+    "FlextInfraMarkdownGateBase",
     "FlextInfraMiseWorkspacePlanner",
     "FlextInfraModGateEngine",
     "FlextInfraModReplacements",
@@ -680,6 +685,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".gates.markdown_format": ("FlextInfraMarkdownFormatGate",),
             ".gates.markdown_support": (
+                "FlextInfraMarkdownGateBase",
                 "collect_markdown_files",
                 "read_ignore_patterns",
             ),

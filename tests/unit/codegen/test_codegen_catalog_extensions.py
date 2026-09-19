@@ -74,7 +74,10 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(template, lacks="mise_install_path=")
         tm.that(template, has='latest_mise="$$mise"')
         tm.that(template, has="receipt_runtime")
-        tm.that(type(config.Infra.codegen.toolchain).model_fields, lacks="mise_version")
+        tm.that(
+            tuple(type(config.Infra.codegen.toolchain).model_fields),
+            lacks="mise_version",
+        )
 
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance."""

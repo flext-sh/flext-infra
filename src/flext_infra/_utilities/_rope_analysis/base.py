@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from flext_infra import t
+
 from .asthelpers import FlextInfraUtilitiesRopeAnalysisAstHelpers
 from .exports import FlextInfraUtilitiesRopeAnalysisExports
 from .importstate import FlextInfraUtilitiesRopeAnalysisImportState
@@ -17,4 +19,4 @@ class FlextInfraUtilitiesRopeAnalysisBase(
     """Rope-backed semantic analysis composed from its domain responsibilities."""
 
 
-__all__: tuple[str, ...] = ("FlextInfraUtilitiesRopeAnalysisBase",)
+__all__: t.VariadicTuple[str] = ("FlextInfraUtilitiesRopeAnalysisBase",)
