@@ -371,7 +371,7 @@ class FlextInfraCodemodSemanticApply:
             FlextInfraRefactorCensusApplyFormattingMixin,
         )
 
-        FlextInfraRefactorCensusApplyFormattingMixin._ruff_fix_touched_files(
+        FlextInfraRefactorCensusApplyFormattingMixin.normalize_touched_files(
             plan.path for plan in semantic_plans
         )
 
