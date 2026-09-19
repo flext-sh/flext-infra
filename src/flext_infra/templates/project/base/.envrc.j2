@@ -34,7 +34,8 @@ PROJECT_SCRATCH_IDENTITY="${PROJECT_SCRATCH_IDENTITY%/}"
 PROJECT_SCRATCH="${HOME}/{{ scratch_home_relative }}/{{ state_directory_name }}${PROJECT_SCRATCH_IDENTITY}/{{ scratch_namespace }}"
 mkdir -p "${PROJECT_SCRATCH}"
 if command -v chattr >/dev/null 2>&1; then
-  if [[ "$(stat -f -c %T "${PROJECT_SCRATCH}")" == "btrfs" ]]; then
+  project_scratch_fs="$(stat -f -c %T "${PROJECT_SCRATCH}" 2>/dev/null || true)"
+  if [[ "${project_scratch_fs}" == "btrfs" ]]; then
     chattr +C "${PROJECT_SCRATCH}"
   fi
 fi
