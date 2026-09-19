@@ -8,12 +8,14 @@ from typing import Annotated, ClassVar, Self
 
 from flext_cli import m, u
 
+from flext_infra.models._defaults import immutable_empty_mapping
+
 from ... import t
 from ..._constants import (
     FlextInfraConstantsCodegenProject,
     FlextInfraConstantsSharedInfra,
 )
-from .. import FlextInfraModelsLayout, immutable_empty_mapping
+from .. import FlextInfraModelsLayout
 from .contexts import FlextInfraConfigModelsContexts
 from .contract import FlextInfraConfigModelsContract
 from .make import FlextInfraConfigModelsMake

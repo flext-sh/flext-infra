@@ -18,7 +18,8 @@ from flext_core import m
 if TYPE_CHECKING:
     from flext_cli.models import FlextCliModels
 
-from ._models._config import FlextInfraConfigModels
+from flext_infra._models._config import FlextInfraConfigModels
+
 from ._models.base import FlextInfraModelsBase
 from ._models.census import FlextInfraModelsCensus
 from ._models.check import FlextInfraModelsCheck
