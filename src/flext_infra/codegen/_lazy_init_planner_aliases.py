@@ -63,14 +63,37 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             pkg_dir.name,
             surface,
         }
-        letter_module = {
-            letter: filename.removesuffix(".py")
-            for filename, letter in c.Infra.NAMESPACE_LAYER_BY_FILE.items()
-            if letter in c.Infra.ALIAS_NAMES
-        }
-        for alias_name, local_stem in letter_module.items():
-            if (pkg_dir / f"{local_stem}.py").is_file():
-                lazy_map[alias_name] = (f"{current_pkg}.{local_stem}", alias_name)
+        # Operator law: the owner of a facade letter is the module that
+        # DECLARES it -- `m = FlextXModels` -- never a filename. A root package
+        # inherits the letter from that module and the root __all__ may override
+        # it; a subdirectory declares no short alias at all, only the folder's
+        # __all__. Inferring ownership from a filename table is what let a
+        # nested services/models.py, which declares nothing, claim `m` and
+        # collide with the real facade -- the collision that stopped generation
+        # across the whole fleet.
+        owns_facade_letters = (
+            u.Infra.matches_project_namespace_package(current_pkg)
+            or is_test_runtime_alias_surface
+        )
+        letter_module: dict[str, str] = {}
+        if owns_facade_letters:
+            for module_path in sorted(pkg_dir.glob("*.py")):
+                if module_path.name == c.Infra.INIT_PY:
+                    continue
+                declared = self.rope_workspace.exports(
+                    module_path,
+                    export_options=m.Infra.ExportOptions(allow_assignments=True),
+                )
+                # No closed list of letters. A module that publishes an alias
+                # says so in its own __all__ -- models.py declares
+                # ["FlextInfraModels", "m"] -- so the declaration is the whole
+                # truth and there is nothing to keep in sync.
+                for alias_name in sorted(declared):
+                    letter_module[alias_name] = module_path.stem
+                    lazy_map[alias_name] = (
+                        f"{current_pkg}.{module_path.stem}",
+                        alias_name,
+                    )
 
         local_parent_packages = self._local_parent_packages(pkg_dir)
         local_import_alias_targets = self._local_import_alias_targets(pkg_dir)
