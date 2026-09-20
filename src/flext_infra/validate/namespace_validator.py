@@ -102,7 +102,14 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         )
 
     def _is_exempt_file(self, filepath: Path) -> bool:
-        """Check whether a file should be skipped from validation."""
+        """Check whether a file should be skipped from validation.
+
+        Files under ``examples/`` are didactic exercises, not production
+        code — they intentionally violate namespace conventions (no Flext
+        prefix, reverse imports) as teaching tools.
+        """
+        if "examples" in filepath.parts:
+            return True
         name = filepath.name
         return name in {"__init__.py", "__version__.py"}
 
