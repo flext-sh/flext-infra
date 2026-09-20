@@ -70,7 +70,7 @@ jobs:
 
       - name: Upload docs reports on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: docs-reports
           # Structured docs reports only — omit raw docs log trees that may carry
@@ -135,7 +135,7 @@ jobs:
       pages: write
       id-token: write
     environment:
-      name: ${{ 'github-pages' }}
+      name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages

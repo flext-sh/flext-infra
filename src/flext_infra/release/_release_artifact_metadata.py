@@ -14,6 +14,7 @@ from packaging.version import InvalidVersion, Version
 
 from flext_core import r
 from flext_infra import c, t, u
+from flext_infra.protocols import p
 
 from ._release_artifact_archive import FlextInfraReleaseArtifactArchiveMixin
 
@@ -86,11 +87,13 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
         if raw_value is None:
             return r[bool].ok(True)
         raw_items = u.Cli.json_as_sequence(raw_value)
-        validated = u.validate_value(
+        validated: p.Result[t.StrSequence] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER, raw_items, strict=True
         )
         if validated.failure:
-            return r[bool].fail_op(f"validate release dependency group {key}", validated.error)
+            return r[bool].fail_op(
+                f"validate release dependency group {key}", validated.error
+            )
         requirements = validated.value
         rewritten: t.MutableSequenceOf[str] = []
         for requirement in requirements:
@@ -182,10 +185,8 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
         if targets is None or wheel is None:
             return r[bool].fail("release pyproject must define a Hatch wheel target")
         raw_packages = u.Cli.toml_value(wheel, "packages")
-        validated = u.validate_value(
-            t.Infra.STR_SEQ_ADAPTER,
-            u.Cli.json_as_sequence(raw_packages),
-            strict=True,
+        validated: p.Result[t.StrSequence] = u.validate_value(
+            t.Infra.STR_SEQ_ADAPTER, u.Cli.json_as_sequence(raw_packages), strict=True
         )
         if validated.failure:
             return r[bool].fail_op("validate Hatch wheel packages", validated.error)

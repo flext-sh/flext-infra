@@ -4,14 +4,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from .. import c, m, r, s, u
+from flext_core import r
+
+from .. import c, m, u
+from ._execution import FlextInfraCodegenExecutionBase
 from .conform import FlextInfraCodegenConform
 
 if TYPE_CHECKING:
     from .. import p
 
 
-class FlextInfraCodegenMakeBootstrap(s[bool]):
+class FlextInfraCodegenMakeBootstrap(FlextInfraCodegenExecutionBase[bool]):
     """Delegate one Makefile projection exclusively to codegen conform."""
 
     @override

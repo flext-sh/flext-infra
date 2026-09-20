@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, override
 
-from flext_core import r, s
-from flext_infra import c, m, t
+from flext_core import r
+from flext_infra import c, m, s, t
 
 from ._orchestrator_discovery import FlextInfraWorkspaceOrchestratorDiscoveryMixin
 from ._orchestrator_execution import FlextInfraWorkspaceOrchestratorExecutionMixin
@@ -36,6 +36,7 @@ class FlextInfraOrchestratorService(
     ] = None
 
     @m.computed_field
+    @override
     @property
     def root(self) -> Path:
         """Canonical workspace root."""

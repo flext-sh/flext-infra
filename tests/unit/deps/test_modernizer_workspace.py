@@ -7,8 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import config, main, u as infra_u
-from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
+from flext_infra import FlextInfraPyprojectModernizer, config, main, u as infra_u
 from tests import c, u
 
 if TYPE_CHECKING:

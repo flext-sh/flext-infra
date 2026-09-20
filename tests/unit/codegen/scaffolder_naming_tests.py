@@ -39,8 +39,7 @@ class TestsFlextInfraCodegenScaffolderNaming:
         """
         for mod in modules:
             source = (base_dir / mod).read_text(encoding="utf-8")
-            compiled = compile(source, str(base_dir / mod), "exec")
-            tm.that(compiled, none=False)
+            _ = compile(source, str(base_dir / mod), "exec")
 
     def _validate_class_names(
         self, base_dir: Path, filename_to_expected_class: t.StrMapping
@@ -73,8 +72,7 @@ class TestsFlextInfraCodegenScaffolderNaming:
         ) -> None:
             for mod in modules:
                 source = (base_dir / mod).read_text(encoding="utf-8")
-                compiled = compile(source, str(base_dir / mod), "exec")
-                tm.that(compiled, none=False)
+                _ = compile(source, str(base_dir / mod), "exec")
 
         def _project_info(
             self, project: Path, *, package_name: str = "test_project"

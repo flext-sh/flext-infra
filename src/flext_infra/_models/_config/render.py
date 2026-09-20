@@ -9,7 +9,7 @@ from flext_cli import m
 
 from ... import t
 from ..._constants import FlextInfraConstantsCodegenProject
-from .. import FlextInfraModelsDepsToolSettings
+from ..deps_tool_config import FlextInfraModelsDepsToolConfig
 from .beads import FlextInfraConfigModelsBeads
 from .contexts import FlextInfraConfigModelsContexts
 from .contract import FlextInfraConfigModelsContract
@@ -93,6 +93,20 @@ class FlextInfraConfigModelsRender:
                 ),
             ),
         ] = False
+        dependabot_cooldown_days: Annotated[
+            int,
+            m.Field(
+                ge=0,
+                description=(
+                    "Dependabot cooldown (default-days) rendered into every "
+                    "ecosystem entry of the generated dependabot.yml. Zero "
+                    "(default) renders no cooldown at all: every ecosystem "
+                    "keeps selecting the newest available release immediately, "
+                    "which is the fleet default contract. A distribution that "
+                    "must stagger updates opts in through its codegen config."
+                ),
+            ),
+        ] = 0
         checkout_submodules: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -163,7 +177,7 @@ class FlextInfraConfigModelsRender:
         """Typed input for project-independent generated tooling surfaces."""
 
         tooling: Annotated[
-            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
+            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
             m.Field(description="Canonical validated tooling policy"),
         ]
 
@@ -185,22 +199,12 @@ class FlextInfraConfigModelsRender:
             m.Field(description="Strict Mise environment projected into containers"),
         ]
 
-    class EnvrcRenderSpec(FlextInfraConfigModelsContract.ConfigContract):
+    class EnvrcRenderSpec(FlextInfraConfigModelsContexts.ScratchRootContext):
         """Typed input consumed only by the generated project ``.envrc``."""
 
-        state_directory_name: Annotated[
-            t.NonEmptyStr, m.Field(description="External runtime state directory")
-        ]
-        scratch_namespace: Annotated[
-            t.NonEmptyStr, m.Field(description="External scratch namespace")
-        ]
-        scratch_home_relative: Annotated[
-            t.NonEmptyStr, m.Field(description="Home-relative scratch root")
-        ]
         pycache_namespace: Annotated[
             t.NonEmptyStr, m.Field(description="External bytecode cache namespace")
         ]
-
         environment_path_prepends: Annotated[
             t.VariadicTuple[t.NonEmptyStr],
             m.Field(description="Project-relative executable paths"),

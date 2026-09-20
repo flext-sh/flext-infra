@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from collections.abc import Mapping
+from pathlib import Path, PureWindowsPath
 from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
 
 from ... import t
-from ..._constants import FlextInfraConstantsCodegenProject
-from .. import FlextInfraModelsDepsToolSettings
-from .._defaults import tool_version_field
+from ..._constants import (
+    FlextInfraConstantsCodegenProject,
+    FlextInfraConstantsWorkspace,
+)
+from .. import FlextInfraModelsDefaults
+from ..deps_tool_config import FlextInfraModelsDepsToolConfig
 from .beads import FlextInfraConfigModelsBeads
 from .contract import FlextInfraConfigModelsContract
 from .make import FlextInfraConfigModelsMake
@@ -20,6 +24,23 @@ from .scaffold import FlextInfraConfigModelsScaffold
 class FlextInfraConfigModelsContexts:
     """Render context and repository reference models."""
 
+    @staticmethod
+    def _validated_hatch_build_hook_path(value: Path | None) -> Path | None:
+        """Return one normalized project-relative Hatch hook declaration."""
+        if value is None:
+            return None
+        raw = str(value)
+        not_project_relative = (
+            value.is_absolute() or not value.parts or value.as_posix() in {"", "."}
+        )
+        unsafe_segments = (
+            ".." in value.parts or "\\" in raw or bool(PureWindowsPath(raw).drive)
+        )
+        if not_project_relative or unsafe_segments:
+            msg = f"hatch_build_hook_path must be a safe project-relative path: {raw}"
+            raise ValueError(msg)
+        return value
+
     class MakeCommandContext(FlextInfraConfigModelsContract.ConfigContract):
         """Shared command identity required by every generated Make surface."""
 
@@ -27,19 +48,13 @@ class FlextInfraConfigModelsContexts:
             t.NonEmptyStr, m.Field(description="Installed infrastructure CLI command")
         ]
         pytest: Annotated[
-            FlextInfraModelsDepsToolSettings.PytestConfig,
+            FlextInfraModelsDepsToolConfig.PytestConfig,
             m.Field(description="Typed pytest execution policy"),
         ]
 
-    class MakefileRenderSpec(MakeCommandContext):
-        """Field-only render input for an existing repository Makefile."""
+    class ScratchRootContext(FlextInfraConfigModelsContract.ConfigContract):
+        """Shared state and scratch roots every generated environment derives."""
 
-        mise_bootstrap: Annotated[
-            FlextInfraConfigModelsContract.MiseBootstrapEnvironmentSpec,
-            m.Field(description="Generated strict Mise bootstrap environment"),
-        ]
-
-        dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         state_directory_name: Annotated[
             t.NonEmptyStr,
             m.Field(description="External runtime state directory beside checkout"),
@@ -51,6 +66,25 @@ class FlextInfraConfigModelsContexts:
         scratch_home_relative: Annotated[
             t.NonEmptyStr, m.Field(description="Home-relative scratch root")
         ]
+        scratch_identity_segment_aliases: Annotated[
+            t.VariadicTuple[t.Pair[t.NonEmptyStr, t.NonEmptyStr]],
+            m.Field(
+                description=(
+                    "Checkout path segments renamed in the home scratch mirror "
+                    "so a scratch root never contains a VCS directory"
+                )
+            ),
+        ] = tuple(FlextInfraConstantsWorkspace.SCRATCH_IDENTITY_SEGMENT_ALIASES)
+
+    class MakefileRenderSpec(MakeCommandContext, ScratchRootContext):
+        """Field-only render input for an existing repository Makefile."""
+
+        mise_bootstrap: Annotated[
+            FlextInfraConfigModelsContract.MiseBootstrapEnvironmentSpec,
+            m.Field(description="Generated strict Mise bootstrap environment"),
+        ]
+
+        dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
@@ -163,7 +197,7 @@ class FlextInfraConfigModelsContexts:
             int, m.Field(gt=0, description="Forced-termination grace period")
         ]
         tooling_runtime: Annotated[
-            FlextInfraModelsDepsToolSettings.ToolingRuntimeContext,
+            FlextInfraModelsDepsToolConfig.ToolingRuntimeContext,
             m.Field(description="Resolved project/workspace tooling values"),
         ]
 
@@ -172,13 +206,19 @@ class FlextInfraConfigModelsContexts:
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor tool value")
         ]
+        make_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Resolved Make toolchain version for generated commands"
+            ),
+        ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
         ]
         ruff_per_file_ignores: Annotated[
             t.MappingKV[str, t.StrSequence],
             m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description=(
                     "Effective Ruff exemptions: fleet policy composed with this "
                     "repository's own ManagedArtifacts overlay"
@@ -232,6 +272,12 @@ class FlextInfraConfigModelsContexts:
     class ProjectRenderContext(MakeRenderContext):
         """Complete typed input consumed by project scaffold templates."""
 
+        # NOTE (multi-agent, flext-get3j): this render field is the exact
+        # projection of ProjectSpec; templates must not infer or default a hook.
+        hatch_build_hook_path: Annotated[
+            Path | None,
+            m.Field(description="Project-relative Hatch custom build hook module"),
+        ] = None
         namespace_scan_dirs: Annotated[
             t.StrSequence,
             m.Field(
@@ -269,7 +315,7 @@ class FlextInfraConfigModelsContexts:
             m.Field(description="Resolved upstream dependency profile"),
         ]
         tooling: Annotated[
-            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
+            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
             m.Field(description="Canonical validated tooling policy"),
         ]
         environment_path_prepends: Annotated[
@@ -367,52 +413,56 @@ class FlextInfraConfigModelsContexts:
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]
         kubectl_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact kubectl toolchain version")
+            t.NonEmptyStr, m.Field(description="Exact kubectl toolchain version")
         ]
         helm_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Helm toolchain version")
+            t.NonEmptyStr, m.Field(description="Exact Helm toolchain version")
         ]
         kind_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact kind toolchain version")
+            t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
         ]
         direnv_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible direnv major.minor line")
+            t.NonEmptyStr, m.Field(description="Compatible direnv major.minor line")
         ]
         uv_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible uv major.minor line")
+            t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
         ]
         qlty_version: Annotated[
             t.NonEmptyStr,
-            tool_version_field("Moving qlty release selector, e.g. 'latest'"),
+            m.Field(description="Moving qlty release selector, e.g. 'latest'"),
         ]
         node_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible Node.js major.minor line")
+            t.NonEmptyStr, m.Field(description="Compatible Node.js major.minor line")
         ]
         jscpd_version: Annotated[
             t.NonEmptyStr,
-            tool_version_field("Moving jscpd release selector, e.g. 'latest'"),
+            m.Field(description="Moving jscpd release selector, e.g. 'latest'"),
         ]
         waza_version: Annotated[
             t.NonEmptyStr,
-            tool_version_field("Moving Waza release selector, e.g. 'latest'"),
+            m.Field(description="Moving Waza release selector, e.g. 'latest'"),
         ]
         taplo_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Taplo formatter version")
+            t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
         ]
         ast_grep_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact ast-grep analyzer version")
+            t.NonEmptyStr, m.Field(description="Exact ast-grep analyzer version")
         ]
         gitleaks_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Gitleaks scanner version")
+            t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
         ]
         scc_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact scc code-counter version")
+            t.NonEmptyStr, m.Field(description="Exact scc code-counter version")
         ]
         kubeconform_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Compatible kubeconform minor line")
+            t.NonEmptyStr, m.Field(description="Compatible kubeconform minor line")
         ]
         go_version: Annotated[
-            t.NonEmptyStr, tool_version_field("Exact Go runtime version")
+            t.NonEmptyStr, m.Field(description="Exact Go runtime version")
+        ]
+        make_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Moving Make release selector, e.g. 'latest'"),
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")
@@ -432,7 +482,8 @@ class FlextInfraConfigModelsContexts:
             t.NonEmptyStr, m.Field(description="FLEXT Git provider branch")
         ]
         repository_provider: Annotated[
-            t.NonEmptyStr, m.Field(description="Repository provider catalog key")
+            t.NonEmptyStr,
+            m.Field(description="Provider key the repository declares for itself"),
         ]
         repository_git_url: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical repository Git clone URL")
@@ -440,11 +491,44 @@ class FlextInfraConfigModelsContexts:
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical repository Git branch")
         ]
+        workspace_context_root: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether this render is the workspace-context root: true "
+                    "means internal dependencies render as bare names and the "
+                    "[tool.uv.sources] workspace overlay owns their source; "
+                    "false (standalone/publishable members) renders direct Git "
+                    "requirement sources."
+                )
+            ),
+        ] = False
         year: Annotated[int, m.Field(description="Copyright year")]
+
+        @m.field_validator("hatch_build_hook_path")
+        @classmethod
+        def _validate_hatch_build_hook_path(cls, value: Path | None) -> Path | None:
+            return FlextInfraConfigModelsContexts._validated_hatch_build_hook_path(
+                value
+            )
 
     class ProjectSpec(FlextInfraConfigModelsContract.ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
 
+        dependency_revisions: Annotated[
+            Mapping[t.NonEmptyStr, Annotated[str, m.Field(pattern=r"^[0-9a-f]{40}$")]],
+            m.Field(
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
+                description="Explicit immutable revisions of provider-owned dependencies",
+            ),
+        ]
+
+        # NOTE (multi-agent, flext-get3j): ProjectSpec is the sole declaration
+        # owner; absence is meaningful and must never select a conventional hook.
+        hatch_build_hook_path: Annotated[
+            Path | None,
+            m.Field(description="Project-relative Hatch custom build hook module"),
+        ] = None
         package_name: Annotated[
             t.NonEmptyStr, m.Field(description="Import package name")
         ]
@@ -548,6 +632,13 @@ class FlextInfraConfigModelsContexts:
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
 
+        @m.field_validator("hatch_build_hook_path")
+        @classmethod
+        def _validate_hatch_build_hook_path(cls, value: Path | None) -> Path | None:
+            return FlextInfraConfigModelsContexts._validated_hatch_build_hook_path(
+                value
+            )
+
     class RepositoryRef(FlextInfraConfigModelsContract.ConfigContract):
         """One declared repository and its immutable Git origin contract."""
 
@@ -583,7 +674,11 @@ class FlextInfraConfigModelsContexts:
         ] = "root"
         provider: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Provider key from the codegen configuration"),
+            m.Field(
+                description=(
+                    "Provider key the declaring repository's own manifest carries"
+                )
+            ),
         ]
         kind: Annotated[
             FlextInfraConstantsCodegenProject.ProjectKind,
@@ -607,6 +702,16 @@ class FlextInfraConfigModelsContexts:
         package: Annotated[
             bool, m.Field(description="Repository publishes a Python package")
         ]
+        publishes_release: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description=(
+                    "Whether this distribution explicitly opts into the generated "
+                    "release protocol"
+                ),
+            ),
+        ] = False
         editable: Annotated[
             bool, m.Field(description="Overlay repository as an editable dependency")
         ]
@@ -687,6 +792,13 @@ class FlextInfraConfigModelsContexts:
         ci_enabled: Annotated[
             bool, m.Field(description="Whether conform owns the CI projection")
         ]
+        publishes_release: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description="Whether conform renders release-protocol artifacts",
+            ),
+        ] = False
         gascity_enabled: Annotated[
             bool,
             m.Field(

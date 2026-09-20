@@ -61,18 +61,13 @@ class FlextInfraReleaseOrchestratorPhases(
         Each repository versions independently, so release metadata pins a
         sibling to what the sibling's ``pyproject.toml`` declares. The root
         project is included so a workspace may depend on its own distribution.
-        A sibling consumed through a pinned git ref (a standalone repository's
-        internal dependency) is what the committed ``uv.lock`` resolved for it:
-        the version that sibling declared at the pinned commit.
+        Dependencies without a visible source manifest retain no guessed version.
+        The artifact boundary rejects unknown internal dependency versions.
         """
         projects = u.Infra.resolve_projects(repository_root, ())
         if projects.failure:
             return r[t.StrMapping].from_failure(projects)
-        versions: MutableMapping[str, str] = dict(
-            u.Infra.locked_dependency_versions(
-                repository_root / c.Infra.UV_LOCK_FILENAME, sources=("git",)
-            )
-        )
+        versions: MutableMapping[str, str] = {}
         for project in projects.value:
             declared = u.Infra.current_workspace_version(project.path)
             if declared.failure:

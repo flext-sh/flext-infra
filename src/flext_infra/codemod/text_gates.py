@@ -15,11 +15,12 @@ from __future__ import annotations
 import functools
 import re
 from bisect import bisect_right
-from collections.abc import Mapping
 from fnmatch import fnmatch
 from pathlib import Path
 
-from .. import c, m, p, r, t, u
+from flext_core import r
+
+from .. import c, m, p, t, u
 
 
 class FlextInfraModTextGateEngine:
@@ -28,10 +29,10 @@ class FlextInfraModTextGateEngine:
     @classmethod
     def load_rules(cls, root: Path) -> p.Result[t.VariadicTuple[m.Infra.ModTextRule]]:
         """Load package and workspace text rules into one validated tuple."""
-        sources = (
-            Path(__file__).parent / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
-            root / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
-        )
+        # One catalogue, owned by the repository under work. The package-side
+        # lookup addressed a file the distribution does not ship, so it could
+        # only ever contribute nothing.
+        sources = (root / c.Infra.CODEMOD_TEXT_RULES_RELPATH,)
         rules: list[m.Infra.ModTextRule] = []
         seen: set[str] = set()
         for source in sources:
@@ -40,10 +41,6 @@ class FlextInfraModTextGateEngine:
             parsed = u.Cli.yaml_parse(source.read_text(encoding=c.Cli.ENCODING_DEFAULT))
             if parsed.failure:
                 return r[t.VariadicTuple[m.Infra.ModTextRule]].from_failure(parsed)
-            if not isinstance(parsed.value, Mapping):
-                return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(
-                    f"text rule file must be a YAML mapping: {source}"
-                )
             listing = parsed.value.get(c.Infra.CODEMOD_TEXT_RULES_KEY)
             if not isinstance(listing, list):
                 return r[t.VariadicTuple[m.Infra.ModTextRule]].fail(

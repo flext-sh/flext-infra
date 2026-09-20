@@ -8,7 +8,7 @@ from flext_cli import m
 
 from flext_infra import t
 
-from ._defaults import ImmutableEmptyMapping
+from ._defaults import FlextInfraModelsDefaults
 from .deps_tool_config_project_ruff import FlextInfraModelsDepsToolConfigProjectRuff
 
 
@@ -33,7 +33,7 @@ class FlextInfraModelsDepsToolConfigProjectMise(
                 t.NonEmptyStr, FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseTool
             ],
             m.Field(description="Project-local Mise tools added to generated config."),
-        ] = m.Field(default_factory=ImmutableEmptyMapping)
+        ] = m.Field(default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping)
 
 
 __all__: list[str] = ["FlextInfraModelsDepsToolConfigProjectMise"]

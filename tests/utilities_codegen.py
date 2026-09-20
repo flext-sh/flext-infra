@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config, r, u
+from flext_core import r
+from flext_infra import config, u
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from tests import c, m, p, t
@@ -61,6 +62,46 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         """Build one codegen conform request; every default is the model's own."""
         return m.Infra.CodegenConformRequest(
             root=root, what=what, scope=scope, mode=mode
+        )
+
+    @staticmethod
+    def governed_project_plan(root: Path) -> m.Infra.CodegenPlan:
+        """Plan every declared artifact of one governed fixture project read-only."""
+        for entry in config.Infra.codegen.templates.entries:
+            destination = entry.destination.format(
+                package_name="fixture_project", ns="fixture_project"
+            )
+            (root / destination).parent.mkdir(parents=True, exist_ok=True)
+        for managed in config.Infra.codegen.managed_files:
+            (root / managed.path).parent.mkdir(parents=True, exist_ok=True)
+        # Scaffold entries create declaration family directories, and the
+        # facade completeness law rejects owners without their public facade.
+        package_dir = root / "src" / "fixture_project"
+        for family in ("u", "p"):
+            facade = package_dir / f"{c.Infra.FAMILY_PUBLIC_MODULES[family]}.py"
+            if (package_dir / c.Infra.FAMILY_DIRECTORIES[family]).is_dir() and (
+                not facade.is_file()
+            ):
+                facade.write_text(
+                    f"class FixtureProject{family.capitalize()}Facade:\n    pass\n",
+                    encoding="utf-8",
+                )
+        result = FlextInfraCodegenConform(repository_root=root).plan(
+            TestsFlextInfraUtilitiesCodegenMixin.conform_request(root)
+        )
+        return m.Infra.CodegenPlan.model_validate(tm.ok(result))
+
+    @staticmethod
+    def planned_text(plan: m.Infra.CodegenPlan, destination: str) -> str | None:
+        """Return the desired text of the plan entry ending with ``destination``."""
+        match = next(
+            (item for item in plan.files if item.path.as_posix().endswith(destination)),
+            None,
+        )
+        return (
+            None
+            if match is None or match.desired_content is None
+            else tm.not_none(match.desired_content).decode(c.Cli.ENCODING_DEFAULT)
         )
 
     @staticmethod

@@ -36,14 +36,11 @@ class FlextInfraConfigFixerSteps:
         search_raw = pyrefly.get(c.Infra.SEARCH_PATH)
         if not isinstance(search_raw, list):
             return r[t.StrSequence].ok(())
-        validated_paths = u.validate_value(
-            t.Cli.JSON_LIST_ADAPTER, list(search_raw)
-        )
-        if validated_paths.failure:
-            return r[t.StrSequence].fail_op("validate-search-path", validated_paths.error)
-        current_paths = validated_paths.value
+        validated = u.validate_value(t.Cli.JSON_LIST_ADAPTER, list(search_raw))
+        if validated.failure:
+            return r[t.StrSequence].fail_op("validate-search-path", validated.error)
         current_search = [
-            path_item for path_item in current_paths if isinstance(path_item, str)
+            path_item for path_item in validated.value if isinstance(path_item, str)
         ]
         expected_search = FlextInfraExtraPathsManager(
             repository_root=self._repository_root
@@ -64,14 +61,13 @@ class FlextInfraConfigFixerSteps:
         includes_raw = pyrefly.get(c.Infra.PROJECT_INCLUDES)
         if not isinstance(includes_raw, list):
             return r[t.StrSequence].ok(())
-        validated_items = u.validate_value(
-            t.Cli.JSON_LIST_ADAPTER, list(includes_raw)
-        )
-        if validated_items.failure:
-            return r[t.StrSequence].fail_op("validate-project-includes", validated_items.error)
-        current_items = validated_items.value
+        validated = u.validate_value(t.Cli.JSON_LIST_ADAPTER, list(includes_raw))
+        if validated.failure:
+            return r[t.StrSequence].fail_op(
+                "validate-project-includes", validated.error
+            )
         current_includes = [
-            path_item for path_item in current_items if isinstance(path_item, str)
+            path_item for path_item in validated.value if isinstance(path_item, str)
         ]
         expected_includes = FlextInfraExtraPathsManager(
             repository_root=self._repository_root
@@ -90,28 +86,28 @@ class FlextInfraConfigFixerSteps:
         sub_configs = pyrefly.get(c.Infra.SUB_CONFIG)
         if not isinstance(sub_configs, list):
             return r[tuple[t.StrSequence, bool]].ok(((), False))
-        validated_configs = u.validate_value(
+        validated_configs: p.Result[t.JsonList] = u.validate_value(
             t.Infra.INFRA_SEQ_ADAPTER, sub_configs
         )
         if validated_configs.failure:
             return r[tuple[t.StrSequence, bool]].fail_op(
                 "validate-sub-configs", validated_configs.error
             )
-        configs = validated_configs.value
+        configs: t.SequenceOf[t.Infra.InfraValue] = validated_configs.value
         fixes: t.MutableSequenceOf[str] = []
         removed_ignore = False
         new_configs: t.MutableSequenceOf[t.Infra.InfraValue] = []
         for conf in configs:
             conf_out: t.Infra.InfraValue = conf
             if isinstance(conf, Mapping):
-                validated = u.validate_value(
+                validated_conf: p.Result[t.JsonMapping] = u.validate_value(
                     t.Infra.INFRA_MAPPING_ADAPTER, conf
                 )
-                if validated.failure:
+                if validated_conf.failure:
                     return r[tuple[t.StrSequence, bool]].fail_op(
-                        "validate-pyrefly-sub-config", validated.error
+                        "validate-pyrefly-sub-config", validated_conf.error
                     )
-                conf_map = validated.value
+                conf_map = validated_conf.value
                 conf_out = dict(conf_map)
             else:
                 new_configs.append(conf_out)
@@ -135,15 +131,12 @@ class FlextInfraConfigFixerSteps:
         current_excludes: t.StrSequence = []
         excludes = pyrefly.get(c.Infra.PROJECT_EXCLUDES)
         if isinstance(excludes, list):
-            validated = u.validate_value(
-                t.Cli.JSON_LIST_ADAPTER, list(excludes)
-            )
+            validated = u.validate_value(t.Cli.JSON_LIST_ADAPTER, list(excludes))
             if validated.failure:
                 return r[t.StrSequence].fail_op(
                     "validate-project-excludes", validated.error
                 )
-            exclude_items: t.JsonList = list(validated.value)
-            current_excludes = [str(value) for value in exclude_items]
+            current_excludes = [str(value) for value in validated.value]
         expected_excludes = sorted(
             set(config.Infra.tooling.tools.pyrefly.project_exclude_globs)
         )

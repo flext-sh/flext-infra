@@ -31,6 +31,8 @@ class FlextInfraConstantsSourceCode:
     # --- Directory exclusion sets (was: class Excluded) ---
     COMMON_EXCLUDED_DIRS: Final[frozenset[str]] = frozenset({
         ".git",
+        ".agents-sync-home",
+        ".test-tmp",
         ".venv",
         ".worktrees",
         "node_modules",
@@ -50,8 +52,13 @@ class FlextInfraConstantsSourceCode:
         "vendor"
     }
     "Non-productive roots excluded while discovering Python analyzer surfaces."
-    DOC_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {"legado", "site"}
-    "Live documentation excludes generated sites and historical evidence roots."
+    DOC_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
+        "crg-reports",
+        "incoming",
+        "legado",
+        "site",
+    }
+    "Live docs exclude generated sites and immutable or historical evidence roots."
     PYPROJECT_SKIP_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
         ".claude.disabled",
         "context_test",
@@ -72,6 +79,24 @@ class FlextInfraConstantsSourceCode:
         ".beads",
         "reports",
         ".agents",
+        # Runtime tool state (Serena memories, Kilo plans): regenerated caches,
+        # never governed source — excluded from every quality-check surface.
+        ".serena",
+        ".kilo",
+        ".omo",
+        ".tmp",
+        ".snapshots",
+        ".benchmarks",
+        ".hypothesis",
+        ".vscode",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".pyrefly_cache",
+        "htmlcov",
+        "legado",
+        "site",
+        "target",
     }
     "Directories to exclude during quality checks."
     GITHUB_AGENT_PROJECTION_DIRS: Final[frozenset[str]] = frozenset({
@@ -326,16 +351,6 @@ class FlextInfraConstantsSourceCode:
         return re.compile(rf"^class\s+{re.escape(class_name)}\b", re.MULTILINE)
 
     @staticmethod
-    def compile_attr_access(name: str) -> t.RegexPattern:
-        r"""Compile ``\b<name>\.(\w+)`` for one-level attribute access detection."""
-        return re.compile(rf"\b{re.escape(name)}\.(\w+)")
-
-    @staticmethod
-    def compile_double_attr_access(name: str) -> t.RegexPattern:
-        r"""Compile ``\b<name>\.(\w+)\.(\w+)`` for two-level attribute access."""
-        return re.compile(rf"\b{re.escape(name)}\.(\w+)\.(\w+)")
-
-    @staticmethod
     def compile_from_import_paren_open(module_name: str) -> t.RegexPattern:
         """Compile ``from <module_name> import (`` (no anchor) — used on stripped lines."""
         return re.compile(rf"from\s+{re.escape(module_name)}\s+import\s*\(")
@@ -467,12 +482,6 @@ class FlextInfraConstantsSourceCode:
         r"\bcast\s*\(\s*[^,]+\s*,\s*([^)]+)\s*\)"
     )
     "Regex: ``cast(Type, value)`` call — captures the value to retain."
-    AS_KEYWORD_RE: Final[t.RegexPattern] = re.compile(r"\s+as\s+")
-    "Regex: ``<sp>as<sp>`` keyword for splitting import-as forms."
-    FROM_IMPORT_SIMPLE_RE: Final[t.RegexPattern] = re.compile(
-        r"^from\s+([\w.]+)\s+import\s+(.+?)$", re.MULTILINE
-    )
-    "Regex: simple from-import line (no trailing-comment strip)."
     FROM_IMPORT_LINE_TRIM_RE: Final[t.RegexPattern] = re.compile(
         r"from\s+([\w.]+)\s+import\s+(.+?)(?:\s*#.*)?$"
     )

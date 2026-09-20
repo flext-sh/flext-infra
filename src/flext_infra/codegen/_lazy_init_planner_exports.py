@@ -22,11 +22,6 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         ]
         _version_module_name: str
 
-        @classmethod
-        def _is_private_test_fixture_package(
-            cls, pkg_dir: Path, surface: str
-        ) -> bool: ...
-
         def _package_entry(
             self, pkg_dir: Path
         ) -> m.Infra.RopePackageIndexEntry | None: ...
@@ -42,15 +37,13 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         self, context: m.Infra.LazyInitPackageContext
     ) -> t.MutableLazyAliasMap:
         """Return the lazy export map for a package (excluding child packages)."""
-        if self._is_private_test_fixture_package(context.pkg_dir, context.surface):
-            return {}
         package_entry = self._package_entry(context.pkg_dir)
         # Operator init law (2026-09-16): every package with public children —
         # underscore internals included — carries a light lazy-init export
         # surface. When the rope index does not track the package, enumerate
         # direct children from the filesystem instead of rendering an empty
         # init; emptiness here is a defect, never canonical.
-        module_entries = (
+        module_entries: t.MutableSequenceOf[t.Pair[Path, str]] = (
             [(entry.file_path, entry.module_name) for entry in package_entry.modules]
             if package_entry is not None
             else []
@@ -155,6 +148,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 policy.expected_alias
                 and u.Infra.matches_project_namespace_package(context.current_pkg)
                 and u.Infra.matches_root_namespace_file(py_file.name)
+                and "." not in context.current_pkg
             ):
                 targets.setdefault(
                     policy.expected_alias, (module_path, policy.expected_alias)

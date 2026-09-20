@@ -15,7 +15,7 @@ from flext_cli import u as cli_u
 from flext_infra.constants import c
 from flext_infra.typings import t
 
-from .._settings import env_lookup as _settings_env_lookup
+from .._settings import FlextInfraSettings
 
 
 class FlextInfraUtilitiesBase:
@@ -36,7 +36,17 @@ class FlextInfraUtilitiesBase:
         ``settings.Infra.*`` fields instead; ambient ``os.environ`` reads
         elsewhere are banned by the ``ban-ambient-environ-read`` rule.
         """
-        return _settings_env_lookup(name)
+        return FlextInfraSettings.env_lookup(name)
+
+    @staticmethod
+    def env_value(name: str, default: str = "") -> str:
+        """Return one stripped dynamic environment value, or the stripped default.
+
+        Only an unset variable falls back to ``default``; a set but blank value
+        stays blank so callers can reject it explicitly.
+        """
+        value = FlextInfraSettings.env_lookup(name)
+        return default.strip() if value is None else value.strip()
 
     @staticmethod
     def resolve_repository_root_or_cwd(repository_root: Path | None = None) -> Path:

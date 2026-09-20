@@ -8,7 +8,8 @@ from typing import override
 
 from flext_tests import tm
 
-from flext_infra import config, r, u
+from flext_core import r
+from flext_infra import config, u
 from tests import c, m, p, t
 
 

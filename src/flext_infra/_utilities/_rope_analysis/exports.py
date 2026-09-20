@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ast
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -12,10 +12,6 @@ from flext_infra.typings import t
 
 from ..rope_core import FlextInfraUtilitiesRopeCore
 from ..rope_runtime import FlextInfraUtilitiesRopeRuntime
-
-if TYPE_CHECKING:
-    from flext_infra.protocols import p
-
 from .asthelpers import FlextInfraUtilitiesRopeAnalysisAstHelpers
 from .sourcescan import FlextInfraUtilitiesRopeAnalysisSourceScan
 
@@ -504,13 +500,13 @@ class FlextInfraUtilitiesRopeAnalysisExports:
         return tuple(dict.fromkeys(names))
 
     @staticmethod
-    def module_body_nodes_source(source: str) -> t.SequenceOf[p.AttributeProbe]:
+    def module_body_nodes_source(source: str) -> t.SequenceOf[t.Infra.RopeAstNode]:
         """Return top-level parsed statements for one source module."""
         _ = source
         return ()
 
     @staticmethod
-    def module_reachable_nodes_source(source: str) -> t.SequenceOf[p.AttributeProbe]:
+    def module_reachable_nodes_source(source: str) -> t.SequenceOf[t.Infra.RopeAstNode]:
         """Return parsed nodes reachable from one source module."""
         _ = source
         return ()

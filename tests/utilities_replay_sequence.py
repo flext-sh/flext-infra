@@ -1,12 +1,11 @@
-"""Command-result sequence and generic factory test utilities for flext-infra."""
+"""Command-result and generic factory test utilities for flext-infra."""
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import r
+from flext_core import r
 from tests import c, m, t, u
 from tests.utilities_replay import TestsFlextInfraUtilitiesReplayRunnerMixin
 
@@ -17,13 +16,15 @@ class TestsFlextInfraUtilitiesReplaySequenceMixin:
     class SequenceRunner(TestsFlextInfraUtilitiesReplayRunnerMixin.DeptryRunner):
         """Protocol-compatible runner that replays command results in order."""
 
-        def __init__(self, results: t.SequenceOf[r[m.Cli.CommandOutput]]) -> None:
+        def __init__(
+            self, results: t.SequenceOf[p.Result[m.Cli.CommandOutput]]
+        ) -> None:
             """Store ordered command results for replay."""
             self._results = list(results)
             self._index = 0
             self.commands: MutableSequence[t.StrSequence] = []
 
-        def _next_result(self) -> r[m.Cli.CommandOutput]:
+        def _next_result(self) -> p.Result[m.Cli.CommandOutput]:
             current = self._index
             self._index = current + 1
             if not self._results:
@@ -35,7 +36,7 @@ class TestsFlextInfraUtilitiesReplaySequenceMixin:
             )
 
         @override
-        def _command_result(self) -> r[m.Cli.CommandOutput]:
+        def _command_result(self) -> p.Result[m.Cli.CommandOutput]:
             """Replay the next stored result instead of a single one."""
             return self._next_result()
 
@@ -67,7 +68,7 @@ class TestsFlextInfraUtilitiesReplaySequenceMixin:
 
     @staticmethod
     def sequence_runner(
-        *results: r[m.Cli.CommandOutput],
+        *results: p.Result[m.Cli.CommandOutput],
     ) -> TestsFlextInfraUtilitiesReplaySequenceMixin.SequenceRunner:
         """Build one in-order command-result replaying runner."""
         return TestsFlextInfraUtilitiesReplaySequenceMixin.SequenceRunner(list(results))

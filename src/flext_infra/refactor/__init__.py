@@ -29,20 +29,15 @@ if TYPE_CHECKING:
     from ._namespace_enforcer_project import FlextInfraNamespaceEnforcerProjectMixin
     from ._project_classifier_deps import FlextInfraProjectClassifierDepsMixin
     from ._project_classifier_family import FlextInfraProjectClassifierFamilyMixin
-    from ._violation_helper_classifier import (
-        FlextInfraRefactorViolationHelperClassifierMixin,
-    )
     from ._wrapper_rewrite import FlextInfraWrapperRootNamespaceRewriteMixin
     from .accessor_migration import FlextInfraAccessorMigrationOrchestrator
     from .census import FlextInfraRefactorCensus
-    from .class_nesting_analyzer import FlextInfraRefactorClassNestingAnalyzer
     from .classvar_constant_autofix import FlextInfraRefactorClassvarConstantAutofix
     from .modernize_orchestrator import FlextInfraModernizeOrchestrator
     from .namespace_enforcer import FlextInfraNamespaceEnforcer
     from .namespace_enforcer_phases import FlextInfraNamespaceEnforcerPhasesMixin
     from .project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
     from .project_classifier import FlextInfraProjectClassifier
-    from .violation_analyzer import FlextInfraRefactorViolationAnalyzer
     from .wrapper_root_namespace import FlextInfraWrapperRootNamespaceRefactor
 __all__: tuple[str, ...] = (
     "FlextInfraAccessorMigrationOrchestrator",
@@ -71,11 +66,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorCensusRulesStructMixin",
     "FlextInfraRefactorCensusSymbolsMixin",
     "FlextInfraRefactorCensusValidateMixin",
-    "FlextInfraRefactorClassNestingAnalyzer",
     "FlextInfraRefactorClassvarConstantAutofix",
     "FlextInfraRefactorProjectAliasMigrator",
-    "FlextInfraRefactorViolationAnalyzer",
-    "FlextInfraRefactorViolationHelperClassifierMixin",
     "FlextInfraWrapperRootNamespaceRefactor",
     "FlextInfraWrapperRootNamespaceRewriteMixin",
 )
@@ -109,13 +101,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             "._project_classifier_deps": ("FlextInfraProjectClassifierDepsMixin",),
             "._project_classifier_family": ("FlextInfraProjectClassifierFamilyMixin",),
-            "._violation_helper_classifier": (
-                "FlextInfraRefactorViolationHelperClassifierMixin",
-            ),
             "._wrapper_rewrite": ("FlextInfraWrapperRootNamespaceRewriteMixin",),
             ".accessor_migration": ("FlextInfraAccessorMigrationOrchestrator",),
             ".census": ("FlextInfraRefactorCensus",),
-            ".class_nesting_analyzer": ("FlextInfraRefactorClassNestingAnalyzer",),
             ".classvar_constant_autofix": (
                 "FlextInfraRefactorClassvarConstantAutofix",
             ),
@@ -124,7 +112,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".namespace_enforcer_phases": ("FlextInfraNamespaceEnforcerPhasesMixin",),
             ".project_alias_migrator": ("FlextInfraRefactorProjectAliasMigrator",),
             ".project_classifier": ("FlextInfraProjectClassifier",),
-            ".violation_analyzer": ("FlextInfraRefactorViolationAnalyzer",),
             ".wrapper_root_namespace": ("FlextInfraWrapperRootNamespaceRefactor",),
         }),
         alias_groups=MappingProxyType({}),

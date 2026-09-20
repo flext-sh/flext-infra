@@ -6,6 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from ._conform.base import FlextInfraCodegenConform
+from ._conform import FlextInfraCodegenConformBase
+
+
+class FlextInfraCodegenConform(FlextInfraCodegenConformBase):
+    """Plan every selected output, then atomically write only a clean plan."""
+
 
 __all__: list[str] = ["FlextInfraCodegenConform"]

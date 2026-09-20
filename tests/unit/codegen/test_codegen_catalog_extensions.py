@@ -26,39 +26,99 @@ class TestsFlextInfraCodegenCatalogExtensions:
             update={"package": is_standalone, "editable": is_standalone}
         )
 
-    def test_infra_repository_identity_is_owned_by_codegen_config(self) -> None:
+    def test_infra_repository_identity_is_detected_from_the_checkout(
+        self, tmp_path: Path
+    ) -> None:
+        """The infra URL is detected from the checkout's own dependency line."""
         codegen = config.Infra.codegen
         source = codegen.infra_repository
-        resolved = tm.ok(u.Infra.configured_repository_ref(codegen=codegen))
+        provider = u.Tests.provider()
+        root = tmp_path / "infra-checkout"
+        root.mkdir()
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
+            "dependencies = []\n"
+            "[dependency-groups]\n"
+            f'codegen = ["flext-infra @ git+{provider.base_url}/flext-infra.git@'
+            f'{u.Tests.provider_branch()}"]\n',
+            encoding="utf-8",
+        )
+
+        resolved = tm.ok(
+            u.Infra.configured_repository_ref(codegen=codegen, repository_root=root)
+        )
 
         tm.that(resolved.distribution, eq=source.distribution)
         tm.that(resolved.provider, eq=source.provider)
+        tm.that(resolved.url, eq=f"{provider.base_url}/{source.distribution}.git")
         tm.that(source.internal_distribution_prefix, eq="flext-")
 
-    def test_infra_repository_provider_must_resolve_exactly_once(self) -> None:
+    def test_flext_line_follows_the_declared_infra_source_not_the_consumer(
+        self, tmp_path: Path
+    ) -> None:
+        """Every internal floor renders from the infra dependency's own source."""
         codegen = config.Infra.codegen
-        source = codegen.infra_repository
-        provider = next(
-            item for item in codegen.providers if item.name == source.provider
+        provider = u.Tests.provider()
+        branch = u.Tests.provider_branch()
+        root = tmp_path / "other-org-consumer"
+        root.mkdir()
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
+            f'dependencies = ["flext-core @ git+{provider.base_url}/flext-core.git@'
+            f'{branch}"]\n'
+            "[dependency-groups]\n"
+            f'codegen = ["flext-infra @ git+{provider.base_url}/flext-infra.git@'
+            f'{branch}"]\n',
+            encoding="utf-8",
         )
-        unknown = codegen.model_copy(
-            update={
-                "infra_repository": source.model_copy(
-                    update={"provider": "unknown-provider"}
-                )
-            }
+        line = tm.ok(
+            u.Infra.flext_integration_line(codegen=codegen, repository_root=root)
         )
-        duplicate = codegen.model_copy(
-            update={"providers": (*codegen.providers, provider)}
+        tm.that(line.provider, eq=codegen.infra_repository.provider)
+        tm.that(line.branch, eq=branch)
+        tm.that(line.base_url, eq=provider.base_url)
+        tm.that(line.organization, eq=provider.organization)
+
+    def test_flext_line_fails_loud_on_conflicting_infra_sources(
+        self, tmp_path: Path
+    ) -> None:
+        """Family members declared from two lines in one document are a defect."""
+        codegen = config.Infra.codegen
+        provider = u.Tests.provider()
+        branch = u.Tests.provider_branch()
+        root = tmp_path / "split-consumer"
+        root.mkdir()
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
+            f'dependencies = ["flext-infra @ git+{provider.base_url}/flext-infra.git@'
+            f'{branch}"]\n'
+            "[dependency-groups]\n"
+            'codegen = ["flext-infra @ git+https://github.com/other-org/'
+            'flext-infra.git@dev"]\n',
+            encoding="utf-8",
+        )
+        result = u.Infra.flext_integration_line(codegen=codegen, repository_root=root)
+        tm.that(result.failure, eq=True)
+        tm.that(result.error, has="conflicting flext-* line sources")
+
+    def test_infra_repository_identity_fails_loud_when_undeclared(
+        self, tmp_path: Path
+    ) -> None:
+        """A checkout that declares the infra distribution nowhere fails loudly."""
+        codegen = config.Infra.codegen
+        root = tmp_path / "undeclared-checkout"
+        root.mkdir()
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "acme-platform"\nversion = "0.1.0"\ndependencies = []\n',
+            encoding="utf-8",
         )
 
-        unknown_result = u.Infra.configured_repository_ref(codegen=unknown)
-        duplicate_result = u.Infra.configured_repository_ref(codegen=duplicate)
+        result = u.Infra.configured_repository_ref(
+            codegen=codegen, repository_root=root
+        )
 
-        tm.that(unknown_result.failure, eq=True)
-        tm.that(unknown_result.error, has="must resolve exactly once")
-        tm.that(duplicate_result.failure, eq=True)
-        tm.that(duplicate_result.error, has="must resolve exactly once")
+        tm.that(result.failure, eq=True)
+        tm.that(result.error, has="is undeclared by this checkout")
 
     def test_beads_toolchain_resolves_the_latest_fork_release(self) -> None:
         tm.that(config.Infra.codegen.toolchain.beads.version, eq="latest")
@@ -74,7 +134,10 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(template, lacks="mise_install_path=")
         tm.that(template, has='latest_mise="$$mise"')
         tm.that(template, has="receipt_runtime")
-        tm.that(type(config.Infra.codegen.toolchain).model_fields, lacks="mise_version")
+        tm.that(
+            tuple(type(config.Infra.codegen.toolchain).model_fields),
+            lacks="mise_version",
+        )
 
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance."""
@@ -97,6 +160,8 @@ class TestsFlextInfraCodegenCatalogExtensions:
         )
         mise_template = template.with_name(".mise.toml.j2").read_text(encoding="utf-8")
         tm.that(mise_template, has='direnv = "{{ direnv_version }}"')
+        tm.that(mise_template, has='go = "{{ go_version }}"')
+        tm.that(mise_template, has='make = "{{ make_version }}"')
         tm.that(mise_template, lacks="credential_command")
         tm.that(mise_template, lacks="minimum_release_age")
         # S1 (operator law 2026-09-14): gen has one always-apply recipe; the
@@ -157,7 +222,6 @@ class TestsFlextInfraCodegenCatalogExtensions:
             project=u.Tests.project_spec(root.name),
             subprojects=(member,),
         )
-        provider = u.Tests.provider()
         member_source = tmp_path / "member-source"
         u.Tests.WorktreeFixture.initialize_governed_project(
             member_source,
@@ -185,7 +249,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
                 "--git-dir",
                 bare_repo.as_posix(),
                 "update-ref",
-                f"refs/heads/{provider.branch}",
+                f"refs/heads/{u.Tests.provider_branch()}",
                 member_head,
             ])
         )
@@ -207,7 +271,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
                     "submodule",
                     "add",
                     "-b",
-                    provider.branch,
+                    u.Tests.provider_branch(),
                     bare_repo.as_posix(),
                     member.name,
                 ],
@@ -232,7 +296,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
                 [
                     c.Infra.GIT,
                     "update-ref",
-                    f"refs/remotes/origin/{provider.branch}",
+                    f"refs/remotes/origin/{u.Tests.provider_branch()}",
                     member_head,
                 ],
                 cwd=member_checkout,
@@ -261,7 +325,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
                 [
                     c.Infra.GIT,
                     "update-ref",
-                    f"refs/remotes/origin/{provider.branch}",
+                    f"refs/remotes/origin/{u.Tests.provider_branch()}",
                     root_head,
                 ],
                 cwd=repository_root,

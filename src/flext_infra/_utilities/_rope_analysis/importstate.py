@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib.util as _importlib_util
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -13,10 +13,6 @@ from flext_infra.typings import t
 
 from ..rope_core import FlextInfraUtilitiesRopeCore
 from ..rope_runtime import FlextInfraUtilitiesRopeRuntime
-
-if TYPE_CHECKING:
-    from flext_infra.protocols import p
-
 from .asthelpers import FlextInfraUtilitiesRopeAnalysisAstHelpers
 
 
@@ -170,13 +166,13 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         return tuple(class_infos)
 
     @staticmethod
-    def superclass_name(superclass: p.AttributeProbe) -> str:
+    def superclass_name(superclass: t.Infra.RopePyObject) -> str:
         """Return a superclass name from Rope objects with uneven public APIs."""
         return FlextInfraUtilitiesRopeAnalysisImportState._superclass_name(superclass)
 
     @staticmethod
     def _superclass_name(
-        superclass: p.AttributeProbe, *, visited: frozenset[int] | None = None
+        superclass: t.Infra.RopePyObject, *, visited: frozenset[int] | None = None
     ) -> str:
         """Return a superclass name from Rope objects with uneven public APIs."""
         visited_ids = visited or frozenset()
@@ -366,12 +362,12 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         )
 
     @staticmethod
-    def is_pyclass(obj: p.AttributeProbe) -> bool:
+    def is_pyclass(obj: t.Infra.RopePyObject) -> bool:
         """Return whether a rope object is a ``PyClass`` (abstract class type)."""
         return FlextInfraUtilitiesRopeRuntime.is_abstract_class(obj)
 
     @staticmethod
-    def is_pyfunction(obj: p.AttributeProbe) -> bool:
+    def is_pyfunction(obj: t.Infra.RopePyObject) -> bool:
         """Return whether a rope object is a ``PyFunction``."""
         return FlextInfraUtilitiesRopeRuntime.is_py_function(obj)
 
@@ -395,7 +391,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     ) -> int:
         """Return direct symbol count for a top-level class without semantic imports."""
         pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-        tree: p.AttributeProbe = pymodule.get_ast()
+        tree: t.Infra.RopeAstNode = pymodule.get_ast()
         class_body = FlextInfraUtilitiesRopeAnalysisAstHelpers.class_body_nodes(
             tree, class_name=class_name
         )
@@ -554,7 +550,9 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
                 return ()
             source_class_bases = {
                 class_info.name: class_info.bases
-                for class_info in cls.class_info_from_source(resource.read())
+                for class_info in FlextInfraUtilitiesRopeAnalysisAstHelpers.class_info_from_source(
+                    resource.read()
+                )
             }
             state = cls.get_module_semantic_state(rope_project, resource)
         finally:

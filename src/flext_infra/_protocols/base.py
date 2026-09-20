@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
     from flext_cli import p
 
-    from flext_infra import m, t
+    from flext_infra import c, m, p, t
 
 
 @runtime_checkable
@@ -203,6 +203,11 @@ class FlextInfraProtocolsBase(Protocol):
         """Scaffold-only project metadata consumed by initial generation."""
 
         @property
+        def dependency_revisions(self) -> t.StrMapping:
+            """Repository-declared immutable dependency revisions."""
+            ...
+
+        @property
         def repository_root_rel(self) -> str:
             """Declared relative path from the project to its workspace root."""
             ...
@@ -265,30 +270,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class ProviderSpec(Protocol):
-        """Provider-owned repository and baseline contract."""
-
-        @property
-        def name(self) -> str:
-            """Provider key."""
-            ...
-
-        @property
-        def organization(self) -> str:
-            """Canonical GitHub organization."""
-            ...
-
-        @property
-        def base_url(self) -> str:
-            """Canonical provider HTTPS base URL."""
-            ...
-
-        @property
-        def branch(self) -> str:
-            """Provider-owned integration baseline."""
-            ...
-
-    @runtime_checkable
     class WorkspaceEnvironmentRequest(Protocol):
         """Read-only workspace environment validation request."""
 
@@ -296,6 +277,154 @@ class FlextInfraProtocolsBase(Protocol):
         def repository_root(self) -> Path:
             """Workspace whose active interpreter provenance must be validated."""
             ...
+
+    class CodegenConform(Protocol):
+        """Complete state and collaboration contract for conform partials."""
+
+        request: m.Infra.CodegenConformRequest | None
+        repository_root: Path
+        initial_workspace: m.Infra.WorkspaceSpec | None
+
+        def plan(
+            self, request: m.Infra.CodegenConformRequest
+        ) -> p.Result[m.Infra.CodegenPlan]: ...
+
+        def _conform_workspace_beads_routes(
+            self, request: m.Infra.CodegenConformRequest
+        ) -> p.Result[bool]: ...
+
+        @classmethod
+        def _surface_contract(
+            cls, surface: c.Infra.CodegenConformSurface
+        ) -> m.Infra.CodegenConformSurfaceContract: ...
+
+        @classmethod
+        def retired_projection_plans(
+            cls, root: Path, profile: c.Infra.MakeProfile
+        ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]: ...
+
+        @staticmethod
+        def _uv_environment_plan(
+            *,
+            root: Path,
+            repository_root: Path,
+            target: m.Infra.RepositoryConformTarget,
+            workspace: m.Infra.WorkspaceSpec,
+            config: m.Infra.CodegenConfigSpec,
+        ) -> m.Infra.UvEnvironmentPlan: ...
+
+        @staticmethod
+        def _scaffold_python_dirs(
+            entries: t.SequenceOf[p.Infra.TemplateEntrySpec],
+            profile: c.Infra.MakeProfile,
+        ) -> t.StrSequence: ...
+
+        @staticmethod
+        def _mise_config_plans(
+            plan: m.Infra.CodegenPlan,
+        ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
+
+        @classmethod
+        def _owned_docs_files(
+            cls,
+            request: m.Infra.CodegenConformRequest,
+            files: t.SequenceOf[m.Infra.CodegenFilePlan],
+        ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]: ...
+
+        @classmethod
+        def _owned_docs_directories(
+            cls,
+            request: m.Infra.CodegenConformRequest,
+            plan: m.Infra.CodegenPlan,
+            directories: t.SequenceOf[Path],
+        ) -> t.VariadicTuple[Path]: ...
+
+        def _project_render_context(
+            self,
+            repository: m.Infra.RepositoryRef,
+            target: m.Infra.RepositoryConformTarget,
+            workspace: m.Infra.WorkspaceSpec,
+            codegen: m.Infra.CodegenConfigSpec,
+            *,
+            tooling_runtime: m.Infra.ToolingRuntimeContext,
+            repository_root: Path,
+            managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
+            use_committed_artifacts: bool = True,
+        ) -> p.Result[m.Infra.ProjectRenderContext]: ...
+
+        def _rendered_artifact_source(
+            self,
+            *,
+            templates_root: Path,
+            template_relpath: Path,
+            failure_prefix: str,
+            dist: str,
+            repository: m.Infra.RepositoryRef,
+            repository_root: Path,
+            target: m.Infra.RepositoryConformTarget,
+            workspace: m.Infra.WorkspaceSpec,
+            codegen: m.Infra.CodegenConfigSpec,
+            destination: str,
+            tooling_runtime: m.Infra.ToolingRuntimeContext,
+            project_context: m.Infra.ProjectRenderContext | None = None,
+            managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
+        ) -> p.Result[str]: ...
+
+        @staticmethod
+        def compose_project_artifact(
+            repository_root: Path,
+            destination: str,
+            rendered: str,
+            *,
+            managed_artifacts: m.Infra.ProjectManagedArtifactsSnapshot | None = None,
+            workspace: m.Infra.WorkspaceSpec | None = None,
+            codegen: m.Infra.CodegenConfigSpec | None = None,
+            repository: m.Infra.RepositoryRef | None = None,
+            target: m.Infra.RepositoryConformTarget | None = None,
+        ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
+
+        @classmethod
+        def validate_custom_make(
+            cls, content: str, policy: m.Infra.CustomHandlerPolicy
+        ) -> p.Result[bool]: ...
+
+        @staticmethod
+        def _absent_file_plan(
+            root: Path, path: Path
+        ) -> p.Result[m.Infra.CodegenFilePlan]: ...
+
+        @staticmethod
+        def _gitignore_sections(
+            codegen: m.Infra.CodegenConfigSpec,
+            *,
+            profile: c.Infra.MakeProfile,
+            project_name: str | None = None,
+            workspace: m.Infra.WorkspaceSpec | None = None,
+            project_patterns: t.StrSequence = (),
+        ) -> t.VariadicTuple[m.Infra.ScaffoldGitignoreSectionSpec]: ...
+
+        @staticmethod
+        def _mise_bootstrap_environment() -> m.Infra.MiseBootstrapEnvironmentSpec: ...
+
+        @staticmethod
+        def _repository_provider(
+            repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec
+        ) -> p.Result[m.Infra.ProviderSpec]: ...
+
+        @staticmethod
+        def _repository_root_rel(workspace: m.Infra.WorkspaceSpec) -> str: ...
+
+        @staticmethod
+        def _merge_extra_verbs(
+            declared: t.VariadicTuple[m.Infra.MakeVerbSpec],
+            discovered: t.VariadicTuple[m.Infra.MakeVerbSpec],
+            canonical_names: frozenset[str],
+        ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]: ...
+
+        @staticmethod
+        def _discover_script_verbs(
+            repository_root: Path,
+        ) -> t.VariadicTuple[m.Infra.MakeVerbSpec]: ...
 
     @runtime_checkable
     class ToolchainSpec(Protocol):
@@ -391,6 +520,11 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def go_version(self) -> str:
             """Exact Go runtime version backing go: mise selectors."""
+            ...
+
+        @property
+        def make_version(self) -> str:
+            """Moving Make release selector provisioned by mise."""
             ...
 
         @property

@@ -12,7 +12,9 @@ from typing import override
 
 from flext_cli import cli
 
-from .. import FlextInfraServiceBase, c, config, m, p, r, t, u
+from flext_core import r
+
+from .. import FlextInfraServiceBase, c, config, m, p, t, u
 
 
 class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
@@ -62,7 +64,7 @@ class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         self._validate_patterns()
 
         cli.display_text("sed: preflight scan")
-        seen: dict[tuple, int] = {}
+        seen: dict[t.VariadicTuple[t.Quad[str, str, str, str]], int] = {}
         iteration = 0
 
         while True:
@@ -88,7 +90,9 @@ class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         cli.display_text(
             "sed: require canonical formatting and zero Ruff, Pyrefly, and LSP diagnostics"
         )
-        self._run_gates().unwrap()
+        gated = self._run_gates()
+        if gated.failure:
+            return r[t.Cli.ResultValue].from_failure(gated)
         cli.display_text("sed: fixed point verified with zero findings")
         return r[t.Cli.ResultValue].ok(True)
 
@@ -117,7 +121,7 @@ class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             combined |= flag_map[name]
         return combined
 
-    def _scan_pattern(self, pattern_spec: m.Infra.SedPatternSpec) -> tuple[int, int]:
+    def _scan_pattern(self, pattern_spec: m.Infra.SedPatternSpec) -> t.Pair[int, int]:
         """Scan for matches without applying. Returns (file_count, change_count)."""
         flags = self._compile_flags(pattern_spec.flags)
         compiled = re.compile(pattern_spec.pattern, flags)
@@ -160,9 +164,9 @@ class FlextInfraCodemodSedApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     modified_files.add(file_path)
         return len(modified_files)
 
-    def _compute_fingerprint(self) -> tuple:
+    def _compute_fingerprint(self) -> t.VariadicTuple[t.Quad[str, str, str, str]]:
         """Compute a fingerprint of all pattern matches across the repository."""
-        entries: list[tuple[str, str, str, str]] = []
+        entries: list[t.Quad[str, str, str, str]] = []
         for pattern_spec in config.Infra.sed_patterns.patterns:
             flags = self._compile_flags(pattern_spec.flags)
             compiled = re.compile(pattern_spec.pattern, flags)

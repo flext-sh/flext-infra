@@ -113,10 +113,17 @@ class TestsFlextInfraModCliRoute:
         tm.that(second_console, has=second_digest)
         tm.that(second_console, lacks=first_digest)
 
-    def test_apply_validates_rewrites_before_reporting_detection_only_findings(
+    def test_apply_reports_detection_only_residue_and_still_succeeds(
         self, mod_workspace: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """Retain the validated rewrite while the detection-only residue fails apply."""
+        """Repair applies every rewrite, reports what it cannot act on, exits zero.
+
+        A detection-only rule carries no ``fix``: no iteration of the apply loop
+        can ever consume its finding. Failing the repair verb on it returned the
+        verdict verb's answer and stalled the canonical chain on a defect the
+        verb was never able to repair. The residue is reported by rule id and
+        the verdict stays with ``check``.
+        """
         actionable_path = mod_workspace / "actionable.py"
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -140,11 +147,69 @@ class TestsFlextInfraModCliRoute:
             ).content
         ).decode(c.Cli.ENCODING_DEFAULT)
 
-        tm.that(exit_code, ne=0)
+        tm.that(exit_code, eq=0)
         tm.that(updated, has="r[int].ok(1)")
         tm.that(updated, lacks="p.Result[int].ok(1)")
         tm.that(console, has="detection-only")
+        tm.that(console, has="owner repair")
         tm.that(console, has="ban-make-serialization")
+
+    def test_apply_repeats_new_actionable_rule_cascades_until_fixed_point(
+        self, mod_workspace: Path
+    ) -> None:
+        """Carry findings exposed by one rewrite into the next apply iteration."""
+        config_path = mod_workspace / c.Infra.CODEMOD_CONFIG_FILENAME
+        rules_root = mod_workspace / "codemod" / c.Cli.RULES_DIR_NAME
+        tm.ok(u.Cli.ensure_dir(rules_root))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                config_path, "ruleDirs:\n  - codemod/rules\ntestConfigs: []\n"
+            )
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                rules_root / "first.yml",
+                (
+                    "id: first\n"
+                    "language: Python\n"
+                    "rule:\n"
+                    "  pattern: value = dict()\n"
+                    "fix: value = list()\n"
+                    "severity: warning\n"
+                ),
+            )
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                rules_root / "second.yml",
+                (
+                    "id: second\n"
+                    "language: Python\n"
+                    "rule:\n"
+                    "  pattern: value = list()\n"
+                    "fix: value = tuple()\n"
+                    "severity: warning\n"
+                ),
+            )
+        )
+        sample_path = mod_workspace / "sample.py"
+        tm.ok(u.Cli.atomic_write_text_file(sample_path, "value = dict()\n"))
+
+        exit_code = infra_main([
+            "refactor",
+            "mod",
+            "--repository-root",
+            str(mod_workspace),
+            "--apply",
+        ])
+        updated = tm.not_none(
+            tm.ok(
+                u.Cli.atomic_read_binary_file_state(sample_path, required=True)
+            ).content
+        ).decode(c.Cli.ENCODING_DEFAULT)
+
+        tm.that(exit_code, eq=0)
+        tm.that(updated, eq="from __future__ import annotations\nvalue = tuple()\n")
 
     def test_scan_keeps_prefix_rule_ids_exact(self, mod_workspace: Path) -> None:
         config_path = mod_workspace / c.Infra.CODEMOD_CONFIG_FILENAME

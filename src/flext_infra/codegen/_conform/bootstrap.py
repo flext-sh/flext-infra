@@ -1,20 +1,34 @@
-"""Bootstrap environment and toolchain policy projections."""
+"""Conform service root: validated request state and toolchain policy."""
 
 from __future__ import annotations
 
 from collections.abc import MutableMapping
 from pathlib import Path
+from typing import Annotated
 
-from ... import c, m, t, u
+from ... import c, m, s, t
 
 
-class FlextInfraCodegenConformBootstrap:
-    """Bootstrap environment and toolchain policy projections."""
+class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
+    """Root of the conform chain: request state and toolchain policy projections.
 
-    @staticmethod
-    def _mise_bootstrap_environment() -> m.Infra.MiseBootstrapEnvironmentSpec:
-        """Project the single generated Mise isolation contract into templates."""
-        return u.Infra.mise_bootstrap_environment()
+    This is the only orchestrator for Make/toolchain/source conformance.
+    Rendering stays in flext-cli; Git-source TOML policy and attached detection
+    are composed from their separately owned u.Infra/workspace services.
+    """
+
+    request: Annotated[
+        m.Infra.CodegenConformRequest | None,
+        m.Field(default=None, exclude=True, description="Validated conform request"),
+    ] = None
+    initial_workspace: Annotated[
+        m.Infra.WorkspaceSpec | None,
+        m.Field(
+            default=None,
+            exclude=True,
+            description="Validated scaffold specification included in the atomic plan",
+        ),
+    ] = None
 
     @staticmethod
     def link_mode(
@@ -32,7 +46,7 @@ class FlextInfraCodegenConformBootstrap:
         The filesystem is the SSOT: a verb is emitted only when its all.sh
         entrypoint exists. No manual list is required.
         """
-        scripts_dir = repository_root / "scripts"
+        scripts_dir = repository_root / c.Infra.DIR_SCRIPTS
         if not scripts_dir.is_dir():
             return ()
         discovered = [
@@ -83,13 +97,10 @@ class FlextInfraCodegenConformBootstrap:
         match surface:
             case c.Infra.CodegenConformSurface.ALL:
                 return m.Infra.CodegenConformSurfaceContract(complete_governed=True)
-            case c.Infra.CodegenConformSurface.DEPENDENCIES:
-                return m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset({c.Infra.PYPROJECT_FILENAME}),
-                    delegates=False,
-                    custom=False,
-                )
-            case c.Infra.CodegenConformSurface.PYPROJECT:
+            case (
+                c.Infra.CodegenConformSurface.DEPENDENCIES
+                | c.Infra.CodegenConformSurface.PYPROJECT
+            ):
                 return m.Infra.CodegenConformSurfaceContract(
                     destinations=frozenset({c.Infra.PYPROJECT_FILENAME}),
                     delegates=False,
@@ -101,6 +112,6 @@ class FlextInfraCodegenConformBootstrap:
                     pyproject=False,
                     custom=False,
                 )
-            case _:
-                msg = f"Unsupported codegen conform surface: {surface}"
-                raise ValueError(msg)
+
+
+__all__: list[str] = ["FlextInfraCodegenConformBootstrap"]

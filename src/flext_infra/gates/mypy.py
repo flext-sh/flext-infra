@@ -187,15 +187,13 @@ class FlextInfraMypyGate(FlextInfraGate):
         for raw_line in result.stdout.splitlines():
             if not raw_line.strip():
                 continue
-            validated = u.validate_value(
-                m.Infra.MypyDiagnostic, raw_line, strict=True
+            validated: p.Result[m.Infra.MypyDiagnostic] = u.validate_value(
+                m.Infra.MypyDiagnostic, raw_line, from_json=True, strict=True
             )
             if validated.failure:
                 return False, (
                     self._malformed_report_issue(
-                        validated.error or "malformed mypy diagnostic",
-                        tool=c.Infra.MYPY,
-                        file=str(project_dir),
+                        str(validated.error), tool=c.Infra.MYPY, file=str(project_dir)
                     ),
                 )
             diagnostic = validated.value

@@ -7,13 +7,16 @@ from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from .. import c, config, m, r, s, t, u
+from flext_core import r
+
+from .. import c, config, m, t, u
+from ._execution import FlextInfraCodegenExecutionBase
 
 if TYPE_CHECKING:
     from .. import p
 
 
-class FlextInfraCodegenMiseArtifacts(s[bool]):
+class FlextInfraCodegenMiseArtifacts(FlextInfraCodegenExecutionBase[bool]):
     """Validate unlocked latest-version Mise declarations and launchers."""
 
     config_only: Annotated[

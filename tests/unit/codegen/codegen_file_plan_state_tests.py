@@ -1,6 +1,6 @@
 """Atomic file state comparison preserves exact bytes and file presence.
 
-Copyright (c) 2026 Datacosmos. All rights reserved.
+Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
@@ -10,9 +10,8 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
-from flext_cli import m, u
 
-from flext_infra import c
+from flext_infra import c, m, u
 from flext_infra.utilities import FlextInfraUtilitiesCodegenFilePlan
 
 

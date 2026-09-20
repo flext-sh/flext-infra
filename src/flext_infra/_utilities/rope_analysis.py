@@ -2,20 +2,10 @@
 
 from __future__ import annotations
 
-from ._rope_analysis.base import (
-    FlextInfraUtilitiesRopeAnalysisAstHelpers,
-    FlextInfraUtilitiesRopeAnalysisExports,
-    FlextInfraUtilitiesRopeAnalysisImportState,
-    FlextInfraUtilitiesRopeAnalysisSourceScan,
-)
+from ._rope_analysis.base import FlextInfraUtilitiesRopeAnalysisBase
 
 
-class FlextInfraUtilitiesRopeAnalysis(
-    FlextInfraUtilitiesRopeAnalysisAstHelpers,
-    FlextInfraUtilitiesRopeAnalysisSourceScan,
-    FlextInfraUtilitiesRopeAnalysisExports,
-    FlextInfraUtilitiesRopeAnalysisImportState,
-):
+class FlextInfraUtilitiesRopeAnalysis(FlextInfraUtilitiesRopeAnalysisBase):
     """Rope-backed semantic analysis helpers."""
 
 

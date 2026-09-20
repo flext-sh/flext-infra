@@ -19,6 +19,9 @@ from ._docs_generate_plan import (
 if TYPE_CHECKING:
     from flext_infra import p, t
 
+_OWNED_HEADER_LINES = 2
+"Lines an owned member guide carries before its generated body: marker + source."
+
 
 class FlextInfraUtilitiesDocsGuidesMixin:
     """Project guide projections derived from root ``docs/guides`` sources."""
@@ -42,8 +45,8 @@ class FlextInfraUtilitiesDocsGuidesMixin:
         header = (
             "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
             "from the workspace root. -->\n"
-            f"<!-- Source of truth: `docs/guides/{guide_name}`; adjust that source, "
-            "never this projection. -->\n\n"
+            f"<!-- Source of truth: `<workspace-root>/docs/guides/{guide_name}`; "
+            "adjust that workspace source, never this member projection. -->\n\n"
             f"# {project_name} - {title}\n\n"
             f"> Project profile: `{project_name}`"
         )
@@ -106,10 +109,43 @@ class FlextInfraUtilitiesDocsGuidesMixin:
                 destinations[path] = content
         owned: set[Path] = set()
         for path, content in destinations.items():
+            lines = content.splitlines()
+            generated = (
+                "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
+                "from the workspace root. -->"
+            )
+            source_headers = {
+                (
+                    f"<!-- Source of truth: `docs/guides/{path.name}`; "
+                    "adjust that source, never this projection. -->"
+                ),
+                (
+                    f"<!-- Source of truth: `<workspace-root>/docs/guides/{path.name}`; "
+                    "adjust that workspace source, never this member projection. -->"
+                ),
+            }
+            if (
+                len(lines) >= _OWNED_HEADER_LINES
+                and lines[0] == generated
+                and lines[1] in source_headers
+            ):
+                owned.add(path)
+                continue
             ownership = FlextInfraUtilitiesDocsGuidesMixin.docs_project_guide_content(
                 "", scope.name, path.name
             ).partition("\n\n")[0]
-            if content.startswith(ownership + "\n\n"):
+            previous_ownership = ownership.replace("`<workspace-root>/", "`")
+            legacy_ownership = (
+                "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
+                "from the workspace root. -->\n"
+                f"<!-- Source of truth: `docs/guides/{path.name}`; "
+                "adjust that workspace source, never this member projection. -->"
+            )
+            if content.startswith((
+                ownership + "\n\n",
+                previous_ownership + "\n\n",
+                legacy_ownership + "\n\n",
+            )):
                 owned.add(path)
         artifacts: list[DocsRenderedArtifactTuple] = []
         expected_paths = {destination_root / path.name for path in sources}

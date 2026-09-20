@@ -195,6 +195,25 @@ class TestsFlextInfraCodegenLazyInit:
             tm.ok(result)
             tm.that({plan.path for plan in result.value.files}, lacks=scratch_init)
 
+        def test_generated_tool_state_is_excluded_from_plans(
+            self, tmp_path: Path
+        ) -> None:
+            """Exclude disposable test and projected provider package trees."""
+            self._create_init_file(tmp_path / "src" / "pkg", self._VALID_INIT)
+            generated = tuple(
+                self._create_init_file(
+                    tmp_path / directory / "provider" / "pkg", self._VALID_TESTS_INIT
+                )
+                for directory in (".agents-sync-home", ".test-tmp")
+            )
+
+            result = FlextInfraCodegenLazyInit(repository_root=tmp_path).plan_files()
+
+            tm.ok(result)
+            planned = {plan.path for plan in result.value.files}
+            for init_file in generated:
+                tm.that(planned, lacks=init_file)
+
     class TestsEdgeCases:
         """Edge cases for directory scanning."""
 

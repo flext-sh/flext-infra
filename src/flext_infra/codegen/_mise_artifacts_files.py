@@ -21,8 +21,8 @@ class FlextInfraMiseArtifactsFiles:
     @classmethod
     def transaction_participants(
         cls, layout: m.Infra.MiseToolchainWorkspaceLayout
-    ) -> tuple[
-        m.Infra.MiseToolchainProjectLayout | m.Infra.CodegenFileParticipant, ...
+    ) -> t.VariadicTuple[
+        m.Infra.MiseToolchainProjectLayout | m.Infra.CodegenFileParticipant
     ]:
         """Return only explicitly registered publication owners."""
         return (*layout.projects, *layout.file_participants)
@@ -79,25 +79,29 @@ class FlextInfraMiseArtifactsFiles:
         return u.Cli.sha256_bytes(content)
 
     @classmethod
-    def packaged_launchers(cls) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
-        """Load the packaged unlocked bootstrap launcher pair for fresh seeding."""
+    def packaged_launchers(cls) -> p.Result[t.VariadicTuple[bytes]]:
+        """Load the packaged unlocked bootstrap launcher pair for fresh seeding.
+
+        Package resources are immutable data: the installer may hard-link them
+        to its cache (uv does), so they are read as resources, never as
+        uniquely owned atomic state. Staging owns the destination's atomic
+        publication and executable-output permissions.
+        """
         seed_directory = (
             Path(__file__).resolve().parents[1] / c.Infra.MISE_BOOTSTRAP_SEED_DIRECTORY
         )
-        # Package resources are data; staging owns executable output permissions.
-        states: list[m.Cli.AtomicFileState] = []
+        contents: list[bytes] = []
         for name in c.Infra.ARTIFACT_NAMES:
             path = seed_directory / Path(name).name
-            state = u.Cli.atomic_read_binary_file_state(path, required=True)
-            if state.failure:
-                return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(state)
-            observed = state.value
-            if not observed.content:
-                return r[tuple[m.Cli.AtomicFileState, ...]].fail(
+            loaded = u.Cli.files_read_binary(path)
+            if loaded.failure:
+                return r[tuple[bytes, ...]].from_failure(loaded)
+            if not loaded.value:
+                return r[tuple[bytes, ...]].fail(
                     f"packaged Mise launcher seed is empty: {path}"
                 )
-            states.append(observed)
-        return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(states))
+            contents.append(loaded.value)
+        return r[tuple[bytes, ...]].ok(tuple(contents))
 
     @classmethod
     def read_state(

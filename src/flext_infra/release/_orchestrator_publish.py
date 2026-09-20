@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, config, m, u
+from flext_infra.protocols import p
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -61,7 +62,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
         content = u.Cli.files_read_text(report_path)
         if content.failure:
             return r[m.Infra.BuildReport].from_failure(content)
-        validated = u.validate_value(
+        validated: p.Result[m.Infra.BuildReport] = u.validate_value(
             m.Infra.BuildReport, content.value, from_json=True
         )
         if validated.failure:

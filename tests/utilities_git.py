@@ -190,7 +190,7 @@ class TestsFlextInfraUtilitiesGitMixin:
         remote error. This is the single owner of fixture Git identity;
         callers must not add ``origin`` themselves.
         """
-        baseline_branch = TestsFlextInfraUtilitiesProjectFixtureMixin.provider().branch
+        baseline_branch = TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()
         bootstrap = TestsFlextInfraUtilitiesGitMixin.git_bootstrap
         bootstrap(repo_root, ("init", "-b", c.Infra.GIT_MAIN))
         bootstrap(repo_root, ("config", "user.email", "tests@flext.local"))

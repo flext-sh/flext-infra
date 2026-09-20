@@ -7,7 +7,8 @@ from typing import Annotated, override
 
 from flext_cli import cli
 
-from flext_infra import m, p, r, t, u
+from flext_core import r
+from flext_infra import m, p, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 
 from ._accessor_report import FlextInfraAccessorMigrationReportMixin

@@ -1,4 +1,4 @@
-"""Codegen artifact, conform, and plan result models (merged: FlextInfraConfigModelsRelease)."""
+"""Codegen artifact, conform, and plan result models."""
 
 from __future__ import annotations
 
@@ -14,20 +14,21 @@ from ..._constants import (
     FlextInfraConstantsRelease,
     FlextInfraConstantsSharedInfra,
 )
-from .. import FlextInfraModelsDepsToolSettings, FlextInfraModelsLayout
+from .. import FlextInfraModelsLayout
+from .._defaults import FlextInfraModelsDefaults
 from .contexts import FlextInfraConfigModelsContexts
 from .contract import FlextInfraConfigModelsContract
 from .make import FlextInfraConfigModelsMake
 from .provider import FlextInfraConfigModelsProvider
+from .release import FlextInfraConfigModelsRelease
 from .render import FlextInfraConfigModelsRender
 from .scaffold import FlextInfraConfigModelsScaffold
-from .static import FlextInfraConfigModelsStatic
 from .templates import FlextInfraConfigModelsTemplates
 from .workspace import FlextInfraConfigModelsWorkspace
 
 
 class FlextInfraConfigModelsArtifact:
-    """Codegen artifact, conform, and plan result models (merged: FlextInfraConfigModelsRelease)."""
+    """Codegen artifact, conform, and plan result models."""
 
     class CodegenArtifactSpec(FlextInfraConfigModelsContract.ConfigContract):
         """One ephemeral/generated resource every ignore/exclude derives from."""
@@ -63,6 +64,17 @@ class FlextInfraConfigModelsArtifact:
         map_union_settings: Annotated[
             Mapping[str, Mapping[str, str | bool | int]],
             m.Field(description="VS Code map keys union-merged over project settings"),
+        ]
+        stripped_keys: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "VS Code keys actively stripped from the settings projection "
+                    "because they conflict with a pyrightconfig.json/pyproject.toml "
+                    "owner (Pylance settingsNotOverridable)."
+                ),
+            ),
         ]
 
     class CodegenLocCapSpec(FlextInfraConfigModelsContract.ConfigContract):
@@ -112,17 +124,30 @@ class FlextInfraConfigModelsArtifact:
         checkout_submodules_overrides: Annotated[
             Mapping[str, str],
             m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description=(
                     "Per-distribution override of checkout_submodules, for "
                     "projects that really do exercise their subprojects in CI"
                 ),
             ),
         ]
+        dependabot_cooldown_days: Annotated[
+            Mapping[str, int],
+            m.Field(
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
+                description=(
+                    "Per-distribution dependabot cooldown (default-days, >= 0) "
+                    "opted in for generated dependabot.yml. The fleet default "
+                    "is no cooldown: every ecosystem selects the newest "
+                    "available release immediately. A distribution that must "
+                    "stagger updates declares its own days here."
+                ),
+            ),
+        ]
         ci_private_submodules: Annotated[
             Mapping[str, FlextInfraConfigModelsProvider.CiPrivateSubmodulesSpec],
             m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description=(
                     "Per-distribution private submodule deploy-key contracts "
                     "rendered into generated CI before make setup"
@@ -132,7 +157,7 @@ class FlextInfraConfigModelsArtifact:
         ci_private_dependency_auth: Annotated[
             Mapping[str, FlextInfraConfigModelsProvider.CiPrivateDependencyAuthSpec],
             m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description=(
                     "Per-distribution GitHub App identity minting installation "
                     "tokens for private git dependencies in generated CI"
@@ -142,7 +167,7 @@ class FlextInfraConfigModelsArtifact:
         ci_system_packages: Annotated[
             Mapping[str, t.VariadicTuple[t.NonEmptyStr]],
             m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description=(
                     "Per-distribution runner packages (Ubuntu apt names) the "
                     "generated CI installs before the gates run"
@@ -158,10 +183,6 @@ class FlextInfraConfigModelsArtifact:
         infra_repository: Annotated[
             FlextInfraConfigModelsProvider.RepositorySourceSpec,
             m.Field(description="Canonical infrastructure repository identity"),
-        ]
-        providers: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsProvider.ProviderSpec],
-            m.Field(min_length=1, description="Ordered FLEXT-owned Git providers"),
         ]
         branch_policy: Annotated[
             FlextInfraConfigModelsProvider.BranchPolicySpec,
@@ -540,7 +561,7 @@ class FlextInfraConfigModelsArtifact:
             m.Field(description="Canonical Make contract"),
         ]
         uv_environments: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsArtifact.UvEnvironmentPlan],
+            t.VariadicTuple[FlextInfraConfigModelsRelease.UvEnvironmentPlan],
             m.Field(description="uv plans paired with selected repositories"),
         ]
         files: Annotated[
@@ -630,7 +651,7 @@ class FlextInfraConfigModelsArtifact:
                 FlextInfraConfigModelsArtifact.ReleaseAutomationOverrideSpec,
             ],
             m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description="Per-distribution deviations from the shared contract",
             ),
         ]
@@ -742,150 +763,4 @@ class FlextInfraConfigModelsArtifact:
         patterns: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsArtifact.SedPatternSpec],
             m.Field(default=(), description="Ordered substitution patterns"),
-        ] = ()
-
-    class Infra(FlextInfraConfigModelsContract.ConfigContract):
-        """Complete flext-infra configuration namespace."""
-
-        name: Annotated[t.NonEmptyStr, m.Field(description="Project distribution name")]
-        initial_project_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description=(
-                    "Version seeded into a newly scaffolded project's pyproject; "
-                    "from then on the release protocol is the only writer"
-                )
-            ),
-        ]
-        codegen: Annotated[
-            FlextInfraConfigModelsArtifact.CodegenConfigSpec,
-            m.Field(description="Unified project and workspace codegen contract"),
-        ]
-        tooling: Annotated[
-            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
-            m.Field(description="Validated lint, typecheck, and scaffold policy"),
-        ]
-        source_scan: Annotated[
-            FlextInfraConfigModelsStatic.SourceScanSpec,
-            m.Field(description="Production-only source discovery contract"),
-        ]
-        release: Annotated[
-            FlextInfraConfigModelsArtifact.ReleasePolicySpec,
-            m.Field(description="Release protocol policy: eligibility, bumps, index"),
-        ]
-        # Static policy is validated data, never detector code.
-        enforcement: Annotated[
-            FlextInfraConfigModelsStatic.StaticEnforcementSpec,
-            m.Field(description="Rope-only static enforcement policy"),
-        ]
-        sed_patterns: Annotated[
-            FlextInfraConfigModelsArtifact.SedPatternsSpec,
-            m.Field(
-                default_factory=FlextInfraConfigModelsArtifact.SedPatternsSpec,
-                description=(
-                    "Sed-by-list mass replacement patterns for literal refactoring"
-                ),
-            ),
-        ]
-
-    class Root(FlextInfraConfigModelsContract.ConfigContract):
-        """Root payload deep-merged from flext-infra config files."""
-
-        Infra: Annotated[
-            FlextInfraConfigModelsArtifact.Infra,
-            m.Field(description="Validated flext-infra namespace"),
-        ]
-
-    class CodegenOverridesRoot(FlextInfraConfigModelsContract.ConfigContract):
-        """Override root mirroring the Infra.codegen structure with override-only fields.
-
-        Every field is optional and defaults to empty so an override file can
-        declare only the deltas it needs. The conform system deep-merges this
-        onto the immutable ``codegen.yaml`` before Pydantic validation.
-        """
-
-        codegen: Annotated[
-            FlextInfraConfigModelsArtifact._CodegenOverridesSection,
-            m.Field(description="Override sections for the codegen namespace"),
-        ]
-
-    class _CodegenOverridesSection(FlextInfraConfigModelsContract.ConfigContract):
-        """Override deltas that deep-merge onto CodegenConfigSpec fields."""
-
-        checkout_submodules_overrides: Annotated[
-            Mapping[str, str],
-            m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
-                description="Per-distribution checkout submodules overrides",
-            ),
-        ]
-        ci_private_submodules: Annotated[
-            Mapping[str, t.JsonMapping],
-            m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
-                description="Per-distribution private submodule deploy-key contracts",
-            ),
-        ]
-        make: Annotated[
-            FlextInfraConfigModelsArtifact._MakeOverridesSection | None,
-            m.Field(default=None, description="Make override deltas"),
-        ] = None
-        layout: Annotated[
-            FlextInfraConfigModelsArtifact._LayoutOverridesSection | None,
-            m.Field(default=None, description="Layout override deltas"),
-        ] = None
-
-    class _MakeOverridesSection(FlextInfraConfigModelsContract.ConfigContract):
-        """Override deltas for the generated Make contract."""
-
-        custom_handler_profile_overrides: Annotated[
-            Mapping[str, t.JsonMapping],
-            m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
-                description="Per-profile custom handler policy relaxations",
-            ),
-        ]
-
-    class _LayoutOverridesSection(FlextInfraConfigModelsContract.ConfigContract):
-        """Override deltas for the layout conformance contract."""
-
-        project_overrides: Annotated[
-            Mapping[str, t.JsonMapping],
-            m.Field(
-                default_factory=FlextInfraConfigModelsContract.immutable_empty_mapping,
-                description="Per-project layout deltas",
-            ),
-        ]
-
-    class CodegenOverridesSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """Typed content of the config overrides layer (config/codegen-overrides.yaml).
-
-        Layer 2 of the hierarchical architecture: project-specific parameters
-        that sit on top of the immutable codegen.yaml business rules. Every field
-        here is a delta applied to the base config; the overrides file never
-        duplicates immutable rules.
-        """
-
-        Infra: Annotated[
-            FlextInfraConfigModelsArtifact.CodegenOverridesRoot,
-            m.Field(description="flext-infra override namespace"),
-        ]
-
-    class UvEnvironmentPlan(FlextInfraConfigModelsContract.ConfigContract):
-        """One deterministic uv environment operation plan."""
-
-        project_root: Annotated[Path, m.Field(description="Selected project root")]
-        environment_root: Annotated[
-            Path, m.Field(description="Project supplying the active .venv")
-        ]
-        python_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Mise/Python version selector")
-        ]
-        groups: Annotated[
-            t.VariadicTuple[str],
-            m.Field(description="Ordered dependency groups synchronized by setup"),
-        ]
-        editable_repositories: Annotated[
-            t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
-            m.Field(description="Local repositories installed by setup"),
         ] = ()

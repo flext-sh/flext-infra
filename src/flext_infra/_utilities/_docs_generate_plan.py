@@ -91,6 +91,9 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
         # scope is a member when the root is excluded from the render.
         repository_root = bundle.repository_root
         scope_roots = tuple(scoped.scope.path for scoped in bundle.scopes)
+        # The single race barrier of the docs cycle: every snapshotted source is
+        # re-read here, once, immediately before publication planning; the
+        # destination CAS re-validates physically at publish time.
         stable = FlextInfraUtilitiesDocsGeneratePlanMixin.docs_verify_sources(
             repository_root, bundle.source_states, extra_roots=scope_roots
         )
@@ -109,11 +112,6 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
                 if planned.failure:
                     return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(planned)
                 plans.append(planned.value)
-        stable = FlextInfraUtilitiesDocsGeneratePlanMixin.docs_verify_sources(
-            repository_root, bundle.source_states, extra_roots=scope_roots
-        )
-        if stable.failure:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(stable)
         return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(tuple(plans))
 
     @staticmethod

@@ -37,9 +37,9 @@ class TestsFlextInfraWorktreeBinding:
             'requires-python = ">=3.13"\n'
             "dependencies = [\n"
             f'  "flext-core @ git+{provider.base_url.rstrip("/")}/flext-core.git@'
-            f'{provider.branch}",\n'
+            f'{u.Tests.provider_branch()}",\n'
             f'  "flext-cli @ git+{provider.base_url.rstrip("/")}/flext-cli.git@'
-            f'{provider.branch}",\n'
+            f'{u.Tests.provider_branch()}",\n'
             '  "httpx>=0.27",\n'
             "]\n",
             encoding="utf-8",

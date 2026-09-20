@@ -7,7 +7,9 @@ from typing import override
 
 from flext_cli import cli
 
-from .. import FlextInfraServiceBase, m, p, r, t, u
+from flext_core import r
+
+from .. import FlextInfraServiceBase, m, p, t, u
 from . import (
     FlextInfraCodemodSemanticApply,
     FlextInfraModGateEngine,
@@ -46,7 +48,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     f"({text_pending.actionable} actionable), across "
                     f"{len(rules)} rule file(s)"
                 )
-            FlextInfraModGateEngine.validate(self.repository_root).unwrap()
+            validated = FlextInfraModGateEngine.validate(self.repository_root)
+            if validated.failure:
+                return r[t.Cli.ResultValue].from_failure(validated)
             cli.display_text("mod: no pending ast-grep or sed-by-list fixes")
             return r[t.Cli.ResultValue].ok(True)
         return self._execute_apply(self.repository_root, rules)
@@ -67,7 +71,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         transaction_paths = FlextInfraCodemodSemanticApply.plan_transaction_paths(
             root, current
         )
-        while current.findings or transaction_paths:
+        while current.actionable or transaction_paths:
             iteration += 1
             fingerprint = tuple(
                 sorted(
@@ -116,7 +120,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 cli.display_text(f"mod: apply {len(rules)} ast-grep rule file(s)")
                 FlextInfraModGateEngine.scan(root, fix=True).unwrap()
             after_ast = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
-            FlextInfraCodemodBatchApply._validate_fix_match(current, after_ast)
+            FlextInfraCodemodBatchApply.validate_fix_match(current, after_ast)
             transaction_paths = FlextInfraCodemodSemanticApply.plan_transaction_paths(
                 root, after_ast
             )
@@ -132,29 +136,22 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             owned = FlextInfraModReplacements.require_authored(after_ast)
             if owned.failure:
                 return r[t.Cli.ResultValue].from_failure(owned)
-            FlextInfraCodemodSemanticApply.apply(root, after_ast)
+            semantic = FlextInfraCodemodSemanticApply.apply(root, after_ast)
+            if semantic.failure:
+                return r[t.Cli.ResultValue].from_failure(semantic)
             current = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
         current_text = FlextInfraModTextGateEngine.scan(
             root, fix=False, validate_receipts=True
         ).unwrap()
-        seen_text: dict[tuple[tuple[str, str, int, str, str | None], ...], int] = {}
+        seen_text: t.MutableMappingKV[
+            t.VariadicTuple[tuple[str, str, int, str, str]], int
+        ] = {}
         iteration = 0
-        while current_text.findings:
+        while current_text.actionable:
             iteration += 1
-            fingerprint = tuple(
-                sorted(
-                    (
-                        finding.rule_id,
-                        finding.file.as_posix(),
-                        finding.line,
-                        finding.text,
-                        finding.replacement,
-                    )
-                    for finding in current_text.entries
-                )
-            )
-            if fingerprint in seen_text:
-                prev_iter = seen_text[fingerprint]
+            (FlextInfraCodemodBatchApply._text_fingerprint(current_text.entries))
+            if text_fingerprint in seen_text:
+                prev_iter = seen_text[text_fingerprint]
                 stalled = {
                     finding.rule_id
                     for finding in current_text.entries
@@ -166,7 +163,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     f"{', '.join(sorted(stalled)) or 'none'}; changes retained "
                     "for mandatory owner repair"
                 )
-            seen_text[fingerprint] = iteration
+            seen_text[text_fingerprint] = iteration
             cli.display_text(
                 f"mod: text phase iteration {iteration} — "
                 f"{current_text.findings} sed-by-list finding(s), "
@@ -176,24 +173,64 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 cli.display_text("mod: apply sed-by-list rule cascade")
                 FlextInfraModTextGateEngine.scan(root, fix=True).unwrap()
             current_text = FlextInfraModTextGateEngine.scan(root, fix=False).unwrap()
-            if not current_text.actionable and current_text.findings:
-                detection_only = {finding.rule_id for finding in current_text.entries}
-                return r[t.Cli.ResultValue].fail(
-                    "mod text phase retains detection-only findings without a "
-                    f"rewrite: {', '.join(sorted(detection_only))}"
-                )
+        if current_text.findings:
+            # Same contract as the AST phase: a text rule without a rewrite is
+            # a declared defect for the owner, reported and never acted on here.
+            detection_only = sorted({
+                finding.rule_id for finding in current_text.entries
+            })
+            cli.display_text(
+                f"mod: {current_text.findings} detection-only sed-by-list "
+                f"finding(s) remain for owner repair: {', '.join(detection_only)}"
+            )
         cli.display_text(
             "mod: require canonical formatting and zero Ruff, Pyrefly, and LSP diagnostics"
         )
-        FlextInfraModGateEngine.validate(root).unwrap()
-        cli.display_text("mod: AST fixed point verified with zero findings")
+        validated = FlextInfraModGateEngine.validate(root)
+        if validated.failure:
+            return r[t.Cli.ResultValue].from_failure(validated)
+        # Repair reports what it could not rewrite; judgement belongs to the
+        # verdict verb. A detection-only rule declares a defect whose repair is
+        # the owner's, by construction: it carries no `fix`, so no iteration of
+        # this loop can ever consume it. Failing here made the repair verb
+        # return the check verb's verdict and stalled the canonical chain on a
+        # finding it was never able to act on.
+        remaining = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
+        if remaining.detection_only:
+            detection_rules = sorted({
+                finding.rule_id
+                for finding in remaining.entries
+                if not finding.actionable
+            })
+            cli.display_text(
+                f"mod: {remaining.detection_only} detection-only finding(s) remain "
+                f"for owner repair: {', '.join(detection_rules)}"
+            )
+        cli.display_text("mod: AST fixed point verified with zero actionable findings")
         return r[t.Cli.ResultValue].ok(True)
 
     @staticmethod
-    def _validate_fix_match(
+    def _text_fingerprint(
+        entries: t.VariadicTuple[m.Infra.ModTextFinding],
+    ) -> tuple[tuple[str, str, int, str, str], ...]:
+        """Build a sorted fingerprint of all text findings."""
+        items: list[tuple[str, str, int, str, str]] = [
+            (
+                entry.rule_id,
+                entry.file.as_posix(),
+                entry.line,
+                entry.text,
+                entry.replacement,
+            )
+            for entry in entries
+        ]
+        return tuple(sorted(items))
+
+    @staticmethod
+    def validate_fix_match(
         before: m.Infra.ModScanReport, after_apply: m.Infra.ModScanReport
     ) -> None:
-        """Validate that applied fixes match expected changes (fix!=match)."""
+        """Reject unresolved rewrites while preserving valid rule cascades."""
         # Check that actionable findings were actually resolved
         before_actionable = {
             (f.rule_id, f.file.as_posix(), f.text, f.replacement)
@@ -215,13 +252,18 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"findings in rules {sorted(rule_ids)} across files {sorted(files)}"
             )
             raise RuntimeError(msg)
-        # Check that new actionable findings weren't introduced
+        # A completed rule may enable a later rule in the declared cascade.
+        # Those later-rule findings are consumed by the next fixed-point iteration.
         new_actionable = after_apply_actionable - before_actionable
-        if new_actionable:
-            rule_ids = {r for r, _, _, _ in new_actionable}
-            files = {p for _, p, _, _ in new_actionable}
+        prior_rule_ids = {rule_id for rule_id, _, _, _ in before_actionable}
+        unexpected = {
+            finding for finding in new_actionable if finding[0] in prior_rule_ids
+        }
+        if unexpected:
+            rule_ids = {r for r, _, _, _ in unexpected}
+            files = {p for _, p, _, _ in unexpected}
             msg = (
-                f"fix!=match: ast-grep apply introduced {len(new_actionable)} new actionable "
+                f"fix!=match: ast-grep apply introduced {len(unexpected)} new actionable "
                 f"findings in rules {sorted(rule_ids)} across files {sorted(files)}"
             )
             raise RuntimeError(msg)

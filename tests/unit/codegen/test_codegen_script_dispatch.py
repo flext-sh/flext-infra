@@ -13,7 +13,7 @@ from flext_tests import tm
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, u
+from tests import c, m, t, u
 
 pytestmark = [pytest.mark.slow]
 
@@ -25,7 +25,7 @@ class TestsFlextInfraScriptDispatchMakefile:
     def _render_root_makefile(
         tmp_path: Path,
         *,
-        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...],
+        extra_verbs: t.VariadicTuple[m.Infra.MakeVerbSpec],
         script_dispatch: m.Infra.ScriptDispatchSpec | None,
     ) -> str:
         # The engine is consumer-agnostic, so this fixture models a
@@ -121,7 +121,10 @@ class TestsFlextInfraScriptDispatchMakefile:
             ),
             script_dispatch=None,
         )
-        tm.that(rendered.count("\ndeploy: _builtin_require_environment\n"), eq=1)
+        tm.that(rendered.count("\ndeploy:\n"), eq=1)
+        tm.that(
+            rendered.count("\n_activated-deploy: _builtin_require_environment\n"), eq=1
+        )
 
     def test_dispatch_routes_custom_what_before_allowlist(self, tmp_path: Path) -> None:
         """Custom ``_custom_<verb>`` handlers bypass the builtin allowlist.

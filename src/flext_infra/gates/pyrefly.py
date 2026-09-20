@@ -82,7 +82,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                     result, tool=c.Infra.PYREFLY, file=str(json_file), line=0, column=0
                 ),
             )
-        validated = u.validate_value(
+        validated: p.Result[m.Infra.PyreflyReport] = u.validate_value(
             m.Infra.PyreflyReport,
             json_file.read_text(encoding="utf-8"),
             from_json=True,
@@ -91,7 +91,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         if validated.failure:
             return False, (
                 self._malformed_report_issue(
-                    validated.error, tool=c.Infra.PYREFLY, file=str(json_file)
+                    str(validated.error), tool=c.Infra.PYREFLY, file=str(json_file)
                 ),
             )
         report = validated.value

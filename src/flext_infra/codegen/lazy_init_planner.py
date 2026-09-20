@@ -29,6 +29,10 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
     lazy_init: m.Infra.LazyInitConfig = m.Field(
         description="Validated lazy-init policy document"
     )
+    repository_root: Annotated[
+        Path,
+        m.Field(description="Repository root for loading declarative exports manifest"),
+    ]
 
     _module_exports_cache: MutableMapping[
         tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap
@@ -77,6 +81,9 @@ class FlextInfraCodegenLazyInitPlanner(
         self, pkg_dir: Path, *, dir_exports: t.MappingKV[str, t.LazyAliasMap]
     ) -> m.Infra.LazyInitPlan:
         """Build the lazy-init render plan for one package directory."""
+        u.Cli.info(
+            f"DEBUG build_plan called for {pkg_dir} ({self.context(pkg_dir).current_pkg})"
+        )
         context = self.context(pkg_dir)
         if not context.importable or self._shadows_stdlib_module(pkg_dir):
             # flext-mh7g4: no generated content can repair a package name that
@@ -177,13 +184,6 @@ class FlextInfraCodegenLazyInitPlanner(
                     if name not in c.Infra.ALIAS_NAMES
                     or lazy_map.get(name) != (root_pkg_name, name)
                 }
-        if is_public_project_root:
-            package_alias = u.Infra.package_alias(package_name=context.current_pkg)
-            if (
-                package_alias not in export_names
-                and (context.pkg_dir / c.Infra.API_PY).is_file()
-            ):
-                export_names.add(package_alias)
         if is_facade_root:
             # flext-pulj (codex) + ulw follow-up: __all__ is the one public
             # contract (dir()/star-import/docs already respect it). Do NOT

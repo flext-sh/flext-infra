@@ -9,7 +9,8 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
+from flext_core import r
+from flext_infra import c, m, p, t
 
 from . import FlextInfraUtilitiesRopeCore, FlextInfraUtilitiesRopeRuntime
 from .rope_analysis import FlextInfraUtilitiesRopeAnalysis
@@ -223,16 +224,12 @@ class FlextInfraUtilitiesRopeImports:
         file_paths: t.SequenceOf[Path],
         preserve_canonical_aliases: bool = False,
     ) -> p.Result[bool]:
-        """Apply one centralized Rope+Ruff import cleanup for touched files.
+        """Normalize imports with Ruff and preserve semantic facade references.
 
-        Runs Rope's import organizer per file first, then lets Ruff remove
-        orphaned imports and normalize import ordering/formatting once across the
-        touched path set. Returns whether an import cleanup changed any file.
-
-        When ``preserve_canonical_aliases`` is set, runtime-alias imports from
-        ``flext_core`` / ``flext_infra`` (e.g. ``from flext_core import c, m``)
-        are restored after Ruff only when still referenced semantically, including
-        forward references that Ruff cannot see inside string annotations.
+        Ruff owns removal and ordering because it understands quoted typing
+        expressions, including cast arguments. Rope's unused-import pass drops
+        imports used only in those expressions before Ruff can inspect them.
+        Rope still resolves canonical aliases when their preservation is requested.
         """
         existing_paths = tuple(path.resolve() for path in file_paths if path.is_file())
         if not existing_paths:
@@ -245,19 +242,9 @@ class FlextInfraUtilitiesRopeImports:
                 )
             except ValueError as exc:
                 return r[bool].fail(str(exc), exception=exc)
-        rope_changed = False
-        for file_path in existing_paths:
-            resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
-                rope_project, file_path
-            )
-            if resource is None:
-                continue
-            organize_result = cls.organize_imports(rope_project, resource, apply=True)
-            if organize_result.failure:
-                return r[bool].from_failure(organize_result)
-            rope_changed = rope_changed or organize_result.unwrap()
+        before = {path: path.read_bytes() for path in existing_paths}
         normalized_paths = tuple(str(path) for path in existing_paths)
-        check_result = u.Cli.run_raw(
+        check_result = u.Cli.run_checked(
             ["ruff", "check", "--fix", "--select", "I,F401", *normalized_paths],
             timeout=c.Infra.TIMEOUT_SHORT,
         )
@@ -269,13 +256,14 @@ class FlextInfraUtilitiesRopeImports:
             )
             if restore_result.failure:
                 return r[bool].from_failure(restore_result)
-            rope_changed = rope_changed or restore_result.unwrap()
-        format_result = u.Cli.run_raw(
+        format_result = u.Cli.run_checked(
             ["ruff", "format", *normalized_paths], timeout=c.Infra.TIMEOUT_SHORT
         )
         if format_result.failure:
             return r[bool].from_failure(format_result)
-        return r[bool].ok(rope_changed)
+        return r[bool].ok(
+            any(path.read_bytes() != before[path] for path in existing_paths)
+        )
 
     @classmethod
     def _collect_canonical_alias_imports(
@@ -941,7 +929,7 @@ class FlextInfraUtilitiesRopeImports:
     @staticmethod
     def _relative_from_import(
         source_module: str, target_module: str
-    ) -> tuple[int, str]:
+    ) -> t.Pair[int, str]:
         """Return the (level, tail) relative form from one module to another."""
         src_parts = source_module.split(".")
         tgt_parts = target_module.split(".")

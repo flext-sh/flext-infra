@@ -39,6 +39,15 @@ class TestsFlextInfraCodegenMiseArtifacts:
 
         tm.fail(FlextInfraCodegenMiseArtifacts.validate_launchers(tmp_path))
 
+    def test_resource_read_accepts_installer_hard_links(self, tmp_path: Path) -> None:
+        """A hard-linked package file (uv cache + venv) is readable as a resource."""
+        owner = tmp_path / "seed"
+        owner.write_bytes(b"#!/bin/sh\n")
+        linked = tmp_path / "linked"
+        linked.hardlink_to(owner)
+        tm.that(linked.stat().st_nlink, eq=2)
+        tm.that(tm.ok(u.Cli.files_read_binary(linked)), eq=b"#!/bin/sh\n")
+
     @classmethod
     def _write_launchers(cls, root: Path) -> None:
         """Write minimal launchers carrying the unlocked resolution contract.
@@ -211,6 +220,17 @@ class TestsFlextInfraCodegenMiseArtifacts:
         }).execute()
 
         tm.ok(result, eq=True)
+
+    def test_shipped_jscpd_plan_uses_only_configured_route(self) -> None:
+        """The generated plan must contain only the typed jscpd route."""
+        toolchain = config.Infra.codegen.toolchain
+        plan = test_u.Tests.toml_payload(
+            (Path(__file__).parents[3] / ".mise.toml").read_text(encoding="utf-8")
+        )
+        tools = test_u.Tests.toml_mapping(plan["tools"])
+
+        tm.that(tools.get(toolchain.jscpd_selector), eq=toolchain.jscpd_version)
+        tm.that("npm:jscpd" in tools, eq=False)
 
     def test_unix_launcher_requires_executable_mode(self, tmp_path: Path) -> None:
         root = self._project(tmp_path / "project")

@@ -1,25 +1,101 @@
-"""Conformance planning across scaffold and existing repositories."""
+"""Conformance plan selection and repository topology resolution."""
 
 from __future__ import annotations
 
 import time
-from collections.abc import MutableMapping
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal, override
 
-from ... import c, config, m, p, r, t, u
+from flext_core import r
+
+from ... import c, config, m, p, t, u
 from ...deps import FlextInfraPyprojectModernizer
 from ...services.codegen import FlextInfraCodegen
 from ...workspace import FlextInfraWorkspaceDetector
-from ...workspace.environment_contracts import FlextInfraWorkspaceEnvironmentContracts
 from .misc import FlextInfraCodegenConformMisc
+from .scaffold_plan import FlextInfraCodegenConformScaffoldPlan
 
 
-class FlextInfraCodegenConformPlan:
+class _ConformPlanRoles:
+    if TYPE_CHECKING:
+        request: m.Infra.CodegenConformRequest | None
+        repository_root: Path
+        initial_workspace: m.Infra.WorkspaceSpec | None
+
+        def _surface_contract(
+            self, surface: c.Infra.CodegenConformSurface
+        ) -> m.Infra.CodegenConformSurfaceContract: ...
+        def retired_projection_plans(
+            self, root: Path, profile: c.Infra.MakeProfile
+        ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]: ...
+        def _uv_environment_plan(
+            self,
+            *,
+            root: Path,
+            repository_root: Path,
+            target: m.Infra.RepositoryConformTarget,
+            workspace: m.Infra.WorkspaceSpec,
+            config: m.Infra.CodegenConfigSpec,
+        ) -> m.Infra.UvEnvironmentPlan: ...
+        def _scaffold_python_dirs(
+            self,
+            entries: t.SequenceOf[p.Infra.TemplateEntrySpec],
+            profile: c.Infra.MakeProfile,
+        ) -> t.StrSequence: ...
+        def _project_render_context(
+            self,
+            repository: m.Infra.RepositoryRef,
+            target: m.Infra.RepositoryConformTarget,
+            workspace: m.Infra.WorkspaceSpec,
+            codegen: m.Infra.CodegenConfigSpec,
+            *,
+            tooling_runtime: m.Infra.ToolingRuntimeContext,
+            repository_root: Path,
+            managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
+            use_committed_artifacts: bool = True,
+        ) -> p.Result[m.Infra.ProjectRenderContext]: ...
+        def _rendered_artifact_source(
+            self,
+            *,
+            templates_root: Path,
+            template_relpath: Path,
+            failure_prefix: str,
+            dist: str,
+            repository: m.Infra.RepositoryRef,
+            repository_root: Path,
+            target: m.Infra.RepositoryConformTarget,
+            workspace: m.Infra.WorkspaceSpec,
+            codegen: m.Infra.CodegenConfigSpec,
+            destination: str,
+            tooling_runtime: m.Infra.ToolingRuntimeContext,
+            project_context: m.Infra.ProjectRenderContext | None,
+            managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
+        ) -> p.Result[str]: ...
+        def compose_project_artifact(
+            self,
+            repository_root: Path,
+            destination: str,
+            rendered: str,
+            *,
+            managed_artifacts: m.Infra.ProjectManagedArtifactsSnapshot | None = None,
+            workspace: m.Infra.WorkspaceSpec | None = None,
+            codegen: m.Infra.CodegenConfigSpec | None = None,
+            repository: m.Infra.RepositoryRef | None = None,
+            target: m.Infra.RepositoryConformTarget | None = None,
+        ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
+        def validate_custom_make(
+            self, content: str, policy: m.Infra.CustomHandlerPolicy
+        ) -> p.Result[bool]: ...
+        def _absent_file_plan(
+            self, root: Path, path: Path
+        ) -> p.Result[m.Infra.CodegenFilePlan]: ...
+
+
+class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     """Conformance planning across scaffold and existing repositories."""
 
     def plan(
-        self, request: m.Infra.CodegenConformRequest
+        self: p.Infra.CodegenConform, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenPlan]:
         """Build and validate the complete selection without writing."""
         config_spec = config.Infra.codegen
@@ -189,7 +265,6 @@ class FlextInfraCodegenConformPlan:
             environments.append(
                 self._uv_environment_plan(
                     root=repository_root,
-                    repository_root=repository_root,
                     target=target,
                     workspace=local_workspace,
                     config=config_spec,
@@ -281,9 +356,7 @@ class FlextInfraCodegenConformPlan:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(context_result)
         context = context_result.value
         planned: list[m.Infra.CodegenFilePlan] = []
-        templates_root = (
-            self._package_root() / "templates" / codegen.templates.root
-        ).resolve()
+        templates_root = u.Infra.codegen_templates_root(codegen)
         seen_destinations: set[str] = set()
         # One selection and one formatted path govern validation and planning.
         scaffold_entries = tuple(
@@ -295,6 +368,7 @@ class FlextInfraCodegenConformPlan:
             )
             for entry in codegen.templates.entries
             if profile in entry.profiles
+            and (not entry.requires_release_protocol or repository.publishes_release)
             and (
                 contract.destinations is None
                 or entry.destination in contract.destinations
@@ -489,9 +563,7 @@ class FlextInfraCodegenConformPlan:
         """Render configured overwrite-owned templates for an existing tree."""
         u.Cli.info(f"  stage=templates repository={repository.name}")
         profile = target.make_profile
-        templates_root = (
-            self._package_root() / "templates" / codegen.templates.root
-        ).resolve()
+        templates_root = u.Infra.codegen_templates_root(codegen)
         planned: list[m.Infra.CodegenFilePlan] = []
         for managed in codegen.managed_files:
             if not target.ci_enabled and managed.path.parts[:2] == (
@@ -532,25 +604,27 @@ class FlextInfraCodegenConformPlan:
                     f"managed destination escapes repository root: {entry.destination}"
                 )
             path = (root / relative).resolve()
-            # Why (flext-l2296 → superseded): the ledger metadata used to be
-            # minted by Beads at first use, so a fresh clone lacked it and
-            # planning an absent artifact failed the check gate. The generated
-            # .envrc Gas City activation contract changed that reality: it is
-            # rendered for every managed repository and fail-loudly reads this
-            # marker at direnv load whenever the host carries the city
-            # identity. Skipping the marker made every make verb die on jq for
-            # a fresh checkout on such a host. The marker is therefore always
-            # planned; a fresh render carries a mintable identity
-            # (project_id=None) and Beads still owns the first mint.
+            # Why (flext-l2296): the ledger metadata is minted by Beads at
+            # first use, so a fresh clone legitimately lacks it. Planning an
+            # absent runtime artifact made the gen check gate fail on every
+            # clean checkout. When the file exists, the identity-preserving
+            # refresh below still applies.
+            if (
+                entry.destination == c.Infra.BEADS_METADATA_RELPATH
+                and not path.is_file()
+            ):
+                continue
             try:
                 path.relative_to(root.resolve())
             except ValueError:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"managed destination escapes repository root: {entry.destination}"
                 )
-            if profile not in entry.profiles:
-                # Why: profile-excluded managed workflows must not keep firing
-                # (ci-matrix on standalone). Prune the orphan projection.
+            if profile not in entry.profiles or (
+                entry.requires_release_protocol and not target.publishes_release
+            ):
+                # Profile- and capability-excluded workflows must not keep firing.
+                # Conform, rather than a user, retires the generated orphan.
                 if (
                     managed.path.parts[:2] == (".github", "workflows")
                     and path.is_file()
@@ -850,7 +924,7 @@ class FlextInfraCodegenConformPlan:
             selected = (current_repository,)
         elif scope is c.Infra.CodegenConformScope.DECLARED:
             if not workspace.subprojects:
-                return r[tuple[m.Infra.RepositoryRef, ...]].fail(
+                return r[t.VariadicTuple[m.Infra.RepositoryRef]].fail(
                     "subprojects scope requires local .gitmodules entries"
                 )
             selected = tuple(workspace.subprojects)
@@ -863,10 +937,10 @@ class FlextInfraCodegenConformPlan:
             and not repository.read_only
         )
         if not mutable:
-            return r[tuple[m.Infra.RepositoryRef, ...]].fail(
+            return r[t.VariadicTuple[m.Infra.RepositoryRef]].fail(
                 "selected repositories do not permit code generation"
             )
-        return r[tuple[m.Infra.RepositoryRef, ...]].ok(mutable)
+        return r[t.VariadicTuple[m.Infra.RepositoryRef]].ok(mutable)
 
     @staticmethod
     def _repository_root(
@@ -885,11 +959,6 @@ class FlextInfraCodegenConformPlan:
         return r[Path].ok(resolved)
 
     @staticmethod
-    def _package_root() -> Path:
-        """Return the installed flext-infra package root."""
-        return Path(__file__).resolve().parent.parent.parent
-
-    @staticmethod
     def _repository_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:
         """Return the environment root owned by the inferred target."""
         if workspace.project is not None:
@@ -898,6 +967,7 @@ class FlextInfraCodegenConformPlan:
         return "."
 
     @staticmethod
+    @override
     def _repository_provider(
         repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec
     ) -> p.Result[m.Infra.ProviderSpec]:

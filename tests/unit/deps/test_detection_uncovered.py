@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
 
-from tests import t, u
+from tests import c, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,12 +34,8 @@ class TestsFlextInfraDepsDetectionUncovered:
         service = u.Tests.create_deptry_service(
             command_output=u.Tests.create_command_output()
         )
-        deptry_result: t.Pair[t.SequenceOf[t.JsonMapping], int] = tm.ok(
+        with pytest.raises(c.ValidationError):
             service.run_deptry(project, venv_bin, json_output_path=out_file)
-        )
-        issues, exit_code = deptry_result
-        tm.that(len(issues), eq=1)
-        tm.that(exit_code, eq=0)
 
     def test_run_pip_check_with_empty_output(self, tmp_path: Path) -> None:
         """Verify run pip check with empty output."""

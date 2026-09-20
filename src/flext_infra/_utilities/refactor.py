@@ -37,11 +37,11 @@ class FlextInfraUtilitiesRefactor:
             return []
         if isinstance(value, str):
             return [value]
-        try:
-            return list(u.validate_value(t.Infra.STR_SEQ_ADAPTER, value).value)
-        except TypeError as exc:
-            msg = "expected list value"
-            raise TypeError(msg) from exc
+        validated = u.validate_value(t.Infra.STR_SEQ_ADAPTER, value)
+        if validated.failure:
+            msg = f"expected list value: {validated.error}"
+            raise TypeError(msg) from validated.exception
+        return list(validated.value)
 
     @staticmethod
     def normalize_module_path(path_value: str | Path) -> str:

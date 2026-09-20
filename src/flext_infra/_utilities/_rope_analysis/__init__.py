@@ -9,14 +9,14 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from .base import (
-        FlextInfraUtilitiesRopeAnalysisAstHelpers,
-        FlextInfraUtilitiesRopeAnalysisExports,
-        FlextInfraUtilitiesRopeAnalysisImportState,
-        FlextInfraUtilitiesRopeAnalysisSourceScan,
-    )
+    from .asthelpers import FlextInfraUtilitiesRopeAnalysisAstHelpers
+    from .base import FlextInfraUtilitiesRopeAnalysisBase
+    from .exports import FlextInfraUtilitiesRopeAnalysisExports
+    from .importstate import FlextInfraUtilitiesRopeAnalysisImportState
+    from .sourcescan import FlextInfraUtilitiesRopeAnalysisSourceScan
 __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeAnalysisAstHelpers",
+    "FlextInfraUtilitiesRopeAnalysisBase",
     "FlextInfraUtilitiesRopeAnalysisExports",
     "FlextInfraUtilitiesRopeAnalysisImportState",
     "FlextInfraUtilitiesRopeAnalysisSourceScan",
@@ -25,12 +25,11 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
-            ".base": (
-                "FlextInfraUtilitiesRopeAnalysisAstHelpers",
-                "FlextInfraUtilitiesRopeAnalysisExports",
-                "FlextInfraUtilitiesRopeAnalysisImportState",
-                "FlextInfraUtilitiesRopeAnalysisSourceScan",
-            )
+            ".asthelpers": ("FlextInfraUtilitiesRopeAnalysisAstHelpers",),
+            ".base": ("FlextInfraUtilitiesRopeAnalysisBase",),
+            ".exports": ("FlextInfraUtilitiesRopeAnalysisExports",),
+            ".importstate": ("FlextInfraUtilitiesRopeAnalysisImportState",),
+            ".sourcescan": ("FlextInfraUtilitiesRopeAnalysisSourceScan",),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

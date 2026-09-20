@@ -9,7 +9,8 @@ from typing import ClassVar
 
 from flext_cli import cli
 
-from flext_infra import c, m, p, r, t, u
+from flext_core import r
+from flext_infra import c, m, p, t, u
 from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.base_gate import FlextInfraGate
@@ -24,6 +25,8 @@ from flext_infra.gates.index_declarations import FlextInfraIndexDeclarationsGate
 from flext_infra.gates.layout import FlextInfraLayoutGate
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
+from flext_infra.gates.markdown_code import FlextInfraMarkdownCodeGate
+from flext_infra.gates.markdown_format import FlextInfraMarkdownFormatGate
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.namespace import FlextInfraNamespaceGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
@@ -81,6 +84,8 @@ class FlextInfraGateRegistry:
             FlextInfraDeferredSelfReferenceGate,
             FlextInfraBanditGate,
             FlextInfraMarkdownGate,
+            FlextInfraMarkdownFormatGate,
+            FlextInfraMarkdownCodeGate,
             FlextInfraLocCapGate,
             FlextInfraAbstractionBoundaryGate,
             FlextInfraCanonicalAliasGate,
@@ -310,18 +315,19 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 elapsed=execution.result.duration,
             )
             if not execution.result.passed:
-                # Operator stability contract (2026-09-15): quality findings are
-                # expected and NEVER fail the canonical Make verb; they feed the
-                # generator through reports and this console receipt. Only the
-                # reports carry the detail; the verb always completes.
                 for finding in execution.result.errors:
                     u.Cli.info(finding)
                 if not execution.result.errors and execution.raw_output.strip():
                     u.Cli.info(execution.raw_output.strip())
-            status = c.Cli.PipelineStageStatus.OK
+                return r[m.Cli.PipelineStageResult].fail(
+                    f"{gate_id} failed for {project_name} "
+                    f"with {execution.error_count} findings"
+                )
             return r[m.Cli.PipelineStageResult].ok(
                 cli.stage_result(
-                    gate_id, status=status, output={"errors": execution.error_count}
+                    gate_id,
+                    status=c.Cli.PipelineStageStatus.OK,
+                    output={"errors": execution.error_count},
                 )
             )
 
@@ -331,11 +337,18 @@ class FlextInfraWorkspaceCheckGatesMixin:
     def _execute_gate(
         gate_instance: FlextInfraGate, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
-        """Run fix-then-check or check-only for a single gate instance."""
+        """Run fix-only under ``--apply``; check-only otherwise.
+
+        Single-pass verb law: the mutating verb runs exactly one operation per
+        gate — never a check pass before or after the fix. The fix execution
+        already reports what its tool could not repair
+        (``accept_reported_issues=True``); enforcing that residue belongs to
+        the read-only ``make check``. Gates without a fix contract fall
+        through to their read-only check, so an ``--apply`` selection over a
+        read-only gate still executes it instead of silently skipping.
+        """
         if ctx.apply_fixes and (not ctx.check_only) and gate_instance.can_fix:
-            fix_execution = gate_instance.fix(project_dir, ctx)
-            if not fix_execution.result.passed:
-                return fix_execution
+            return gate_instance.fix(project_dir, ctx)
         return gate_instance.check(project_dir, ctx)
 
 

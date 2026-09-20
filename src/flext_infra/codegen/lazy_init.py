@@ -12,18 +12,26 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, Annotated, override
 
-from .. import c, config, m, r, s, u
+from flext_core import r
+
+from .. import c, config, m, u
 from ..workspace.rope import FlextInfraRopeWorkspace
+from ._execution import FlextInfraCodegenExecutionBase
+from ._lazy_init_class_receipts import FlextInfraCodegenLazyInitClassReceipts
 from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
 from .lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 
 if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+
     from .. import p, t
 
 
-class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixin):
+class FlextInfraCodegenLazyInit(
+    FlextInfraCodegenExecutionBase[bool], FlextInfraCodegenLazyInitGenerationMixin
+):
     """Plan ``__init__.py`` artifacts with PEP 562 lazy imports.
 
     Scans sibling ``.py`` files in each package directory, discovers their
@@ -31,6 +39,10 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
     Processes bottom-up so child packages are generated before parents.
     """
 
+    target_module: Annotated[
+        str,
+        m.Field(description="Optional package module restricted to one lazy-init plan"),
+    ] = ""
     _modified_files: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
     _duplicate_class_names: int = u.PrivateAttr(default_factory=lambda: 0)
 
@@ -92,14 +104,49 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         return r[m.Infra.CodegenPhaseAnalysis].ok(analysis)
 
     def _plan_in_workspace(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
-        """Open Rope once and propagate every planner or filesystem failure."""
-        try:
-            with FlextInfraRopeWorkspace.open_workspace(
-                self.repository_root, rope_repository_root=self.repository_root
-            ) as rope:
-                return self._plan_open_workspace(rope)
-        except c.EXC_OS_VALUE as exc:
-            return r[m.Infra.CodegenPhaseAnalysis].fail_op("lazy-init planning", exc)
+        """Open Rope once and propagate every planner or filesystem failure.
+
+        Retries the entire planning cycle when snapshot verification detects
+        concurrent input changes (RC-A: deterministic lazy-init under concurrency).
+        """
+        max_retries = (
+            self.lazy_init.planning_max_retries if hasattr(self, "lazy_init") else 1
+        )
+        last_failure: p.Result[m.Infra.CodegenPhaseAnalysis] | None = None
+        for attempt in range(max_retries + 1):
+            try:
+                result = self._plan_attempt()
+            except c.EXC_OS_VALUE as exc:
+                return r[m.Infra.CodegenPhaseAnalysis].fail_op(
+                    "lazy-init planning", exc
+                )
+            if result.success:
+                return result
+            # Retry only on snapshot verification failure (a concurrent input
+            # change). `failure` is the boolean predicate, so the previous form
+            # matched the marker against "True" and never retried; the message
+            # lives in `error`.
+            concurrent_change = "lazy-init source changed during planning" in (
+                result.error or ""
+            )
+            if concurrent_change and attempt < max_retries:
+                u.Cli.info(
+                    "lazy-init: concurrent change detected "
+                    f"(attempt {attempt + 1}/{max_retries + 1}), retrying"
+                )
+                last_failure = result
+                continue
+            return result
+        return last_failure or r[m.Infra.CodegenPhaseAnalysis].fail(
+            "lazy-init planning failed after retries"
+        )
+
+    def _plan_attempt(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Run one planning cycle inside its own Rope workspace."""
+        with FlextInfraRopeWorkspace.open_workspace(
+            self.repository_root, rope_repository_root=self.repository_root
+        ) as rope:
+            return self._plan_open_workspace(rope)
 
     def _plan_open_workspace(
         self, rope: FlextInfraRopeWorkspace
@@ -159,7 +206,16 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         snapshots = self._snapshot_planner_inputs(workspace_index)
         if snapshots.failure:
             return r[m.Infra.CodegenPhaseAnalysis].from_failure(snapshots)
-        duplicates = self._detect_duplicate_class_names(rope, package_dirs=package_dirs)
+        receipts = FlextInfraCodegenLazyInitClassReceipts(resolved_repository_root)
+        duplicates = self._detect_duplicate_class_names(
+            rope,
+            package_dirs=package_dirs,
+            snapshots=snapshots.value,
+            receipts=receipts,
+        )
+        saved = receipts.save()
+        if saved.failure:
+            u.Cli.warning(f"lazy-init: class receipt save failed: {saved.error}")
         if duplicates:
             self._duplicate_class_names = len(duplicates)
             details = "; ".join(
@@ -171,7 +227,9 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 f"{details}"
             )
         planner = FlextInfraCodegenLazyInitPlanner(
-            rope_workspace=rope, lazy_init=config.Infra.tooling.lazy_init
+            rope_workspace=rope,
+            lazy_init=config.Infra.tooling.lazy_init,
+            repository_root=self.repository_root,
         )
         u.Cli.info(f"lazy-init: planning {len(package_dirs)} package dirs")
         package_plans = self._plan_all_inits(
@@ -240,7 +298,11 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
 
     @staticmethod
     def _detect_duplicate_class_names(
-        rope: FlextInfraRopeWorkspace, *, package_dirs: t.SequenceOf[Path]
+        rope: FlextInfraRopeWorkspace,
+        *,
+        package_dirs: t.SequenceOf[Path],
+        snapshots: MutableMapping[Path, m.Cli.AtomicFileState],
+        receipts: FlextInfraCodegenLazyInitClassReceipts,
     ) -> t.MappingKV[str, t.StrSequence]:
         """Return class-name collisions.
 
@@ -248,6 +310,10 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         - ``src/`` modules: duplicates forbidden across the entire workspace.
         - ``tests/``/``scripts/``/``examples/``/``docs/`` modules: duplicates
           forbidden only within the same owning project (they do not escape).
+
+        Per-module class names are content-addressed receipts: identical bytes
+        resolve from the cache instead of a Rope parse, and only the scan's
+        final duplicate set is computed globally per run.
         """
         scoped_modules: defaultdict[t.StrPair, set[str]] = defaultdict(set)
         selected_package_dirs = frozenset(path.resolve() for path in package_dirs)
@@ -272,14 +338,36 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 if is_private_scope and entry.project_root is not None
                 else ""
             )
-            for obj in rope.objects(
-                entry.file_path, include_local_scopes=False, include_references=False
-            ):
-                if obj.kind != "class" or obj.scope_path:
-                    continue
-                name = obj.name
-                if len(name) < c.Infra.DUPLICATE_CLASS_MIN_LEN or not name[0].isupper():
-                    continue
+            snapshot = snapshots.get(entry.file_path.resolve())
+            cached = (
+                receipts.class_names(snapshot.content)
+                if snapshot is not None and snapshot.content is not None
+                else None
+            )
+            if cached is not None:
+                class_names: t.StrSequence = cached
+            else:
+                # flext-8hctr: rope's scope_path carries the object's own
+                # qualified tail (a top-level class yields its own name), so
+                # this guard currently skips every object and the scan returns
+                # no collisions; 59 structural part-file convention groups fire
+                # fleet-wide if the predicate is naively corrected. Receipts
+                # key whatever this filter selects by content hash.
+                class_names = tuple(
+                    obj.name
+                    for obj in rope.objects(
+                        entry.file_path,
+                        include_local_scopes=False,
+                        include_references=False,
+                    )
+                    if obj.kind == "class"
+                    and not obj.scope_path
+                    and len(obj.name) >= c.Infra.DUPLICATE_CLASS_MIN_LEN
+                    and obj.name[0].isupper()
+                )
+                if snapshot is not None and snapshot.content is not None:
+                    receipts.record(snapshot.content, class_names)
+            for name in class_names:
                 scoped_modules[name, scope_key].add(entry.module_name)
         return {
             f"[{Path(scope_key).name}] {name}"

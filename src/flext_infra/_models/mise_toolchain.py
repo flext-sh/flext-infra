@@ -192,7 +192,7 @@ class FlextInfraModelsMiseToolchain:
         Language runtimes and native tools are declared as moving ``latest``
         selectors or a major.minor line. No mise.lock: setup resolves the
         newest published release. Python linters/type-checkers remain owned
-        by pyproject and uv.lock.
+        by pyproject manifests.
         """
 
         # Selector families rejected while their capabilities are suspended.
@@ -291,6 +291,10 @@ class FlextInfraModelsMiseToolchain:
         uv_version: Annotated[
             t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
         ]
+        retired_dependency_artifacts: Annotated[
+            t.VariadicTuple[Literal["uv.lock", "mise.lock", ".mise.lock"]],
+            m.Field(description="Exact dependency artifacts retired by generation"),
+        ]
         mise_lockfile: Annotated[
             bool,
             m.Field(
@@ -340,6 +344,23 @@ class FlextInfraModelsMiseToolchain:
             t.NonEmptyStr,
             m.Field(description="Moving jscpd release selector, e.g. 'latest'"),
         ]
+        prettier_selector: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                default="npm:prettier",
+                description=(
+                    "Mise selector for prettier. Override toolchain.prettier_selector; "
+                    "never the .mise.toml key."
+                ),
+            ),
+        ]
+        prettier_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                default="latest",
+                description="Moving prettier release selector, e.g. 'latest'",
+            ),
+        ]
         waza_selector: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -382,6 +403,16 @@ class FlextInfraModelsMiseToolchain:
             m.Field(
                 description=(
                     "Go runtime selector; mise resolves the go backend through it"
+                )
+            ),
+        ]
+        make_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Moving Make release selector (latest); mise provisions make "
+                    "so direnv always resolves a real binary rather than a stale "
+                    "host shim. Override toolchain.make_version; never pin."
                 )
             ),
         ]

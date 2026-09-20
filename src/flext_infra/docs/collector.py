@@ -41,7 +41,12 @@ class FlextInfraDocCollector:
         parsed = u.Cli.yaml_parse(snapshot.content.decode("utf-8"))
         if parsed.failure:
             return r[bool].from_failure(parsed)
-        configuration = m.Infra.PlanCollectionConfig.model_validate(parsed.value)
+        validated: p.Result[m.Infra.PlanCollectionConfig] = u.validate_value(
+            m.Infra.PlanCollectionConfig, parsed.value, strict=False
+        )
+        if validated.failure:
+            return r[bool].from_failure(validated)
+        configuration = validated.value
         roots = {"@canonical": root}
         if configuration.projection_root is not None:
             roots["@projection"] = configuration.projection_root.expanduser()
@@ -59,7 +64,7 @@ class FlextInfraDocCollector:
                 return r[bool].fail(
                     "plan collection configuration changed before collection"
                 )
-            bundle = u.Infra.collect_plan_files(scope_root, configuration)
+            bundle = u.Infra.docs_collect_plan_files(scope_root, configuration)
             incomplete = tuple(
                 item for item in bundle.coverage if item.adapter == "private-inventory"
             )
@@ -105,6 +110,17 @@ class FlextInfraDocCollector:
             )
             if published.failure:
                 return r[bool].from_failure(published)
+            for directory in bundle.prunable_directories:
+                observed = u.Cli.atomic_read_empty_directory_state(
+                    directory, required=False
+                )
+                if observed.failure:
+                    return r[bool].from_failure(observed)
+                if not observed.value.exists:
+                    continue
+                removed = u.Cli.atomic_delete_empty_directory_guarded(observed.value)
+                if removed.failure:
+                    return r[bool].from_failure(removed)
             return r[bool].ok(True)
 
         return transaction.run_files_locked(roots, publish)

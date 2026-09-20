@@ -82,16 +82,13 @@ class FlextInfraPyrightGate(FlextInfraGate):
                     column=0,
                 ),
             )
-        validated = u.validate_value(
-            m.Infra.PyrightReport,
-            result.stdout,
-            from_json=True,
-            strict=True,
+        validated: p.Result[m.Infra.PyrightReport] = u.validate_value(
+            m.Infra.PyrightReport, result.stdout, from_json=True, strict=True
         )
         if validated.failure:
             return False, (
                 self._malformed_report_issue(
-                    validated.error, tool=c.Infra.PYRIGHT, file=str(project_dir)
+                    str(validated.error), tool=c.Infra.PYRIGHT, file=str(project_dir)
                 ),
             )
         report = validated.value

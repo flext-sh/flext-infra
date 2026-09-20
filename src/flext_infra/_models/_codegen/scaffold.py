@@ -78,6 +78,14 @@ class FlextInfraModelsCodegenScaffoldModels:
             t.NonEmptyStr,
             m.Field(description="Explicit module owning every generated base class"),
         ]
+        project_module: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Owning package imported by generated test modules"),
+        ]
+        test_module: Annotated[
+            bool,
+            m.Field(description="Whether this directory renders test module skeletons"),
+        ]
         dry_run: Annotated[
             bool, m.Field(description="Whether to report creations without writing")
         ]

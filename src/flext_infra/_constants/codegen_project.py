@@ -17,9 +17,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from enum import StrEnum, unique
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
-from flext_infra import t
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraConstantsCodegenProject:
@@ -139,6 +140,41 @@ class FlextInfraConstantsCodegenProject:
     owner's own output. The dotted spelling is derived through
     ``u.Cli.toml_dot_path``; it is never written a second time.
     """
+
+    CONFORM_SOURCE_RACE_CYCLES: Final[int] = 3
+    "Bounded conform convergence attempts after a mid-cycle source mutation."
+    DOCS_SOURCE_STATE_RACE_MARKER: Final[str] = (
+        "docs source state changed during planning"
+    )
+    """Emitted by ``docs_verify_sources`` when one snapshotted docs source
+    changes content or physical identity inside the planning window; consumed
+    by the conform convergence classifier."""
+    DOCS_SOURCE_TOPOLOGY_RACE_MARKER: Final[str] = (
+        "docs source topology changed during planning"
+    )
+    """Emitted by ``docs_verify_sources`` when the discovered docs source set
+    gains or loses a file inside the planning window; consumed by the conform
+    convergence classifier."""
+    CONFIG_SNAPSHOT_ROOT_RACE_MARKER: Final[str] = (
+        "project root changed during config snapshot"
+    )
+    """Emitted by ``snapshot_config_sources`` when the project directory's
+    physical state changes while its managed-artifact config is snapshotted."""
+    CONFIG_SNAPSHOT_TOPOLOGY_RACE_MARKER: Final[str] = (
+        "project config source topology changed"
+    )
+    """Emitted by ``snapshot_config_sources`` when the ``config/*.yaml`` set
+    changes while its managed-artifact config is snapshotted."""
+    CONFORM_SOURCE_RACE_MARKERS: Final[t.VariadicTuple[str]] = (
+        "atomic source changed",
+        "atomic destination parent is missing",
+        "atomic source has conflicting snapshots",
+        DOCS_SOURCE_STATE_RACE_MARKER,
+        DOCS_SOURCE_TOPOLOGY_RACE_MARKER,
+        CONFIG_SNAPSHOT_ROOT_RACE_MARKER,
+        CONFIG_SNAPSHOT_TOPOLOGY_RACE_MARKER,
+    )
+    "Failure signatures meaning the tree mutated under one locked conform cycle."
 
     WORKSPACE_MANIFEST_FILENAME: Final[str] = "workspace.yaml"
     WORKSPACE_MANIFEST_VERSION: Final[int] = 3

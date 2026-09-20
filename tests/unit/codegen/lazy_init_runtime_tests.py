@@ -40,13 +40,31 @@ class TestsFlextInfraLazyInitRuntime:
             package = importlib.import_module("flext_runtime")
 
             tm.that("flext_runtime.api" in sys.modules, eq=False)
-            tm.that(package.__all__, eq=("FlextDemo", "primary", "runtime"))
+            tm.that(package.__all__, eq=("FlextDemo", "primary"))
             tm.that(dir(package), eq=list(package.__all__))
             first = package.FlextDemo
             second = package.FlextDemo
             tm.that(first is second, eq=True)
             tm.that(package.primary is first, eq=True)
             tm.that(package_root.joinpath("imports.txt").read_text(), eq="x")
+
+    def test_generated_root_never_invents_undeclared_api_alias(
+        self, tmp_path: Path
+    ) -> None:
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="flext-bare", package_name="flext_bare"
+        )
+        package_root.joinpath("api.py").write_text(
+            "class FlextBare:\n    pass\n__all__ = ('FlextBare',)\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        with tm.scope(python_paths=[str(repository_root / c.Infra.DEFAULT_SRC_DIR)]):
+            package = importlib.import_module("flext_bare")
+            tm.that(package.__all__, eq=("FlextBare",))
+            tm.that(
+                [name for name in package.__all__ if not hasattr(package, name)], eq=[]
+            )
 
     def test_generated_root_preserves_import_failures(self, tmp_path: Path) -> None:
         repository_root, package_root = u.Tests.create_lazy_init_workspace(

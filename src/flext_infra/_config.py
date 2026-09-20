@@ -11,10 +11,10 @@ from typing import ClassVar
 
 from flext_cli.config import FlextCliConfig
 
-from ._models.config import FlextInfraConfigModels
+from ._models._config import FlextInfraConfigModels
 
 
-class _FlextInfraConfig(FlextCliConfig):
+class FlextInfraConfig(FlextCliConfig):
     """Declarative flext-infra config loaded and validated once."""
 
     # NOTE (multi-agent, flext-wkii.9 + flext-wkii.17 / agent: codex): direct
@@ -32,7 +32,5 @@ class _FlextInfraConfig(FlextCliConfig):
         return cls._config_dir()
 
 
-config: _FlextInfraConfig = _FlextInfraConfig()
-"""Pre-instantiated frozen config singleton — ``from flext_infra import config``."""
-
-__all__: list[str] = ["config"]
+config = FlextInfraConfig()
+__all__: list[str] = ["FlextInfraConfig", "config"]

@@ -27,6 +27,12 @@ class FlextInfraUtilitiesDocsGithubLinks:
     """Governed GitHub URL helpers for docs audit and fix."""
 
     @staticmethod
+    def _config() -> config.FlextInfraConfig:
+        from flext_infra import config
+
+        return config
+
+    @staticmethod
     def docs_github_repos() -> t.VariadicTuple[m.Infra.DocsGithubRepoSpec]:
         """Return the typed GitHub repo map from make.docs SSOT."""
         return config.Infra.codegen.make.docs.github_repos
@@ -34,7 +40,9 @@ class FlextInfraUtilitiesDocsGithubLinks:
     @staticmethod
     def docs_stale_github_organizations() -> frozenset[str]:
         """Placeholder organizations that must not appear in doc URLs."""
-        return frozenset(config.Infra.codegen.make.docs.stale_github_organizations)
+        return frozenset(
+            FlextInfraUtilitiesDocsGithubLinks._config().Infra.codegen.make.docs.stale_github_organizations
+        )
 
     @staticmethod
     def docs_github_repo_lookup(
@@ -48,7 +56,12 @@ class FlextInfraUtilitiesDocsGithubLinks:
         if organization == "flext-sh" and repository.startswith("flext-"):
             for repo in FlextInfraUtilitiesDocsGithubLinks.docs_github_repos():
                 if repo.organization == "flext-sh" and repo.repository == "flext":
-                    return repo.model_copy(update={"repository": repository})
+                    return m.Infra.DocsGithubRepoSpec(
+                        organization=repo.organization,
+                        repository=repository,
+                        branch=repo.branch,
+                        local_checkout=repo.local_checkout,
+                    )
         return None
 
     @staticmethod

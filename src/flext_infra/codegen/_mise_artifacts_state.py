@@ -322,7 +322,7 @@ class FlextInfraMiseArtifactsState:
         )
         if created.failure:
             return result_type.from_failure(created)
-        validated = u.validate_value(
+        validated: p.Result[m.Infra.CodegenJournalDirectory] = u.validate_value(
             m.Infra.CodegenJournalDirectory,
             {**entry.model_dump(), "before": before, "created": created.value},
         )
@@ -336,8 +336,7 @@ class FlextInfraMiseArtifactsState:
             return result_type.fail_op(
                 "validate created directory identity", validated.error
             )
-        directory = validated.value
-        return result_type.ok(directory)
+        return result_type.ok(validated.value)
 
     @classmethod
     def compensate_created_directory(
@@ -396,77 +395,6 @@ class FlextInfraMiseArtifactsState:
         return tuple(sorted(set(residue)))
 
     @classmethod
-    def scope_transaction_residue(cls, scope_root: Path) -> t.VariadicTuple[Path]:
-        """Find unowned transaction trees across the entire scope identity.
-
-        One scope identity shares exactly one journal lease. Reconciliation
-        sees only the projects selected by the current layout, so a staged
-        tree left under any other governed member's ``.state/mise-artifacts``
-        (for example after a crash between layout selection and staging)
-        would never be reconciled and would block every later begin. With the
-        journal lease held, no live transaction may stage inside this scope
-        identity, so every journal-less transaction directory present at
-        reconciliation time is owned by a dead process and is stale by
-        definition.
-        """
-        residue: list[Path] = []
-        scope = scope_root.expanduser().absolute()
-        state_parts = files.STATE_DIRECTORY.parts
-        # A transaction tree always sits at `<member-root>/.state/mise-artifacts/
-        # transaction-<id>`. The scope identity itself may also stage at
-        # `<scope-root>/.state/mise-artifacts`.
-        members = (scope, *(child for child in scope.iterdir() if child.is_dir()))
-        for member in members:
-            state_root = member.joinpath(*state_parts)
-            if not state_root.is_dir() or state_root.is_symlink():
-                continue
-            residue.extend(
-                path
-                for path in state_root.iterdir()
-                if path.name.startswith(c.Infra.TRANSACTION_DIR_PREFIX)
-            )
-        return tuple(sorted(set(residue)))
-
-    @classmethod
-    def cleanup_scope_residue(cls, scope_root: Path) -> p.Result[bool]:
-        """Delete every unowned transaction tree across the scope identity.
-
-        Only apply mode under the held journal lease runs this: lease
-        exclusivity proves no live transaction controls this scope identity,
-        so the trees belong to dead processes (operator law: a crashed
-        process must never leave locks or staging that block later runs).
-        """
-        residue = cls.scope_transaction_residue(scope_root)
-        if not residue:
-            return r[bool].ok(True)
-        return cls.cleanup_orphan_paths(residue)
-
-    @classmethod
-    def cleanup_orphan_paths(cls, paths: t.VariadicTuple[Path]) -> p.Result[bool]:
-        """Remove orphaned physical trees through the guarded cleanup owner."""
-        for path in paths:
-            observed = u.Cli.atomic_inventory_physical_tree(path)
-            if observed.failure:
-                if not path.exists() and not path.is_symlink():
-                    continue
-                return r[bool].from_failure(observed)
-            removed = u.Cli.atomic_cleanup_physical_tree_guarded(observed.value)
-            if removed.failure:
-                return r[bool].from_failure(removed)
-        return r[bool].ok(True)
-
-    @classmethod
-    def cleanup_orphan_residue(
-        cls, layout: m.Infra.MiseToolchainWorkspaceLayout
-    ) -> p.Result[bool]:
-        """Delete journal-less transaction trees left by a crashed apply.
-
-        Staging dirs without a journal are not live destinations. Check mode
-        still fails closed; apply reconciles them before begin.
-        """
-        return cls.cleanup_orphan_paths(cls.transaction_residue(layout))
-
-    @classmethod
     def cleanup_journaled_directories(
         cls,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
@@ -475,6 +403,9 @@ class FlextInfraMiseArtifactsState:
         include_generated: bool,
     ) -> p.Result[bool]:
         """Remove authenticated temporary trees and authorized empty directories."""
+        topology = verify.journal_topology(layout, journal)
+        if topology.failure:
+            return topology
         validated = cls.validate_transaction_roots(layout, journal)
         if validated.failure:
             return validated
@@ -497,18 +428,12 @@ class FlextInfraMiseArtifactsState:
                     f"transaction root has no durable physical identity: {relative.value}"
                 )
             if entry.manifest is None:
-                observed = u.Cli.atomic_inventory_physical_tree(transaction_root)
-                if observed.failure:
-                    return r[bool].from_failure(observed)
-                validated = u.validate_value(
-                    m.Infra.CodegenJournalDirectory,
-                    {**entry.model_dump(), "manifest": observed.value},
-                )
-                if validated.failure:
-                    return r[bool].fail_op(
-                        "validate recovery temporary-tree manifest", validated.error
-                    )
-                removed = u.Cli.atomic_cleanup_physical_tree_guarded(observed.value)
+                # A created directory receipt owns only that empty directory,
+                # never descendants discovered after an interrupted stage.
+                if cls._hosts_lease_lock(layout, transaction_root):
+                    removed_temporary_roots.add(entry.path)
+                    continue
+                removed = u.Cli.atomic_delete_empty_directory_guarded(entry.created)
             else:
                 observed = verify.authorized_cleanup_manifest(layout, journal, entry)
                 if observed.failure:
@@ -537,10 +462,40 @@ class FlextInfraMiseArtifactsState:
                 return r[bool].fail(
                     f"journaled directory exists without durable identity: {entry.path}"
                 )
+            if cls._hosts_lease_lock(layout, target.value):
+                # The journal lease lock file persists by identity across
+                # transactions, so its home directory is durable state the
+                # cleanup must leave in place rather than delete empty.
+                continue
             removed = u.Cli.atomic_delete_empty_directory_guarded(entry.created)
             if removed.failure:
                 return r[bool].from_failure(removed)
         return r[bool].ok(True)
+
+    @staticmethod
+    def _hosts_lease_lock(
+        layout: m.Infra.MiseToolchainWorkspaceLayout, directory: Path
+    ) -> bool:
+        """Whether the directory houses persistent state the cleanup must keep.
+
+        The journal lease lock and the lazy-init class-receipt cache are
+        persistent residents of the ignored state root: both survive
+        transactions by design (the lock keeps its file identity across runs;
+        the receipts are the content-addressed cache), so a directory
+        containing either is durable state, never a transient cleanup target.
+        """
+        candidates = [layout.journal_path.with_name(f"{layout.journal_path.name}.lock")]
+        state_root = next(
+            (
+                ancestor
+                for ancestor in (directory, *directory.parents)
+                if ancestor.name == c.Infra.TRANSACTION_STATE_DIRNAME
+            ),
+            None,
+        )
+        if state_root is not None:
+            candidates.append(state_root / c.Infra.LAZY_INIT_CLASS_RECEIPTS_RELPATH)
+        return any(path.is_relative_to(directory) for path in candidates)
 
     @classmethod
     def validate_transaction_roots(
@@ -584,6 +539,22 @@ class FlextInfraMiseArtifactsState:
                 return r[bool].fail(
                     f"Mise transaction root identity is not journaled: {relative.value}"
                 )
+            if recorded.manifest is None:
+                empty = u.Cli.atomic_read_empty_directory_state(
+                    transaction_root, required=True
+                )
+                if empty.failure:
+                    return r[bool].from_failure(empty)
+                if empty.value != recorded.created:
+                    return r[bool].fail(
+                        f"unmanifested transaction root identity changed: {relative.value}"
+                    )
+            else:
+                authorized = verify.authorized_cleanup_manifest(
+                    layout, journal, recorded
+                )
+                if authorized.failure:
+                    return r[bool].from_failure(authorized)
         return r[bool].ok(True)
 
     @classmethod

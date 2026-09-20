@@ -17,16 +17,18 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
+from flext_core import r
 from flext_core.__version__ import FlextVersion
 
-from .. import c, r, s, u
+from .. import c, u
+from ._execution import FlextInfraCodegenExecutionBase
 from ._mise_artifacts_publication import publish_file_plan
 
 if TYPE_CHECKING:
     from .. import p
 
 
-class FlextInfraCodegenVersionFile(s[bool]):
+class FlextInfraCodegenVersionFile(FlextInfraCodegenExecutionBase[bool]):
     """Generate ``__version__.py`` for every workspace project.
 
     Projects whose derived version class name equals ``FlextVersion``
@@ -55,7 +57,7 @@ class FlextInfraCodegenVersionFile(s[bool]):
         generated = 0
         skipped = 0
 
-        for project_info in discovered.value:
+        for project_info in self._filtered_projects(discovered.value):
             metadata_result = u.Infra.read_project_metadata_result(project_info.path)
             if metadata_result.failure:
                 return r[bool].from_failure(metadata_result)
@@ -64,9 +66,6 @@ class FlextInfraCodegenVersionFile(s[bool]):
 
             if class_name == FlextVersion.__name__:
                 skipped += 1
-                continue
-
-            if self.project_filter and meta.project.name != self.project_filter:
                 continue
 
             src_pkg = project_info.path / "src" / meta.package_name

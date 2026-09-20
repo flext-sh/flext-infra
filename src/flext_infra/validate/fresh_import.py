@@ -1,11 +1,12 @@
 """Guard 7 — fresh-process import smoke validator.
 
-Imports each advertised package in a subprocess (fresh Python process)
-and reports any ImportError. Catches circular-import cycles that the
+Runs one fresh Python process per advertised package (package name travels
+via an environment variable; the smoke snippet is a fixed constant) and
+reports any ImportError. Catches circular-import cycles that the
 lazy-loading machinery in ``flext_core.lazy`` would otherwise mask
 until first attribute access.
 
-Subprocess calls are routed through ``u.Cli.run_raw``.
+Child processes are routed through ``u.Cli.run_raw``.
 
 Architecture: flext-infra validate layer — depends on ``m.Infra.ValidationReport``.
 
@@ -16,9 +17,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from typing import Annotated, override
+from typing import Annotated, ClassVar, override
 
-from flext_infra import c, m, p, r, t, u
+from flext_core import r
+from flext_infra import c, m, p, t, u
 
 from ..base import FlextInfraServiceBase
 
@@ -26,15 +28,21 @@ from ..base import FlextInfraServiceBase
 class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     """Validates that advertised packages import cleanly in fresh processes.
 
-    Guard 7 of the circular-import defense-in-depth suite. Each package
-    is imported via ``python -c 'import <pkg>'`` in a subprocess; any
-    non-zero exit is reported as a violation.
+    Guard 7 of the circular-import defense-in-depth suite. Each package is
+    imported by a child process that reads the validated package name from
+    the environment; any non-zero exit is reported as a violation.
     """
 
     packages: Annotated[
         t.StrSequence,
         m.Field(description="Package names to import-smoke in fresh subprocesses"),
     ] = (c.Infra.PKG_CORE_UNDERSCORE, "flext_infra", "flext_tests")
+
+    _SMOKE_CODE: ClassVar[str] = (
+        "import os, importlib; "
+        "importlib.import_module(os.environ['FLEXT_INFRA_SMOKE_PACKAGE'])"
+    )
+    _SMOKE_PACKAGE_ENV: ClassVar[str] = "FLEXT_INFRA_SMOKE_PACKAGE"
 
     def build_report(
         self, packages: t.StrSequence = ()
@@ -52,10 +60,14 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         violations: t.MutableSequenceOf[str] = []
         env = self._workspace_import_env()
         for package in packages:
+            if not c.Infra.PYTHON_IMPORT_NAME_RE.fullmatch(package):
+                violations.append(f"{package}: not a valid Python package name")
+                continue
+            smoke_env = {**env, self._SMOKE_PACKAGE_ENV: package}
             smoke_result = u.Cli.run_raw(
-                [sys.executable, "-c", f"import {package}"],
+                [sys.executable, "-c", self._SMOKE_CODE],
                 cwd=self.repository_root,
-                env=env,
+                env=smoke_env,
             )
             if smoke_result.failure:
                 violations.append(

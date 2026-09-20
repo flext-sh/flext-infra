@@ -91,7 +91,6 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             if not planned_write and not child_init.is_file():
                 continue
             child_entry = self._package_entry(child_dir)
-            is_fixture_child = self._is_fixture_package(child_dir)
             child_exports = dir_exports.get(str(resolved_child_dir), {})
             child_pkg_name = (
                 child_entry.package_name
@@ -108,10 +107,6 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             ):
                 continue
             if resolved_child_dir.parent != resolved_pkg_dir:
-                continue
-            # flext-pulj (codex): private fixture modules are pytest-owned plugin
-            # boundaries and never bubble into their production package root.
-            if is_fixture_child:
                 continue
             direct.append(child_pkg_name)
             self._add(
@@ -161,13 +156,3 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             len(relative_to_root) == 1
             and relative_to_root[0] in sys.stdlib_module_names
         )
-
-    @staticmethod
-    def _is_fixture_package(pkg_dir: Path) -> bool:
-        """Return True when the directory is the ``_fixtures`` convention package."""
-        return pkg_dir.name == "_fixtures"
-
-    @classmethod
-    def _is_private_test_fixture_package(cls, pkg_dir: Path, surface: str) -> bool:
-        """Return True when the package is a private fixture under the tests surface."""
-        return surface == "tests" and cls._is_fixture_package(pkg_dir)

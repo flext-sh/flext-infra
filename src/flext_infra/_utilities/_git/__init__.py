@@ -23,10 +23,12 @@ if TYPE_CHECKING:
     from .worktree import FlextInfraUtilitiesGitWorktreeMixin
     from .worktree_checkpoint import FlextInfraUtilitiesGitWorktreeCheckpointMixin
     from .worktree_discovery import FlextInfraUtilitiesGitWorktreeDiscoveryMixin
-    from .worktree_io import git_stdin
+    from .worktree_facts import FlextInfraUtilitiesGitWorktreeFactsMixin
+    from .worktree_io import FlextInfraUtilitiesGitWorktreeIO
     from .worktree_materialization import (
         FlextInfraUtilitiesGitWorktreeMaterializationMixin,
     )
+    from .worktree_measure import FlextInfraUtilitiesGitWorktreeMeasureMixin
     from .worktree_patch import FlextInfraUtilitiesGitWorktreePatchMixin
     from .worktree_removal import FlextInfraUtilitiesGitWorktreeRemovalMixin
     from .worktree_roots import FlextInfraUtilitiesGitWorktreeRootsMixin
@@ -45,13 +47,15 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitSemanticWorktreeMixin",
     "FlextInfraUtilitiesGitWorktreeCheckpointMixin",
     "FlextInfraUtilitiesGitWorktreeDiscoveryMixin",
+    "FlextInfraUtilitiesGitWorktreeFactsMixin",
+    "FlextInfraUtilitiesGitWorktreeIO",
     "FlextInfraUtilitiesGitWorktreeMaterializationMixin",
+    "FlextInfraUtilitiesGitWorktreeMeasureMixin",
     "FlextInfraUtilitiesGitWorktreeMixin",
     "FlextInfraUtilitiesGitWorktreePatchMixin",
     "FlextInfraUtilitiesGitWorktreeRemovalMixin",
     "FlextInfraUtilitiesGitWorktreeRootsMixin",
     "FlextInfraUtilitiesGitWorktreeStatusMixin",
-    "git_stdin",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -71,10 +75,12 @@ _LAZY_IMPORTS = MappingProxyType(
             ".worktree": ("FlextInfraUtilitiesGitWorktreeMixin",),
             ".worktree_checkpoint": ("FlextInfraUtilitiesGitWorktreeCheckpointMixin",),
             ".worktree_discovery": ("FlextInfraUtilitiesGitWorktreeDiscoveryMixin",),
-            ".worktree_io": ("git_stdin",),
+            ".worktree_facts": ("FlextInfraUtilitiesGitWorktreeFactsMixin",),
+            ".worktree_io": ("FlextInfraUtilitiesGitWorktreeIO",),
             ".worktree_materialization": (
                 "FlextInfraUtilitiesGitWorktreeMaterializationMixin",
             ),
+            ".worktree_measure": ("FlextInfraUtilitiesGitWorktreeMeasureMixin",),
             ".worktree_patch": ("FlextInfraUtilitiesGitWorktreePatchMixin",),
             ".worktree_removal": ("FlextInfraUtilitiesGitWorktreeRemovalMixin",),
             ".worktree_roots": ("FlextInfraUtilitiesGitWorktreeRootsMixin",),

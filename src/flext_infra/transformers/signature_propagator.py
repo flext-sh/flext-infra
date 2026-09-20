@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from operator import itemgetter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from flext_infra import c, u
 
@@ -32,12 +32,22 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         super().__init__(on_change=on_change)
         self._migrations = migrations
 
-    def apply_to_source(self, source: str) -> str:
-        """Apply all migrations to source text and return transformed source."""
+    @override
+    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
+        """Apply every migration and report the source plus what changed.
+
+        The transformer contract is the pair every orchestrated transformer
+        returns; this one returned a bare string, so it could never be driven
+        by the shared orchestrator and the capability stayed unreachable.
+        """
+        self.changes.clear()
         result = source
         for migration in self._migrations:
+            before = result
             result = self._apply_migration(result, migration)
-        return result
+            if result != before:
+                self.changes.append(f"signature migration applied: {migration.id}")
+        return result, list(self.changes)
 
     def _apply_migration(
         self, source: str, migration: m.Infra.SignatureMigration
@@ -75,12 +85,16 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
     ) -> str:
         """Rewrite keyword arguments in calls to ``simple_name`` via rope-located ranges."""
         pymodule = u.Infra.parse_string_module(source)
+        module_ast = u.Infra.ensure_ast_node(pymodule.get_ast())
         line_offsets = self._line_offsets(source)
         edits: list[tuple[int, int, str]] = []
-        for node in u.Infra.walk_ast_nodes(pymodule.get_ast()):
+        for node in u.Infra.walk_ast_nodes(module_ast):
             if u.Infra.node_kind(node) != "Call":
                 continue
-            if u.Infra.name_of(getattr(node, "func", None)) != simple_name:
+            func = getattr(node, "func", None)
+            if not hasattr(func, "_fields"):
+                continue
+            if u.Infra.name_of(func) != simple_name:
                 continue
             span = u.Infra.line_col_range(node)
             if span is None:
