@@ -27,8 +27,9 @@ class _ConformPlanRoles:
         def surface_contract(
             self, surface: c.Infra.CodegenConformSurface
         ) -> m.Infra.CodegenConformSurfaceContract: ...
+        @classmethod
         def retired_projection_plans(
-            self, root: Path, profile: c.Infra.MakeProfile
+            cls, root: Path, profile: c.Infra.MakeProfile
         ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]: ...
         def uv_environment_plan(
             self,
@@ -73,8 +74,9 @@ class _ConformPlanRoles:
             project_context: m.Infra.ProjectRenderContext | None,
             managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
         ) -> p.Result[str]: ...
+        @classmethod
         def compose_project_artifact(
-            self,
+            cls,
             repository_root: Path,
             destination: str,
             rendered: str,
@@ -85,8 +87,9 @@ class _ConformPlanRoles:
             repository: m.Infra.RepositoryRef | None = None,
             target: m.Infra.RepositoryConformTarget | None = None,
         ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
+        @staticmethod
         def validate_custom_make(
-            self, content: str, policy: m.Infra.CustomHandlerPolicy
+            content: str, policy: m.Infra.CustomHandlerPolicy
         ) -> p.Result[bool]: ...
         def _absent_file_plan(
             self, root: Path, path: Path

@@ -370,8 +370,9 @@ class FlextInfraProtocolsBase(Protocol):
             managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
         ) -> p.Result[str]: ...
 
-        @staticmethod
+        @classmethod
         def compose_project_artifact(
+            cls,
             repository_root: Path,
             destination: str,
             rendered: str,
@@ -383,9 +384,9 @@ class FlextInfraProtocolsBase(Protocol):
             target: m.Infra.RepositoryConformTarget | None = None,
         ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
 
-        @classmethod
+        @staticmethod
         def validate_custom_make(
-            cls, content: str, policy: m.Infra.CustomHandlerPolicy
+            content: str, policy: m.Infra.CustomHandlerPolicy
         ) -> p.Result[bool]: ...
 
         @staticmethod
