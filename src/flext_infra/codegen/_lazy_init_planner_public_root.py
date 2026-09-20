@@ -100,11 +100,18 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         )
         lazy_map.clear()
         lazy_map.update(governed_lazy_map)
-        public_export_names = {
+        # The published surface is what the package actually delivers: the eager
+        # names plus everything the governed lazy map resolves. Gating the lazy
+        # half on `export_names` — the scan of the package's OWN modules — drops
+        # every alias a package inherits from the facade it extends, so
+        # flext-infra published c/m/p/s/t/u and silently withheld d/e/h/r/x even
+        # though all eleven resolve at runtime and the manifest declares them.
+        # The governed map is already narrowed by the declared contract, so this
+        # can never publish more than the manifest allows.
+        public_export_names = {name for name in export_names if name in eager_names} | {
             name
-            for name in export_names
-            if name in eager_names
-            or (name in governed_lazy_map and name not in c.Infra.PUBLISHED_ALL_EXCLUDE)
+            for name in governed_lazy_map
+            if name not in c.Infra.PUBLISHED_ALL_EXCLUDE
         }
         filtered_lazy_map = {
             name: target
