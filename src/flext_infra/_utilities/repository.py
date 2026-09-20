@@ -16,6 +16,7 @@ from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
 
+from ._git.worktree_discovery import FlextInfraUtilitiesGitWorktreeDiscoveryMixin
 from .dependencies import FlextInfraUtilitiesDependencies
 
 _GIT_URL_SCHEME_PREFIX = "git+"

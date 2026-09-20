@@ -19,6 +19,7 @@ from flext_core import r
 from .. import c, config, m, u
 from ..workspace.rope import FlextInfraRopeWorkspace
 from ._execution import FlextInfraCodegenExecutionBase
+from ._lazy_init_class_receipts import FlextInfraCodegenLazyInitClassReceipts
 from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
 from .lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 
