@@ -6,6 +6,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
+from tests import c, t
+
 from ... import m, u
 
 

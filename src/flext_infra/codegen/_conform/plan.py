@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, override
 
@@ -12,6 +13,7 @@ from ... import c, config, m, p, t, u
 from ...deps import FlextInfraPyprojectModernizer
 from ...services.codegen import FlextInfraCodegen
 from ...workspace import FlextInfraWorkspaceDetector
+from ...workspace.environment_contracts import FlextInfraWorkspaceEnvironmentContracts
 from .misc import FlextInfraCodegenConformMisc
 from .scaffold_plan import FlextInfraCodegenConformScaffoldPlan
 
@@ -969,10 +971,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     @staticmethod
     @override
     def _repository_provider(
-        repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec
-    ) -> p.Result[m.Infra.ProviderSpec]:
-        """Resolve one repository to exactly one provider-owned policy."""
-        resolved: p.Result[m.Infra.ProviderSpec] = u.Infra.repository_provider(
-            repository, codegen.providers
-        )
-        return resolved
+        repository: m.Infra.RepositoryRef,
+    ) -> p.Result[m.Infra.ProviderIdentitySpec]:
+        """Resolve one repository to its self-declared provider identity."""
+        return u.Infra.repository_provider(repository)

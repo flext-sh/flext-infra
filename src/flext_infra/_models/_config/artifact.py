@@ -505,7 +505,7 @@ class FlextInfraConfigModelsArtifact:
             m.Field(description="Canonical artifact owner, empty for scaffold files"),
         ] = ""
         policy: Annotated[
-            Literal["full", "merge"] | None,
+            Literal[full, merge] | None,
             m.Field(description="Governed root artifact policy"),
         ] = None
 
