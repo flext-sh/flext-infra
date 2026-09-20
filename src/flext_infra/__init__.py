@@ -20,6 +20,8 @@ from .__version__ import (
 )
 
 if TYPE_CHECKING:
+    from flext_cli import d, e, h, r, x
+
     from . import (
         check,
         codegen,
@@ -728,6 +730,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".transformers.typing_unifier": ("FlextInfraRefactorTypingUnifier",),
             ".typings": ("FlextInfraTypes", "t"),
             ".utilities": ("FlextInfraUtilities", "u"),
+            "flext_cli": ("d", "e", "h", "r", "x"),
             ".validate": ("validate",),
             ".validate.cprofile_report": ("FlextInfraCProfileReport",),
             ".validate.fresh_import": ("FlextInfraValidateFreshImport",),

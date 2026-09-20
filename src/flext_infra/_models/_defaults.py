@@ -57,4 +57,13 @@ def immutable_empty_mapping[K, V]() -> Mapping[K, V]:
     return FlextInfraModelsDefaults.ImmutableEmptyMapping[K, V]()
 
 
-__all__: list[str] = ["FlextInfraModelsDefaults", "immutable_empty_mapping"]
+ImmutableEmptyMapping = FlextInfraModelsDefaults.ImmutableEmptyMapping
+tool_version_field = FlextInfraModelsDefaults.tool_version_field
+
+
+__all__: list[str] = [
+    "FlextInfraModelsDefaults",
+    "ImmutableEmptyMapping",
+    "immutable_empty_mapping",
+    "tool_version_field",
+]
