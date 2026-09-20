@@ -12,8 +12,7 @@ if TYPE_CHECKING:
     from .docs_serve_e2e_tests import TestsFlextInfraIntegrationDocsServeE2e
     from .test_infra_integration import TestsFlextInfraIntegrationInfraIntegration
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraIntegrationDocsServeE2e",
-    "TestsFlextInfraIntegrationInfraIntegration",
+    "TestsFlextInfraIntegrationDocsServeE2e", "TestsFlextInfraIntegrationInfraIntegration",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

@@ -570,7 +570,6 @@ split-on-trailing-comma = false
   "suspicious-subprocess-import",
 ]
 "src/flext_infra/_utilities/_rope/**/*.py" = ["private-member-access"]
-"src/flext_infra/codegen/_conform_gitignore.py" = ["protected-member-access"]
 
 [tool.tomlsort]
 all = true

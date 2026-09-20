@@ -13,15 +13,13 @@ if TYPE_CHECKING:
     from .test_batch_apply_validation import TestsFlextInfraCodemodBatchApplyValidation
     from .test_mod_circuit import TestsFlextInfraModCliRoute
     from .test_mod_text_circuit import TestsFlextInfraModTextGateEngine
+    from .test_nesting_cst_output_is_clean import TestsFlextInfraNestingCutoverOutput
     from .test_private_import_cutover import TestsFlextInfraPrivateImportCutover
+    from .test_rule_expected_receipt import TestsFlextInfraModRuleExpectedReceipt
     from .test_rule_fixture_staging import TestsFlextInfraModRuleFixtureStaging
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraApiAliasCutover",
-    "TestsFlextInfraCodemodBatchApplyValidation",
-    "TestsFlextInfraModCliRoute",
-    "TestsFlextInfraModRuleFixtureStaging",
-    "TestsFlextInfraModTextGateEngine",
-    "TestsFlextInfraPrivateImportCutover",
+    "TestsFlextInfraApiAliasCutover", "TestsFlextInfraCodemodBatchApplyValidation", "TestsFlextInfraModCliRoute", "TestsFlextInfraModRuleExpectedReceipt",
+    "TestsFlextInfraModRuleFixtureStaging", "TestsFlextInfraModTextGateEngine", "TestsFlextInfraNestingCutoverOutput", "TestsFlextInfraPrivateImportCutover",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -33,7 +31,11 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".test_mod_circuit": ("TestsFlextInfraModCliRoute",),
             ".test_mod_text_circuit": ("TestsFlextInfraModTextGateEngine",),
+            ".test_nesting_cst_output_is_clean": (
+                "TestsFlextInfraNestingCutoverOutput",
+            ),
             ".test_private_import_cutover": ("TestsFlextInfraPrivateImportCutover",),
+            ".test_rule_expected_receipt": ("TestsFlextInfraModRuleExpectedReceipt",),
             ".test_rule_fixture_staging": ("TestsFlextInfraModRuleFixtureStaging",),
         }),
         alias_groups=MappingProxyType({}),

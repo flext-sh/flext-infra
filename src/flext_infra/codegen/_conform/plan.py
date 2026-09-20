@@ -15,7 +15,6 @@ from ...services.codegen import FlextInfraCodegen
 from ...workspace import FlextInfraWorkspaceDetector
 from ...workspace.environment_contracts import FlextInfraWorkspaceEnvironmentContracts
 from .file_plans import FlextInfraCodegenConformFilePlans
-from .misc import FlextInfraCodegenConformMisc
 from .scaffold_plan import FlextInfraCodegenConformScaffoldPlan
 
 

@@ -23,10 +23,7 @@ if TYPE_CHECKING:
     )
     from .test_infra_transformer_typing_dict import TestsFlextInfraTypingDictDeactivated
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraCastRemoverDeactivated",
-    "TestsFlextInfraTransformersEnforcementFixers",
-    "TestsFlextInfraTransformersMroRemover",
-    "TestsFlextInfraTransformersPydanticModernizer",
+    "TestsFlextInfraCastRemoverDeactivated", "TestsFlextInfraTransformersEnforcementFixers", "TestsFlextInfraTransformersMroRemover", "TestsFlextInfraTransformersPydanticModernizer",
     "TestsFlextInfraTypingDictDeactivated",
 )
 

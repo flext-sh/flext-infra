@@ -158,7 +158,9 @@ class FlextInfraCodegenGenerationStandardMixin(
         )
 
     @staticmethod
-    def _pack_comma_entries(entries: t.StrSequence, *, indent: str = "    ") -> t.StrSequence:
+    def _pack_comma_entries(
+        entries: t.StrSequence, *, indent: str = "    "
+    ) -> t.StrSequence:
         """Pack comma-terminated entries onto shared lines up to MAX_LINE_LENGTH.
 
         Why: one-entry-per-line projections blew the loc-cap gate on large
@@ -189,12 +191,14 @@ class FlextInfraCodegenGenerationStandardMixin(
         compact = f"({inner})"
         if len("__all__: tuple[str, ...] = ") + len(compact) <= c.Infra.MAX_LINE_LENGTH:
             return compact
-        # Wide export sets wrap 4 names per line (semantically neutral, same
-        # order): 1-per-line pushes large generated facades past the 1000-LOC
-        # cap (aihub loc-cap, services/__init__ 1038 lines).
+        # Wide export sets wrap the configured count of names per line
+        # (semantically neutral, same order): 1-per-line pushes large generated
+        # facades past the 1000-LOC cap (aihub loc-cap, services/__init__ 1038
+        # lines).
+        width = c.Infra.WRAPPED_ENTRIES_PER_LINE
         wrapped = ",\n    ".join(
-            ", ".join(f'"{name}"' for name in exports[i : i + 4])
-            for i in range(0, len(exports), 4)
+            ", ".join(f'"{name}"' for name in exports[i : i + width])
+            for i in range(0, len(exports), width)
         )
         return "(\n    " + wrapped + ",\n)"
 

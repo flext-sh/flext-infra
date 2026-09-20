@@ -29,25 +29,11 @@ if TYPE_CHECKING:
     from .test_project_gitignore_patterns import TestsFlextInfraProjectGitignorePatterns
     from .test_project_mise_tools import TestsFlextInfraProjectMiseTools
 __all__: tuple[str, ...] = (
-    "ExtraPathsTestSupport",
-    "TestsFlextInfraDepsDetectionTypings",
-    "TestsFlextInfraDepsDetectorInit",
-    "TestsFlextInfraDepsDetectorMain",
-    "TestsFlextInfraDepsDetectorReport",
-    "TestsFlextInfraDepsDetectorReportFlags",
-    "TestsFlextInfraDepsExtraPathsSync",
-    "TestsFlextInfraDepsInit",
-    "TestsFlextInfraDepsMainDispatch",
-    "TestsFlextInfraDepsModernizerComments",
-    "TestsFlextInfraDepsModernizerHelpers",
-    "TestsFlextInfraDepsModernizerPackaging",
-    "TestsFlextInfraDepsModernizerPyright",
-    "TestsFlextInfraDepsModernizerToolTables",
-    "TestsFlextInfraDepsModernizerTooling",
-    "TestsFlextInfraDepsModernizerWorkspace",
-    "TestsFlextInfraModernizerPyrefly",
-    "TestsFlextInfraProjectGitignorePatterns",
-    "TestsFlextInfraProjectMiseTools",
+    "ExtraPathsTestSupport", "TestsFlextInfraDepsDetectionTypings", "TestsFlextInfraDepsDetectorInit", "TestsFlextInfraDepsDetectorMain",
+    "TestsFlextInfraDepsDetectorReport", "TestsFlextInfraDepsDetectorReportFlags", "TestsFlextInfraDepsExtraPathsSync", "TestsFlextInfraDepsInit",
+    "TestsFlextInfraDepsMainDispatch", "TestsFlextInfraDepsModernizerComments", "TestsFlextInfraDepsModernizerHelpers", "TestsFlextInfraDepsModernizerPackaging",
+    "TestsFlextInfraDepsModernizerPyright", "TestsFlextInfraDepsModernizerToolTables", "TestsFlextInfraDepsModernizerTooling", "TestsFlextInfraDepsModernizerWorkspace",
+    "TestsFlextInfraModernizerPyrefly", "TestsFlextInfraProjectGitignorePatterns", "TestsFlextInfraProjectMiseTools",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

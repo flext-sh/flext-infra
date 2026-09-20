@@ -108,6 +108,88 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
         tm.that(report.passed, eq=True)
         tm.that(report.violations, empty=True)
 
+    def test_cli_entrypoint_main_is_a_functional_module(self, tmp_path: Path) -> None:
+        """The canonical cli.py transport is ``main`` beside no class."""
+        source = (
+            "from __future__ import annotations\n\n\n"
+            "def main(args: list[str] | None = None) -> int:\n"
+            "    return 0\n\n\n"
+            '__all__ = ["main"]\n'
+        )
+        root = self._create_namespace_project(
+            tmp_path, module_source=source, module_name="cli.py"
+        )
+
+        report = self._validate_project(root)
+
+        tm.that(
+            any(
+                marker in violation
+                for violation in report.violations
+                for marker in (
+                    "module must declare at least one top-level class",
+                    "module must declare at least one class starting with",
+                    "top-level function is forbidden",
+                )
+            ),
+            eq=False,
+            msg=str(report.violations),
+        )
+
+    def test_cli_non_entrypoint_function_is_not_functional(self, tmp_path: Path) -> None:
+        """A cli.py helper that is not the entrypoint stays fully graded."""
+        source = (
+            "from __future__ import annotations\n\n\n"
+            "def helper() -> int:\n"
+            "    return 0\n"
+        )
+        root = self._create_namespace_project(
+            tmp_path, module_source=source, module_name="cli.py"
+        )
+
+        report = self._validate_project(root)
+
+        tm.that(
+            any(
+                "top-level function is forbidden" in violation
+                for violation in report.violations
+            ),
+            eq=True,
+            msg=str(report.violations),
+        )
+
+    def test_canonical_owner_facade_is_exempt_from_consumer_shape(
+        self, tmp_path: Path
+    ) -> None:
+        """flext_core owns the letters: it has no upstream and no domain nest."""
+        project_root = tmp_path / "project"
+        package_dir = project_root / "src" / "flext_core"
+        package_dir.mkdir(parents=True)
+        (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        u.Tests.write_canonical_package_layout(package_dir)
+        (package_dir / "constants.py").write_text(
+            "from __future__ import annotations\n\n"
+            "from flext_core._constants.base import FlextConstantsBase\n"
+            "from flext_core._constants.domain import FlextConstantsDomain\n\n\n"
+            "class FlextConstants(FlextConstantsBase, FlextConstantsDomain):\n"
+            '    """SSOT facade: all constants flat on c.* via MRO composition."""\n'
+            "\n\nc = FlextConstants\n",
+            encoding="utf-8",
+        )
+        u.Tests.initialize_git_repo(project_root)
+
+        report = self._validate_project(project_root)
+
+        tm.that(
+            any(
+                "facade must inherit canonical" in violation
+                or "must declare one nested" in violation
+                for violation in report.violations
+            ),
+            eq=False,
+            msg=str(report.violations),
+        )
+
     def test_rule0_does_not_flag_non_namespace_runtime_module(
         self, tmp_path: Path
     ) -> None:
