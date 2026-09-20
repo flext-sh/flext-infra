@@ -16,10 +16,7 @@ if TYPE_CHECKING:
         FlextInfraWorkspaceCheckGatesMixin,
     )
 __all__: tuple[str, ...] = (
-    "FlextInfraGateRegistry",
-    "FlextInfraWorkspaceCheckGatesMixin",
-    "FlextInfraWorkspaceCheckReportsMixin",
-    "FlextInfraWorkspaceChecker",
+    "FlextInfraGateRegistry", "FlextInfraWorkspaceCheckGatesMixin", "FlextInfraWorkspaceCheckReportsMixin", "FlextInfraWorkspaceChecker",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -28,8 +25,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._workspace_check_reports": ("FlextInfraWorkspaceCheckReportsMixin",),
             ".workspace_check": ("FlextInfraWorkspaceChecker",),
             ".workspace_check_gates": (
-                "FlextInfraGateRegistry",
-                "FlextInfraWorkspaceCheckGatesMixin",
+                "FlextInfraGateRegistry", "FlextInfraWorkspaceCheckGatesMixin",
             ),
         }),
         alias_groups=MappingProxyType({}),

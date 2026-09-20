@@ -24,18 +24,9 @@ if TYPE_CHECKING:
     from .orchestrator import FlextInfraOrchestratorService
     from .rope import FlextInfraRopeWorkspace
 __all__: tuple[str, ...] = (
-    "FlextInfraFlextBindingService",
-    "FlextInfraOrchestratorService",
-    "FlextInfraRopeWorkspace",
-    "FlextInfraWorkspaceBeadsEnvironmentMixin",
-    "FlextInfraWorkspaceDetector",
-    "FlextInfraWorkspaceEnvironmentContracts",
-    "FlextInfraWorkspaceEnvironmentMixin",
-    "FlextInfraWorkspaceEnvironmentProvenance",
-    "FlextInfraWorkspaceEnvironmentSync",
-    "FlextInfraWorkspaceGovernanceMixin",
-    "FlextInfraWorkspaceOrchestratorDiscoveryMixin",
-    "FlextInfraWorkspaceOrchestratorExecutionMixin",
+    "FlextInfraFlextBindingService", "FlextInfraOrchestratorService", "FlextInfraRopeWorkspace", "FlextInfraWorkspaceBeadsEnvironmentMixin",
+    "FlextInfraWorkspaceDetector", "FlextInfraWorkspaceEnvironmentContracts", "FlextInfraWorkspaceEnvironmentMixin", "FlextInfraWorkspaceEnvironmentProvenance",
+    "FlextInfraWorkspaceEnvironmentSync", "FlextInfraWorkspaceGovernanceMixin", "FlextInfraWorkspaceOrchestratorDiscoveryMixin", "FlextInfraWorkspaceOrchestratorExecutionMixin",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
