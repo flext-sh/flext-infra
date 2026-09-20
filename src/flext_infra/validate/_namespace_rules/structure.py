@@ -180,10 +180,24 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
 
     @classmethod
     def _facade_shape(cls, tree: object, filepath: Path) -> t.StrSequence:
-        """Require an explicit outer+Infra MRO on canonical family facades."""
+        """Require an explicit outer+Infra MRO on canonical family facades.
+
+        A reserved facade filename also carries a placement law: it names the
+        package's public facade, so it belongs beside the package initializer
+        and nowhere else. A nested module borrowing the name claims the same
+        facade letter the root already owns, and the generator then cannot
+        decide which one publishes it.
+        """
         layer = c.Infra.NAMESPACE_LAYER_BY_FILE.get(filepath.name)
         if layer not in {"c", "t", "p", "m", "u"}:
             return ()
+        if filepath.parent.parent.name != c.Infra.DEFAULT_SRC_DIR:
+            message = (
+                f"{filepath}:1 — {filepath.name} is a reserved facade name and"
+                f" belongs at the package root, not in {filepath.parent.name}/;"
+                f" name the module after what it does"
+            )
+            return (message,)
         classes = cls.outer_classes(tree)
         if len(classes) != 1:
             return ()
