@@ -120,9 +120,16 @@ class FlextInfraConstantsRefactor:
     CODEMOD_SCOPE_RUNTIME: Final[str] = "runtime"
     # Declarative sed-by-list rules: one list entry drives one regex rewrite
     # across the governed scan surface with an exact expected-count receipt.
-    CODEMOD_TEXT_RULES_FILENAME: Final[str] = "text_rules.yml"
+    # The sed-by-list catalogue has one declared owner per governed repository:
+    # config/rules/mod/sed.yaml, whose schema the file itself documents. The
+    # engine previously looked for a `text_rules.yml` that exists nowhere in
+    # the tree, so the phase was wired but inert and the declared catalogue was
+    # read by nothing.
+    CODEMOD_TEXT_RULES_FILENAME: Final[str] = "sed.yaml"
     # Declarative text-rule path derived from the filename SSOT.
-    CODEMOD_TEXT_RULES_RELPATH: Final[Path] = Path(CODEMOD_TEXT_RULES_FILENAME)
+    CODEMOD_TEXT_RULES_RELPATH: Final[Path] = (
+        Path("config") / "rules" / "mod" / CODEMOD_TEXT_RULES_FILENAME
+    )
     CODEMOD_TEXT_RULES_KEY: Final[str] = "rules"
     CODEMOD_TEXT_KEY_ID: Final[str] = "id"
     CODEMOD_TEXT_KEY_DESCRIPTION: Final[str] = "description"
@@ -135,6 +142,12 @@ class FlextInfraConstantsRefactor:
     # ast-grep rejects unknown top-level keys, so an ast-grep rule declares
     # its finding-count receipt under the `metadata` mapping it does accept.
     CODEMOD_RULE_METADATA_KEY: Final[str] = "metadata"
+    # The declarative signature-migration catalogue: one owner per governed
+    # repository, read by the propagate-signatures verb.
+    REFACTOR_SIGNATURE_RULES_RELPATH: Final[Path] = (
+        Path("config") / "rules" / "refactor" / "signature-propagation.yml"
+    )
+    REFACTOR_SIGNATURE_RULES_KEY: Final[str] = "migrations"
     CODEMOD_TEXT_FLAG_NAMES: Final[t.MappingKV[str, int]] = MappingProxyType({
         "IGNORECASE": re.IGNORECASE,
         "MULTILINE": re.MULTILINE,

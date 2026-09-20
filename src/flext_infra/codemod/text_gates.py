@@ -29,10 +29,10 @@ class FlextInfraModTextGateEngine:
     @classmethod
     def load_rules(cls, root: Path) -> p.Result[t.VariadicTuple[m.Infra.ModTextRule]]:
         """Load package and workspace text rules into one validated tuple."""
-        sources = (
-            Path(__file__).parent / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
-            root / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
-        )
+        # One catalogue, owned by the repository under work. The package-side
+        # lookup addressed a file the distribution does not ship, so it could
+        # only ever contribute nothing.
+        sources = (root / c.Infra.CODEMOD_TEXT_RULES_RELPATH,)
         rules: list[m.Infra.ModTextRule] = []
         seen: set[str] = set()
         for source in sources:

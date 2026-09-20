@@ -359,8 +359,21 @@ class FlextInfraCodemodSemanticApply:
                     changes=("semantic migration",),
                 )
             )
-        if semantic_plans:
-            publish_semantic_file_plans(semantic_plans).unwrap()
+        if not semantic_plans:
+            return
+        publish_semantic_file_plans(semantic_plans).unwrap()
+        # A structural move is not finished at the byte level: the canonical
+        # formatter owns import order and whitespace, and without this pass
+        # every module the cutover touched came back with findings a human
+        # then repaired by hand. The census apply path already owns this exact
+        # normalization; this is that owner, not a second one.
+        from ..refactor._census_apply_formatting import (
+            FlextInfraRefactorCensusApplyFormattingMixin,
+        )
+
+        FlextInfraRefactorCensusApplyFormattingMixin._ruff_fix_touched_files(
+            plan.path for plan in semantic_plans
+        )
 
     @staticmethod
     def _path_key(path: Path) -> t.Pair[bool, str]:

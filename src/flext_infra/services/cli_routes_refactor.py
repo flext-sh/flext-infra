@@ -15,6 +15,9 @@ from flext_infra.refactor.accessor_migration import (
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.refactor.modernize_orchestrator import FlextInfraModernizeOrchestrator
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
+from flext_infra.refactor.signature_propagation import (
+    FlextInfraRefactorSignaturePropagation,
+)
 from flext_infra.refactor.wrapper_root_namespace import (
     FlextInfraWrapperRootNamespaceRefactor,
 )
@@ -63,6 +66,15 @@ class RefactorRoutes(CliRouteBase):
             ),
             model_cls=FlextInfraWrapperRootNamespaceRefactor,
             handler=FlextInfraWrapperRootNamespaceRefactor.execute,
+        ),
+        m.Cli.ResultCommandRoute(
+            name="propagate-signatures",
+            help_text=(
+                "Rewrite call sites from the declared signature migrations in "
+                "config/rules/refactor/signature-propagation.yml"
+            ),
+            model_cls=m.Infra.ModernizeInput,
+            handler=FlextInfraRefactorSignaturePropagation.execute_command,
         ),
         m.Cli.ResultCommandRoute(
             name="modernize-pydantic",

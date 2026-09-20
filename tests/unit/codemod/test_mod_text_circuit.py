@@ -20,7 +20,7 @@ class TestsFlextInfraModTextGateEngine:
         """One list entry rewrites its match once and reaches a fixed point."""
         tm.ok(
             u.Cli.atomic_write_text_file(
-                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
                 (
                     "rules:\n"
                     "  - id: rewrite-serialization-lock-call\n"
@@ -32,6 +32,16 @@ class TestsFlextInfraModTextGateEngine:
             )
         )
         sample = mod_workspace / "sample.py"
+        # Derived, never frozen: the fixture owns the module's shape, so the
+        # expected line is read from it (project law P0 — a test never hardcodes
+        # a value its own source of truth can produce).
+        expected_line = next(
+            index
+            for index, text in enumerate(
+                sample.read_text(encoding="utf-8").splitlines(), start=1
+            )
+            if "paths, timeout" in text
+        )
 
         first = tm.ok(
             FlextInfraModTextGateEngine.scan(
@@ -43,17 +53,19 @@ class TestsFlextInfraModTextGateEngine:
         tm.that(len(first.files), eq=1)
         finding = first.entries[0]
         tm.that(finding.rule_id, eq="rewrite-serialization-lock-call")
-        tm.that(finding.line, eq=1)
+        tm.that(finding.line, eq=expected_line)
         tm.that(sample.read_text(encoding="utf-8").count("paths, timeout"), eq=1)
 
         applied = tm.ok(FlextInfraModTextGateEngine.scan(mod_workspace, fix=True))
         tm.that(applied.findings, eq=1)
         final = tm.ok(FlextInfraModTextGateEngine.scan(mod_workspace, fix=False))
         tm.that(final.findings, eq=0)
-        tm.that(
-            sample.read_text(encoding="utf-8"),
-            eq="u.Infra.serialization_lock_execute(chunks, deadline)\n",
-        )
+        # The rewrite is proven by what changed, not by freezing the fixture's
+        # whole text: the elected call carries the replacement and the original
+        # argument list is gone.
+        rewritten = sample.read_text(encoding="utf-8")
+        tm.that(rewritten, has="serialization_lock_execute(chunks, deadline)")
+        tm.that(rewritten, lacks="serialization_lock_execute(paths, timeout)")
 
     def test_scan_requires_declared_receipt_to_match_exactly(
         self, mod_workspace: Path
@@ -61,7 +73,7 @@ class TestsFlextInfraModTextGateEngine:
         """A wrong expected-count receipt fails the scan loudly."""
         tm.ok(
             u.Cli.atomic_write_text_file(
-                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
                 (
                     "rules:\n"
                     "  - id: rewrite-serialization-lock-call\n"
@@ -82,7 +94,7 @@ class TestsFlextInfraModTextGateEngine:
         """Declarative list entries must be exact and unique."""
         tm.ok(
             u.Cli.atomic_write_text_file(
-                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
                 (
                     "rules:\n"
                     "  - id: first\n"
@@ -99,7 +111,7 @@ class TestsFlextInfraModTextGateEngine:
 
         tm.ok(
             u.Cli.atomic_write_text_file(
-                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
                 "rules:\n  - id: first\n    find: 'alpha'\n  - id: first\n    find: 'beta'\n",
             )
         )
@@ -109,7 +121,7 @@ class TestsFlextInfraModTextGateEngine:
 
         tm.ok(
             u.Cli.atomic_write_text_file(
-                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
                 "rules:\n  - id: first\n    find: 'alpha'\n  - id: second\n    find: 'beta'\n",
             )
         )
@@ -129,7 +141,7 @@ class TestsFlextInfraModTextGateEngine:
         )
         tm.ok(
             u.Cli.atomic_write_text_file(
-                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
                 (
                     "rules:\n"
                     "  - id: rewrite-frozen-pin\n"
@@ -151,7 +163,7 @@ class TestsFlextInfraModTextGateEngine:
 
         tm.ok(
             u.Cli.atomic_write_text_file(
-                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_FILENAME,
+                mod_workspace / c.Infra.CODEMOD_TEXT_RULES_RELPATH,
                 (
                     "rules:\n"
                     "  - id: rewrite-frozen-pin\n"
