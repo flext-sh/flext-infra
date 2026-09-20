@@ -10,7 +10,7 @@ from flext_cli import m, u
 
 from ... import t
 from ..._constants import FlextInfraConstantsRelease
-from .. import immutable_empty_mapping
+from flext_infra._models._defaults import immutable_empty_mapping
 from .contexts import FlextInfraConfigModelsContexts
 from .contract import FlextInfraConfigModelsContract
 
