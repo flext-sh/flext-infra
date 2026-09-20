@@ -13,8 +13,9 @@ from ... import c, config, m, p, t, u
 from ...deps import FlextInfraPyprojectModernizer
 from ...services.codegen import FlextInfraCodegen
 from ...workspace import FlextInfraWorkspaceDetector
-from .scaffold_plan import FlextInfraCodegenConformScaffoldPlan
 from ...workspace.environment_contracts import FlextInfraWorkspaceEnvironmentContracts
+from .misc import FlextInfraCodegenConformMisc
+from .scaffold_plan import FlextInfraCodegenConformScaffoldPlan
 
 
 class _ConformPlanRoles:
@@ -357,9 +358,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(context_result)
         context = context_result.value
         planned: list[m.Infra.CodegenFilePlan] = []
-        templates_root = (
-            self._package_root() / "templates" / codegen.templates.root
-        ).resolve()
+        templates_root = u.Infra.codegen_templates_root(codegen)
         seen_destinations: set[str] = set()
         # One selection and one formatted path govern validation and planning.
         scaffold_entries = tuple(
@@ -566,9 +565,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         """Render configured overwrite-owned templates for an existing tree."""
         u.Cli.info(f"  stage=templates repository={repository.name}")
         profile = target.make_profile
-        templates_root = (
-            self._package_root() / "templates" / codegen.templates.root
-        ).resolve()
+        templates_root = u.Infra.codegen_templates_root(codegen)
         planned: list[m.Infra.CodegenFilePlan] = []
         for managed in codegen.managed_files:
             if not target.ci_enabled and managed.path.parts[:2] == (
