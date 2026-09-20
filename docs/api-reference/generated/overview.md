@@ -1,6 +1,7 @@
 # flext-infra API Overview
 
 <!-- TOC START -->
+
 - [Next Pages](#next-pages)
 
 <!-- TOC END -->
@@ -13,23 +14,22 @@
   workspace management
 - Doc summary: Flext Infra package.
 - Classifiers: `Development Status :: 3 - Alpha`, `Framework :: Pydantic :: 2`,
-  `Framework :: Pydantic`, `Intended Audience :: Developers`, `Operating System
-  :: OS Independent`, `Programming Language :: Python :: 3 :: Only` (+4 more)
+  `Framework :: Pydantic`, `Intended Audience :: Developers`,
+  `Operating System :: OS Independent`, `Programming Language :: Python :: 3 :: Only`
+  (+4 more)
 - Project class: `infra`
 - Keywords: `automation`, `codegen`, `flext`, `infrastructure`, `tooling`
 - Main facades: `FlextInfra`, `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
   `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport`,
-  `FlextInfraCanonicalAliasGate`, `FlextInfraCensusImportDiscoveryVisitor` (+182
-  more)
+  `FlextInfraCanonicalAliasGate`, `FlextInfraCensusImportDiscoveryVisitor` (+182 more)
 - Alias exports: `c`, `m`, `p`, `s`, `t`, `u`
-- Public symbol exports: `CliDispatchService`, `CliRouteBase`,
-  `CliRouteService`, `CodegenRoutes`, `FlextInfra`,
-  `FlextInfraAbstractionBoundaryGate`,
+- Public symbol exports: `CliDispatchService`, `CliRouteBase`, `CliRouteService`,
+  `CodegenRoutes`, `FlextInfra`, `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
   `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+195 more)
-- Exported module shortcuts: `check`, `codegen`, `codemod`, `deps`, `detectors`,
-  `docs`, `fixers`, `gates` (+8 more)
+- Exported module shortcuts: `check`, `codegen`, `codemod`, `deps`, `detectors`, `docs`,
+  `fixers`, `gates` (+8 more)
 - Generated module pages: `208`
 
 ## Next Pages

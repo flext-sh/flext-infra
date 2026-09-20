@@ -12,7 +12,7 @@ from flext_infra._models._config.artifact import FlextInfraConfigModelsArtifact
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.static import FlextInfraConfigModelsStatic
 from flext_infra._models._defaults import immutable_empty_mapping
-from flext_infra._models.deps import FlextInfraModelsDepsToolSettings
+from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
 
 
 class FlextInfraConfigModelsRoot:
@@ -31,7 +31,7 @@ class FlextInfraConfigModelsRoot:
             m.Field(description="Unified project and workspace codegen contract"),
         ]
         tooling: Annotated[
-            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
+            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
             m.Field(description="Validated lint, typecheck, and scaffold policy"),
         ]
         source_scan: Annotated[

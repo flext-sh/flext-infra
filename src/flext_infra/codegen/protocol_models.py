@@ -14,6 +14,7 @@ from flext_cli import cli
 from flext_core import r
 
 from .. import FlextInfraServiceBase, m, p, t
+from ._protocol_model_annotations import FlextInfraCodegenProtocolModelAnnotations
 from ._protocol_model_render import FlextInfraCodegenProtocolModelRender
 
 _Target = FlextInfraCodegenProtocolModelAnnotations.ProtocolModelTarget

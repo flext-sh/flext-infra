@@ -971,10 +971,7 @@ class FlextInfraCodegenConformPlan(_ConformPlanRoles):
     @staticmethod
     @override
     def _repository_provider(
-        repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec
-    ) -> p.Result[m.Infra.ProviderSpec]:
-        """Resolve one repository to exactly one provider-owned policy."""
-        resolved: p.Result[m.Infra.ProviderSpec] = u.Infra.repository_provider(
-            repository, codegen.providers
-        )
-        return resolved
+        repository: m.Infra.RepositoryRef,
+    ) -> p.Result[m.Infra.ProviderIdentitySpec]:
+        """Resolve one repository to its self-declared provider identity."""
+        return u.Infra.repository_provider(repository)

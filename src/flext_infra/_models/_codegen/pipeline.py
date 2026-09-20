@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m, u
 
 from ... import p, t
-from ..config import FlextInfraConfigModels
+from .._config import FlextInfraConfigModelsArtifact
 from .fix import FlextInfraModelsCodegenFixModels
 from .scaffold import FlextInfraModelsCodegenScaffoldModels
 
@@ -25,7 +25,7 @@ class FlextInfraModelsCodegenPipelineModels:
             m.Field(description="Generation phase that produced this receipt"),
         ]
         files: Annotated[
-            t.VariadicTuple[FlextInfraConfigModels.CodegenFilePlan],
+            t.VariadicTuple[FlextInfraConfigModelsArtifact.CodegenFilePlan],
             m.Field(description="Ordered desired publication states"),
         ]
         inputs: Annotated[

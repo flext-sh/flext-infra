@@ -408,8 +408,8 @@ class FlextInfraProtocolsBase(Protocol):
 
         @staticmethod
         def _repository_provider(
-            repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec
-        ) -> p.Result[m.Infra.ProviderSpec]: ...
+            repository: m.Infra.RepositoryRef,
+        ) -> p.Result[m.Infra.ProviderIdentitySpec]: ...
 
         @staticmethod
         def _repository_root_rel(workspace: m.Infra.WorkspaceSpec) -> str: ...

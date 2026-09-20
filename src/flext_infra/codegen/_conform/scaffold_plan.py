@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ... import c, m, p, r, t, u
+from flext_core import r
+
+from ... import c, m, p, t, u
 from ...deps import FlextInfraPyprojectModernizer
 from .existing_plan import FlextInfraCodegenConformExistingPlan
 

@@ -360,18 +360,14 @@ class FlextInfraUtilitiesRepository:
         )
 
     @classmethod
-    def repository_page_url(
-        cls,
-        repository: p.Infra.RepositoryRef,
-        providers: t.SequenceOf[m.Infra.ProviderSpec],
-    ) -> p.Result[str]:
+    def repository_page_url(cls, repository: p.Infra.RepositoryRef) -> p.Result[str]:
         """Return the provider HTTPS page of one repository, whatever its transport.
 
         CI rewrites member origins to SSH deploy-key URLs, so the clone URL is
         never a page URL: the page is the declared provider base URL plus the
         repository segment of the transport-stable ``owner/repository`` identity.
         """
-        provider = cls.repository_provider(repository, providers)
+        provider = cls.repository_provider(repository)
         if provider.failure:
             return r[str].from_failure(provider)
         owner, separator, name = (
@@ -388,10 +384,7 @@ class FlextInfraUtilitiesRepository:
 
     @classmethod
     def project_urls(
-        cls,
-        repository: p.Infra.RepositoryRef,
-        project: m.Infra.ProjectSpec | None,
-        providers: t.SequenceOf[m.Infra.ProviderSpec],
+        cls, repository: p.Infra.RepositoryRef, project: m.Infra.ProjectSpec | None
     ) -> p.Result[m.Infra.ProjectUrls]:
         """Resolve ``[project.urls]`` from the manifest, never from a live pyproject.
 
@@ -399,7 +392,7 @@ class FlextInfraUtilitiesRepository:
         without one publishes its provider page for both. The repository URL is
         always the provider page of the declared repository.
         """
-        page = cls.repository_page_url(repository, providers)
+        page = cls.repository_page_url(repository)
         if page.failure:
             return r[m.Infra.ProjectUrls].from_failure(page)
         return r[m.Infra.ProjectUrls].ok(

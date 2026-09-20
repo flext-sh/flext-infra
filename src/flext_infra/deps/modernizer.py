@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated, override
 
-from flext_infra import m
+from flext_core import r
 
-from ... import c, config, m, p, r, t, u
+from .. import c, config, m, p, t, u
 from ._modernizer.base import FlextInfraPyprojectModernizerBase
 
 
