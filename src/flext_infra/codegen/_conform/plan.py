@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, override
 
@@ -12,6 +13,7 @@ from ... import c, config, m, p, t, u
 from ...deps import FlextInfraPyprojectModernizer
 from ...services.codegen import FlextInfraCodegen
 from ...workspace import FlextInfraWorkspaceDetector
+from ...workspace.environment_contracts import FlextInfraWorkspaceEnvironmentContracts
 
 
 class _ConformPlanRoles:

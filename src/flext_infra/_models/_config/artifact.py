@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, ClassVar, Self
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 
@@ -505,7 +505,7 @@ class FlextInfraConfigModelsArtifact:
             m.Field(description="Canonical artifact owner, empty for scaffold files"),
         ] = ""
         policy: Annotated[
-            Literal["full", "merge"] | None,
+            Literal[full, merge] | None,
             m.Field(description="Governed root artifact policy"),
         ] = None
 

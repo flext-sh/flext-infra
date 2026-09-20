@@ -15,7 +15,7 @@ from flext_tests import tm
 
 from flext_infra import config
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
-from tests import u
+from tests import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
