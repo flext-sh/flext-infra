@@ -294,6 +294,7 @@ class FlextInfraCodegenConformPlan(
             )
         )
 
+    @override
     def _plan_scaffold_repository(
         self,
         *,
@@ -462,6 +463,7 @@ class FlextInfraCodegenConformPlan(
             planned.append(file_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
+    @override
     def _plan_existing_repository(
         self,
         *,
@@ -555,6 +557,7 @@ class FlextInfraCodegenConformPlan(
             planned.extend(custom_result.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
+    @override
     def _plan_existing_templates(
         self,
         *,
@@ -703,6 +706,7 @@ class FlextInfraCodegenConformPlan(
             planned.append(file_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
+    @override
     def _plan_existing_custom(
         self,
         root: Path,
@@ -756,6 +760,7 @@ class FlextInfraCodegenConformPlan(
                 plans.append(utility_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(plans))
 
+    @override
     @staticmethod
     def _complete_governed_plans(
         root: Path,
@@ -965,6 +970,7 @@ class FlextInfraCodegenConformPlan(
             )
         return r[Path].ok(resolved)
 
+    @override
     @staticmethod
     def _repository_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:
         """Return the environment root owned by the inferred target."""
