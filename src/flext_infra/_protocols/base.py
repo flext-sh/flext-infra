@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
     from flext_cli import p
 
-    from flext_infra import c, m, p, t
+    from flext_infra import c, m, t
 
 
 @runtime_checkable

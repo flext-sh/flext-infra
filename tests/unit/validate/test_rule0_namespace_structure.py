@@ -121,7 +121,7 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
             tmp_path, module_source=module_source, module_name="api.py"
         )
 
-        self._validate_project(root)
+        result = self._validate_project(root)
 
         tm.that(
             any(

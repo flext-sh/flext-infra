@@ -14,6 +14,8 @@ from ...deps import FlextInfraPyprojectModernizer
 from ...services.codegen import FlextInfraCodegen
 from ...workspace import FlextInfraWorkspaceDetector
 from ...workspace.environment_contracts import FlextInfraWorkspaceEnvironmentContracts
+from .file_plans import FlextInfraCodegenConformFilePlans
+from .scaffold_plan import FlextInfraCodegenConformScaffoldPlan
 
 
 class _ConformPlanRoles:
@@ -91,7 +93,9 @@ class _ConformPlanRoles:
         ) -> p.Result[m.Infra.CodegenFilePlan]: ...
 
 
-class FlextInfraCodegenConformPlan(_ConformPlanRoles):
+class FlextInfraCodegenConformPlan(
+    _ConformPlanRoles, FlextInfraCodegenConformScaffoldPlan
+):
     """Conformance planning across scaffold and existing repositories."""
 
     def plan(
@@ -446,7 +450,7 @@ class FlextInfraCodegenConformPlan(_ConformPlanRoles):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
                     rendered_content
                 )
-            file_plan = FlextInfraCodegenConformMisc.file_plan(
+            file_plan = FlextInfraCodegenConformFilePlans.file_plan(
                 root,
                 destination,
                 rendered_content.value.rendered,
@@ -688,7 +692,7 @@ class FlextInfraCodegenConformPlan(_ConformPlanRoles):
                     f"source={entry.source}; target={path}; root={root}; "
                     f"marker={conflict_marker}"
                 )
-            file_plan = FlextInfraCodegenConformMisc.file_plan(
+            file_plan = FlextInfraCodegenConformFilePlans.file_plan(
                 root,
                 entry.destination,
                 rendered_content,
@@ -724,7 +728,7 @@ class FlextInfraCodegenConformPlan(_ConformPlanRoles):
             validation = self.validate_custom_make(read.value, policy)
             if validation.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(validation)
-            planned = FlextInfraCodegenConformMisc.file_plan(
+            planned = FlextInfraCodegenConformFilePlans.file_plan(
                 root, policy.filename, read.value
             )
             if planned.failure:
@@ -743,7 +747,7 @@ class FlextInfraCodegenConformPlan(_ConformPlanRoles):
                     layout.package_dir
                     / (c.Infra.FAMILY_PUBLIC_MODULES[family] + c.Infra.EXT_PYTHON)
                 ).relative_to(root)
-                utility_plan = FlextInfraCodegenConformMisc.file_plan(
+                utility_plan = FlextInfraCodegenConformFilePlans.file_plan(
                     root, relative.as_posix(), rendered
                 )
                 if utility_plan.failure:
@@ -830,7 +834,7 @@ class FlextInfraCodegenConformPlan(_ConformPlanRoles):
                 if merged.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(merged)
                 if merged.value != current:
-                    merged_plan = FlextInfraCodegenConformMisc.file_plan(
+                    merged_plan = FlextInfraCodegenConformFilePlans.file_plan(
                         root, relative.as_posix(), merged.value, mode=governed.mode
                     )
                     if merged_plan.failure:
@@ -857,7 +861,7 @@ class FlextInfraCodegenConformPlan(_ConformPlanRoles):
                     )
                 )
                 if normalized == current:
-                    current_plan = FlextInfraCodegenConformMisc.file_plan(
+                    current_plan = FlextInfraCodegenConformFilePlans.file_plan(
                         root, relative.as_posix(), current, mode=governed.mode
                     )
                     if current_plan.failure:
@@ -888,7 +892,7 @@ class FlextInfraCodegenConformPlan(_ConformPlanRoles):
                         )
                     )
                     continue
-                merged_plan = FlextInfraCodegenConformMisc.file_plan(
+                merged_plan = FlextInfraCodegenConformFilePlans.file_plan(
                     root, relative.as_posix(), normalized, mode=governed.mode
                 )
                 if merged_plan.failure:
@@ -901,7 +905,7 @@ class FlextInfraCodegenConformPlan(_ConformPlanRoles):
                     )
                 )
                 continue
-            current_plan = FlextInfraCodegenConformMisc.file_plan(
+            current_plan = FlextInfraCodegenConformFilePlans.file_plan(
                 root, relative.as_posix(), current, mode=governed.mode
             )
             if current_plan.failure:
