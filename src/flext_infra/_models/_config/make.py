@@ -9,7 +9,11 @@ from typing import Annotated, Literal, Self
 from flext_cli import m, u
 
 from ... import t
-from ..._constants import FlextInfraConstantsCodegenProject, FlextInfraConstantsMake
+from ..._constants import (
+    FlextInfraConstantsCheck,
+    FlextInfraConstantsCodegenProject,
+    FlextInfraConstantsMake,
+)
 from .._defaults import FlextInfraModelsDefaults
 from .contract import FlextInfraConfigModelsContract
 

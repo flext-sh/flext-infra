@@ -3,40 +3,38 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
-from typing import TYPE_CHECKING, override
+from typing import override
 
 from flext_cli import m
 
-if TYPE_CHECKING:
-    from flext_infra import t
-
-
-class ImmutableEmptyMapping[K, V](Mapping[K, V]):
-    """Fully typed immutable empty mapping used as a field factory."""
-
-    @override
-    def __getitem__(self, key: K) -> V:
-        """Reject every key because the mapping is empty."""
-        raise KeyError(key)
-
-    @override
-    def __iter__(self) -> Iterator[K]:
-        """Iterate over no keys."""
-        return iter(())
-
-    @override
-    def __len__(self) -> int:
-        """Return the invariant empty size."""
-        return 0
+from flext_infra import t
 
 
 class FlextInfraModelsDefaults:
     """Facade for typed immutable defaults shared by Pydantic model fields."""
 
+    class ImmutableEmptyMapping[K, V](Mapping[K, V]):
+        """Fully typed immutable empty mapping used as a field factory."""
+
+        @override
+        def __getitem__(self, key: K) -> V:
+            """Reject every key because the mapping is empty."""
+            raise KeyError(key)
+
+        @override
+        def __iter__(self) -> Iterator[K]:
+            """Iterate over no keys."""
+            return iter(())
+
+        @override
+        def __len__(self) -> int:
+            """Return the invariant empty size."""
+            return 0
+
     @staticmethod
     def immutable_empty_mapping[K, V]() -> Mapping[K, V]:
         """Return a fresh immutable empty mapping assignable to any mapping type."""
-        return ImmutableEmptyMapping[K, V]()
+        return FlextInfraModelsDefaults.ImmutableEmptyMapping[K, V]()
 
     @staticmethod
     def tool_version_field(description: str) -> t.Infra.ModelFieldSpec:
@@ -56,11 +54,16 @@ class FlextInfraModelsDefaults:
 
 def immutable_empty_mapping[K, V]() -> Mapping[K, V]:
     """Return a fresh immutable empty mapping assignable to any mapping type."""
-    return ImmutableEmptyMapping[K, V]()
+    return FlextInfraModelsDefaults.ImmutableEmptyMapping[K, V]()
+
+
+ImmutableEmptyMapping = FlextInfraModelsDefaults.ImmutableEmptyMapping
+tool_version_field = FlextInfraModelsDefaults.tool_version_field
 
 
 __all__: list[str] = [
     "FlextInfraModelsDefaults",
     "ImmutableEmptyMapping",
     "immutable_empty_mapping",
+    "tool_version_field",
 ]

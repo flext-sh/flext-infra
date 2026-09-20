@@ -51,5 +51,4 @@ settings: FlextInfraSettings = FlextInfraSettings.fetch_global()
 """Process-wide infra settings singleton — ``from flext_infra import settings``."""
 
 
-settings = FlextInfraSettings()
-__all__: list[str] = ["FlextInfraSettings", "env_lookup", "settings"]
+__all__: list[str] = ["FlextInfraSettings", "settings"]
