@@ -197,12 +197,14 @@ class FlextInfraCodegenConformPlan(
                         return r[m.Infra.CodegenPlan].from_failure(declared_member)
                     local_repository = repository.model_copy(update={"path": Path()})
                     # The parent owns topology and selection; the member owns its
-                    # project metadata, including the runtime dependency profile.
+                    # project metadata, including the runtime dependency profile
+                    # and the namespace production scope it declares.
                     local_workspace = m.Infra.WorkspaceSpec(
                         name=repository.name,
                         beads=workspace.beads,
                         repository=local_repository,
                         project=declared_member.value.project,
+                        namespace_scan_dirs=(declared_member.value.namespace_scan_dirs),
                     )
                 else:
                     local_workspace_result = (

@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
+
     from .abstraction_boundary_gate_tests import TestsFlextInfraAbstractionBoundaryGate
     from .direnv_gate_tests import TestsFlextInfraDirenvGate
     from .duplication_gate_tests import TestsFlextInfraDuplicationGate
@@ -76,6 +78,22 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraWorkspaceChecker",
     "TestsFlextInfraWorkspaceCheckerResolveGates",
     "TestsFlextInfraWorkspaceInit",
+    "c",
+    "d",
+    "e",
+    "h",
+    "m",
+    "p",
+    "r",
+    "s",
+    "t",
+    "td",
+    "tf",
+    "tk",
+    "tm",
+    "tv",
+    "u",
+    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -123,6 +141,24 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_cli": ("TestsFlextInfraWorkspaceCheckCli",),
             ".tests_workspace_check": ("TestsFlextInfraWorkspaceCheckModule",),
             ".workspace_tests": ("TestsFlextInfraWorkspaceChecker",),
+            "flext_tests": (
+                "c",
+                "d",
+                "e",
+                "h",
+                "m",
+                "p",
+                "r",
+                "s",
+                "t",
+                "td",
+                "tf",
+                "tk",
+                "tm",
+                "tv",
+                "u",
+                "x",
+            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

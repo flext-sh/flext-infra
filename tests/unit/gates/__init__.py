@@ -9,11 +9,29 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
+
     from .index_declarations_gate_tests import TestsFlextInfraIndexDeclarationsGate
     from .tier_whitelist_gate_tests import TestsFlextInfraTierWhitelistGateReporting
 __all__: tuple[str, ...] = (
     "TestsFlextInfraIndexDeclarationsGate",
     "TestsFlextInfraTierWhitelistGateReporting",
+    "c",
+    "d",
+    "e",
+    "h",
+    "m",
+    "p",
+    "r",
+    "s",
+    "t",
+    "td",
+    "tf",
+    "tk",
+    "tm",
+    "tv",
+    "u",
+    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -22,6 +40,24 @@ _LAZY_IMPORTS = MappingProxyType(
             ".index_declarations_gate_tests": ("TestsFlextInfraIndexDeclarationsGate",),
             ".tier_whitelist_gate_tests": (
                 "TestsFlextInfraTierWhitelistGateReporting",
+            ),
+            "flext_tests": (
+                "c",
+                "d",
+                "e",
+                "h",
+                "m",
+                "p",
+                "r",
+                "s",
+                "t",
+                "td",
+                "tf",
+                "tk",
+                "tm",
+                "tv",
+                "u",
+                "x",
             ),
         }),
         alias_groups=MappingProxyType({}),

@@ -19,15 +19,10 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
         _package_exports_cache: MutableMapping[str, frozenset[str]]
         _source_exports_cache: MutableMapping[str, frozenset[str]]
         _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan]
-        _source_exports_visiting: set[str]
         _module_file_by_name: MutableMapping[str, Path]
 
         def build_plan(
-            self,
-            pkg_dir: Path,
-            *,
-            dir_exports: t.MappingKV[str, t.LazyAliasMap],
-            publish: bool = True,
+            self, pkg_dir: Path, *, dir_exports: t.MappingKV[str, t.LazyAliasMap]
         ) -> m.Infra.LazyInitPlan: ...
 
     def _export_names_for_package(self, package_name: str) -> frozenset[str]:
@@ -80,37 +75,34 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
         return frozenset(u.Infra.public_export_names_source(source))
 
     def _source_export_names_for_package(self, package_name: str) -> frozenset[str]:
-        """Return names exported by a full source build_plan run (cycle-safe)."""
+        """Return a package's published export names, read from disk.
+
+        This answers one question for the alias resolver: which names does this
+        package publish? It is deliberately disk-bound. Planning the package to
+        answer it re-entered the walker with an empty export accumulator, so the
+        plan it produced described a package with no children — and that plan,
+        or the names taken from it, then stood in for the real one. The scan
+        collapsed from 624 names to 49 whenever alias inheritance was active,
+        which is what made the inherited facade letters look impossible to
+        restore and got them prohibited instead of repaired.
+
+        The published initializer is the right source: it is what an importer
+        actually sees, this run does not regenerate the package being probed,
+        and reading it costs nothing and cannot recurse.
+        """
         cached = self._source_exports_cache.get(package_name)
         if cached is not None:
             return cached
-        if package_name in self._source_exports_visiting:
-            return frozenset()
         package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
             package_name
         )
         if package_dir is None:
             return frozenset()
-        self._source_exports_visiting.add(package_name)
-        try:
-            cache_key = str(package_dir.resolve())
-            plan = self._source_plan_cache.get(cache_key)
-            if plan is None:
-                # This is a probe: it only needs the package's own export names,
-                # so it plans with no child exports. The resulting plan is
-                # therefore NOT the package's real plan and must never enter the
-                # shared cache, which the parent pass reads to decide what to
-                # merge from each child. Writing it there made a package that is
-                # probed before it is planned publish nothing, and the loss
-                # cascaded to the root: 181 public names disappeared whenever
-                # alias inheritance ran. `_source_exports_cache` below already
-                # memoises the probe, so nothing is recomputed.
-                plan = self.build_plan(
-                    package_dir, dir_exports={}, publish=False
-                )
-            exports = frozenset(plan.exports)
-        finally:
-            self._source_exports_visiting.remove(package_name)
+        init_path = package_dir / c.Infra.INIT_PY
+        if not init_path.is_file():
+            return frozenset()
+        source = init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        exports = frozenset(u.Infra.public_export_names_source(source))
         self._source_exports_cache[package_name] = exports
         return exports
 
