@@ -555,11 +555,10 @@ class FlextInfraMiseArtifactsJournal:
             for participant in journal.file_participants
         }
         for directory in journal.directories:
-            candidate = cls._recorded_directory_root(directory, participants)
+            candidate = cls._recorded_directory_roots(directory, participants)
             if candidate.failure:
                 return r[Path].from_failure(candidate)
-            if candidate.value is not None:
-                candidates.add(candidate.value)
+            candidates.update(candidate.value)
         if not candidates:
             return r[Path].ok(current_scope)
         if len(candidates) != 1:
