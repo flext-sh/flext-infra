@@ -149,7 +149,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         iteration = 0
         while current_text.actionable:
             iteration += 1
-            (FlextInfraCodemodBatchApply._text_fingerprint(current_text.entries))
+            text_fingerprint = FlextInfraCodemodBatchApply._text_fingerprint(
+                current_text.entries
+            )
             if text_fingerprint in seen_text:
                 prev_iter = seen_text[text_fingerprint]
                 stalled = {
