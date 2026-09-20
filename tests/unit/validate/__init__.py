@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from . import _fixtures
     from .fresh_import_tests import TestsFlextInfraFreshImport
     from .governance_authority_tests import TestsFlextInfraGovernanceAuthority
     from .import_cycles_tests import TestsFlextInfraImportCycles
@@ -66,13 +67,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraValidateCli",
     "TestsFlextInfraValidateInit",
     "TestsFlextInfraValidateMain",
-    "TestsModulePathRules",
-    "TestsPydanticLegacyDetection",
-    "TestsRule0NamespaceStructure",
-    "TestsRule1ConstantsFacade",
-    "TestsRule2TypingsFacade",
-    "TestsRule3ImportRules",
-    "TestsRule4Annotations",
+    "_fixtures",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

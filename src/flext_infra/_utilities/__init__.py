@@ -178,6 +178,7 @@ if TYPE_CHECKING:
     from .rope_structure import FlextInfraUtilitiesRopeStructure
     from .safety import FlextInfraUtilitiesSafety
     from .semantic_cutover import FlextInfraUtilitiesSemanticCutover
+    from .signature_rules import FlextInfraUtilitiesSignatureRules
     from .silent_failure_ast import FlextInfraUtilitiesSilentFailureAst
     from .silent_failure_ast_base import FlextInfraUtilitiesSilentFailureAstBase
     from .silent_failure_ast_rules import FlextInfraUtilitiesSilentFailureAstRules
@@ -341,6 +342,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticCutoverNestingReferences",
     "FlextInfraUtilitiesSemanticCutoverPrivateImportCst",
     "FlextInfraUtilitiesSemanticCutoverPrivateImports",
+    "FlextInfraUtilitiesSignatureRules",
     "FlextInfraUtilitiesSilentFailureAst",
     "FlextInfraUtilitiesSilentFailureAstBase",
     "FlextInfraUtilitiesSilentFailureAstRules",
@@ -397,8 +399,8 @@ _LAZY_IMPORTS = MappingProxyType(
             "._git.worktree_discovery": (
                 "FlextInfraUtilitiesGitWorktreeDiscoveryMixin",
             ),
-            "._git.worktree_io": ("FlextInfraUtilitiesGitWorktreeIO",),
             "._git.worktree_facts": ("FlextInfraUtilitiesGitWorktreeFactsMixin",),
+            "._git.worktree_io": ("FlextInfraUtilitiesGitWorktreeIO",),
             "._git.worktree_materialization": (
                 "FlextInfraUtilitiesGitWorktreeMaterializationMixin",
             ),
@@ -562,6 +564,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".rope_structure": ("FlextInfraUtilitiesRopeStructure",),
             ".safety": ("FlextInfraUtilitiesSafety",),
             ".semantic_cutover": ("FlextInfraUtilitiesSemanticCutover",),
+            ".signature_rules": ("FlextInfraUtilitiesSignatureRules",),
             ".silent_failure_ast": ("FlextInfraUtilitiesSilentFailureAst",),
             ".silent_failure_ast_base": ("FlextInfraUtilitiesSilentFailureAstBase",),
             ".silent_failure_ast_rules": ("FlextInfraUtilitiesSilentFailureAstRules",),

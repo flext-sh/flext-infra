@@ -20,8 +20,6 @@ from .__version__ import (
 )
 
 if TYPE_CHECKING:
-    from flext_cli import d, e, h, r, x
-
     from . import (
         check,
         codegen,
@@ -193,6 +191,7 @@ if TYPE_CHECKING:
     )
     from .refactor.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
     from .refactor.project_classifier import FlextInfraProjectClassifier
+    from .refactor.signature_propagation import FlextInfraRefactorSignaturePropagation
     from .refactor.wrapper_root_namespace import FlextInfraWrapperRootNamespaceRefactor
     from .release.orchestrator import FlextInfraReleaseOrchestrator
     from .release.orchestrator_phases import FlextInfraReleaseOrchestratorPhases
@@ -410,6 +409,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorPatternTransformer",
     "FlextInfraRefactorProjectAliasMigrator",
     "FlextInfraRefactorPydanticModernizer",
+    "FlextInfraRefactorSignaturePropagation",
     "FlextInfraRefactorSignaturePropagator",
     "FlextInfraRefactorSymbolPropagator",
     "FlextInfraRefactorTypingUnifier",
@@ -486,7 +486,7 @@ __all__: tuple[str, ...] = (
     "main",
     "maintenance",
     "p",
-    "promoted",
+    "read_ignore_patterns",
     "refactor",
     "release",
     "s",
@@ -498,6 +498,8 @@ __all__: tuple[str, ...] = (
     "u",
     "validate",
     "workspace",
+    "write_docstring_sources",
+    "write_fenced_block_sources",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -675,6 +677,9 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraRefactorProjectAliasMigrator",
             ),
             ".refactor.project_classifier": ("FlextInfraProjectClassifier",),
+            ".refactor.signature_propagation": (
+                "FlextInfraRefactorSignaturePropagation",
+            ),
             ".refactor.wrapper_root_namespace": (
                 "FlextInfraWrapperRootNamespaceRefactor",
             ),
@@ -726,7 +731,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".transformers.typing_unifier": ("FlextInfraRefactorTypingUnifier",),
             ".typings": ("FlextInfraTypes", "t"),
             ".utilities": ("FlextInfraUtilities", "u"),
-            "flext_cli": ("d", "e", "h", "r", "x"),
             ".validate": ("validate",),
             ".validate.cprofile_report": ("FlextInfraCProfileReport",),
             ".validate.fresh_import": ("FlextInfraValidateFreshImport",),

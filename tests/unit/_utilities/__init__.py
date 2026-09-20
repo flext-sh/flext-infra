@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from .test_docs_github_links import TestsFlextInfraUtilitiesDocsGithubLinks
     from .test_git_facet_gitpython import TestsFlextInfraGitFacet
     from .test_rope_structure import TestsFlextInfraRopeStructure
     from .test_safety import TestsFlextInfraUtilitiesSafety
