@@ -92,9 +92,7 @@ class _ConformPlanRoles:
         ) -> p.Result[m.Infra.CodegenFilePlan]: ...
 
 
-class FlextInfraCodegenConformPlan(
-    _ConformPlanRoles, FlextInfraCodegenConformScaffoldPlan
-):
+class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     """Conformance planning across scaffold and existing repositories."""
 
     def plan(

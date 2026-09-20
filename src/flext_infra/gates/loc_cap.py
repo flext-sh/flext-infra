@@ -8,14 +8,13 @@ for this tool-driven gate (scc reports at file granularity only).
 from __future__ import annotations
 
 from collections.abc import Mapping
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import p, t
 
 
@@ -115,7 +114,9 @@ class FlextInfraLocCapGate(FlextInfraGate):
         """Extract over-cap modules from an `scc --format json --by-file` payload.
 
         Pure function (no subprocess) so the cap logic is unit-testable against
-        a literal scc fixture.
+        a literal scc fixture. Generated facades carry the AUTOGEN_HEADER and
+        are exempt: their size is the generator's obligation, enforced by the
+        generator's own contract — the SUPREME LAW caps authored modules.
         """
         parsed = u.Cli.json_parse(scc_json or "[]")
         empty: t.JsonValue = []
@@ -123,8 +124,17 @@ class FlextInfraLocCapGate(FlextInfraGate):
         return tuple(
             cls._issue_for_over_cap(path, code, cap)
             for path, code in cls._python_file_code_lines(data)
-            if code > cap
+            if code > cap and not cls._is_generated_facade(path)
         )
+
+    @staticmethod
+    def _is_generated_facade(path: str) -> bool:
+        """Return True when the file opens with the generator's AUTOGEN_HEADER."""
+        try:
+            with Path(path).open(encoding=c.Cli.ENCODING_DEFAULT) as handle:
+                return handle.readline().startswith(c.Infra.AUTOGEN_HEADER)
+        except OSError:
+            return False
 
 
 __all__: list[str] = ["FlextInfraLocCapGate"]

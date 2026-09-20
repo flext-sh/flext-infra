@@ -555,10 +555,11 @@ class FlextInfraMiseArtifactsJournal:
             for participant in journal.file_participants
         }
         for directory in journal.directories:
-            candidate = cls._recorded_directory_roots(directory, participants)
+            candidate = cls._recorded_directory_root(directory, participants)
             if candidate.failure:
                 return r[Path].from_failure(candidate)
-            candidates.update(candidate.value)
+            if candidate.value is not None:
+                candidates.add(candidate.value)
         if not candidates:
             return r[Path].ok(current_scope)
         if len(candidates) != 1:
@@ -578,14 +579,14 @@ class FlextInfraMiseArtifactsJournal:
         selector = relative.parts[0]
         participant_root = participants.get(selector)
         states = tuple(
-            directory_state
-            for directory_state in (directory.before, directory.created)
-            if directory_state is not None
+            state
+            for state in (directory.before, directory.created)
+            if state is not None
         )
         if participant_root is not None:
             expected = participant_root.joinpath(*relative.parts[1:])
             valid = directory.project == selector and all(
-                directory_state.path == expected for directory_state in states
+                state.path == expected for state in states
             )
             if valid:
                 return r[t.VariadicTuple[Path]].ok(())
@@ -593,11 +594,11 @@ class FlextInfraMiseArtifactsJournal:
                 f"generation directory path is inconsistent: {directory.path}"
             )
         candidates: set[Path] = set()
-        for recorded in states:
-            candidate = recorded.path
+        for state in states:
+            candidate = state.path
             for _part in relative.parts:
                 candidate = candidate.parent
-            if candidate / relative != recorded.path:
+            if candidate / relative != state.path:
                 return r[t.VariadicTuple[Path]].fail(
                     f"generation directory path is inconsistent: {directory.path}"
                 )
