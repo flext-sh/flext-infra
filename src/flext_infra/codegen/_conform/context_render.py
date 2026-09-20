@@ -64,6 +64,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,
                 python_version=codegen.toolchain.python_version,
+                make_version=codegen.toolchain.make_version,
                 uv_link_mode=self.link_mode(repository, codegen.toolchain),
                 # ProjectRenderContext replaces this with the composed map.
                 # Pass the neutral value explicitly so Pydantic never deep-copies

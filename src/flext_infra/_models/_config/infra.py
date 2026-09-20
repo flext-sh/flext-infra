@@ -10,6 +10,7 @@ from ... import t
 from ..deps_tool_config import FlextInfraModelsDepsToolConfig
 from .artifact import FlextInfraConfigModelsArtifact
 from .contract import FlextInfraConfigModelsContract
+from .release import FlextInfraConfigModelsRelease
 from .static import FlextInfraConfigModelsStatic
 
 
@@ -42,7 +43,7 @@ class FlextInfraConfigModelsInfra:
             m.Field(description="Production-only source discovery contract"),
         ]
         release: Annotated[
-            FlextInfraConfigModelsArtifact.ReleasePolicySpec,
+            FlextInfraConfigModelsRelease.ReleasePolicySpec,
             m.Field(description="Release protocol policy: eligibility, bumps, index"),
         ]
         enforcement: Annotated[

@@ -10,6 +10,7 @@ from flext_cli import m
 from flext_infra import t
 from flext_infra._models._config.artifact import FlextInfraConfigModelsArtifact
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
+from flext_infra._models._config.release import FlextInfraConfigModelsRelease
 from flext_infra._models._config.static import FlextInfraConfigModelsStatic
 from flext_infra._models._defaults import FlextInfraModelsDefaults
 from flext_infra._models.deps import FlextInfraModelsDepsToolConfig
@@ -39,7 +40,7 @@ class FlextInfraConfigModelsRoot:
             m.Field(description="Production-only source discovery contract"),
         ]
         release: Annotated[
-            FlextInfraConfigModelsArtifact.ReleasePolicySpec,
+            FlextInfraConfigModelsRelease.ReleasePolicySpec,
             m.Field(description="Release protocol policy"),
         ]
         enforcement: Annotated[
