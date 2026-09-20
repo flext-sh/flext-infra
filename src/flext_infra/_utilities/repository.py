@@ -138,8 +138,12 @@ class FlextInfraUtilitiesRepository:
         if detected.failure:
             return r[m.Infra.WorkspaceIntegrationSpec].from_failure(detected)
         url, ref = detected.value
-        suffix = f"/{distribution}.git"
-        if not url.endswith(suffix):
+        # The detected source arrives in either canonical form (with or
+        # without the .git suffix — GitHub checkouts omit it); normalize
+        # before comparing so URL spelling never fails the line detection.
+        normalized_url = url.removesuffix(".git")
+        suffix = f"/{distribution}"
+        if not normalized_url.endswith(suffix):
             return r[m.Infra.WorkspaceIntegrationSpec].fail(
                 f"infrastructure source must be the {distribution} repository: {url}"
             )
@@ -153,7 +157,7 @@ class FlextInfraUtilitiesRepository:
                 provider=source.provider,
                 branch=ref,
                 organization=organization,
-                base_url=url.removesuffix(suffix),
+                base_url=normalized_url.removesuffix(suffix),
             )
         )
 
