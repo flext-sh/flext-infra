@@ -64,7 +64,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,
                 python_version=codegen.toolchain.python_version,
-                make_version=codegen.toolchain.make_version,
                 uv_link_mode=self.link_mode(repository, codegen.toolchain),
                 # ProjectRenderContext replaces this with the composed map.
                 # Pass the neutral value explicitly so Pydantic never deep-copies
@@ -266,7 +265,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         )
         if make_context.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(make_context)
-        repository_provider = u.Infra.repository_provider(repository, codegen.providers)
+        repository_provider = u.Infra.repository_provider(repository)
         if repository_provider.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(repository_provider)
         # The integration branch is a Git fact, not a configured pin: the
