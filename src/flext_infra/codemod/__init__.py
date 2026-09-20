@@ -18,8 +18,14 @@ if TYPE_CHECKING:
     from .snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
     from .text_gates import FlextInfraModTextGateEngine
 __all__: tuple[str, ...] = (
-    "FlextInfraCodemodAstScan", "FlextInfraCodemodBatchApply", "FlextInfraCodemodSedApply", "FlextInfraCodemodSemanticApply",
-    "FlextInfraCodemodSnapshotReconciler", "FlextInfraModGateEngine", "FlextInfraModReplacements", "FlextInfraModTextGateEngine",
+    "FlextInfraCodemodAstScan",
+    "FlextInfraCodemodBatchApply",
+    "FlextInfraCodemodSedApply",
+    "FlextInfraCodemodSemanticApply",
+    "FlextInfraCodemodSnapshotReconciler",
+    "FlextInfraModGateEngine",
+    "FlextInfraModReplacements",
+    "FlextInfraModTextGateEngine",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

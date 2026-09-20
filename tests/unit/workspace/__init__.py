@@ -43,10 +43,22 @@ if TYPE_CHECKING:
         TestsFlextInfraWorktreeSecurityBoundaries,
     )
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraBeadsEnvironmentSync", "TestsFlextInfraCodegenVscode", "TestsFlextInfraDetectorOwnsNoProjectRegistry", "TestsFlextInfraDocsContractTocPlacement",
-    "TestsFlextInfraDocsScopeWorktree", "TestsFlextInfraFacadeEnvironmentSync", "TestsFlextInfraLaneOwnsAnIsolatedEnvironment", "TestsFlextInfraMiseDistributionPolicy",
-    "TestsFlextInfraProviderResolutionAcceptsSshRemotes", "TestsFlextInfraRepositoryLocalTopology", "TestsFlextInfraWorkspaceEnvironmentProvenance", "TestsFlextInfraWorkspaceMain",
-    "TestsFlextInfraWorktreeAddIsUnprovisioned", "TestsFlextInfraWorktreeBinding", "TestsFlextInfraWorktreeFacts", "TestsFlextInfraWorktreeProvisioningGitlinks",
+    "TestsFlextInfraBeadsEnvironmentSync",
+    "TestsFlextInfraCodegenVscode",
+    "TestsFlextInfraDetectorOwnsNoProjectRegistry",
+    "TestsFlextInfraDocsContractTocPlacement",
+    "TestsFlextInfraDocsScopeWorktree",
+    "TestsFlextInfraFacadeEnvironmentSync",
+    "TestsFlextInfraLaneOwnsAnIsolatedEnvironment",
+    "TestsFlextInfraMiseDistributionPolicy",
+    "TestsFlextInfraProviderResolutionAcceptsSshRemotes",
+    "TestsFlextInfraRepositoryLocalTopology",
+    "TestsFlextInfraWorkspaceEnvironmentProvenance",
+    "TestsFlextInfraWorkspaceMain",
+    "TestsFlextInfraWorktreeAddIsUnprovisioned",
+    "TestsFlextInfraWorktreeBinding",
+    "TestsFlextInfraWorktreeFacts",
+    "TestsFlextInfraWorktreeProvisioningGitlinks",
     "TestsFlextInfraWorktreeSecurityBoundaries",
 )
 

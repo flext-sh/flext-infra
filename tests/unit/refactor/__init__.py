@@ -22,10 +22,12 @@ if TYPE_CHECKING:
         TestsFlextInfraRefactorInfraRefactorProjectClassifier,
     )
     from .test_main_cli import TestsFlextInfraRefactorMainCli
-    from .test_signature_propagation import TestsFlextInfraRefactorSignaturePropagation
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraRefactorCensusPreview", "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow", "TestsFlextInfraRefactorInfraRefactorNamespaceMoves", "TestsFlextInfraRefactorInfraRefactorProjectClassifier",
-    "TestsFlextInfraRefactorMainCli", "TestsFlextInfraRefactorSignaturePropagation",
+    "TestsFlextInfraRefactorCensusPreview",
+    "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow",
+    "TestsFlextInfraRefactorInfraRefactorNamespaceMoves",
+    "TestsFlextInfraRefactorInfraRefactorProjectClassifier",
+    "TestsFlextInfraRefactorMainCli",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -44,9 +46,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraRefactorInfraRefactorProjectClassifier",
             ),
             ".test_main_cli": ("TestsFlextInfraRefactorMainCli",),
-            ".test_signature_propagation": (
-                "TestsFlextInfraRefactorSignaturePropagation",
-            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

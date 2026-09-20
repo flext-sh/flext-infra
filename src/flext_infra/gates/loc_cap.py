@@ -8,13 +8,14 @@ for this tool-driven gate (scc reports at file granularity only).
 from __future__ import annotations
 
 from collections.abc import Mapping
-from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, config, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from flext_infra import p, t
 
 
@@ -131,7 +132,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
     def _is_generated_facade(path: str) -> bool:
         """Return True when the file opens with the generator's AUTOGEN_HEADER."""
         try:
-            with Path(path).open(encoding="utf-8") as handle:
+            with open(path, encoding="utf-8") as handle:
                 return handle.readline().startswith(c.Infra.AUTOGEN_HEADER)
         except OSError:
             return False

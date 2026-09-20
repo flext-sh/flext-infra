@@ -14,7 +14,8 @@ if TYPE_CHECKING:
         TestsFlextInfraDeferredSelfReferenceDetector,
     )
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraCyclicImportDetector", "TestsFlextInfraDeferredSelfReferenceDetector",
+    "TestsFlextInfraCyclicImportDetector",
+    "TestsFlextInfraDeferredSelfReferenceDetector",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

@@ -12,7 +12,8 @@ if TYPE_CHECKING:
     from .test_execution_contract import TestsFlextInfraPromotedExecutionContract
     from .test_process_boundary import TestsFlextInfraPromotedProcessBoundary
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraPromotedExecutionContract", "TestsFlextInfraPromotedProcessBoundary",
+    "TestsFlextInfraPromotedExecutionContract",
+    "TestsFlextInfraPromotedProcessBoundary",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

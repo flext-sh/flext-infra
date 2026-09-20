@@ -32,17 +32,15 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
         if len(compact) <= c.Infra.MAX_LINE_LENGTH:
             return (compact,)
         nested_indent = f"{indent}    "
-        # Wide groups pack the configured count of symbols per wrapped line
-        # (semantically neutral, same order): 1-per-line pushes large generated
-        # facades past the 1000-LOC cap (aihub loc-cap, services/__init__ 1038
-        # lines).
-        width = c.Infra.WRAPPED_ENTRIES_PER_LINE
-        if len(parts) > width:
+        # Wide groups pack 4 symbols per wrapped line (semantically neutral,
+        # same order): 1-per-line pushes large generated facades past the
+        # 1000-LOC cap (aihub loc-cap, services/__init__ 1038 lines).
+        if len(parts) > 4:
             return (
                 f"{indent}from {mod} import (",
                 *(
-                    f"{nested_indent}{', '.join(parts[i : i + width])},"
-                    for i in range(0, len(parts), width)
+                    f"{nested_indent}{', '.join(parts[i : i + 4])},"
+                    for i in range(0, len(parts), 4)
                 ),
                 f"{indent})",
             )

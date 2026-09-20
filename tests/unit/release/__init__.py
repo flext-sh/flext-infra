@@ -15,7 +15,10 @@ if TYPE_CHECKING:
     from .policy_fixture_root_tests import TestsFlextInfraReleasePolicyOwner
     from .protocol_tests import TestsFlextInfraReleaseProtocol
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraReleaseArchiveBoundary", "TestsFlextInfraReleaseDependencyOrder", "TestsFlextInfraReleasePolicyOwner", "TestsFlextInfraReleaseProtocol",
+    "TestsFlextInfraReleaseArchiveBoundary",
+    "TestsFlextInfraReleaseDependencyOrder",
+    "TestsFlextInfraReleasePolicyOwner",
+    "TestsFlextInfraReleaseProtocol",
     "TestsFlextInfraReleasePublish",
 )
 

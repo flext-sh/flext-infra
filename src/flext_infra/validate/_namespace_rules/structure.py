@@ -17,16 +17,14 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
     """Enforce one-class modules and explicit facade composition."""
 
     @classmethod
-    def _is_functional_module(cls, tree: object, filepath: Path) -> bool:
+    def _is_functional_module(cls, tree: object) -> bool:
         """Return whether a module only re-exports symbols or runs an entry.
 
         Why (cosmos-3flk9): the operational ``r/e/x/h/d/s`` re-export modules
         and the ``python -m`` entrypoint stub carry no class by law. The shape
         is derived from the AST — imports, the export manifest, the ``__main__``
         guard and one exit call — so the exemption follows what the module IS,
-        never a hardcoded list of file names. The canonical ``cli.py`` transport
-        is the module-level ``main`` callable, which the statement law already
-        allows beside no class, so it is entrypoint evidence too.
+        never a hardcoded list of file names.
         """
         statements = tuple(getattr(tree, "body", ()) or ())
         if cls.outer_classes(tree):
@@ -60,17 +58,6 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
                 )
                 entry_calls.append(called.rsplit(".", 1)[-1])
                 continue
-            if kind in {"FunctionDef", "AsyncFunctionDef"}:
-                # Why: the canonical ``cli.py`` transport IS the module-level
-                # ``main`` entrypoint — the top-level statement loop below
-                # allows exactly that callable beside no class. Treating it as
-                # entrypoint evidence keeps the functional exemption and the
-                # statement law consistent instead of flagging a legal cli.py
-                # as a class-less data module.
-                if filepath.name == "cli.py" and cls.name_of(statement) == "main":
-                    entry_calls.append("main")
-                    continue
-                return False
             # A non-dunder assignment, a type alias or any other statement is
             # loose data: the module is a data module and stays fully graded.
             return False
@@ -105,7 +92,7 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         """Return structural and logical-size violations for one module."""
         if filepath.name in {"__init__.py", "__version__.py"}:
             return ()
-        if cls._is_functional_module(tree, filepath):
+        if cls._is_functional_module(tree):
             return ()
         messages: list[str] = []
         classes = cls.outer_classes(tree)
@@ -188,22 +175,12 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             messages.append(
                 f"{filepath}:1 — {logical} logical statements exceed the {cap} limit"
             )
-        messages.extend(cls._facade_shape(tree, filepath, package_name=package_name))
+        messages.extend(cls._facade_shape(tree, filepath))
         return cls.violations("NS-STRUCT", messages)
 
     @classmethod
-    def _facade_shape(
-        cls, tree: object, filepath: Path, *, package_name: str
-    ) -> t.StrSequence:
-        """Require an explicit outer+Infra MRO on canonical family facades.
-
-        The foundation package is the canonical OWNER of the family letters:
-        it has no upstream facade to inherit and no project namespace to nest
-        (``FlextConstants`` IS ``c``). Requiring the consumer shape there is
-        unsatisfiable by construction, so the owner is exempt from this rule.
-        """
-        if package_name == c.Infra.PKG_CORE_UNDERSCORE:
-            return ()
+    def _facade_shape(cls, tree: object, filepath: Path) -> t.StrSequence:
+        """Require an explicit outer+Infra MRO on canonical family facades."""
         layer = c.Infra.NAMESPACE_LAYER_BY_FILE.get(filepath.name)
         if layer not in {"c", "t", "p", "m", "u"}:
             return ()

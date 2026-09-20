@@ -12,7 +12,8 @@ if TYPE_CHECKING:
     from .index_declarations_gate_tests import TestsFlextInfraIndexDeclarationsGate
     from .tier_whitelist_gate_tests import TestsFlextInfraTierWhitelistGateReporting
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraIndexDeclarationsGate", "TestsFlextInfraTierWhitelistGateReporting",
+    "TestsFlextInfraIndexDeclarationsGate",
+    "TestsFlextInfraTierWhitelistGateReporting",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

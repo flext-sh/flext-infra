@@ -100,16 +100,11 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         )
         lazy_map.clear()
         lazy_map.update(governed_lazy_map)
-        self._inherit_declared_aliases(
-            context=context,
-            declared_contract=declared_contract,
-            lazy_map=lazy_map,
-        )
         public_export_names = {
             name
-            for name in (*export_names, *lazy_map)
+            for name in export_names
             if name in eager_names
-            or (name in lazy_map and name not in c.Infra.PUBLISHED_ALL_EXCLUDE)
+            or (name in governed_lazy_map and name not in c.Infra.PUBLISHED_ALL_EXCLUDE)
         }
         filtered_lazy_map = {
             name: target
@@ -127,41 +122,6 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             )
 
         return public_export_names, filtered_lazy_map
-
-    def _inherit_declared_aliases(
-        self,
-        *,
-        context: m.Infra.LazyInitPackageContext,
-        declared_contract: frozenset[str] | None,
-        lazy_map: t.MutableLazyAliasMap,
-    ) -> None:
-        """Resolve declared single-letter facades owned by an upstream package.
-
-        Why: the root re-exports the operational letters its upstream owns
-        (``d``/``e``/``h``/``r``/``x`` from ``flext_cli``). No local module
-        defines them, so a purely local scan cannot reproduce the declared
-        contract and gen fails on names the contract legitimately publishes.
-        The declared contract stays the SSOT: a name is added only when the
-        manifest declares it and a declared parent actually owns it.
-        """
-        if declared_contract is None:
-            return
-        parents = self._resolve_transitive_parent_packages(
-            self._local_parent_packages(context.pkg_dir)
-        )
-        if not parents:
-            return
-        for name in sorted(declared_contract):
-            if name in lazy_map or name not in c.Infra.ALIAS_NAMES:
-                continue
-            owner = self._resolve_inherited_alias_source(
-                parents,
-                name,
-                current_pkg=context.current_pkg,
-                use_test_runtime_aliases=context.surface == c.Infra.DIR_TESTS,
-            )
-            if owner:
-                lazy_map[name] = (owner, name)
 
     def _validate_scan_against_manifest(
         self,

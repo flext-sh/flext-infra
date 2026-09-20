@@ -34,12 +34,28 @@ if TYPE_CHECKING:
     from .worktree_roots import FlextInfraUtilitiesGitWorktreeRootsMixin
     from .worktree_status import FlextInfraUtilitiesGitWorktreeStatusMixin
 __all__: tuple[str, ...] = (
-    "FlextInfraUtilitiesGitAttestationMixin", "FlextInfraUtilitiesGitRemote", "FlextInfraUtilitiesGitRepo", "FlextInfraUtilitiesGitScopeMixin",
-    "FlextInfraUtilitiesGitSemanticIdentityMixin", "FlextInfraUtilitiesGitSemanticIndexMixin", "FlextInfraUtilitiesGitSemanticPathsMixin", "FlextInfraUtilitiesGitSemanticPublishMixin",
-    "FlextInfraUtilitiesGitSemanticRefsMixin", "FlextInfraUtilitiesGitSemanticSubmoduleMixin", "FlextInfraUtilitiesGitSemanticWorktreeMixin", "FlextInfraUtilitiesGitWorktreeCheckpointMixin",
-    "FlextInfraUtilitiesGitWorktreeDiscoveryMixin", "FlextInfraUtilitiesGitWorktreeFactsMixin", "FlextInfraUtilitiesGitWorktreeIO", "FlextInfraUtilitiesGitWorktreeMaterializationMixin",
-    "FlextInfraUtilitiesGitWorktreeMeasureMixin", "FlextInfraUtilitiesGitWorktreeMixin", "FlextInfraUtilitiesGitWorktreePatchMixin", "FlextInfraUtilitiesGitWorktreeRemovalMixin",
-    "FlextInfraUtilitiesGitWorktreeRootsMixin", "FlextInfraUtilitiesGitWorktreeStatusMixin",
+    "FlextInfraUtilitiesGitAttestationMixin",
+    "FlextInfraUtilitiesGitRemote",
+    "FlextInfraUtilitiesGitRepo",
+    "FlextInfraUtilitiesGitScopeMixin",
+    "FlextInfraUtilitiesGitSemanticIdentityMixin",
+    "FlextInfraUtilitiesGitSemanticIndexMixin",
+    "FlextInfraUtilitiesGitSemanticPathsMixin",
+    "FlextInfraUtilitiesGitSemanticPublishMixin",
+    "FlextInfraUtilitiesGitSemanticRefsMixin",
+    "FlextInfraUtilitiesGitSemanticSubmoduleMixin",
+    "FlextInfraUtilitiesGitSemanticWorktreeMixin",
+    "FlextInfraUtilitiesGitWorktreeCheckpointMixin",
+    "FlextInfraUtilitiesGitWorktreeDiscoveryMixin",
+    "FlextInfraUtilitiesGitWorktreeFactsMixin",
+    "FlextInfraUtilitiesGitWorktreeIO",
+    "FlextInfraUtilitiesGitWorktreeMaterializationMixin",
+    "FlextInfraUtilitiesGitWorktreeMeasureMixin",
+    "FlextInfraUtilitiesGitWorktreeMixin",
+    "FlextInfraUtilitiesGitWorktreePatchMixin",
+    "FlextInfraUtilitiesGitWorktreeRemovalMixin",
+    "FlextInfraUtilitiesGitWorktreeRootsMixin",
+    "FlextInfraUtilitiesGitWorktreeStatusMixin",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

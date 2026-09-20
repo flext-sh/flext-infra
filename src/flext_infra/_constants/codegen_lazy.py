@@ -15,8 +15,6 @@ class FlextInfraConstantsCodegenLazy:
 
     MAX_LINE_LENGTH: Final[int] = 88
     "Maximum line length for generated import lines."
-    WRAPPED_ENTRIES_PER_LINE: Final[int] = 4
-    "Entries packed per wrapped line in wide generated import/export groups."
     MAX_ALIAS_LENGTH: Final[int] = 2
     "Maximum length of a public facade alias."
     AUTOGEN_HEADER: Final[str] = "# AUTO-GENERATED FILE — Regenerate with: make gen"
