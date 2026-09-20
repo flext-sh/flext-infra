@@ -375,13 +375,6 @@ class FlextInfraConstantsBase(
         M = "m"
         U = "u"
 
-    ENFORCEMENT_ADVISORY_GATES: Final[frozenset[str]] = frozenset({
-        "runtime-census",
-        "namespace",
-        "tier-whitelist",
-        "silent-failure",
-    })
-    "Gates that report violations as warnings rather than failing the pipeline."
     SAFE_EXECUTION_BAK_SUFFIX: Final[str] = ".bak"
     "File backup suffix for copy-on-write safety."
     ENV_VAR_FORCE_COLOR: Final[str] = "FORCE_COLOR"

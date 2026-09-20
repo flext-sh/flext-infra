@@ -34,12 +34,6 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             bool,
             m.Field(description="Never write files even when fix mode is requested"),
         ] = False
-        gate_mode: Annotated[
-            Literal["error", "warn"],
-            m.Field(
-                description="Diagnostic presentation mode; errors and warnings always fail"
-            ),
-        ] = "error"
         ruff_args: Annotated[
             t.StrSequence, m.Field(description="Extra arguments for Ruff")
         ] = ()

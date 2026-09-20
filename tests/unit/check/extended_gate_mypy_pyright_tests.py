@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
@@ -65,18 +65,12 @@ class TestsFlextInfraTypeGates:
     @pytest.mark.parametrize(
         "gate_class", [FlextInfraMypyGate, FlextInfraPyrightGate, FlextInfraPyreflyGate]
     )
-    @pytest.mark.parametrize("gate_mode", ["error", "warn"])
     def test_real_check_and_repair(
-        self,
-        checker_context: m.Infra.GateContext,
-        gate_class: type[FlextInfraGate],
-        gate_mode: Literal["error", "warn"],
+        self, checker_context: m.Infra.GateContext, gate_class: type[FlextInfraGate]
     ) -> None:
         project = checker_context.repository_root
         reports = checker_context.reports_dir
-        ctx = m.Infra.GateContext(
-            repository_root=project, reports_dir=reports, gate_mode=gate_mode
-        )
+        ctx = m.Infra.GateContext(repository_root=project, reports_dir=reports)
         gate = gate_class(project)
         source = project / "src" / "test_pkg" / "contract.py"
         source.write_text('value: int = "incorrect"\n', encoding="utf-8")
@@ -135,10 +129,7 @@ class TestsFlextInfraTypeGates:
         reports = project / ".reports"
         reports.mkdir()
         result = gate_class(project).check(
-            project,
-            m.Infra.GateContext(
-                repository_root=project, reports_dir=reports, gate_mode="warn"
-            ),
+            project, m.Infra.GateContext(repository_root=project, reports_dir=reports)
         )
         assert not result.result.passed
         assert any(issue.severity in {"warn", "warning"} for issue in result.issues)
