@@ -6,8 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import config
-from flext_infra.models import m
+from flext_infra import config, m
 
 from ._docs_generate_plan import (
     DocsRenderedArtifactTuple,
@@ -19,8 +18,7 @@ from .docs_contract import FlextInfraUtilitiesDocsContract
 from .docs_render import FlextInfraUtilitiesDocsRender
 
 if TYPE_CHECKING:
-    from flext_infra import t
-    from flext_infra.protocols import p
+    from flext_infra import p, t
 
 
 class FlextInfraUtilitiesDocsGenerateProjectMixin(

@@ -12,8 +12,7 @@ from pathlib import Path
 
 from flext_cli import u as cli_u
 
-from flext_infra.constants import c
-from flext_infra.typings import t
+from flext_infra import c, t
 
 from .._settings import FlextInfraSettings
 

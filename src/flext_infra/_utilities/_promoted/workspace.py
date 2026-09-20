@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
 
-from flext_infra.constants import c
+from flext_infra import c
 
 if TYPE_CHECKING:
     from collections.abc import Callable

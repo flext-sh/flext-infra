@@ -10,7 +10,7 @@ from libcst.metadata import MetadataWrapper, ParentNodeProvider, QualifiedNamePr
 from ..qualified_names import FlextInfraUtilitiesQualifiedNames
 
 if TYPE_CHECKING:
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesSemanticCutoverAliasCst:

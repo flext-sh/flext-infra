@@ -15,7 +15,7 @@ from .docs_api import FlextInfraUtilitiesDocsApi
 from .docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesDocsAudit(

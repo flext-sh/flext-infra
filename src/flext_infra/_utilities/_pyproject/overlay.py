@@ -6,14 +6,13 @@ from typing import TYPE_CHECKING
 
 from flext_cli import r, u
 
-from flext_infra.constants import c
-from flext_infra.typings import t
+from flext_infra import c, t
 
 from ..dependencies import FlextInfraUtilitiesDependencies
 from ..managed_conflicts import FlextInfraUtilitiesManagedConflicts
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import p
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesPyprojectOverlay:

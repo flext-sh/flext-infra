@@ -7,8 +7,7 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_core import r
-from flext_infra import m, p, t
-from flext_infra.constants import c
+from flext_infra import c, m, p, t
 
 
 class FlextInfraUtilitiesGitignore:

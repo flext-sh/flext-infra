@@ -11,9 +11,7 @@ from typing import TYPE_CHECKING, Final
 from flext_cli import u
 
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+from flext_infra import c, m, t
 
 from .protected_edit import FlextInfraUtilitiesProtectedEdit
 from .rope_analysis import FlextInfraUtilitiesRopeAnalysis
@@ -23,7 +21,7 @@ from .rope_imports import FlextInfraUtilitiesRopeImports
 from .rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import p
+    from flext_infra import p
 
 _log = u.fetch_logger(__name__)
 
