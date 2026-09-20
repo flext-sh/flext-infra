@@ -307,7 +307,6 @@ class FlextInfraProtocolsBase(Protocol):
         def uv_environment_plan(
             *,
             root: Path,
-            repository_root: Path,
             target: m.Infra.RepositoryConformTarget,
             workspace: m.Infra.WorkspaceSpec,
             config: m.Infra.CodegenConfigSpec,
@@ -315,7 +314,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         @staticmethod
         def _scaffold_python_dirs(
-            entries: t.SequenceOf[p.Infra.TemplateEntrySpec],
+            entries: t.SequenceOf[m.Infra.TemplateEntrySpec],
             profile: c.Infra.MakeProfile,
         ) -> t.StrSequence: ...
 

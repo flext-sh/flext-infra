@@ -42,7 +42,7 @@ class _ConformPlanRoles:
         ) -> m.Infra.UvEnvironmentPlan: ...
         def _scaffold_python_dirs(
             self,
-            entries: t.SequenceOf[p.Infra.TemplateEntrySpec],
+            entries: t.SequenceOf[m.Infra.TemplateEntrySpec],
             profile: c.Infra.MakeProfile,
         ) -> t.StrSequence: ...
         def _project_render_context(
