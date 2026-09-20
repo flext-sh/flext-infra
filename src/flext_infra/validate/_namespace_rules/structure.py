@@ -191,10 +191,20 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         layer = c.Infra.NAMESPACE_LAYER_BY_FILE.get(filepath.name)
         if layer not in {"c", "t", "p", "m", "u"}:
             return ()
-        if filepath.parent.parent.name != c.Infra.DEFAULT_SRC_DIR:
+        # A package root is calculated, not listed: the directory holds an
+        # initializer and its parent does not. That accepts src/<pkg>/ and
+        # tests/ alike, and still rejects a nested services/ borrowing the
+        # name. Testing the parent against a literal "src" was my error -- it
+        # rejected every legitimate tests facade in the fleet, five per
+        # repository.
+        package_dir = filepath.parent
+        is_package_root = (package_dir / c.Infra.INIT_PY).is_file() and not (
+            package_dir.parent / c.Infra.INIT_PY
+        ).is_file()
+        if not is_package_root:
             message = (
                 f"{filepath}:1 — {filepath.name} is a reserved facade name and"
-                f" belongs at the package root, not in {filepath.parent.name}/;"
+                f" belongs at a package root, not inside {package_dir.name}/;"
                 f" name the module after what it does"
             )
             return (message,)
