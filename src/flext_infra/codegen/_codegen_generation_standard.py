@@ -123,8 +123,9 @@ class FlextInfraCodegenGenerationStandardMixin(
         lazy_module_groups, lazy_alias_groups = cls._group_lazy_entries(lazy_entries)
         return lazy_module_groups, lazy_alias_groups, lazy_map
 
-    @staticmethod
+    @classmethod
     def _format_lazy_group_entry(
+        cls,
         module: str,
         values: t.StrSequence,
         *,
@@ -150,12 +151,35 @@ class FlextInfraCodegenGenerationStandardMixin(
         value_indent = f"{indent}    "
         return (
             f'{indent}"{module}": (',
-            *(f"{value_indent}{value}," for value in values),
+            *cls._pack_comma_entries(
+                tuple(f"{value}," for value in values), indent=value_indent
+            ),
             f"{indent}){separator}",
         )
 
     @staticmethod
-    def _format_exports_tuple(exports: t.StrSequence) -> str:
+    def _pack_comma_entries(entries: t.StrSequence, *, indent: str = "    ") -> t.StrSequence:
+        """Pack comma-terminated entries onto shared lines up to MAX_LINE_LENGTH.
+
+        Why: one-entry-per-line projections blew the loc-cap gate on large
+        facades (ai-hub services/__init__.py 1038/1000) without any semantic
+        gain — packed lines render the identical tuple.
+        """
+        lines: list[str] = []
+        current = ""
+        for entry in entries:
+            candidate = f"{indent}{entry}" if not current else f"{current} {entry}"
+            if len(candidate) > c.Infra.MAX_LINE_LENGTH and current:
+                lines.append(current)
+                current = f"{indent}{entry}"
+            else:
+                current = candidate
+        if current:
+            lines.append(current)
+        return lines
+
+    @classmethod
+    def _format_exports_tuple(cls, exports: t.StrSequence) -> str:
         """Render a canonical public export tuple, including the empty form."""
         if not exports:
             return "()"
