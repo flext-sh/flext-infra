@@ -207,6 +207,15 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             project = derived.value
         else:
             project = workspace.project
+        if workspace.namespace_scan_dirs and not project.namespace_scan_dirs:
+            # The manifest-level declaration is the repository's production scope
+            # for the namespace validator (cosmos-3flk9 decision A), so a
+            # checkout that derives its project metadata declares it once at the
+            # workspace root instead of freezing a full scaffold spec. An
+            # explicit project-level declaration stays the more specific owner.
+            project = project.model_copy(
+                update={"namespace_scan_dirs": workspace.namespace_scan_dirs}
+            )
         dependency_profile = next(
             (
                 item

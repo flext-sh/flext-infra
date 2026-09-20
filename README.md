@@ -27,8 +27,13 @@ management
 
 ## Module Map
 
-::: flext_infra options: members: false show_root_heading: false show_root_toc_entry:
-false show_source: false
+::: flext_infra
+
+    options:
+      members: false
+      show_root_heading: false
+      show_root_toc_entry: false
+      show_source: false
 
 ## Collection Rules
 
@@ -54,7 +59,7 @@ verification).
 - Public extensions exposed by this project: `FlextInfra`,
   `FlextInfraAbstractionBoundaryGate`, `FlextInfraAccessorMigrationOrchestrator`,
   `FlextInfraBanditGate`, `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport`
-  (+184 more).
+  (+174 more).
 - Library abstraction boundaries: see AGENTS.md §2.7.
 
 ## Quality Gates

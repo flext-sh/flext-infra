@@ -158,7 +158,9 @@ class FlextInfraCodegenGenerationStandardMixin(
         )
 
     @staticmethod
-    def _pack_comma_entries(entries: t.StrSequence, *, indent: str = "    ") -> t.StrSequence:
+    def _pack_comma_entries(
+        entries: t.StrSequence, *, indent: str = "    "
+    ) -> t.StrSequence:
         """Pack comma-terminated entries onto shared lines up to MAX_LINE_LENGTH.
 
         Why: one-entry-per-line projections blew the loc-cap gate on large

@@ -6,7 +6,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m
+from flext_infra import c, m, u
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -57,8 +57,12 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         pkg_dir: Path,
         surface: str,
     ) -> None:
-        """Expose only facade aliases declared by modules in this directory."""
-        del surface
+        """Inject inherited and local aliases into the lazy map."""
+        # What this directory owns is unconditional: a package publishes the
+        # facade letter whose module sits beside its initializer, whether or not
+        # it inherits anything. Deciding that after the inheritance guard below
+        # makes every package that takes the early return publish no letters at
+        # all, and the root then merges a child that claims to export nothing.
         letter_module = {
             letter: filename.removesuffix(".py")
             for filename, letter in c.Infra.NAMESPACE_LAYER_BY_FILE.items()
@@ -67,12 +71,110 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         for alias_name, local_stem in letter_module.items():
             if (pkg_dir / f"{local_stem}.py").is_file():
                 lazy_map[alias_name] = (f"{current_pkg}.{local_stem}", alias_name)
-        for alias_name, local_stem in (
-            ("config", "_config"),
-            ("settings", "_settings"),
+
+        is_test_runtime_alias_surface = c.Infra.DIR_TESTS in {
+            current_pkg,
+            pkg_dir.name,
+            surface,
+        }
+        local_parent_packages = self._local_parent_packages(pkg_dir)
+        local_import_alias_targets = self._local_import_alias_targets(pkg_dir)
+        if (
+            not u.Infra.matches_project_namespace_package(current_pkg)
+            and not is_test_runtime_alias_surface
+            and not local_parent_packages
+            and not local_import_alias_targets
         ):
-            if (pkg_dir / f"{local_stem}.py").is_file():
+            return
+        inherited_packages = self._resolve_transitive_parent_packages((
+            *self._parent_packages(pkg_dir),
+            *local_parent_packages,
+            self._source_package_name(pkg_dir, surface),
+        ))
+        runtime_alias_names: list[str] = []
+        if is_test_runtime_alias_surface:
+            runtime_alias_names = list(c.Infra.TEST_RUNTIME_ALIAS_TARGETS)
+        # Why (flext-b3xmn): a parent's exported facade letters come ONLY from
+        # the statically indexed workspace source (_export_names_for_package);
+        # the prior ambient union of installed_package_exports made rendering
+        # diverge between a local editable venv and a pinned CI checkout.
+        inherited_alias_names = tuple(
+            name
+            for package_name in inherited_packages
+            for name in self._export_names_for_package(package_name)
+            if (
+                name.isidentifier()
+                and name.islower()
+                and len(name) <= c.Infra.MAX_ALIAS_LENGTH
+            )
+        )
+        declared_parent_alias_names = tuple(
+            name
+            for package_name in inherited_packages
+            for name in self._declared_parent_aliases(package_name)
+            if (
+                name.isidentifier()
+                and name.islower()
+                and len(name) <= c.Infra.MAX_ALIAS_LENGTH
+            )
+        )
+        local_declared_alias_names = tuple(
+            name
+            for name in self._declared_parent_aliases_for_directory(pkg_dir)
+            if (
+                name.isidentifier()
+                and name.islower()
+                and len(name) <= c.Infra.MAX_ALIAS_LENGTH
+            )
+        )
+        alias_names = tuple(
+            dict.fromkeys((
+                *inherited_alias_names,
+                *declared_parent_alias_names,
+                *local_declared_alias_names,
+                *runtime_alias_names,
+            ))
+        )
+        for alias_name in alias_names:
+            existing = lazy_map.get(alias_name)
+            if existing is not None and existing[0] != current_pkg:
+                # A real provider (facet module or foreign package) already owns
+                # this alias; only an exact self-referential entry — collected
+                # from a module importing the letter from the package root —
+                # still needs its true inherited source resolved below.
+                continue
+            package_name = self._resolve_inherited_alias_source(
+                inherited_packages,
+                alias_name,
+                current_pkg=current_pkg,
+                use_test_runtime_aliases=is_test_runtime_alias_surface,
+            )
+            if package_name and package_name != current_pkg:
+                # flext-pulj (codex): the generated root TYPE_CHECKING contract
+                # makes the public package itself the single inherited owner.
+                lazy_map[alias_name] = (package_name, alias_name)
+        for alias_name, target in local_import_alias_targets.items():
+            if target[0] != current_pkg:
+                lazy_map.setdefault(alias_name, target)
+        for alias_name in c.Infra.ALIAS_NAMES:
+            existing = lazy_map.get(alias_name)
+            owner_module = existing[0] if existing is not None else ""
+            if owner_module and owner_module != current_pkg:
+                continue
+            local_stem = letter_module.get(alias_name)
+            if local_stem is not None and (pkg_dir / f"{local_stem}.py").is_file():
                 lazy_map[alias_name] = (f"{current_pkg}.{local_stem}", alias_name)
+                continue
+            package_name = self._resolve_inherited_alias_source(
+                inherited_packages,
+                alias_name,
+                current_pkg=current_pkg,
+                use_test_runtime_aliases=is_test_runtime_alias_surface,
+            )
+            if package_name and package_name != current_pkg:
+                lazy_map[alias_name] = (package_name, alias_name)
+            elif owner_module == current_pkg:
+                del lazy_map[alias_name]
 
     def _declared_parent_aliases(self, package_name: str) -> t.StrSequence:
         package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_cli import u
-
 from flext_core import r
 from flext_infra import c, m, p, t
 
@@ -33,6 +31,8 @@ class FlextInfraUtilitiesGitignore:
         Pure function: takes codegen spec + profile + name + workspace + project_dir,
         returns rendered gitignore string via u.Cli.template_render.
         """
+        from flext_infra import u
+
         entry = next(
             (
                 item

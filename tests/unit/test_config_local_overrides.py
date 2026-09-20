@@ -12,7 +12,8 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import FlextInfraConfig, e
+from flext_core import e
+from flext_infra import FlextInfraConfig
 
 
 class TestsFlextInfraConfigLocalOverrides:

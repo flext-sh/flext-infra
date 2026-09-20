@@ -42,6 +42,7 @@ class FlextInfraOrchestratorService(
         """Canonical workspace root."""
         return self.repository_root.resolve()
 
+    @override
     @classmethod
     def execute_command(cls, params: Self) -> p.Result[bool]:
         """Execute the already validated internal orchestration request."""

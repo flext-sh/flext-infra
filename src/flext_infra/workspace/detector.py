@@ -623,6 +623,9 @@ class FlextInfraWorkspaceDetector(
         if declared_repository.failure:
             return r[m.Infra.WorkspaceSpec].from_failure(declared_repository)
         repository_ref, gascity_enabled, declared_project = declared_repository.value
+        declared_manifest = cls.load_workspace_manifest(resolved_root)
+        if declared_manifest.failure:
+            return r[m.Infra.WorkspaceSpec].from_failure(declared_manifest)
         return r[m.Infra.WorkspaceSpec].ok(
             m.Infra.WorkspaceSpec(
                 name=beads.value.workspace,
@@ -630,6 +633,11 @@ class FlextInfraWorkspaceDetector(
                 gascity_enabled=gascity_enabled,
                 repository=repository_ref,
                 project=declared_project,
+                namespace_scan_dirs=(
+                    declared_manifest.value[0].namespace_scan_dirs
+                    if declared_manifest.value
+                    else ()
+                ),
                 subprojects=subprojects,
                 external_dependency_paths=external,
             )

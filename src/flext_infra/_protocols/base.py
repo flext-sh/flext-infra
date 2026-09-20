@@ -14,9 +14,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
-    from flext_cli import p
-
-    from flext_infra import c, m, t
+    from flext_infra import c, m, p, t
 
 
 @runtime_checkable
@@ -369,8 +367,9 @@ class FlextInfraProtocolsBase(Protocol):
             managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
         ) -> p.Result[str]: ...
 
-        @staticmethod
+        @classmethod
         def compose_project_artifact(
+            cls,
             repository_root: Path,
             destination: str,
             rendered: str,
@@ -382,9 +381,9 @@ class FlextInfraProtocolsBase(Protocol):
             target: m.Infra.RepositoryConformTarget | None = None,
         ) -> p.Result[m.Infra.CodegenArtifactComposition]: ...
 
-        @classmethod
+        @staticmethod
         def validate_custom_make(
-            cls, content: str, policy: m.Infra.CustomHandlerPolicy
+            content: str, policy: m.Infra.CustomHandlerPolicy
         ) -> p.Result[bool]: ...
 
         @staticmethod
