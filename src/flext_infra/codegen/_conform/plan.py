@@ -12,6 +12,7 @@ from ... import c, config, m, p, t, u
 from ...deps import FlextInfraPyprojectModernizer
 from ...services.codegen import FlextInfraCodegen
 from ...workspace import FlextInfraWorkspaceDetector
+from .misc import FlextInfraCodegenConformMisc
 from .scaffold_plan import FlextInfraCodegenConformScaffoldPlan
 
 
