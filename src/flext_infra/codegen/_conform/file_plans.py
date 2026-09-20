@@ -48,7 +48,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         )
 
     @staticmethod
-    def _mise_config_plans(
+    def mise_config_plans(
         plan: m.Infra.CodegenPlan,
     ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Select one planned Mise configuration for each selected repository."""
@@ -70,7 +70,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBeadsRoutes):
         )
 
     @staticmethod
-    def _uv_environment_plan(
+    def uv_environment_plan(
         *,
         root: Path,
         target: m.Infra.RepositoryConformTarget,

@@ -13,15 +13,12 @@ from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
 from flext_core import r
-from flext_infra import c, t, u
-from flext_infra.protocols import p
+from flext_infra import c, p, t, u
 
 from ._release_artifact_archive import FlextInfraReleaseArtifactArchiveMixin
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMixin):

@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from flext_cli import p, r
 
-from flext_infra import m, t
-from flext_infra._utilities.signature_rules import FlextInfraUtilitiesSignatureRules
+from flext_infra import m, t, u
 from flext_infra.refactor.modernize_orchestrator import FlextInfraModernizeOrchestrator
 from flext_infra.transformers.signature_propagator import (
     FlextInfraRefactorSignaturePropagator,
@@ -27,7 +26,7 @@ class FlextInfraRefactorSignaturePropagation:
         cls, payload: m.Infra.ModernizeInput
     ) -> p.Result[t.Cli.ResultValue]:
         """Apply every declared migration across the governed project set."""
-        declared = FlextInfraUtilitiesSignatureRules.load(payload.repository_root)
+        declared = u.Infra.load(payload.repository_root)
         if declared.failure:
             return r[t.Cli.ResultValue].from_failure(declared)
         migrations = declared.value

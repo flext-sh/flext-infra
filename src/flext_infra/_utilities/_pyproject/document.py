@@ -7,13 +7,12 @@ from typing import TYPE_CHECKING
 
 from flext_cli import r, u
 
-from flext_infra.constants import c
-from flext_infra.typings import t
+from flext_infra import c, t
 
 from .uv_sources import FlextInfraUtilitiesPyprojectUvSources
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import p
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources):

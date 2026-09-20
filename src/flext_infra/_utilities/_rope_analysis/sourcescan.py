@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, ClassVar, TypeGuard
 
-from flext_infra.typings import t
+from flext_infra import t
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

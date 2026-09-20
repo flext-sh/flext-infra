@@ -15,7 +15,7 @@ from flext_infra import c, m, t
 from .process import FlextInfraUtilitiesProcess
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import p
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesResourceLimits:

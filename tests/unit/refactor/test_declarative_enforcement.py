@@ -16,8 +16,7 @@ from tests import u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p
-    from flext_infra.typings import t
+    from flext_infra import p, t
 
 
 class TestsFlextInfraRefactorDeclarativeEnforcement:

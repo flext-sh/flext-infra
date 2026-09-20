@@ -15,8 +15,7 @@ from libcst.metadata import (
 )
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import p
-    from flext_infra.typings import t
+    from flext_infra import p, t
 
 
 class FlextInfraUtilitiesQualifiedNames:

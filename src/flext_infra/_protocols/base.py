@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
     from flext_cli import p
 
-    from flext_infra import c, m, p, t
+    from flext_infra import c, m, t
 
 
 @runtime_checkable
@@ -289,12 +289,12 @@ class FlextInfraProtocolsBase(Protocol):
             self, request: m.Infra.CodegenConformRequest
         ) -> p.Result[m.Infra.CodegenPlan]: ...
 
-        def _conform_workspace_beads_routes(
+        def conform_workspace_beads_routes(
             self, request: m.Infra.CodegenConformRequest
         ) -> p.Result[bool]: ...
 
         @classmethod
-        def _surface_contract(
+        def surface_contract(
             cls, surface: c.Infra.CodegenConformSurface
         ) -> m.Infra.CodegenConformSurfaceContract: ...
 
@@ -304,7 +304,7 @@ class FlextInfraProtocolsBase(Protocol):
         ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]: ...
 
         @staticmethod
-        def _uv_environment_plan(
+        def uv_environment_plan(
             *,
             root: Path,
             repository_root: Path,
@@ -320,12 +320,12 @@ class FlextInfraProtocolsBase(Protocol):
         ) -> t.StrSequence: ...
 
         @staticmethod
-        def _mise_config_plans(
+        def mise_config_plans(
             plan: m.Infra.CodegenPlan,
         ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
 
         @classmethod
-        def _owned_docs_files(
+        def owned_docs_files(
             cls,
             request: m.Infra.CodegenConformRequest,
             files: t.SequenceOf[m.Infra.CodegenFilePlan],

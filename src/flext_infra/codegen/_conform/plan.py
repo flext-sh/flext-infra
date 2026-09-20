@@ -14,6 +14,7 @@ from ...deps import FlextInfraPyprojectModernizer
 from ...services.codegen import FlextInfraCodegen
 from ...workspace import FlextInfraWorkspaceDetector
 from ...workspace.environment_contracts import FlextInfraWorkspaceEnvironmentContracts
+from .file_plans import FlextInfraCodegenConformFilePlans
 from .misc import FlextInfraCodegenConformMisc
 from .scaffold_plan import FlextInfraCodegenConformScaffoldPlan
 
@@ -24,13 +25,13 @@ class _ConformPlanRoles:
         repository_root: Path
         initial_workspace: m.Infra.WorkspaceSpec | None
 
-        def _surface_contract(
+        def surface_contract(
             self, surface: c.Infra.CodegenConformSurface
         ) -> m.Infra.CodegenConformSurfaceContract: ...
         def retired_projection_plans(
             self, root: Path, profile: c.Infra.MakeProfile
         ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]: ...
-        def _uv_environment_plan(
+        def uv_environment_plan(
             self,
             *,
             root: Path,
@@ -138,7 +139,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if selected_result.failure:
             return r[m.Infra.CodegenPlan].from_failure(selected_result)
         selected = selected_result.value
-        contract = self._surface_contract(c.Infra.CodegenConformSurface(request.what))
+        contract = self.surface_contract(c.Infra.CodegenConformSurface(request.what))
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
         total_repositories = len(selected)
@@ -265,7 +266,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     item for item in retired.value if item.path not in governed_paths
                 )
             environments.append(
-                self._uv_environment_plan(
+                self.uv_environment_plan(
                     root=repository_root,
                     target=target,
                     workspace=local_workspace,
@@ -446,7 +447,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
                     rendered_content
                 )
-            file_plan = FlextInfraCodegenConformMisc.file_plan(
+            file_plan = FlextInfraCodegenConformFilePlans.file_plan(
                 root,
                 destination,
                 rendered_content.value.rendered,
@@ -686,7 +687,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     f"source={entry.source}; target={path}; root={root}; "
                     f"marker={conflict_marker}"
                 )
-            file_plan = FlextInfraCodegenConformMisc.file_plan(
+            file_plan = FlextInfraCodegenConformFilePlans.file_plan(
                 root,
                 entry.destination,
                 rendered_content,
@@ -722,7 +723,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             validation = self.validate_custom_make(read.value, policy)
             if validation.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(validation)
-            planned = FlextInfraCodegenConformMisc.file_plan(
+            planned = FlextInfraCodegenConformFilePlans.file_plan(
                 root, policy.filename, read.value
             )
             if planned.failure:
@@ -741,7 +742,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     layout.package_dir
                     / (c.Infra.FAMILY_PUBLIC_MODULES[family] + c.Infra.EXT_PYTHON)
                 ).relative_to(root)
-                utility_plan = FlextInfraCodegenConformMisc.file_plan(
+                utility_plan = FlextInfraCodegenConformFilePlans.file_plan(
                     root, relative.as_posix(), rendered
                 )
                 if utility_plan.failure:
@@ -828,7 +829,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 if merged.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(merged)
                 if merged.value != current:
-                    merged_plan = FlextInfraCodegenConformMisc.file_plan(
+                    merged_plan = FlextInfraCodegenConformFilePlans.file_plan(
                         root, relative.as_posix(), merged.value, mode=governed.mode
                     )
                     if merged_plan.failure:
@@ -855,7 +856,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     )
                 )
                 if normalized == current:
-                    current_plan = FlextInfraCodegenConformMisc.file_plan(
+                    current_plan = FlextInfraCodegenConformFilePlans.file_plan(
                         root, relative.as_posix(), current, mode=governed.mode
                     )
                     if current_plan.failure:
@@ -886,7 +887,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                         )
                     )
                     continue
-                merged_plan = FlextInfraCodegenConformMisc.file_plan(
+                merged_plan = FlextInfraCodegenConformFilePlans.file_plan(
                     root, relative.as_posix(), normalized, mode=governed.mode
                 )
                 if merged_plan.failure:
@@ -899,7 +900,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     )
                 )
                 continue
-            current_plan = FlextInfraCodegenConformMisc.file_plan(
+            current_plan = FlextInfraCodegenConformFilePlans.file_plan(
                 root, relative.as_posix(), current, mode=governed.mode
             )
             if current_plan.failure:
