@@ -412,7 +412,7 @@ class FlextInfraUtilitiesRepository:
             )
         )
 
-    @staticmethod
+    @classmethod
     def resolve_integration_branch(
         cls, repository_root: Path, *, preference: t.StrSequence
     ) -> p.Result[str]:

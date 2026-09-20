@@ -3,46 +3,40 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
-from types import MappingProxyType
-from typing import Never, override
+from typing import TYPE_CHECKING, override
 
 from flext_cli import m
 
-from flext_infra import t
+if TYPE_CHECKING:
+    from flext_infra import t
+
+
+class ImmutableEmptyMapping[K, V](Mapping[K, V]):
+    """Fully typed immutable empty mapping used as a field factory."""
+
+    @override
+    def __getitem__(self, key: K) -> V:
+        """Reject every key because the mapping is empty."""
+        raise KeyError(key)
+
+    @override
+    def __iter__(self) -> Iterator[K]:
+        """Iterate over no keys."""
+        return iter(())
+
+    @override
+    def __len__(self) -> int:
+        """Return the invariant empty size."""
+        return 0
 
 
 class FlextInfraModelsDefaults:
     """Facade for typed immutable defaults shared by Pydantic model fields."""
 
-    class ImmutableEmptyMapping[K, V](Mapping[K, V]):
-        """Fully typed immutable empty mapping used as a field factory."""
-
-        @override
-        def __getitem__(self, key: K) -> V:
-            """Reject every key because the mapping is empty."""
-            raise KeyError(key)
-
-        @override
-        def __iter__(self) -> Iterator[K]:
-            """Iterate over no keys."""
-            return iter(())
-
-        @override
-        def __len__(self) -> int:
-            """Return the invariant empty size."""
-            return 0
-
     @staticmethod
-    def immutable_empty_mapping() -> Mapping[str, Never]:
-        """Return a fresh immutable empty mapping for any ``Mapping[str, X]`` field.
-
-        The proxy holds no values, so its value type is ``Never``: mapping
-        covariance makes the result assignable to every concrete
-        ``Mapping[str, X]`` a field declares without inventing key/value
-        types the empty factory never produces.
-        """
-        empty: dict[str, Never] = {}
-        return MappingProxyType(empty)
+    def immutable_empty_mapping[K, V]() -> Mapping[K, V]:
+        """Return a fresh immutable empty mapping assignable to any mapping type."""
+        return ImmutableEmptyMapping[K, V]()
 
     @staticmethod
     def tool_version_field(description: str) -> t.Infra.ModelFieldSpec:
@@ -60,4 +54,13 @@ class FlextInfraModelsDefaults:
         return m.Field(description=description)
 
 
-__all__: list[str] = ["FlextInfraModelsDefaults"]
+def immutable_empty_mapping[K, V]() -> Mapping[K, V]:
+    """Return a fresh immutable empty mapping assignable to any mapping type."""
+    return ImmutableEmptyMapping[K, V]()
+
+
+__all__: list[str] = [
+    "FlextInfraModelsDefaults",
+    "ImmutableEmptyMapping",
+    "immutable_empty_mapping",
+]
