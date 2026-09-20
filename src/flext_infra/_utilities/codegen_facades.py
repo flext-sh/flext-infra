@@ -7,7 +7,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-from flext_infra.constants import c
+from flext_infra import c
 
 from .rope_core import FlextInfraUtilitiesRopeCore
 from .rope_runtime import FlextInfraUtilitiesRopeRuntime

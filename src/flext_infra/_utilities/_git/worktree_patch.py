@@ -8,8 +8,7 @@ from typing import TYPE_CHECKING
 from git import GitCommandError
 
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
+from flext_infra import c, m
 
 from .worktree_checkpoint import FlextInfraUtilitiesGitWorktreeCheckpointMixin
 from .worktree_io import FlextInfraUtilitiesGitWorktreeIO

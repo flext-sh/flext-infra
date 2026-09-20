@@ -36,7 +36,7 @@ from typing import TYPE_CHECKING, ClassVar
 from ..rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import p
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesRopePep695Patch:

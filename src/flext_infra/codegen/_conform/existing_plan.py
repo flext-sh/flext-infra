@@ -7,7 +7,9 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Literal
 
-from ... import c, m, p, r, t, u
+from flext_core import r
+
+from ... import c, m, p, t, u
 from ...deps import FlextInfraPyprojectModernizer
 from ...services.codegen import FlextInfraCodegen
 from ...workspace.environment_contracts import FlextInfraWorkspaceEnvironmentContracts

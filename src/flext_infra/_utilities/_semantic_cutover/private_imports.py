@@ -9,9 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+from flext_infra import c, m, t
 
 from ..private_import_ancestry import FlextInfraUtilitiesPrivateImportAncestry
 from ..private_import_facades import FlextInfraUtilitiesPrivateImportFacades
@@ -20,7 +18,7 @@ from .edits import FlextInfraUtilitiesSemanticCutoverEdits
 from .private_import_cst import FlextInfraUtilitiesSemanticCutoverPrivateImportCst
 
 if TYPE_CHECKING:
-    from flext_infra.protocols import p
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesSemanticCutoverPrivateImports(

@@ -56,6 +56,7 @@ from ._utilities.refactor import FlextInfraUtilitiesRefactor
 from ._utilities.release import FlextInfraUtilitiesRelease
 from ._utilities.repository import FlextInfraUtilitiesRepository
 from ._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
+from ._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from ._utilities.rope_analysis_introspection import (
     FlextInfraUtilitiesRopeAnalysisIntrospection,
 )
@@ -108,6 +109,7 @@ class FlextInfraUtilities(cli_u):
         FlextInfraUtilitiesQualifiedNames,
         FlextInfraUtilitiesDiscovery,
         FlextInfraUtilitiesRopeCore,
+        FlextInfraUtilitiesRopeAnalysis,
         FlextInfraUtilitiesRopeAnalysisWorkspace,
         FlextInfraUtilitiesRopeAnalysisIntrospection,
         FlextInfraUtilitiesRopeClassMove,

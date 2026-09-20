@@ -13,7 +13,7 @@ import os as _os
 from typing import ClassVar
 
 from flext_core import FlextSettings
-from flext_infra.models import m
+from flext_infra import m
 
 from ._models.settings import FlextInfraSettingsModels
 

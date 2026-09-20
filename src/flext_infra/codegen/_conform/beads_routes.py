@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ... import c, m, p, r
+from flext_core import r
+
+from ... import c, m, p
 from ...workspace import FlextInfraWorkspaceDetector
 from .docs_ownership import FlextInfraCodegenConformDocsOwnership
 
@@ -12,7 +14,7 @@ from .docs_ownership import FlextInfraCodegenConformDocsOwnership
 class FlextInfraCodegenConformBeadsRoutes(FlextInfraCodegenConformDocsOwnership):
     """Beads ledger route reconciliation for composed repositories."""
 
-    def _conform_workspace_beads_routes(
+    def conform_workspace_beads_routes(
         self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[bool]:
         """Reconcile private metadata directories without cross-project links.

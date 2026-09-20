@@ -10,9 +10,7 @@ from markdown import Markdown
 from markdown.extensions.toc import slugify
 
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+from flext_infra import c, m, t
 
 from .._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
 from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
@@ -20,7 +18,7 @@ from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra.protocols import p
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocsContract:

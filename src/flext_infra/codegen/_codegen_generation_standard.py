@@ -189,13 +189,14 @@ class FlextInfraCodegenGenerationStandardMixin(
         compact = f"({inner})"
         if len("__all__: tuple[str, ...] = ") + len(compact) <= c.Infra.MAX_LINE_LENGTH:
             return compact
-        return "\n".join(
-            (
-                "(",
-                *cls._pack_comma_entries(tuple(f'"{name}",' for name in exports)),
-                ")",
-            )
+        # Wide export sets wrap 4 names per line (semantically neutral, same
+        # order): 1-per-line pushes large generated facades past the 1000-LOC
+        # cap (aihub loc-cap, services/__init__ 1038 lines).
+        wrapped = ",\n    ".join(
+            ", ".join(f'"{name}"' for name in exports[i : i + 4])
+            for i in range(0, len(exports), 4)
         )
+        return "(\n    " + wrapped + ",\n)"
 
     @classmethod
     def _format_lazy_module_mapping(

@@ -5,7 +5,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from ... import c, config, m, p, r, t, u
+from flext_core import r
+
+from ... import c, config, m, p, t, u
 from .file_plans import FlextInfraCodegenConformFilePlans
 
 

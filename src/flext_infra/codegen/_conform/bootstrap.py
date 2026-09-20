@@ -91,7 +91,7 @@ class FlextInfraCodegenConformBootstrap(s[m.Infra.CodegenResult]):
         return tuple(merged.values())
 
     @classmethod
-    def _surface_contract(
+    def surface_contract(
         cls, surface: c.Infra.CodegenConformSurface
     ) -> m.Infra.CodegenConformSurfaceContract:
         match surface:
