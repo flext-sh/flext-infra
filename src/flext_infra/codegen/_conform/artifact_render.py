@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ... import c, config, m, p, r, t, u
+from flext_core import r
+
+from ... import c, config, m, p, t, u
 from .context_render import FlextInfraCodegenConformContextRender
 
 

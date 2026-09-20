@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ... import c, m, p, r
+from flext_core import r
+
+from ... import c, m, p
 from ...workspace import FlextInfraWorkspaceDetector
 from .docs_ownership import FlextInfraCodegenConformDocsOwnership
 

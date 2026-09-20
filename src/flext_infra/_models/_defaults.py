@@ -60,4 +60,13 @@ class FlextInfraModelsDefaults:
         return m.Field(description=description)
 
 
-__all__: list[str] = ["FlextInfraModelsDefaults"]
+ImmutableEmptyMapping = FlextInfraModelsDefaults.ImmutableEmptyMapping
+immutable_empty_mapping = FlextInfraModelsDefaults.immutable_empty_mapping
+tool_version_field = FlextInfraModelsDefaults.tool_version_field
+
+__all__: list[str] = [
+    "FlextInfraModelsDefaults",
+    "ImmutableEmptyMapping",
+    "immutable_empty_mapping",
+    "tool_version_field",
+]

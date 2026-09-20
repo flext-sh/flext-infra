@@ -13,6 +13,7 @@ from flext_cli import m
 
 from .. import c, p, t
 from . import FlextInfraModelsMixins as mm
+from ._codegen.base import FlextInfraCodegen
 from ._defaults import FlextInfraModelsDefaults
 
 

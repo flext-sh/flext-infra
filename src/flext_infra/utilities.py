@@ -60,6 +60,7 @@ from ._utilities.rope_analysis_introspection import (
     FlextInfraUtilitiesRopeAnalysisIntrospection,
 )
 from ._utilities.rope_analysis_workspace import FlextInfraUtilitiesRopeAnalysisWorkspace
+from ._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from ._utilities.rope_class_move import FlextInfraUtilitiesRopeClassMove
 from ._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from ._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
@@ -108,6 +109,7 @@ class FlextInfraUtilities(cli_u):
         FlextInfraUtilitiesQualifiedNames,
         FlextInfraUtilitiesDiscovery,
         FlextInfraUtilitiesRopeCore,
+        FlextInfraUtilitiesRopeAnalysis,
         FlextInfraUtilitiesRopeAnalysisWorkspace,
         FlextInfraUtilitiesRopeAnalysisIntrospection,
         FlextInfraUtilitiesRopeClassMove,
