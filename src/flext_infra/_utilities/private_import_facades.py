@@ -8,14 +8,14 @@ from importlib.util import find_spec, resolve_name
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
+from flext_infra import c
 
 from .rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
 
-    from flext_infra.typings import t
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesPrivateImportFacades:

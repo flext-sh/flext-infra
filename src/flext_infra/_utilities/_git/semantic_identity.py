@@ -14,7 +14,7 @@ from git import (
 )
 
 from flext_core import r
-from flext_infra.models import m
+from flext_infra import m
 
 from ..._utilities._git.remote import FlextInfraUtilitiesGitRemote
 from ..._utilities._git.repo import FlextInfraUtilitiesGitRepo

@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableSequence
 from pathlib import Path
 from typing import override
 
 from flext_core import r
-from tests import c, m, t, u
+from tests import c, m, p, t, u
 from tests.utilities_replay import TestsFlextInfraUtilitiesReplayRunnerMixin
 
 

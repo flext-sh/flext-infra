@@ -7,11 +7,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, config, m, u
-from flext_infra.protocols import p
+from flext_infra import c, config, m, p, u
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import t
 
 logger = u.fetch_logger(__name__)
 

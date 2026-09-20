@@ -23,7 +23,7 @@ class FlextInfraCodegenConformDocsOwnership(FlextInfraCodegenConformGitignore):
         )
 
     @staticmethod
-    def _owned_docs_files(
+    def owned_docs_files(
         request: m.Infra.CodegenConformRequest,
         files: t.SequenceOf[m.Infra.CodegenFilePlan],
     ) -> t.VariadicTuple[m.Infra.CodegenFilePlan]:

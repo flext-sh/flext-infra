@@ -6,10 +6,7 @@ import operator
 from collections.abc import MutableMapping
 from pathlib import Path
 
-from flext_infra import config
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+from flext_infra import c, config, m, t
 
 from .project_discovery import FlextInfraUtilitiesProjectDiscovery
 from .rope_core import FlextInfraUtilitiesRopeCore

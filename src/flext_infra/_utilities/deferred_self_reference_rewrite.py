@@ -6,7 +6,7 @@ import ast
 from collections.abc import MutableMapping
 from operator import itemgetter
 
-from flext_infra.typings import t
+from flext_infra import t
 
 
 class FlextInfraUtilitiesDeferredSelfReferenceRewrite:

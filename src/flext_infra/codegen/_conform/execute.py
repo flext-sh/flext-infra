@@ -27,13 +27,13 @@ class _ConformExecuteRoles:
         def plan(
             self, request: m.Infra.CodegenConformRequest
         ) -> p.Result[m.Infra.CodegenPlan]: ...
-        def _mise_config_plans(
+        def mise_config_plans(
             self, plan: m.Infra.CodegenPlan
         ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]: ...
-        def _conform_workspace_beads_routes(
+        def conform_workspace_beads_routes(
             self, request: m.Infra.CodegenConformRequest
         ) -> p.Result[bool]: ...
-        def _owned_docs_files(
+        def owned_docs_files(
             self,
             request: m.Infra.CodegenConformRequest,
             files: t.SequenceOf[m.Infra.CodegenFilePlan],
@@ -47,7 +47,7 @@ class _ConformExecuteRoles:
 
 
 class FlextInfraCodegenConformExecute(
-    FlextInfraCodegenConformPlan, _ConformExecuteRoles
+    _ConformExecuteRoles, FlextInfraCodegenConformPlan
 ):
     """Transactional execution of conformance plans."""
 
@@ -348,7 +348,7 @@ class FlextInfraCodegenConformExecute(
             repository.name == plan.workspace.repository.name
             for repository in plan.repositories
         )
-        config_plans = self._mise_config_plans(plan)
+        config_plans = self.mise_config_plans(plan)
         if config_plans.failure:
             return r[m.Infra.CodegenResult].from_failure(config_plans)
         changed = tuple(
@@ -356,7 +356,7 @@ class FlextInfraCodegenConformExecute(
         )
         mode = c.Infra.CodegenConformMode(request.mode)
         if mode is c.Infra.CodegenConformMode.CHECK:
-            routes = self._conform_workspace_beads_routes(request)
+            routes = self.conform_workspace_beads_routes(request)
             if routes.failure:
                 return r[m.Infra.CodegenResult].from_failure(routes)
             reality = transaction.validate_locked(scope_root, config_plans.value)
@@ -395,7 +395,7 @@ class FlextInfraCodegenConformExecute(
                 return r[m.Infra.CodegenResult].from_failure(docs_plans)
             docs_changed = tuple(
                 file
-                for file in self._owned_docs_files(request, docs_plans.value)
+                for file in self.owned_docs_files(request, docs_plans.value)
                 if u.Infra.codegen_file_requires_effect(file)
             )
             if docs_changed:
@@ -476,7 +476,7 @@ class FlextInfraCodegenConformExecute(
         docs_plans = docs_generator.plan_files(docs_bundle.value)
         if docs_plans.failure:
             return r[m.Infra.CodegenResult].from_failure(docs_plans)
-        owned_docs_files = self._owned_docs_files(request, docs_plans.value)
+        owned_docs_files = self.owned_docs_files(request, docs_plans.value)
         docs_analysis = m.Infra.CodegenPhaseAnalysis(
             phase="docs", files=owned_docs_files, inputs=docs_bundle.value.source_states
         )
@@ -499,7 +499,7 @@ class FlextInfraCodegenConformExecute(
         )
         if published.failure:
             return r[m.Infra.CodegenResult].from_failure(published)
-        routes = self._conform_workspace_beads_routes(request)
+        routes = self.conform_workspace_beads_routes(request)
         if routes.failure:
             return r[m.Infra.CodegenResult].from_failure(routes)
         allowed = self._allow_direnv_after_apply(request, published.value)

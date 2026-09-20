@@ -249,7 +249,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             applied_actions == {"remove_stub_file"} and not report.removal_candidates
         )
         if applied:
-            self._ruff_fix_touched_files(touched_paths)
+            self.normalize_touched_files(touched_paths)
             if not stub_only:
                 self._preflight_inits_via_codegen()
             rope.reload()

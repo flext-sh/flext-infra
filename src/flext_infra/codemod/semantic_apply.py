@@ -7,7 +7,9 @@ from pathlib import Path
 
 from flext_cli import cli
 
-from .. import c, config, infra, m, p, r, t, u
+from flext_core import r
+
+from .. import c, config, infra, m, p, t, u
 from ..transformers import publish_semantic_file_plans
 
 
@@ -371,7 +373,7 @@ class FlextInfraCodemodSemanticApply:
             FlextInfraRefactorCensusApplyFormattingMixin,
         )
 
-        FlextInfraRefactorCensusApplyFormattingMixin._ruff_fix_touched_files(
+        FlextInfraRefactorCensusApplyFormattingMixin.normalize_touched_files(
             plan.path for plan in semantic_plans
         )
 
