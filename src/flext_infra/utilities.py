@@ -56,11 +56,11 @@ from ._utilities.refactor import FlextInfraUtilitiesRefactor
 from ._utilities.release import FlextInfraUtilitiesRelease
 from ._utilities.repository import FlextInfraUtilitiesRepository
 from ._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
+from ._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from ._utilities.rope_analysis_introspection import (
     FlextInfraUtilitiesRopeAnalysisIntrospection,
 )
 from ._utilities.rope_analysis_workspace import FlextInfraUtilitiesRopeAnalysisWorkspace
-from ._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from ._utilities.rope_class_move import FlextInfraUtilitiesRopeClassMove
 from ._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from ._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
