@@ -78,9 +78,22 @@ class FlextInfraCodegenLazyInitPlanner(
 
     @override
     def build_plan(
-        self, pkg_dir: Path, *, dir_exports: t.MappingKV[str, t.LazyAliasMap]
+        self,
+        pkg_dir: Path,
+        *,
+        dir_exports: t.MappingKV[str, t.LazyAliasMap],
+        publish: bool = True,
     ) -> m.Infra.LazyInitPlan:
-        """Build the lazy-init render plan for one package directory."""
+        """Build the lazy-init render plan for one package directory.
+
+        ``publish`` declares that this plan is the package's real one, built
+        with its children's exports, and may therefore be cached for the
+        parents that follow. A probe that only needs the package's own export
+        names passes ``publish=False``: its plan is built with no child exports
+        and is not the truth about that package, so caching it made every
+        parent merge nothing from a package that happened to be probed before
+        it was planned.
+        """
         u.Cli.info(
             f"DEBUG build_plan called for {pkg_dir} ({self.context(pkg_dir).current_pkg})"
         )
@@ -220,6 +233,8 @@ class FlextInfraCodegenLazyInitPlanner(
             child_packages_for_lazy=child_lazy,
             excluded_lazy_names=excluded_lazy_names,
         )
+        if not publish:
+            return plan
         self._source_exports_cache[context.current_pkg] = frozenset(plan.exports)
         return self._publish_plan(plan)
 

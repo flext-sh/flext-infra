@@ -23,7 +23,11 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
         _module_file_by_name: MutableMapping[str, Path]
 
         def build_plan(
-            self, pkg_dir: Path, *, dir_exports: t.MappingKV[str, t.LazyAliasMap]
+            self,
+            pkg_dir: Path,
+            *,
+            dir_exports: t.MappingKV[str, t.LazyAliasMap],
+            publish: bool = True,
         ) -> m.Infra.LazyInitPlan: ...
 
     def _export_names_for_package(self, package_name: str) -> frozenset[str]:
@@ -92,8 +96,18 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
             cache_key = str(package_dir.resolve())
             plan = self._source_plan_cache.get(cache_key)
             if plan is None:
-                plan = self.build_plan(package_dir, dir_exports={})
-                self._source_plan_cache[cache_key] = plan
+                # This is a probe: it only needs the package's own export names,
+                # so it plans with no child exports. The resulting plan is
+                # therefore NOT the package's real plan and must never enter the
+                # shared cache, which the parent pass reads to decide what to
+                # merge from each child. Writing it there made a package that is
+                # probed before it is planned publish nothing, and the loss
+                # cascaded to the root: 181 public names disappeared whenever
+                # alias inheritance ran. `_source_exports_cache` below already
+                # memoises the probe, so nothing is recomputed.
+                plan = self.build_plan(
+                    package_dir, dir_exports={}, publish=False
+                )
             exports = frozenset(plan.exports)
         finally:
             self._source_exports_visiting.remove(package_name)
