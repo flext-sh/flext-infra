@@ -249,12 +249,18 @@ class FlextInfraGate:
             result=m.Infra.GateResult(
                 gate=self.gate_id,
                 project=project_dir.name,
+                # A warning is, by definition, not a failure. This harness used
+                # to reject any issue whose severity was error OR warning, while
+                # error_count sums only error severity -- so a gate that
+                # deliberately renders findings as warnings failed while
+                # reporting zero errors, naming nothing the reader could act on.
+                # Verdict and count now derive from the same classification, so
+                # a gate's declared severity means what it says.
                 passed=passed
                 and (
                     accept_reported_issues
                     or not any(
-                        issue.severity.lower() in {"error", "warning", "warn"}
-                        for issue in issues
+                        issue.severity.lower() == c.Infra.ERROR for issue in issues
                     )
                 ),
                 errors=(
