@@ -45,7 +45,9 @@ class _ConformExecuteRoles:
         ) -> tuple[Path, ...]: ...
 
 
-class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
+class FlextInfraCodegenConformExecute(
+    FlextInfraCodegenConformPlan, _ConformExecuteRoles
+):
     """Transactional execution of conformance plans."""
 
     @classmethod
