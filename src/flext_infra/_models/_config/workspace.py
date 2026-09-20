@@ -125,6 +125,16 @@ class FlextInfraConfigModelsWorkspace:
             ),
         ]
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
+        namespace_scan_dirs: Annotated[
+            t.StrSequence,
+            m.Field(
+                description=(
+                    "Repository-level production roots the namespace validator "
+                    "enforces; an empty declaration keeps every root in scope, and "
+                    "an explicit project-level declaration wins"
+                )
+            ),
+        ] = ()
         ledger_id: Annotated[
             t.NonEmptyStr | None,
             m.Field(description="Optional workspace ledger database identity"),
@@ -238,6 +248,16 @@ class FlextInfraConfigModelsWorkspace:
             FlextInfraConfigModelsContexts.ProjectSpec | None,
             m.Field(description="Metadata required only when materializing a new tree"),
         ] = None
+        namespace_scan_dirs: Annotated[
+            t.StrSequence,
+            m.Field(
+                description=(
+                    "Repository-level production roots the namespace validator "
+                    "enforces; an empty declaration keeps every root in scope, and "
+                    "an explicit project-level declaration wins"
+                )
+            ),
+        ] = ()
         subprojects: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
             m.Field(description="Direct governed repositories from local .gitmodules"),

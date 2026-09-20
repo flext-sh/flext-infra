@@ -381,29 +381,6 @@ class FlextInfraUtilitiesRepository:
         return r[str].ok(f"{provider.value.base_url.rstrip('/')}/{name}")
 
     @classmethod
-    def project_urls(
-        cls, repository: p.Infra.RepositoryRef, project: m.Infra.ProjectSpec | None
-    ) -> p.Result[m.Infra.ProjectUrls]:
-        """Resolve ``[project.urls]`` from the manifest, never from a live pyproject.
-
-        A declared ``project`` owns homepage and documentation; a repository
-        without one publishes its provider page for both. The repository URL is
-        always the provider page of the declared repository.
-        """
-        page = cls.repository_page_url(repository)
-        if page.failure:
-            return r[m.Infra.ProjectUrls].from_failure(page)
-        return r[m.Infra.ProjectUrls].ok(
-            m.Infra.ProjectUrls(
-                homepage=page.value if project is None else project.homepage,
-                documentation=(
-                    page.value if project is None else project.documentation
-                ),
-                repository=page.value,
-            )
-        )
-
-    @classmethod
     def resolve_integration_branch(
         cls, repository_root: Path, *, preference: t.StrSequence
     ) -> p.Result[str]:

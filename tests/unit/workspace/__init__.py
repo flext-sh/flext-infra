@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
+
     from .test_beads_environment_sync import TestsFlextInfraBeadsEnvironmentSync
     from .test_detector_owns_no_project_registry import (
         TestsFlextInfraDetectorOwnsNoProjectRegistry,
@@ -43,23 +45,15 @@ if TYPE_CHECKING:
         TestsFlextInfraWorktreeSecurityBoundaries,
     )
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraBeadsEnvironmentSync",
-    "TestsFlextInfraCodegenVscode",
-    "TestsFlextInfraDetectorOwnsNoProjectRegistry",
-    "TestsFlextInfraDocsContractTocPlacement",
-    "TestsFlextInfraDocsScopeWorktree",
-    "TestsFlextInfraFacadeEnvironmentSync",
-    "TestsFlextInfraLaneOwnsAnIsolatedEnvironment",
-    "TestsFlextInfraMiseDistributionPolicy",
-    "TestsFlextInfraProviderResolutionAcceptsSshRemotes",
-    "TestsFlextInfraRepositoryLocalTopology",
-    "TestsFlextInfraWorkspaceEnvironmentProvenance",
-    "TestsFlextInfraWorkspaceMain",
-    "TestsFlextInfraWorktreeAddIsUnprovisioned",
-    "TestsFlextInfraWorktreeBinding",
-    "TestsFlextInfraWorktreeFacts",
-    "TestsFlextInfraWorktreeProvisioningGitlinks",
-    "TestsFlextInfraWorktreeSecurityBoundaries",
+    "TestsFlextInfraBeadsEnvironmentSync", "TestsFlextInfraCodegenVscode", "TestsFlextInfraDetectorOwnsNoProjectRegistry", "TestsFlextInfraDocsContractTocPlacement",
+    "TestsFlextInfraDocsScopeWorktree", "TestsFlextInfraFacadeEnvironmentSync", "TestsFlextInfraLaneOwnsAnIsolatedEnvironment", "TestsFlextInfraMiseDistributionPolicy",
+    "TestsFlextInfraProviderResolutionAcceptsSshRemotes", "TestsFlextInfraRepositoryLocalTopology", "TestsFlextInfraWorkspaceEnvironmentProvenance", "TestsFlextInfraWorkspaceMain",
+    "TestsFlextInfraWorktreeAddIsUnprovisioned", "TestsFlextInfraWorktreeBinding", "TestsFlextInfraWorktreeFacts", "TestsFlextInfraWorktreeProvisioningGitlinks",
+    "TestsFlextInfraWorktreeSecurityBoundaries", "c", "d", "e",
+    "h", "m", "p", "r",
+    "s", "t", "td", "tf",
+    "tk", "tm", "tv", "u",
+    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -101,6 +95,10 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".test_worktree_security_boundaries": (
                 "TestsFlextInfraWorktreeSecurityBoundaries",
+            ),
+            "flext_tests": (
+                "c", "d", "e", "h", "m", "p", "r", "s", "t", "td", "tf", "tk", "tm",
+                "tv", "u", "x",
             ),
         }),
         alias_groups=MappingProxyType({}),

@@ -8,12 +8,13 @@ from typing import Annotated
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._models._config.artifact import FlextInfraConfigModelsArtifact
-from flext_infra._models._config.contract import FlextInfraConfigModelsContract
-from flext_infra._models._config.release import FlextInfraConfigModelsRelease
-from flext_infra._models._config.static import FlextInfraConfigModelsStatic
-from flext_infra._models._defaults import FlextInfraModelsDefaults
-from flext_infra._models.deps import FlextInfraModelsDepsToolConfig
+
+from .._defaults import FlextInfraModelsDefaults
+from ..deps import FlextInfraModelsDepsToolConfig
+from .artifact import FlextInfraConfigModelsArtifact
+from .contract import FlextInfraConfigModelsContract
+from .release import FlextInfraConfigModelsRelease
+from .static import FlextInfraConfigModelsStatic
 
 
 class FlextInfraConfigModelsRoot:

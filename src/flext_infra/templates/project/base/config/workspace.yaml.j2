@@ -4,6 +4,12 @@
 # input. Add members or exclusions here, then run `make gen`.
 version: {{ workspace_manifest_version }}
 name: {{ dist }}
+{%- if namespace_scan_dirs %}
+namespace_scan_dirs:
+{%- for root in namespace_scan_dirs %}
+  - {{ root | tojson }}
+{%- endfor %}
+{%- endif %}
 repository:
   name: {{ dist }}
   distribution: {{ dist }}

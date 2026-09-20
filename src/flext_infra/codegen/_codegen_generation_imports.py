@@ -35,7 +35,7 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
         # Wide groups pack 4 symbols per wrapped line (semantically neutral,
         # same order): 1-per-line pushes large generated facades past the
         # 1000-LOC cap (aihub loc-cap, services/__init__ 1038 lines).
-        if len(parts) > 4:
+        if len(parts) > c.Infra.MAX_INLINE_IMPORT_NAMES:
             return (
                 f"{indent}from {mod} import (",
                 *(

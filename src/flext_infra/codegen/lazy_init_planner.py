@@ -46,7 +46,6 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
     _source_plan_cache: MutableMapping[str, m.Infra.LazyInitPlan] = u.PrivateAttr(
         default_factory=dict
     )
-    _source_exports_visiting: set[str] = u.PrivateAttr(default_factory=set)
     _parent_package_cache: MutableMapping[str, t.StrSequence] = u.PrivateAttr(
         default_factory=dict
     )

@@ -35,29 +35,12 @@ if TYPE_CHECKING:
     from .symbol_propagator import FlextInfraRefactorSymbolPropagator
     from .typing_unifier import FlextInfraRefactorTypingUnifier
 __all__: tuple[str, ...] = (
-    "FlextInfraBooleanLogicFixer",
-    "FlextInfraEnsureCanonicalTImportMixin",
-    "FlextInfraRefactorClassReconstructor",
-    "FlextInfraRefactorCompatibilityAlias",
-    "FlextInfraRefactorDataclassModelizer",
-    "FlextInfraRefactorDeprecatedRemover",
-    "FlextInfraRefactorFutureImport",
-    "FlextInfraRefactorHardcodedVersion",
-    "FlextInfraRefactorImportBypassRemover",
-    "FlextInfraRefactorImportModernizer",
-    "FlextInfraRefactorLazyImportFixer",
-    "FlextInfraRefactorMroRemover",
-    "FlextInfraRefactorOpenEncoding",
-    "FlextInfraRefactorPatternTransformer",
-    "FlextInfraRefactorPydanticModernizer",
-    "FlextInfraRefactorSignaturePropagator",
-    "FlextInfraRefactorSymbolPropagator",
-    "FlextInfraRefactorTypingUnifier",
-    "FlextInfraRefactorTypingUnifierRewriteMixin",
-    "FlextInfraSmellFixer",
-    "publish_semantic_file_plan",
-    "publish_semantic_file_plans",
-    "smells",
+    "FlextInfraBooleanLogicFixer", "FlextInfraEnsureCanonicalTImportMixin", "FlextInfraRefactorClassReconstructor", "FlextInfraRefactorCompatibilityAlias",
+    "FlextInfraRefactorDataclassModelizer", "FlextInfraRefactorDeprecatedRemover", "FlextInfraRefactorFutureImport", "FlextInfraRefactorHardcodedVersion",
+    "FlextInfraRefactorImportBypassRemover", "FlextInfraRefactorImportModernizer", "FlextInfraRefactorLazyImportFixer", "FlextInfraRefactorMroRemover",
+    "FlextInfraRefactorOpenEncoding", "FlextInfraRefactorPatternTransformer", "FlextInfraRefactorPydanticModernizer", "FlextInfraRefactorSignaturePropagator",
+    "FlextInfraRefactorSymbolPropagator", "FlextInfraRefactorTypingUnifier", "FlextInfraRefactorTypingUnifierRewriteMixin", "FlextInfraSmellFixer",
+    "publish_semantic_file_plan", "publish_semantic_file_plans", "smells",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -65,8 +48,7 @@ _LAZY_IMPORTS = MappingProxyType(
         MappingProxyType({
             "._canonical_t_import": ("FlextInfraEnsureCanonicalTImportMixin",),
             "._semantic_publication": (
-                "publish_semantic_file_plan",
-                "publish_semantic_file_plans",
+                "publish_semantic_file_plan", "publish_semantic_file_plans",
             ),
             "._typing_rewrite": ("FlextInfraRefactorTypingUnifierRewriteMixin",),
             ".class_reconstructor": ("FlextInfraRefactorClassReconstructor",),

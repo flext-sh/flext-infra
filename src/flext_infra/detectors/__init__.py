@@ -32,24 +32,11 @@ if TYPE_CHECKING:
     from .runtime_alias_detector import FlextInfraRuntimeAliasDetector
     from .silent_failure_detector import FlextInfraSilentFailureDetector
 __all__: tuple[str, ...] = (
-    "FlextInfraClassPlacementDetector",
-    "FlextInfraCompatibilityAliasDetector",
-    "FlextInfraConsumerImportViolationsDetector",
-    "FlextInfraCyclicImportDetector",
-    "FlextInfraDeferredSelfReferenceDetector",
-    "FlextInfraFutureAnnotationsDetector",
-    "FlextInfraImportAliasDetector",
-    "FlextInfraInlineImportDetector",
-    "FlextInfraInternalImportDetector",
-    "FlextInfraLooseObjectDetector",
-    "FlextInfraLooseTestFunctionDetector",
-    "FlextInfraLspDiagnosticsDetector",
-    "FlextInfraManualProtocolDetector",
-    "FlextInfraManualTypingAliasDetector",
-    "FlextInfraNamespaceSourceDetector",
-    "FlextInfraPrivateImportBypassDetector",
-    "FlextInfraRuntimeAliasDetector",
-    "FlextInfraSilentFailureDetector",
+    "FlextInfraClassPlacementDetector", "FlextInfraCompatibilityAliasDetector", "FlextInfraConsumerImportViolationsDetector", "FlextInfraCyclicImportDetector",
+    "FlextInfraDeferredSelfReferenceDetector", "FlextInfraFutureAnnotationsDetector", "FlextInfraImportAliasDetector", "FlextInfraInlineImportDetector",
+    "FlextInfraInternalImportDetector", "FlextInfraLooseObjectDetector", "FlextInfraLooseTestFunctionDetector", "FlextInfraLspDiagnosticsDetector",
+    "FlextInfraManualProtocolDetector", "FlextInfraManualTypingAliasDetector", "FlextInfraNamespaceSourceDetector", "FlextInfraPrivateImportBypassDetector",
+    "FlextInfraRuntimeAliasDetector", "FlextInfraSilentFailureDetector",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

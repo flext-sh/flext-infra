@@ -38,38 +38,17 @@ if TYPE_CHECKING:
     from .namespace_enforcer_phases import FlextInfraNamespaceEnforcerPhasesMixin
     from .project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
     from .project_classifier import FlextInfraProjectClassifier
+    from .signature_propagation import FlextInfraRefactorSignaturePropagation
     from .wrapper_root_namespace import FlextInfraWrapperRootNamespaceRefactor
 __all__: tuple[str, ...] = (
-    "FlextInfraAccessorMigrationOrchestrator",
-    "FlextInfraAccessorMigrationReportMixin",
-    "FlextInfraAccessorMigrationRewriteMixin",
-    "FlextInfraModernizeOrchestrator",
-    "FlextInfraNamespaceEnforcer",
-    "FlextInfraNamespaceEnforcerPhasesMixin",
-    "FlextInfraNamespaceEnforcerProjectMixin",
-    "FlextInfraProjectClassifier",
-    "FlextInfraProjectClassifierDepsMixin",
-    "FlextInfraProjectClassifierFamilyMixin",
-    "FlextInfraRefactorCensus",
-    "FlextInfraRefactorCensusApplyFormattingMixin",
-    "FlextInfraRefactorCensusApplyMixin",
-    "FlextInfraRefactorCensusCollectHelpersMixin",
-    "FlextInfraRefactorCensusCollectMixin",
-    "FlextInfraRefactorCensusFiltersMixin",
-    "FlextInfraRefactorCensusInventoryMixin",
-    "FlextInfraRefactorCensusObjectsMixin",
-    "FlextInfraRefactorCensusProjectMixin",
-    "FlextInfraRefactorCensusRenderMixin",
-    "FlextInfraRefactorCensusRulesAliasMixin",
-    "FlextInfraRefactorCensusRulesDispatchMixin",
-    "FlextInfraRefactorCensusRulesSharedMixin",
-    "FlextInfraRefactorCensusRulesStructMixin",
-    "FlextInfraRefactorCensusSymbolsMixin",
-    "FlextInfraRefactorCensusValidateMixin",
-    "FlextInfraRefactorClassvarConstantAutofix",
-    "FlextInfraRefactorProjectAliasMigrator",
-    "FlextInfraWrapperRootNamespaceRefactor",
-    "FlextInfraWrapperRootNamespaceRewriteMixin",
+    "FlextInfraAccessorMigrationOrchestrator", "FlextInfraAccessorMigrationReportMixin", "FlextInfraAccessorMigrationRewriteMixin", "FlextInfraModernizeOrchestrator",
+    "FlextInfraNamespaceEnforcer", "FlextInfraNamespaceEnforcerPhasesMixin", "FlextInfraNamespaceEnforcerProjectMixin", "FlextInfraProjectClassifier",
+    "FlextInfraProjectClassifierDepsMixin", "FlextInfraProjectClassifierFamilyMixin", "FlextInfraRefactorCensus", "FlextInfraRefactorCensusApplyFormattingMixin",
+    "FlextInfraRefactorCensusApplyMixin", "FlextInfraRefactorCensusCollectHelpersMixin", "FlextInfraRefactorCensusCollectMixin", "FlextInfraRefactorCensusFiltersMixin",
+    "FlextInfraRefactorCensusInventoryMixin", "FlextInfraRefactorCensusObjectsMixin", "FlextInfraRefactorCensusProjectMixin", "FlextInfraRefactorCensusRenderMixin",
+    "FlextInfraRefactorCensusRulesAliasMixin", "FlextInfraRefactorCensusRulesDispatchMixin", "FlextInfraRefactorCensusRulesSharedMixin", "FlextInfraRefactorCensusRulesStructMixin",
+    "FlextInfraRefactorCensusSymbolsMixin", "FlextInfraRefactorCensusValidateMixin", "FlextInfraRefactorClassvarConstantAutofix", "FlextInfraRefactorProjectAliasMigrator",
+    "FlextInfraRefactorSignaturePropagation", "FlextInfraWrapperRootNamespaceRefactor", "FlextInfraWrapperRootNamespaceRewriteMixin",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -112,6 +91,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".namespace_enforcer_phases": ("FlextInfraNamespaceEnforcerPhasesMixin",),
             ".project_alias_migrator": ("FlextInfraRefactorProjectAliasMigrator",),
             ".project_classifier": ("FlextInfraProjectClassifier",),
+            ".signature_propagation": ("FlextInfraRefactorSignaturePropagation",),
             ".wrapper_root_namespace": ("FlextInfraWrapperRootNamespaceRefactor",),
         }),
         alias_groups=MappingProxyType({}),

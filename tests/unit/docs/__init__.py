@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
+
     from .auditor_cli_tests import TestsFlextInfraAuditorCli
     from .auditor_codeblocks_tests import TestsFlextInfraAuditorCodeblocks
     from .auditor_command_contract_tests import TestsFlextInfraAuditorCommandContract
@@ -43,37 +45,18 @@ if TYPE_CHECKING:
     from .validator_tests import TestsFlextInfraDocsValidator
     from .workspace_manifest_tests import TestsFlextInfraWorkspaceManifest
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraAuditor",
-    "TestsFlextInfraAuditorCli",
-    "TestsFlextInfraAuditorCodeblocks",
-    "TestsFlextInfraAuditorCommandContract",
-    "TestsFlextInfraAuditorContract",
-    "TestsFlextInfraAuditorDocstring",
-    "TestsFlextInfraAuditorLinks",
-    "TestsFlextInfraAuditorScope",
-    "TestsFlextInfraAuditorStaleSymbols",
-    "TestsFlextInfraBuilder",
-    "TestsFlextInfraBuilderScope",
-    "TestsFlextInfraDocServer",
-    "TestsFlextInfraDocsFixer",
-    "TestsFlextInfraDocsGenerator",
-    "TestsFlextInfraDocsGeneratorBundle",
-    "TestsFlextInfraDocsGeneratorGuides",
-    "TestsFlextInfraDocsGeneratorInternals",
-    "TestsFlextInfraDocsGeneratorPlan",
-    "TestsFlextInfraDocsMain",
-    "TestsFlextInfraDocsMainCommands",
-    "TestsFlextInfraDocsMainEntry",
-    "TestsFlextInfraDocsRender",
-    "TestsFlextInfraDocsRenderGuidesIndex",
-    "TestsFlextInfraDocsShared",
-    "TestsFlextInfraDocsSharedIter",
-    "TestsFlextInfraDocsSharedWrite",
-    "TestsFlextInfraDocsUpdateTocFrontmatter",
-    "TestsFlextInfraDocsValidator",
-    "TestsFlextInfraDocsValidatorInternals",
-    "TestsFlextInfraFixerInternals",
-    "TestsFlextInfraWorkspaceManifest",
+    "TestsFlextInfraAuditor", "TestsFlextInfraAuditorCli", "TestsFlextInfraAuditorCodeblocks", "TestsFlextInfraAuditorCommandContract",
+    "TestsFlextInfraAuditorContract", "TestsFlextInfraAuditorDocstring", "TestsFlextInfraAuditorLinks", "TestsFlextInfraAuditorScope",
+    "TestsFlextInfraAuditorStaleSymbols", "TestsFlextInfraBuilder", "TestsFlextInfraBuilderScope", "TestsFlextInfraDocServer",
+    "TestsFlextInfraDocsFixer", "TestsFlextInfraDocsGenerator", "TestsFlextInfraDocsGeneratorBundle", "TestsFlextInfraDocsGeneratorGuides",
+    "TestsFlextInfraDocsGeneratorInternals", "TestsFlextInfraDocsGeneratorPlan", "TestsFlextInfraDocsMain", "TestsFlextInfraDocsMainCommands",
+    "TestsFlextInfraDocsMainEntry", "TestsFlextInfraDocsRender", "TestsFlextInfraDocsRenderGuidesIndex", "TestsFlextInfraDocsShared",
+    "TestsFlextInfraDocsSharedIter", "TestsFlextInfraDocsSharedWrite", "TestsFlextInfraDocsUpdateTocFrontmatter", "TestsFlextInfraDocsValidator",
+    "TestsFlextInfraDocsValidatorInternals", "TestsFlextInfraFixerInternals", "TestsFlextInfraWorkspaceManifest", "c",
+    "d", "e", "h", "m",
+    "p", "r", "s", "t",
+    "td", "tf", "tk", "tm",
+    "tv", "u", "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -114,6 +97,10 @@ _LAZY_IMPORTS = MappingProxyType(
             ".validator_internals_tests": ("TestsFlextInfraDocsValidatorInternals",),
             ".validator_tests": ("TestsFlextInfraDocsValidator",),
             ".workspace_manifest_tests": ("TestsFlextInfraWorkspaceManifest",),
+            "flext_tests": (
+                "c", "d", "e", "h", "m", "p", "r", "s", "t", "td", "tf", "tk", "tm",
+                "tv", "u", "x",
+            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,
