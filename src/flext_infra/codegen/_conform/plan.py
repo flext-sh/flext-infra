@@ -13,6 +13,7 @@ from ... import c, config, m, p, t, u
 from ...deps import FlextInfraPyprojectModernizer
 from ...services.codegen import FlextInfraCodegen
 from ...workspace import FlextInfraWorkspaceDetector
+from .scaffold_plan import FlextInfraCodegenConformScaffoldPlan
 from ...workspace.environment_contracts import FlextInfraWorkspaceEnvironmentContracts
 
 
@@ -91,7 +92,7 @@ class _ConformPlanRoles:
         ) -> p.Result[m.Infra.CodegenFilePlan]: ...
 
 
-class FlextInfraCodegenConformPlan(_ConformPlanRoles):
+class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     """Conformance planning across scaffold and existing repositories."""
 
     def plan(
