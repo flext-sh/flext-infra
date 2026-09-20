@@ -11,8 +11,8 @@ from flext_infra import t
 from flext_infra._models._config.artifact import FlextInfraConfigModelsArtifact
 from flext_infra._models._config.contract import FlextInfraConfigModelsContract
 from flext_infra._models._config.static import FlextInfraConfigModelsStatic
-from flext_infra._models._defaults import immutable_empty_mapping
-from flext_infra._models.deps import FlextInfraModelsDepsToolSettings
+from flext_infra._models._defaults import FlextInfraModelsDefaults
+from flext_infra._models.deps import FlextInfraModelsDepsToolConfig
 
 
 class FlextInfraConfigModelsRoot:
@@ -31,7 +31,7 @@ class FlextInfraConfigModelsRoot:
             m.Field(description="Unified project and workspace codegen contract"),
         ]
         tooling: Annotated[
-            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
+            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
             m.Field(description="Validated lint, typecheck, and scaffold policy"),
         ]
         source_scan: Annotated[
@@ -76,14 +76,14 @@ class FlextInfraConfigModelsRoot:
         checkout_submodules_overrides: Annotated[
             Mapping[str, str],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description="Per-distribution checkout submodule override paths",
             ),
         ]
         ci_private_submodules: Annotated[
             Mapping[str, t.JsonMapping],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description="Per-distribution private submodule CI contracts",
             ),
         ]
@@ -102,7 +102,7 @@ class FlextInfraConfigModelsRoot:
         custom_handler_profile_overrides: Annotated[
             Mapping[str, t.JsonMapping],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description="Per-profile custom handler policy overrides",
             ),
         ]
@@ -113,7 +113,7 @@ class FlextInfraConfigModelsRoot:
         project_overrides: Annotated[
             Mapping[str, t.JsonMapping],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description="Per-project layout override deltas",
             ),
         ]

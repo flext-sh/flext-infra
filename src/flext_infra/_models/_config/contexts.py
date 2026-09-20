@@ -9,7 +9,12 @@ from typing import Annotated, ClassVar, Literal
 from flext_cli import m
 
 from ... import t
-from ..._constants import FlextInfraConstantsCodegenProject
+from ..._constants import (
+    FlextInfraConstantsCodegenProject,
+    FlextInfraConstantsWorkspace,
+)
+from .. import FlextInfraModelsDefaults
+from ..deps_tool_config import FlextInfraModelsDepsToolConfig
 from .beads import FlextInfraConfigModelsBeads
 from .contract import FlextInfraConfigModelsContract
 from .make import FlextInfraConfigModelsMake
@@ -213,7 +218,7 @@ class FlextInfraConfigModelsContexts:
         ruff_per_file_ignores: Annotated[
             t.MappingKV[str, t.StrSequence],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=FlextInfraModelsDefaults.immutable_empty_mapping,
                 description=(
                     "Effective Ruff exemptions: fleet policy composed with this "
                     "repository's own ManagedArtifacts overlay"
