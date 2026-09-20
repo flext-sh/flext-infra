@@ -24,7 +24,7 @@
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
   `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport`,
   `FlextInfraCanonicalAliasGate`, `FlextInfraClassPlacementDetector` (+172 more)
-- Alias exports: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
+- Alias exports: `c`, `m`, `p`, `s`, `t`, `u`
 - Public symbol exports: `TEST_SKIP_MARKER`, `CliDispatchService`, `CliRouteBase`,
   `CliRouteService`, `CodegenRoutes`, `FlextInfra`, `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,

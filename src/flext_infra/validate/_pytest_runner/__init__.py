@@ -14,7 +14,10 @@ if TYPE_CHECKING:
     from .execution import FlextInfraPytestRunnerExecution
     from .reports import FlextInfraPytestRunnerReports
 __all__: tuple[str, ...] = (
-    "FlextInfraPytestRunnerBase", "FlextInfraPytestRunnerCommand", "FlextInfraPytestRunnerExecution", "FlextInfraPytestRunnerReports",
+    "FlextInfraPytestRunnerBase",
+    "FlextInfraPytestRunnerCommand",
+    "FlextInfraPytestRunnerExecution",
+    "FlextInfraPytestRunnerReports",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
