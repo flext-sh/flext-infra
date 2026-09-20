@@ -58,25 +58,33 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         surface: str,
     ) -> None:
         """Inject inherited and local aliases into the lazy map."""
-        # What this directory owns is unconditional: a package publishes the
-        # facade letter whose module sits beside its initializer, whether or not
-        # it inherits anything. Deciding that after the inheritance guard below
-        # makes every package that takes the early return publish no letters at
-        # all, and the root then merges a child that claims to export nothing.
-        letter_module = {
-            letter: filename.removesuffix(".py")
-            for filename, letter in c.Infra.NAMESPACE_LAYER_BY_FILE.items()
-            if letter in c.Infra.ALIAS_NAMES
-        }
-        for alias_name, local_stem in letter_module.items():
-            if (pkg_dir / f"{local_stem}.py").is_file():
-                lazy_map[alias_name] = (f"{current_pkg}.{local_stem}", alias_name)
-
         is_test_runtime_alias_surface = c.Infra.DIR_TESTS in {
             current_pkg,
             pkg_dir.name,
             surface,
         }
+        # A facade letter belongs to the package root, and only there. The
+        # letter is inferred from the module filename, so a nested module that
+        # happens to be called models.py or typings.py would otherwise claim it
+        # too: flext-dbt-oracle-wms has services/models.py, and both it and the
+        # real facade root declared 'm', which is the ownership collision that
+        # stops generation for the whole fleet. Restricting the claim to a
+        # project root package, or to the tests runtime surface that mirrors
+        # one, says what the layering already means.
+        letter_module = {
+            letter: filename.removesuffix(".py")
+            for filename, letter in c.Infra.NAMESPACE_LAYER_BY_FILE.items()
+            if letter in c.Infra.ALIAS_NAMES
+        }
+        owns_facade_letters = (
+            u.Infra.matches_project_namespace_package(current_pkg)
+            or is_test_runtime_alias_surface
+        )
+        if owns_facade_letters:
+            for alias_name, local_stem in letter_module.items():
+                if (pkg_dir / f"{local_stem}.py").is_file():
+                    lazy_map[alias_name] = (f"{current_pkg}.{local_stem}", alias_name)
+
         local_parent_packages = self._local_parent_packages(pkg_dir)
         local_import_alias_targets = self._local_import_alias_targets(pkg_dir)
         if (
@@ -161,7 +169,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             owner_module = existing[0] if existing is not None else ""
             if owner_module and owner_module != current_pkg:
                 continue
-            local_stem = letter_module.get(alias_name)
+            local_stem = letter_module.get(alias_name) if owns_facade_letters else None
             if local_stem is not None and (pkg_dir / f"{local_stem}.py").is_file():
                 lazy_map[alias_name] = (f"{current_pkg}.{local_stem}", alias_name)
                 continue
