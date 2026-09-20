@@ -12,7 +12,8 @@ if TYPE_CHECKING:
     from .identity import FlextInfraModelsGitIdentity
     from .worktree_facts import FlextInfraModelsGitWorktreeFacts
 __all__: tuple[str, ...] = (
-    "FlextInfraModelsGitIdentity", "FlextInfraModelsGitWorktreeFacts",
+    "FlextInfraModelsGitIdentity",
+    "FlextInfraModelsGitWorktreeFacts",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

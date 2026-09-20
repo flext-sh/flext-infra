@@ -17,8 +17,13 @@ if TYPE_CHECKING:
     from .inject_comments import FlextInfraInjectCommentsPhase
     from .tool_tables import FlextInfraToolTablesPhase
 __all__: tuple[str, ...] = (
-    "FlextInfraConsolidateGroupsPhase", "FlextInfraEnsurePackagingPhase", "FlextInfraEnsurePyreflyConfigPhase", "FlextInfraEnsurePyrightConfigPhase",
-    "FlextInfraEnsureRuffConfigPhase", "FlextInfraInjectCommentsPhase", "FlextInfraToolTablesPhase",
+    "FlextInfraConsolidateGroupsPhase",
+    "FlextInfraEnsurePackagingPhase",
+    "FlextInfraEnsurePyreflyConfigPhase",
+    "FlextInfraEnsurePyrightConfigPhase",
+    "FlextInfraEnsureRuffConfigPhase",
+    "FlextInfraInjectCommentsPhase",
+    "FlextInfraToolTablesPhase",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

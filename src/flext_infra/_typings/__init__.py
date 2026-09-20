@@ -13,7 +13,9 @@ if TYPE_CHECKING:
     from .base import FlextInfraTypesBase
     from .rope import FlextInfraTypesRope
 __all__: tuple[str, ...] = (
-    "FlextInfraTypesAdapters", "FlextInfraTypesBase", "FlextInfraTypesRope",
+    "FlextInfraTypesAdapters",
+    "FlextInfraTypesBase",
+    "FlextInfraTypesRope",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
