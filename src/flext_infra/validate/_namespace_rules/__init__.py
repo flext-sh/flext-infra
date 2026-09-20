@@ -14,10 +14,7 @@ if TYPE_CHECKING:
     from .imports import FlextInfraNamespaceRulesImports
     from .structure import FlextInfraNamespaceRulesStructure
 __all__: tuple[str, ...] = (
-    "FlextInfraNamespaceRulesBase",
-    "FlextInfraNamespaceRulesContracts",
-    "FlextInfraNamespaceRulesImports",
-    "FlextInfraNamespaceRulesStructure",
+    "FlextInfraNamespaceRulesBase", "FlextInfraNamespaceRulesContracts", "FlextInfraNamespaceRulesImports", "FlextInfraNamespaceRulesStructure",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
