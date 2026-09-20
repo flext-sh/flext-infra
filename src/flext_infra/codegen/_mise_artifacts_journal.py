@@ -3,17 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, p, u
+from flext_infra import c, m, p, t, u
 
 from ._mise_artifacts_files import FlextInfraMiseArtifactsFiles as files
 from ._mise_artifacts_process import FlextInfraMiseArtifactsProcess as process
 from ._mise_artifacts_state import FlextInfraMiseArtifactsState as journal_state
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraMiseArtifactsJournal:
@@ -570,10 +566,14 @@ class FlextInfraMiseArtifactsJournal:
         return r[Path].ok(candidates.pop())
 
     @staticmethod
-    def _recorded_directory_root(
+    def _recorded_directory_roots(
         directory: m.Infra.CodegenJournalDirectory, participants: t.MappingKV[str, Path]
-    ) -> p.Result[Path | None]:
-        """Recover one workspace root candidate or validate an external owner."""
+    ) -> p.Result[t.VariadicTuple[Path]]:
+        """Recover the workspace root candidates or validate an external owner.
+
+        A directory owned by a recorded participant contributes no candidate, so
+        the empty tuple is the typed absence here, never None.
+        """
         relative = Path(directory.path)
         selector = relative.parts[0]
         participant_root = participants.get(selector)
@@ -588,8 +588,8 @@ class FlextInfraMiseArtifactsJournal:
                 directory_state.path == expected for directory_state in states
             )
             if valid:
-                return r[tuple[Path, ...]].ok(())
-            return r[tuple[Path, ...]].fail(
+                return r[t.VariadicTuple[Path]].ok(())
+            return r[t.VariadicTuple[Path]].fail(
                 f"generation directory path is inconsistent: {directory.path}"
             )
         candidates: set[Path] = set()
@@ -598,15 +598,15 @@ class FlextInfraMiseArtifactsJournal:
             for _part in relative.parts:
                 candidate = candidate.parent
             if candidate / relative != recorded.path:
-                return r[tuple[Path, ...]].fail(
+                return r[t.VariadicTuple[Path]].fail(
                     f"generation directory path is inconsistent: {directory.path}"
                 )
             candidates.add(candidate)
         if len(candidates) > 1:
-            return r[tuple[Path, ...]].fail(
+            return r[t.VariadicTuple[Path]].fail(
                 f"generation directory path is inconsistent: {directory.path}"
             )
-        return r[tuple[Path, ...]].ok(tuple(candidates))
+        return r[t.VariadicTuple[Path]].ok(tuple(candidates))
 
     @staticmethod
     def _relocation_roots(

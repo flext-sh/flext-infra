@@ -8,8 +8,6 @@ from collections.abc import MutableMapping
 from io import StringIO
 from pathlib import Path
 
-from flext_cli import u
-
 from flext_infra import c, m, t
 
 from .discovery import FlextInfraUtilitiesDiscovery
@@ -47,6 +45,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         cls, *, py_files: t.SequenceOf[Path], project_package: str
     ) -> None:
         """Rewrite import violations."""
+        from flext_infra import u
+
         if not py_files:
             return
         with FlextInfraUtilitiesRopeCore.open_project(
@@ -816,6 +816,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         binding and raises F811. Keep only the names the target does not already
         own; return ``""`` when nothing remains so the whole line is dropped.
         """
+        from flext_infra import u
+
         prefix, separator, names_part = import_line.partition(" import ")
         if not separator:
             return import_line
@@ -824,9 +826,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             for name, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
                 names_part
             )
-            # Why: u here is flext_cli's plain facade (no nested Infra); call
-            # the owning TransformerHeader class directly, matching the
-            # sibling Rope* calls.
             if not u.Infra.alias_locally_bound(target_source, bound)
         ]
         if not kept:
@@ -838,6 +837,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         *, target_source: str, blocks: t.StrSequence
     ) -> t.StrSequence:
         """Collect missing runtime alias imports."""
+        from flext_infra import u
+
         moved_source = "\n".join(blocks)
         moved_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(
             moved_source
