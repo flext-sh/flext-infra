@@ -24,13 +24,13 @@ class _ConformPlanRoles:
         repository_root: Path
         initial_workspace: m.Infra.WorkspaceSpec | None
 
-        def _surface_contract(
+        def surface_contract(
             self, surface: c.Infra.CodegenConformSurface
         ) -> m.Infra.CodegenConformSurfaceContract: ...
         def retired_projection_plans(
             self, root: Path, profile: c.Infra.MakeProfile
         ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]: ...
-        def _uv_environment_plan(
+        def uv_environment_plan(
             self,
             *,
             root: Path,
@@ -140,7 +140,7 @@ class FlextInfraCodegenConformPlan(
         if selected_result.failure:
             return r[m.Infra.CodegenPlan].from_failure(selected_result)
         selected = selected_result.value
-        contract = self._surface_contract(c.Infra.CodegenConformSurface(request.what))
+        contract = self.surface_contract(c.Infra.CodegenConformSurface(request.what))
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
         total_repositories = len(selected)
@@ -267,7 +267,7 @@ class FlextInfraCodegenConformPlan(
                     item for item in retired.value if item.path not in governed_paths
                 )
             environments.append(
-                self._uv_environment_plan(
+                self.uv_environment_plan(
                     root=repository_root,
                     target=target,
                     workspace=local_workspace,

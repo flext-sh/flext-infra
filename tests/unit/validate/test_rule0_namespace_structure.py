@@ -124,9 +124,7 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
         result = self._validate_project(root)
 
         tm.that(
-            any(
-                violation.startswith("[NS-000") for violation in result.value.violations
-            ),
+            any(violation.startswith("[NS-000") for violation in result.violations),
             eq=False,
         )
 
