@@ -102,6 +102,13 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
         if not init_path.is_file():
             return frozenset()
         source = init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        # A generated initializer propagates, it never declares (ADR-018
+        # p.2): what it lists is this run's own output, so it can neither
+        # own an alias nor keep a stale one alive. Only a hand-written
+        # initializer is a declaration.
+        if source.startswith(c.Infra.AUTOGEN_HEADERS):
+            self._source_exports_cache[package_name] = frozenset()
+            return frozenset()
         exports = frozenset(u.Infra.public_export_names_source(source))
         self._source_exports_cache[package_name] = exports
         return exports

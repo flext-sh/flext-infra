@@ -464,11 +464,17 @@ class TestsFlextInfraLazyInitHelpers:
             public_exports.index(alias) for alias in ruff_ordered_aliases
         )
         tm.that(alias_positions, eq=tuple(sorted(alias_positions)))
+        # ADR-018 p.1: the owner of a letter is the module that DECLARES it in
+        # its own ``__all__``. This facade extends the parent's ``c`` but
+        # declares only its class, so every letter here is inherited from the
+        # nearest declaring facade — ``c`` included. Extending a letter is not
+        # declaring it; the B1 fix writes the declaration when the module means
+        # to own it, and until then the generator propagates, never infers.
         tm.that(
             init_content.splitlines(),
-            has="    from flext_cli import d, e, h, m, p, r, s, t, u, x",
+            has="    from flext_cli import c, d, e, h, m, p, r, s, t, u, x",
         )
-        tm.that(init_content, has="FlextMeltanoConstants as c")
+        tm.that(init_content, lacks="FlextMeltanoConstants as c")
         tm.that(exports_content, has='"flext_cli": (')
         tm.that(exports_content, has='".constants": (')
 
