@@ -9,7 +9,7 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import u
 
-from flext_core import m
+from flext_core import m, mp
 from flext_infra import c, t
 
 from .duplication import FlextInfraModelsDuplication
@@ -17,6 +17,46 @@ from .duplication import FlextInfraModelsDuplication
 
 class FlextInfraModelsGates(FlextInfraModelsDuplication):
     """Quality gate execution domain models."""
+
+    class SccFile(m.FlexibleModel):
+        """Required per-file SCC fields; unrelated scanner metrics are ignored."""
+
+        location: Annotated[
+            str,
+            mp.Field(
+                alias="Location",
+                min_length=1,
+                strict=True,
+                description="Scanned file path",
+            ),
+        ]
+        code: Annotated[
+            int,
+            mp.Field(alias="Code", ge=0, strict=True, description="Logical code lines"),
+        ]
+
+    class SccLanguage(m.FlexibleModel):
+        """Required language group from SCC's JSON by-file output."""
+
+        name: Annotated[
+            str,
+            mp.Field(
+                alias="Name",
+                min_length=1,
+                strict=True,
+                description="Scanner language name",
+            ),
+        ]
+        files: Annotated[
+            t.VariadicTuple[SccFile],
+            mp.Field(
+                alias="Files",
+                description="Every scanned file in this language",
+            ),
+        ]
+
+    class SccReport(mp.RootModel[t.VariadicTuple[SccLanguage]]):
+        """Native SCC groups, including an empty scan; malformed JSON fails."""
 
     class GateContext(m.ContractModel):
         """Quality gate execution context and configuration."""

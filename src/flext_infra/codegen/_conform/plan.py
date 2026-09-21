@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Literal, override
+from typing import override
 
 from flext_core import r
 
 from ... import c, config, m, p, t, u
 from ...workspace import FlextInfraWorkspaceDetector
-from .file_plans import FlextInfraCodegenConformFilePlans
 from .scaffold_plan import FlextInfraCodegenConformScaffoldPlan
 
 
@@ -50,6 +49,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 project=workspace.project,
                 canonical_project_name=current_repository.distribution,
                 ci_enabled=True,
+                publishes_release=current_repository.publishes_release,
                 gascity_enabled=workspace.gascity_enabled,
                 external_dependency_paths=workspace.external_dependency_paths,
             )
@@ -211,209 +211,6 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 files=tuple(files),
             )
         )
-
-    @override
-    def _plan_existing_templates(
-        self,
-        *,
-        root: Path,
-        repository: m.Infra.RepositoryRef,
-        target: m.Infra.RepositoryConformTarget,
-        workspace: m.Infra.WorkspaceSpec,
-        codegen: m.Infra.CodegenConfigSpec,
-        tooling_runtime: m.Infra.ToolingRuntimeContext,
-        contract: m.Infra.CodegenConformSurfaceContract,
-        managed_artifacts: m.Infra.ProjectManagedArtifactsSnapshot,
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Render configured overwrite-owned templates for an existing tree."""
-        u.Cli.info(f"  stage=templates repository={repository.name}")
-        profile = target.make_profile
-        templates_root = u.Infra.codegen_templates_root(codegen)
-        planned: list[m.Infra.CodegenFilePlan] = []
-        for managed in codegen.managed_files:
-            if not target.ci_enabled and managed.path.parts[:2] == (
-                ".github",
-                "workflows",
-            ):
-                continue
-            if (
-                contract.destinations is not None
-                and managed.path.as_posix() not in contract.destinations
-            ):
-                continue
-            pyproject_skipped = managed.path == Path(c.Infra.PYPROJECT_FILENAME) and (
-                not contract.pyproject
-                or (
-                    workspace.project is None
-                    and profile is c.Infra.MakeProfile.WORKSPACE
-                )
-            )
-            if managed.path == Path(c.Infra.CUSTOM_MAKE_FILENAME) or pyproject_skipped:
-                continue
-            entries = tuple(
-                entry
-                for entry in codegen.templates.entries
-                if entry.destination == managed.path.as_posix()
-                and entry.delegate == "render"
-            )
-            if not entries:
-                continue
-            if len(entries) != 1:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    f"managed file requires exactly one render template: {managed.path}"
-                )
-            entry = entries[0]
-            relative = Path(entry.destination)
-            if relative.is_absolute() or ".." in relative.parts:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    f"managed destination escapes repository root: {entry.destination}"
-                )
-            path = (root / relative).resolve()
-            # Why (flext-l2296): the ledger metadata is minted by Beads at
-            # first use, so a fresh clone legitimately lacks it. Planning an
-            # absent runtime artifact made the gen check gate fail on every
-            # clean checkout. When the file exists, the identity-preserving
-            # refresh below still applies.
-            if (
-                entry.destination == c.Infra.BEADS_METADATA_RELPATH
-                and not path.is_file()
-            ):
-                continue
-            try:
-                path.relative_to(root.resolve())
-            except ValueError:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    f"managed destination escapes repository root: {entry.destination}"
-                )
-            if profile not in entry.profiles or (
-                entry.requires_release_protocol and not target.publishes_release
-            ):
-                # Profile- and capability-excluded workflows must not keep firing.
-                # Conform, rather than a user, retires the generated orphan.
-                if (
-                    managed.path.parts[:2] == (".github", "workflows")
-                    and path.is_file()
-                ):
-                    # Keep the typed read result distinct from its string payload.
-                    orphan_read = u.Cli.files_read_text(path)
-                    if orphan_read.failure:
-                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                            orphan_read
-                        )
-                    absent_plan = self._absent_file_plan(root, path)
-                    if absent_plan.failure:
-                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                            absent_plan
-                        )
-                    planned.append(
-                        absent_plan.value.model_copy(
-                            update={"owner": managed.owner, "policy": managed.policy}
-                        )
-                    )
-                continue
-            rendered = self._rendered_artifact_source(
-                templates_root=templates_root,
-                template_relpath=entry.source,
-                failure_prefix="",
-                dist=repository.distribution,
-                repository=repository,
-                repository_root=root,
-                target=target,
-                workspace=workspace,
-                codegen=codegen,
-                destination=entry.destination,
-                tooling_runtime=tooling_runtime,
-                project_context=None,
-                managed_artifacts=managed_artifacts.resolution,
-            )
-            if rendered.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(rendered)
-            rendered_content = rendered.value
-            composed = self.compose_project_artifact(
-                root,
-                entry.destination,
-                rendered_content,
-                managed_artifacts=managed_artifacts,
-                workspace=workspace,
-                codegen=codegen,
-                repository=repository,
-                target=target,
-            )
-            if composed.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(composed)
-            rendered_content = composed.value.rendered
-            conflict_marker = u.Infra.first_merge_conflict_marker(rendered_content)
-            if conflict_marker is not None:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    "rendered template contains a merge conflict marker: "
-                    f"source={entry.source}; target={path}; root={root}; "
-                    f"marker={conflict_marker}"
-                )
-            file_plan = FlextInfraCodegenConformFilePlans.file_plan(
-                root,
-                entry.destination,
-                rendered_content,
-                mode=managed.mode,
-                source_states=composed.value.source_states,
-            )
-            if file_plan.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(file_plan)
-            planned.append(file_plan.value)
-        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
-
-    @override
-    def _plan_existing_custom(
-        self,
-        root: Path,
-        config: m.Infra.CodegenConfigSpec,
-        *,
-        profile: str | None = None,
-    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Validate the handwritten Make surface against its profile contract."""
-        policy = config.make.custom_handler_policies.get(
-            profile or "", config.make.custom_handler_policy
-        )
-        path = root / policy.filename
-        if path.exists() and not path.is_file():
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                f"custom Make destination is not a regular file: {path}"
-            )
-        plans: list[m.Infra.CodegenFilePlan] = []
-        if path.is_file():
-            read = u.Cli.files_read_text(path)
-            if read.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(read)
-            validation = self.validate_custom_make(read.value, policy)
-            if validation.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(validation)
-            planned = FlextInfraCodegenConformFilePlans.file_plan(
-                root, policy.filename, read.value
-            )
-            if planned.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(planned)
-            plans.append(planned.value)
-        layout = u.Infra.layout(root)
-        if layout is not None and layout.class_stem:
-            families: tuple[Literal["u", "p"], ...] = ("u", "p")
-            for family in families:
-                rendered = u.Infra.render_utility_facade(
-                    layout.package_dir, family=family
-                )
-                if rendered is None:
-                    continue
-                relative = (
-                    layout.package_dir
-                    / (c.Infra.FAMILY_PUBLIC_MODULES[family] + c.Infra.EXT_PYTHON)
-                ).relative_to(root)
-                utility_plan = FlextInfraCodegenConformFilePlans.file_plan(
-                    root, relative.as_posix(), rendered
-                )
-                if utility_plan.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
-                        utility_plan
-                    )
-                plans.append(utility_plan.value)
-        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(plans))
 
     @staticmethod
     def _select_repositories(
