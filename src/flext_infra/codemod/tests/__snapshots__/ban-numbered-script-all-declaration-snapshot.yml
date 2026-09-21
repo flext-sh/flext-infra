@@ -1,0 +1,35 @@
+id: ban-numbered-script-all-declaration
+snapshots:
+  __all__ = ["FlextWebExamples", "examples_flext_web"]:
+    fixed: ''
+    labels:
+    - source: __all__ = ["FlextWebExamples", "examples_flext_web"]
+      style: primary
+      start: 0
+      end: 52
+    - source: __all__ = ["FlextWebExamples", "examples_flext_web"]
+      style: secondary
+      start: 0
+      end: 52
+  '__all__: list[str] = ["FlextWebExamples", "examples_flext_web"]':
+    fixed: ''
+    labels:
+    - source: '__all__: list[str] = ["FlextWebExamples", "examples_flext_web"]'
+      style: primary
+      start: 0
+      end: 63
+    - source: '__all__: list[str] = ["FlextWebExamples", "examples_flext_web"]'
+      style: secondary
+      start: 0
+      end: 63
+  '__all__: tuple[str, ...] = ("FlextWebExamples",)':
+    fixed: ''
+    labels:
+    - source: '__all__: tuple[str, ...] = ("FlextWebExamples",)'
+      style: primary
+      start: 0
+      end: 48
+    - source: '__all__: tuple[str, ...] = ("FlextWebExamples",)'
+      style: secondary
+      start: 0
+      end: 48
