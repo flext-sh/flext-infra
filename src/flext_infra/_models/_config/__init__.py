@@ -25,21 +25,10 @@ if TYPE_CHECKING:
     from .templates import FlextInfraConfigModelsTemplates
     from .workspace import FlextInfraConfigModelsWorkspace
 __all__: tuple[str, ...] = (
-    "FlextInfraConfigModels",
-    "FlextInfraConfigModelsArtifact",
-    "FlextInfraConfigModelsBeads",
-    "FlextInfraConfigModelsContexts",
-    "FlextInfraConfigModelsContract",
-    "FlextInfraConfigModelsInfra",
-    "FlextInfraConfigModelsMake",
-    "FlextInfraConfigModelsProvider",
-    "FlextInfraConfigModelsRelease",
-    "FlextInfraConfigModelsRender",
-    "FlextInfraConfigModelsRoot",
-    "FlextInfraConfigModelsScaffold",
-    "FlextInfraConfigModelsStatic",
-    "FlextInfraConfigModelsTemplates",
-    "FlextInfraConfigModelsWorkspace",
+    "FlextInfraConfigModels", "FlextInfraConfigModelsArtifact", "FlextInfraConfigModelsBeads", "FlextInfraConfigModelsContexts",
+    "FlextInfraConfigModelsContract", "FlextInfraConfigModelsInfra", "FlextInfraConfigModelsMake", "FlextInfraConfigModelsProvider",
+    "FlextInfraConfigModelsRelease", "FlextInfraConfigModelsRender", "FlextInfraConfigModelsRoot", "FlextInfraConfigModelsScaffold",
+    "FlextInfraConfigModelsStatic", "FlextInfraConfigModelsTemplates", "FlextInfraConfigModelsWorkspace",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

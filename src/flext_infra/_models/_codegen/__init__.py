@@ -17,13 +17,8 @@ if TYPE_CHECKING:
     from .scaffold import FlextInfraModelsCodegenScaffoldModels
     from .transaction import FlextInfraModelsCodegenTransactionModels
 __all__: tuple[str, ...] = (
-    "FlextInfraCodegen",
-    "FlextInfraModelsCodegenFixModels",
-    "FlextInfraModelsCodegenJournalModels",
-    "FlextInfraModelsCodegenLazyInitModels",
-    "FlextInfraModelsCodegenPipelineModels",
-    "FlextInfraModelsCodegenScaffoldModels",
-    "FlextInfraModelsCodegenTransactionModels",
+    "FlextInfraCodegen", "FlextInfraModelsCodegenFixModels", "FlextInfraModelsCodegenJournalModels", "FlextInfraModelsCodegenLazyInitModels",
+    "FlextInfraModelsCodegenPipelineModels", "FlextInfraModelsCodegenScaffoldModels", "FlextInfraModelsCodegenTransactionModels",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
