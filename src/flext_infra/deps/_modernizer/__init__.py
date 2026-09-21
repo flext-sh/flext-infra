@@ -14,10 +14,7 @@ if TYPE_CHECKING:
     from .run import FlextInfraPyprojectModernizerRun
     from .tooling import FlextInfraPyprojectModernizerTooling
 __all__: tuple[str, ...] = (
-    "FlextInfraPyprojectModernizerBase",
-    "FlextInfraPyprojectModernizerDocument",
-    "FlextInfraPyprojectModernizerRun",
-    "FlextInfraPyprojectModernizerTooling",
+    "FlextInfraPyprojectModernizerBase", "FlextInfraPyprojectModernizerDocument", "FlextInfraPyprojectModernizerRun", "FlextInfraPyprojectModernizerTooling",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

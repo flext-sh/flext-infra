@@ -16,9 +16,6 @@ class FlextInfraConstantsCodegenLazy:
     MAX_LINE_LENGTH: Final[int] = 88
     "Maximum line length for generated import lines."
     MAX_ALIAS_LENGTH: Final[int] = 2
-    # Above this many names, a from-import renders one name per line. Large
-    # generated facades otherwise push past the LOC cap purely on import shape.
-    MAX_INLINE_IMPORT_NAMES: Final[int] = 4
     "Maximum length of a public facade alias."
     AUTOGEN_HEADER: Final[str] = "# AUTO-GENERATED FILE — Regenerate with: make gen"
     "Header prepended to every auto-generated ``__init__.py`` file."

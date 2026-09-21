@@ -53,16 +53,12 @@ if TYPE_CHECKING:
     from .test_cli_repository_root_contract import (
         TestsFlextInfraCliRepositoryRootContract,
     )
-    from .test_config_local_overrides import TestsFlextInfraConfigLocalOverrides
     from .test_cprofile_entry import TestsFlextInfraCprofileEntry
     from .test_custom_handler_policy_is_profile_aware import (
         TestsFlextInfraCustomHandlerPolicyIsProfileAware,
     )
     from .test_custom_make_surface_is_derived import (
         TestsFlextInfraCustomMakeSurfaceIsDerived,
-    )
-    from .test_custom_make_surface_is_single import (
-        TestsFlextInfraCustomMakeSurfaceIsSingle,
     )
     from .test_custom_surface_never_shadows_public_verbs import (
         TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs,
@@ -72,35 +68,20 @@ if TYPE_CHECKING:
     from .test_gitignore_is_generated_from_ssot import (
         TestsFlextInfraGitignoreIsGeneratedFromSsot,
     )
-    from .test_infra_constants_core import TestsFlextInfraInfraConstantsCore
-    from .test_infra_constants_extra import TestsFlextInfraInfraConstantsExtra
     from .test_infra_git_identity_submodules import TestsFlextInfraGitIdentitySubmodules
-    from .test_infra_main import TestsFlextInfraInfraMain
     from .test_infra_maintenance_cli import TestsFlextInfraInfraMaintenanceCli
     from .test_infra_maintenance_init import TestsFlextInfraInfraMaintenanceInit
     from .test_infra_maintenance_main import TestsFlextInfraInfraMaintenanceMain
     from .test_infra_maintenance_python_version import (
         TestsFlextInfraInfraMaintenancePythonVersion,
     )
-    from .test_infra_paths import TestsFlextInfraInfraPaths
-    from .test_infra_patterns_core import TestsFlextInfraInfraPatternsCore
-    from .test_infra_patterns_extra import TestsFlextInfraInfraPatternsExtra
-    from .test_infra_protocols import TestsFlextInfraInfraProtocols
     from .test_infra_public_api import TestsFlextInfraPublicApi
     from .test_infra_refactor_rope_migrations import (
         TestsFlextInfraInfraRefactorRopeMigrations,
     )
-    from .test_infra_reporting_core import TestsFlextInfraInfraReportingCore
-    from .test_infra_reporting_extra import TestsFlextInfraInfraReportingExtra
-    from .test_infra_root_export_contract import TestsFlextInfraRootExportContract
-    from .test_infra_rope_imports import TestsFlextInfraRopeImports
     from .test_infra_rope_service import TestsFlextInfraInfraRopeService
-    from .test_infra_selection import TestsFlextInfraInfraSelection
-    from .test_infra_typings import TestsFlextInfraInfraTypings
-    from .test_infra_utilities import TestsFlextInfraInfraUtilities
     from .test_infra_version_core import TestsFlextInfraInfraVersionCore
     from .test_infra_version_extra import TestsFlextInfraInfraVersionExtra
-    from .test_infra_versioning import TestsFlextInfraInfraVersioning
     from .test_lockfile_policy_projection import TestsFlextInfraLockfilePolicyProjection
     from .test_make_parse_is_side_effect_free import (
         TestsFlextInfraMakeParseIsSideEffectFree,
@@ -111,105 +92,29 @@ if TYPE_CHECKING:
     from .test_pyproject_conform_topology_sources import (
         TestsFlextInfraPyprojectConformTopologySources,
     )
-    from .test_python_selector_render import TestsFlextInfraPythonSelectorRender
     from .test_version_diag import TestsFlextInfraVersionDiag
     from .test_version_diag2 import TestsFlextInfraVersionDiagExtra
     from .workspace_factory import TestsFlextInfraWorkspaceFactory
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraCheckReportContract",
-    "TestsFlextInfraCliRepositoryRootContract",
-    "TestsFlextInfraConfigLocalOverrides",
-    "TestsFlextInfraCprofileEntry",
-    "TestsFlextInfraCustomHandlerPolicyIsProfileAware",
-    "TestsFlextInfraCustomMakeSurfaceIsDerived",
-    "TestsFlextInfraCustomMakeSurfaceIsSingle",
-    "TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs",
-    "TestsFlextInfraGitFixtureIsolation",
-    "TestsFlextInfraGitIdentitySubmodules",
-    "TestsFlextInfraGitignoreIsGeneratedFromSsot",
-    "TestsFlextInfraInfraConstantsCore",
-    "TestsFlextInfraInfraConstantsExtra",
-    "TestsFlextInfraInfraMain",
-    "TestsFlextInfraInfraMaintenanceCli",
-    "TestsFlextInfraInfraMaintenanceInit",
-    "TestsFlextInfraInfraMaintenanceMain",
-    "TestsFlextInfraInfraMaintenancePythonVersion",
-    "TestsFlextInfraInfraPaths",
-    "TestsFlextInfraInfraPatternsCore",
-    "TestsFlextInfraInfraPatternsExtra",
-    "TestsFlextInfraInfraProtocols",
-    "TestsFlextInfraInfraRefactorRopeMigrations",
-    "TestsFlextInfraInfraReportingCore",
-    "TestsFlextInfraInfraReportingExtra",
-    "TestsFlextInfraInfraRopeService",
-    "TestsFlextInfraInfraSelection",
-    "TestsFlextInfraInfraTypings",
-    "TestsFlextInfraInfraUtilities",
-    "TestsFlextInfraInfraVersionCore",
-    "TestsFlextInfraInfraVersionExtra",
-    "TestsFlextInfraInfraVersioning",
-    "TestsFlextInfraLockfilePolicyProjection",
-    "TestsFlextInfraMakeParseIsSideEffectFree",
-    "TestsFlextInfraPublicApi",
-    "TestsFlextInfraPyprojectConformPreservesLintScope",
-    "TestsFlextInfraPyprojectConformTopologySources",
-    "TestsFlextInfraPythonSelectorRender",
-    "TestsFlextInfraRootExportContract",
-    "TestsFlextInfraRopeImports",
-    "TestsFlextInfraServiceBaseAlias",
-    "TestsFlextInfraVersionDiag",
-    "TestsFlextInfraVersionDiagExtra",
-    "TestsFlextInfraWorkspaceFactory",
-    "_utilities",
-    "c",
-    "cached_runner_project",
-    "check",
-    "codegen",
-    "codemod",
-    "container",
-    "d",
-    "deps",
-    "deptry_report_payload",
-    "detectors",
-    "discovery",
-    "docs",
-    "e",
-    "gates",
-    "github",
-    "h",
-    "io",
-    "m",
-    "maintenance",
-    "models_resource",
-    "modernizer_workspace",
-    "modernizer_workspace_with_projects",
-    "p",
-    "policy_violation_project",
-    "promoted",
-    "r",
-    "real_docs_project",
-    "real_git_repo",
-    "real_makefile_project",
-    "real_python_package",
-    "real_toml_project",
-    "real_workspace",
-    "refactor",
-    "release",
-    "rope_workspace",
-    "s",
-    "services_resource",
-    "t",
-    "td",
-    "tf",
-    "tk",
-    "tm",
-    "tool_config_document",
-    "transformers",
-    "tv",
-    "u",
-    "validate",
-    "workspace",
-    "x",
+    "TestsFlextInfraCheckReportContract", "TestsFlextInfraCliRepositoryRootContract", "TestsFlextInfraCprofileEntry", "TestsFlextInfraCustomHandlerPolicyIsProfileAware",
+    "TestsFlextInfraCustomMakeSurfaceIsDerived", "TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs", "TestsFlextInfraGitFixtureIsolation", "TestsFlextInfraGitIdentitySubmodules",
+    "TestsFlextInfraGitignoreIsGeneratedFromSsot", "TestsFlextInfraInfraMaintenanceCli", "TestsFlextInfraInfraMaintenanceInit", "TestsFlextInfraInfraMaintenanceMain",
+    "TestsFlextInfraInfraMaintenancePythonVersion", "TestsFlextInfraInfraRefactorRopeMigrations", "TestsFlextInfraInfraRopeService", "TestsFlextInfraInfraVersionCore",
+    "TestsFlextInfraInfraVersionExtra", "TestsFlextInfraLockfilePolicyProjection", "TestsFlextInfraMakeParseIsSideEffectFree", "TestsFlextInfraPublicApi",
+    "TestsFlextInfraPyprojectConformPreservesLintScope", "TestsFlextInfraPyprojectConformTopologySources", "TestsFlextInfraServiceBaseAlias", "TestsFlextInfraVersionDiag",
+    "TestsFlextInfraVersionDiagExtra", "TestsFlextInfraWorkspaceFactory", "_utilities", "c",
+    "cached_runner_project", "check", "codegen", "codemod",
+    "container", "d", "deps", "deptry_report_payload",
+    "detectors", "discovery", "docs", "e",
+    "gates", "github", "h", "io",
+    "m", "maintenance", "models_resource", "modernizer_workspace",
+    "modernizer_workspace_with_projects", "p", "policy_violation_project", "promoted",
+    "r", "real_docs_project", "real_git_repo", "real_makefile_project",
+    "real_python_package", "real_toml_project", "real_workspace", "refactor",
+    "release", "rope_workspace", "s", "services_resource",
+    "t", "td", "tf", "tk",
+    "tm", "tool_config_document", "transformers", "tv",
+    "u", "validate", "workspace", "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -225,19 +130,11 @@ _LAZY_IMPORTS = MappingProxyType(
             ".discovery": ("discovery",),
             ".docs": ("docs",),
             ".fixtures": (
-                "cached_runner_project",
-                "deptry_report_payload",
-                "models_resource",
-                "modernizer_workspace",
-                "modernizer_workspace_with_projects",
-                "policy_violation_project",
-                "real_docs_project",
-                "real_makefile_project",
-                "real_python_package",
-                "real_toml_project",
-                "real_workspace",
-                "rope_workspace",
-                "services_resource",
+                "cached_runner_project", "deptry_report_payload", "models_resource",
+                "modernizer_workspace", "modernizer_workspace_with_projects",
+                "policy_violation_project", "real_docs_project",
+                "real_makefile_project", "real_python_package", "real_toml_project",
+                "real_workspace", "rope_workspace", "services_resource",
                 "tool_config_document",
             ),
             ".fixtures_git": ("real_git_repo",),
@@ -252,16 +149,12 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_cli_repository_root_contract": (
                 "TestsFlextInfraCliRepositoryRootContract",
             ),
-            ".test_config_local_overrides": ("TestsFlextInfraConfigLocalOverrides",),
             ".test_cprofile_entry": ("TestsFlextInfraCprofileEntry",),
             ".test_custom_handler_policy_is_profile_aware": (
                 "TestsFlextInfraCustomHandlerPolicyIsProfileAware",
             ),
             ".test_custom_make_surface_is_derived": (
                 "TestsFlextInfraCustomMakeSurfaceIsDerived",
-            ),
-            ".test_custom_make_surface_is_single": (
-                "TestsFlextInfraCustomMakeSurfaceIsSingle",
             ),
             ".test_custom_surface_never_shadows_public_verbs": (
                 "TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs",
@@ -271,37 +164,22 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_gitignore_is_generated_from_ssot": (
                 "TestsFlextInfraGitignoreIsGeneratedFromSsot",
             ),
-            ".test_infra_constants_core": ("TestsFlextInfraInfraConstantsCore",),
-            ".test_infra_constants_extra": ("TestsFlextInfraInfraConstantsExtra",),
             ".test_infra_git_identity_submodules": (
                 "TestsFlextInfraGitIdentitySubmodules",
             ),
-            ".test_infra_main": ("TestsFlextInfraInfraMain",),
             ".test_infra_maintenance_cli": ("TestsFlextInfraInfraMaintenanceCli",),
             ".test_infra_maintenance_init": ("TestsFlextInfraInfraMaintenanceInit",),
             ".test_infra_maintenance_main": ("TestsFlextInfraInfraMaintenanceMain",),
             ".test_infra_maintenance_python_version": (
                 "TestsFlextInfraInfraMaintenancePythonVersion",
             ),
-            ".test_infra_paths": ("TestsFlextInfraInfraPaths",),
-            ".test_infra_patterns_core": ("TestsFlextInfraInfraPatternsCore",),
-            ".test_infra_patterns_extra": ("TestsFlextInfraInfraPatternsExtra",),
-            ".test_infra_protocols": ("TestsFlextInfraInfraProtocols",),
             ".test_infra_public_api": ("TestsFlextInfraPublicApi",),
             ".test_infra_refactor_rope_migrations": (
                 "TestsFlextInfraInfraRefactorRopeMigrations",
             ),
-            ".test_infra_reporting_core": ("TestsFlextInfraInfraReportingCore",),
-            ".test_infra_reporting_extra": ("TestsFlextInfraInfraReportingExtra",),
-            ".test_infra_root_export_contract": ("TestsFlextInfraRootExportContract",),
-            ".test_infra_rope_imports": ("TestsFlextInfraRopeImports",),
             ".test_infra_rope_service": ("TestsFlextInfraInfraRopeService",),
-            ".test_infra_selection": ("TestsFlextInfraInfraSelection",),
-            ".test_infra_typings": ("TestsFlextInfraInfraTypings",),
-            ".test_infra_utilities": ("TestsFlextInfraInfraUtilities",),
             ".test_infra_version_core": ("TestsFlextInfraInfraVersionCore",),
             ".test_infra_version_extra": ("TestsFlextInfraInfraVersionExtra",),
-            ".test_infra_versioning": ("TestsFlextInfraInfraVersioning",),
             ".test_lockfile_policy_projection": (
                 "TestsFlextInfraLockfilePolicyProjection",
             ),
@@ -314,7 +192,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_pyproject_conform_topology_sources": (
                 "TestsFlextInfraPyprojectConformTopologySources",
             ),
-            ".test_python_selector_render": ("TestsFlextInfraPythonSelectorRender",),
             ".test_version_diag": ("TestsFlextInfraVersionDiag",),
             ".test_version_diag2": ("TestsFlextInfraVersionDiagExtra",),
             ".transformers": ("transformers",),
@@ -322,22 +199,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".workspace": ("workspace",),
             ".workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
             "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
+                "c", "d", "e", "h", "m", "p", "r", "s", "t", "td", "tf", "tk", "tm",
+                "tv", "u", "x",
             ),
         }),
         alias_groups=MappingProxyType({}),

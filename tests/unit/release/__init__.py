@@ -13,36 +13,15 @@ if TYPE_CHECKING:
 
     from .artifact_boundary_tests import TestsFlextInfraReleaseArchiveBoundary
     from .dependency_order_tests import TestsFlextInfraReleaseDependencyOrder
-    from .main_tests import TestsFlextInfraReleaseCli
-    from .orchestrator_helpers_tests import TestsFlextInfraReleaseHelpers
     from .orchestrator_publish_tests import TestsFlextInfraReleasePublish
     from .policy_fixture_root_tests import TestsFlextInfraReleasePolicyOwner
     from .protocol_tests import TestsFlextInfraReleaseProtocol
-    from .test_release_dag import TestsFlextInfraReleaseDag
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraReleaseArchiveBoundary",
-    "TestsFlextInfraReleaseCli",
-    "TestsFlextInfraReleaseDag",
-    "TestsFlextInfraReleaseDependencyOrder",
-    "TestsFlextInfraReleaseHelpers",
-    "TestsFlextInfraReleasePolicyOwner",
-    "TestsFlextInfraReleaseProtocol",
-    "TestsFlextInfraReleasePublish",
-    "c",
-    "d",
-    "e",
-    "h",
-    "m",
-    "p",
-    "r",
-    "s",
-    "t",
-    "td",
-    "tf",
-    "tk",
-    "tm",
-    "tv",
-    "u",
+    "TestsFlextInfraReleaseArchiveBoundary", "TestsFlextInfraReleaseDependencyOrder", "TestsFlextInfraReleasePolicyOwner", "TestsFlextInfraReleaseProtocol",
+    "TestsFlextInfraReleasePublish", "c", "d", "e",
+    "h", "m", "p", "r",
+    "s", "t", "td", "tf",
+    "tk", "tm", "tv", "u",
     "x",
 )
 
@@ -51,29 +30,12 @@ _LAZY_IMPORTS = MappingProxyType(
         MappingProxyType({
             ".artifact_boundary_tests": ("TestsFlextInfraReleaseArchiveBoundary",),
             ".dependency_order_tests": ("TestsFlextInfraReleaseDependencyOrder",),
-            ".main_tests": ("TestsFlextInfraReleaseCli",),
-            ".orchestrator_helpers_tests": ("TestsFlextInfraReleaseHelpers",),
             ".orchestrator_publish_tests": ("TestsFlextInfraReleasePublish",),
             ".policy_fixture_root_tests": ("TestsFlextInfraReleasePolicyOwner",),
             ".protocol_tests": ("TestsFlextInfraReleaseProtocol",),
-            ".test_release_dag": ("TestsFlextInfraReleaseDag",),
             "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
+                "c", "d", "e", "h", "m", "p", "r", "s", "t", "td", "tf", "tk", "tm",
+                "tv", "u", "x",
             ),
         }),
         alias_groups=MappingProxyType({}),

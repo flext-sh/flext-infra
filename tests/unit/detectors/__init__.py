@@ -15,39 +15,12 @@ if TYPE_CHECKING:
     from .test_deferred_self_reference_ast import (
         TestsFlextInfraDeferredSelfReferenceDetector,
     )
-    from .test_internal_import_detector import TestsFlextInfraInternalImportDetector
-    from .test_loose_object_detector import TestsFlextInfraLooseObjectDetector
-    from .test_loose_object_detector_characterization import (
-        TestsFlextInfraLooseObjectCharacterization,
-    )
-    from .test_loose_test_function_detector import (
-        TestsFlextInfraLooseTestFunctionDetector,
-    )
-    from .test_pattern_smell_detector import TestsFlextInfraPatternSmellDetector
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraCyclicImportDetector",
-    "TestsFlextInfraDeferredSelfReferenceDetector",
-    "TestsFlextInfraInternalImportDetector",
-    "TestsFlextInfraLooseObjectCharacterization",
-    "TestsFlextInfraLooseObjectDetector",
-    "TestsFlextInfraLooseTestFunctionDetector",
-    "TestsFlextInfraPatternSmellDetector",
-    "c",
-    "d",
-    "e",
-    "h",
-    "m",
-    "p",
-    "r",
-    "s",
-    "t",
-    "td",
-    "tf",
-    "tk",
-    "tm",
-    "tv",
-    "u",
-    "x",
+    "TestsFlextInfraCyclicImportDetector", "TestsFlextInfraDeferredSelfReferenceDetector", "c", "d",
+    "e", "h", "m", "p",
+    "r", "s", "t", "td",
+    "tf", "tk", "tm", "tv",
+    "u", "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -57,34 +30,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_deferred_self_reference_ast": (
                 "TestsFlextInfraDeferredSelfReferenceDetector",
             ),
-            ".test_internal_import_detector": (
-                "TestsFlextInfraInternalImportDetector",
-            ),
-            ".test_loose_object_detector": ("TestsFlextInfraLooseObjectDetector",),
-            ".test_loose_object_detector_characterization": (
-                "TestsFlextInfraLooseObjectCharacterization",
-            ),
-            ".test_loose_test_function_detector": (
-                "TestsFlextInfraLooseTestFunctionDetector",
-            ),
-            ".test_pattern_smell_detector": ("TestsFlextInfraPatternSmellDetector",),
             "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
+                "c", "d", "e", "h", "m", "p", "r", "s", "t", "td", "tf", "tk", "tm",
+                "tv", "u", "x",
             ),
         }),
         alias_groups=MappingProxyType({}),

@@ -12,7 +12,6 @@ if TYPE_CHECKING:
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
     from . import _fixtures
-    from .cprofile_report_tests import TestsFlextInfraCProfileReport
     from .fresh_import_tests import TestsFlextInfraFreshImport
     from .governance_authority_tests import TestsFlextInfraGovernanceAuthority
     from .import_cycles_tests import TestsFlextInfraImportCycles
@@ -40,55 +39,19 @@ if TYPE_CHECKING:
     from .test_rule2_typings import TestsFlextInfraRule2TypingsFacade
     from .test_rule3_imports import TestsFlextInfraRule3ImportRules
     from .test_rule4_annotations import TestsFlextInfraRule4Annotations
-    from .testmon_db_tests import TestsFlextInfraTestmonDbInspector
     from .tier_whitelist_tests import TestsFlextInfraTierWhitelist
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraCProfileReport",
-    "TestsFlextInfraCoreValidationBehavior",
-    "TestsFlextInfraFixtureViolations",
-    "TestsFlextInfraFreshImport",
-    "TestsFlextInfraGovernanceAuthority",
-    "TestsFlextInfraImportCycles",
-    "TestsFlextInfraImportDag",
-    "TestsFlextInfraInventory",
-    "TestsFlextInfraLazyMapFreshness",
-    "TestsFlextInfraLocDelta",
-    "TestsFlextInfraManualCommand",
-    "TestsFlextInfraMetadataDiscipline",
-    "TestsFlextInfraModulePathRules",
-    "TestsFlextInfraPydanticLegacyDetection",
-    "TestsFlextInfraPytestDiag",
-    "TestsFlextInfraRule0NamespaceStructure",
-    "TestsFlextInfraRule1ConstantsFacade",
-    "TestsFlextInfraRule2TypingsFacade",
-    "TestsFlextInfraRule3ImportRules",
-    "TestsFlextInfraRule4Annotations",
-    "TestsFlextInfraScanner",
-    "TestsFlextInfraScannerHelpers",
-    "TestsFlextInfraSilentFailure",
-    "TestsFlextInfraSkillValidator",
-    "TestsFlextInfraStubChain",
-    "TestsFlextInfraTestmonDbInspector",
-    "TestsFlextInfraTierWhitelist",
-    "TestsFlextInfraValidateCli",
-    "TestsFlextInfraValidateInit",
-    "TestsFlextInfraValidateMain",
-    "_fixtures",
-    "c",
-    "d",
-    "e",
-    "h",
-    "m",
-    "p",
-    "r",
-    "s",
-    "t",
-    "td",
-    "tf",
-    "tk",
-    "tm",
-    "tv",
-    "u",
+    "TestsFlextInfraCoreValidationBehavior", "TestsFlextInfraFixtureViolations", "TestsFlextInfraFreshImport", "TestsFlextInfraGovernanceAuthority",
+    "TestsFlextInfraImportCycles", "TestsFlextInfraImportDag", "TestsFlextInfraInventory", "TestsFlextInfraLazyMapFreshness",
+    "TestsFlextInfraLocDelta", "TestsFlextInfraManualCommand", "TestsFlextInfraMetadataDiscipline", "TestsFlextInfraModulePathRules",
+    "TestsFlextInfraPydanticLegacyDetection", "TestsFlextInfraPytestDiag", "TestsFlextInfraRule0NamespaceStructure", "TestsFlextInfraRule1ConstantsFacade",
+    "TestsFlextInfraRule2TypingsFacade", "TestsFlextInfraRule3ImportRules", "TestsFlextInfraRule4Annotations", "TestsFlextInfraScanner",
+    "TestsFlextInfraScannerHelpers", "TestsFlextInfraSilentFailure", "TestsFlextInfraSkillValidator", "TestsFlextInfraStubChain",
+    "TestsFlextInfraTierWhitelist", "TestsFlextInfraValidateCli", "TestsFlextInfraValidateInit", "TestsFlextInfraValidateMain",
+    "_fixtures", "c", "d", "e",
+    "h", "m", "p", "r",
+    "s", "t", "td", "tf",
+    "tk", "tm", "tv", "u",
     "x",
 )
 
@@ -96,7 +59,6 @@ _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             "._fixtures": ("_fixtures",),
-            ".cprofile_report_tests": ("TestsFlextInfraCProfileReport",),
             ".fresh_import_tests": ("TestsFlextInfraFreshImport",),
             ".governance_authority_tests": ("TestsFlextInfraGovernanceAuthority",),
             ".import_cycles_tests": ("TestsFlextInfraImportCycles",),
@@ -130,25 +92,10 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_rule2_typings": ("TestsFlextInfraRule2TypingsFacade",),
             ".test_rule3_imports": ("TestsFlextInfraRule3ImportRules",),
             ".test_rule4_annotations": ("TestsFlextInfraRule4Annotations",),
-            ".testmon_db_tests": ("TestsFlextInfraTestmonDbInspector",),
             ".tier_whitelist_tests": ("TestsFlextInfraTierWhitelist",),
             "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
+                "c", "d", "e", "h", "m", "p", "r", "s", "t", "td", "tf", "tk", "tm",
+                "tv", "u", "x",
             ),
         }),
         alias_groups=MappingProxyType({}),
