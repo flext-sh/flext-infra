@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from git import GitCommandError, Repo
+from git import GitCommandError, InvalidGitRepositoryError, Repo
 
 from flext_core import r
 from flext_infra import m
@@ -24,44 +24,12 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
     def git_init(
         cls, request: m.Infra.GitRepoRequest
     ) -> p.Result[m.Infra.GitBoolReport]:
-        """Create a repository at the requested root via ``git init``.
-
-        The facade owns every GitPython entry point, so a consumer that has to
-        build a repository — a gate fixture seeding a worktree, for one — has a
-        typed call instead of a direct import the ``ban-direct-gitpython`` rule
-        rejects. Reuses ``GitRepoRequest``: the root is the whole input.
-        """
+        """Initialize a new Git repository at ``repo_root``."""
         try:
-            Repo.init(request.repo_root)
-        except GitCommandError as exc:
-            return r[m.Infra.GitBoolReport].fail(str(exc), exception=exc)
-        except (OSError, ValueError) as exc:
+            Repo.init(request.repo_root).close()
+        except (OSError, ValueError, InvalidGitRepositoryError) as exc:
             return r[m.Infra.GitBoolReport].fail(
                 f"git init failed: {exc}", exception=exc
-            )
-        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
-
-    @classmethod
-    def git_stage_paths(
-        cls, request: m.Infra.GitPathsRequest
-    ) -> p.Result[m.Infra.GitBoolReport]:
-        """Stage paths through porcelain ``git add``.
-
-        Distinct from ``git_add_paths`` on purpose. That one drives the index
-        directly, which skips a directory carrying its own ``.git``; porcelain
-        ``git add`` records it as a gitlink instead. Any consumer reasoning
-        about gitlinks — the index-declarations gate and its fixture — needs
-        the porcelain behaviour, so the facade must expose both rather than
-        leave callers importing GitPython to reach one of them.
-        """
-        try:
-            repo = cls._repo(request.repo_root)
-            repo.git.add(*request.paths)
-        except GitCommandError as exc:
-            return r[m.Infra.GitBoolReport].fail(str(exc), exception=exc)
-        except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
-                f"git add failed: {exc}", exception=exc
             )
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 

@@ -57,9 +57,9 @@ verification).
   by `flext-*`. The FLEXT cascade is encoded in the inheritance lists of the facade
   classes listed under Module Map above.
 - Public extensions exposed by this project: `FlextInfra`,
-  `FlextInfraAbstractionBoundaryGate`, `FlextInfraAccessorMigrationOrchestrator`,
-  `FlextInfraBanditGate`, `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport`
-  (+174 more).
+  `FlextInfraAbstractionBoundaryGate`,
+  `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
+  `FlextInfraBooleanLogicFixer`, `FlextInfraBudgetGate` (+176 more).
 - Library abstraction boundaries: see AGENTS.md §2.7.
 
 ## Quality Gates

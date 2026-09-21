@@ -90,6 +90,10 @@ class FlextInfraConstantsCheck:
             "Flext Direnv Environment Contract Gate",
             "internal://flext-infra/direnv",
         ),
+        "index-declarations": (
+            "Flext Declaration Index Gate",
+            "internal://flext-infra/index-declarations",
+        ),
         "duplication": ("jscpd", "https://github.com/kucherenko/jscpd"),
     })
     ALLOWED_GATES: ClassVar[frozenset[str]] = frozenset(SARIF_TOOL_INFO)

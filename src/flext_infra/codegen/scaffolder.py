@@ -191,17 +191,15 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecutionBase[str]):
             if request.test_module:
                 alias = c.Infra.NAMESPACE_LAYER_BY_FILE[filename]
                 content = u.Infra.generate_test_module_skeleton(
-                    m.Infra.TestModuleSkeletonRenderContext(
-                        class_name=class_name,
-                        base_class=base_class,
-                        project_module=request.project_module,
-                        alias=alias,
-                        namespace=f"{request.test_prefix}{request.prefix}",
-                        project_namespace=request.prefix.removeprefix(
-                            c.Infra.PKG_PREFIX_UNDERSCORE.rstrip("_").capitalize()
-                        ),
-                        docstring=docstring,
-                    )
+                    class_name=class_name,
+                    base_class=base_class,
+                    project_module=request.project_module,
+                    alias=alias,
+                    namespace=f"{request.test_prefix}{request.prefix}",
+                    project_namespace=request.prefix.removeprefix(
+                        c.Infra.PKG_PREFIX_UNDERSCORE.rstrip("_").capitalize()
+                    ),
+                    docstring=docstring,
                 )
             else:
                 content = u.Infra.generate_module_skeleton(

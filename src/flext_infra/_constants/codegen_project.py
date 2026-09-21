@@ -192,10 +192,15 @@ class FlextInfraConstantsCodegenProject:
     CUSTOM_HANDLER_PREFIX: ClassVar[str] = "_custom_"
     TEMPLATE_MODULE_SKELETON: ClassVar[str] = "module_skeleton.py.j2"
     "Scaffold module-skeleton template (replaces the legacy f-string)."
-    TEMPLATE_TEST_MODULE_SKELETON: ClassVar[str] = "test_module_skeleton.py.j2"
+    TEMPLATE_TEST_MODULE_SKELETON: Final[str] = "test_module_skeleton.py.j2"
     "Scaffold template for canonical test c/t/p/m/u facades."
-    CODEGEN_CONFIG_FILENAME: ClassVar[str] = "codegen.yaml"
-    CODEGEN_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.yaml"
+    CODEGEN_CONFIG_FILENAME: Final[str] = "codegen.yaml"
+    CODEGEN_OVERRIDES_FILENAME: Final[str] = "codegen-overrides.yaml"
+    CODEGEN_GEN_FILENAME: Final[str] = "codegen.gen.yaml"
+    CODEGEN_GEN_SUFFIX: Final[str] = ".gen.yaml"
+    "File suffix for generation requirements contract files managed by conform."
+    CODEGEN_CONFIG_DIR: Final[str] = "config"
+    "Directory name for flext-infra config files relative to package root."
 
     # One base catalog serves both profiles;
     # workspace topology is read only from each repository's own .gitmodules.
