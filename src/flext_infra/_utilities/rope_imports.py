@@ -1011,7 +1011,7 @@ class FlextInfraUtilitiesRopeImports:
                 continue
             updated_source = module_imports.get_changed_source()
             original_source = resource.read()
-            if updated_source is None or updated_source == original_source:
+            if updated_source == original_source:
                 continue
             before = u.Cli.atomic_read_binary_file_state(file_path, required=False)
             if before.failure:

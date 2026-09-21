@@ -32,9 +32,9 @@ class FlextInfraModelsDefaults:
             return 0
 
     @staticmethod
-    def immutable_empty_mapping[K, V]() -> Mapping[K, V]:
+    def immutable_empty_mapping() -> Mapping[str, object]:
         """Return a fresh immutable empty mapping assignable to any mapping type."""
-        return FlextInfraModelsDefaults.ImmutableEmptyMapping[K, V]()
+        return FlextInfraModelsDefaults.ImmutableEmptyMapping()
 
     @staticmethod
     def tool_version_field(description: str) -> t.Infra.ModelFieldSpec:
@@ -52,9 +52,9 @@ class FlextInfraModelsDefaults:
         return m.Field(description=description)
 
 
-def immutable_empty_mapping[K, V]() -> Mapping[K, V]:
+def immutable_empty_mapping() -> Mapping[str, object]:
     """Return a fresh immutable empty mapping assignable to any mapping type."""
-    return FlextInfraModelsDefaults.ImmutableEmptyMapping[K, V]()
+    return FlextInfraModelsDefaults.ImmutableEmptyMapping()
 
 
 ImmutableEmptyMapping = FlextInfraModelsDefaults.ImmutableEmptyMapping

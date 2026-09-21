@@ -58,11 +58,7 @@ class FlextInfraUtilitiesDocsBuild:
         load: p.Infra.MkDocsLoadConfig, settings: Path, site_dir: Path
     ) -> MutableMapping[str, p.AttributeProbe]:
         """Load and validate a MkDocs config mapping."""
-        config_raw = load(config_file_path=str(settings), site_dir=str(site_dir))
-        if not isinstance(config_raw, MutableMapping):
-            msg = "mkdocs.config.load_config did not return a mutable mapping"
-            raise OSError(msg)
-        return config_raw
+        return load(config_file_path=str(settings), site_dir=str(site_dir))
 
     @staticmethod
     def docs_mkdocs_config_files(scope: m.Infra.DocScope) -> t.VariadicTuple[Path]:

@@ -62,8 +62,8 @@ class FlextInfraUtilitiesRopePep695Patch:
         # resolved and only the ruff rule remains exempted for this directory
         # (operator authorization 2026-08-08).
         walker = FlextInfraUtilitiesRopeRuntime.pep695_ast_walker()
-        original_function_def: Callable[..., None] = walker._handle_function_def_node
-        original_class_def: Callable[..., None] = walker._ClassDef
+        original_function_def: Callable[..., None] = walker._handle_function_def_node  # pyright: ignore[reportPrivateUsage]
+        original_class_def: Callable[..., None] = walker._ClassDef  # pyright: ignore[reportPrivateUsage]
 
         def _type_params_children(
             node: p.Infra.PatchingASTWalker.TypeParameterOwner,
@@ -114,7 +114,7 @@ class FlextInfraUtilitiesRopePep695Patch:
             children.extend(["(", node.args, ")"])
             children.append(":")
             children.extend(node.body)
-            self._handle(node, children)
+            self._handle(node, children)  # pyright: ignore[reportPrivateUsage]
 
         def _patched_class_def(
             self: p.Infra.PatchingASTWalker,
@@ -131,11 +131,11 @@ class FlextInfraUtilitiesRopePep695Patch:
             children.extend(_type_params_children(node))
             if node.bases:
                 children.append("(")
-                children.extend(self._child_nodes(node.bases, ","))
+                children.extend(self._child_nodes(node.bases, ","))  # pyright: ignore[reportPrivateUsage]
                 children.append(")")
             children.append(":")
             children.extend(node.body)
-            self._handle(node, children)
+            self._handle(node, children)  # pyright: ignore[reportPrivateUsage]
 
         def _type_alias(
             self: p.Infra.PatchingASTWalker,
@@ -145,7 +145,7 @@ class FlextInfraUtilitiesRopePep695Patch:
             children: list[p.AttributeProbe] = ["type", node.name]
             children.extend(_type_params_children(node))
             children.extend(["=", node.value])
-            self._handle(node, children)
+            self._handle(node, children)  # pyright: ignore[reportPrivateUsage]
 
         def _type_var(
             self: p.Infra.PatchingASTWalker,
@@ -155,57 +155,57 @@ class FlextInfraUtilitiesRopePep695Patch:
             children: list[p.AttributeProbe] = [node.name]
             if getattr(node, "bound", None) is not None:
                 children.extend([":", node.bound])
-            self._handle(node, children)
+            self._handle(node, children)  # pyright: ignore[reportPrivateUsage]
 
         def _param_spec(
             self: p.Infra.PatchingASTWalker, node: p.Infra.PatchingASTWalker.NamedNode
         ) -> None:
             """Param spec."""
-            self._handle(node, ["**", node.name])
+            self._handle(node, ["**", node.name])  # pyright: ignore[reportPrivateUsage]
 
         def _type_var_tuple(
             self: p.Infra.PatchingASTWalker, node: p.Infra.PatchingASTWalker.NamedNode
         ) -> None:
             """Type var tuple."""
-            self._handle(node, ["*", node.name])
+            self._handle(node, ["*", node.name])  # pyright: ignore[reportPrivateUsage]
 
         def _match_sequence(
             self: p.Infra.PatchingASTWalker,
             node: p.Infra.PatchingASTWalker.MatchSequenceNode,
         ) -> None:
             """Match sequence."""
-            children = self._child_nodes(node.patterns, ",")
+            children = self._child_nodes(node.patterns, ",")  # pyright: ignore[reportPrivateUsage]
             opening = _pattern_opening_token(self, node)
             if opening == "[":
-                self._handle(node, ["[", *children, "]"])
+                self._handle(node, ["[", *children, "]"])  # pyright: ignore[reportPrivateUsage]
                 return
             if opening == "(" and not node.patterns:
-                self._handle(node, [self.empty_tuple])
+                self._handle(node, [self.empty_tuple])  # pyright: ignore[reportPrivateUsage]
                 return
-            self._handle(node, children, eat_parens=opening == "(")
+            self._handle(node, children, eat_parens=opening == "(")  # pyright: ignore[reportPrivateUsage]
 
         def _match_singleton(
             self: p.Infra.PatchingASTWalker,
             node: p.Infra.PatchingASTWalker.MatchSingletonNode,
         ) -> None:
             """Match singleton."""
-            self._handle(node, [str(node.value)])
+            self._handle(node, [str(node.value)])  # pyright: ignore[reportPrivateUsage]
 
         def _match_star(
             self: p.Infra.PatchingASTWalker,
             node: p.Infra.PatchingASTWalker.MatchStarNode,
         ) -> None:
             """Match star."""
-            self._handle(node, ["*", node.name or "_"])
+            self._handle(node, ["*", node.name or "_"])  # pyright: ignore[reportPrivateUsage]
 
         def _match_or(
             self: p.Infra.PatchingASTWalker, node: p.Infra.PatchingASTWalker.MatchOrNode
         ) -> None:
             """Match or."""
-            self._handle(node, self._child_nodes(node.patterns, "|"))
+            self._handle(node, self._child_nodes(node.patterns, "|"))  # pyright: ignore[reportPrivateUsage]
 
-        walker._handle_function_def_node = _patched_function_def
-        walker._ClassDef = _patched_class_def
+        walker._handle_function_def_node = _patched_function_def  # pyright: ignore[reportPrivateUsage]
+        walker._ClassDef = _patched_class_def  # pyright: ignore[reportPrivateUsage]
         walker._TypeAlias = _type_alias
         walker._TypeVar = _type_var
         walker._ParamSpec = _param_spec
