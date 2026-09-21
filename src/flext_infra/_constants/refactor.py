@@ -7,7 +7,7 @@ from collections.abc import MutableMapping, Sequence
 from enum import StrEnum, unique
 from pathlib import Path
 from types import MappingProxyType
-from typing import ClassVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar, Final
 
 from flext_core import c
 
