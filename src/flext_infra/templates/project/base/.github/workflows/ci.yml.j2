@@ -109,6 +109,14 @@ jobs:
         run: {{ make.ci.variable }}={{ make.ci.value }} make {{ step.verb }}
 {%- if step.verb == "setup" %}
       - name: gen fixed point (blocking)
+        # Why (docs-gen private sources): the docs generation resolves the
+        # governed workspaces' documentation state, which fetches private
+        # sibling repos — unauthenticated fetches fail with "docs generation
+        # source state is absent or unauthenticated". The job token
+        # authenticates those reads without changing the toolchain contract.
+        env:
+          GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
+          MISE_GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
         run: |
           {{ make.ci.variable }}={{ make.ci.value }} make gen
           git status --short
