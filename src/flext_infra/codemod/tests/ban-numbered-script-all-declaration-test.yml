@@ -1,0 +1,18 @@
+id: ban-numbered-script-all-declaration
+# `valid` MUST NOT match: the file selector restricts the rule to numbered
+# scripts, so inside the test harness only non-`__all__` module statements and
+# textual mentions are exercised.
+valid:
+  - examples_flext_web = FlextWebExamples()
+  - |
+    if __name__ == "__main__":
+        examples_flext_web.main()
+  - DOC = "a script declares no __all__ = [...] because it is not a module"
+  - |
+    # __all__ = ["x"] in a comment survives untouched.
+    value = 1
+# `invalid` MUST match: a module-level __all__ declaration, annotated or not.
+invalid:
+  - '__all__ = ["FlextWebExamples", "examples_flext_web"]'
+  - '__all__: list[str] = ["FlextWebExamples", "examples_flext_web"]'
+  - '__all__: tuple[str, ...] = ("FlextWebExamples",)'
