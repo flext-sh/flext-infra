@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, Self
 
-from ... import c, config, m, p, r, t, u
+from flext_core import r
+
+from ... import c, config, m, p, t, u
 from ...docs import FlextInfraDocGenerator
 from ...workspace import FlextInfraWorkspaceDetector
 from .. import (
@@ -13,11 +15,13 @@ from .. import (
     FlextInfraCodegenMiseArtifacts,
     FlextInfraCodegenTransaction,
 )
-from .plan import FlextInfraCodegenConformPlan
 
 
 class _ConformExecuteRoles:
     if TYPE_CHECKING:
+        request: m.Infra.CodegenConformRequest | None
+        repository_root: Path
+        initial_workspace: m.Infra.WorkspaceSpec | None
 
         def plan(
             self, request: m.Infra.CodegenConformRequest
@@ -47,14 +51,12 @@ class _ConformExecuteRoles:
         ) -> t.VariadicTuple[Path]: ...
 
 
-class FlextInfraCodegenConformExecute(
-    FlextInfraCodegenConformPlan, _ConformExecuteRoles
-):
+class FlextInfraCodegenConformExecute(_ConformExecuteRoles):
     """Transactional execution of conformance plans."""
 
     @classmethod
     def execute_request(
-        cls,
+        cls: type[Self],
         request: m.Infra.CodegenConformRequest,
         initial_workspace: m.Infra.WorkspaceSpec | None = None,
         *,
@@ -166,9 +168,7 @@ class FlextInfraCodegenConformExecute(
         if surface is c.Infra.CodegenConformSurface.ALL:
             return self._execute_managed(request)
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY:
-            mise_owner = FlextInfraCodegenMiseArtifacts(
-                repository_root=request.root, apply_changes=True, check_only=False
-            )
+            mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
             transaction = FlextInfraCodegenTransaction(mise_owner)
             return transaction.run_locked(
                 prepare=False, operation=lambda _scope_root: self._execute_plan(request)
@@ -176,7 +176,7 @@ class FlextInfraCodegenConformExecute(
         return self._execute_plan(request)
 
     def _execute_plan(
-        self, request: m.Infra.CodegenConformRequest
+        self: p.Infra.CodegenConform, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenResult]:
         """Execute a non-toolchain conform surface without widening its scope."""
         u.Cli.header("Codegen Conform")
@@ -243,15 +243,11 @@ class FlextInfraCodegenConformExecute(
         )
 
     def _execute_managed(
-        self, request: m.Infra.CodegenConformRequest
+        self: p.Infra.CodegenConform, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenResult]:
         """Run complete conformance inside the sole generation lock."""
         mode = c.Infra.CodegenConformMode(request.mode)
-        mise_owner = FlextInfraCodegenMiseArtifacts(
-            repository_root=request.root,
-            apply_changes=mode is c.Infra.CodegenConformMode.APPLY,
-            check_only=mode is c.Infra.CodegenConformMode.CHECK,
-        )
+        mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
         transaction = FlextInfraCodegenTransaction(mise_owner)
         return transaction.run_locked(
             prepare=mode is c.Infra.CodegenConformMode.APPLY,
@@ -261,7 +257,7 @@ class FlextInfraCodegenConformExecute(
         )
 
     def _execute_managed_locked(
-        self,
+        self: p.Infra.CodegenConform,
         request: m.Infra.CodegenConformRequest,
         scope_root: Path,
         transaction: FlextInfraCodegenTransaction,
@@ -319,7 +315,7 @@ class FlextInfraCodegenConformExecute(
         return any(marker in message for marker in c.Infra.CONFORM_SOURCE_RACE_MARKERS)
 
     def _lazy_phase(
-        self, request: m.Infra.CodegenConformRequest
+        self: p.Infra.CodegenConform, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Single lazy-init analysis pass per conform invocation.
 
@@ -331,7 +327,7 @@ class FlextInfraCodegenConformExecute(
         return FlextInfraCodegenLazyInit(repository_root=request.root).plan_files()
 
     def _execute_managed_locked_prepared(
-        self,
+        self: p.Infra.CodegenConform,
         request: m.Infra.CodegenConformRequest,
         scope_root: Path,
         transaction: FlextInfraCodegenTransaction,
@@ -517,7 +513,7 @@ class FlextInfraCodegenConformExecute(
         )
 
     def _prepare_scaffold_directories(
-        self, request: m.Infra.CodegenConformRequest
+        self: p.Infra.CodegenConform, request: m.Infra.CodegenConformRequest
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicDirectoryState]]:
         """Create config-declared scaffold parent chains under the generation lock."""
         if (
@@ -605,7 +601,7 @@ class FlextInfraCodegenConformExecute(
         return r[bool].ok(True)
 
     def _allow_direnv_after_apply(
-        self,
+        self: p.Infra.CodegenConform,
         request: m.Infra.CodegenConformRequest,
         written_files: t.VariadicTuple[Path],
     ) -> p.Result[bool]:
@@ -644,7 +640,7 @@ class FlextInfraCodegenConformExecute(
         return r[bool].ok(True)
 
     def _validate_managed_fixed_point(
-        self,
+        self: p.Infra.CodegenConform,
         request: m.Infra.CodegenConformRequest,
         session: m.Infra.CodegenTransactionSession,
         transaction: FlextInfraCodegenTransaction,
@@ -683,11 +679,14 @@ class FlextInfraCodegenConformExecute(
         docs_fixed_point = transaction.validate_phase_analysis_locked(docs_analysis)
         if docs_fixed_point.failure:
             return r[bool].from_failure(docs_fixed_point)
-        mise = FlextInfraCodegenMiseArtifacts(
-            repository_root=request.root, apply_changes=False, check_only=True
-        )
-        for project in session.plan.layout.projects:
-            validated = mise.validate_artifacts(project.root)
+        mise = FlextInfraCodegenMiseArtifacts(repository_root=request.root)
+        plan = session.plan
+        if isinstance(plan, m.Infra.MiseToolchainWorkspacePlan):
+            project_layouts = (p.layout for p in plan.projects)
+        else:
+            project_layouts = plan.layout.projects
+        for project_layout in project_layouts:
+            validated = mise.validate_artifacts(project_layout.root)
             if validated.failure:
                 return r[bool].from_failure(validated)
         return r[bool].ok(True)
