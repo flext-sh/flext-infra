@@ -1,8 +1,8 @@
 """Codemod enforcement quality gate.
 
 Runs ``ast-grep scan`` with the codemod rules discovered via
-``importlib.resources`` cascade (ADR-014). Rules with ``severity: error``
-block the build; violations are not warnings.
+``importlib.resources`` cascade (ADR-014). Rule matches are migration guidance
+and remain visible warnings; discovery or scanner execution failures still block.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCodemodGate(FlextInfraGate):
-    """Enforce codemod rules as error gates across every project."""
+    """Report codemod migration candidates without blocking normal checks."""
 
     gate_id: ClassVar[str] = "codemod"
     gate_name: ClassVar[str] = "Codemod Enforcement"
@@ -71,9 +71,12 @@ class FlextInfraCodemodGate(FlextInfraGate):
             )
             issues.extend(self._issues_from_scan(scan, ruleset.provider))
 
+        blocking = any(
+            issue.severity.lower() == c.Infra.ERROR for issue in issues
+        )
         return self._build_check_gate_execution(
             project_dir,
-            passed=not issues,
+            passed=not blocking,
             issues=issues,
             raw_output=(
                 f"{len(planned.value.rules)} rules from "
@@ -129,7 +132,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 column=0,
                 code=self.gate_id,
                 message=line.strip(),
-                severity=str(c.Infra.GateSeverity.ERROR.value),
+                severity=str(c.Infra.GateSeverity.WARNING.value),
             )
             for line in scan.stdout.splitlines()
             if line.strip()
@@ -162,4 +165,6 @@ class FlextInfraCodemodGate(FlextInfraGate):
         rules = self._rule_paths(project_dir)
         rule_path = rules[0] if rules else project_dir
         issues = self._issues_from_scan(result, rule_path.name)
-        return not issues, issues
+        return not any(
+            issue.severity.lower() == c.Infra.ERROR for issue in issues
+        ), issues
