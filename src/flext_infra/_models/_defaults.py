@@ -52,18 +52,4 @@ class FlextInfraModelsDefaults:
         return m.Field(description=description)
 
 
-def immutable_empty_mapping() -> Mapping[str, object]:
-    """Return a fresh immutable empty mapping assignable to any mapping type."""
-    return FlextInfraModelsDefaults.ImmutableEmptyMapping()
-
-
-ImmutableEmptyMapping = FlextInfraModelsDefaults.ImmutableEmptyMapping
-tool_version_field = FlextInfraModelsDefaults.tool_version_field
-
-
-__all__: list[str] = [
-    "FlextInfraModelsDefaults",
-    "ImmutableEmptyMapping",
-    "immutable_empty_mapping",
-    "tool_version_field",
-]
+__all__: list[str] = ["FlextInfraModelsDefaults"]

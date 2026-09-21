@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from flext_core import r
 from flext_infra import c, u
@@ -60,10 +60,13 @@ class FlextInfraCodegenLazyInitClassReceipts:
         """Persist the receipt document when the scan recorded new entries."""
         if not self._dirty:
             return r[bool].ok(True)
-        document = {
-            "version": c.Infra.LAZY_INIT_CLASS_RECEIPTS_VERSION,
-            "entries": self._entries,
-        }
+        document = cast(
+            "dict[str, t.JsonValue]",
+            {
+                "version": c.Infra.LAZY_INIT_CLASS_RECEIPTS_VERSION,
+                "entries": self._entries,
+            },
+        )
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)
             dump = u.Cli.json_dumps(document, sort_keys=True, indent=1)
@@ -107,9 +110,9 @@ class FlextInfraCodegenLazyInitClassReceipts:
                 "lazy-init class receipt parse", "entries is not an object"
             )
         self._entries = {
-            key: list(value)
+            key: [item for item in value if isinstance(item, str)]
             for key, value in entries.items()
-            if isinstance(value, list)
+            if isinstance(key, str) and isinstance(value, list)
         }
         return r[bool].ok(True)
 

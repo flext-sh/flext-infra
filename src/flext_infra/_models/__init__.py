@@ -31,12 +31,7 @@ if TYPE_CHECKING:
     from ._config.static import FlextInfraConfigModelsStatic
     from ._config.templates import FlextInfraConfigModelsTemplates
     from ._config.workspace import FlextInfraConfigModelsWorkspace
-    from ._defaults import (
-        FlextInfraModelsDefaults,
-        ImmutableEmptyMapping,
-        immutable_empty_mapping,
-        tool_version_field,
-    )
+    from ._defaults import FlextInfraModelsDefaults
     from ._git.identity import FlextInfraModelsGitIdentity
     from ._git.worktree_facts import FlextInfraModelsGitWorktreeFacts
     from .base import FlextInfraModelsBase
@@ -154,12 +149,9 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsWorkspace",
     "FlextInfraModelsWorktree",
     "FlextInfraSettingsModels",
-    "ImmutableEmptyMapping",
     "_codegen",
     "_config",
     "_git",
-    "immutable_empty_mapping",
-    "tool_version_field",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -188,12 +180,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._config.static": ("FlextInfraConfigModelsStatic",),
             "._config.templates": ("FlextInfraConfigModelsTemplates",),
             "._config.workspace": ("FlextInfraConfigModelsWorkspace",),
-            "._defaults": (
-                "FlextInfraModelsDefaults",
-                "ImmutableEmptyMapping",
-                "immutable_empty_mapping",
-                "tool_version_field",
-            ),
+            "._defaults": ("FlextInfraModelsDefaults",),
             "._git": ("_git",),
             "._git.identity": ("FlextInfraModelsGitIdentity",),
             "._git.worktree_facts": ("FlextInfraModelsGitWorktreeFacts",),
