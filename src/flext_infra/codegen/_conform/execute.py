@@ -49,7 +49,7 @@ class _ConformExecuteRoles:
             request: m.Infra.CodegenConformRequest,
             plan: m.Infra.CodegenPlan,
             directories: t.SequenceOf[Path],
-        ) -> t.VariadicTuple[Path]: ...
+        ) -> tuple[Path, ...]: ...
 
 
 class FlextInfraCodegenConformExecute(

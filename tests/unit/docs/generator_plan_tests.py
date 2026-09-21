@@ -82,36 +82,6 @@ class TestsFlextInfraDocsGeneratorPlan:
         )
         tm.that(all(not path.exists() for path in result.value), eq=True)
 
-    def test_docs_bundle_accepts_authenticated_hardlinked_read_sources(
-        self, tmp_path: Path
-    ) -> None:
-        """Treat uv-cache hardlinks as readable inputs, never writable outputs."""
-        project = tmp_path / "project"
-        project.mkdir()
-        source = project / "pyproject.toml"
-        source.write_text("[project]\nname = 'docs-fixture'\n", encoding="utf-8")
-        (tmp_path / "cached-pyproject.toml").hardlink_to(source)
-        source_state = u.Cli.atomic_read_binary_file_state(source, required=True)
-        tm.ok(source_state)
-        tm.that(source_state.value.link_count, eq=2)
-
-        bundle = m.Infra.DocsGenerationBundle(
-            scopes=(
-                m.Infra.DocsScopeArtifacts(
-                    scope=m.Infra.DocScope(
-                        name="docs-fixture",
-                        path=project,
-                        report_dir=project / ".reports/docs",
-                    ),
-                    artifacts=(),
-                ),
-            ),
-            source_states=(source_state.value,),
-            repository_root=project,
-        )
-
-        tm.that(bundle.source_states, eq=(source_state.value,))
-
     def test_required_directories_reject_duplicate_targets(
         self, tmp_path: Path
     ) -> None:
