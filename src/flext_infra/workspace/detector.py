@@ -687,6 +687,7 @@ class FlextInfraWorkspaceDetector(
                 project=workspace.project,
                 canonical_project_name=canonical_project_name,
                 ci_enabled=True,
+                publishes_release=workspace.repository.publishes_release,
                 gascity_enabled=workspace.gascity_enabled,
                 external_dependency_paths=workspace.external_dependency_paths,
             )

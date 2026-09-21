@@ -185,7 +185,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                     f"managed destination escapes repository root: {entry.destination}"
                 )
             if profile not in entry.profiles or (
-                entry.requires_release_protocol and not repository.publishes_release
+                entry.requires_release_protocol and not target.publishes_release
             ):
                 # Profile- and capability-excluded workflows must not keep firing.
                 # Conform, rather than a user, retires the generated orphan.
@@ -199,6 +199,14 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformArtifactRende
                         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
                             orphan_read
                         )
+                    # A managed destination does not establish authorship of
+                    # its current bytes. Retire generated projections only;
+                    # repository-owned workflows survive profile changes.
+                    if not any(
+                        marker in orphan_read.value
+                        for marker in c.Infra.TEMPLATE_GENERATED_MARKERS
+                    ):
+                        continue
                     absent_plan = self._absent_file_plan(root, path)
                     if absent_plan.failure:
                         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
