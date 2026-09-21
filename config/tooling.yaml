@@ -56,6 +56,10 @@ Infra:
           # the link.
           - AGENTS.md
           - CLAUDE.md
+          # GEMINI.md is the same tool-managed instruction-pointer projection
+          # (generate-workspace-config); prose-wrap always rewraps its exact
+          # rendered pointer and the law-surface validator then fails closed.
+          - GEMINI.md
           - .kilo/**
           - .omo/**
           - .tmp/**
