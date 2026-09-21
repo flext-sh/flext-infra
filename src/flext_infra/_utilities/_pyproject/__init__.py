@@ -16,8 +16,12 @@ if TYPE_CHECKING:
     from .toml_phases import FlextInfraUtilitiesPyprojectTomlPhases
     from .uv_sources import FlextInfraUtilitiesPyprojectUvSources
 __all__: tuple[str, ...] = (
-    "FlextInfraUtilitiesPyprojectConformBase", "FlextInfraUtilitiesPyprojectDocument", "FlextInfraUtilitiesPyprojectOverlay", "FlextInfraUtilitiesPyprojectRequirements",
-    "FlextInfraUtilitiesPyprojectTomlPhases", "FlextInfraUtilitiesPyprojectUvSources",
+    "FlextInfraUtilitiesPyprojectConformBase",
+    "FlextInfraUtilitiesPyprojectDocument",
+    "FlextInfraUtilitiesPyprojectOverlay",
+    "FlextInfraUtilitiesPyprojectRequirements",
+    "FlextInfraUtilitiesPyprojectTomlPhases",
+    "FlextInfraUtilitiesPyprojectUvSources",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

@@ -14,7 +14,10 @@ if TYPE_CHECKING:
     from .dispatch import FlextInfraPromotedDispatch
     from .registry import FlextInfraPromotedRegistry
 __all__: tuple[str, ...] = (
-    "FlextInfraPromotedBase", "FlextInfraPromotedDiscovery", "FlextInfraPromotedDispatch", "FlextInfraPromotedRegistry",
+    "FlextInfraPromotedBase",
+    "FlextInfraPromotedDiscovery",
+    "FlextInfraPromotedDispatch",
+    "FlextInfraPromotedRegistry",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
