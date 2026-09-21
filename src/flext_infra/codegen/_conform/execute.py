@@ -179,7 +179,7 @@ class FlextInfraCodegenConformExecute(
         return self._execute_plan(request)
 
     def _execute_plan(
-        self: p.Infra.CodegenConform, request: m.Infra.CodegenConformRequest
+        self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenResult]:
         """Execute a non-toolchain conform surface without widening its scope."""
         u.Cli.header("Codegen Conform")
@@ -246,7 +246,7 @@ class FlextInfraCodegenConformExecute(
         )
 
     def _execute_managed(
-        self: p.Infra.CodegenConform, request: m.Infra.CodegenConformRequest
+        self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenResult]:
         """Run complete conformance inside the sole generation lock."""
         mode = c.Infra.CodegenConformMode(request.mode)
@@ -260,7 +260,7 @@ class FlextInfraCodegenConformExecute(
         )
 
     def _execute_managed_locked(
-        self: p.Infra.CodegenConform,
+        self,
         request: m.Infra.CodegenConformRequest,
         scope_root: Path,
         transaction: FlextInfraCodegenTransaction,
@@ -318,7 +318,7 @@ class FlextInfraCodegenConformExecute(
         return any(marker in message for marker in c.Infra.CONFORM_SOURCE_RACE_MARKERS)
 
     def _lazy_phase(
-        self: p.Infra.CodegenConform, request: m.Infra.CodegenConformRequest
+        self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Single lazy-init analysis pass per conform invocation.
 
@@ -330,7 +330,7 @@ class FlextInfraCodegenConformExecute(
         return FlextInfraCodegenLazyInit(repository_root=request.root).plan_files()
 
     def _execute_managed_locked_prepared(
-        self: p.Infra.CodegenConform,
+        self,
         request: m.Infra.CodegenConformRequest,
         scope_root: Path,
         transaction: FlextInfraCodegenTransaction,
@@ -516,7 +516,7 @@ class FlextInfraCodegenConformExecute(
         )
 
     def _prepare_scaffold_directories(
-        self: p.Infra.CodegenConform, request: m.Infra.CodegenConformRequest
+        self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[t.VariadicTuple[m.Cli.AtomicDirectoryState]]:
         """Create config-declared scaffold parent chains under the generation lock."""
         if (
@@ -604,7 +604,7 @@ class FlextInfraCodegenConformExecute(
         return r[bool].ok(True)
 
     def _allow_direnv_after_apply(
-        self: p.Infra.CodegenConform,
+        self,
         request: m.Infra.CodegenConformRequest,
         written_files: t.VariadicTuple[Path],
     ) -> p.Result[bool]:
@@ -643,7 +643,7 @@ class FlextInfraCodegenConformExecute(
         return r[bool].ok(True)
 
     def _validate_managed_fixed_point(
-        self: p.Infra.CodegenConform,
+        self,
         request: m.Infra.CodegenConformRequest,
         session: m.Infra.CodegenTransactionSession,
         transaction: FlextInfraCodegenTransaction,
