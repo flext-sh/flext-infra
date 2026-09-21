@@ -60,8 +60,7 @@ class FlextInfraUtilitiesGitWorktreeFactsMixin(
     def collect_worktree_facts(
         cls, query: m.Infra.WorktreeFactsQuery
     ) -> t.Pair[
-        t.VariadicTuple[m.Infra.WorktreeFact],
-        t.VariadicTuple[m.Infra.PruneAction],
+        t.VariadicTuple[m.Infra.WorktreeFact], t.VariadicTuple[m.Infra.PruneAction]
     ]:
         """Measure every registered worktree and plan stale-deps pruning.
 
@@ -160,9 +159,7 @@ class FlextInfraUtilitiesGitWorktreeFactsMixin(
         """Read one registry ``gitdir`` pointer, or ``None`` when unreadable."""
         text = ""
         try:
-            text = (
-                (entry / "gitdir").read_text(encoding=c.Cli.ENCODING_DEFAULT).strip()
-            )
+            text = (entry / "gitdir").read_text(encoding=c.Cli.ENCODING_DEFAULT).strip()
         except (OSError, ValueError):
             text = ""
         return Path(text) if text else None
