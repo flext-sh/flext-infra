@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Final
+from typing import ClassVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from flext_cli import t
@@ -15,7 +15,7 @@ class FlextInfraConstantsDeps:
     # NOTE: Hardcoded base path constants removed.
     # All tool settings phases now use dynamic discovery via
     # u.Infra.discover_python_dirs() (SSOT in FlextInfraUtilitiesDiscovery).
-    SKIP_DIRS: Final[frozenset[str]] = frozenset({
+    SKIP_DIRS: ClassVar[frozenset[str]] = frozenset({
         ".archive",
         ".claude.disabled",
         ".git",
@@ -31,15 +31,15 @@ class FlextInfraConstantsDeps:
         "site",
         "vendor",
     })
-    DEP_NAME_RE: Final[t.RegexPattern] = re.compile(r"^\s*([A-Za-z0-9_.-]+)")
-    PYPROJECT_DOCUMENT_MAPPING_ERROR: Final[str] = (
+    DEP_NAME_RE: ClassVar[t.RegexPattern] = re.compile(r"^\s*([A-Za-z0-9_.-]+)")
+    PYPROJECT_DOCUMENT_MAPPING_ERROR: ClassVar[str] = (
         "pyproject document is not a TOML mapping"
     )
-    PEP621_NAME_RE: Final[t.RegexPattern] = re.compile(r"^\s*(?P<name>[A-Za-z0-9_.-]+)")
-    PEP621_REQUIREMENT_HEAD_RE: Final[t.RegexPattern] = re.compile(
+    PEP621_NAME_RE: ClassVar[t.RegexPattern] = re.compile(r"^\s*(?P<name>[A-Za-z0-9_.-]+)")
+    PEP621_REQUIREMENT_HEAD_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^\s*(?P<head>[A-Za-z0-9_.-]+(?:\[[^\]]+\])?)"
     )
-    BANNER: Final[str] = (
+    BANNER: ClassVar[str] = (
         "# @flext-generated: continuous\n"
         "# @flext-owner: flext-infra de/config/codegen.yaml"
         " + flext-infra/src/flext_infra/templates/project/base/pyproject.toml.j2\n"
@@ -48,16 +48,16 @@ class FlextInfraConstantsDeps:
         " Never edit this projection.\n"
         "# @flext-regenerate: make gen\n"
     )
-    DEV_OPTIONAL_DEPS_MARKER: Final[str] = (
+    DEV_OPTIONAL_DEPS_MARKER: ClassVar[str] = (
         "# [MANAGED] consolidated development dependencies"
     )
-    LEGACY_AUTO_MARKER: Final[str] = (
+    LEGACY_AUTO_MARKER: ClassVar[str] = (
         "# [AUTO] merged from dev/docs/security/test/typings"
     )
-    LEGACY_AUTO_BANNER_LINE: Final[str] = (
+    LEGACY_AUTO_BANNER_LINE: ClassVar[str] = (
         "# Sections with [AUTO] are derived from workspace layout and dependencies."
     )
-    DEPENDENCY_LIMITS_FILENAME: Final[str] = "limits.toml"
+    DEPENDENCY_LIMITS_FILENAME: ClassVar[str] = "limits.toml"
     """Packaged dependency-limit configuration resource."""
 
 
