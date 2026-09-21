@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Final
+from typing import ClassVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -12,11 +12,11 @@ if TYPE_CHECKING:
 class FlextInfraConstantsNamespace:
     """Namespace constants shared by bootstrap-sensitive utilities."""
 
-    NAMESPACE_SETTINGS_FILE_NAMES: Final[frozenset[str]] = frozenset({
+    NAMESPACE_SETTINGS_FILE_NAMES: ClassVar[frozenset[str]] = frozenset({
         "settings.py",
         "_settings.py",
     })
-    NAMESPACE_PROTECTED_FILES: Final[frozenset[str]] = frozenset({
+    NAMESPACE_PROTECTED_FILES: ClassVar[frozenset[str]] = frozenset({
         "settings.py",
         "_settings.py",
         "typings.py",
@@ -27,7 +27,7 @@ class FlextInfraConstantsNamespace:
         "conftest.py",
         "py.typed",
     })
-    NAMESPACE_LAYER_ORDER: Final[t.VariadicTuple[str]] = (
+    NAMESPACE_LAYER_ORDER: ClassVar[t.VariadicTuple[str]] = (
         "settings",
         "config",
         "c",
@@ -40,7 +40,7 @@ class FlextInfraConstantsNamespace:
         "api",
         "cli",
     )
-    NAMESPACE_OPERATION_FACADES: Final[t.VariadicTuple[str]] = (
+    NAMESPACE_OPERATION_FACADES: ClassVar[t.VariadicTuple[str]] = (
         "r",
         "e",
         "x",
@@ -56,7 +56,7 @@ class FlextInfraConstantsNamespace:
     # Direct ``pydantic`` stays prohibited (ENFORCE-070): flext-core is the sole
     # owner of pydantic. c/p and the operational facades r/e/x/h/d/s are NOT
     # covered by this carve-out and remain forward-only (TYPE_CHECKING).
-    NAMESPACE_SETTINGS_IMPORT_ALLOWED_OWNERS: Final[t.VariadicTuple[str]] = (
+    NAMESPACE_SETTINGS_IMPORT_ALLOWED_OWNERS: ClassVar[t.VariadicTuple[str]] = (
         "settings",
         "config",
     )
@@ -67,7 +67,7 @@ class FlextInfraConstantsNamespace:
     # the structure rule must recognize as canonical, not a banned module alias.
     # Handoff §1.2 layer order: ...base->services->api->cli; settings/config are
     # the rank-0/1 layers (rank-0/1 layers that declare the Flext<X>Settings).
-    NAMESPACE_PLATFORM_FACADE_SINGLETONS: Final[t.MappingKV[str, t.StrPair]] = (
+    NAMESPACE_PLATFORM_FACADE_SINGLETONS: ClassVar[t.MappingKV[str, t.StrPair]] = (
         MappingProxyType({
             "api.py": ("api", ""),
             "base.py": ("s", "ServiceBase"),
@@ -78,7 +78,7 @@ class FlextInfraConstantsNamespace:
         })
     )
     "Canonical platform facade file name -> (alias, class-name suffix)."
-    NAMESPACE_LAYER_BY_FILE: Final[MappingProxyType[str, str]] = MappingProxyType({
+    NAMESPACE_LAYER_BY_FILE: ClassVar[MappingProxyType[str, str]] = MappingProxyType({
         "settings.py": "settings",
         "_settings.py": "settings",
         "config.py": "config",
@@ -92,7 +92,7 @@ class FlextInfraConstantsNamespace:
         "api.py": "api",
         "cli.py": "cli",
     })
-    NAMESPACE_LAYER_BY_FAMILY: Final[MappingProxyType[str, str]] = MappingProxyType({
+    NAMESPACE_LAYER_BY_FAMILY: ClassVar[MappingProxyType[str, str]] = MappingProxyType({
         "_constants": "c",
         "_typings": "t",
         "_protocols": "p",
@@ -102,16 +102,16 @@ class FlextInfraConstantsNamespace:
     })
     # ADR-0018 stdlib island: the native hook client runs as `python3 -I -S`
     # and cannot consume the flext typing surface; its annotations stay stdlib.
-    NAMESPACE_STDLIB_ISLAND_PATH_FRAGMENTS: Final[t.StrSequence] = (
+    NAMESPACE_STDLIB_ISLAND_PATH_FRAGMENTS: ClassVar[t.StrSequence] = (
         "/ai_hub/hook_client",
     )
-    NAMESPACE_BANNED_ANNOTATIONS: Final[frozenset[str]] = frozenset({
+    NAMESPACE_BANNED_ANNOTATIONS: ClassVar[frozenset[str]] = frozenset({
         "Any",
         "Optional",
         "dict",
         "object",
     })
-    NAMESPACE_PYDANTIC_V1_MEMBERS: Final[frozenset[str]] = frozenset({
+    NAMESPACE_PYDANTIC_V1_MEMBERS: ClassVar[frozenset[str]] = frozenset({
         "parse_obj",
         "parse_raw",
         "validator",
@@ -120,18 +120,18 @@ class FlextInfraConstantsNamespace:
     # Attribute syntax alone cannot prove the receiver type. Ambiguous names
     # such as ``dict`` and ``json`` are intentionally absent; only Pydantic-v1-
     # exclusive members are detected without qualified import provenance.
-    NAMESPACE_PYDANTIC_V1_DECORATORS: Final[frozenset[str]] = frozenset({
+    NAMESPACE_PYDANTIC_V1_DECORATORS: ClassVar[frozenset[str]] = frozenset({
         "validator",
         "root_validator",
     })
-    NAMESPACE_SERVICE_LOCATOR_NAMES: Final[frozenset[str]] = frozenset({
+    NAMESPACE_SERVICE_LOCATOR_NAMES: ClassVar[frozenset[str]] = frozenset({
         "container",
         "get_service",
         "locator",
         "resolve_service",
         "service_locator",
     })
-    NAMESPACE_LOGICAL_STATEMENT_KINDS: Final[frozenset[str]] = frozenset({
+    NAMESPACE_LOGICAL_STATEMENT_KINDS: ClassVar[frozenset[str]] = frozenset({
         "AnnAssign",
         "Assert",
         "Assign",

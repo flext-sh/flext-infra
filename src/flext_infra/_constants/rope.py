@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from enum import StrEnum, unique
-from typing import TYPE_CHECKING, Final
+from typing import ClassVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -67,7 +67,7 @@ class FlextInfraConstantsRope:
     # tuples live in u.Infra (FlextInfraUtilitiesRopeRuntimeTypes), not in the
     # constants layer, to keep c.Infra declarative and cycle-free.
 
-    ROPE_IGNORED_RESOURCES: Final[t.VariadicTuple[str]] = (
+    ROPE_IGNORED_RESOURCES: ClassVar[t.VariadicTuple[str]] = (
         ".venv",
         "venv",
         "node_modules",
@@ -84,7 +84,7 @@ class FlextInfraConstantsRope:
     )
     "Resources rope should ignore when scanning the project tree."
 
-    PROPERTY_DECORATORS: Final[frozenset[str]] = frozenset({
+    PROPERTY_DECORATORS: ClassVar[frozenset[str]] = frozenset({
         "property",
         "cached_property",
         "computed_field",

@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from enum import StrEnum, unique
-from typing import ClassVar, Final
+from typing import ClassVar
 
 from flext_core import e
 
@@ -91,39 +91,39 @@ class FlextInfraConstantsPromoted:
         INCIDENT_DOMAIN = "incident"
         SHELL_SUFFIX = ".sh"
 
-    PROMOTED_HEADER_SCAN_LINES: Final[int] = 160
-    PROMOTED_COMMAND_SUFFIXES: Final[frozenset[str]] = frozenset({
+    PROMOTED_HEADER_SCAN_LINES: ClassVar[int] = 160
+    PROMOTED_COMMAND_SUFFIXES: ClassVar[frozenset[str]] = frozenset({
         PromotedSelector.SHELL_SUFFIX,
         FlextInfraConstantsSharedInfra.EXT_PYTHON,
     })
-    PROMOTED_NON_COMMAND_NAMES: Final[frozenset[str]] = frozenset({
+    PROMOTED_NON_COMMAND_NAMES: ClassVar[frozenset[str]] = frozenset({
         FlextInfraConstantsSharedInfra.DUNDER_PYCACHE,
         FlextInfraConstantsSharedInfra.INIT_PY,
     })
-    PROMOTED_IGNORED_DIRS: Final[frozenset[str]] = frozenset({
+    PROMOTED_IGNORED_DIRS: ClassVar[frozenset[str]] = frozenset({
         FlextInfraConstantsSharedInfra.DUNDER_PYCACHE,
         "hooks",
         "legado",
         "lib",
     })
-    PROMOTED_INCIDENT_MUTATION_REQUIRED_PARAMS: Final[frozenset[str]] = frozenset({
+    PROMOTED_INCIDENT_MUTATION_REQUIRED_PARAMS: ClassVar[frozenset[str]] = frozenset({
         "EMERGENCY",
         "BREAKING_GLASS_BEAD",
     })
-    PROMOTED_VERB_HELP_SELECTORS: Final[frozenset[str]] = frozenset({
+    PROMOTED_VERB_HELP_SELECTORS: ClassVar[frozenset[str]] = frozenset({
         "",
         PromotedSelector.HELP,
     })
-    PROMOTED_GLOBAL_HELP_SELECTORS: Final[frozenset[str]] = frozenset({
+    PROMOTED_GLOBAL_HELP_SELECTORS: ClassVar[frozenset[str]] = frozenset({
         *PROMOTED_VERB_HELP_SELECTORS,
         PromotedSelector.ALL,
     })
-    PROMOTED_HELP_ARGS: Final[frozenset[str]] = frozenset({
+    PROMOTED_HELP_ARGS: ClassVar[frozenset[str]] = frozenset({
         PromotedSelector.HELP,
         "--help",
         "-h",
     })
-    PROMOTED_ENV_ENABLED_VALUES: Final[frozenset[str]] = frozenset({
+    PROMOTED_ENV_ENABLED_VALUES: ClassVar[frozenset[str]] = frozenset({
         "1",
         "Y",
         "YES",

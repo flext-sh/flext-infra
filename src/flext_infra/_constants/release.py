@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 from enum import StrEnum
-from typing import TYPE_CHECKING, Final
+from typing import ClassVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 class FlextInfraConstantsRelease:
     """Release infrastructure constants."""
 
-    VERSION_RELEASE_SEGMENTS: Final[int] = 3
+    VERSION_RELEASE_SEGMENTS: ClassVar[int] = 3
 
     class ReleasePhase(StrEnum):
         """Canonical release phases; each one is one Make ``WHAT`` selector."""
@@ -39,31 +39,31 @@ class FlextInfraConstantsRelease:
         MINOR = "minor"
         MAJOR = "major"
 
-    VERSION_RE: Final[t.RegexPattern] = re.compile(
+    VERSION_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^version\s*=\s*['\"](.+?)['\"]", re.MULTILINE
     )
-    CONVENTIONAL_SUBJECT_RE: Final[t.RegexPattern] = re.compile(
+    CONVENTIONAL_SUBJECT_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(?P<type>[a-z]+)(?:\([^)]+\))?(?P<breaking>!)?: \S"
     )
     "Conventional Commits subject: ``type(scope)!: description``."
-    PULL_REQUEST_MERGE_SUBJECT_RE: Final[t.RegexPattern] = re.compile(
+    PULL_REQUEST_MERGE_SUBJECT_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^Merge pull request #\d+\b"
     )
     "GitHub's default merge subject, which carries no release information."
-    TAG_FORMAT: Final[str] = "v{version}"
-    RELEASE_BRANCH: Final[str] = "release/next"
+    TAG_FORMAT: ClassVar[str] = "v{version}"
+    RELEASE_BRANCH: ClassVar[str] = "release/next"
     "One bot-owned lane per repository; the open release pull request lives here."
-    RELEASE_COMMIT_SUBJECT: Final[str] = "chore(release): v{version}"
-    RELEASE_COMMIT_SUBJECT_RE: Final[t.RegexPattern] = re.compile(
+    RELEASE_COMMIT_SUBJECT: ClassVar[str] = "chore(release): v{version}"
+    RELEASE_COMMIT_SUBJECT_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^chore\(release\): v(?P<version>\S+?)(?: \(#\d+\))?$"
     )
     "The release commit as Git carries it: GitHub appends ` (#N)` when merging."
-    RELEASE_PLAN_FILENAME: Final[str] = "plan.json"
-    RELEASE_NOTES_FILENAME: Final[str] = "RELEASE_NOTES.md"
-    RELEASE_REPORT_FILENAME: Final[str] = "build-report.json"
-    PYPI_UPLOAD_URL: Final[str] = "https://upload.pypi.org/legacy/"
+    RELEASE_PLAN_FILENAME: ClassVar[str] = "plan.json"
+    RELEASE_NOTES_FILENAME: ClassVar[str] = "RELEASE_NOTES.md"
+    RELEASE_REPORT_FILENAME: ClassVar[str] = "build-report.json"
+    PYPI_UPLOAD_URL: ClassVar[str] = "https://upload.pypi.org/legacy/"
     "Canonical verified-artifact upload endpoint."
-    GH: Final[str] = "gh"
+    GH: ClassVar[str] = "gh"
 
 
 __all__: list[str] = ["FlextInfraConstantsRelease"]
