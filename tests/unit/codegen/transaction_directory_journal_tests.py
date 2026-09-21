@@ -21,6 +21,33 @@ class TestsFlextInfraTransactionDirectoryJournal:
 
     _TRANSACTION_ID = "a" * 32
 
+    def test_generation_source_accepts_authenticated_hardlink(
+        self, tmp_path: Path
+    ) -> None:
+        """Journal an immutable dependency source materialized from a cache."""
+        root = test_u.Tests.git_repository(tmp_path)
+        test_u.Tests.copy_tracked_mise_seeds(root)
+        mise_owner = FlextInfraCodegenMiseArtifacts(repository_root=root)
+        planner = FlextInfraMiseWorkspacePlanner(mise_owner)
+        layout = tm.ok(planner.layout_from_selectors(root, (".",)))
+        plan = tm.ok(planner.snapshot(layout))
+        cache_source = tmp_path / "cache-source.j2"
+        installed_source = tmp_path / "installed-source.j2"
+        cache_source.write_bytes(b"immutable template bytes")
+        os.link(cache_source, installed_source)
+        source = tm.ok(
+            u.Cli.atomic_read_binary_file_state(installed_source, required=True)
+        )
+
+        journal = transaction.journal_io.begin(
+            plan,
+            transaction_id=self._TRANSACTION_ID,
+            sources=(("lazy-init", source),),
+        )
+
+        recorded = tm.ok(journal)
+        tm.that(recorded.sources[0].link_count, eq=2)
+
     @pytest.mark.slow
     @pytest.mark.parametrize("change_config", [False, True])
     def test_mise_commit_preserves_unchanged_publications(

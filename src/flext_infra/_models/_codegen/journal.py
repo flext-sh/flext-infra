@@ -214,7 +214,12 @@ class FlextInfraModelsCodegenJournalModels:
             int | None, m.Field(gt=0, strict=True, description="Source inode identity")
         ]
         link_count: Annotated[
-            Literal[1] | None, m.Field(description="Unique physical source link count")
+            int | None,
+            m.Field(
+                ge=1,
+                strict=True,
+                description="Observed physical source link count",
+            ),
         ]
         absent_parent: Annotated[
             m.Cli.AtomicDirectoryChainPlan | None,
