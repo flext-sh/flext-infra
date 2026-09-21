@@ -194,7 +194,13 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         package_dir_by_name: MutableMapping[str, Path] = {}
         project_package_by_root: MutableMapping[str, str] = {}
         package_dirs: set[Path] = set()
-        for file_path in cls._python_and_stub_file_paths(rope_project, resolved_root):
+        # Hermetic index: iterate the discovery output in sorted path order so
+        # every derived structure (index, lazy maps, generated facades) is
+        # byte-identical across environments regardless of fs enumeration.
+        for file_path in sorted(
+            cls._python_and_stub_file_paths(rope_project, resolved_root),
+            key=lambda path: str(path),
+        ):
             resolved_file_path = file_path.resolve()
             if cls._is_generated_init_stub(resolved_file_path):
                 continue
