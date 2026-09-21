@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from .census_tests import TestsFlextInfraCodegenCensus
     from .ci_custom_steps_tests import TestsFlextInfraCodegenCiCustomSteps
     from .codegen_file_plan_state_tests import TestsFlextInfraCodegenFilePlanState
+    from .conform_support import TestsFlextInfraConformSupport
     from .consolidator_tests import TestsFlextInfraCodegenConsolidator
     from .constants_quality_gate_tests import TestsFlextInfraCodegenConstantsQualityGate
     from .docs_workflow_profile_tests import TestsFlextInfraCodegenDocsWorkflowProfile
@@ -35,13 +36,21 @@ if TYPE_CHECKING:
         TestsFlextInfraCodegenLazyInitClassReceipts,
         TestsFlextInfraCodegenLazyInitReceiptScan,
     )
+    from .lazy_init_family_aggregator_tests import (
+        TestsFlextInfraLazyInitFamilyAggregator,
+    )
     from .lazy_init_file_plan_tests import TestsFlextInfraCodegenLazyInitFilePlans
+    from .lazy_init_fixture_settings_tests import (
+        TestsFlextInfraLazyInitFixtureSettingsCollision,
+    )
     from .lazy_init_generation_tests import TestsFlextInfraCodegenGeneration
+    from .lazy_init_helpers_tests import TestsFlextInfraLazyInitHelpers
     from .lazy_init_process_tests import TestsFlextInfraLazyInitProcessing
     from .lazy_init_registry_wrapper_tests import TestsFlextInfraLazyInitCleanup
     from .lazy_init_runtime_tests import TestsFlextInfraLazyInitRuntime
     from .lazy_init_service_tests import TestsFlextInfraCodegenLazyInitService
     from .lazy_init_tests import TestsFlextInfraCodegenLazyInit
+    from .lazy_init_transforms_tests import TestsFlextInfraLazyInitTransforms
     from .main_tests import TestsFlextInfraCodegenMain
     from .scaffolder_naming_tests import TestsFlextInfraCodegenScaffolderNaming
     from .scaffolder_tests import TestsFlextInfraCodegenScaffolder
@@ -60,13 +69,19 @@ if TYPE_CHECKING:
     from .test_codegen_beads_projection import TestsFlextInfraCodegenBeadsProjection
     from .test_codegen_catalog_extensions import TestsFlextInfraCodegenCatalogExtensions
     from .test_codegen_ci_matrix import TestsFlextInfraCodegenCiMatrix
+    from .test_codegen_conform import (
+        TestsFlextInfraCodegenConform,
+        _FlextInfraCodegenConformLifecycleProbe,
+    )
     from .test_codegen_conform_no_transaction_worktrees import (
         TestsFlextInfraCodegenConformNoTransactionWorktrees,
     )
+    from .test_codegen_conform_progress import TestsFlextInfraCodegenConformProgress
     from .test_codegen_hook_conformance import TestsFlextInfraCodegenHookConformance
     from .test_codegen_linked_worktree_manifest import (
         TestsFlextInfraCodegenLinkedWorktreeManifest,
     )
+    from .test_codegen_make_contracts import TestsFlextInfraCodegenMakeContracts
     from .test_codegen_make_environment import TestsFlextInfraCodegenMakeEnvironment
     from .test_codegen_manifestless_existing import (
         TestsFlextInfraCodegenManifestlessExisting,
@@ -83,8 +98,10 @@ if TYPE_CHECKING:
         TestsFlextInfraCodegenRepositoryRootFanout,
     )
     from .test_codegen_runtime_profiles import TestsFlextInfraCodegenRuntimeProfiles
+    from .test_codegen_script_dispatch import TestsFlextInfraScriptDispatchMakefile
     from .test_codegen_setup_submodules import TestsFlextInfraCodegenSetupSubmodules
     from .test_codegen_version_file import TestsFlextInfraCodegenVersionFile
+    from .test_dependency_artifact_retirement import TestsDependencyArtifactRetirement
     from .test_file_participant_recovery import TestsFlextInfraFileParticipantRecovery
     from .test_gen_respects_invocation_scope import (
         TestsFlextInfraGenRespectsInvocationScope,
@@ -122,29 +139,32 @@ if TYPE_CHECKING:
     from .workflow_comment_spacing_tests import TestsFlextInfraWorkflowCommentSpacing
     from .workflow_orphan_guard_tests import TestsFlextInfraWorkflowOrphanGuard
 __all__: tuple[str, ...] = (
-    "CodegenTestSupport", "TestsFlextInfraCiCheckoutModeNormalization", "TestsFlextInfraCiDeclaredSecretsContract", "TestsFlextInfraCiIntegrationBranchTriggers",
-    "TestsFlextInfraCiSystemPackages", "TestsFlextInfraCodegenArtifactSsot", "TestsFlextInfraCodegenAutofixWorkspace", "TestsFlextInfraCodegenBeadsProjection",
-    "TestsFlextInfraCodegenCatalogExtensions", "TestsFlextInfraCodegenCensus", "TestsFlextInfraCodegenCensusModels", "TestsFlextInfraCodegenCiCustomSteps",
-    "TestsFlextInfraCodegenCiMatrix", "TestsFlextInfraCodegenConformNoTransactionWorktrees", "TestsFlextInfraCodegenConsolidator", "TestsFlextInfraCodegenConstantsQualityGate",
-    "TestsFlextInfraCodegenDocsWorkflowProfile", "TestsFlextInfraCodegenFilePlanState", "TestsFlextInfraCodegenGeneration", "TestsFlextInfraCodegenHookConformance",
-    "TestsFlextInfraCodegenInit", "TestsFlextInfraCodegenLayout", "TestsFlextInfraCodegenLayoutGitignore", "TestsFlextInfraCodegenLayoutMakeRoot",
-    "TestsFlextInfraCodegenLazyInit", "TestsFlextInfraCodegenLazyInitClassReceipts", "TestsFlextInfraCodegenLazyInitFilePlans", "TestsFlextInfraCodegenLazyInitReceiptScan",
-    "TestsFlextInfraCodegenLazyInitService", "TestsFlextInfraCodegenLinkedWorktreeManifest", "TestsFlextInfraCodegenMain", "TestsFlextInfraCodegenMakeEnvironment",
+    "CodegenTestSupport", "TestsDependencyArtifactRetirement", "TestsFlextInfraCiCheckoutModeNormalization", "TestsFlextInfraCiDeclaredSecretsContract",
+    "TestsFlextInfraCiIntegrationBranchTriggers", "TestsFlextInfraCiSystemPackages", "TestsFlextInfraCodegenArtifactSsot", "TestsFlextInfraCodegenAutofixWorkspace",
+    "TestsFlextInfraCodegenBeadsProjection", "TestsFlextInfraCodegenCatalogExtensions", "TestsFlextInfraCodegenCensus", "TestsFlextInfraCodegenCensusModels",
+    "TestsFlextInfraCodegenCiCustomSteps", "TestsFlextInfraCodegenCiMatrix", "TestsFlextInfraCodegenConform", "TestsFlextInfraCodegenConformNoTransactionWorktrees",
+    "TestsFlextInfraCodegenConformProgress", "TestsFlextInfraCodegenConsolidator", "TestsFlextInfraCodegenConstantsQualityGate", "TestsFlextInfraCodegenDocsWorkflowProfile",
+    "TestsFlextInfraCodegenFilePlanState", "TestsFlextInfraCodegenGeneration", "TestsFlextInfraCodegenHookConformance", "TestsFlextInfraCodegenInit",
+    "TestsFlextInfraCodegenLayout", "TestsFlextInfraCodegenLayoutGitignore", "TestsFlextInfraCodegenLayoutMakeRoot", "TestsFlextInfraCodegenLazyInit",
+    "TestsFlextInfraCodegenLazyInitClassReceipts", "TestsFlextInfraCodegenLazyInitFilePlans", "TestsFlextInfraCodegenLazyInitReceiptScan", "TestsFlextInfraCodegenLazyInitService",
+    "TestsFlextInfraCodegenLinkedWorktreeManifest", "TestsFlextInfraCodegenMain", "TestsFlextInfraCodegenMakeContracts", "TestsFlextInfraCodegenMakeEnvironment",
     "TestsFlextInfraCodegenManifestlessExisting", "TestsFlextInfraCodegenMiseArtifacts", "TestsFlextInfraCodegenPipelinePerformance", "TestsFlextInfraCodegenPyprojectConform",
     "TestsFlextInfraCodegenRenderPurityGolden", "TestsFlextInfraCodegenRepositoryRootFanout", "TestsFlextInfraCodegenRuntimeProfiles", "TestsFlextInfraCodegenScaffolder",
     "TestsFlextInfraCodegenScaffolderNaming", "TestsFlextInfraCodegenSetupSubmodules", "TestsFlextInfraCodegenVersionFile", "TestsFlextInfraCodegenViolationKey",
-    "TestsFlextInfraFileParticipantRecovery", "TestsFlextInfraGenRespectsInvocationScope", "TestsFlextInfraLazyInitAliasInheritance", "TestsFlextInfraLazyInitBootstrapPackage",
-    "TestsFlextInfraLazyInitCleanup", "TestsFlextInfraLazyInitProcessing", "TestsFlextInfraLazyInitRuntime", "TestsFlextInfraManagedConflictRecovery",
-    "TestsFlextInfraManagedMaintenanceHeaders", "TestsFlextInfraMiseRuntimeStorage", "TestsFlextInfraPlanCollection", "TestsFlextInfraReleaseCheckoutCredentials",
-    "TestsFlextInfraRootArtifactOwnership", "TestsFlextInfraSetupNeverDestroys", "TestsFlextInfraSubmoduleRecipeShell", "TestsFlextInfraTemplateFormatterFixedPoint",
-    "TestsFlextInfraToolchainBeadsDistribution", "TestsFlextInfraToolchainGoBackend", "TestsFlextInfraToolchainMake", "TestsFlextInfraToolchainRequirement",
-    "TestsFlextInfraTransactionDirectoryJournal", "TestsFlextInfraTransactionLease", "TestsFlextInfraUtilityFacadeProjection", "TestsFlextInfraVscodeOwnerMerge",
-    "TestsFlextInfraWorkflowCommentSpacing", "TestsFlextInfraWorkflowOrphanGuard", "TestsFlextInfraWorkspaceRootSetupSubmodules", "archive_root",
-    "build_loose_project", "c", "d", "e",
-    "h", "layout_engine", "m", "p",
-    "r", "s", "t", "td",
-    "tf", "tk", "tm", "tv",
-    "u", "x",
+    "TestsFlextInfraConformSupport", "TestsFlextInfraFileParticipantRecovery", "TestsFlextInfraGenRespectsInvocationScope", "TestsFlextInfraLazyInitAliasInheritance",
+    "TestsFlextInfraLazyInitBootstrapPackage", "TestsFlextInfraLazyInitCleanup", "TestsFlextInfraLazyInitFamilyAggregator", "TestsFlextInfraLazyInitFixtureSettingsCollision",
+    "TestsFlextInfraLazyInitHelpers", "TestsFlextInfraLazyInitProcessing", "TestsFlextInfraLazyInitRuntime", "TestsFlextInfraLazyInitTransforms",
+    "TestsFlextInfraManagedConflictRecovery", "TestsFlextInfraManagedMaintenanceHeaders", "TestsFlextInfraMiseRuntimeStorage", "TestsFlextInfraPlanCollection",
+    "TestsFlextInfraReleaseCheckoutCredentials", "TestsFlextInfraRootArtifactOwnership", "TestsFlextInfraScriptDispatchMakefile", "TestsFlextInfraSetupNeverDestroys",
+    "TestsFlextInfraSubmoduleRecipeShell", "TestsFlextInfraTemplateFormatterFixedPoint", "TestsFlextInfraToolchainBeadsDistribution", "TestsFlextInfraToolchainGoBackend",
+    "TestsFlextInfraToolchainMake", "TestsFlextInfraToolchainRequirement", "TestsFlextInfraTransactionDirectoryJournal", "TestsFlextInfraTransactionLease",
+    "TestsFlextInfraUtilityFacadeProjection", "TestsFlextInfraVscodeOwnerMerge", "TestsFlextInfraWorkflowCommentSpacing", "TestsFlextInfraWorkflowOrphanGuard",
+    "TestsFlextInfraWorkspaceRootSetupSubmodules", "_FlextInfraCodegenConformLifecycleProbe", "archive_root", "build_loose_project",
+    "c", "d", "e", "h",
+    "layout_engine", "m", "p", "r",
+    "s", "t", "td", "tf",
+    "tk", "tm", "tv", "u",
+    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -156,6 +176,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".census_tests": ("TestsFlextInfraCodegenCensus",),
             ".ci_custom_steps_tests": ("TestsFlextInfraCodegenCiCustomSteps",),
             ".codegen_file_plan_state_tests": ("TestsFlextInfraCodegenFilePlanState",),
+            ".conform_support": ("TestsFlextInfraConformSupport",),
             ".consolidator_tests": ("TestsFlextInfraCodegenConsolidator",),
             ".constants_quality_gate_tests": (
                 "TestsFlextInfraCodegenConstantsQualityGate",
@@ -178,13 +199,21 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraCodegenLazyInitClassReceipts",
                 "TestsFlextInfraCodegenLazyInitReceiptScan",
             ),
+            ".lazy_init_family_aggregator_tests": (
+                "TestsFlextInfraLazyInitFamilyAggregator",
+            ),
             ".lazy_init_file_plan_tests": ("TestsFlextInfraCodegenLazyInitFilePlans",),
+            ".lazy_init_fixture_settings_tests": (
+                "TestsFlextInfraLazyInitFixtureSettingsCollision",
+            ),
             ".lazy_init_generation_tests": ("TestsFlextInfraCodegenGeneration",),
+            ".lazy_init_helpers_tests": ("TestsFlextInfraLazyInitHelpers",),
             ".lazy_init_process_tests": ("TestsFlextInfraLazyInitProcessing",),
             ".lazy_init_registry_wrapper_tests": ("TestsFlextInfraLazyInitCleanup",),
             ".lazy_init_runtime_tests": ("TestsFlextInfraLazyInitRuntime",),
             ".lazy_init_service_tests": ("TestsFlextInfraCodegenLazyInitService",),
             ".lazy_init_tests": ("TestsFlextInfraCodegenLazyInit",),
+            ".lazy_init_transforms_tests": ("TestsFlextInfraLazyInitTransforms",),
             ".main_tests": ("TestsFlextInfraCodegenMain",),
             ".scaffolder_naming_tests": ("TestsFlextInfraCodegenScaffolderNaming",),
             ".scaffolder_tests": ("TestsFlextInfraCodegenScaffolder",),
@@ -207,8 +236,15 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraCodegenCatalogExtensions",
             ),
             ".test_codegen_ci_matrix": ("TestsFlextInfraCodegenCiMatrix",),
+            ".test_codegen_conform": (
+                "TestsFlextInfraCodegenConform",
+                "_FlextInfraCodegenConformLifecycleProbe",
+            ),
             ".test_codegen_conform_no_transaction_worktrees": (
                 "TestsFlextInfraCodegenConformNoTransactionWorktrees",
+            ),
+            ".test_codegen_conform_progress": (
+                "TestsFlextInfraCodegenConformProgress",
             ),
             ".test_codegen_hook_conformance": (
                 "TestsFlextInfraCodegenHookConformance",
@@ -216,6 +252,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_codegen_linked_worktree_manifest": (
                 "TestsFlextInfraCodegenLinkedWorktreeManifest",
             ),
+            ".test_codegen_make_contracts": ("TestsFlextInfraCodegenMakeContracts",),
             ".test_codegen_make_environment": (
                 "TestsFlextInfraCodegenMakeEnvironment",
             ),
@@ -238,10 +275,14 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_codegen_runtime_profiles": (
                 "TestsFlextInfraCodegenRuntimeProfiles",
             ),
+            ".test_codegen_script_dispatch": ("TestsFlextInfraScriptDispatchMakefile",),
             ".test_codegen_setup_submodules": (
                 "TestsFlextInfraCodegenSetupSubmodules",
             ),
             ".test_codegen_version_file": ("TestsFlextInfraCodegenVersionFile",),
+            ".test_dependency_artifact_retirement": (
+                "TestsDependencyArtifactRetirement",
+            ),
             ".test_file_participant_recovery": (
                 "TestsFlextInfraFileParticipantRecovery",
             ),

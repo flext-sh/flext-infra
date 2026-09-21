@@ -24,13 +24,14 @@ if TYPE_CHECKING:
         TestsFlextInfraTransformersPydanticModernizer,
     )
     from .test_infra_transformer_typing_dict import TestsFlextInfraTypingDictDeactivated
+    from .test_project_alias_migrator import TestsFlextInfraRefactorProjectAliasMigrator
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraCastRemoverDeactivated", "TestsFlextInfraTransformersEnforcementFixers", "TestsFlextInfraTransformersMroRemover", "TestsFlextInfraTransformersPydanticModernizer",
-    "TestsFlextInfraTypingDictDeactivated", "c", "d", "e",
-    "h", "m", "p", "r",
-    "s", "t", "td", "tf",
-    "tk", "tm", "tv", "u",
-    "x",
+    "TestsFlextInfraCastRemoverDeactivated", "TestsFlextInfraRefactorProjectAliasMigrator", "TestsFlextInfraTransformersEnforcementFixers", "TestsFlextInfraTransformersMroRemover",
+    "TestsFlextInfraTransformersPydanticModernizer", "TestsFlextInfraTypingDictDeactivated", "c", "d",
+    "e", "h", "m", "p",
+    "r", "s", "t", "td",
+    "tf", "tk", "tm", "tv",
+    "u", "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -50,6 +51,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".test_infra_transformer_typing_dict": (
                 "TestsFlextInfraTypingDictDeactivated",
+            ),
+            ".test_project_alias_migrator": (
+                "TestsFlextInfraRefactorProjectAliasMigrator",
             ),
             "flext_tests": (
                 "c", "d", "e", "h", "m", "p", "r", "s", "t", "td", "tf", "tk", "tm",

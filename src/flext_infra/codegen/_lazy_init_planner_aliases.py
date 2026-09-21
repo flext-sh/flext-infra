@@ -80,14 +80,16 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             for module_path in sorted(pkg_dir.glob("*.py")):
                 if module_path.name == c.Infra.INIT_PY:
                     continue
-                declared = self.rope_workspace.exports(
-                    module_path,
-                    export_options=m.Infra.ExportOptions(allow_assignments=True),
+                # Only what the module declares in its own explicit __all__.
+                # No filename table, no closed list of letters, no scraping of
+                # top-level names: models.py says
+                # __all__ = ["FlextInfraModels", "m"], and that declaration is
+                # the whole truth. A module with no __all__ declares nothing to
+                # its package, which is what makes a numbered example script
+                # a non-event here: it publishes nothing, so nothing is emitted.
+                declared = u.Infra.public_export_names_source(
+                    module_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
                 )
-                # No closed list of letters. A module that publishes an alias
-                # says so in its own __all__ -- models.py declares
-                # ["FlextInfraModels", "m"] -- so the declaration is the whole
-                # truth and there is nothing to keep in sync.
                 for alias_name in sorted(declared):
                     letter_module[alias_name] = module_path.stem
                     lazy_map[alias_name] = (

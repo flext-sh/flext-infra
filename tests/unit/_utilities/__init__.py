@@ -12,24 +12,36 @@ if TYPE_CHECKING:
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
     from .test_docs_github_links import TestsFlextInfraUtilitiesDocsGithubLinks
+    from .test_formatting import TestsFlextInfraUtilitiesformatting
     from .test_git_facet_gitpython import TestsFlextInfraGitFacet
+    from .test_protected_edit import TestsFlextInfraUtilitiesProtectedEdit
+    from .test_resource_limits import TestsFlextInfraUtilitiesResourceLimits
+    from .test_rope_analysis import TestsFlextInfraRopeAnalysis
     from .test_rope_structure import TestsFlextInfraRopeStructure
     from .test_safety import TestsFlextInfraUtilitiesSafety
+    from .test_scanning import TestsFlextInfraUtilitiesscanning
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraGitFacet", "TestsFlextInfraRopeStructure", "TestsFlextInfraUtilitiesDocsGithubLinks", "TestsFlextInfraUtilitiesSafety",
-    "c", "d", "e", "h",
-    "m", "p", "r", "s",
-    "t", "td", "tf", "tk",
-    "tm", "tv", "u", "x",
+    "TestsFlextInfraGitFacet", "TestsFlextInfraRopeAnalysis", "TestsFlextInfraRopeStructure", "TestsFlextInfraUtilitiesDocsGithubLinks",
+    "TestsFlextInfraUtilitiesProtectedEdit", "TestsFlextInfraUtilitiesResourceLimits", "TestsFlextInfraUtilitiesSafety", "TestsFlextInfraUtilitiesformatting",
+    "TestsFlextInfraUtilitiesscanning", "c", "d", "e",
+    "h", "m", "p", "r",
+    "s", "t", "td", "tf",
+    "tk", "tm", "tv", "u",
+    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             ".test_docs_github_links": ("TestsFlextInfraUtilitiesDocsGithubLinks",),
+            ".test_formatting": ("TestsFlextInfraUtilitiesformatting",),
             ".test_git_facet_gitpython": ("TestsFlextInfraGitFacet",),
+            ".test_protected_edit": ("TestsFlextInfraUtilitiesProtectedEdit",),
+            ".test_resource_limits": ("TestsFlextInfraUtilitiesResourceLimits",),
+            ".test_rope_analysis": ("TestsFlextInfraRopeAnalysis",),
             ".test_rope_structure": ("TestsFlextInfraRopeStructure",),
             ".test_safety": ("TestsFlextInfraUtilitiesSafety",),
+            ".test_scanning": ("TestsFlextInfraUtilitiesscanning",),
             "flext_tests": (
                 "c", "d", "e", "h", "m", "p", "r", "s", "t", "td", "tf", "tk", "tm",
                 "tv", "u", "x",

@@ -12,19 +12,21 @@ if TYPE_CHECKING:
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
     from .index_declarations_gate_tests import TestsFlextInfraIndexDeclarationsGate
+    from .runtime_census_gate_tests import TestRuntimeCensusSelection
     from .tier_whitelist_gate_tests import TestsFlextInfraTierWhitelistGateReporting
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraIndexDeclarationsGate", "TestsFlextInfraTierWhitelistGateReporting", "c", "d",
-    "e", "h", "m", "p",
-    "r", "s", "t", "td",
-    "tf", "tk", "tm", "tv",
-    "u", "x",
+    "TestRuntimeCensusSelection", "TestsFlextInfraIndexDeclarationsGate", "TestsFlextInfraTierWhitelistGateReporting", "c",
+    "d", "e", "h", "m",
+    "p", "r", "s", "t",
+    "td", "tf", "tk", "tm",
+    "tv", "u", "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             ".index_declarations_gate_tests": ("TestsFlextInfraIndexDeclarationsGate",),
+            ".runtime_census_gate_tests": ("TestRuntimeCensusSelection",),
             ".tier_whitelist_gate_tests": (
                 "TestsFlextInfraTierWhitelistGateReporting",
             ),

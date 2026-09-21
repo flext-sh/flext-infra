@@ -11,11 +11,24 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 if TYPE_CHECKING:
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
+    from .test_declarative_enforcement import (
+        TestsFlextInfraRefactorDeclarativeEnforcement,
+        TestsFlextInfraRefactorDeclarativeEnforcementInCensus,
+    )
     from .test_infra_refactor_census_preview_cache import (
         TestsFlextInfraRefactorCensusPreview,
     )
+    from .test_infra_refactor_class_placement import (
+        TestsFlextInfraRefactorInfraRefactorClassPlacement,
+    )
     from .test_infra_refactor_cli_models_workflow import (
         TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow,
+    )
+    from .test_infra_refactor_namespace_aliases import (
+        TestsFlextInfraRefactorInfraRefactorNamespaceAliases,
+    )
+    from .test_infra_refactor_namespace_enforcer import (
+        TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer,
     )
     from .test_infra_refactor_namespace_moves import (
         TestsFlextInfraRefactorInfraRefactorNamespaceMoves,
@@ -23,31 +36,54 @@ if TYPE_CHECKING:
     from .test_infra_refactor_project_classifier import (
         TestsFlextInfraRefactorInfraRefactorProjectClassifier,
     )
+    from .test_infra_refactor_typing_unifier import (
+        FlextInfraRefactorTypingUnificationRule,
+        TestsFlextInfraRefactorInfraRefactorTypingUnifier,
+    )
     from .test_main_cli import TestsFlextInfraRefactorMainCli
     from .test_signature_propagation import TestsFlextInfraRefactorSignaturePropagation
 __all__: tuple[str, ...] = (
-    "TestsFlextInfraRefactorCensusPreview", "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow", "TestsFlextInfraRefactorInfraRefactorNamespaceMoves", "TestsFlextInfraRefactorInfraRefactorProjectClassifier",
-    "TestsFlextInfraRefactorMainCli", "TestsFlextInfraRefactorSignaturePropagation", "c", "d",
-    "e", "h", "m", "p",
-    "r", "s", "t", "td",
-    "tf", "tk", "tm", "tv",
-    "u", "x",
+    "FlextInfraRefactorTypingUnificationRule", "TestsFlextInfraRefactorCensusPreview", "TestsFlextInfraRefactorDeclarativeEnforcement", "TestsFlextInfraRefactorDeclarativeEnforcementInCensus",
+    "TestsFlextInfraRefactorInfraRefactorClassPlacement", "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow", "TestsFlextInfraRefactorInfraRefactorNamespaceAliases", "TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer",
+    "TestsFlextInfraRefactorInfraRefactorNamespaceMoves", "TestsFlextInfraRefactorInfraRefactorProjectClassifier", "TestsFlextInfraRefactorInfraRefactorTypingUnifier", "TestsFlextInfraRefactorMainCli",
+    "TestsFlextInfraRefactorSignaturePropagation", "c", "d", "e",
+    "h", "m", "p", "r",
+    "s", "t", "td", "tf",
+    "tk", "tm", "tv", "u",
+    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
+            ".test_declarative_enforcement": (
+                "TestsFlextInfraRefactorDeclarativeEnforcement",
+                "TestsFlextInfraRefactorDeclarativeEnforcementInCensus",
+            ),
             ".test_infra_refactor_census_preview_cache": (
                 "TestsFlextInfraRefactorCensusPreview",
             ),
+            ".test_infra_refactor_class_placement": (
+                "TestsFlextInfraRefactorInfraRefactorClassPlacement",
+            ),
             ".test_infra_refactor_cli_models_workflow": (
                 "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow",
+            ),
+            ".test_infra_refactor_namespace_aliases": (
+                "TestsFlextInfraRefactorInfraRefactorNamespaceAliases",
+            ),
+            ".test_infra_refactor_namespace_enforcer": (
+                "TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer",
             ),
             ".test_infra_refactor_namespace_moves": (
                 "TestsFlextInfraRefactorInfraRefactorNamespaceMoves",
             ),
             ".test_infra_refactor_project_classifier": (
                 "TestsFlextInfraRefactorInfraRefactorProjectClassifier",
+            ),
+            ".test_infra_refactor_typing_unifier": (
+                "FlextInfraRefactorTypingUnificationRule",
+                "TestsFlextInfraRefactorInfraRefactorTypingUnifier",
             ),
             ".test_main_cli": ("TestsFlextInfraRefactorMainCli",),
             ".test_signature_propagation": (
