@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -517,7 +516,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         marker = repository_root / c.Infra.BEADS_METADATA_RELPATH
         if not marker.is_file():
             return None
-        document = u.Cli.json_loads(marker.read_bytes())
+        document = u.Cli.json_loads(marker.read_text(encoding="utf-8"))
         if document.failure or not isinstance(document.value, dict):
             return None
         value = document.value.get("project_id")
