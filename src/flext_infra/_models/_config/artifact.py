@@ -13,8 +13,8 @@ from ..._constants import (
     FlextInfraConstantsCodegenProject,
     FlextInfraConstantsSharedInfra,
 )
+from .. import FlextInfraModelsLayout
 from .._defaults import FlextInfraModelsDefaults
-from ..layout import FlextInfraModelsLayout
 from .contexts import FlextInfraConfigModelsContexts
 from .contract import FlextInfraConfigModelsContract
 from .make import FlextInfraConfigModelsMake

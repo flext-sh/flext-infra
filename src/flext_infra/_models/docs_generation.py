@@ -203,8 +203,7 @@ class FlextInfraModelsDocsGeneration:
                 or state.mode is None
                 or state.device is None
                 or state.inode is None
-                or state.link_count is None
-                or state.link_count < 1
+                or state.link_count != 1
                 or state.reparse_tag not in {None, 0}
                 for state in self.source_states
             ):
