@@ -446,5 +446,36 @@ class TestsFlextInfraCodegenGeneration:
             ),
         )
 
+    def test_root_type_checking_keeps_the_project_package_first_party(self) -> None:
+        """Roots outside the source tree import the project package first-party.
+
+        ``examples``/``scripts`` initializers import the distribution package
+        absolutely, and the project's known-first-party lists it, so it must
+        share its section instead of gaining a spurious blank line.
+        """
+        plan = self._plan(
+            "demo_root",
+            ("cli_c", "core_d", "project_p"),
+            MappingProxyType({
+                "cli_c": ("flext_cli", "c"),
+                "core_d": ("flext_core", "d"),
+                "project_p": ("flext_infra", "p"),
+            }),
+        )
+
+        init_content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(init_content, "__init__.py", "exec")
+        tm.that(
+            init_content,
+            contains=(
+                "if TYPE_CHECKING:\n"
+                "    from flext_cli import c as cli_c\n"
+                "\n"
+                "    from flext_core import d as core_d\n"
+                "    from flext_infra import p as project_p\n"
+            ),
+        )
+
 
 __all__: list[str] = ["TestsFlextInfraCodegenGeneration"]
