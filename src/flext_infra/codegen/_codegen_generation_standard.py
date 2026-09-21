@@ -6,7 +6,7 @@ from collections.abc import MutableMapping
 from sys import stdlib_module_names
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m
+from flext_infra import c, config, m
 
 from ._codegen_generation_renderers import FlextInfraCodegenGenerationRenderersMixin
 
@@ -240,15 +240,23 @@ class FlextInfraCodegenGenerationStandardMixin(
         lazy_module_groups, lazy_alias_groups, lazy_map = cls._lazy_groups(plan)
         current_pkg = plan.context.current_pkg
         public_type_checking_imports = cls._type_checking_filtered(plan)
-        # For test facade roots (current_pkg == "tests"), the project's own
-        # package (e.g. "flext_web") must also be classified as first-party so
-        # isort sectioning matches ruff's known_first_party config. Without this,
-        # flext_web and flext_tests are lumped into the same third-party section,
-        # omitting the blank line ruff expects and violating I001.
-        type_checking_root_names: frozenset[str] | None = None
+        # The generated TYPE_CHECKING block must mirror the project's ruff
+        # isort sections exactly: every namespace the project's
+        # known-first-party declares must be emitted in the first-party
+        # section. That set is the config-owned base namespaces (e.g.
+        # flext_core, the shared upstream) plus this package root. For test
+        # facade roots (current_pkg == "tests"), the project's own package
+        # (e.g. "flext_web") is first-party as well. Without this, a base
+        # namespace the project declares first-party was emitted in the
+        # third-party section, omitting the blank line ruff expects and
+        # violating I001.
+        type_checking_root_names = frozenset({
+            current_pkg,
+            *config.Infra.tooling.tools.deptry.known_first_party,
+        })
         if current_pkg == c.Infra.DIR_TESTS:
             project_pkg = plan.context.pkg_dir.parent.name.replace("-", "_")
-            type_checking_root_names = frozenset({current_pkg, project_pkg})
+            type_checking_root_names |= frozenset({project_pkg})
         type_checking_lines = "\n".join(
             cls.generate_type_checking(
                 cls._group_imports(public_type_checking_imports),
