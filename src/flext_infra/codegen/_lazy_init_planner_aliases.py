@@ -80,6 +80,12 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             for module_path in sorted(pkg_dir.glob("*.py")):
                 if module_path.name == c.Infra.INIT_PY:
                     continue
+                # A stem that is not an identifier is unimportable: its
+                # declarations can never be published through a from-import,
+                # so a numbered example script stays a non-event even when
+                # it carries an explicit __all__.
+                if not module_path.stem.isidentifier():
+                    continue
                 # Only what the module declares in its own explicit __all__.
                 # No filename table, no closed list of letters, no scraping of
                 # top-level names: models.py says

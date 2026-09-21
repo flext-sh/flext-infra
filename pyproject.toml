@@ -617,4 +617,3 @@ FLEXT_INFRA_LINT_SNAPSHOT_GATES = "lint"
 [tool.radon]
 cc_min = "B"
 mi_min = "B"
-

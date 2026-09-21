@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from enum import StrEnum, unique
-from typing import ClassVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -126,7 +126,7 @@ class FlextInfraConstantsCodegenProject:
     BEADS_DIRECTORY_MODE: ClassVar[int] = 0o700
     BEADS_LOCAL_VERSION_FILENAME: ClassVar[str] = ".local_version"
     BEADS_LAST_TOUCHED_FILENAME: ClassVar[str] = "last-touched"
-    BEADS_CONFIG_VERSION: Final = 1
+    BEADS_CONFIG_VERSION: ClassVar[int] = 1
     CONFORM_NAMESPACE_TABLE: ClassVar[t.VariadicTuple[str]] = (
         "tool",
         "flext",
@@ -192,14 +192,14 @@ class FlextInfraConstantsCodegenProject:
     CUSTOM_HANDLER_PREFIX: ClassVar[str] = "_custom_"
     TEMPLATE_MODULE_SKELETON: ClassVar[str] = "module_skeleton.py.j2"
     "Scaffold module-skeleton template (replaces the legacy f-string)."
-    TEMPLATE_TEST_MODULE_SKELETON: Final[str] = "test_module_skeleton.py.j2"
+    TEMPLATE_TEST_MODULE_SKELETON: ClassVar[str] = "test_module_skeleton.py.j2"
     "Scaffold template for canonical test c/t/p/m/u facades."
-    CODEGEN_CONFIG_FILENAME: Final[str] = "codegen.yaml"
-    CODEGEN_OVERRIDES_FILENAME: Final[str] = "codegen-overrides.yaml"
-    CODEGEN_GEN_FILENAME: Final[str] = "codegen.gen.yaml"
-    CODEGEN_GEN_SUFFIX: Final[str] = ".gen.yaml"
+    CODEGEN_CONFIG_FILENAME: ClassVar[str] = "codegen.yaml"
+    CODEGEN_OVERRIDES_FILENAME: ClassVar[str] = "codegen-overrides.yaml"
+    CODEGEN_GEN_FILENAME: ClassVar[str] = "codegen.gen.yaml"
+    CODEGEN_GEN_SUFFIX: ClassVar[str] = ".gen.yaml"
     "File suffix for generation requirements contract files managed by conform."
-    CODEGEN_CONFIG_DIR: Final[str] = "config"
+    CODEGEN_CONFIG_DIR: ClassVar[str] = "config"
     "Directory name for flext-infra config files relative to package root."
 
     # One base catalog serves both profiles;

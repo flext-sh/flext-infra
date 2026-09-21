@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import StrEnum, unique
-from typing import ClassVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from .codegen_project import FlextInfraConstantsCodegenProject
 from .validate import FlextInfraConstantsSharedInfra

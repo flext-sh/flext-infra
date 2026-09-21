@@ -198,8 +198,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         # every derived structure (index, lazy maps, generated facades) is
         # byte-identical across environments regardless of fs enumeration.
         for file_path in sorted(
-            cls._python_and_stub_file_paths(rope_project, resolved_root),
-            key=lambda path: str(path),
+            cls._python_and_stub_file_paths(rope_project, resolved_root), key=str
         ):
             resolved_file_path = file_path.resolve()
             if cls._is_generated_init_stub(resolved_file_path):
