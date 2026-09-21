@@ -41,10 +41,8 @@ class TestsFlextInfraWorkspaceRootSetupSubmodules:
         member = test_u.Tests.repository_ref(
             "flext-core", path=Path("flext-core"), role=c.Infra.MakeProfile.STANDALONE
         )
-        workspace = m.Infra.WorkspaceSpec(
-            name="flext",
-            beads=test_u.Tests.beads_project("flext"),
-            repository=root_repository,
+        workspace = test_u.Tests.workspace_spec(
+            root_repository,
             project=test_u.Tests.project_spec("flext"),
             subprojects=(member,),
         )

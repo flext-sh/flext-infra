@@ -16,7 +16,7 @@ from pathlib import Path
 from flext_tests import tm
 
 import flext_infra
-from flext_infra import c, config, m
+from flext_infra import c, config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import u as test_u
 
@@ -83,10 +83,8 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         contract holds for any manifest instead of freezing today's projects.
         """
         projects = ("probe-project", "nested/probe-project")
-        workspace = m.Infra.WorkspaceSpec(
-            name="probe-root",
-            beads=test_u.Tests.beads_project("probe-root"),
-            repository=test_u.Tests.repository_ref("probe-root"),
+        workspace = test_u.Tests.workspace_spec(
+            test_u.Tests.repository_ref("probe-root"),
             subprojects=tuple(
                 test_u.Tests.repository_ref(
                     Path(item).name,

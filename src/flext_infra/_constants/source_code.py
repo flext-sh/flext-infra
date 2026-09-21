@@ -119,10 +119,9 @@ class FlextInfraConstantsSourceCode:
         "htmlcov",
     }
     "Directories excluded when cloning a project tree for post-apply validation."
-    WORKTREE_TRANSACTION_EXCLUDED_DIRS: ClassVar[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
-        ".pyrefly_cache",
-        ".cache",
-    }
+    WORKTREE_TRANSACTION_EXCLUDED_DIRS: ClassVar[frozenset[str]] = (
+        COMMON_EXCLUDED_DIRS | {".pyrefly_cache", ".cache"}
+    )
     "Cache directories excluded from isolated worktree transaction deltas."
 
     # --- Encoding (was: class Encoding) ---
@@ -150,13 +149,17 @@ class FlextInfraConstantsSourceCode:
         r"^(?:def|async\s+def|class)\s+(\w+)", re.MULTILINE
     )
     "Regex: ``def/async def/class <name>``."
-    CLASS_NAME_RE: ClassVar[t.RegexPattern] = re.compile(r"^class\s+(\w+)", re.MULTILINE)
+    CLASS_NAME_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"^class\s+(\w+)", re.MULTILINE
+    )
     "Regex: any class definition — captures name only."
     CLASS_WITH_BASES_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^class\s+(\w+)\s*\(([^)]*)\)\s*:", re.MULTILINE
     )
     "Regex: ``class <name>(<bases>):`` — requires parentheses, captures bases."
-    ASSIGN_RE: ClassVar[t.RegexPattern] = re.compile(r"^(\w+)\s*(?::.*)?=", re.MULTILINE)
+    ASSIGN_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"^(\w+)\s*(?::.*)?=", re.MULTILINE
+    )
     "Regex: ``<name> [: ...] = ...`` assignment."
     FUNC_PARAM_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(?:def|async\s+def)\s+\w+\s*\(([^)]*)\)", re.MULTILINE | re.DOTALL
@@ -244,7 +247,9 @@ class FlextInfraConstantsSourceCode:
         r"^(?:from\s+\S+\s+import\s+.+|import\s+.+)$", re.MULTILINE
     )
     "Regex: any anchored import line (used to find the insertion offset)."
-    IMPORT_PAREN_CLOSE_RE: ClassVar[t.RegexPattern] = re.compile(r"^\)\s*$", re.MULTILINE)
+    IMPORT_PAREN_CLOSE_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"^\)\s*$", re.MULTILINE
+    )
     "Regex: closing ``)`` of a parenthesized import block, anchored at line start."
 
     @staticmethod
@@ -609,15 +614,21 @@ class FlextInfraConstantsSourceCode:
         "models",
     })
     "Canonical directory names where Pydantic models should live."
-    PLACEMENT_CANONICAL_PROTOCOL_DIRS: ClassVar[frozenset[str]] = frozenset({"_protocols"})
+    PLACEMENT_CANONICAL_PROTOCOL_DIRS: ClassVar[frozenset[str]] = frozenset({
+        "_protocols"
+    })
     "Canonical directory names where Protocol classes should live."
     PLACEMENT_CANONICAL_CONSTANTS_DIRS: ClassVar[frozenset[str]] = frozenset({
         "_constants"
     })
     "Canonical directory names where Enum constants should live."
-    PLACEMENT_CANONICAL_UTILITY_DIRS: ClassVar[frozenset[str]] = frozenset({"_utilities"})
+    PLACEMENT_CANONICAL_UTILITY_DIRS: ClassVar[frozenset[str]] = frozenset({
+        "_utilities"
+    })
     "Canonical directory names where utility classes should live."
-    PLACEMENT_CANONICAL_TYPING_FILES: ClassVar[frozenset[str]] = frozenset({"typings.py"})
+    PLACEMENT_CANONICAL_TYPING_FILES: ClassVar[frozenset[str]] = frozenset({
+        "typings.py"
+    })
     "Canonical file names where type aliases should live."
     PLACEMENT_CANONICAL_TYPING_DIRS: ClassVar[frozenset[str]] = frozenset({"_typings"})
     "Canonical directory names where type aliases should live."

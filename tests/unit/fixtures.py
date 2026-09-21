@@ -84,11 +84,8 @@ def real_detector_project(tmp_path: Path, request: pytest.FixtureRequest) -> Pat
         root.name, role=c.Infra.MakeProfile.STANDALONE
     ).model_copy(update={"editable": True})
     u.Tests.initialize_git_repo(root, origin_url=repository.url)
-    workspace = m.Infra.WorkspaceSpec(
-        name=root.name,
-        beads=u.Tests.beads_project(root.name),
-        repository=repository,
-        project=u.Tests.project_spec(root.name),
+    workspace = u.Tests.workspace_spec(
+        repository, project=u.Tests.project_spec(root.name)
     )
     conform_request = u.Tests.conform_request(
         root, what=c.Infra.CodegenConformSurface.MAKEFILE

@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, m, u
+from flext_infra import c, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from tests import t, u as test_u
 
@@ -30,11 +30,8 @@ class TestsFlextInfraCodegenSetupSubmodules:
         repository = test_u.Tests.repository_ref(
             "flext-demo", role=c.Infra.MakeProfile.STANDALONE
         )
-        workspace = m.Infra.WorkspaceSpec(
-            name=repository.name,
-            beads=test_u.Tests.beads_project(repository.name),
-            repository=repository,
-            project=test_u.Tests.project_spec(repository.name),
+        workspace = test_u.Tests.workspace_spec(
+            repository, project=test_u.Tests.project_spec(repository.name)
         )
         tm.ok(
             FlextInfraCodegenConform.execute_request(
@@ -61,6 +58,9 @@ class TestsFlextInfraCodegenSetupSubmodules:
         (root / "marker.txt").write_text(marker, encoding="utf-8")
         cls._git(root, "add", "marker.txt")
         cls._git(root, "commit", "-q", "-m", marker)
+        # A scenario repository publishes its integration line exactly as a
+        # real clone would; the branch is a Git fact, never a checkout guess.
+        cls._git(root, "update-ref", f"refs/remotes/origin/{branch}", "HEAD")
 
     @classmethod
     def _generated_project(cls, root: Path, template: Path) -> None:

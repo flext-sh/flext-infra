@@ -386,30 +386,45 @@ class FlextInfraUtilitiesRepository:
 
     @classmethod
     def resolve_integration_branch(
-        cls, repository_root: Path, *, preference: t.StrSequence
+        cls,
+        repository_root: Path,
+        *,
+        preference: t.StrSequence,
+        declared: str | None = None,
     ) -> p.Result[str]:
-        """Detect the integration branch one repository actually integrates on.
+        """Return the integration branch one repository integrates on.
 
-        The published remote-tracking baseline wins; a checkout that has
-        published nothing yet (project creation, a fresh scaffold) integrates
-        on the branch its HEAD carries. Both answers are Git facts; when
-        neither exists the failure is loud and no default is invented.
+        Precedence, every declaration before any Git probe: the repository's
+        own manifest (``config/workspace.yaml`` ``integration.branch``); then
+        ``declared`` — the declaration that governs this checkout when it
+        carries none of its own (its in-memory spec before the manifest is
+        written, or the workspace a governed member follows); then the
+        published integration line — the local remote-tracking ref, tried in
+        the declared preference order — a Git fact independent of the
+        checkout. When none exists the failure is loud and no default is
+        invented.
         """
-        from flext_infra import u
+        from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
+        manifest = FlextInfraWorkspaceDetector.load_workspace_manifest(repository_root)
+        if manifest.success and manifest.value:
+            integration = manifest.value[0].integration
+            if integration is not None:
+                return r[str].ok(integration.branch)
+        if declared and declared.strip():
+            return r[str].ok(declared.strip())
+        # The branch a checkout happens to carry is never the answer: a lane
+        # rendering its own name into the CI trigger list can never reach a
+        # generation fixed point (ADR-018 p.10 — derive from the declaration
+        # and from published Git facts, never from the environment).
         baseline = cls.repository_baseline_branch(
             repository_root, preference=tuple(preference) or None
         )
         if baseline.success:
             return r[str].ok(baseline.value)
-        current = u.Infra.git_current_branch(
-            m.Infra.GitRepoRequest(repo_root=repository_root)
-        )
-        if current.success and current.value.text.strip():
-            return r[str].ok(current.value.text.strip())
         return r[str].fail(
-            "integration branch must be published or checked out by Git: "
-            f"{repository_root}: {baseline.error or current.error}"
+            "integration branch must be published by Git: "
+            f"{repository_root}: {baseline.error}"
         )
 
     @staticmethod

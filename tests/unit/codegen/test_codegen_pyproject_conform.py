@@ -32,12 +32,8 @@ class TestsFlextInfraCodegenPyprojectConform:
         )
 
     def _workspace(self) -> m.Infra.WorkspaceSpec:
-        return m.Infra.WorkspaceSpec(
-            name="workspace",
-            beads=test_u.Tests.beads_project("workspace"),
-            repository=self._repository(
-                "workspace", role=c.Infra.MakeProfile.WORKSPACE, path="."
-            ),
+        return test_u.Tests.workspace_spec(
+            self._repository("workspace", role=c.Infra.MakeProfile.WORKSPACE, path="."),
             subprojects=(
                 self._repository(
                     "flext-core", role=c.Infra.MakeProfile.STANDALONE, path="flext-core"
@@ -58,12 +54,8 @@ class TestsFlextInfraCodegenPyprojectConform:
             '[tool.uv.workspace]\nmembers = ["member"]\n',
             encoding="utf-8",
         )
-        workspace = m.Infra.WorkspaceSpec(
-            name="member",
-            beads=test_u.Tests.beads_project("member"),
-            repository=self._repository(
-                "member", role=c.Infra.MakeProfile.STANDALONE, path="."
-            ),
+        workspace = test_u.Tests.workspace_spec(
+            self._repository("member", role=c.Infra.MakeProfile.STANDALONE, path=".")
         )
         rendered = tm.ok(
             u.Infra.pyproject_conform(

@@ -151,6 +151,11 @@ class FlextInfraCodegenProjectNew(
                 issue_prefix=self.name,
             ),
             repository=repository,
+            # The integration branch of a repository that has published nothing
+            # yet is a declaration, never a Git guess (ADR-018 p.10).
+            integration=m.Infra.WorkspaceIntegrationSpec(
+                provider=self.provider, branch=repository_branch
+            ),
             project=m.Infra.ProjectSpec(
                 package_name=package_name,
                 class_stem=class_stem,

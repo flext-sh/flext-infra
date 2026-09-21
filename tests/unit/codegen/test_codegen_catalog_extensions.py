@@ -215,12 +215,8 @@ class TestsFlextInfraCodegenCatalogExtensions:
         member = self._repository(
             "acme-charts", path="acme-charts", role=c.Infra.MakeProfile.STANDALONE
         )
-        workspace = m.Infra.WorkspaceSpec(
-            name=root.name,
-            beads=u.Tests.beads_project(root.name),
-            repository=root,
-            project=u.Tests.project_spec(root.name),
-            subprojects=(member,),
+        workspace = u.Tests.workspace_spec(
+            root, project=u.Tests.project_spec(root.name), subprojects=(member,)
         )
         member_source = tmp_path / "member-source"
         u.Tests.WorktreeFixture.initialize_governed_project(

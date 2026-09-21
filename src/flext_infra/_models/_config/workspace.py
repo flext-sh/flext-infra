@@ -40,24 +40,6 @@ class FlextInfraConfigModelsWorkspace:
             m.Field(description="Dolt auto-commit policy"),
         ]
 
-    class WorkspaceIntegrationSpec(FlextInfraConfigModelsContract.ConfigContract):
-        """Workspace overlay for one provider integration branch."""
-
-        provider: Annotated[
-            t.NonEmptyStr, m.Field(description="Configured provider key")
-        ]
-        branch: Annotated[
-            t.NonEmptyStr, m.Field(description="Workspace integration branch")
-        ]
-        organization: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Optional provider organization override"),
-        ] = None
-        base_url: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Optional provider base URL override"),
-        ] = None
-
     class RepositoryPolicyOverlaySpec(FlextInfraConfigModelsContract.ConfigContract):
         """Bounded per-project policy declared by a workspace manifest."""
 
@@ -171,7 +153,7 @@ class FlextInfraConfigModelsWorkspace:
             m.Field(description="Explicit workspace exclusions"),
         ] = ()
         integration: Annotated[
-            FlextInfraConfigModelsWorkspace.WorkspaceIntegrationSpec | None,
+            FlextInfraConfigModelsContexts.WorkspaceIntegrationSpec | None,
             m.Field(description="Optional integration provider overlay"),
         ] = None
         repository_policy_overlays: Annotated[
@@ -258,6 +240,15 @@ class FlextInfraConfigModelsWorkspace:
                 )
             ),
         ] = ()
+        integration: Annotated[
+            FlextInfraConfigModelsContexts.WorkspaceIntegrationSpec | None,
+            m.Field(
+                description=(
+                    "Declared integration provider and branch from the workspace "
+                    "manifest; the resolver consults it before any Git fact"
+                )
+            ),
+        ] = None
         subprojects: Annotated[
             t.VariadicTuple[FlextInfraConfigModelsContexts.RepositoryRef],
             m.Field(description="Direct governed repositories from local .gitmodules"),

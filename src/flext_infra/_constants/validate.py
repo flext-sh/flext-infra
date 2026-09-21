@@ -94,7 +94,9 @@ class FlextInfraConstantsSharedInfra:
         r"[^a-z0-9-]+"
     )
     SKILL_REPORT_ARTIFACT_MULTI_DASH_RE: ClassVar[t.RegexPattern] = re.compile(r"-+")
-    SKILL_REPORTS_PATH_RE: ClassVar[t.RegexPattern] = re.compile(r"\.reports/([^\s\"']+)")
+    SKILL_REPORTS_PATH_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"\.reports/([^\s\"']+)"
+    )
     SKILL_BASH_EXIT_RE: ClassVar[t.RegexPattern] = re.compile(r"^\s*exit\s+(\d+)")
     SKILL_INTERACTIVE_PY_RE: ClassVar[t.RegexPattern] = re.compile(r"\binput\s*\(")
     SKILL_INTERACTIVE_SH_RE: ClassVar[t.RegexPattern] = re.compile(
@@ -235,7 +237,9 @@ class FlextInfraConstantsSharedInfra:
     TIER_WHITELIST_SETTINGS_MODULE_LIBRARIES: ClassVar[frozenset[str]] = frozenset({
         "pydantic_settings"
     })
-    TIER_WHITELIST_LEAF_CONFIG_FILES: ClassVar[frozenset[str]] = frozenset({"_config.py"})
+    TIER_WHITELIST_LEAF_CONFIG_FILES: ClassVar[frozenset[str]] = frozenset({
+        "_config.py"
+    })
     "Leaf config modules (e.g. ai-hub/_config.py) that own their external-library"
     "imports directly as the bottom of the c/t/p/m/u chain."
     DIR_TYPINGS: ClassVar[str] = "typings"

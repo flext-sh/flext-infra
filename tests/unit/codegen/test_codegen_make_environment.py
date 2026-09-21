@@ -88,10 +88,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
             if local_infra
             else ()
         )
-        workspace = m.Infra.WorkspaceSpec(
-            name="fixture-project",
-            beads=u.Tests.beads_project("fixture-project"),
-            repository=repository,
+        workspace = u.Tests.workspace_spec(
+            repository,
             project=u.Tests.project_spec("fixture-project"),
             subprojects=local_subprojects,
         )

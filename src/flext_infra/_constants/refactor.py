@@ -458,7 +458,9 @@ class FlextInfraConstantsRefactor:
         r"^_?[A-Z][A-Z0-9_]+$"
     )
     "Regex: namespace constant candidate names."
-    CLASSVAR_EXEMPT_NAMES: ClassVar[frozenset[str]] = c.ENFORCEMENT_CLASSVAR_EXEMPT_NAMES
+    CLASSVAR_EXEMPT_NAMES: ClassVar[frozenset[str]] = (
+        c.ENFORCEMENT_CLASSVAR_EXEMPT_NAMES
+    )
     "ClassVar attribute names that are framework idioms and stay in place (SSOT: flext-core)."
     CLASSVAR_ALLOWED_CALLS: ClassVar[frozenset[str]] = frozenset({
         "Path",
@@ -498,7 +500,9 @@ class FlextInfraConstantsRefactor:
     "Path fragments that disqualify a file from root-facade alias detection."
 
     # --- Detector regex constants ---
-    ASSIGN_RE: ClassVar[t.RegexPattern] = re.compile(r"^([A-Z_]\w*)\s*[:=]", re.MULTILINE)
+    ASSIGN_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"^([A-Z_]\w*)\s*[:=]", re.MULTILINE
+    )
     "Matches top-level UPPER_CASE assignments for loose constant detection."
     LOGGER_ASSIGN_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^([A-Za-z_]\w*)\s*[:=]\s*(?:(?:\w+\.)*)?"

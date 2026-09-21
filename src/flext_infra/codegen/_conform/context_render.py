@@ -277,12 +277,16 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         repository_provider = u.Infra.repository_provider(repository)
         if repository_provider.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(repository_provider)
-        # The integration branch is a Git fact, not a configured pin: the
-        # published baseline wins, and a checkout that has published nothing
-        # yet integrates on the branch its HEAD carries.
+        # The repository's declaration wins; otherwise the published baseline.
+        # A checkout's HEAD is never consulted (ADR-018 p.10).
         integration_branch = u.Infra.resolve_integration_branch(
             repository_root,
             preference=codegen.branch_policy.integration_branch_preference,
+            declared=(
+                workspace.integration.branch
+                if workspace.integration is not None
+                else None
+            ),
         )
         if integration_branch.failure:
             return r[m.Infra.ProjectRenderContext].from_failure(integration_branch)
@@ -386,6 +390,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 package_name=project.package_name,
                 packaged_data_dirs=packaged_data_dirs,
                 namespace_scan_dirs=project.namespace_scan_dirs,
+                workspace_integration=workspace.integration,
                 # NOTE (multi-agent, flext-get3j): carry only the validated
                 # project declaration; conform owns no inferred Hatch hook.
                 hatch_build_hook_path=project.hatch_build_hook_path,
@@ -448,9 +453,16 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         """Resolve detected member baselines only for mutable governed subprojects."""
         resolved: list[m.Infra.ManagedGitlinkSpec] = []
         for repository in workspace.subprojects:
+            # A governed member follows its workspace's declared line unless
+            # its own manifest declares otherwise (the ``.`` gitmodule branch).
             branch = u.Infra.resolve_integration_branch(
                 repository_root / repository.path,
                 preference=codegen.branch_policy.integration_branch_preference,
+                declared=(
+                    workspace.integration.branch
+                    if workspace.integration is not None
+                    else None
+                ),
             )
             if branch.failure:
                 return r[t.VariadicTuple[m.Infra.ManagedGitlinkSpec]].from_failure(

@@ -34,11 +34,8 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
     def _workspace(self, *members: m.Infra.RepositoryRef) -> m.Infra.WorkspaceSpec:
         """Compose one workspace fixture from its declared member references."""
-        return m.Infra.WorkspaceSpec(
-            name="workspace",
-            beads=test_u.Tests.beads_project("workspace"),
-            repository=test_u.Tests.repository_ref("workspace"),
-            subprojects=tuple(members),
+        return test_u.Tests.workspace_spec(
+            test_u.Tests.repository_ref("workspace"), subprojects=tuple(members)
         )
 
     def _inline_requirement(self, ref: m.Infra.RepositoryRef) -> str:
@@ -273,6 +270,7 @@ workspace = true
                     name=consumer.name,
                     beads=workspace.beads,
                     repository=consumer.model_copy(update={"path": Path()}),
+                    integration=workspace.integration,
                 ),
                 workspace_mode=self._ROLE.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,

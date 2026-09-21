@@ -12,7 +12,8 @@ if TYPE_CHECKING:
     from .pep695_patch import FlextInfraUtilitiesRopePep695Patch
     from .project import FlextInfraRopeProject
 __all__: tuple[str, ...] = (
-    "FlextInfraRopeProject", "FlextInfraUtilitiesRopePep695Patch",
+    "FlextInfraRopeProject",
+    "FlextInfraUtilitiesRopePep695Patch",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

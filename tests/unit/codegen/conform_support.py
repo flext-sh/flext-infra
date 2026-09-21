@@ -129,11 +129,8 @@ class TestsFlextInfraConformSupport:
         repository = u.Tests.repository_ref("flext-infra").model_copy(
             update={"path": Path()}
         )
-        workspace = m.Infra.WorkspaceSpec(
-            name=repository.name,
-            beads=u.Tests.beads_project(repository.name),
-            repository=repository,
-            project=u.Tests.project_spec(repository.name),
+        workspace = u.Tests.workspace_spec(
+            repository, project=u.Tests.project_spec(repository.name)
         )
         (root / "pyproject.toml").write_text(
             f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",

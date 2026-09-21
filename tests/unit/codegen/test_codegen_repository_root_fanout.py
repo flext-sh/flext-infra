@@ -83,16 +83,8 @@ class TestsFlextInfraCodegenRepositoryRootFanout:
     def _render_root_makefile(self, tmp_path: Path) -> Path:
         """Render base/Makefile.j2 from a typed workspace fixture."""
         repository = u.Tests.repository_ref("workspace-fixture")
-        workspace = m.Infra.WorkspaceSpec(
-            name=repository.name,
-            beads=m.Infra.BeadsProjectSpec(
-                version=1,
-                workspace=repository.name,
-                database=repository.name,
-                issue_prefix=repository.name,
-            ),
-            repository=repository,
-            project=u.Tests.project_spec(repository.name),
+        workspace = u.Tests.workspace_spec(
+            repository, project=u.Tests.project_spec(repository.name)
         )
         repository_root = tmp_path / "workspace"
         # The bootstrap projection refreshes the dispatcher of an existing checkout:

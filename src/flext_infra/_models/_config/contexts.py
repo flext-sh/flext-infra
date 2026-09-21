@@ -282,6 +282,16 @@ class FlextInfraConfigModelsContexts:
                 )
             ),
         ] = ()
+        workspace_integration: Annotated[
+            FlextInfraConfigModelsContexts.WorkspaceIntegrationSpec | None,
+            m.Field(
+                description=(
+                    "Declared integration provider and branch written into the "
+                    "workspace manifest so later renders derive from the "
+                    "declaration, never from the checkout"
+                )
+            ),
+        ] = None
 
         @m.computed_field
         @property
@@ -632,6 +642,24 @@ class FlextInfraConfigModelsContexts:
             return FlextInfraConfigModelsContexts._validated_hatch_build_hook_path(
                 value
             )
+
+    class WorkspaceIntegrationSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Declared integration provider and branch of one repository."""
+
+        provider: Annotated[
+            t.NonEmptyStr, m.Field(description="Configured provider key")
+        ]
+        branch: Annotated[
+            t.NonEmptyStr, m.Field(description="Workspace integration branch")
+        ]
+        organization: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional provider organization override"),
+        ] = None
+        base_url: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional provider base URL override"),
+        ] = None
 
     class RepositoryRef(FlextInfraConfigModelsContract.ConfigContract):
         """One declared repository and its immutable Git origin contract."""
