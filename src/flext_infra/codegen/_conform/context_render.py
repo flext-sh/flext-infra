@@ -303,6 +303,14 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             return r[m.Infra.ProjectRenderContext].fail(
                 "detected FLEXT line carries no provider base URL"
             )
+        # A data dir already shipped inside the package (``src/<pkg>/<dir>``)
+        # must not also be force-included from the repo root: both map to the
+        # same wheel path and hatchling rejects the duplicate archive entry.
+        # Force-include stays reserved for root data that the package does not
+        # already carry (mirrors the ensure-packaging phase rule).
+        package_root = (
+            repository_root / c.Infra.DEFAULT_SRC_DIR / project.package_name
+        )
         packaged_data_dirs = (
             tuple(
                 data_dir
@@ -313,6 +321,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     and Path(entry.destination).parts[0] == data_dir
                     for entry in codegen.templates.entries
                 )
+                and not (package_root / data_dir).is_dir()
             )
             if profile is not c.Infra.MakeProfile.WORKSPACE
             else ()
