@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from tests import u
+from tests import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -252,13 +252,21 @@ class TestsFlextInfraCodegenLazyInit:
             result = generator.plan_files()
             tm.that(result.success, eq=True)
 
-        def test_execute_method_returns_flext_result(self, tmp_path: Path) -> None:
-            """Expose execution status through the public result contract."""
+        def test_plan_files_returns_flext_result(self, tmp_path: Path) -> None:
+            """Expose planning status through the public result contract.
+
+            Publication is owned by ``codegen conform``: the generation
+            transaction publishes ``plan_files()``, so a direct ``execute()``
+            is refused by design and the planning surface is the contract.
+            """
             self._create_init_file(tmp_path / "src" / "pkg", self._VALID_INIT)
             generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
-            result = generator.execute()
-            tm.that(result.success, eq=True)
-            tm.that(type(result.value).__name__, eq="bool")
+            tm.that(generator.execute().failure, eq=True)
+            planned = tm.ok(generator.plan_files())
+            tm.that(
+                all(plan.path.name == c.Infra.INIT_PY for plan in planned.files),
+                eq=True,
+            )
 
         def test_src_content_consistent_across_runs(self, tmp_path: Path) -> None:
             """Render identical source packages to identical bytes."""

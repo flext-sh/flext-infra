@@ -157,9 +157,12 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         cached = self._source_exports_cache.get(cache_key)
         if cached is not None:
             return cached
+        # A parent outside the scan scope is read from the one package the
+        # active environment declares (R32), so a standalone plan and a
+        # workspace plan elect the same owner.
         package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
             package_name
-        )
+        ) or u.Infra.declared_package_dir(package_name)
         declared: set[str] = set()
         if package_dir is not None:
             for module_path in sorted(package_dir.glob("*.py")):

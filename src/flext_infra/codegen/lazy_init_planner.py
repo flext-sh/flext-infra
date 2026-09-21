@@ -29,11 +29,6 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
     lazy_init: m.Infra.LazyInitConfig = m.Field(
         description="Validated lazy-init policy document"
     )
-    repository_root: Annotated[
-        Path,
-        m.Field(description="Repository root for loading declarative exports manifest"),
-    ]
-
     _module_exports_cache: MutableMapping[
         tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap
     ] = u.PrivateAttr(default_factory=dict)

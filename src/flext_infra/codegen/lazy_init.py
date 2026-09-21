@@ -227,9 +227,7 @@ class FlextInfraCodegenLazyInit(
                 f"{details}"
             )
         planner = FlextInfraCodegenLazyInitPlanner(
-            rope_workspace=rope,
-            lazy_init=config.Infra.tooling.lazy_init,
-            repository_root=self.repository_root,
+            rope_workspace=rope, lazy_init=config.Infra.tooling.lazy_init
         )
         u.Cli.info(f"lazy-init: planning {len(package_dirs)} package dirs")
         package_plans = self._plan_all_inits(
