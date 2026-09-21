@@ -11,6 +11,8 @@ from flext_infra import c, config, m
 from ._codegen_generation_renderers import FlextInfraCodegenGenerationRenderersMixin
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from flext_infra import t
 
 
@@ -234,6 +236,20 @@ class FlextInfraCodegenGenerationStandardMixin(
         lines.append("        }),")
         return "\n".join(lines)
 
+    @staticmethod
+    def _project_package_name(pkg_dir: Path) -> str | None:
+        """Return the distribution package that owns ``pkg_dir``.
+
+        The nearest ancestor carrying the project manifest is the project
+        root, and its directory name is the distribution package under the
+        convention every FLEXT repository follows. Return ``None`` when no
+        manifest is reachable so the caller keeps its prior behavior.
+        """
+        for candidate in (pkg_dir, *pkg_dir.parents):
+            if (candidate / c.Infra.PYPROJECT_FILENAME).is_file():
+                return candidate.name.replace("-", "_")
+        return None
+
     @classmethod
     def _root_context(cls, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitRootRender:
         """Build one lazy context for a public package root."""
@@ -244,19 +260,21 @@ class FlextInfraCodegenGenerationStandardMixin(
         # isort sections exactly: every namespace the project's
         # known-first-party declares must be emitted in the first-party
         # section. That set is the config-owned base namespaces (e.g.
-        # flext_core, the shared upstream) plus this package root. For test
-        # facade roots (current_pkg == "tests"), the project's own package
-        # (e.g. "flext_web") is first-party as well. Without this, a base
-        # namespace the project declares first-party was emitted in the
-        # third-party section, omitting the blank line ruff expects and
+        # flext_core, the shared upstream), this package root, and the
+        # project's own package. The last matters for roots outside the
+        # source tree (tests, examples, scripts, pulumi): their initializers
+        # import the distribution package absolutely, and ruff lists it as
+        # first-party. Without the full set the block lands in the wrong
+        # section, omitting or inserting the blank line ruff expects and
         # violating I001.
-        type_checking_root_names = frozenset({
+        first_party_names = {
             current_pkg,
             *config.Infra.tooling.tools.deptry.known_first_party,
-        })
-        if current_pkg == c.Infra.DIR_TESTS:
-            project_pkg = plan.context.pkg_dir.parent.name.replace("-", "_")
-            type_checking_root_names |= frozenset({project_pkg})
+        }
+        project_pkg = cls._project_package_name(plan.context.pkg_dir)
+        if project_pkg is not None:
+            first_party_names.add(project_pkg)
+        type_checking_root_names = frozenset(first_party_names)
         type_checking_lines = "\n".join(
             cls.generate_type_checking(
                 cls._group_imports(public_type_checking_imports),
