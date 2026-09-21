@@ -517,13 +517,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         marker = repository_root / c.Infra.BEADS_METADATA_RELPATH
         if not marker.is_file():
             return None
-        try:
-            payload = json.loads(marker.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
+        document = u.Cli.json_loads(marker.read_bytes())
+        if document.failure or not isinstance(document.value, dict):
             return None
-        if not isinstance(payload, dict):
-            return None
-        value = payload.get("project_id")
+        value = document.value.get("project_id")
         return value.strip() if isinstance(value, str) and value.strip() else None
 
 
