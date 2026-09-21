@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, override
+from typing import Literal, override
 
 from flext_core import r
 
@@ -12,6 +12,7 @@ from ... import c, config, m, p, t, u
 from ...workspace import FlextInfraWorkspaceDetector
 from .file_plans import FlextInfraCodegenConformFilePlans
 from .scaffold_plan import FlextInfraCodegenConformScaffoldPlan
+
 
 class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     """Conformance planning across scaffold and existing repositories."""
