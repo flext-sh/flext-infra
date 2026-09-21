@@ -184,11 +184,8 @@ class TestsFlextInfraCodegenConform:
         """A raised prepared operation removes invocation-owned root and Git state."""
         root = tmp_path / "exception-scaffold"
         repository = u.Tests.repository_ref("exception-scaffold")
-        workspace = m.Infra.WorkspaceSpec(
-            name=repository.name,
-            beads=u.Tests.beads_project(repository.name),
-            repository=repository,
-            project=u.Tests.project_spec(repository.name),
+        workspace = u.Tests.workspace_spec(
+            repository, project=u.Tests.project_spec(repository.name)
         )
         request = u.Tests.conform_request(
             root,
@@ -210,11 +207,8 @@ class TestsFlextInfraCodegenConform:
         )
         project_payload = u.Tests.project_spec("hook-project").model_dump()
         project_payload["hatch_build_hook_path"] = hook_path
-        return m.Infra.WorkspaceSpec(
-            name=repository.name,
-            beads=u.Tests.beads_project(repository.name),
-            repository=repository,
-            project=m.Infra.ProjectSpec.model_validate(project_payload),
+        return u.Tests.workspace_spec(
+            repository, project=m.Infra.ProjectSpec.model_validate(project_payload)
         )
 
     @staticmethod
@@ -735,10 +729,8 @@ class TestsFlextInfraCodegenConform:
         """Keep workspace setup data complete without Make-side re-derivation."""
         root_repository = u.Tests.repository_ref("flext")
         member = u.Tests.repository_ref("flext-core", path=Path("flext-core"))
-        workspace = m.Infra.WorkspaceSpec(
-            name="flext",
-            beads=u.Tests.beads_project("flext"),
-            repository=root_repository,
+        workspace = u.Tests.workspace_spec(
+            root_repository,
             project=u.Tests.project_spec("flext"),
             subprojects=(member,),
         )
@@ -777,11 +769,8 @@ class TestsFlextInfraCodegenConform:
                 "editable": False,
             }
         )
-        workspace = m.Infra.WorkspaceSpec(
-            name="arbitrary-root",
-            beads=u.Tests.beads_project("arbitrary-root"),
-            repository=repository,
-            project=u.Tests.project_spec("arbitrary-root"),
+        workspace = u.Tests.workspace_spec(
+            repository, project=u.Tests.project_spec("arbitrary-root")
         )
         root = tmp_path / "arbitrary-root"
         request = u.Tests.conform_request(
@@ -830,12 +819,7 @@ class TestsFlextInfraCodegenConform:
         project = u.Tests.project_spec("consumer").model_copy(
             update={"upstream": "flext_cli"}
         )
-        workspace = m.Infra.WorkspaceSpec(
-            name="consumer",
-            beads=u.Tests.beads_project("consumer"),
-            repository=repository,
-            project=project,
-        )
+        workspace = u.Tests.workspace_spec(repository, project=project)
         root = tmp_path / "consumer"
         tm.ok(
             FlextInfraCodegenConform.execute_request(

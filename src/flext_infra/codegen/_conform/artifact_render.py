@@ -280,6 +280,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             branch = u.Infra.resolve_integration_branch(
                 repository_root,
                 preference=codegen.branch_policy.integration_branch_preference,
+                declared=(
+                    workspace.integration.branch
+                    if workspace.integration is not None
+                    else None
+                ),
             )
             if branch.failure:
                 return r[p.Model].from_failure(branch)

@@ -35,7 +35,9 @@ class FlextInfraConstantsDeps:
     PYPROJECT_DOCUMENT_MAPPING_ERROR: ClassVar[str] = (
         "pyproject document is not a TOML mapping"
     )
-    PEP621_NAME_RE: ClassVar[t.RegexPattern] = re.compile(r"^\s*(?P<name>[A-Za-z0-9_.-]+)")
+    PEP621_NAME_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"^\s*(?P<name>[A-Za-z0-9_.-]+)"
+    )
     PEP621_REQUIREMENT_HEAD_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^\s*(?P<head>[A-Za-z0-9_.-]+(?:\[[^\]]+\])?)"
     )

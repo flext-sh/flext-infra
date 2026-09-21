@@ -48,12 +48,8 @@ class TestsFlextInfraScriptDispatchMakefile:
             extra_verbs=extra_verbs,
             script_dispatch=script_dispatch,
         )
-        workspace = m.Infra.WorkspaceSpec(
-            name="demo-root",
-            beads=u.Tests.beads_project("demo-root"),
-            repository=root_repository,
-            project=u.Tests.project_spec("demo-root"),
-            subprojects=(),
+        workspace = u.Tests.workspace_spec(
+            root_repository, project=u.Tests.project_spec("demo-root")
         )
         root = tmp_path / "demo-root"
         request = u.Tests.conform_request(

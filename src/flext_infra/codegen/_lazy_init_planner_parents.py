@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, u
 
 if TYPE_CHECKING:
+    from collections.abc import MutableMapping
     from pathlib import Path
 
     from flext_infra import p, t
@@ -17,6 +18,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
 
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
+        _source_exports_cache: MutableMapping[str, frozenset[str]]
 
         def _module_file(self, module_path: str) -> Path | None: ...
 
@@ -131,12 +133,46 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
             canonical_package: str = canonical_target[0]
             if canonical_package != current_pkg:
                 return canonical_package
+        # ADR-018 p.1: the owner of a letter is the package whose own module
+        # DECLARES it in its explicit __all__ (flext_core/result.py owns `r`).
+        # Every generated initializer re-exports the letters it inherits, so
+        # "the nearest parent whose init lists the name" would elect whichever
+        # dependency sorts first — a tooling package re-exporting `r` made a
+        # test package import it through flext_infra and cycle at runtime.
+        for package_name in candidate_packages:
+            if package_name == current_pkg:
+                continue
+            if alias_name in self._declared_alias_names_for_package(package_name):
+                return f"{package_name}"
         for package_name in candidate_packages:
             if package_name == current_pkg:
                 continue
             if alias_name in self._export_names_for_package(package_name):
                 return f"{package_name}"
         return ""
+
+    def _declared_alias_names_for_package(self, package_name: str) -> frozenset[str]:
+        """Return the names a package's own modules declare in their explicit __all__."""
+        cache_key = f"declared:{package_name}"
+        cached = self._source_exports_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
+            package_name
+        )
+        declared: set[str] = set()
+        if package_dir is not None:
+            for module_path in sorted(package_dir.glob("*.py")):
+                if module_path.name == c.Infra.INIT_PY:
+                    continue
+                declared.update(
+                    u.Infra.public_export_names_source(
+                        module_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                    )
+                )
+        names = frozenset(declared)
+        self._source_exports_cache[cache_key] = names
+        return names
 
     def _package_name_from_target(self, target: str) -> str:
         """Return the longest workspace package name matching the dotted target."""

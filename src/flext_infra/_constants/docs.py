@@ -99,9 +99,13 @@ class FlextInfraConstantsDocs:
     # --- Markdown link/heading patterns ---
     MARKDOWN_LINK_RE: ClassVar[t.RegexPattern] = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
     """Match markdown links capturing text (group 1) and URL (group 2)."""
-    MARKDOWN_LINK_URL_RE: ClassVar[t.RegexPattern] = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+    MARKDOWN_LINK_URL_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"\[[^\]]+\]\(([^)]+)\)"
+    )
     """Match markdown links capturing only the URL (group 1)."""
-    HEADING_RE: ClassVar[t.RegexPattern] = re.compile(r"^#{1,6}\s+(.+?)\s*$", re.MULTILINE)
+    HEADING_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"^#{1,6}\s+(.+?)\s*$", re.MULTILINE
+    )
     """Match any markdown heading (h1-h6), capturing the text."""
     HEADING_H2_H3_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(##|###)\s+(.+?)\s*$", re.MULTILINE

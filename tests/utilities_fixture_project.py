@@ -37,6 +37,38 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
         return FIXTURE_PROVIDER_BRANCH
 
     @staticmethod
+    def integration() -> m.Infra.WorkspaceIntegrationSpec:
+        """Return the fixture's declared integration line (provider + branch)."""
+        provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
+        return m.Infra.WorkspaceIntegrationSpec(
+            provider=provider.name, branch=FIXTURE_PROVIDER_BRANCH
+        )
+
+    @staticmethod
+    def workspace_spec(
+        repository: m.Infra.RepositoryRef,
+        *,
+        project: m.Infra.ProjectSpec | None = None,
+        subprojects: t.VariadicTuple[m.Infra.RepositoryRef] = (),
+    ) -> m.Infra.WorkspaceSpec:
+        """Build the workspace one fixture repository declares.
+
+        Identity, Beads and the integration line are all derived from the
+        repository reference and the declared fixture provider; a test never
+        restates them. ``project`` is the scaffold metadata only a
+        materializing test needs.
+        """
+        fixture = TestsFlextInfraUtilitiesProjectFixtureMixin
+        return m.Infra.WorkspaceSpec(
+            name=repository.name,
+            beads=fixture.beads_project(repository.name),
+            repository=repository,
+            project=project,
+            subprojects=subprojects,
+            integration=fixture.integration(),
+        )
+
+    @staticmethod
     def repository_ref(
         name: str, *, role: c.Infra.MakeProfile | None = None, path: Path | None = None
     ) -> m.Infra.RepositoryRef:

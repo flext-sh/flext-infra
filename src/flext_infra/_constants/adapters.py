@@ -47,7 +47,9 @@ class FlextInfraConstantsAdapters:
     )
     "Validates t.SequenceOf[ContainerDict]."
 
-    STR_SEQ_ADAPTER: ClassVar[m.TypeAdapter[t.StrSequence]] = m.TypeAdapter(t.StrSequence)
+    STR_SEQ_ADAPTER: ClassVar[m.TypeAdapter[t.StrSequence]] = m.TypeAdapter(
+        t.StrSequence
+    )
     "Validates t.StrSequence."
 
     STR_ADAPTER: ClassVar[m.TypeAdapter[str]] = m.TypeAdapter(str)

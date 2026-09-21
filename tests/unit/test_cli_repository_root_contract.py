@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, config, m, main
+from flext_infra import c, config, main
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.services.cli_routes import CliRouteService
 from tests import u
@@ -25,11 +25,8 @@ class TestsFlextInfraCliRepositoryRootContract:
             FlextInfraCodegenConform(
                 repository_root=tmp_path,
                 request=request,
-                initial_workspace=m.Infra.WorkspaceSpec(
-                    name=repository.name,
-                    beads=u.Tests.beads_project(repository.name),
-                    repository=repository,
-                    project=u.Tests.project_spec(repository.name),
+                initial_workspace=u.Tests.workspace_spec(
+                    repository, project=u.Tests.project_spec(repository.name)
                 ),
             ).plan(request)
         )

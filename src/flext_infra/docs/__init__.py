@@ -22,9 +22,18 @@ if TYPE_CHECKING:
     from .server import FlextInfraDocServer
     from .validator import FlextInfraDocValidator
 __all__: tuple[str, ...] = (
-    "FlextInfraDocAuditor", "FlextInfraDocAuditorChecksMixin", "FlextInfraDocAuditorMixin", "FlextInfraDocAuditorReportMixin",
-    "FlextInfraDocBuilder", "FlextInfraDocCollector", "FlextInfraDocFixer", "FlextInfraDocGenerator",
-    "FlextInfraDocGeneratorBundleMixin", "FlextInfraDocServer", "FlextInfraDocServiceBase", "FlextInfraDocValidator",
+    "FlextInfraDocAuditor",
+    "FlextInfraDocAuditorChecksMixin",
+    "FlextInfraDocAuditorMixin",
+    "FlextInfraDocAuditorReportMixin",
+    "FlextInfraDocBuilder",
+    "FlextInfraDocCollector",
+    "FlextInfraDocFixer",
+    "FlextInfraDocGenerator",
+    "FlextInfraDocGeneratorBundleMixin",
+    "FlextInfraDocServer",
+    "FlextInfraDocServiceBase",
+    "FlextInfraDocValidator",
 )
 
 _LAZY_IMPORTS = MappingProxyType(

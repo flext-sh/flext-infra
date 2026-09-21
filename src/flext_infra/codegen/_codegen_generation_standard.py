@@ -151,34 +151,9 @@ class FlextInfraCodegenGenerationStandardMixin(
         value_indent = f"{indent}    "
         return (
             f'{indent}"{module}": (',
-            *cls._pack_comma_entries(
-                tuple(f"{value}," for value in values), indent=value_indent
-            ),
+            *(f"{value_indent}{value}," for value in values),
             f"{indent}){separator}",
         )
-
-    @staticmethod
-    def _pack_comma_entries(
-        entries: t.StrSequence, *, indent: str = "    "
-    ) -> t.StrSequence:
-        """Pack comma-terminated entries onto shared lines up to MAX_LINE_LENGTH.
-
-        Why: one-entry-per-line projections blew the loc-cap gate on large
-        facades (ai-hub services/__init__.py 1038/1000) without any semantic
-        gain — packed lines render the identical tuple.
-        """
-        lines: list[str] = []
-        current = ""
-        for entry in entries:
-            candidate = f"{indent}{entry}" if not current else f"{current} {entry}"
-            if len(candidate) > c.Infra.MAX_LINE_LENGTH and current:
-                lines.append(current)
-                current = f"{indent}{entry}"
-            else:
-                current = candidate
-        if current:
-            lines.append(current)
-        return lines
 
     @classmethod
     def _format_exports_tuple(cls, exports: t.StrSequence) -> str:
@@ -191,13 +166,10 @@ class FlextInfraCodegenGenerationStandardMixin(
         compact = f"({inner})"
         if len("__all__: tuple[str, ...] = ") + len(compact) <= c.Infra.MAX_LINE_LENGTH:
             return compact
-        # Wide export sets wrap 4 names per line (semantically neutral, same
-        # order): 1-per-line pushes large generated facades past the 1000-LOC
-        # cap (aihub loc-cap, services/__init__ 1038 lines).
-        wrapped = ",\n    ".join(
-            ", ".join(f'"{name}"' for name in exports[i : i + 4])
-            for i in range(0, len(exports), 4)
-        )
+        # A wrapped export set renders exactly as Ruff formats it (one name per
+        # line): the projection is a formatter fixed point, never re-packed to
+        # dodge a LOC gate (ADR-018 p.13 — the hack's permission dies with it).
+        wrapped = ",\n    ".join(f'"{name}"' for name in exports)
         return "(\n    " + wrapped + ",\n)"
 
     @classmethod

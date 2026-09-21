@@ -237,7 +237,9 @@ class FlextInfraConstantsCheck:
         "reader",
         "writer",
     })
-    BOUNDARY_ATTR_RULES: ClassVar[t.VariadicTuple[t.Triple[str, frozenset[str], str]]] = (
+    BOUNDARY_ATTR_RULES: ClassVar[
+        t.VariadicTuple[t.Triple[str, frozenset[str], str]]
+    ] = (
         (
             "json",
             BOUNDARY_JSON_ATTRS,
@@ -324,9 +326,9 @@ class FlextInfraConstantsCheck:
     JSCPD_REPORT_DIRNAME: ClassVar[str] = ".reports/jscpd"
     JSCPD_CONFIG_FILENAME: ClassVar[str] = ".jscpd.generated.json"
     JSCPD_REPORT_FILENAME: ClassVar[str] = "jscpd-report.json"
-    JSCPD_FORMAT_EXTENSIONS: ClassVar[t.MappingKV[str, t.StrSequence]] = MappingProxyType({
-        "django": ("j2",)
-    })
+    JSCPD_FORMAT_EXTENSIONS: ClassVar[t.MappingKV[str, t.StrSequence]] = (
+        MappingProxyType({"django": ("j2",)})
+    )
     "Parse Jinja projections in place; never duplicate templates into a scan tree."
     JSCPD_IGNORE_PATTERNS: ClassVar[t.StrSequence] = (
         "**/__snapshots__/**",
@@ -404,7 +406,9 @@ class FlextInfraConstantsCheck:
         "-U",
         "--update-all",
     })
-    MANUAL_CMD_SEGMENT_RE: ClassVar[t.RegexPattern] = re.compile(r"&&|\|\||;|\||\n|`|\$\(")
+    MANUAL_CMD_SEGMENT_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"&&|\|\||;|\||\n|`|\$\("
+    )
 
     # --- Net-LOC-delta validator (§3.5) SSOT ---
     REFACTOR_COMMIT_LABELS: ClassVar[frozenset[str]] = frozenset({

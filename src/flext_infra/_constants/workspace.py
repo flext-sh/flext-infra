@@ -106,7 +106,9 @@ class FlextInfraConstantsWorkspace:
     WORKTREE_NAMESPACE_DIGEST_LENGTH: ClassVar[int] = 12
     VSCODE_DIRNAME: ClassVar[str] = ".vscode"
     VSCODE_SETTINGS_FILENAME: ClassVar[str] = "settings.json"
-    VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY: ClassVar[str] = "python-envs.workspaceSearchPaths"
+    VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY: ClassVar[str] = (
+        "python-envs.workspaceSearchPaths"
+    )
     CODEGEN_OWNER_VSCODE: ClassVar[str] = "vscode"
     # Canonical VS Code settings content lives in config/codegen.yaml (vscode:).
     # Recursive "**" venv search globs are forbidden: they make the Python
