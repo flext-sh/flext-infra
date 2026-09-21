@@ -416,5 +416,35 @@ class TestsFlextInfraCodegenGeneration:
             ),
         )
 
+    def test_root_type_checking_sections_follow_known_first_party_policy(self) -> None:
+        """Base first-party namespaces render in the ruff first-party section.
+
+        The generated TYPE_CHECKING block must mirror the project's ruff isort
+        sections. The config-owned base namespace (flext_core, the declared
+        upstream) is first-party, so it is separated from a third-party
+        absolute import by the blank line ruff requires (I001).
+        """
+        plan = self._plan(
+            "demo_pkg",
+            ("cli_c", "core_d"),
+            MappingProxyType({
+                "cli_c": ("flext_cli", "c"),
+                "core_d": ("flext_core", "d"),
+            }),
+        )
+
+        init_content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(init_content, "__init__.py", "exec")
+        tm.that(
+            init_content,
+            contains=(
+                "if TYPE_CHECKING:\n"
+                "    from flext_cli import c as cli_c\n"
+                "\n"
+                "    from flext_core import d as core_d\n"
+            ),
+        )
+
 
 __all__: list[str] = ["TestsFlextInfraCodegenGeneration"]
