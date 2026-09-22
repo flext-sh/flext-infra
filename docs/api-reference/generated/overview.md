@@ -31,7 +31,7 @@
   `FlextInfraBanditGate` (+194 more)
 - Exported module shortcuts: `check`, `codegen`, `codemod`, `deps`, `detectors`, `docs`,
   `fixers`, `gates` (+7 more)
-- Generated module pages: `201`
+- Generated module pages: `202`
 
 ## Next Pages
 

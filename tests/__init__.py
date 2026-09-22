@@ -25,7 +25,6 @@ if TYPE_CHECKING:
         tm,
         tv,
     )
-    from pydantic_core import from_json, to_json, to_jsonable_python
 
     from flext_core import core, d, e, h, lazy_attribute, r, x
     from flext_infra import docs_main, infra, main
@@ -86,7 +85,6 @@ __all__: tuple[str, ...] = (
     "discover_repository_root",
     "docs_main",
     "e",
-    "from_json",
     "h",
     "infra",
     "install_local_packages",
@@ -106,8 +104,6 @@ __all__: tuple[str, ...] = (
     "tf",
     "tk",
     "tm",
-    "to_json",
-    "to_jsonable_python",
     "tv",
     "u",
     "unit",
@@ -167,7 +163,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "tm",
                 "tv",
             ),
-            "pydantic_core": ("from_json", "to_json", "to_jsonable_python"),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,
