@@ -21,13 +21,13 @@ class TestsFlextInfraCodegenProjectNewValidation:
     @staticmethod
     def _service(root: Path, **overrides: str) -> FlextInfraCodegenProjectNew:
         """Build one apply-mode project-new service with overridable inputs."""
-        fields: dict[str, str] = {
+        defaults: dict[str, str] = {
             "repository_url": "git@github.com:flext-sh/flext-demo.git",
             "repository_branch": "0.12.0-dev",
             "flext_repository_url": u.Tests.repository_ref(config.Infra.name).url,
             "flext_repository_ref": u.Tests.provider_branch(),
         }
-        fields.update(overrides)
+        resolved = {**defaults, **overrides}
         return FlextInfraCodegenProjectNew(
             name="flext-demo",
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
@@ -39,7 +39,10 @@ class TestsFlextInfraCodegenProjectNewValidation:
             upstream="flext_cli",
             year=2026,
             apply_changes=True,
-            **fields,
+            repository_url=resolved["repository_url"],
+            repository_branch=resolved["repository_branch"],
+            flext_repository_url=resolved["flext_repository_url"],
+            flext_repository_ref=resolved["flext_repository_ref"],
         )
 
     def test_whitespace_flext_ref_is_rejected_without_effects(

@@ -9,7 +9,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra import c, config, m, u
-from tests import u as test_u
+from tests import t, u as test_u
 
 
 class TestsFlextInfraCodegenPyprojectConform:
@@ -42,7 +42,7 @@ class TestsFlextInfraCodegenPyprojectConform:
         )
 
     @staticmethod
-    def _detached_dev_floors() -> test_u.t.StrSequence:
+    def _detached_dev_floors() -> t.StrSequence:
         """SSOT dev floors seeded for a project outside the workspace overlay.
 
         A source-less internal dependency is legal only for the workspace
