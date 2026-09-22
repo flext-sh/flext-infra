@@ -98,7 +98,7 @@ class FlextInfraUtilitiesDependencies:
         normalize: Callable[[str], str] = canonicalize_name,
     ) -> t.StrSequence:
         """Return a dependency-first order for any named dependency graph."""
-        graph: MutableMapping[str, tuple[str, ...]] = {}
+        graph: MutableMapping[str, t.VariadicTuple[str]] = {}
 
         def collect(dependency_name: str) -> None:
             normalized = normalize(dependency_name)
@@ -506,7 +506,7 @@ class FlextInfraUtilitiesDependencies:
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
         if not normalized:
             # flext-j47u (codex): keep the empty mapping immutable and fully typed.
-            return MappingProxyType(dict[str, tuple[str, ...]]())
+            return MappingProxyType(dict[str, t.VariadicTuple[str]]())
         return cls.project_dev_groups_from_payload(normalized)
 
     @classmethod

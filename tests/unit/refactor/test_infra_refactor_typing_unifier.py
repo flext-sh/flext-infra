@@ -484,7 +484,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
 
     def test_rewrites_tuple_variadics_and_any_annotations(self, tmp_path: Path) -> None:
         """Verify rewrites tuple variadics and any annotations."""
-        source = "from __future__ import annotations\n\nvalue: tuple[Any, ...]\n"
+        source = "from __future__ import annotations\n\nvalue: t.VariadicTuple[Any]\n"
         rule = FlextInfraRefactorTypingUnificationRule({
             "id": "unify-typings",
             "fix_action": "unify_typings",

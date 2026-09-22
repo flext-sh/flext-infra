@@ -19,7 +19,11 @@ class TestsJointModFixedPoint:
     def _run(root: Path) -> int:
         """Invoke the same public application route as the workspace dispatcher."""
         return infra_main([
-            "refactor", "mod", "--repository-root", str(root), "--apply"
+            "refactor",
+            "mod",
+            "--repository-root",
+            str(root),
+            "--apply",
         ])
 
     @staticmethod
@@ -56,7 +60,9 @@ class TestsJointModFixedPoint:
         before = FlextInfraModGateEngine.scan(mod_workspace, fix=False).unwrap()
         tm.that(before.actionable, eq=0)
         tm.that(
-            any(item.rule_id == "require-future-annotations" for item in before.entries),
+            any(
+                item.rule_id == "require-future-annotations" for item in before.entries
+            ),
             eq=True,
         )
 

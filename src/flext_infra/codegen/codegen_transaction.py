@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 
 from ._codegen_staging import stage_file_plans
@@ -23,7 +23,7 @@ from ._mise_artifacts_verification import FlextInfraMiseArtifactsVerification as
 from .codegen_preconditions import FlextInfraCodegenPreconditions
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraCodegenTransaction:
@@ -212,7 +212,7 @@ class FlextInfraCodegenTransaction:
         validator: Callable[[], p.Result[bool]],
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Compose file publication through the same durable phase lifecycle."""
-        result_type = r[tuple[Path, ...]]
+        result_type = r[t.VariadicTuple[Path]]
         started = self.begin_files_locked(scope_root, roots, analysis.inputs)
         if started.failure:
             return result_type.from_failure(started)
@@ -735,14 +735,14 @@ class FlextInfraCodegenTransaction:
         """Validate final reality while recoverable, then commit and clean up."""
         exact = verify.journal_destinations_live(session.plan.layout, session.journal)
         if exact.failure:
-            return r[tuple[Path, ...]].from_failure(
+            return r[t.VariadicTuple[Path]].from_failure(
                 self._recover_failure(
                     session.plan.layout, exact.error or "publication identity changed"
                 )
             )
         validated = validator()
         if validated.failure or not validated.value:
-            return r[tuple[Path, ...]].from_failure(
+            return r[t.VariadicTuple[Path]].from_failure(
                 self._recover_failure(
                     session.plan.layout,
                     validated.error or "generation fixed-point validation failed",
@@ -752,11 +752,11 @@ class FlextInfraCodegenTransaction:
             session, "generation journal changed before commit"
         )
         if unchanged.failure:
-            return r[tuple[Path, ...]].from_failure(unchanged)
+            return r[t.VariadicTuple[Path]].from_failure(unchanged)
         session = unchanged.value
         exact = verify.journal_destinations_live(session.plan.layout, session.journal)
         if exact.failure:
-            return r[tuple[Path, ...]].from_failure(
+            return r[t.VariadicTuple[Path]].from_failure(
                 self._recover_failure(
                     session.plan.layout,
                     exact.error or "publication identity changed before commit",
@@ -764,7 +764,7 @@ class FlextInfraCodegenTransaction:
             )
         committed = journal_io.commit(session.journal)
         if committed.failure:
-            return r[tuple[Path, ...]].from_failure(
+            return r[t.VariadicTuple[Path]].from_failure(
                 self._recover_failure(
                     session.plan.layout,
                     committed.error or "cannot validate generation commit",
@@ -774,7 +774,7 @@ class FlextInfraCodegenTransaction:
             session.plan.layout, committed.value, expected=session.journal_state
         )
         if committed_state.failure:
-            return r[tuple[Path, ...]].from_failure(
+            return r[t.VariadicTuple[Path]].from_failure(
                 self._recover_failure(
                     session.plan.layout,
                     committed_state.error or "cannot persist generation commit",
@@ -784,9 +784,9 @@ class FlextInfraCodegenTransaction:
             session.plan.layout, committed.value, committed_state.value
         )
         if cleaned.failure:
-            return r[tuple[Path, ...]].from_failure(cleaned)
+            return r[t.VariadicTuple[Path]].from_failure(cleaned)
         self._journal_receipts.pop(session.plan.layout.journal_path, None)
-        return r[tuple[Path, ...]].ok(session.written_files)
+        return r[t.VariadicTuple[Path]].ok(session.written_files)
 
     def _materialize_directories(
         self,

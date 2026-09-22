@@ -180,7 +180,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         return tuple(offsets)
 
     @staticmethod
-    def _node_span(offsets: tuple[int, ...], node: ast.expr) -> t.Pair[int, int]:
+    def _node_span(offsets: t.VariadicTuple[int], node: ast.expr) -> t.Pair[int, int]:
         """Return one expression's exact source character span."""
         end_line = node.end_lineno or node.lineno
         end_column = node.end_col_offset or node.col_offset

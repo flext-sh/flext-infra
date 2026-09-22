@@ -578,8 +578,8 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             cwd=root,
         )
         if log.failure:
-            return r[tuple[str, ...]].from_failure(log)
-        return r[tuple[str, ...]].ok(
+            return r[t.VariadicTuple[str]].from_failure(log)
+        return r[t.VariadicTuple[str]].ok(
             tuple(line for line in log.value.splitlines() if line.strip())
         )
 

@@ -139,9 +139,9 @@ class FlextInfraModGateEngine:
     @classmethod
     def _materialize_split_rule_files(
         cls, *, config_root: Path, temp_root: Path, owner_rules: t.SequenceOf[Path]
-    ) -> MutableMapping[Path, tuple[Path, ...]]:
+    ) -> MutableMapping[Path, t.VariadicTuple[Path]]:
         """Replace multi-document rule files with single-document temp copies."""
-        split_rules: MutableMapping[Path, tuple[Path, ...]] = {}
+        split_rules: MutableMapping[Path, t.VariadicTuple[Path]] = {}
         source_rules = set(owner_rules)
         directories = FlextInfraCodemodSnapshotReconciler.fixture_directories(
             config_root
@@ -174,7 +174,7 @@ class FlextInfraModGateEngine:
         *,
         config_root: Path,
         temp_root: Path,
-        split_rules: MutableMapping[Path, tuple[Path, ...]],
+        split_rules: MutableMapping[Path, t.VariadicTuple[Path]],
     ) -> None:
         """Mirror validated fixture updates from the temp copy back to source."""
         split_temp_paths = {
