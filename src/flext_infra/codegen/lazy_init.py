@@ -39,10 +39,6 @@ class FlextInfraCodegenLazyInit(
     Processes bottom-up so child packages are generated before parents.
     """
 
-    target_module: Annotated[
-        str,
-        m.Field(description="Optional package module restricted to one lazy-init plan"),
-    ] = ""
     _modified_files: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
     _duplicate_class_names: int = u.PrivateAttr(default_factory=lambda: 0)
 

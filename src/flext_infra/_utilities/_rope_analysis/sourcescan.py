@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, ClassVar, TypeGuard
 
@@ -325,24 +326,33 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
 
     @staticmethod
     def _assignment_value_source(source: str, name: str) -> str:
-        """Return the source value assigned to one top-level symbol."""
-        lines = source.splitlines()
-        for index, line in enumerate(lines):
-            if line[: len(line) - len(line.lstrip())]:
+        """Return the source value assigned to one top-level symbol.
+
+        Parses the module AST so assignments appearing inside string literals
+        (for example source templates embedded in tests) are never mistaken for
+        real top-level bindings.
+        """
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            return ""
+        for node in tree.body:
+            if isinstance(node, ast.Assign):
+                targets: list[ast.expr] = list(node.targets)
+                value = node.value
+            elif isinstance(node, ast.AnnAssign):
+                targets = [node.target]
+                value = node.value
+            else:
                 continue
-            stripped = line.strip()
-            if not stripped.startswith(name):
+            if not any(
+                isinstance(target, ast.Name) and target.id == name
+                for target in targets
+            ):
                 continue
-            tail = stripped[len(name) :].lstrip()
-            if not tail or tail[0] not in {":", "="}:
-                continue
-            statement = FlextInfraUtilitiesRopeAnalysisSourceScan._collect_statement(
-                lines, index
-            )
-            _head, separator, value = statement.partition("=")
-            if not separator:
+            if value is None:
                 return ""
-            return value.strip()
+            return ast.get_source_segment(source, value) or ""
         return ""
 
     @staticmethod

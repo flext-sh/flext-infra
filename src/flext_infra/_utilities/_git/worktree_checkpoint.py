@@ -78,6 +78,8 @@ class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
         if parent_result.failure:
             raise OSError(parent_result.error or "failed to resolve checkpoint parent")
         parent = parent_result.value
+        if tree == repo.git.rev_parse(f"{parent}^{{tree}}").strip():
+            return parent
         identity_output = repo.git.show("-s", "--format=%an%x00%ae", parent).rstrip(
             "\n"
         )

@@ -26,6 +26,9 @@ if TYPE_CHECKING:
 class FlextInfraConstantsCodegenProject:
     """Manifest + naming constants for project creation (flat in ``c.Infra.*``)."""
 
+    GITATTRIBUTES_FILENAME: ClassVar[str] = ".gitattributes"
+    GITATTRIBUTES_PHASE: ClassVar[str] = "git-attributes"
+
     # These enums define the
     # one public conform contract shared by new and existing repositories. The
     # declarative values live in config/codegen.yaml; constants only type the

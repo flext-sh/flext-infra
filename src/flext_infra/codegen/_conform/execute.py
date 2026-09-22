@@ -388,6 +388,18 @@ class FlextInfraCodegenConformExecute(
                 return r[m.Infra.CodegenResult].fail(
                     f"lazy-init drift detected: {paths}\n{report}"
                 )
+            attributes = self.git_attributes_plans(plan, lazy_analysis.value.files)
+            if attributes.failure:
+                return r[m.Infra.CodegenResult].from_failure(attributes)
+            attributes_changed = tuple(
+                file for file in attributes.value
+                if u.Infra.codegen_file_requires_effect(file)
+            )
+            if attributes_changed:
+                return r[m.Infra.CodegenResult].fail(
+                    "git attributes drift detected:\n"
+                    + u.Infra.codegen_file_drift_report(attributes_changed)
+                )
             docs_generator = FlextInfraDocGenerator(
                 repository_root=request.root,
                 projects=tuple(repository.name for repository in plan.repositories),
@@ -491,12 +503,20 @@ class FlextInfraCodegenConformExecute(
         )
         if with_docs.failure:
             return r[m.Infra.CodegenResult].from_failure(with_docs)
+        attributes = self.git_attributes_plans(plan, owned_lazy_analysis.files)
+        if attributes.failure:
+            return r[m.Infra.CodegenResult].from_failure(attributes)
+        with_attributes = transaction.append_phase_locked(
+            with_docs.value, c.Infra.GITATTRIBUTES_PHASE, attributes.value
+        )
+        if with_attributes.failure:
+            return r[m.Infra.CodegenResult].from_failure(with_attributes)
         verified_plan: list[m.Infra.CodegenPlan] = []
         published = transaction.commit_locked(
-            with_docs.value,
+            with_attributes.value,
             lambda: self._validate_managed_fixed_point(
                 request,
-                with_docs.value,
+                with_attributes.value,
                 transaction,
                 owned_lazy_analysis,
                 docs_analysis,
@@ -673,6 +693,18 @@ class FlextInfraCodegenConformExecute(
             drift = u.Infra.codegen_file_drift_report(residual)
             return r[bool].fail(
                 f"codegen publication did not reach a fixed point: {paths}\n{drift}"
+            )
+        attributes = self.git_attributes_plans(verified.value, lazy_analysis.files)
+        if attributes.failure:
+            return r[bool].from_failure(attributes)
+        attributes_changed = tuple(
+            file for file in attributes.value
+            if u.Infra.codegen_file_requires_effect(file)
+        )
+        if attributes_changed:
+            return r[bool].fail(
+                "git attributes publication did not reach a fixed point:\n"
+                + u.Infra.codegen_file_drift_report(attributes_changed)
             )
         u.Cli.info("stage=verify-lazy-init-receipt")
         lazy_fixed_point = transaction.validate_phase_analysis_locked(lazy_analysis)

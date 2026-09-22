@@ -5,11 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from flext_core import s
 from flext_infra import m, t
+from flext_infra.base import FlextInfraServiceBase
 
 
-class FlextInfraCodegenExecutionBase[TResult: t.Cli.ResultValue](s[TResult]):
+class FlextInfraCodegenExecutionBase[TResult: t.Cli.ResultValue](
+    FlextInfraServiceBase[TResult]
+):
     """Own explicit repository execution state shared by codegen services."""
 
     repository_root: Annotated[
@@ -30,9 +32,6 @@ class FlextInfraCodegenExecutionBase[TResult: t.Cli.ResultValue](s[TResult]):
             default=True, description="Whether the requested operation applies changes"
         ),
     ] = True
-    project_filter: Annotated[
-        str, m.Field(default="", description="Optional project selection filter")
-    ] = ""
     output_format: Annotated[
         str,
         m.Field(default="text", description="Output format (json|text)"),
@@ -40,6 +39,7 @@ class FlextInfraCodegenExecutionBase[TResult: t.Cli.ResultValue](s[TResult]):
     ] = "text"
 
     @property
+    @override
     def effective_dry_run(self) -> bool:
         """The one execution mode that forbids mutation."""
         return self.dry_run or self.check_only or not self.apply_changes
