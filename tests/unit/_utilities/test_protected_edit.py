@@ -37,7 +37,8 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             py_file.write_text(updated, encoding=c.Cli.ENCODING_DEFAULT)
             invalidate_configuration()
 
-        with pytest.raises(RuntimeError, match="ruff normalization failed"):
+        def protected_write() -> None:
+            """Run the protected edit through the selected batch or file form."""
             if batch:
                 u.Infra.protected_source_writes(
                     {py_file: updated},
@@ -58,6 +59,9 @@ class TestsFlextInfraUtilitiesProtectedEdit:
                         gates=("lint",),
                     ),
                 )
+
+        with pytest.raises(RuntimeError, match="ruff normalization failed"):
+            protected_write()
         tm.that(py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT), eq=original)
 
     @pytest.mark.parametrize("batch", [False, True])

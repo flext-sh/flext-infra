@@ -102,7 +102,7 @@ class TestsFlextInfraFreshImport:
 
     @pytest.mark.parametrize("dependency_present", [False, True])
     def test_declared_consumer_catches_exports_omitted_from_plan(
-        self, tmp_path: Path, dependency_present: bool
+        self, tmp_path: Path, *, dependency_present: bool
     ) -> None:
         package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "flext_import_probe"
         package.mkdir(parents=True)

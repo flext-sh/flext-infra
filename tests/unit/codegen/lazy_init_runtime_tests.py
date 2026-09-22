@@ -146,9 +146,8 @@ class TestsFlextInfraLazyInitRuntime:
         declaration.write_text(
             "<<<<<<< HEAD\n=======\n>>>>>>> incoming\n", encoding=c.Cli.ENCODING_DEFAULT
         )
-        with infra.rope_workspace(repository) as rope:
-            with pytest.raises(SyntaxError):
-                rope.layout(repository)
+        with infra.rope_workspace(repository) as rope, pytest.raises(SyntaxError):
+            rope.layout(repository)
 
     def test_internal_facade_requires_its_local_declaration(
         self, tmp_path: Path

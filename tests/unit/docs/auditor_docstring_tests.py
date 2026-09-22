@@ -19,6 +19,8 @@ from tests import m, u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from flext_infra import p
+
 
 class TestsFlextInfraAuditorDocstring:
     """Unit under test: docstring coverage metric + audit report integration."""
@@ -31,7 +33,7 @@ class TestsFlextInfraAuditorDocstring:
         """Read the audit posture from the same typed SSOT production reads."""
         return "audit" in config.Infra.codegen.make.docs.warning_actions
 
-    def _assert_verdict(self, result: object) -> None:
+    def _assert_verdict(self, result: p.Result[bool]) -> None:
         """The execute verdict follows the configured audit posture."""
         if self._audit_warns():
             tm.ok(result)

@@ -35,6 +35,9 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
         "for name in (*{exports!r}, *getattr(module, '__all__', ())):\n"
         "    getattr(module, name)\n"
     )
+    # Synthetic concat keeps the placeholder out of one plain literal: the
+    # marker is template text substituted at render time, never an f-string.
+    _ORIGINS_PLACEHOLDER: ClassVar[str] = "{" + "origins!r}"
     _ORIGIN_CODE: ClassVar[str] = (
         "for name, module in tuple(sys.modules.items()):\n"
         "    for package, directory in {origins!r}:\n"
@@ -64,7 +67,9 @@ class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
             (layout.package_name, str(layout.package_dir.resolve()))
             for layout in layouts
         )
-        origin_code = self._ORIGIN_CODE.replace("{origins!r}", repr(origins))
+        origin_code = self._ORIGIN_CODE.replace(
+            self._ORIGINS_PLACEHOLDER, repr(origins)
+        )
         probes: t.MutableSequenceOf[m.Infra.FreshImportProbe] = []
         for layout in layouts:
             source = u.Cli.files_read_text(
