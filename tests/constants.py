@@ -33,7 +33,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
     class Tests(TestsFlextInfraConstantsScanMixin, FlextTestsConstants.Tests):
         """Flat constants optimized for data-driven infra tests."""
 
-        GIT_LOCAL_ENV_KEYS: Final[t.StrSequence] = (
+        GIT_LOCAL_ENV_KEYS: ClassVar[t.StrSequence] = (
             "GIT_ALTERNATE_OBJECT_DIRECTORIES",
             "GIT_CONFIG",
             "GIT_CONFIG_PARAMETERS",
@@ -52,7 +52,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         )
         """Repository-local variables Git exports to hooks and aliases."""
 
-        MAKE_ISOLATION_ENV_KEYS: Final[t.StrSequence] = (
+        MAKE_ISOLATION_ENV_KEYS: ClassVar[t.StrSequence] = (
             "BASH_ENV",
             "CHANGED_ONLY",
             "CHECK_GATES",
@@ -78,13 +78,13 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         )
         """Environment inherited from an outer Make invocation to discard in tests."""
 
-        RELEASE_PHASE_PLAN: Final[str] = c.Infra.ReleasePhase.PLAN
-        RELEASE_PHASE_VERSION: Final[str] = c.Infra.ReleasePhase.VERSION
-        RELEASE_PHASE_TAG: Final[str] = c.Infra.ReleasePhase.TAG
-        RELEASE_PHASE_BUILD: Final[str] = c.Infra.ReleasePhase.BUILD
-        RELEASE_PHASE_PUBLISH: Final[str] = c.Infra.ReleasePhase.PUBLISH
+        RELEASE_PHASE_PLAN: ClassVar[str] = c.Infra.ReleasePhase.PLAN
+        RELEASE_PHASE_VERSION: ClassVar[str] = c.Infra.ReleasePhase.VERSION
+        RELEASE_PHASE_TAG: ClassVar[str] = c.Infra.ReleasePhase.TAG
+        RELEASE_PHASE_BUILD: ClassVar[str] = c.Infra.ReleasePhase.BUILD
+        RELEASE_PHASE_PUBLISH: ClassVar[str] = c.Infra.ReleasePhase.PUBLISH
 
-        INFRA_PUBLIC_ROOT_EXPORTS: Final[t.StrSequence] = (
+        INFRA_PUBLIC_ROOT_EXPORTS: ClassVar[t.StrSequence] = (
             "FlextInfra",
             "c",
             "infra",
@@ -95,7 +95,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "t",
             "u",
         )
-        INFRA_PUBLIC_WRAPPER_MODULES: Final[t.StrSequence] = (
+        INFRA_PUBLIC_WRAPPER_MODULES: ClassVar[t.StrSequence] = (
             "flext_infra.__version__",
             "flext_infra.constants",
             "flext_infra.models",
@@ -122,24 +122,24 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             ("flext_infra.typings", "t", "FlextInfraTypes"),
             ("flext_infra.utilities", "u", "FlextInfraUtilities"),
         )
-        INFRA_PUBLIC_NAMESPACE_ALIAS_NAMES: Final[t.StrSequence] = (
+        INFRA_PUBLIC_NAMESPACE_ALIAS_NAMES: ClassVar[t.StrSequence] = (
             "c",
             "m",
             "p",
             "t",
             "u",
         )
-        INFRA_PUBLIC_UTILITY_NAMESPACE_METHODS: Final[t.StrSequence] = (
+        INFRA_PUBLIC_UTILITY_NAMESPACE_METHODS: ClassVar[t.StrSequence] = (
             "plan_semantic_cutover",
             "current_workspace_version",
             "parse_semver",
         )
 
-        WORKSPACE_PROJECT_NAME: Final[str] = "workspace"
-        DEMO_PROJECT_NAME: Final[str] = "demo-project"
-        PROJECT_A_NAME: Final[str] = "proj-a"
-        PROJECT_B_NAME: Final[str] = "proj-b"
-        PROJECT_NO_SRC_NAME: Final[str] = "no-src"
+        WORKSPACE_PROJECT_NAME: ClassVar[str] = "workspace"
+        DEMO_PROJECT_NAME: ClassVar[str] = "demo-project"
+        PROJECT_A_NAME: ClassVar[str] = "proj-a"
+        PROJECT_B_NAME: ClassVar[str] = "proj-b"
+        PROJECT_NO_SRC_NAME: ClassVar[str] = "no-src"
         PROJECT_MEMBERS_BY_SCENARIO: ClassVar[t.MappingKV[str, t.StrSequence]] = (
             MappingProxyType({
                 "single": (DEMO_PROJECT_NAME,),
@@ -148,47 +148,47 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             })
         )
 
-        CODEGEN_NAMESPACE_FILES: Final[frozenset[str]] = frozenset({
+        CODEGEN_NAMESPACE_FILES: ClassVar[frozenset[str]] = frozenset({
             "__init__.py",
             "__version__.py",
             "py.typed",
         })
-        CODEGEN_SKIPPED_DIRS: Final[frozenset[str]] = frozenset({
+        CODEGEN_SKIPPED_DIRS: ClassVar[frozenset[str]] = frozenset({
             ".hidden",
             "vendor",
             "node_modules",
             ".venv",
         })
 
-        REFACTOR_SCAN_FILE_COUNT: Final[int] = 1000
-        REFACTOR_SCAN_MAX_SECONDS: Final[float] = 30.0
-        REFACTOR_MEMORY_FILE_COUNT: Final[int] = 500
-        REFACTOR_MEMORY_MAX_MB: Final[float] = 500.0
-        REFACTOR_RULE_ITERATIONS: Final[int] = 100
-        REFACTOR_RULE_MAX_SECONDS: Final[float] = 0.1
+        REFACTOR_SCAN_FILE_COUNT: ClassVar[int] = 1000
+        REFACTOR_SCAN_MAX_SECONDS: ClassVar[float] = 30.0
+        REFACTOR_MEMORY_FILE_COUNT: ClassVar[int] = 500
+        REFACTOR_MEMORY_MAX_MB: ClassVar[float] = 500.0
+        REFACTOR_RULE_ITERATIONS: ClassVar[int] = 100
+        REFACTOR_RULE_MAX_SECONDS: ClassVar[float] = 0.1
 
         # flext-perf.4: gen pipeline performance thresholds (lazy-init stage).
-        GEN_PIPELINE_PROJECT_COUNT: Final[int] = 20
-        GEN_PIPELINE_MODULES_PER_PROJECT: Final[int] = 5
-        GEN_PIPELINE_MAX_SECONDS: Final[float] = 30.0
-        GEN_PIPELINE_MEMORY_MAX_MB: Final[float] = 500.0
+        GEN_PIPELINE_PROJECT_COUNT: ClassVar[int] = 20
+        GEN_PIPELINE_MODULES_PER_PROJECT: ClassVar[int] = 5
+        GEN_PIPELINE_MAX_SECONDS: ClassVar[float] = 30.0
+        GEN_PIPELINE_MEMORY_MAX_MB: ClassVar[float] = 500.0
 
-        RELEASE_VERSION_BASE: Final[str] = "0.1.0"
-        RELEASE_VERSION_PATCH: Final[str] = "0.1.1"
-        RELEASE_VERSION_PRERELEASE: Final[str] = "0.1.0rc0"
-        RELEASE_PROJECTS: Final[t.Pair[str, str]] = ("flext-a", "flext-b")
+        RELEASE_VERSION_BASE: ClassVar[str] = "0.1.0"
+        RELEASE_VERSION_PATCH: ClassVar[str] = "0.1.1"
+        RELEASE_VERSION_PRERELEASE: ClassVar[str] = "0.1.0rc0"
+        RELEASE_PROJECTS: ClassVar[t.Pair[str, str]] = ("flext-a", "flext-b")
         # Fixture members depend on these siblings, so a release build must see
         # them to pin their declared versions.
-        RELEASE_INTERNAL_DEPENDENCIES: Final[t.Pair[str, str]] = (
+        RELEASE_INTERNAL_DEPENDENCIES: ClassVar[t.Pair[str, str]] = (
             "flext-core",
             "flext-tests",
         )
-        RELEASE_TAG_TARGET: Final[str] = "v1.0.0"
-        RELEASE_VERSION_TARGET: Final[str] = "1.0.0"
-        RELEASE_NOTES_HEADING: Final[str] = "# Release v1.0.0"
-        RELEASE_NOTES_CHANGE_LINE: Final[str] = "- fix: release flow"
-        RELEASE_INITIAL_CHANGE_LINE: Final[str] = "- Initial tagged release"
-        RELEASE_CHANGELOG_HEADER: Final[str] = "# Changelog\n\n"
+        RELEASE_TAG_TARGET: ClassVar[str] = "v1.0.0"
+        RELEASE_VERSION_TARGET: ClassVar[str] = "1.0.0"
+        RELEASE_NOTES_HEADING: ClassVar[str] = "# Release v1.0.0"
+        RELEASE_NOTES_CHANGE_LINE: ClassVar[str] = "- fix: release flow"
+        RELEASE_INITIAL_CHANGE_LINE: ClassVar[str] = "- Initial tagged release"
+        RELEASE_CHANGELOG_HEADER: ClassVar[str] = "# Changelog\n\n"
 
 
 c = TestsFlextInfraConstants
