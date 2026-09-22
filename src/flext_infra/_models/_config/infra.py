@@ -57,6 +57,13 @@ class FlextInfraConfigModelsInfra:
                 description="Sed-by-list mass replacement patterns for literal refactoring",
             ),
         ]
+        check_policy: Annotated[
+            FlextInfraConfigModelsArtifact.CheckPolicySpec,
+            m.Field(
+                default_factory=FlextInfraConfigModelsArtifact.CheckPolicySpec,
+                description="Quality-gate blocking policy (warning gates)",
+            ),
+        ]
 
 
 __all__: list[str] = ["FlextInfraConfigModelsInfra"]

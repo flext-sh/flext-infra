@@ -612,3 +612,17 @@ class FlextInfraConfigModelsArtifact:
             t.VariadicTuple[FlextInfraConfigModelsArtifact.SedPatternSpec],
             m.Field(default=(), description="Ordered substitution patterns"),
         ] = ()
+
+    class CheckPolicySpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Quality-gate blocking policy: warning gates report without failing."""
+
+        warning_gates: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Gate ids whose findings stay visible as warnings and never "
+                    "block the check verdict"
+                ),
+            ),
+        ] = ()

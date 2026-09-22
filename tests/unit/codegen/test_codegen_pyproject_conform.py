@@ -42,7 +42,7 @@ class TestsFlextInfraCodegenPyprojectConform:
         )
 
     @staticmethod
-    def _detached_dev_floors() -> t.StrSequence:
+    def _detached_dev_floors() -> test_u.t.StrSequence:
         """SSOT dev floors seeded for a project outside the workspace overlay.
 
         A source-less internal dependency is legal only for the workspace
@@ -617,8 +617,10 @@ skips = ["B101"]
         tm.that(
             tuple(test_u.Tests.toml_strings_at(first, "dependency-groups", "codegen")),
             eq=(
-                "flext-infra @ git+https://github.com/flext-sh/flext-infra.git"
-                "@0.12.0-dev",
+                (
+                    "flext-infra @ git+https://github.com/flext-sh/flext-infra.git"
+                    "@0.12.0-dev"
+                ),
             ),
         )
         tm.that("flext-dev" in test_u.Tests.toml_mapping(project["scripts"]), eq=True)

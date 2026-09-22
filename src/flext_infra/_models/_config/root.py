@@ -55,6 +55,13 @@ class FlextInfraConfigModelsRoot:
                 description="Declared literal replacement patterns for mass refactoring",
             ),
         ]
+        check_policy: Annotated[
+            FlextInfraConfigModelsArtifact.CheckPolicySpec,
+            m.Field(
+                default_factory=FlextInfraConfigModelsArtifact.CheckPolicySpec,
+                description="Quality-gate blocking policy (warning gates)",
+            ),
+        ]
 
     class Root(FlextInfraConfigModelsContract.ConfigContract):
         """Root payload deep-merged from flext-infra config files."""

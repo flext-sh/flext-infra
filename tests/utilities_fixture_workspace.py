@@ -681,7 +681,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             existing = root / "config" / "workspace.yaml"
             if existing.is_file():
                 loaded = u.Cli.config_load(existing, expand_env=False)
-                if loaded.success and isinstance(loaded.value.data, Mapping):
+                if loaded.success:
                     loaded_name = loaded.value.data.get("name")
                     if isinstance(loaded_name, str) and loaded_name:
                         declared = loaded_name

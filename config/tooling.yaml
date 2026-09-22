@@ -1,4 +1,9 @@
 Infra:
+  # Operator law 2026-09-22: flext-infra's own census/namespace debt stays
+  # visible but never blocks CI; findings print as warnings and the reports
+  # still record them. Root-cause repair continues at the owning campaigns.
+  check_policy:
+    warning_gates: [runtime-census, namespace]
   tooling:
     # flext-j47u (codex): canonical validated tooling and suppression-policy SSOT.
     tools:
