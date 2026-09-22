@@ -6,9 +6,15 @@ snapshots:
       style: primary
       start: 10
       end: 44
-  raw = getattr(source, "_runtime_bootstrap_options", None):
+  raw = getattr(source, "_bootstrap_options", None):
     labels:
-    - source: getattr(source, "_runtime_bootstrap_options", None)
+    - source: getattr(source, "_bootstrap_options", None)
+      style: primary
+      start: 6
+      end: 49
+  raw = getattr(source, "runtime_bootstrap_options", None):
+    labels:
+    - source: getattr(source, "runtime_bootstrap_options", None)
       style: primary
       start: 6
       end: 57
