@@ -78,6 +78,9 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         )
         """Environment inherited from an outer Make invocation to discard in tests."""
 
+        # ClassVar, not Final: these rebindings live on a Pydantic model
+        # class, and Pydantic 2.11 deprecates final-annotated defaults
+        # (filterwarnings=error turns that into a collection failure).
         RELEASE_PHASE_PLAN: ClassVar[str] = c.Infra.ReleasePhase.PLAN
         RELEASE_PHASE_VERSION: ClassVar[str] = c.Infra.ReleasePhase.VERSION
         RELEASE_PHASE_TAG: ClassVar[str] = c.Infra.ReleasePhase.TAG

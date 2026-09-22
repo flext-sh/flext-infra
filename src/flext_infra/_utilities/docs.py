@@ -104,6 +104,41 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
             return r[bool].fail(f"markdown write error: {exc}", exception=exc)
 
     @staticmethod
+    def docs_write_fmt_reports(
+        scope: m.Infra.DocScope,
+        *,
+        items: t.SequenceOf[m.Infra.DocsPhaseItemModel],
+        apply: bool,
+    ) -> None:
+        """Persist the standard fmt summary and markdown report."""
+        changes_payload: t.JsonList = [
+            {c.Infra.RK_FILE: item.file} for item in items
+        ]
+        summary_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python({
+            c.Infra.RK_SUMMARY: {
+                c.Infra.RK_SCOPE: scope.name,
+                "changed_files": len(items),
+                "apply": apply,
+            },
+            "changes": changes_payload,
+        })
+        _ = u.Cli.json_write(scope.report_dir / "fmt-summary.json", summary_payload)
+        _ = FlextInfraUtilitiesDocs.write_markdown(
+            scope.report_dir / "fmt-report.md",
+            [
+                "# Docs Format Report",
+                "",
+                f"Scope: {scope.name}",
+                f"Apply: {int(apply)}",
+                f"Changed files: {len(items)}",
+                "",
+                "| file |",
+                "|---|",
+                *[f"| {item.file} |" for item in items],
+            ],
+        )
+
+    @staticmethod
     def anchorize(text: str) -> str:
         """Convert heading text to the anchor consumed by MkDocs."""
         return FlextInfraUtilitiesDocsContract.docs_contract_anchorize(text)

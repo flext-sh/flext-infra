@@ -56,6 +56,23 @@ class FlextInfraMarkdownFormatGate(FlextInfraMarkdownGateBase):
         started = time.monotonic()
         if self._resolve_binary() is None:
             return self._binary_missing_result(project_dir, started, ctx)
+        config_path = project_dir / c.Infra.PRETTIER_CONFIG_FILENAME
+        if not config_path.is_file():
+            # .prettierrc is a codegen-managed artifact (policy full): absence
+            # is a generation gap reported loud with the exact path, never a
+            # silent fall back to the tool's built-in defaults (same posture
+            # as the smells gate for the generated qlty configuration).
+            return self._build_single_issue_result(
+                project_dir,
+                Path(c.Infra.PYPROJECT_FILENAME),
+                (
+                    f"generated {c.Infra.PRETTIER_CONFIG_FILENAME} is absent: "
+                    f"{config_path}; run make gen"
+                ),
+                passed=False,
+                started=started,
+                ctx=ctx,
+            )
         return super().check(project_dir, ctx)
 
     def _binary_missing_result(

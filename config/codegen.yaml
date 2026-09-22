@@ -3,6 +3,14 @@ Infra:
     # NOTE(mro-wkii.17.5, agent implement_manifest): declarative SSOT for deterministic project conformance.
     version: 1
 
+    # Operator law 2026-09-22: the pyproject template declares `.cli:main`
+    # for every distribution while most member cli facades predate that
+    # contract. Until the fleet converges the facades (bead
+    # flext-1pquc, gen-fixed-point campaign), declared-script import
+    # failures warn instead of failing the conformance transaction.
+    # Package-export probes stay blocking either way.
+    fresh_import_entry_points_warn_only: true
+
     # Per-module scc code-LOC ceiling. Operator instruction 2026-09-07:
     # the former 1000-LOC allowance stands (supersedes the 200 constant).
     loc_cap:
@@ -425,6 +433,12 @@ Infra:
           - develop
           - 0.12.0-dev
       docs:
+        # Operator law 2026-09-22: `make docs` is a docs-only lifecycle
+        # (generate -> fix -> fmt -> check); it never runs the workspace-wide
+        # codegen conform as a prerequisite. `validate` is the structural
+        # check (blocking when the .md set is incomplete); `audit` findings
+        # are warnings owned by cleanup beads, never CI blockers.
+        actions: [generate, fix, fmt, validate, audit]
         api_modules:
           flext-infra:
             - api
@@ -438,7 +452,8 @@ Infra:
             - typings
             - utilities
             - worktree
-        mutable_actions: [fix]
+        mutable_actions: [fix, fmt]
+        warning_actions: [audit]
         reports_dir: .reports/docs
         cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
         stale_github_organizations:
@@ -480,7 +495,7 @@ Infra:
         - name: status
           description: Report the resolved runtime and repository state.
         - name: docs
-          description: Generate, repair, build, and validate documentation.
+          description: Generate, fix, format, and check documentation.
         - name: clean
           description: Remove every declared disposable artifact.
         - name: release-plan

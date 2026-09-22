@@ -49,6 +49,8 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers:
     @staticmethod
     def local_name(pyname: t.Infra.RopePyName, resource: t.Infra.RopeResource) -> bool:
         """Return whether one Rope name is defined in ``resource``."""
+        if isinstance(pyname, (p.Infra.RopeImportedName, p.Infra.RopeImportedModule)):
+            return False
         # NOTE (multi-agent, flext-f8vk / kimi): p.Infra declares
         # get_definition_location() as tuple-always (every other caller
         # unpacks directly); the old None guard was dead code.

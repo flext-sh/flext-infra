@@ -50,12 +50,12 @@ class FlextInfraPytestRunnerExecution(
         self, report_dir: Path, *, complete: bool = False
     ) -> t.StrSequence:
         """Return the node ids testmon selects, resolved in one process."""
-        pytest = config.Infra.tooling.tools.pytest
+        pytest_settings = config.Infra.tooling.tools.pytest
         command = self.build_selection_command(complete=complete)
         outcome = u.Cli.run_raw(
             command,
             cwd=self.root,
-            timeout=pytest.run_timeout_seconds,
+            timeout=pytest_settings.run_timeout_seconds,
             env=self._selection_env(),
         ).unwrap()
         self._record_process_outcome(
@@ -83,20 +83,25 @@ class FlextInfraPytestRunnerExecution(
             report_dir / f"{artifact}.log", outcome.stdout or ""
         ).unwrap()
         if not node_ids and not complete:
-            self._resolve_selection(report_dir, complete=True)
+            # The hot selection can be legitimately empty (all known tests
+            # clean); the complete inventory must then drive the suite, so its
+            # resolution is returned — discarding it ran the suite against the
+            # hot cache again and collected nothing.
+            return self._resolve_selection(report_dir, complete=True)
         return node_ids
 
     def _run_suite(
         self, command: t.VariadicTuple[str], report_dir: Path
     ) -> p.Cli.ProcessOutcome:
         """Execute one suite argv under the shared deadline and environment."""
-        pytest = config.Infra.tooling.tools.pytest
+        pytest_settings = config.Infra.tooling.tools.pytest
         u.Cli.atomic_write_text_file(
             report_dir / "command.txt", f"{shlex.join(command)}\n"
         ).unwrap()
         deadline = m.Cli.ProcessDeadline(
-            expires_at_monotonic=self.started_at_monotonic + pytest.run_timeout_seconds,
-            termination_grace_seconds=pytest.termination_grace_seconds,
+            expires_at_monotonic=self.started_at_monotonic
+            + pytest_settings.run_timeout_seconds,
+            termination_grace_seconds=pytest_settings.termination_grace_seconds,
         )
         outcome = u.Cli.run_to_file(
             command,

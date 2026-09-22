@@ -3,12 +3,24 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from flext_cli import m
 
 from .. import c, t
 from . import FlextInfraModelsMixins as mm
+from ._defaults import FlextInfraModelsDefaults
+
+
+def _default_fresh_import_entry_points() -> FlextInfraModelsCore.FreshImportEntryPoints:
+    """Default factory for the fresh-import entry-points payload.
+
+    Module-level on purpose: neither a qualified nor a bare reference to the
+    nested model resolves inside the class body at definition time (class
+    scopes do not nest, and the outer class is still being defined), so the
+    deferred lookup must live outside it.
+    """
+    return FlextInfraModelsCore.FreshImportEntryPoints()
 
 
 class FlextInfraModelsCore:
@@ -29,6 +41,40 @@ class FlextInfraModelsCore:
         summary: Annotated[
             str, m.Field(description="Human-readable validation summary")
         ] = ""
+
+    class FreshImportProbe(m.Value):
+        """One complete child-process verification program and its subject."""
+
+        subject: str = m.Field(description="Public contract verified by this process")
+        code: str = m.Field(description="Python program rendered from typed contracts")
+
+    class FreshImportEntryPoints(m.Value):
+        """The standardized executable metadata consumed by importlib."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
+
+        scripts: t.StrMapping = m.Field(
+            default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping,
+            description="Declared console entrypoints",
+        )
+        gui_scripts: t.StrMapping = m.Field(
+            default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping,
+            alias="gui-scripts", description="Declared graphical entrypoints",
+        )
+        entry_points: t.MappingKV[str, t.StrMapping] = m.Field(
+            default_factory=FlextInfraModelsDefaults.ImmutableEmptyMapping,
+            alias="entry-points", description="Declared plugin entrypoint groups",
+        )
+
+    class FreshImportMetadata(m.Value):
+        """Typed entrypoint view of the published pyproject document."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
+
+        project: FlextInfraModelsCore.FreshImportEntryPoints = m.Field(
+            default_factory=_default_fresh_import_entry_points,
+            description="Executable metadata from the published project table",
+        )
 
     class SkillRuleEvaluationContext(m.ArbitraryTypesModel):
         """Resolved inputs for one skill rule evaluation pass."""

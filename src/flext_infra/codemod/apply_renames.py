@@ -144,7 +144,10 @@ class FlextInfraApplyRenames:
             if run_result.failure:
                 return r[bool].from_failure(run_result)
             output = run_result.value
-            if output.outcome.raw_return_code != 0:
+            # ast-grep documents grep-like status: exit 0 rewrote matches and
+            # exit 1 found nothing pending — the converged rename state, not
+            # a failure. Any other status is a real ast-grep error.
+            if output.outcome.raw_return_code > 1:
                 detail = output.stderr.strip() or output.stdout.strip()
                 return r[bool].fail(
                     detail or f"ast-grep failed while renaming {old} to {new}"
@@ -181,7 +184,11 @@ class FlextInfraApplyRenames:
         roots_result = cls._roots(params.roots)
         if roots_result.failure:
             return r[m.Infra.ApplyRenamesReport].from_failure(roots_result)
-        files = cls._text_files(roots_result.value)
+        # The driver list owns its old,new pairs and can never be a rename
+        # target of its own campaign: rewriting it would corrupt the SSOT.
+        files = tuple(
+            path for path in cls._text_files(roots_result.value) if path != csv_path
+        )
         scan_result = cls._scan(files, pairs_result.value)
         if scan_result.failure:
             return r[m.Infra.ApplyRenamesReport].from_failure(scan_result)

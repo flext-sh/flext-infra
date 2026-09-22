@@ -72,7 +72,7 @@ class FlextInfraRefactorCensusCollectMixin(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
         module: m.Infra.RopeModuleIndexEntry,
-        config: m.Infra.Census.ScanConfig,
+        scan_config: m.Infra.Census.ScanConfig,
         *,
         project_objects: t.MappingKV[str, t.MutableSequenceOf[m.Infra.Census.Object]],
         project_violations: t.MappingKV[
@@ -89,13 +89,13 @@ class FlextInfraRefactorCensusCollectMixin(
         module_objects: t.VariadicTuple[m.Infra.Census.Object] | None = None
         objects: t.VariadicTuple[m.Infra.Census.Object] = ()
         inventory_failed = False
-        if config.collect_object_inventory:
+        if scan_config.collect_object_inventory:
             try:
                 module_objects = tuple(
                     rope.objects(
                         module.file_path,
-                        include_local_scopes=config.include_local_scopes,
-                        include_references=config.include_object_references,
+                        include_local_scopes=scan_config.include_local_scopes,
+                        include_references=scan_config.include_object_references,
                     )
                 )
             except _ROPE_SAFE_EXCEPTIONS as exc:
@@ -109,9 +109,9 @@ class FlextInfraRefactorCensusCollectMixin(
                     for item in module_objects
                     if self._include_object(
                         item,
-                        kind_names=config.kind_names,
-                        selected_families=config.selected_families,
-                        selected_kinds=config.selected_kinds,
+                        kind_names=scan_config.kind_names,
+                        selected_families=scan_config.selected_families,
+                        selected_kinds=scan_config.selected_kinds,
                     )
                 )
                 if objects:
@@ -126,11 +126,11 @@ class FlextInfraRefactorCensusCollectMixin(
                 module.file_path,
                 objects=module_objects,
                 project_name=project,
-                applied=config.applied,
-                kind_names=config.kind_names,
-                rule_names=config.rule_names,
-                selected_kinds=config.selected_kinds,
-                selected_rules=config.selected_rules,
+                applied=scan_config.applied,
+                kind_names=scan_config.kind_names,
+                rule_names=scan_config.rule_names,
+                selected_kinds=scan_config.selected_kinds,
+                selected_rules=scan_config.selected_rules,
                 convention=convention,
             )
         except _ROPE_SAFE_EXCEPTIONS as exc:

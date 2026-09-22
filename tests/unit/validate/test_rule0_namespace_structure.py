@@ -50,6 +50,7 @@ class TestsFlextInfraRule0NamespaceStructure(TestsFlextInfraValidateNamespaceBas
             ("models.py", "m = other = FlextTestModels"),
             ("models.py", "m, other = FlextTestModels, FlextTestModels"),
             ("models.py", "VALUE = 42"),
+            ("models.py", "m: type[FlextTestModels]"),
             ("models.py", "m = FlextTestModels\nother = FlextTestModels"),
             ("models.py", "m = FlextTestModels\nm = FlextTestModels"),
             ("_models/models.py", "m = FlextTestModels"),

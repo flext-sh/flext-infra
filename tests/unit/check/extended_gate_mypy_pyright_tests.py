@@ -62,6 +62,37 @@ class TestsFlextInfraTypeGates:
         tm.that(messages, has=["Expected", "Actual", "def size", "int", "str"])
 
     @pytest.mark.slow
+    def test_mypy_preserves_malformed_native_output(
+        self, checker_context: m.Infra.GateContext
+    ) -> None:
+        """Unexpected plugin output remains a causal, visible tool failure."""
+        project = checker_context.repository_root
+        plugin = project / "plugin.py"
+        plugin.write_text(
+            "from mypy.plugin import Plugin\n"
+            "def plugin(version: str) -> type[Plugin]:\n"
+            "    print('native-plugin-output')\n"
+            "    return Plugin\n",
+            encoding="utf-8",
+        )
+        pyproject = project / "pyproject.toml"
+        pyproject.write_text(
+            pyproject.read_text(encoding="utf-8").replace(
+                "[tool.mypy]\n", '[tool.mypy]\nplugins = ["plugin.py"]\n'
+            ),
+            encoding="utf-8",
+        )
+
+        result = FlextInfraMypyGate(project).check(project, checker_context)
+
+        tm.that(result.result.passed, eq=False)
+        tm.that(tuple(issue.code for issue in result.issues), has="TOOL_ERROR")
+        tm.that(
+            "\n".join(issue.message for issue in result.issues),
+            has="native-plugin-output",
+        )
+
+    @pytest.mark.slow
     @pytest.mark.parametrize(
         "gate_class", [FlextInfraMypyGate, FlextInfraPyrightGate, FlextInfraPyreflyGate]
     )

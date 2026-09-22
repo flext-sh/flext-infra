@@ -42,7 +42,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             self,
             rope: p.Infra.RopeWorkspaceDsl,
             module: m.Infra.RopeModuleIndexEntry,
-            config: m.Infra.Census.ScanConfig,
+            scan_config: m.Infra.Census.ScanConfig,
             *,
             project_objects: t.MappingKV[
                 str, t.MutableSequenceOf[m.Infra.Census.Object]
@@ -221,7 +221,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         selected_rules: frozenset[str] | None = (
             frozenset(rule_names) if rule_names else None
         )
-        config = m.Infra.Census.ScanConfig(
+        scan_config = m.Infra.Census.ScanConfig(
             kind_names=kind_names,
             rule_names=rule_names,
             selected_families=selected_families,
@@ -250,7 +250,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             self._scan_module(
                 rope,
                 module,
-                config,
+                scan_config,
                 project_objects=project_objects,
                 project_violations=project_violations,
                 project_fixes=project_fixes,

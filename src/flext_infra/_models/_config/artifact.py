@@ -94,6 +94,17 @@ class FlextInfraConfigModelsArtifact:
         """Fully modeled content of ``config/codegen.yaml``."""
 
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
+        fresh_import_entry_points_warn_only: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Report declared console/gui script entry points that fail "
+                    "to import as fresh-import warnings instead of failing the "
+                    "conformance transaction; package-export probes always "
+                    "stay blocking"
+                ),
+            ),
+        ] = False
         loc_cap: Annotated[
             FlextInfraConfigModelsArtifact.CodegenLocCapSpec,
             m.Field(description="Per-module code-LOC ceiling policy"),
@@ -625,4 +636,34 @@ class FlextInfraConfigModelsArtifact:
                     "block the check verdict"
                 ),
             ),
+        ] = ()
+
+    class RenameCampaignSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """One declared CSV-driven rename campaign applied by the mod verb."""
+
+        csv: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Repository-root-relative path to the old,new rename-list CSV"
+                )
+            ),
+        ]
+        roots: Annotated[
+            t.VariadicTuple[t.NonEmptyStr],
+            m.Field(
+                default=(),
+                description=(
+                    "Repository-root-relative scan directories; empty selects "
+                    "the whole repository root"
+                ),
+            ),
+        ] = ()
+
+    class RefactorCsvCampaignsSpec(FlextInfraConfigModelsContract.ConfigContract):
+        """Declared CSV-driven rename campaigns for the mod verb's rename phase."""
+
+        campaigns: Annotated[
+            t.VariadicTuple[FlextInfraConfigModelsArtifact.RenameCampaignSpec],
+            m.Field(default=(), description="Ordered rename campaigns"),
         ] = ()

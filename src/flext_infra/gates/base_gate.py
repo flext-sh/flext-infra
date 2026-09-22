@@ -224,6 +224,16 @@ class FlextInfraGate:
             ctx=ctx,
         )
 
+    @property
+    def _warn_only(self) -> bool:
+        """Operator ruling 2026-09-22: warn gates report, never block.
+
+        The classification lives in the one gate SSOT
+        (``c.Infra.WARNING_GATE_IDS``) so the verdict, the runner rendering,
+        and the reports can never disagree about which gates warn.
+        """
+        return self.gate_id in c.Infra.WARNING_GATE_IDS
+
     def _build_check_gate_execution(
         self,
         project_dir: Path,
@@ -245,6 +255,26 @@ class FlextInfraGate:
         the residue a fixer could not repair and do not decide acceptance.
         """
         _ = ctx
+        if self._warn_only:
+            # One classification owns the verdict: downgrading the severity
+            # here makes the parsed verdict, the error count, and the report
+            # artifacts agree that these findings warn instead of block.
+            issues = [
+                issue.model_copy(
+                    update={"severity": c.Infra.GateSeverity.WARNING.value}
+                )
+                if issue.severity.lower() == c.Infra.GateSeverity.ERROR.value
+                else issue
+                for issue in issues
+            ]
+        error_free = not any(
+            issue.severity.lower() == c.Infra.GateSeverity.ERROR.value
+            for issue in issues
+        )
+        if self._warn_only:
+            verdict = accept_reported_issues or error_free
+        else:
+            verdict = passed and (accept_reported_issues or error_free)
         return m.Infra.GateExecution(
             result=m.Infra.GateResult(
                 gate=self.gate_id,
@@ -256,13 +286,7 @@ class FlextInfraGate:
                 # reporting zero errors, naming nothing the reader could act on.
                 # Verdict and count now derive from the same classification, so
                 # a gate's declared severity means what it says.
-                passed=passed
-                and (
-                    accept_reported_issues
-                    or not any(
-                        issue.severity.lower() == c.Infra.ERROR for issue in issues
-                    )
-                ),
+                passed=verdict,
                 errors=(
                     list(errors)
                     if errors is not None
@@ -282,8 +306,17 @@ class FlextInfraGate:
         errors: t.SequenceOf[str],
         started: float,
         ctx: m.Infra.GateContext,
+        advisory: bool = False,
     ) -> m.Infra.GateExecution:
-        """Build a gate result from project-level error strings (no per-file issues)."""
+        """Build a gate result from project-level error strings (no per-file issues).
+
+        ``advisory`` grades the findings as warnings that are reported but do
+        not block acceptance (operator order 2026-09-22: the namespace and
+        runtime-census census machinery stays advisory until its structural
+        campaign converges). Invocation failures never pass through this
+        path: gates must keep hard failures blocking by building them with
+        ``advisory=False``.
+        """
         issues = [
             m.Infra.Issue(
                 file=str(project_dir),
@@ -291,13 +324,13 @@ class FlextInfraGate:
                 column=1,
                 code=self.gate_id,
                 message=error,
-                severity="ERROR",
+                severity="WARNING" if advisory else "ERROR",
             )
             for error in errors
         ]
         return self._build_check_gate_execution(
             project_dir,
-            passed=passed,
+            passed=passed or advisory,
             issues=issues,
             raw_output="\n".join(errors),
             started=started,

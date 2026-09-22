@@ -132,10 +132,11 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def _runtime_aliases(cls, package_dir: Path) -> t.StrSequence:
-        """Return the runtime aliases actually published by one package root."""
+        """Read root aliases from declarations, never from initializer outputs."""
         return tuple(
             alias
             for module_file in sorted(package_dir.glob("*.py"))
+            if module_file.name != c.Infra.INIT_PY
             for alias in cls._declared_exports(module_file)
             if (
                 alias.isidentifier()
@@ -265,7 +266,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def _resolve_family(
-        cls, file_path: Path
+        cls, file_path: Path, *, rope_project: t.Infra.RopeProject
     ) -> t.Quad[str | None, str | None, str | None, t.StrSequence]:
         """Return (family_alias, expected_family, expected_alias, family_tokens)."""
         family_alias = next(
@@ -278,21 +279,9 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
         declared_exports = cls._declared_exports(file_path)
         uppercase_names = tuple(name for name in declared_exports if name[:1].isupper())
-        lowercase_alias_names = tuple(
-            name
-            for name in declared_exports
-            if name.islower() and len(name) <= c.Infra.MAX_ALIAS_LENGTH
-        )
-        # Why (defect fix): a module's ``__all__`` proves it is the single
-        # declared owner of a class/alias pair only when it names exactly one
-        # of each -- a re-export aggregator that relists many facades' names
-        # (e.g. a generated TYPE_CHECKING sidecar) must never be mistaken for
-        # the sole owner of any single name it merely forwards.
-        expected_alias = (
-            lowercase_alias_names[0]
-            if len(lowercase_alias_names) == 1
-            else family_alias
-        )
+        # Family nesting remains a separate concern. Public alias ownership
+        # comes from local class identity and declared bases, never the path.
+        expected_alias: str | None = None
         expected_family = (
             uppercase_names[0]
             if len(uppercase_names) == 1
@@ -302,6 +291,23 @@ class FlextInfraUtilitiesCodegenNamespace:
                 else None
             )
         )
+        project_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
+        if project_root is not None:
+            layout = cls.layout(project_root)
+            direct_tier = file_path.parent.parent == project_root
+            public_root = layout is not None and file_path.parent == layout.package_dir
+            if direct_tier or public_root:
+                resource = FlextInfraUtilitiesRopeCore.fetch_python_resource(
+                    rope_project, file_path
+                )
+                if resource is None:
+                    message = f"facade source is unavailable to Rope: {file_path}"
+                    raise ValueError(message)
+                owner = FlextInfraUtilitiesRopeAnalysis.published_facade_owner(
+                    rope_project, resource
+                )
+                if owner is not None:
+                    expected_alias, expected_family = owner
         family_tokens: t.StrSequence = (expected_family,) if expected_family else ()
         return family_alias, expected_family, expected_alias, family_tokens
 
@@ -332,11 +338,6 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
         is_services_module = "services" in resolved_rel_path.parts
         is_services_package = "services" in package_parts
-        runtime_singleton_export = (
-            cls.runtime_singleton_export(resolved_rel_path.name)
-            if len(resolved_rel_path.parts) == 1 and package_depth <= 1
-            else None
-        )
         is_namespace_file = bool(cls._declared_exports(file_path))
         is_governed_namespace = (
             expected_alias is not None or expected_family is not None
@@ -346,10 +347,6 @@ class FlextInfraUtilitiesCodegenNamespace:
             and len(resolved_rel_path.parts) == 1
             and package_depth <= 1
         )
-        # The alias is declared by the module (``__all__``/family directory) or
-        # owned by a sanctioned runtime singleton; it is never synthesized from
-        # the package name, which would invent a phantom API alias.
-        resolved_alias = expected_alias or runtime_singleton_export
         return (
             is_fixture_module,
             is_family_module,
@@ -359,7 +356,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             is_namespace_file,
             is_root_namespace,
             is_governed_namespace,
-            resolved_alias,
+            expected_alias,
         )
 
     @classmethod
@@ -384,10 +381,15 @@ class FlextInfraUtilitiesCodegenNamespace:
         return f"{surface_prefix}{class_stem}" if surface_prefix else class_stem
 
     @classmethod
-    def policy(
-        cls, file_path: Path, *, rel_path: Path | None = None, current_pkg: str = ""
+    def publication_policy(
+        cls,
+        file_path: Path,
+        *,
+        rope_project: t.Infra.RopeProject,
+        rel_path: Path | None = None,
+        current_pkg: str = "",
     ) -> m.Infra.NamespaceModulePolicy:
-        """Return the derived Pydantic policy for one governed module."""
+        """Derive publication from existing declarations, without repair inference."""
         package_name = current_pkg or FlextInfraUtilitiesDiscovery.package_name(
             file_path
         )
@@ -395,7 +397,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         package_parts = tuple(part for part in package_name.split(".") if part)
 
         family_alias, expected_family, expected_alias, family_tokens = (
-            cls._resolve_family(file_path)
+            cls._resolve_family(file_path, rope_project=rope_project)
         )
         (
             is_fixture_module,
@@ -458,6 +460,7 @@ class FlextInfraUtilitiesCodegenNamespace:
                 and len(name) <= c.Infra.MAX_ALIAS_LENGTH
             )
         )
+        project_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
         return m.Infra.NamespaceModulePolicy(
             enforce_contract=enforce_contract,
             export_symbols=export_symbols,
@@ -465,6 +468,8 @@ class FlextInfraUtilitiesCodegenNamespace:
             project_prefix=cls._resolve_project_prefix(file_path),
             expected_alias=expected_alias,
             expected_family=expected_family,
+            is_internal_namespace=project_root is not None
+            and file_path.parent.parent == project_root,
             family_tokens=family_tokens,
             accepted_suffixes=((expected_family,) if expected_family else ()),
             allow_main_export="main" in cls._declared_exports(file_path),
@@ -474,6 +479,57 @@ class FlextInfraUtilitiesCodegenNamespace:
             ),
             is_fixture_module=is_fixture_module,
             type_checking_imports=type_checking_imports,
+        )
+
+    @classmethod
+    def policy(
+        cls,
+        file_path: Path,
+        *,
+        rope_project: t.Infra.RopeProject,
+        rel_path: Path | None = None,
+        current_pkg: str = "",
+    ) -> m.Infra.NamespaceModulePolicy:
+        """Enrich publication declarations with repair and inherited-shape evidence."""
+        policy = cls.publication_policy(
+            file_path,
+            rope_project=rope_project,
+            rel_path=rel_path,
+            current_pkg=current_pkg,
+        )
+        project_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
+        if project_root is None:
+            return policy
+        layout = cls.layout(project_root)
+        if file_path.parent.parent != project_root and (
+            layout is None or file_path.parent != layout.package_dir
+        ):
+            return policy
+        resource = FlextInfraUtilitiesRopeCore.fetch_python_resource(
+            rope_project, file_path
+        )
+        if resource is None:
+            msg = f"facade source is unavailable to Rope: {file_path}"
+            raise ValueError(msg)
+        owner = FlextInfraUtilitiesRopeAnalysis.declared_facade_owner(
+            rope_project, resource
+        )
+        if owner is None:
+            return policy
+        alias, family = owner
+        inherited = FlextInfraUtilitiesRopeAnalysis.inherited_facade_namespaces(
+            rope_project, resource, class_name=family
+        )
+        return policy.model_copy(
+            update={
+                "expected_alias": alias,
+                "expected_family": family,
+                "family_tokens": (family,),
+                "accepted_suffixes": (family,),
+                "inherited_namespaces": inherited,
+                "enforce_contract": True,
+                "export_symbols": True,
+            }
         )
 
     @classmethod

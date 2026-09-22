@@ -62,6 +62,13 @@ class FlextInfraConfigModelsRoot:
                 description="Quality-gate blocking policy (warning gates)",
             ),
         ]
+        refactor_csv_campaigns: Annotated[
+            FlextInfraConfigModelsArtifact.RefactorCsvCampaignsSpec,
+            m.Field(
+                default_factory=FlextInfraConfigModelsArtifact.RefactorCsvCampaignsSpec,
+                description="Declared CSV-driven rename campaigns for the mod verb",
+            ),
+        ]
 
     class Root(FlextInfraConfigModelsContract.ConfigContract):
         """Root payload deep-merged from flext-infra config files."""

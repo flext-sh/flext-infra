@@ -64,6 +64,13 @@ class FlextInfraConfigModelsInfra:
                 description="Quality-gate blocking policy (warning gates)",
             ),
         ]
+        refactor_csv_campaigns: Annotated[
+            FlextInfraConfigModelsArtifact.RefactorCsvCampaignsSpec,
+            m.Field(
+                default_factory=FlextInfraConfigModelsArtifact.RefactorCsvCampaignsSpec,
+                description="Declared CSV-driven rename campaigns for the mod verb",
+            ),
+        ]
 
 
 __all__: list[str] = ["FlextInfraConfigModelsInfra"]

@@ -188,7 +188,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             "[project]\n"
             f'name = "{name}"\n'
             'version = "0.1.0"\n'
-            'requires-python = ">=3.13,<3.14"\n'
+            f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
             "dependencies = []\n"
             "[dependency-groups]\n"
             f'dev = ["{infra.distribution} @ git+{infra.url}@{branch}"]\n',
@@ -464,6 +464,22 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
                 f"git+{provider.base_url.rstrip('/')}/flext-core.git@"
                 f"{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}"
             )
+            infra = config.Infra.codegen.infra_repository.distribution
+            tooling_names = {
+                infra,
+                *(
+                    name
+                    for requirement in config.Infra.codegen.scaffold.project.dev
+                    if (name := u.Infra.dep_name(requirement)) is not None
+                    and name.startswith("flext-")
+                ),
+            } - {distribution}
+            tooling_requirements = ", ".join(
+                f'"{name} @ git+{cls.governed_repository_url(name)}@'
+                f'{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}"'
+                for name in sorted(tooling_names)
+            )
+            tooling = f"\n[dependency-groups]\ndev = [{tooling_requirements}]\n"
             # A governed project always declares its description: the derived
             # render identity reads it and rejects an empty one, exactly as it
             # does for a real checkout.
@@ -473,10 +489,10 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
             pyproject.write_text(
                 f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
                 f'description = "{distribution} governed fixture"\n'
-                'requires-python = ">=3.13,<3.14"\n'
+                f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
                 'authors = [{name = "FLEXT Team", email = "team@flext.dev"}]\n'
                 f'dependencies = ["flext-core @ {internal_source}"]\n'
-                f'[project.urls]\nRepository = "{repository_url}"\n',
+                f'[project.urls]\nRepository = "{repository_url}"\n{tooling}',
                 encoding="utf-8",
             )
             package = root / "src" / distribution.replace("-", "_")

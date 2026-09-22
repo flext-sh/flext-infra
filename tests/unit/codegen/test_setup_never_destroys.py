@@ -1,9 +1,8 @@
 """``setup`` provisions tooling and never destroys tracked working trees.
 
-``setup`` is invoked automatically, from every verb and from the pre-commit
-hook, so anything it mutates it mutates constantly and unattended. That makes
-it the one verb allowed to *create* what is missing and forbidden to *destroy*
-what exists.
+``setup`` preserves project source and Git state. It may replace its own
+physical virtualenv when the managed base interpreter changes. The public
+Make environment tests exercise that replacement and preserve foreign targets.
 
 ``git checkout`` and ``git reset`` are completely prohibited on the setup path.
 Absent checkouts are initialized at the recorded gitlink. Present checkouts are
@@ -62,28 +61,6 @@ class TestsFlextInfraSetupNeverDestroys:
         }
 
         assert not offenders, f"setup reaches destructive git operations: {offenders}"
-
-    def test_setup_clears_the_virtualenv_only_on_interpreter_change(self) -> None:
-        """A present virtualenv on the desired interpreter is repaired in place.
-
-        ``venv --clear`` is legal only inside the guarded branch that first
-        proves the live interpreter differs from the resolved desired one and
-        announces the replacement; the plain create path never clears.
-        """
-        stripped_lines = [
-            stripped
-            for line in self._setup_recipe_text().splitlines()
-            if (stripped := line.strip()) and not stripped.startswith("#")
-        ]
-        for index, line in enumerate(stripped_lines):
-            if "--clear" not in line or line.startswith(("printf", "echo")):
-                continue
-            assert "venv" in line, f"unexpected --clear outside venv: {line}"
-            announced = any(
-                "replacing environment for Python" in earlier
-                for earlier in stripped_lines[:index]
-            )
-            assert announced, f"venv --clear without a replacement announcement: {line}"
 
     def test_submodule_setup_initializes_absent_and_verifies_present(self) -> None:
         """Setup creates an absent gitlink and only validates a present checkout."""
