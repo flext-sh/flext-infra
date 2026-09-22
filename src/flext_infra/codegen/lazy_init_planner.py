@@ -204,15 +204,15 @@ class FlextInfraCodegenLazyInitPlanner(
             policy = u.Infra.publication_policy(
                 module_path, rope_project=self.rope_workspace.rope_project
             )
+            alias = policy.expected_alias
+            family = policy.expected_family
+            if alias is None or family is None:
+                continue
             entry = self.rope_workspace.module(module_path)
             if entry is None:
                 raise ValueError(f"unindexed publication source: {module_path}")
-            alias = policy.expected_alias
-            family = policy.expected_family
             if (
-                alias is not None
-                and family is not None
-                and lazy_map.get(alias) == (entry.module_name, alias)
+                lazy_map.get(alias) == (entry.module_name, alias)
                 and alias in self.rope_workspace.exports(
                     module_path,
                     export_options=m.Infra.ExportOptions(
