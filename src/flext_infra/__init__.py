@@ -133,6 +133,7 @@ if TYPE_CHECKING:
     from .docs.builder import FlextInfraDocBuilder
     from .docs.collector import FlextInfraDocCollector
     from .docs.fixer import FlextInfraDocFixer
+    from .docs.formatter import FlextInfraDocFormatter
     from .docs.generator import FlextInfraDocGenerator
     from .docs.server import FlextInfraDocServer
     from .docs.validator import FlextInfraDocValidator
@@ -327,6 +328,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraDocBuilder",
     "FlextInfraDocCollector",
     "FlextInfraDocFixer",
+    "FlextInfraDocFormatter",
     "FlextInfraDocGenerator",
     "FlextInfraDocServer",
     "FlextInfraDocServiceBase",
@@ -621,6 +623,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".docs.builder": ("FlextInfraDocBuilder",),
             ".docs.collector": ("FlextInfraDocCollector",),
             ".docs.fixer": ("FlextInfraDocFixer",),
+            ".docs.formatter": ("FlextInfraDocFormatter",),
             ".docs.generator": ("FlextInfraDocGenerator",),
             ".docs.server": ("FlextInfraDocServer",),
             ".docs.validator": ("FlextInfraDocValidator",),
